@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "f0077a99a85b43c89dc0b6a2a2e34412",
+    "identityHash": "1fcd8c307ed40eb08c05be225425bc6e",
     "entities": [
       {
         "tableName": "raw_sms",
@@ -291,7 +291,7 @@
       },
       {
         "tableName": "account_registry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bankId` TEXT NOT NULL, `maskedNumber` TEXT NOT NULL, `ownershipStatus` TEXT NOT NULL, `firstSeenRawSmsId` TEXT, `lastSeenRawSmsId` TEXT, `evidenceCount` INTEGER NOT NULL, PRIMARY KEY(`bankId`, `maskedNumber`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bankId` TEXT NOT NULL, `maskedNumber` TEXT NOT NULL, `ownershipStatus` TEXT NOT NULL, `firstSeenRawSmsId` TEXT, `lastSeenRawSmsId` TEXT, PRIMARY KEY(`bankId`, `maskedNumber`))",
         "fields": [
           {
             "fieldPath": "bankId",
@@ -322,12 +322,6 @@
             "columnName": "lastSeenRawSmsId",
             "affinity": "TEXT",
             "notNull": false
-          },
-          {
-            "fieldPath": "evidenceCount",
-            "columnName": "evidenceCount",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -353,7 +347,7 @@
       },
       {
         "tableName": "card_registry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bankId` TEXT NOT NULL, `last4` TEXT NOT NULL, `ownershipStatus` TEXT NOT NULL, `firstSeenRawSmsId` TEXT, `lastSeenRawSmsId` TEXT, `evidenceCount` INTEGER NOT NULL, PRIMARY KEY(`bankId`, `last4`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bankId` TEXT NOT NULL, `last4` TEXT NOT NULL, `ownershipStatus` TEXT NOT NULL, `firstSeenRawSmsId` TEXT, `lastSeenRawSmsId` TEXT, PRIMARY KEY(`bankId`, `last4`))",
         "fields": [
           {
             "fieldPath": "bankId",
@@ -384,12 +378,6 @@
             "columnName": "lastSeenRawSmsId",
             "affinity": "TEXT",
             "notNull": false
-          },
-          {
-            "fieldPath": "evidenceCount",
-            "columnName": "evidenceCount",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -417,7 +405,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f0077a99a85b43c89dc0b6a2a2e34412')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1fcd8c307ed40eb08c05be225425bc6e')"
     ]
   }
 }
