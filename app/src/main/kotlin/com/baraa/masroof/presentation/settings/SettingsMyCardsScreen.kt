@@ -46,7 +46,7 @@ fun SettingsMyCardsScreen(
     onConfirmStopTracking: () -> Unit,
 ) {
     SettingsStopConfirmDialog(
-        target = state.stopConfirmTarget,
+        target = state.stopConfirmCardTarget,
         updating = state.updating,
         onDismiss = onDismissStopConfirm,
         onConfirm = onConfirmStopTracking,
