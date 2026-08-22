@@ -26,6 +26,7 @@ fun CardDetailScreen(
         transactions = state.allTransactions,
         bank = row.bank,
         last4 = row.last4,
+        cardInvolvementByTransactionId = state.transactionCardInvolvement,
     )
     val title = stringResource(
         R.string.dashboard_credit_card_last4,
