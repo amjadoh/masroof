@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CurrentAccountFlowDetailGrouping
 import com.baraa.masroof.application.dashboard.CurrentAccountSummary
@@ -69,10 +68,6 @@ fun DashboardFlowDetailScreen(
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             MasroofCard(
-                accent = when (mode) {
-                    DashboardFlowDetailMode.Expense -> MasroofCardAccent.Outflow
-                    DashboardFlowDetailMode.Income -> MasroofCardAccent.Inflow
-                },
             ) {
                 DashboardSummaryPrimaryMetric(
                     title = stringResource(presentation.totalTitleRes),
@@ -125,7 +120,7 @@ private fun FlowDetailExpenseSummarySection(summary: CurrentAccountSummary) {
         if (summary.outflow.selfTransfersOut.amount.signum() > 0) {
             DashboardSummaryBreakdownHeader(
                 title = stringResource(R.string.dashboard_self_transfers),
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
             )
             FlowDetailSummaryRow(
                 label = stringResource(R.string.dashboard_self_transfer_out),
@@ -151,7 +146,7 @@ private fun FlowDetailIncomeSummarySection(summary: CurrentAccountSummary) {
         if (summary.inflow.selfTransfersIn.amount.signum() > 0) {
             DashboardSummaryBreakdownHeader(
                 title = stringResource(R.string.dashboard_self_transfers),
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
             )
             FlowDetailSummaryRow(
                 label = stringResource(R.string.dashboard_self_transfer_in),

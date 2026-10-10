@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +24,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.common.MasroofNavCard
 import com.baraa.masroof.presentation.common.MasroofTextStyles
 
@@ -50,10 +50,10 @@ fun SettingsNavRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(MasroofSpacing.screenPaddingLarge),
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Spacer(Modifier.width(MasroofSpacing.sectionGap))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
                 Text(
                     title,
                     style = MasroofTextStyles.cardTitle,
@@ -76,13 +76,13 @@ fun SettingsNavRow(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MasroofSpacing.cardInnerGap))
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(MasroofSpacing.largeGap),
             )
         }
     }
@@ -113,10 +113,10 @@ fun SettingsReparseRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(MasroofSpacing.screenPaddingLarge),
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Spacer(Modifier.width(MasroofSpacing.sectionGap))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
                 Text(title, style = MasroofTextStyles.cardTitle, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     subtitle,
@@ -132,7 +132,7 @@ fun SettingsReparseRow(
                 }
             }
             if (running) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(modifier = Modifier.size(MasroofSpacing.screenPaddingLarge))
             } else {
                 IconButton(onClick = onRefresh, enabled = enabled) {
                     Icon(
@@ -145,4 +145,3 @@ fun SettingsReparseRow(
         }
     }
 }
-

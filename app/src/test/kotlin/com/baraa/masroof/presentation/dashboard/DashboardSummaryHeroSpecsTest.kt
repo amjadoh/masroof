@@ -48,30 +48,6 @@ class DashboardSummaryHeroSpecsTest {
     }
 
     @Test
-    fun buildCreditSummaryHeroSpec_putsDueInPrimaryAndSpendingInSecondary() {
-        val spec = buildCreditSummaryHeroSpec(
-            aggregateDue = Money.of("2500.00", Currency.SAR),
-            dueDateLabel = "Due date: 1 Sep 2026",
-            periodSpending = SignedMoneyAmount.of(Money.of("900.00", Currency.SAR)),
-            statementSpending = SignedMoneyAmount.of(Money.of("1200.00", Currency.SAR)),
-            dueTitle = "Total due",
-            periodSpendingTitle = "Period spending",
-            statementSpendingTitle = "Statement spending",
-            unavailableLabel = "Unavailable",
-            languageTag = "en",
-        )
-
-        assertEquals(MasroofCardAccent.Credit, spec.accent)
-        assertEquals("Total due", spec.primary.title)
-        assertEquals(DashboardMetricTone.Liability, spec.primary.tone)
-        assertEquals("Due date: 1 Sep 2026", spec.primary.hint)
-        assertEquals(2, spec.secondary.size)
-        assertEquals("Period spending", spec.secondary[0].title)
-        assertEquals("Statement spending", spec.secondary[1].title)
-        assertNull(spec.footerHint)
-    }
-
-    @Test
     fun buildLoansSummaryHeroSpec_usesLiabilityAccent() {
         val overview = LoansOverview(
             loans = listOf(
@@ -92,7 +68,6 @@ class DashboardSummaryHeroSpecsTest {
         val spec = buildLoansSummaryHeroSpec(
             overview = overview,
             remainingTitle = "Total remaining",
-            paymentTitle = "Period installments",
             unavailableLabel = "Unavailable",
             languageTag = "en",
         )
@@ -100,8 +75,7 @@ class DashboardSummaryHeroSpecsTest {
         assertEquals(MasroofCardAccent.Liability, spec.accent)
         assertEquals("Total remaining", spec.primary.title)
         assertEquals(DashboardMetricTone.Liability, spec.primary.tone)
-        assertEquals(1, spec.secondary.size)
-        assertEquals("Period installments", spec.secondary.single().title)
+        assertEquals(0, spec.secondary.size)
     }
 
     private fun ownedAccount(

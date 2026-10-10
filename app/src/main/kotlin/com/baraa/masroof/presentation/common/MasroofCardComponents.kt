@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,16 +24,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.theme.MasroofBadgeShape
 import com.baraa.masroof.presentation.theme.MasroofCardShape
-import com.baraa.masroof.presentation.theme.MasroofElevation
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
@@ -40,51 +37,28 @@ import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 @Composable
 fun MasroofCard(
     modifier: Modifier = Modifier,
-    accent: MasroofCardAccent = MasroofCardAccent.None,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val extended = MasroofThemeExtras.extendedColors
-    val accentColor = when (accent) {
-        MasroofCardAccent.None -> Color.Transparent
-        MasroofCardAccent.Account -> extended.account
-        MasroofCardAccent.Credit -> extended.card
-        MasroofCardAccent.Liability -> extended.liability
-        MasroofCardAccent.Inflow -> extended.inflow
-        MasroofCardAccent.Outflow -> extended.outflow
-    }
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = MasroofElevation.card,
-                shape = MasroofCardShape,
-                ambientColor = extended.cardShadow,
-                spotColor = extended.cardShadow,
-            ),
+            .fillMaxWidth(),
         shape = MasroofCardShape,
         colors = CardDefaults.cardColors(
             containerColor = extended.cardSurface,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp,
-            focusedElevation = 0.dp,
-            hoveredElevation = 0.dp,
-            draggedElevation = 0.dp,
-            disabledElevation = 0.dp,
+            defaultElevation = MasroofSpacing.none,
+            pressedElevation = MasroofSpacing.none,
+            focusedElevation = MasroofSpacing.none,
+            hoveredElevation = MasroofSpacing.none,
+            draggedElevation = MasroofSpacing.none,
+            disabledElevation = MasroofSpacing.none,
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, extended.cardBorder),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, extended.cardBorder),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            if (accent != MasroofCardAccent.None) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(MasroofSpacing.accentBarHeight)
-                        .background(accentColor),
-                )
-            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -148,25 +122,19 @@ fun MasroofCompactCard(
             .heightIn(min = MasroofSpacing.compactCardMinHeight)
             .then(
                 if (clickable && onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
-            )
-            .shadow(
-                elevation = MasroofElevation.card,
-                shape = MasroofCardShape,
-                ambientColor = extended.navCardShadow,
-                spotColor = extended.navCardShadow,
             ),
         shape = MasroofCardShape,
         colors = CardDefaults.cardColors(
             containerColor = extended.navCardSurface,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, extended.navCardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = MasroofSpacing.none),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, extended.navCardBorder),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = contentPadding, vertical = contentPadding + 2.dp),
+                .padding(horizontal = contentPadding, vertical = contentPadding + MasroofSpacing.hairlineGap),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
@@ -187,7 +155,7 @@ fun MasroofCompactCard(
             Box(
                 modifier = Modifier
                     .size(MasroofIconSizes.logo)
-                    .clip(RoundedCornerShape(MasroofSpacing.compactCardIconContainerRadius))
+                    .clip(MasroofComponentShapes.iconContainer)
                     .background(iconBackground),
                 contentAlignment = Alignment.Center,
             ) {
@@ -209,7 +177,7 @@ fun MasroofCompactCard(
             )
             Text(
                 value,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
                 color = valueColor,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -233,20 +201,14 @@ fun MasroofNavCard(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = MasroofElevation.navCard,
-                shape = MasroofCardShape,
-                ambientColor = extended.navCardShadow,
-                spotColor = extended.navCardShadow,
-            ),
+            .fillMaxWidth(),
         shape = MasroofCardShape,
         colors = CardDefaults.cardColors(
             containerColor = extended.navCardSurface,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, extended.navCardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = MasroofSpacing.none),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, extended.navCardBorder),
     ) {
         Column(
             modifier = Modifier.padding(

@@ -1,12 +1,12 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.application.dashboard.SignedMoneyAmount
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofCardAccent
@@ -62,10 +62,10 @@ fun DashboardSummaryMetricsCard(
 ) {
     if (metrics.isEmpty()) return
 
-    MasroofCard(modifier = modifier, accent = accent) {
+    MasroofCard(modifier = modifier) {
         metrics.forEachIndexed { index, metric ->
             if (index > 0) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(MasroofSpacing.sectionGap))
             }
             DashboardSummaryMetricBlock(
                 title = metric.title,

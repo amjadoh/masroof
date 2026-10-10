@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,7 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 
@@ -19,7 +19,7 @@ fun ForeignCurrencyNotice(
 ) {
     val extended = MasroofThemeExtras.extendedColors
     MasroofCard(modifier = modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
             IconLabelRow(
                 icon = MasroofIcons.periodHint,
                 label = stringResource(R.string.dashboard_excluded_other_currency_title),

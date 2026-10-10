@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 
 @Composable
@@ -26,23 +26,23 @@ fun AccountOwnershipInlinePrompt(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = MasroofIcons.warning,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(MasroofSpacing.screenHorizontal),
             )
-            Spacer(Modifier.size(6.dp))
+            Spacer(Modifier.size(MasroofSpacing.smallGap))
             Text(
                 stringResource(titleRes),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
             IconTextButton(
                 onClick = onConfirmOwned,
                 enabled = enabled,

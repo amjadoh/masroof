@@ -1,49 +1,26 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
-
-import com.baraa.masroof.presentation.common.MasroofAmountRole
-
-import com.baraa.masroof.presentation.common.MasroofAmountText
-
-import com.baraa.masroof.presentation.common.MasroofTextStyles
 
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.cashPosition
-import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofIcons
-import com.baraa.masroof.presentation.common.MasroofSectionTitle
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 
@@ -76,18 +53,6 @@ fun AccountsSummaryRoute(
                 state = state,
                 onBack = { selectedAccountKey = null },
                 onOpenTransaction = onOpenTransaction,
-                onViewAllTransactions = {
-                    onOpenAllTransactions(
-                        TransactionListFilterState(
-                            accountContainerIds = setOf(
-                                FinancialContainerIdFactory.accountId(
-                                    selectedAccount.bank,
-                                    selectedAccount.maskedNumber,
-                                ),
-                            ),
-                        ),
-                    )
-                },
             )
         }
 
@@ -119,7 +84,7 @@ fun AccountsSummaryScreen(
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             DashboardSummaryHeroCard(
                 spec = accountsSummaryHeroSpec(
@@ -130,6 +95,7 @@ fun AccountsSummaryScreen(
                 ),
             )
 
+            SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily))
             AccountsSummaryHeader(
                 accountCount = state.ownedAccounts.size,
                 onManageAccounts = onManageAccounts,
@@ -151,6 +117,7 @@ fun AccountsSummaryScreen(
                             resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
                                 AccountsSummaryAccountCard(
                                     account = account,
+                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                                     onClick = { onOpenAccount(account) },
                                 )
                             }
@@ -159,6 +126,7 @@ fun AccountsSummaryScreen(
                             resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
                                 AccountsSummaryAccountCard(
                                     account = account,
+                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                                     onClick = { onOpenAccount(account) },
                                 )
                             }
@@ -167,6 +135,7 @@ fun AccountsSummaryScreen(
                             resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
                                 AccountsSummaryAccountCard(
                                     account = account,
+                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                                     onClick = { onOpenAccount(account) },
                                 )
                             }
@@ -178,6 +147,7 @@ fun AccountsSummaryScreen(
                     state.ownedAccounts.forEach { account ->
                         AccountsSummaryAccountCard(
                             account = account,
+                            trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                             onClick = { onOpenAccount(account) },
                         )
                     }
@@ -206,82 +176,15 @@ private fun resolveOwnedAccountUi(
 ): OwnedAccountUi? = ownedAccounts.find { it.bank == bank && it.maskedNumber == maskedNumber }
 
 @Composable
-private fun AccountsSummaryAccountCard(
-    account: OwnedAccountUi,
-    onClick: () -> Unit,
-) {
-    val extended = MasroofThemeExtras.extendedColors
-    val summary = account.periodSummary
-    val movement = summary?.cashPosition()
-    val remaining = movement?.remaining
-    val periodInflow = movement?.inflow
-    val periodOutflow = movement?.outflow
-    val remainingColor = when {
-        remaining == null -> MaterialTheme.colorScheme.onSurfaceVariant
-        remaining.amount.signum() > 0 -> extended.inflow
-        remaining.amount.signum() < 0 -> extended.outflow
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-
-    MasroofCard(modifier = Modifier.clickable(onClick = onClick)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(MasroofSpacing.entityIconSize)
-                    .clip(RoundedCornerShape(MasroofSpacing.entityIconRadius))
-                    .background(extended.accountSoft),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = MasroofIcons.moneyMovement,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                    tint = extended.account,
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    account.displayLabel(),
-                    style = MasroofTextStyles.cardTitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    stringResource(R.string.dashboard_account_remaining_calculated_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (periodInflow != null && periodOutflow != null) {
-                    Text(
-                        stringResource(
-                            R.string.dashboard_account_period_in_out,
-                            formatLocalizedMoney(periodInflow),
-                            formatLocalizedMoney(periodOutflow),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    stringResource(R.string.dashboard_account_remaining_label),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MasroofAmountText(
-                    amount = remaining?.let { formatLocalizedMoney(it) }
-                        ?: stringResource(R.string.dashboard_value_unavailable),
-                    role = MasroofAmountRole.Card,
-                    color = remainingColor,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
+private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> Unit,
+    trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null) {
+    val movement = account.periodSummary?.cashPosition()
+    val unavailable = stringResource(R.string.dashboard_value_unavailable)
+    EntitySummaryCard(account.displayLabel(), stringResource(R.string.dashboard_account_remaining_calculated_hint),
+        MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick) {
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable)
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_inflow), movement?.inflow?.let { formatLocalizedMoney(it) } ?: unavailable)
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_spent), movement?.outflow?.let { formatLocalizedMoney(it) } ?: unavailable)
+        trend?.let { com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_daily_average), formatLocalizedMoney(it.averageDailySpending)) }
     }
 }

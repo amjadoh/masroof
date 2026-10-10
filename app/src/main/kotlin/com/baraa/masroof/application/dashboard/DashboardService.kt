@@ -28,6 +28,7 @@ data class DashboardOverview(
     val commitmentsOverview: CommitmentsOverview = CommitmentsOverview.empty(),
     val merchantSpending: MerchantSpendingOverview = MerchantSpendingOverview.empty(),
     val dailySpendingTrend: DailySpendingTrend = DailySpendingTrend.empty(period),
+    val spendingTrends: DashboardSpendingTrends? = null,
     val bankHierarchy: BankHierarchyOverview? = null,
     val accountsFleet: AccountsSummary? = null,
     val ownedAccountPeriodSummaries: List<OwnedAccountPeriodSummary>,
@@ -102,6 +103,7 @@ class DashboardService(
             commitmentsOverview = projection.commitmentsOverview,
             merchantSpending = projection.merchantSpending,
             dailySpendingTrend = projection.dailySpendingTrend,
+            spendingTrends = projection.spendingTrends,
             bankHierarchy = projection.bankHierarchy,
             accountsFleet = projection.accountsFleet,
         )

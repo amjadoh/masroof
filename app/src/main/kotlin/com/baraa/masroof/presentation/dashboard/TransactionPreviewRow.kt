@@ -1,5 +1,9 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
 import com.baraa.masroof.presentation.common.MasroofAmountRole
 
 import com.baraa.masroof.presentation.common.MasroofAmountText
@@ -13,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,9 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofIcons
@@ -81,19 +82,19 @@ fun TransactionPreviewRow(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.rowHorizontalPadding),
         ) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = MasroofComponentShapes.radius12,
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(MasroofSpacing.entityIconSize),
             ) {
                 Icon(
                     imageVector = MasroofIcons.transactionType(row.typeLabelResHint),
                     contentDescription = null,
                     modifier = Modifier
-                        .padding(10.dp)
-                        .size(20.dp),
+                        .padding(MasroofSpacing.rowHorizontalPadding)
+                        .size(MasroofSpacing.largeGap),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -123,13 +124,13 @@ fun TransactionPreviewRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = MasroofComponentShapes.radius999,
                     color = badge.second,
                 ) {
                     Text(
                         badge.first,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier.padding(horizontal = MasroofSizes.size7, vertical = MasroofSpacing.chartPointRadius),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = MasroofFontWeights.semiBold),
                         color = badge.third,
                     )
                 }
@@ -137,7 +138,7 @@ fun TransactionPreviewRow(
                     amount = formatLocalizedMoney(row.amount),
                     role = MasroofAmountRole.List,
                     color = amountColor,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = MasroofSpacing.hairlineGap),
                 )
             }
         }
