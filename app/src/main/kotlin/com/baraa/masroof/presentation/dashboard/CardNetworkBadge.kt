@@ -1,9 +1,13 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofNetworkColors
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,8 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.domain.model.CardNetwork
 
 @Composable
@@ -25,30 +27,26 @@ fun CardNetworkBadge(
     val colors = networkColors(network, last4)
     Box(
         modifier = modifier
-            .size(width = 36.dp, height = 24.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(width = MasroofSizes.size36, height = MasroofSpacing.screenPaddingLarge)
+            .clip(MasroofComponentShapes.radius6)
             .background(brush = Brush.linearGradient(colors)),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             networkAbbreviation(network),
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = MasroofFontWeights.bold),
+            color = MasroofNetworkColors.onBadge,
         )
     }
 }
 
 private fun networkColors(network: CardNetwork?, last4: String): List<Color> =
     when (network) {
-        CardNetwork.MADA -> listOf(Color(0xFF004D40), Color(0xFF00695C))
-        CardNetwork.VISA -> listOf(Color(0xFF1A1F71), Color(0xFF1A1F71))
-        CardNetwork.MASTERCARD -> listOf(Color(0xFFEB001B), Color(0xFFF79E1B))
-        CardNetwork.AMEX -> listOf(Color(0xFF006FCF), Color(0xFF006FCF))
-        CardNetwork.UNKNOWN, null -> when (last4.firstOrNull()?.digitToIntOrNull()?.rem(3)) {
-            0 -> listOf(Color(0xFFEB001B), Color(0xFFF79E1B))
-            1 -> listOf(Color(0xFF1A1F71), Color(0xFF1A1F71))
-            else -> listOf(Color(0xFF004D40), Color(0xFF00695C))
-        }
+        CardNetwork.MADA -> listOf(MasroofNetworkColors.madaStart, MasroofNetworkColors.madaEnd)
+        CardNetwork.VISA -> listOf(MasroofNetworkColors.visa, MasroofNetworkColors.visa)
+        CardNetwork.MASTERCARD -> listOf(MasroofNetworkColors.mastercardRed, MasroofNetworkColors.mastercardOrange)
+        CardNetwork.AMEX -> listOf(MasroofNetworkColors.amex, MasroofNetworkColors.amex)
+        CardNetwork.UNKNOWN, null -> listOf(MasroofNetworkColors.neutral, MasroofNetworkColors.neutral)
     }
 
 private fun networkAbbreviation(network: CardNetwork?): String =

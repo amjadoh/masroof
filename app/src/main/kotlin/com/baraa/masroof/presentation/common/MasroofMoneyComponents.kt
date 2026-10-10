@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofRowShape
 import com.baraa.masroof.presentation.theme.MasroofSpacing
@@ -36,8 +35,8 @@ fun MasroofMoneyRow(
 ) {
     val extended = MasroofThemeExtras.extendedColors
     val (background, borderColor) = when (style) {
-        MasroofMoneyRowStyle.Inflow -> extended.inflowSoft to extended.inflowRowBorder
-        MasroofMoneyRowStyle.Outflow -> extended.outflowSoft to extended.outflowRowBorder
+        MasroofMoneyRowStyle.Inflow -> extended.cardSurface to extended.cardBorder
+        MasroofMoneyRowStyle.Outflow -> extended.cardSurface to extended.cardBorder
         MasroofMoneyRowStyle.Highlight -> extended.highlight to extended.highlightBorder
         MasroofMoneyRowStyle.Neutral -> extended.miniBackground to extended.cardBorder
     }
@@ -54,7 +53,7 @@ fun MasroofMoneyRow(
             .background(background)
             .then(
                 if (borderColor != Color.Transparent) {
-                    Modifier.border(1.dp, borderColor, MasroofRowShape)
+                    Modifier.border(MasroofSpacing.borderWidth, borderColor, MasroofRowShape)
                 } else {
                     Modifier
                 },
@@ -90,7 +89,7 @@ fun MasroofMoneyRow(
         Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
         Text(
             value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold),
             color = valueColor,
         )
     }
@@ -107,7 +106,7 @@ fun MasroofHintBox(
         shape = MasroofRowShape,
         color = extended.hintBackground,
         border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
+            width = MasroofSpacing.borderWidth,
             color = MaterialTheme.colorScheme.outline,
         ),
     ) {

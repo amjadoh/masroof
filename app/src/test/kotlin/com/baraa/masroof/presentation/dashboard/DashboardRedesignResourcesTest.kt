@@ -25,9 +25,9 @@ class DashboardRedesignResourcesTest {
         assertEquals("Save layout", context.getString(R.string.dashboard_customize_save))
         assertEquals("Hero card", context.getString(R.string.dashboard_customize_section_hero))
         assertEquals("Loans summary", context.getString(R.string.dashboard_customize_section_loans))
-        assertEquals("Small", context.getString(R.string.dashboard_customize_size_small))
-        assertEquals("Spending details", context.getString(R.string.dashboard_expense_details_title))
-        assertEquals("Income details", context.getString(R.string.dashboard_income_details_title))
+        assertEquals("Shortcuts", context.getString(R.string.dashboard_customize_section_accounts))
+        assertEquals("Outflow details", context.getString(R.string.dashboard_expense_details_title))
+        assertEquals("Inflow details", context.getString(R.string.dashboard_income_details_title))
         assertEquals("View all ›", context.getString(R.string.dashboard_view_all))
         assertEquals("Accounts summary", context.getString(R.string.dashboard_accounts_summary_screen_title))
         assertEquals("Cards summary", context.getString(R.string.dashboard_cards_summary_screen_title))
@@ -55,7 +55,7 @@ class DashboardRedesignResourcesTest {
         assertEquals("تخصيص", context.getString(R.string.dashboard_customize))
         assertEquals("تخصيص الشاشة الرئيسية", context.getString(R.string.dashboard_customize_sheet_title))
         assertEquals("ملخص القروض", context.getString(R.string.dashboard_customize_section_loans))
-        assertEquals("تفاصيل المنصرف", context.getString(R.string.dashboard_expense_details_title))
+        assertEquals("تفاصيل المخرجات", context.getString(R.string.dashboard_expense_details_title))
     }
 
     @Test
@@ -65,7 +65,7 @@ class DashboardRedesignResourcesTest {
             AppLocale.TAG_EN,
         )
         assertEquals(
-            "Total spent: 100.00 SAR",
+            "Total outflows: 100.00 SAR",
             context.getString(R.string.dashboard_flow_detail_expense_total, "100.00 SAR"),
         )
         assertEquals(

@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,14 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
@@ -149,7 +149,7 @@ fun TransactionListScreen(
             Column(
                 modifier = contentModifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(MasroofSpacing.screenPaddingLarge),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(
@@ -178,12 +178,12 @@ fun TransactionListScreen(
                 totalAmount = filterResult.totalAmount,
                 filterActive = filterState.isActive,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
 
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
             ) {
                 if (filterResult.transactions.isEmpty()) {
                     item {
@@ -194,7 +194,7 @@ fun TransactionListScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(vertical = 32.dp),
+                                .padding(vertical = MasroofSpacing.contentPaddingLarge),
                         )
                     }
                 } else {
@@ -207,7 +207,7 @@ fun TransactionListScreen(
                     }
                 }
 
-                item { Spacer(Modifier.height(16.dp)) }
+                item { Spacer(Modifier.height(MasroofSpacing.screenHorizontal)) }
             }
         }
 

@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
 import androidx.compose.foundation.horizontalScroll
@@ -22,8 +23,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.FinancialTransactionType
 
@@ -64,13 +63,13 @@ fun TransactionListFilterBottomSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = MasroofSpacing.screenHorizontal),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
                 Text(
                     stringResource(R.string.transaction_list_filter_sheet_title),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.bold),
                 )
                 if (filterState.isActive) {
                     TextButton(onClick = onClearFilters) {
@@ -83,7 +82,7 @@ fun TransactionListFilterBottomSheet(
                 text = stringResource(R.string.transaction_list_multi_filter_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal),
             )
 
             if (availableTypes.isNotEmpty()) {
@@ -159,7 +158,7 @@ fun TransactionListFilterBottomSheet(
                 onClick = onDismiss,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = MasroofSpacing.screenHorizontal),
             ) {
                 Text(stringResource(R.string.transaction_list_filter_apply))
             }
@@ -174,21 +173,21 @@ private fun TransactionListFilterChipSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            fontWeight = MasroofFontWeights.medium,
+            modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = MasroofSpacing.screenHorizontal),
+            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
         ) {
             chips()
         }

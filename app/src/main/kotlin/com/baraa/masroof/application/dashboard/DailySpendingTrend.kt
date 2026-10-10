@@ -20,6 +20,8 @@ data class DailySpendingTrend(
     val points: List<DailySpendingPoint>,
     val averageDailySpending: SignedMoneyAmount,
 ) {
+    val totalSpending: SignedMoneyAmount
+        get() = SpendingAmounts.sum(points.map { it.spending })
     init {
         require(points.isNotEmpty())
         require(points.all { it.spending.currency == averageDailySpending.currency })
@@ -58,6 +60,7 @@ object DailySpendingTrendBuilder {
         sarEquivalents: Map<String, Money>,
         zoneId: ZoneId,
         today: LocalDate,
+        includeFinancialOutflows: Boolean = false,
     ): DailySpendingTrend {
         val parsedRecordsById = parsedRecords.associateBy { it.event.id }
         val totalsByDay = mutableMapOf<LocalDate, BigDecimal>()
@@ -67,6 +70,7 @@ object DailySpendingTrendBuilder {
                 primaryCurrency = primaryCurrency,
                 sarEquivalents = sarEquivalents,
                 parsedRecordsById = parsedRecordsById,
+                includeFinancialOutflows = includeFinancialOutflows,
             ) ?: return@forEach
             val date = transaction.occurredAt.atZone(zoneId).toLocalDate()
             if (date.isBefore(period.startDate) || !date.isBefore(period.endDateExclusive)) return@forEach
@@ -108,6 +112,7 @@ object DailySpendingTrendBuilder {
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
         parsedRecordsById: Map<String, ParsedEventRecord>,
+        includeFinancialOutflows: Boolean,
     ): BigDecimal? {
         val amount = TransactionAmountResolver.effectiveAmount(this, primaryCurrency, sarEquivalents)
             ?: return null
@@ -117,8 +122,16 @@ object DailySpendingTrendBuilder {
             -> amount.amount
 
             FinancialTransactionType.FEE ->
-                amount.amount.takeUnless { LoanRepaymentAttribution.isLoanRepayment(this, parsedRecordsById) }
+                amount.amount.takeUnless { !includeFinancialOutflows && LoanRepaymentAttribution.isLoanRepayment(this, parsedRecordsById) }
 
+            FinancialTransactionType.LOAN_REPAYMENT,
+            FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+            FinancialTransactionType.CASH_WITHDRAWAL,
+            -> amount.amount.takeIf { includeFinancialOutflows }
+            // Settlement is a cash movement: card purchases are already counted once.
+            FinancialTransactionType.CREDIT_CARD_PAYMENT,
+            FinancialTransactionType.SELF_TRANSFER,
+            -> null
             FinancialTransactionType.REFUND -> amount.amount.negate()
             else -> null
         }

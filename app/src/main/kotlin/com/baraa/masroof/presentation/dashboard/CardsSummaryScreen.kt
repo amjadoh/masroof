@@ -1,31 +1,28 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
+import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
-import com.baraa.masroof.application.dashboard.CardTransactionInvolvementResolver
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import com.baraa.masroof.application.dashboard.DebitCardOverview
-import com.baraa.masroof.presentation.common.MasroofSectionTitle
+import com.baraa.masroof.application.dashboard.aggregateDebitSalaryPeriodSpending
 import java.time.ZoneId
 
 @Composable
@@ -92,37 +89,15 @@ fun CardsSummaryRoute(
                 cardNetwork = cardNetworks[CardOwnershipKey.of(selectedDebit)] ?: selectedDebit.network,
                 onBack = { clearDetailSelection() },
                 onOpenTransaction = onOpenTransaction,
-                onViewAllTransactions = {
-                    val cardKey = CardTransactionInvolvementResolver.cardKey(
-                        selectedDebit.bank.id,
-                        selectedDebit.last4,
-                    )
-                    val spendTransactionIds = state.transactionDebitSpendInvolvement
-                        .filter { (_, cardKeys) -> cardKey in cardKeys }
-                        .keys
-                    onOpenAllTransactions(
-                        TransactionListFilterState(transactionIds = spendTransactionIds),
-                    )
-                },
             )
         }
 
         selectedCard != null -> {
             CardDetailScreen(
                 row = selectedCard,
-                salaryPeriodLabel = followedFacilities?.facilities
-                    ?.firstOrNull { facility ->
-                        facility.allCards.any { CardOwnershipKey.of(it) == selectedCardKey }
-                    }
-                    ?.salaryPeriodLabel,
                 state = state,
                 onBack = { clearDetailSelection() },
                 onOpenTransaction = onOpenTransaction,
-                onViewAllTransactions = {
-                    onOpenAllTransactions(
-                        TransactionListFilterState(cardLast4s = setOf(selectedCard.last4)),
-                    )
-                },
             )
         }
 
@@ -155,10 +130,11 @@ fun CardsSummaryScreen(
         title = stringResource(R.string.dashboard_cards_summary_screen_title),
         state = state,
         onBack = onBack,
+        showPeriod = false,
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             if (followedFacilities == null || !followedFacilities.hasContent) {
                 Text(
@@ -167,14 +143,18 @@ fun CardsSummaryScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                DashboardSummaryHeroCard(
-                    spec = creditFacilitiesSummaryHeroSpec(
-                        overview = followedFacilities,
-                        locale = locale,
-                    ),
-                )
+                if (followedFacilities.facilities.isNotEmpty()) {
+                    DashboardSummaryHeroCard(spec = creditFacilitiesSummaryHeroSpec(followedFacilities, locale))
+                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily))
+                } else {
+                    com.baraa.masroof.presentation.common.MasroofHeroCard(
+                        stringResource(R.string.approved_total_expenses),
+                        formatLocalizedMoney(followedFacilities.aggregateDebitSalaryPeriodSpending()),
+                        role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account,
+                    )
+                }
                 CardsSummaryHeader(
-                    cardCount = followedFacilities.facilities.size + followedFacilities.debitCards.size,
+                    cardCount = followedFacilities.cardCount,
                     onManageCards = onManageCards,
                 )
                 followedFacilities.facilities.forEach { facility ->
@@ -185,6 +165,7 @@ fun CardsSummaryScreen(
                         ownedCards = state.ownedCards,
                         modifier = Modifier.fillMaxWidth(),
                         onOpenCard = onOpenCard,
+                        trends = state.spendingTrends?.byCard.orEmpty(),
                     )
                 }
                 followedFacilities.debitCards.forEach { debit ->
@@ -193,7 +174,7 @@ fun CardsSummaryScreen(
                         network = cardNetworksByLast4[CardOwnershipKey.of(debit)] ?: debit.network,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { onOpenDebit(debit) },
-                        presentation = DebitCardTilePresentation.List,
+                        trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
                     )
                 }
             }

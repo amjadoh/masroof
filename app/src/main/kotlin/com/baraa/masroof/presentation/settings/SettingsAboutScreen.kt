@@ -1,5 +1,9 @@
 package com.baraa.masroof.presentation.settings
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +28,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,7 +36,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.BuildConfig
 import com.baraa.masroof.R
 import com.baraa.masroof.application.update.UpdateChannel
@@ -92,7 +93,7 @@ fun SettingsAboutScreen(
                 verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
             ) {
             MasroofLogo(
-                size = 72.dp,
+                size = MasroofSizes.size72,
                 contentDescription = null,
             )
             Text(
@@ -190,7 +191,7 @@ private fun UpdateSectionCard(
     onInstallUpdate: () -> Unit,
 ) {
     MasroofCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             IconLabelRow(
                 icon = MasroofIcons.export,
                 label = stringResource(R.string.settings_updates_title),
@@ -265,7 +266,7 @@ private fun UpdateSectionCard(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (updateState is AppUpdateUiState.Checking) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(MasroofSizes.size18))
                 } else {
                     Text(stringResource(R.string.settings_check_updates))
                 }
@@ -282,7 +283,7 @@ private fun UpdateSectionCard(
                     )
 
                 is AppUpdateUiState.Available ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                         Text(
                             stringResource(
                                 R.string.settings_updates_available,
@@ -316,7 +317,7 @@ private fun UpdateSectionCard(
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
                     ) {
                         CircularProgressIndicator(progress = { progress })
                         Text(
@@ -328,7 +329,7 @@ private fun UpdateSectionCard(
                 }
 
                 is AppUpdateUiState.ReadyToInstall ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                         Text(
                             stringResource(
                                 R.string.settings_updates_ready,
@@ -364,7 +365,7 @@ private fun UpdateChannelOption(
                 onClick = { onSelectChannel(channel) },
                 role = Role.RadioButton,
             )
-            .padding(vertical = 4.dp),
+            .padding(vertical = MasroofSpacing.inlineGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(
@@ -374,7 +375,7 @@ private fun UpdateChannelOption(
         Text(
             label,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = MasroofSpacing.cardInnerGap),
         )
     }
 }
@@ -387,7 +388,7 @@ private fun RowActions(
     secondaryLabel: String?,
     onSecondary: (() -> Unit)?,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         Button(
             onClick = onPrimary,
             enabled = primaryEnabled,
@@ -430,7 +431,7 @@ private fun AboutInfoCard(
     body: String,
 ) {
     MasroofCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
             IconLabelRow(icon = icon, label = title, iconTint = MaterialTheme.colorScheme.primary)
             Text(
                 body,

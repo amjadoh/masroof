@@ -1,12 +1,16 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofOpacity
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
@@ -29,8 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
@@ -51,7 +53,7 @@ fun TransactionListToolbar(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.rowHorizontalPadding),
     ) {
         Text(
             text = stringResource(R.string.transaction_list_period, periodLabel),
@@ -74,7 +76,7 @@ fun TransactionListToolbar(
                 Icon(
                     Icons.Filled.Search,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(MasroofSpacing.largeGap),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
@@ -88,7 +90,7 @@ fun TransactionListToolbar(
                     }
                 }
             },
-            shape = RoundedCornerShape(14.dp),
+            shape = MasroofComponentShapes.radius14,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -118,7 +120,7 @@ fun TransactionListToolbar(
                         Icon(
                             Icons.Filled.FilterList,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(MasroofSizes.size18),
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
@@ -156,12 +158,12 @@ private fun TransactionListResultsBanner(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+        shape = MasroofComponentShapes.radius12,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = MasroofOpacity.subtle),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(horizontal = MasroofSpacing.compactCardContentPadding, vertical = MasroofSpacing.rowHorizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap),
         ) {
             Text(
                 text = if (filterActive) {
@@ -175,7 +177,7 @@ private fun TransactionListResultsBanner(
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = MasroofFontWeights.semiBold,
             )
             if (totalAmount != null && filteredCount > 0) {
                 Text(

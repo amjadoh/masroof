@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocale
 
@@ -69,7 +69,7 @@ private fun languageOption(
                 onClick = { onSelectLanguage(tag) },
                 role = Role.RadioButton,
             )
-            .padding(vertical = 8.dp),
+            .padding(vertical = MasroofSpacing.cardInnerGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(
@@ -80,7 +80,7 @@ private fun languageOption(
             label,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
-                .padding(start = 8.dp)
+                .padding(start = MasroofSpacing.cardInnerGap)
                 .fillMaxWidth(),
             textAlign = TextAlign.Start,
         )

@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofPeriodDisplay
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
@@ -22,6 +21,7 @@ fun DashboardSummaryScaffold(
     title: String,
     state: DashboardUiState,
     onBack: () -> Unit,
+    showPeriod: Boolean = true,
     content: @Composable (Modifier) -> Unit,
 ) {
     val context = LocalContext.current
@@ -40,9 +40,9 @@ fun DashboardSummaryScaffold(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            MasroofPeriodDisplay(label = periodRangeLabel)
+            if (showPeriod) MasroofPeriodDisplay(label = periodRangeLabel)
 
-            state.periodAdjustmentHint?.let { hint ->
+            if (showPeriod) state.periodAdjustmentHint?.let { hint ->
                 androidx.compose.material3.Text(
                     hint,
                     modifier = Modifier.fillMaxWidth(),
@@ -55,7 +55,7 @@ fun DashboardSummaryScaffold(
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(32.dp),
+                        .padding(MasroofSpacing.contentPaddingLarge),
                     contentAlignment = androidx.compose.ui.Alignment.Center,
                 ) {
                     androidx.compose.material3.CircularProgressIndicator()

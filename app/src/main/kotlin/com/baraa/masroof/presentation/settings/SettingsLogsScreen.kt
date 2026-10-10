@@ -1,5 +1,9 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.theme.MasroofOpacity
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,16 +31,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.logging.AppLogEntry
@@ -153,7 +154,7 @@ fun SettingsLogsScreen(
                                 LOG_MAX_ENTRIES,
                                 LOG_RETENTION_DAYS,
                             ),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = MasroofSpacing.sectionGap, vertical = MasroofSpacing.smallGap),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -220,7 +221,7 @@ fun SettingsLogsScreen(
                                             item.label,
                                             style = MasroofTextStyles.sectionTitle,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                                            modifier = Modifier.padding(top = MasroofSpacing.inlineGap, bottom = MasroofSpacing.hairlineGap),
                                         )
                                     is SettingsLogListItem.Entry ->
                                         LogEntryCard(
@@ -256,8 +257,8 @@ private fun LogFilterChips(
     )
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
     ) {
         SettingsLogFilter.entries.forEach { filter ->
             FilterChip(
@@ -286,7 +287,7 @@ private fun LogEmptyState() {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
         ) {
             IconLabelRow(
                 icon = MasroofIcons.recentTransactions,
@@ -325,10 +326,6 @@ private fun LogEntryCard(
     timestampLabels: LogTimestampLabels,
 ) {
     val extendedColors = MasroofThemeExtras.extendedColors
-    val accent = when (entry.level) {
-        AppLogLevel.WARN -> MasroofCardAccent.Liability
-        else -> MasroofCardAccent.None
-    }
     val accentColor = when (entry.level) {
         AppLogLevel.INFO -> MaterialTheme.colorScheme.primary
         AppLogLevel.WARN -> extendedColors.liability
@@ -340,7 +337,6 @@ private fun LogEntryCard(
 
     MasroofCard(
         modifier = Modifier.fillMaxWidth(),
-        accent = accent,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -355,13 +351,13 @@ private fun LogEntryCard(
             )
         }
         Surface(
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
             shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = MasroofOpacity.emphasized),
         ) {
             Text(
                 logCategoryLabel(entry.category),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = MasroofSpacing.cardInnerGap, vertical = MasroofSpacing.inlineGap),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -370,7 +366,7 @@ private fun LogEntryCard(
             entry.message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
         )
     }
 }
@@ -382,11 +378,11 @@ private fun LogLevelPill(
 ) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        color = accentColor.copy(alpha = 0.14f),
+        color = accentColor.copy(alpha = MasroofOpacity.badge),
     ) {
         Text(
             stringResource(logLevelLabelRes(level)),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = MasroofSpacing.cardInnerGap, vertical = MasroofSpacing.inlineGap),
             style = MaterialTheme.typography.labelMedium,
             color = accentColor,
         )

@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 
 @Composable
@@ -25,18 +25,17 @@ fun UnregisteredCardsNotice(
 ) {
     val displayLast4 = formatCardLast4(firstLast4)
     MasroofCard(
-        modifier = modifier.fillMaxWidth(),
-        accent = MasroofCardAccent.Credit,
+        modifier = modifier.fillMaxWidth()
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = MasroofIcons.cardPayment,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(MasroofSpacing.largeGap),
                 )
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.size(MasroofSpacing.cardInnerGap))
                 Text(
                     stringResource(R.string.ownership_prompt_banner_title, displayLast4),
                     style = MaterialTheme.typography.titleSmall,

@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofOpacity
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,10 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofPillShape
@@ -43,7 +43,7 @@ fun MasroofPeriodPill(
         modifier = modifier.fillMaxWidth(),
         shape = MasroofPillShape,
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             modifier = Modifier
@@ -85,7 +85,7 @@ fun MasroofPeriodPill(
                         )
                         Text(
                             label,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold),
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -102,11 +102,11 @@ fun MasroofPeriodPill(
             if (onCustomize != null && customizeLabel != null) {
                 Surface(
                     onClick = onCustomize,
-                    shape = RoundedCornerShape(MasroofSpacing.customizeButtonRadius),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                    shape = MasroofComponentShapes.customizeControl,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = MasroofOpacity.muted),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        MasroofSpacing.borderWidth,
+                        MaterialTheme.colorScheme.primary.copy(alpha = MasroofOpacity.divider),
                     ),
                 ) {
                     Row(
@@ -125,7 +125,7 @@ fun MasroofPeriodPill(
                         )
                         Text(
                             customizeLabel,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = MasroofFontWeights.semiBold),
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -144,7 +144,7 @@ fun MasroofPeriodDisplay(
         modifier = modifier.fillMaxWidth(),
         shape = MasroofPillShape,
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             modifier = Modifier
@@ -171,7 +171,7 @@ fun MasroofPeriodDisplay(
                 )
                 Text(
                     label,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

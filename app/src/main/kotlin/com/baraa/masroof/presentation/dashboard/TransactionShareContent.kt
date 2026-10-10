@@ -126,4 +126,3 @@ fun transactionListShareText(
         rows = rows,
     )
 }
-

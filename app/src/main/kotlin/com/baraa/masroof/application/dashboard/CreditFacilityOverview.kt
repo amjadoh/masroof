@@ -29,6 +29,17 @@ data class CreditFacilitiesOverview(
     val debitCards: List<DebitCardOverview>,
     val currency: Currency,
 ) {
+    val cardCount: Int get() = facilities.sumOf { it.allCards.size } + debitCards.size
+
+    /** Every facility contributes once. Unknown or mixed-currency dues are not guessed. */
+    val totalFacilityDue: Money?
+        get() {
+            val unique = facilities.distinctBy { "${it.bank.id}:${it.primaryLast4}" }
+            if (unique.isEmpty() || unique.any { it.facilityDue == null }) return null
+            val amounts = unique.map { it.facilityDue!!.amount }
+            if (amounts.any { it.currency != amounts.first().currency }) return null
+            return amounts.reduce { total, amount -> total + amount }
+        }
     val hasContent: Boolean
         get() = facilities.isNotEmpty() || debitCards.isNotEmpty()
 }

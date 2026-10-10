@@ -3,6 +3,14 @@ package com.baraa.masroof.presentation.theme
 import androidx.compose.ui.unit.dp
 
 object MasroofSpacing {
+    val heroIconSize = 48.dp
+    val minimumTouchTarget = 44.dp
+    val contentPaddingLarge = 32.dp
+    val largeGap = 20.dp
+    val smallGap = 6.dp
+    val hairlineGap = 2.dp
+    val borderWidth = 1.dp
+    val none = 0.dp
     val screenHorizontal = 16.dp
     val screenVertical = 16.dp
     val screenPaddingLarge = 24.dp
@@ -18,7 +26,7 @@ object MasroofSpacing {
     val bottomSheetSectionGap = 12.dp
 
     val appBarPadding = 4.dp
-    val cardInnerPadding = 14.dp
+    val cardInnerPadding = 16.dp
     val accentBarHeight = 4.dp
     val badgeHorizontalPadding = 8.dp
     val badgeVerticalPadding = 4.dp
@@ -29,7 +37,7 @@ object MasroofSpacing {
     val periodDisplayHorizontalPadding = 12.dp
     val periodDisplayVerticalPadding = 10.dp
     val compactCardMinHeight = 118.dp
-    val compactCardContentPadding = 10.dp
+    val compactCardContentPadding = 14.dp
     val compactCardIconContainerRadius = 8.dp
     val compactCardLabelTop = 6.dp
     val compactCardValueTop = 4.dp
@@ -37,7 +45,7 @@ object MasroofSpacing {
     val customizeButtonRadius = 10.dp
     val customizeButtonVerticalPadding = 7.dp
     val inlineGap = 4.dp
-    val chartHeight = 168.dp
+    val chartHeight = 208.dp
     val chartVerticalPadding = 12.dp
     val chartLineWidth = 2.dp
     val chartPointRadius = 3.dp

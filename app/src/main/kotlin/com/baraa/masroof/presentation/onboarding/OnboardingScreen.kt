@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.onboarding
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSizes
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
@@ -29,17 +32,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.OwnershipStatus
@@ -245,7 +245,7 @@ private fun WelcomeStep(
             modifier = Modifier.fillMaxWidth(),
             enabled = !restoringBackup,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(
             stringResource(R.string.onboarding_restore_backup_hint),
             style = MaterialTheme.typography.bodySmall,
@@ -298,11 +298,11 @@ private fun PermissionStep(
             imageVector = MasroofIcons.sms,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(MasroofSizes.size56),
         )
         Spacer(Modifier.height(MasroofSpacing.screenVertical))
         Text(stringResource(R.string.onboarding_permission_title), style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.onboarding_permission_body))
         Spacer(Modifier.height(MasroofSpacing.screenPaddingLarge))
         IconTextButton(
@@ -312,7 +312,7 @@ private fun PermissionStep(
             modifier = Modifier.fillMaxWidth(),
         )
         if (denied) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(MasroofSpacing.sectionGap))
             IconTextButtonOutlined(
                 onClick = onOpenSettings,
                 icon = MasroofIcons.warning,
@@ -354,9 +354,9 @@ private fun ImportDateStep(
             onSelectDateOption(ImportDateOption.CUSTOM)
             showDatePicker = true
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.onboarding_selected_date, selected.toString()))
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MasroofSpacing.largeGap))
         IconTextButton(
             onClick = onContinue,
             enabled = state.importState !is ImportState.Scanning,
@@ -408,7 +408,7 @@ private fun DateOptionRow(selected: Boolean, title: String, onClick: () -> Unit)
             modifier = Modifier.size(MasroofIconSizes.moneyRowLeading),
         )
         Spacer(Modifier.size(MasroofSpacing.sectionHeaderGap))
-        Text(title, modifier = Modifier.padding(top = 2.dp))
+        Text(title, modifier = Modifier.padding(top = MasroofSpacing.hairlineGap))
     }
 }
 
@@ -422,7 +422,7 @@ private fun ImportingStep(modifier: Modifier, state: OnboardingUiState, onRetry:
         when (val importState = state.importState) {
             is ImportState.Scanning, ImportState.Idle -> {
                 CircularProgressIndicator()
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = MasroofIcons.rescan,
@@ -440,7 +440,7 @@ private fun ImportingStep(modifier: Modifier, state: OnboardingUiState, onRetry:
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(MasroofIconSizes.hero),
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 Text(stringResource(R.string.onboarding_import_done))
                 Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
                 Text(stringResource(R.string.onboarding_import_counts, importState.result.scanned, importState.result.parsed, importState.result.duplicates, importState.result.failed, importState.result.notRelevant))
@@ -452,9 +452,9 @@ private fun ImportingStep(modifier: Modifier, state: OnboardingUiState, onRetry:
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(MasroofIconSizes.hero),
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 Text(stringResource(R.string.onboarding_permission_denied_short))
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 IconTextButton(onClick = onRetry, icon = MasroofIcons.retry, text = stringResource(R.string.onboarding_retry))
             }
             is ImportState.ProviderError -> {
@@ -464,9 +464,9 @@ private fun ImportingStep(modifier: Modifier, state: OnboardingUiState, onRetry:
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(MasroofIconSizes.hero),
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 Text(stringResource(R.string.onboarding_provider_error))
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MasroofSpacing.sectionGap))
                 IconTextButton(onClick = onRetry, icon = MasroofIcons.retry, text = stringResource(R.string.onboarding_retry))
             }
         }
@@ -581,11 +581,6 @@ private fun CandidateCard(
     onExternal: () -> Unit,
 ) {
     MasroofCard(
-        accent = if (candidate.kind == OwnershipCandidateUi.CandidateKind.ACCOUNT) {
-            MasroofCardAccent.Account
-        } else {
-            MasroofCardAccent.Credit
-        },
     ) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -597,7 +592,7 @@ private fun CandidateCard(
                     },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(MasroofSizes.size22),
                 )
                 Spacer(Modifier.size(MasroofSpacing.sectionHeaderGap))
                 Text(
@@ -631,7 +626,7 @@ private fun CandidateCard(
                         OwnershipStatus.UNKNOWN -> MaterialTheme.colorScheme.error
                     },
                 )
-                Spacer(Modifier.size(6.dp))
+                Spacer(Modifier.size(MasroofSpacing.smallGap))
                 Text(
                     when (candidate.ownership) {
                         OwnershipStatus.OWNED -> stringResource(R.string.onboarding_status_owned)
@@ -655,13 +650,13 @@ private fun CompletionStep(modifier: Modifier, state: OnboardingUiState, onEnter
             imageVector = MasroofIcons.success,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp),
+            modifier = Modifier.size(MasroofSizes.size64),
         )
         Spacer(Modifier.height(MasroofSpacing.screenVertical))
         Text(stringResource(R.string.onboarding_done_title), style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.onboarding_done_counts, state.ownedAccountsCount, state.ownedCardsCount, state.reviewRequiredCount))
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MasroofSpacing.largeGap))
         IconTextButton(
             onClick = onEnterApp,
             brandedLogo = true,
@@ -682,11 +677,11 @@ private fun HomePlaceholder(modifier: Modifier, state: OnboardingUiState) {
             size = MasroofIconSizes.hero,
             contentDescription = null,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
         Text(stringResource(R.string.home_setup_complete))
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.onboarding_done_counts, state.ownedAccountsCount, state.ownedCardsCount, state.reviewRequiredCount))
     }
 }

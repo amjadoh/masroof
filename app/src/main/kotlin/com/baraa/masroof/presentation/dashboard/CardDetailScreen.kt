@@ -1,22 +1,21 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import java.time.ZoneId
 
 @Composable
 fun CardDetailScreen(
     row: CreditCardDashboardRow,
-    salaryPeriodLabel: String?,
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onViewAllTransactions: () -> Unit,
 ) {
     val cardTransactions = DashboardSummaryTransactionFilter.forCard(
         transactions = state.allTransactions,
@@ -24,6 +23,7 @@ fun CardDetailScreen(
         last4 = row.last4,
         cardInvolvementByTransactionId = state.transactionCardInvolvement,
     )
+    val facility = state.followedCreditFacilities()?.facilities?.firstOrNull { it.allCards.any { card -> card.bank == row.bank && card.last4 == row.last4 } }
     val title = row.displayLabel(state.ownedCards)
     val cardNetwork = state.ownedCards
         .find { it.bank == row.bank && it.last4 == row.last4 }
@@ -33,24 +33,25 @@ fun CardDetailScreen(
         title = title,
         state = state,
         onBack = onBack,
+        showPeriod = false,
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             CreditCardDetailSummaryCard(
                 row = row,
-                salaryPeriodLabel = salaryPeriodLabel,
+                facility = facility,
                 zoneId = ZoneId.systemDefault(),
                 cardNetwork = cardNetwork,
                 ownedCards = state.ownedCards,
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            SpendingTrendSection(state.spendingTrends?.byCard?.get(CardOwnershipKey.of(row)), stringResource(com.baraa.masroof.R.string.approved_card_daily))
             DashboardSummaryTransactionsSection(
                 transactions = cardTransactions,
                 onOpenTransaction = onOpenTransaction,
-                onViewAll = onViewAllTransactions,
                 ownedCards = state.ownedCards,
             )
         }

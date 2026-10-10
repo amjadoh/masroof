@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,15 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import com.baraa.masroof.application.dashboard.DebitCardOverview
@@ -38,18 +37,14 @@ import com.baraa.masroof.application.dashboard.MonthlyFinancialSummary
 import com.baraa.masroof.presentation.common.IconTextButton
 import com.baraa.masroof.presentation.common.IconTextButtonOutlined
 import com.baraa.masroof.presentation.common.LongPullToRefreshBox
-import com.baraa.masroof.presentation.common.MasroofAppBar
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofPeriodPill
-import com.baraa.masroof.presentation.common.ReviewNotificationIconButton
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.SmsPermissionNotice
 import com.baraa.masroof.presentation.common.SmsRescanStatusNotice
 import com.baraa.masroof.presentation.common.UnregisteredCardsNotice
 import com.baraa.masroof.presentation.common.ForeignCurrencyNotice
 import com.baraa.masroof.presentation.theme.MasroofSpacing
-import java.time.LocalDate
-import java.time.ZoneId
 
 @Composable
 fun DashboardRoute(
@@ -59,6 +54,7 @@ fun DashboardRoute(
     onOpenAllTransactions: () -> Unit = {},
     onOpenTransaction: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenCommitments: () -> Unit = onOpenSettings,
     onManageCardsInSettings: () -> Unit = onOpenSettings,
     onOpenAccountsSummary: () -> Unit = onOpenSettings,
     onOpenCardsSummary: () -> Unit = onOpenSettings,
@@ -81,11 +77,9 @@ fun DashboardRoute(
         onCurrent = viewModel::goToCurrentPeriod,
         onRetry = viewModel::refreshWithSmsImport,
         onRescan = viewModel::rescanSms,
-        notificationUnreadCount = notificationUnreadCount,
-        onOpenNotificationCenter = onOpenNotificationCenter,
         onOpenAllTransactions = onOpenAllTransactions,
         onOpenTransaction = onOpenTransaction,
-        onOpenSettings = onOpenSettings,
+        onOpenCommitments = onOpenCommitments,
         onManageCardsInSettings = onManageCardsInSettings,
         onOpenAccountsSummary = onOpenAccountsSummary,
         onOpenCardsSummary = onOpenCardsSummary,
@@ -117,11 +111,9 @@ private fun DashboardScreen(
     onCurrent: () -> Unit,
     onRetry: () -> Unit,
     onRescan: () -> Unit,
-    notificationUnreadCount: Int,
-    onOpenNotificationCenter: () -> Unit,
     onOpenAllTransactions: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenCommitments: () -> Unit,
     onManageCardsInSettings: () -> Unit,
     onOpenAccountsSummary: () -> Unit,
     onOpenCardsSummary: () -> Unit,
@@ -147,7 +139,6 @@ private fun DashboardScreen(
     val periodRangeLabel = state.period?.let {
         FinancialPeriodUiFormatter.formatRange(context, it)
     } ?: state.periodLabel
-    val today = LocalDate.now(ZoneId.systemDefault())
     val isPullRefreshing = (state.loading && state.summary != null) || state.rescanning
     val activeLayout = state.customizeDraft ?: state.dashboardLayout
 
@@ -179,11 +170,6 @@ private fun DashboardScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        DashboardAppBar(
-            unreadCount = notificationUnreadCount,
-            onOpenNotificationCenter = onOpenNotificationCenter,
-            onOpenSettings = onOpenSettings,
-        )
         LongPullToRefreshBox(
             isRefreshing = isPullRefreshing,
             onRefresh = onRetry,
@@ -197,7 +183,7 @@ private fun DashboardScreen(
                     .padding(horizontal = MasroofSpacing.screenHorizontal)
                     .padding(top = MasroofSpacing.screenVertical)
                     .padding(bottom = MasroofSpacing.screenVertical),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
             ) {
                 MasroofPeriodPill(
                     label = periodRangeLabel,
@@ -244,7 +230,7 @@ private fun DashboardScreen(
                 when {
                     state.loading && state.summary == null -> {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MasroofSpacing.contentPaddingLarge),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             CircularProgressIndicator()
@@ -263,18 +249,15 @@ private fun DashboardScreen(
                                 state = state,
                                 summary = summary,
                                 layout = activeLayout,
-                                today = today,
                                 editing = state.customizeSheetOpen,
                                 onOpenExpenseDetails = { flowDetailMode = DashboardFlowDetailMode.Expense },
                                 onOpenIncomeDetails = { flowDetailMode = DashboardFlowDetailMode.Income },
                                 onManageCardsInSettings = onManageCardsInSettings,
+                                onOpenCommitments = onOpenCommitments,
                                 onOpenAccountsSummary = onOpenAccountsSummary,
                                 onOpenCardsSummary = onOpenCardsSummary,
                                 onOpenLoansSummary = onOpenLoansSummary,
                                 onOpenMerchantsSummary = onOpenMerchantsSummary,
-                                onOpenLoanDetail = onOpenLoanDetail,
-                                onOpenCardDetail = onOpenCardDetail,
-                                onOpenDebitDetail = onOpenDebitDetail,
                                 onOpenAllTransactions = onOpenAllTransactions,
                                 onOpenTransaction = onOpenTransaction,
                                 onRescan = onRescan,
@@ -300,18 +283,15 @@ private fun DashboardCustomizableSections(
     state: DashboardUiState,
     summary: MonthlyFinancialSummary,
     layout: DashboardLayoutSnapshot,
-    today: LocalDate,
     editing: Boolean,
     onOpenExpenseDetails: () -> Unit,
     onOpenIncomeDetails: () -> Unit,
     onManageCardsInSettings: () -> Unit,
+    onOpenCommitments: () -> Unit,
     onOpenAccountsSummary: () -> Unit,
     onOpenCardsSummary: () -> Unit,
     onOpenLoansSummary: () -> Unit,
     onOpenMerchantsSummary: () -> Unit,
-    onOpenLoanDetail: (LoanOverview) -> Unit,
-    onOpenCardDetail: (CreditCardDashboardRow) -> Unit,
-    onOpenDebitDetail: (DebitCardOverview) -> Unit,
     onOpenAllTransactions: () -> Unit,
     onOpenTransaction: (String) -> Unit,
     onRescan: () -> Unit,
@@ -322,7 +302,7 @@ private fun DashboardCustomizableSections(
         fleet = state.accountsFleet,
     )
 
-    layout.orderedVisibleSections().forEach { entry ->
+    layout.orderedVisibleSections().filter { it.id != DashboardSectionId.CARDS && it.id != DashboardSectionId.LOANS }.forEach { entry ->
         Column(
             modifier = Modifier.dashboardSectionFrame(entry.size, editing),
         ) {
@@ -330,65 +310,33 @@ private fun DashboardCustomizableSections(
                 DashboardSectionId.HERO -> {
                     DashboardHeroCard(
                         accountsFleet = accountsFleet,
-                        period = state.period,
-                        isCurrentPeriod = state.isCurrentPeriod,
-                        today = today,
-                        size = entry.size,
+                        onIncome = onOpenIncomeDetails,
+                        onOutflow = onOpenExpenseDetails,
                     )
                 }
 
                 DashboardSectionId.QUICK -> {
                     DashboardQuickSummaryRow(
-                        accountsFleet = accountsFleet,
-                        onOpenExpenseDetails = onOpenExpenseDetails,
-                        onOpenIncomeDetails = onOpenIncomeDetails,
+                        trend = state.spendingTrends?.overall,
                         showExpense = layout.quickExpenseVisible,
                         showIncome = layout.quickIncomeVisible,
-                        size = entry.size,
                     )
                 }
 
-                DashboardSectionId.ACCOUNTS -> {
-                    DashboardAccountsSection(
-                        accounts = state.ownedAccounts,
-                        onViewAll = onOpenAccountsSummary,
-                    )
-                }
-
-                DashboardSectionId.CARDS -> {
-                    val cardNetworks = state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork }
-                    state.followedCreditFacilities()?.let { followedFacilities ->
-                        CreditFacilitiesSection(
-                            overview = followedFacilities,
-                            cardNetworksByLast4 = cardNetworks,
-                            zoneId = ZoneId.systemDefault(),
-                            ownedCards = state.ownedCards,
-                            onViewAll = onOpenCardsSummary,
-                            onOpenCard = onOpenCardDetail,
-                            onOpenDebit = onOpenDebitDetail,
-                        )
-                    }
-                }
-
-                DashboardSectionId.LOANS -> {
-                    state.followedLoansOverview()?.let { loans ->
-                        LoansSection(
-                            overview = loans,
-                            onViewAll = onOpenLoansSummary,
-                            onOpenLoan = onOpenLoanDetail,
-                        )
-                    }
-                }
+                DashboardSectionId.ACCOUNTS -> DashboardShortcuts(onOpenAccountsSummary, onOpenCardsSummary, onOpenLoansSummary, onOpenCommitments)
+                // Entity cards now live in their unified summary screens.
+                DashboardSectionId.CARDS, DashboardSectionId.LOANS -> Unit
 
                 DashboardSectionId.COMMITMENTS -> {
                     CommitmentsSection(overview = state.commitmentsOverview)
                 }
 
                 DashboardSectionId.MERCHANTS -> {
-                    state.dailySpendingTrend?.let { trend ->
+                    state.spendingTrends?.overall?.let { trend ->
+                        SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses))
+                        Text(stringResource(R.string.approved_expense_basis), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         DashboardAnalysisSection(
                             merchantOverview = state.merchantSpending,
-                            dailySpendingTrend = trend,
                             onViewAll = onOpenMerchantsSummary,
                         )
                     }
@@ -416,7 +364,7 @@ private fun DashboardCustomizableSections(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
                         IconTextButton(
                             onClick = onRescan,
                             enabled = !state.rescanning,
@@ -458,7 +406,7 @@ private fun DashboardErrorContent(onRetry: () -> Unit) {
             contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(MasroofSpacing.cardInnerGap))
         Text(stringResource(R.string.dashboard_load_error))
     }
     IconTextButton(
@@ -466,28 +414,6 @@ private fun DashboardErrorContent(onRetry: () -> Unit) {
         icon = MasroofIcons.retry,
         text = stringResource(R.string.dashboard_retry),
     )
-}
-
-@Composable
-private fun DashboardAppBar(
-    unreadCount: Int,
-    onOpenNotificationCenter: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    MasroofAppBar(
-        title = stringResource(R.string.app_name),
-    ) {
-        ReviewNotificationIconButton(
-            reviewCount = unreadCount,
-            onClick = onOpenNotificationCenter,
-        )
-        androidx.compose.material3.IconButton(onClick = onOpenSettings) {
-            Icon(
-                imageVector = MasroofIcons.settings,
-                contentDescription = stringResource(R.string.dashboard_open_settings),
-            )
-        }
-    }
 }
 
 @Composable

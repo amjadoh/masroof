@@ -10,7 +10,7 @@ import org.junit.Test
 
 class LoanOverviewAggregatesTest {
     @Test
-    fun aggregateRemainingBalance_sumsKnownBalancesOnly() {
+    fun aggregateRemainingBalance_unknownLoanDoesNotBecomeAPartialTotal() {
         val overview = LoansOverview(
             loans = listOf(
                 loan(remaining = Money.of("100000.00", Currency.SAR), payment = "1500.00"),
@@ -21,10 +21,7 @@ class LoanOverviewAggregatesTest {
             currency = Currency.SAR,
         )
 
-        assertEquals(
-            Money.of("125000.50", Currency.SAR),
-            overview.aggregateRemainingBalance(),
-        )
+        assertNull(overview.aggregateRemainingBalance())
     }
 
     @Test

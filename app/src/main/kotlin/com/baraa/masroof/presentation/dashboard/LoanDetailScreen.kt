@@ -1,11 +1,11 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.application.dashboard.LoanOverview
 
 @Composable
@@ -14,7 +14,6 @@ fun LoanDetailScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onViewAllTransactions: () -> Unit,
 ) {
     val loanTransactions = DashboardSummaryTransactionFilter.forLoan(
         transactions = state.allTransactions,
@@ -27,10 +26,11 @@ fun LoanDetailScreen(
         title = loan.displayLabel,
         state = state,
         onBack = onBack,
+        showPeriod = false,
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             LoanDetailSummaryCard(
                 loan = loan,
@@ -40,7 +40,6 @@ fun LoanDetailScreen(
             DashboardSummaryTransactionsSection(
                 transactions = loanTransactions,
                 onOpenTransaction = onOpenTransaction,
-                onViewAll = onViewAllTransactions,
                 ownedCards = state.ownedCards,
             )
         }

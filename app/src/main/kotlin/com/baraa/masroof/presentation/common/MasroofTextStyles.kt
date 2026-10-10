@@ -1,12 +1,12 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -19,22 +19,22 @@ enum class MasroofAmountRole {
 
 object MasroofTextStyles {
     val heroAmount: TextStyle
-        @Composable get() = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.displayMedium
 
     val cardAmount: TextStyle
-        @Composable get() = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.bold)
 
     val tileAmount: TextStyle
-        @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold)
 
     val listAmount: TextStyle
-        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = MasroofFontWeights.bold)
 
     val sectionTitle: TextStyle
-        @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold)
 
     val cardTitle: TextStyle
-        @Composable get() = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+        @Composable get() = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold)
 
     val hint: TextStyle
         @Composable get() = MaterialTheme.typography.bodySmall
@@ -46,13 +46,13 @@ object MasroofTextStyles {
         @Composable get() = MaterialTheme.typography.labelMedium
 
     val breakdownTotal: TextStyle
-        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = MasroofFontWeights.bold)
 
     val metricTileLabel: TextStyle
         @Composable get() = MaterialTheme.typography.labelSmall
 
     val metricTileAmount: TextStyle
-        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        @Composable get() = MaterialTheme.typography.labelLarge.copy(fontWeight = MasroofFontWeights.bold)
 }
 
 @Composable

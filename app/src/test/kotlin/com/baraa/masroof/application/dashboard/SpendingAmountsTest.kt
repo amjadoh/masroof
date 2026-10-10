@@ -73,6 +73,27 @@ class SpendingAmountsTest {
         assertNull(overview.aggregateFacilityDue())
     }
 
+    @Test
+    fun totalFacilityDue_countsEachFacilityOnceIncludingItsSupplementaries() {
+        val due = StatementDueSnapshot(Money.of("100", Currency.SAR), Instant.parse("2026-08-01T09:00:00Z"), LocalDate.parse("2026-09-01"))
+        val first = facilitySpending("0", "0", due)
+        val second = first.copy(primary = first.primary.copy(last4 = "2222"),
+            facilityDue = due.copy(amount = Money.of("250", Currency.SAR)))
+        val withSupplementary = first.copy(supplementaries = listOf(first.primary.copy(last4 = "3333")))
+        val overview = CreditFacilitiesOverview(listOf(withSupplementary, second, first), emptyList(), Currency.SAR)
+        assertEquals(Money.of("350", Currency.SAR), overview.totalFacilityDue)
+    }
+
+    @Test
+    fun totalFacilityDue_doesNotInventUnknownOrMixedCurrencyDues() {
+        val due = StatementDueSnapshot(Money.of("100", Currency.SAR), Instant.parse("2026-08-01T09:00:00Z"), null)
+        val first = facilitySpending("0", "0", due)
+        val unknown = first.copy(primary = first.primary.copy(last4 = "2222"), facilityDue = null)
+        assertNull(CreditFacilitiesOverview(listOf(first, unknown), emptyList(), Currency.SAR).totalFacilityDue)
+        val foreign = unknown.copy(facilityDue = due.copy(amount = Money.of("50", Currency.USD)))
+        assertNull(CreditFacilitiesOverview(listOf(first, foreign), emptyList(), Currency.SAR).totalFacilityDue)
+    }
+
     private fun facilitySpending(
         salary: String,
         statement: String,
