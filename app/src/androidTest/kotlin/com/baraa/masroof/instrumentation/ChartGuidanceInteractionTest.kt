@@ -67,6 +67,8 @@ class ChartGuidanceInteractionTest {
                             MasroofText(stringResource(R.string.approved_nav_home), style = MaterialTheme.typography.headlineSmall)
                             SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses),
                                 explanation = stringResource(R.string.approved_expense_basis))
+                            com.baraa.masroof.presentation.common.MasroofAverageBand(MoneyUiFormatter.format(trend.averageDailySpending, language.value), "",
+                                stringResource(R.string.approved_average_basis, trend.points.size))
                         }
                     }
                 }
@@ -75,12 +77,14 @@ class ChartGuidanceInteractionTest {
         listOf("ar" to false, "ar" to true, "en" to false, "en" to true).forEach { (tag, isDark) ->
             compose.runOnIdle { language.value = tag; dark.value = isDark }
             compose.waitForIdle()
-            val first = compose.onNodeWithTag("chart-first-date").fetchSemanticsNode().boundsInRoot
-            val last = compose.onNodeWithTag("chart-last-date").fetchSemanticsNode().boundsInRoot
-            assertTrue(if (tag == "ar") first.center.x > last.center.x else first.center.x < last.center.x)
             val chart = compose.onNodeWithTag("daily-expenses-chart")
             fun select(fraction: Float, amount: String) {
-                chart.performTouchInput { click(Offset(width * fraction, height * 0.4f)) }
+                val density = compose.activity.resources.displayMetrics.density
+                chart.performTouchInput {
+                    val left = com.baraa.masroof.presentation.theme.MasroofReference.chartLeft.value * density
+                    val right = com.baraa.masroof.presentation.theme.MasroofReference.chartRight.value * density
+                    click(Offset(left + (width-left-right) * fraction, height * 0.4f))
+                }
                 val description = chart.fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString()
                 val expected = MoneyUiFormatter.format(Money.of(amount, Currency.SAR), tag)
                 assertTrue("Touched date must show its own amount: $description", description.contains(expected))

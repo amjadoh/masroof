@@ -12,6 +12,12 @@ interface DatabaseBackupGateway {
     /** Reads only the file prefix. Does not decrypt, unzip, or touch the live database. */
     suspend fun inspect(source: Uri): BackupPackageKind
 
+    /** Authenticate and validate a staged package without closing or replacing live data. */
+    suspend fun verify(source: Uri, passphrase: CharArray): BackupVerificationOutcome {
+        passphrase.fill('\u0000')
+        return BackupVerificationOutcome.FAILED
+    }
+
     /**
      * Imports an encrypted envelope, or a legacy v1 ZIP when [confirmLegacyPlaintext] is true.
      * [passphrase] is wiped before return. A legacy ZIP does not use it.
@@ -23,3 +29,5 @@ interface DatabaseBackupGateway {
         confirmLegacyPlaintext: Boolean = false,
     ): BackupImportOutcome
 }
+
+enum class BackupVerificationOutcome { VERIFIED, AUTHENTICATION_FAILED, INVALID_PACKAGE, FAILED }

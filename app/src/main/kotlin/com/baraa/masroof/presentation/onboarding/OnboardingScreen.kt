@@ -25,10 +25,10 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextField
 import androidx.compose.material3.RadioButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -86,7 +86,7 @@ fun OnboardingRoute(
 }
 
 @Composable
-private fun OnboardingScreen(
+internal fun OnboardingScreen(
     state: OnboardingUiState,
     onStart: () -> Unit,
     onRequestPermissions: () -> Unit,
@@ -106,10 +106,17 @@ private fun OnboardingScreen(
     onFinalize: () -> Unit,
     onEnterApp: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    com.baraa.masroof.presentation.common.MasroofSecondaryScaffold(stringResource(R.string.reference_initial_setup),
+        onBack = { context.onboardingActivity()?.onBackPressedDispatcher?.onBackPressed() },
+        backContentDescription = stringResource(R.string.settings_back)) { contentModifier ->
+    Column(modifier = contentModifier.fillMaxSize()) {
+        Text(stringResource(R.string.reference_setup_progress, (state.step.ordinal + 1).coerceAtMost(6)),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
         when (state.step) {
             OnboardingStep.WELCOME -> WelcomeStep(
-                modifier = Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge),
+                modifier = Modifier.fillMaxSize(),
                 restoringBackup = state.restoringBackup,
                 restorePassphrase = state.restorePassphrase,
                 awaitingLegacyRestoreConfirm = state.awaitingLegacyRestoreConfirm,
@@ -122,13 +129,13 @@ private fun OnboardingScreen(
                 onClearBackupError = onClearBackupError,
             )
             OnboardingStep.PERMISSION -> PermissionStep(
-                modifier = Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge),
+                modifier = Modifier.fillMaxSize(),
                 denied = state.error == OnboardingError.PERMISSION_DENIED,
                 onRequestPermissions = onRequestPermissions,
                 onOpenSettings = onOpenAppSettings,
             )
             OnboardingStep.IMPORT_DATE -> ImportDateStep(
-                modifier = Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge),
+                modifier = Modifier.fillMaxSize(),
                 state = state,
                 onSelectDateOption = onSelectDateOption,
                 onSelectCustomDate = onSelectCustomDate,
@@ -136,7 +143,7 @@ private fun OnboardingScreen(
             )
             OnboardingStep.IMPORTING -> ImportingStep(Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge), state, onStartImport)
             OnboardingStep.OWNERSHIP -> OwnershipStep(
-                modifier = Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge),
+                modifier = Modifier.fillMaxSize(),
                 state = state,
                 onSetAccountOwned = onSetAccountOwned,
                 onSetAccountExternal = onSetAccountExternal,
@@ -148,6 +155,7 @@ private fun OnboardingScreen(
             OnboardingStep.HOME -> HomePlaceholder(Modifier.fillMaxSize(), state)
         }
     }
+}
 }
 
 @Composable
@@ -202,74 +210,42 @@ private fun WelcomeStep(
             },
         )
     }
-    Column(
-        modifier = modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        MasroofCard {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-            ) {
-                MasroofLogo(
-                    size = MasroofIconSizes.onboardingLogo,
-                    contentDescription = null,
-                )
-                Text(
-                    stringResource(R.string.onboarding_welcome_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    stringResource(R.string.onboarding_welcome_body),
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                )
-                MasroofHintBox(
-                    text = stringResource(R.string.onboarding_welcome_local_only),
-                )
+    var restoreExpanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
+            vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                MasroofLogo(size = com.baraa.masroof.presentation.theme.MasroofReference.aboutLogo, contentDescription = null)
+                Text(stringResource(R.string.onboarding_welcome_title), style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center)
+                Text(stringResource(R.string.reference_welcome_body), style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.onboarding_welcome_local_only),
+                    stringResource(R.string.settings_about_privacy_body))
+                com.baraa.masroof.presentation.common.MasroofButton(onStart, Modifier.fillMaxWidth(), enabled = !restoringBackup) {
+                    Text(stringResource(R.string.reference_start_setup))
+                }
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton({ restoreExpanded = !restoreExpanded },
+                    Modifier.fillMaxWidth(), enabled = !restoringBackup) { Text(stringResource(R.string.onboarding_restore_backup)) }
+                if (restoreExpanded) {
+                    OutlinedTextField(restorePassphrase, onRestorePassphraseChange, Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
+                        visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+                    com.baraa.masroof.presentation.common.MasroofButton(onRequestRestoreBackup, Modifier.fillMaxWidth(),
+                        enabled = !restoringBackup && restorePassphrase.isNotEmpty()) { Text(stringResource(R.string.onboarding_restore_backup)) }
+                }
+                if (restoringBackup) CircularProgressIndicator()
             }
         }
-        Spacer(Modifier.height(MasroofSpacing.screenPaddingLarge))
-        if (restoringBackup) {
-            CircularProgressIndicator()
-            Spacer(Modifier.height(MasroofSpacing.screenVertical))
-        }
-        IconTextButton(
-            onClick = onStart,
-            brandedLogo = true,
-            text = stringResource(R.string.onboarding_start),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !restoringBackup,
-        )
-        Spacer(Modifier.height(MasroofSpacing.sectionGap))
-        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.onboarding_restore_backup), message = stringResource(R.string.onboarding_restore_backup_hint), modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
-        OutlinedTextField(
-            value = restorePassphrase,
-            onValueChange = onRestorePassphraseChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
-            trailingIcon = {
-                    com.baraa.masroof.presentation.common.MasroofGuidanceButton(title = stringResource(R.string.settings_import_passphrase_label), message = stringResource(R.string.settings_import_passphrase_hint))
-                },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true,
-            enabled = !restoringBackup,
-        )
-        Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
-        IconTextButtonOutlined(
-            onClick = onRequestRestoreBackup,
-            icon = MasroofIcons.importBackup,
-            text = stringResource(R.string.onboarding_restore_backup),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !restoringBackup,
-        )
     }
+}
+
+private tailrec fun android.content.Context.onboardingActivity(): androidx.activity.ComponentActivity? = when (this) {
+    is androidx.activity.ComponentActivity -> this
+    is android.content.ContextWrapper -> baseContext.onboardingActivity()
+    else -> null
 }
 
 @Composable

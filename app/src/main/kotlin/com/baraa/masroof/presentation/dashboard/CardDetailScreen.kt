@@ -30,7 +30,7 @@ fun CardDetailScreen(
         ?.cardNetwork
 
     DashboardSummaryScaffold(
-        title = title,
+        title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_card_detail_title),
         state = state,
         onBack = onBack,
         showPeriod = false,
@@ -48,11 +48,15 @@ fun CardDetailScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            SpendingTrendSection(state.spendingTrends?.byCard?.get(CardOwnershipKey.of(row)), stringResource(com.baraa.masroof.R.string.approved_card_daily))
+            val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(row))
+            trend?.let { CardReferenceAverage(it) }
+            SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
+                role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card)
             DashboardSummaryTransactionsSection(
                 transactions = cardTransactions,
                 onOpenTransaction = onOpenTransaction,
                 ownedCards = state.ownedCards,
+                title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_card_movements),
             )
         }
     }

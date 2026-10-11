@@ -9,6 +9,12 @@ import org.junit.Test
 
 class MoneyUiFormatterTest {
     @Test
+    fun wholeAmountsDoNotAddFractionalZeros_andRealCentsArePreserved() {
+        assertEquals("1,234 ر.س", MoneyUiFormatter.format(Money.of("1234", Currency.SAR), "ar"))
+        assertEquals("1,234.50 ر.س", MoneyUiFormatter.format(Money.of("1234.50", Currency.SAR), "ar"))
+        assertEquals("1,234.01 SAR", MoneyUiFormatter.format(Money.of("1234.01", Currency.SAR), "en"))
+    }
+    @Test
     fun format_englishUsesSarLabel() {
         val formatted = MoneyUiFormatter.format(Money.of("1234.50", Currency.SAR), AppLocale.TAG_EN)
         assertTrue(formatted.contains("SAR"))

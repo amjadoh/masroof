@@ -9,18 +9,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
@@ -30,11 +31,19 @@ fun BackNavigationIcon(
     onClick: () -> Unit,
     contentDescription: String?,
 ) {
-    IconButton(onClick = onClick) {
+    val isLtr = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Ltr
+    androidx.compose.material3.Surface(onClick = onClick,
+        modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconButton),
+        shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
+        border = BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
+        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            imageVector = MasroofOutlineIcons.ArrowRight,
             contentDescription = contentDescription,
+            modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon)
+                .graphicsLayer { scaleX = if (isLtr) -1f else 1f },
         )
+        }
     }
 }
 

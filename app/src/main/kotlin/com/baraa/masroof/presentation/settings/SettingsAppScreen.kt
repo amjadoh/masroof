@@ -1,97 +1,81 @@
 package com.baraa.masroof.presentation.settings
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.theme.ThemeMode
-import com.baraa.masroof.presentation.common.MasroofIcons
-import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
+import com.baraa.masroof.presentation.common.*
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofReference
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsAppScreen(
-    languageTag: String,
-    themeMode: ThemeMode,
-    onBack: () -> Unit,
-    onSelectLanguage: (String) -> Unit,
-    onSelectTheme: (ThemeMode) -> Unit,
-) {
-    var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
-
-    if (showLanguageDialog) {
-        SettingsLanguageDialog(
-            selectedLanguageTag = languageTag,
-            onDismiss = { showLanguageDialog = false },
-            onSelectLanguage = { tag ->
-                showLanguageDialog = false
-                onSelectLanguage(tag)
-            },
-        )
-    }
-    if (showThemeDialog) {
-        SettingsThemeDialog(
-            selectedMode = themeMode,
-            onDismiss = { showThemeDialog = false },
-            onSelectMode = { mode ->
-                showThemeDialog = false
-                onSelectTheme(mode)
-            },
-        )
-    }
-
-    MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_app_section),
-        onBack = onBack,
-        backContentDescription = stringResource(R.string.settings_back),
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
-        ) {
-            SettingsNavRow(
-                icon = Icons.Filled.Language,
-                title = stringResource(R.string.settings_language_title),
-                subtitle = languageSubtitle(languageTag),
-                onClick = { showLanguageDialog = true },
-            )
-            SettingsNavRow(
-                icon = MasroofIcons.theme,
-                title = stringResource(R.string.settings_theme_title),
-                subtitle = themeSubtitle(themeMode),
-                onClick = { showThemeDialog = true },
-            )
+fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> Unit,
+    onSelectLanguage: (String) -> Unit, onSelectTheme: (ThemeMode) -> Unit) {
+    MasroofSecondaryScaffold(stringResource(R.string.reference_preferences_title), onBack,
+        stringResource(R.string.settings_back)) { modifier ->
+        Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            MasroofCard {
+                MasroofText(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.titleMedium)
+                Row(Modifier.padding(vertical = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap)) {
+                    listOf(Triple(ThemeMode.LIGHT, R.string.settings_theme_light, MasroofIcons.sun),
+                        Triple(ThemeMode.DARK, R.string.settings_theme_dark, MasroofIcons.theme),
+                        Triple(ThemeMode.SYSTEM, R.string.settings_theme_system, MasroofIcons.monitor)).forEach { (mode, label, icon) ->
+                        MasroofChoice(stringResource(label), themeMode == mode, { onSelectTheme(mode) }, icon = icon)
+                    }
+                }
+            }
+            MasroofCard {
+                MasroofText(stringResource(R.string.settings_language_title), style = MaterialTheme.typography.titleMedium)
+                listOf(AppLocale.TAG_AR to R.string.settings_language_arabic, AppLocale.TAG_EN to R.string.settings_language_english).forEach { (tag, label) ->
+                    val current = AppLocale.isEnglish(tag) == AppLocale.isEnglish(languageTag)
+                    Row(Modifier.fillMaxWidth().clickable { onSelectLanguage(tag) }.padding(vertical = MasroofReference.rowVertical),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                        MasroofText(stringResource(label), style = MasroofReference.pair)
+                        if (current) MasroofBadge(stringResource(R.string.reference_current_language), MasroofCardAccent.Inflow)
+                        else MasroofText(stringResource(R.string.reference_available_language), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    HorizontalDivider(color = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)
+                }
+            }
+            MasroofCard {
+                MasroofText(stringResource(R.string.reference_colour_meanings), style = MaterialTheme.typography.titleMedium)
+                val colors = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors
+                val legends = listOf(Triple(R.string.dashboard_total_inflow, MasroofIcons.externalIn, colors.inflow to colors.inflowSoft),
+                    Triple(R.string.approved_total_expenses, MasroofIcons.externalOut, colors.outflow to colors.outflowSoft),
+                    Triple(R.string.reference_credit_tab, MasroofIcons.cardPayment, colors.card to colors.cardSoft),
+                    Triple(R.string.approved_commitments, MasroofIcons.clock, colors.liability to colors.liabilitySoft))
+                legends.forEach { (label, icon, palette) ->
+                    Row(Modifier.padding(top = MasroofSpacing.sectionGap), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
+                        Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small, color = palette.second) {
+                            androidx.compose.foundation.layout.Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                                Icon(icon, null, Modifier.size(MasroofReference.icon), tint = palette.first)
+                            }
+                        }
+                        MasroofText(stringResource(label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         }
     }
 }
-
-@Composable
-private fun languageSubtitle(languageTag: String): String =
-    if (AppLocale.isEnglish(languageTag)) {
-        stringResource(R.string.settings_language_english)
-    } else {
-        stringResource(R.string.settings_language_arabic)
-    }
-
-@Composable
-private fun themeSubtitle(mode: ThemeMode): String =
-    when (mode) {
-        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
-        ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
-        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
-    }

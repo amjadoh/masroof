@@ -17,10 +17,10 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextField
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -208,10 +208,10 @@ fun SettingsCommitmentEditorScreen(
                 }
             }
 
-            IconTextButtonOutlined(
+            com.baraa.masroof.presentation.common.MasroofButton(
                 onClick = {
-                    val amount = parsedAmount ?: return@IconTextButtonOutlined
-                    if (amount.signum() <= 0) return@IconTextButtonOutlined
+                    val amount = parsedAmount ?: return@MasroofButton
+                    if (amount.signum() <= 0) return@MasroofButton
                     onSave(
                         SettingsCommitmentsWorkflow.CommitmentEditorDraft(
                             name = name.trim(),
@@ -223,31 +223,31 @@ fun SettingsCommitmentEditorScreen(
                     )
                 },
                 enabled = canSave,
-                icon = MasroofIcons.reviewQueue,
-                text = stringResource(R.string.settings_commitment_save),
                 modifier = Modifier.fillMaxWidth(),
-            )
+            ) { Text(stringResource(R.string.settings_commitment_save)) }
 
-            IconTextButtonOutlined(
+            OutlinedButton(
                 onClick = onToggleActive,
                 enabled = !saving,
-                icon = if (commitment.active) MasroofIcons.warning else MasroofIcons.externalIn,
-                text = stringResource(
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor =
+                    if (commitment.active) com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liability
+                    else com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.inflow),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(
                     if (commitment.active) {
-                        R.string.settings_commitment_disable
+                        R.string.reference_pause_commitment
                     } else {
                         R.string.settings_commitment_enable
                     },
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
+                )) }
 
             OutlinedButton(
                 onClick = { showDeleteConfirm = true },
                 enabled = !saving,
                 modifier = Modifier.fillMaxWidth(),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text(stringResource(R.string.settings_commitment_delete))
+                Text(stringResource(R.string.reference_delete_commitment))
             }
         }
     }
@@ -263,17 +263,11 @@ private fun RecurrenceSelector(
             title = stringResource(R.string.settings_commitment_recurrence),
             icon = MasroofIcons.periodHint,
         )
-        recurrenceOptions().forEach { (value, labelRes) ->
-            OutlinedButton(
-                onClick = { onSelect(value) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    stringResource(labelRes),
-                    color = if (selected == value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
+        val options = recurrenceOptions()
+        val labels = options.map { stringResource(it.second) }
+        com.baraa.masroof.presentation.common.MasroofSelect(
+            labels[options.indexOfFirst { it.first == selected }.coerceAtLeast(0)],
+            labels, { index -> onSelect(options[index].first) }, Modifier.fillMaxWidth())
     }
 }
 

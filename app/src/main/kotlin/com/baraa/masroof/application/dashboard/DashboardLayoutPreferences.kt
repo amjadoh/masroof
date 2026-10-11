@@ -70,6 +70,13 @@ data class DashboardLayoutSnapshot(
     fun withMergedSections(): DashboardLayoutSnapshot {
         val defaults = default()
         val existingIds = sections.map { it.id }.toSet()
+        val legacyOrder = listOf(DashboardSectionId.HERO, DashboardSectionId.QUICK,
+            DashboardSectionId.ACCOUNTS, DashboardSectionId.CARDS, DashboardSectionId.LOANS,
+            DashboardSectionId.COMMITMENTS, DashboardSectionId.MERCHANTS, DashboardSectionId.TRANSACTIONS)
+        if (sections.map { it.id } == legacyOrder.filter { it in existingIds }) {
+            val stored = sections.associateBy { it.id }
+            return copy(sections = defaults.sections.map { stored[it.id] ?: it })
+        }
         val missing = defaults.sections.filter { it.id !in existingIds }
         if (missing.isEmpty()) return this
 
@@ -104,11 +111,11 @@ data class DashboardLayoutSnapshot(
             DashboardLayoutSnapshot(
                 sections = listOf(
                     DashboardSectionEntry(DashboardSectionId.HERO, size = DashboardSectionSize.LARGE),
-                    DashboardSectionEntry(DashboardSectionId.QUICK, size = DashboardSectionSize.MEDIUM),
                     DashboardSectionEntry(DashboardSectionId.ACCOUNTS, size = DashboardSectionSize.MEDIUM),
+                    DashboardSectionEntry(DashboardSectionId.COMMITMENTS, size = DashboardSectionSize.MEDIUM),
+                    DashboardSectionEntry(DashboardSectionId.QUICK, size = DashboardSectionSize.MEDIUM),
                     DashboardSectionEntry(DashboardSectionId.CARDS, size = DashboardSectionSize.LARGE),
                     DashboardSectionEntry(DashboardSectionId.LOANS, size = DashboardSectionSize.MEDIUM),
-                    DashboardSectionEntry(DashboardSectionId.COMMITMENTS, size = DashboardSectionSize.MEDIUM),
                     DashboardSectionEntry(DashboardSectionId.MERCHANTS, size = DashboardSectionSize.MEDIUM),
                     DashboardSectionEntry(DashboardSectionId.TRANSACTIONS, size = DashboardSectionSize.MEDIUM),
                 ),

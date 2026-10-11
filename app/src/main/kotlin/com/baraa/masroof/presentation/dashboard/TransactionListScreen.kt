@@ -177,13 +177,27 @@ fun TransactionListScreen(
                 totalCount = transactions.size,
                 totalAmount = filterResult.totalAmount,
                 filterActive = filterState.isActive,
+                typeChoices = availableTypes.map { it.name to transactionTypeLabel(it) },
+                selectedType = selectedTypeNames.singleOrNull(),
+                onSelectType = { name -> selectedTypeNames = if (name.isEmpty()) emptyList() else listOf(name) },
+                sourceChoices = availableAccounts.map { "account:$it" to (accountDisplayLabel(ownedAccounts, it) ?: it) } +
+                    availableCards.map { "card:$it" to cardDisplayLabel(ownedCards, it) },
+                selectedSource = selectedAccountContainerIds.singleOrNull()?.let { "account:$it" }
+                    ?: selectedCardLast4s.singleOrNull()?.let { "card:$it" },
+                onSelectSource = { key ->
+                    selectedAccountContainerIds = if (key.startsWith("account:")) listOf(key.removePrefix("account:")) else emptyList()
+                    selectedCardLast4s = if (key.startsWith("card:")) listOf(key.removePrefix("card:")) else emptyList()
+                },
             )
             Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
 
+            androidx.compose.material3.Surface(modifier = Modifier.weight(1f),
+                shape = com.baraa.masroof.presentation.theme.MasroofCardShape,
+                border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
+                modifier = Modifier.padding(horizontal = MasroofSpacing.cardInnerPadding),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.none),
             ) {
                 if (filterResult.transactions.isEmpty()) {
                     item {
@@ -208,6 +222,7 @@ fun TransactionListScreen(
                 }
 
                 item { Spacer(Modifier.height(MasroofSpacing.screenHorizontal)) }
+            }
             }
         }
 

@@ -3,6 +3,7 @@ package com.baraa.masroof.presentation.settings
 import com.baraa.masroof.presentation.theme.MasroofOpacity
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 import com.baraa.masroof.presentation.theme.MasroofSizes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -43,42 +44,41 @@ fun SettingsRegistryItemCard(
     showBankLabel: Boolean = true,
     endAction: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    onTitleClick: (() -> Unit)? = null,
+    accent: com.baraa.masroof.presentation.common.MasroofCardAccent = if (icon == MasroofIcons.cardPayment)
+        com.baraa.masroof.presentation.common.MasroofCardAccent.Credit else com.baraa.masroof.presentation.common.MasroofCardAccent.Account,
 ) {
+    val colors = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors
+    val foreground = when (accent) {
+        com.baraa.masroof.presentation.common.MasroofCardAccent.Credit -> colors.card
+        com.baraa.masroof.presentation.common.MasroofCardAccent.Liability -> colors.liability
+        else -> colors.account
+    }
+    val background = when (accent) {
+        com.baraa.masroof.presentation.common.MasroofCardAccent.Credit -> colors.cardSoft
+        com.baraa.masroof.presentation.common.MasroofCardAccent.Liability -> colors.liabilitySoft
+        else -> colors.accountSoft
+    }
     MasroofCard(
         modifier = modifier.fillMaxWidth(),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = if (endAction != null) MasroofSizes.size92 else MasroofSpacing.none),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(MasroofSizes.size22),
-                )
-                Spacer(Modifier.width(MasroofSpacing.rowHorizontalPadding))
-                Column {
-                    if (showBankLabel) {
-                        Text(
-                            settingsBankLabel(bank),
-                            style = MasroofTextStyles.breakdownLabel,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text(title, style = MasroofTextStyles.cardTitle, color = MaterialTheme.colorScheme.onSurface)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.rowGap)) {
+            androidx.compose.material3.Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
+                color = background) {
+                Box(Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = foreground,
+                        modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon))
                 }
             }
-            endAction?.let { action ->
-                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                    action()
-                }
+            Column(Modifier.weight(1f)) {
+                Text(title, modifier = if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier, style = MasroofTextStyles.cardTitle)
+                if (showBankLabel) Text(settingsBankLabel(bank), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         footer?.invoke()
+        endAction?.let { action -> Row(Modifier.padding(top = MasroofSpacing.cardInnerGap)) { action() } }
     }
 }
 
@@ -89,29 +89,8 @@ fun SettingsStopTrackingButton(
     enabled: Boolean = true,
     contentDescription: String,
 ) {
-    val error = MaterialTheme.colorScheme.error
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.semantics { this.contentDescription = contentDescription },
-        contentPadding = ButtonDefaults.ContentPadding,
-        border = BorderStroke(MasroofSpacing.borderWidth, error.copy(alpha = MasroofOpacity.emphasized)),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = error,
-            disabledContentColor = error.copy(alpha = MasroofOpacity.disabled),
-        ),
-    ) {
-        Icon(
-            imageVector = MasroofIcons.warning,
-            contentDescription = null,
-            modifier = Modifier.size(MasroofSpacing.screenHorizontal),
-        )
-        Spacer(Modifier.width(MasroofSpacing.inlineGap))
-        Text(
-            stringResource(R.string.settings_action_stop_short),
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
+    com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking),
+        onClick, modifier.semantics { this.contentDescription = contentDescription }, enabled, warning = true)
 }
 
 @Composable
