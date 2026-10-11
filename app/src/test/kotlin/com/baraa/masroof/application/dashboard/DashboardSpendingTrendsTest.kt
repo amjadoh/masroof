@@ -7,6 +7,15 @@ import com.baraa.masroof.domain.model.AccountRegistryEntry
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
+import com.baraa.masroof.domain.model.CardReference
+import com.baraa.masroof.domain.model.Confidence
+import com.baraa.masroof.domain.model.MessageFamily
+import com.baraa.masroof.domain.model.MoneyDirection
+import com.baraa.masroof.domain.model.ParseStatus
+import com.baraa.masroof.domain.model.ParsedEvent
+import com.baraa.masroof.parsing.model.CardSmsChannel
+import com.baraa.masroof.parsing.model.ParsedEventDetails
+import com.baraa.masroof.parsing.repository.ParsedEventRecord
 import com.baraa.masroof.domain.period.FinancialPeriod
 import java.time.Instant
 import java.time.LocalDate
@@ -61,6 +70,47 @@ class DashboardSpendingTrendsTest {
         assertEquals("120.00", result.byCard.getValue("${bank.id}:2210").totalSpending.amount.toPlainString())
         assertEquals("0.00", result.creditCards.totalSpending.amount.toPlainString())
     }
+
+    @Test
+    fun registryLinkedDebitWithoutSmsAccount_includesPurchaseAndRefundInAccountChartAndMovements() {
+        val accountId = FinancialContainerIdFactory.accountId(bank, "1111")
+        val cardId = FinancialContainerIdFactory.cardId(bank, "2210")!!
+        val purchase = transaction("googlepay", "120", cardId).copy(linkedParsedEventIds = listOf("evt-purchase"))
+        val refund = transaction("refund", "20", null).copy(type = FinancialTransactionType.REFUND,
+            destinationContainerId = cardId, linkedParsedEventIds = listOf("evt-refund"))
+        val creditRefund = refund.copy(id = "credit-refund", linkedParsedEventIds = listOf("evt-credit"))
+        val accounts = listOf(AccountRegistryEntry.forTest(bank, "1111"), AccountRegistryEntry.forTest(otherBank, "1111"))
+        val context = context(accounts, listOf(purchase, refund, creditRefund)).copy(
+            evidence = DashboardEvidence(listOf(
+                debitRecord("evt-purchase", MessageFamily.PURCHASE),
+                debitRecord("evt-refund", MessageFamily.REFUND),
+                debitRecord("evt-credit", MessageFamily.REFUND).copy(details = ParsedEventDetails(cardSmsChannel = CardSmsChannel.CREDIT)),
+            ), emptyMap()),
+            debitCardScope = DebitCardScopeFacts(setOf(cardId), mapOf(cardId to accountId)),
+        )
+        val accountSection = AccountsDashboardProjection.build(context)
+        val cards = CardsDashboardSection(CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR), emptyMap(), emptyMap())
+        val trends = DashboardSpendingTrendsBuilder.build(context, accountSection, cards)
+        assertEquals(setOf(accountId), accountSection.transactionAccountInvolvement[purchase.id])
+        assertEquals(setOf(accountId), accountSection.transactionAccountInvolvement[refund.id])
+        assertEquals(emptySet<String>(), accountSection.transactionAccountInvolvement[creditRefund.id])
+        assertEquals(Money.of("120", Currency.SAR), accountSection.fleet.outflow.posPurchases)
+        assertEquals(Money.of("20", Currency.SAR), accountSection.fleet.inflow.accountRefunds)
+        assertEquals("100.00", trends.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("0.00", trends.byAccount.getValue("${otherBank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("100.00", trends.accounts.totalSpending.amount.toPlainString())
+        assertEquals("33.33", trends.accounts.averageDailySpending.amount.toPlainString())
+    }
+
+    private fun debitRecord(id: String, family: MessageFamily) = ParsedEventRecord(
+        event = ParsedEvent(id = id, rawSmsId = "sms-$id", bank = bank, messageFamily = family,
+            direction = MoneyDirection.OUTGOING, amount = Money.of("120", Currency.SAR),
+            purchaseChannel = null, sourceAccountRef = null, destinationAccountRef = null,
+            cardRef = CardReference(bank, "2210"), merchant = null, counterparty = null,
+            occurredAt = Instant.parse("2026-07-20T07:00:00Z"), bankNetworkType = null,
+            confidence = Confidence(1.0), parseStatus = ParseStatus.SUCCESS),
+        details = ParsedEventDetails(cardSmsChannel = CardSmsChannel.DEBIT),
+    )
 
     private fun context(accounts: List<AccountRegistryEntry>, transactions: List<FinancialTransaction>) = DashboardProjectionContext(
         period, Instant.parse("2026-07-23T00:00:00Z"), date.plusDays(2), DashboardEvidence.EMPTY,

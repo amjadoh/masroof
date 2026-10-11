@@ -51,6 +51,14 @@ fun DashboardSummaryScaffold(
                 )
             }
 
+            if (state.error != null) {
+                androidx.compose.material3.Text(
+                    stringResource(R.string.dashboard_load_error),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                )
+            }
+
             if (state.loading && state.currentAccount == null) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
@@ -60,7 +68,7 @@ fun DashboardSummaryScaffold(
                 ) {
                     androidx.compose.material3.CircularProgressIndicator()
                 }
-            } else {
+            } else if (state.error == null || state.currentAccount != null) {
                 content(Modifier.fillMaxWidth())
             }
         }

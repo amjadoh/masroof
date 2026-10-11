@@ -58,6 +58,7 @@ object AccountsDashboardProjection {
                     transactions = transactions,
                     parsedRecords = parsedRecords,
                     ownedAccounts = ownedAccounts,
+                    debitCardScope = debitCardScope,
                 ),
             )
         }
