@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +39,7 @@ fun SettingsRenameCardDialog(
         title = { Text(stringResource(R.string.settings_rename_card_title)) },
         text = {
             OutlinedTextField(
+                visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.settings_display_name_label)) },
@@ -73,6 +74,7 @@ fun SettingsRenameAccountDialog(
         title = { Text(stringResource(R.string.settings_rename_account_title)) },
         text = {
             OutlinedTextField(
+                visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.settings_display_name_label)) },

@@ -9,7 +9,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.key
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
