@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +15,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,7 +24,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.common.MasroofNavCard
 import com.baraa.masroof.presentation.common.MasroofTextStyles
 
@@ -50,10 +50,10 @@ fun SettingsNavRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(MasroofSpacing.screenPaddingLarge),
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Spacer(Modifier.width(MasroofSpacing.sectionGap))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
                 Text(
                     title,
                     style = MasroofTextStyles.cardTitle,
@@ -76,13 +76,13 @@ fun SettingsNavRow(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MasroofSpacing.cardInnerGap))
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(MasroofSpacing.largeGap),
             )
         }
     }
@@ -99,6 +99,7 @@ fun SettingsReparseRow(
     enabled: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    guidance: String? = null,
 ) {
     MasroofNavCard(
         onClick = onRefresh,
@@ -113,12 +114,13 @@ fun SettingsReparseRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(MasroofSpacing.screenPaddingLarge),
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MasroofTextStyles.cardTitle, color = MaterialTheme.colorScheme.onSurface)
-                Text(
+            Spacer(Modifier.width(MasroofSpacing.sectionGap))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
+                    style = MasroofTextStyles.cardTitle, contentColor = MaterialTheme.colorScheme.onSurface)
+                if (subtitle.isNotBlank()) Text(
                     subtitle,
                     style = MasroofTextStyles.hint,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -132,7 +134,7 @@ fun SettingsReparseRow(
                 }
             }
             if (running) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(modifier = Modifier.size(MasroofSpacing.screenPaddingLarge))
             } else {
                 IconButton(onClick = onRefresh, enabled = enabled) {
                     Icon(
@@ -145,4 +147,3 @@ fun SettingsReparseRow(
         }
     }
 }
-

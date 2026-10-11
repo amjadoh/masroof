@@ -274,3 +274,7 @@ Do not remove a file simply because its name looks old. Room migrations, backup 
 ## Repository status
 
 The M0–M19 financial integrity and reliability roadmap has been implemented on `main`. Ongoing work should preserve those invariants and treat cleanup as behavior-preserving unless a separate feature or defect fix explicitly changes product behavior.
+
+## Current UI reference
+
+The approved light/dark design is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). `presentation/theme/MasroofDesign.kt` is the entry point for shared colors, typography, spacing, sizes, shapes and elevation; feature screens reuse the common components.

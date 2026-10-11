@@ -2,6 +2,7 @@ package com.baraa.masroof.presentation.dashboard
 
 import android.content.Context
 import android.content.Intent
+import com.baraa.masroof.application.locale.AppDigits
 
 object SharePlainText {
     fun share(
@@ -13,11 +14,11 @@ object SharePlainText {
         if (text.isBlank()) return
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_TEXT, AppDigits.display(text))
             if (!subject.isNullOrBlank()) {
-                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_SUBJECT, AppDigits.display(subject))
             }
         }
-        context.startActivity(Intent.createChooser(send, chooserTitle))
+        context.startActivity(Intent.createChooser(send, AppDigits.display(chooserTitle)))
     }
 }

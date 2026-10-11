@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,13 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.dashboard.SmsRescanStatus
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
@@ -40,11 +41,11 @@ fun SmsRescanStatusNotice(
                     imageVector = if (isError) MasroofIcons.error else MasroofIcons.rescan,
                     contentDescription = null,
                     tint = if (isError) extended.outflow else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(MasroofSizes.size18),
                 )
                 Text(
                     rescanStatusMessage(status),
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = MasroofSpacing.cardInnerGap),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

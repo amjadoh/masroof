@@ -53,6 +53,34 @@ class CreditCardsOverviewDueTest {
         assertNull(due)
     }
 
+    @Test
+    fun detailDue_keepsLatestFacilityAmountAndUnknownDateTogether() {
+        val older = Instant.parse("2026-08-10T09:00:00Z")
+        val newer = older.plusSeconds(86400)
+        val primary = cardRow("7271", "100", older, LocalDate.parse("2026-09-07"))
+        val supplementary = cardRow("3478", "200", newer)
+        val facility = CreditFacilityOverview(primary.bank, primary, listOf(supplementary),
+            resolveLatestStatementDue(listOf(primary, supplementary)), SignedMoneyAmount.zero(Currency.SAR),
+            SignedMoneyAmount.zero(Currency.SAR), null, null, Currency.SAR)
+        val due = primary.statementDueFor(facility)
+        assertEquals(Money.of("200", Currency.SAR), due?.amount)
+        assertEquals(newer, due?.updatedAt)
+        assertNull(due?.dueDate)
+    }
+
+    @Test
+    fun detailDue_doesNotBorrowAnotherBanksOrAnotherCardsStatement() {
+        val at = Instant.parse("2026-08-10T09:00:00Z")
+        val row = cardRow("7271", "100", at)
+        val other = row.copy(bank = Bank("OTHER"))
+        val facility = CreditFacilityOverview(other.bank, other, emptyList(),
+            StatementDueSnapshot(Money.of("900", Currency.SAR), at, LocalDate.parse("2026-09-07")),
+            SignedMoneyAmount.zero(Currency.SAR), SignedMoneyAmount.zero(Currency.SAR), null, null, Currency.SAR)
+        assertEquals(Money.of("100", Currency.SAR), row.statementDueFor(facility)?.amount)
+        assertEquals(Money.of("100", Currency.SAR), row.statementDueFor(facility.copy(bank = row.bank, primary = row.copy(last4 = "9999")))?.amount)
+        assertNull(row.copy(snapshot = row.snapshot!!.copy(statementIssuedAt = null)).statementDueFor())
+    }
+
     private fun cardRow(
         last4: String,
         dueAmount: String,

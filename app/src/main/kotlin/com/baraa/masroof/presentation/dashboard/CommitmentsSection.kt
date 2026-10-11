@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,13 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import com.baraa.masroof.R
@@ -120,7 +120,7 @@ private fun CommitmentSummaryMetric(
         )
         Text(
             value,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.semiBold),
             color = valueColor,
         )
     }
@@ -159,7 +159,7 @@ private fun CommitmentDashboardRowItem(
         Text(
             displayName,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.medium),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -178,7 +178,7 @@ private fun CommitmentDashboardRowItem(
         )
         Text(
             statusLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = MasroofFontWeights.semiBold),
             color = statusColor,
         )
     }

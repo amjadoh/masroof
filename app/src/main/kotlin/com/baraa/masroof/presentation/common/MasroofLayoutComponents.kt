@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,39 +15,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 
 @Composable
 fun MasroofScreenBackground(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val extended = MasroofThemeExtras.extendedColors
     val background = MaterialTheme.colorScheme.background
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        extended.backgroundGradientTop,
-                        background,
-                        background,
-                    ),
-                    startY = 0f,
-                    endY = 360f,
-                ),
-            ),
+            .background(background),
     ) {
         content()
     }
@@ -64,7 +50,7 @@ fun MasroofAppBar(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp,
+        shadowElevation = MasroofSpacing.none,
     ) {
         Column {
             Row(
@@ -97,7 +83,7 @@ fun MasroofAppBar(
                     Text(
                         title,
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = MasroofFontWeights.bold,
                             fontSize = MaterialTheme.typography.titleLarge.fontSize,
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
@@ -151,7 +137,7 @@ fun MasroofSectionTitle(
     Text(
         title,
         modifier = modifier,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
         color = MaterialTheme.colorScheme.onSurface,
     )
 }

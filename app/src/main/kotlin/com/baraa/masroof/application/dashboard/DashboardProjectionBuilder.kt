@@ -80,6 +80,7 @@ class DashboardProjectionBuilder(
             commitmentsOverview = commitments.commitmentsOverview,
             merchantSpending = analysis.merchantSpending,
             dailySpendingTrend = analysis.dailySpendingTrend,
+            spendingTrends = DashboardSpendingTrendsBuilder.build(context, accounts, cards),
             bankHierarchy = bankHierarchy,
             flowDetail = accounts.flowDetail,
             transactionAccountInvolvement = accounts.transactionAccountInvolvement,

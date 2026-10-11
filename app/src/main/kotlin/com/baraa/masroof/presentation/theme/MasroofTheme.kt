@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.theme
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -10,6 +13,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 import com.baraa.masroof.application.locale.AppLocale
@@ -90,8 +94,13 @@ fun MasroofTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            val window = view.context.findActivity()?.window ?: return@SideEffect
+            window.statusBarColor = colorScheme.surface.toArgb()
+            window.navigationBarColor = colorScheme.surface.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
     CompositionLocalProvider(
@@ -105,6 +114,12 @@ fun MasroofTheme(
             content = content,
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 object MasroofThemeExtras {

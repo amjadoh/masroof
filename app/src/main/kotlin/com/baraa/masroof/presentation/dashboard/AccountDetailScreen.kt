@@ -1,9 +1,9 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun AccountDetailScreen(
@@ -11,7 +11,6 @@ fun AccountDetailScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onViewAllTransactions: () -> Unit,
 ) {
     val summary = account.periodSummary
     val accountTransactions = DashboardSummaryTransactionFilter.forAccount(
@@ -29,7 +28,7 @@ fun AccountDetailScreen(
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             if (summary != null) {
                 AccountPeriodSummaryCard(
@@ -37,10 +36,11 @@ fun AccountDetailScreen(
                 )
             }
 
+            SpendingTrendSection(state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"), androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_account_daily),
+                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_expense_basis))
             DashboardSummaryTransactionsSection(
                 transactions = accountTransactions,
                 onOpenTransaction = onOpenTransaction,
-                onViewAll = onViewAllTransactions,
                 ownedCards = state.ownedCards,
             )
         }

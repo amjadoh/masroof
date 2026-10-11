@@ -1,0 +1,109 @@
+# Approved Masroof design
+
+This document is the current UI reference. The implementation entry point is
+`presentation/theme/MasroofDesign.kt`, version `approved-2026-10-10`.
+
+## One source of visual values
+
+| Concern | Authoritative source |
+| --- | --- |
+| Light/dark and semantic colors | `MasroofColors.kt`, `MasroofHeroColors.kt` |
+| Brand/network colors | `MasroofNetworkColors.kt`, `res/values/masroof_brand.xml` for the Android launcher |
+| Opacity and font weights | `MasroofDesign.kt` |
+| Spacing and geometry | `MasroofSpacing.kt`, `MasroofDesign.kt` |
+| Typography and font weights | `MasroofTypography.kt`, `MasroofFontFamily.kt`, `MasroofFontWeights` |
+| Shapes | `MasroofShapes.kt` |
+| Icon geometry | `MasroofIconSizes.kt` |
+| Icon meanings | `presentation/common/MasroofIcons.kt` |
+| Elevation | `MasroofElevation.kt` |
+| Localized terminology | `res/values/strings.xml`, `res/values-en/strings.xml` |
+
+Screens use these tokens through MaterialTheme and shared components. Do not add
+numeric dp/sp or color literals in feature screens. `ApprovedDesignBoundaryTest`
+enforces this boundary. Cards use radius 20, controls 12, screen/card padding 16,
+flat elevation, and IBM Plex Sans Arabic. Filled light-mode buttons use onPrimary
+white text. Account blue, card purple and liability amber each have paired
+readable foregrounds in both modes.
+
+## Shared screen behavior
+
+The global header contains the brand and notifications. Home, financial
+transactions, review and settings are in the bottom navigation. Home has one
+interactive daily expenses chart. Account, credit aggregate, individual credit
+and debit scopes reuse the same chart interaction. Detail pages display their
+complete scoped transactions inline; tapping a transaction opens the existing
+correction, ignore and commitment actions.
+
+All entity summaries use the same neutral card shell, with type-specific facts:
+
+- Account: calculated inflow/outflow/net movement, with its calculation described.
+- Credit: recorded available balance, facility amount due and due date.
+  Supplementary cards explain shared facility due; it is counted once in totals.
+  The due amount and date come from the same statement. A missing latest date
+  is displayed as unavailable rather than filled from an older statement.
+- Debit: linked account and net purchases/refunds, without a fictional credit due.
+- Loan: recorded remaining balance, latest installment and its recorded date.
+
+Summary pages distinguish a failed load from an empty portfolio. A failed refresh
+keeps the previous same-period data with an error notice; a failed initial load
+does not display a misleading empty state.
+
+Arabic expenses terminology is «المصاريف», «متوسط المصاريف اليومية» and
+«المصاريف حسب التاجر». Merchant analysis requires at least two eligible purchases.
+
+## Digits in every language
+
+The display policy is `application/locale/AppDigits`: all visible digits use
+`0123456789`. Arabic remains Arabic with RTL layout and Arabic month names.
+`AppLocale.displayLocale` requests the `latn` numbering system; `MoneyUiFormatter`
+fixes decimal digits and separators. All app text uses `MasroofText`, which also
+normalizes imported names and SMS evidence at display time. Editable public text
+uses `AppDigitsVisualTransformation` without modifying stored input or cursor
+positions. Password fields keep their masking. Original SMS, financial facts and
+backups retain their source values. `AppDigitsBoundaryTest` prevents direct text
+bypasses and Eastern digits in display resources; native screen tests check text
+in both themes and the Arabic date picker.
+
+## Contextual explanations
+
+`presentation/common/MasroofGuidance.kt` is the only contextual-help component.
+Use `MasroofGuidanceButton` beside the subject, or `MasroofGuidanceLabel` for a
+label and its help icon. The neutral circled exclamation is mapped in MasroofIcons.
+`MasroofDesign.guidance` exposes the icon size, accessible touch area, popover
+width, padding, shape, elevation and edge spacing. Colors and typography use the
+shared MaterialTheme. The small anchored popover fits the window in RTL and LTR,
+flips above its subject when necessary, and dismisses on outside press or Back.
+Explanations are hidden until requested and never invoke a parent action.
+
+Use this pattern for chart scope, averaging basis, account calculations, shared
+credit dues, period adjustments, filters, registry tracking, backup passphrases,
+re-analysis, updates, privacy, logs and restore help. Essential status, errors,
+confirmation text and identifying data remain visible. The debug catalog includes
+the shared help component. `MasroofGuidanceBoundaryTest` prevents inline hint text.
+
+## Financial chart scope and direction
+
+`application/dashboard/DashboardSpendingTrendsBuilder` computes every display
+scope from the existing persisted dashboard context. Compose does not sum money.
+Overall expenses include expenses, bills, fees, loan repayments, external outgoing
+transfers and withdrawals, less refunds. Self-transfers and card settlements are
+excluded to avoid double counting purchases. Credit/debit charts show purchases,
+bills and ordinary fees less refunds. FX requires a resolved local equivalent;
+unresolved foreign amounts are not silently added to SAR.
+Account charts and inline movements use the same registry-linked debit scope as
+account summaries, including Google Pay purchases without an account SMS field
+and verified debit refunds. Links remain qualified by bank and account identity.
+
+The daily mean uses all elapsed dates in the selected period including zero days;
+completed periods use their full duration. It is not a fixed fourteen-day mean.
+The selected date and amount are visible above the chart. Tap or scrub the line
+to choose a day. Previous/next are available as screen-reader actions; no separate
+previous/next day buttons are displayed.
+Chronological points start on the right in Arabic and on the left in English;
+date endpoints below the chart follow that same direction. Touch coordinates are
+mapped back to the logical date index before showing that date's actual amount.
+
+The debug design catalog remains available under Settings → About and displays
+the current tokens. Removed background gradients, raised-card shadows, entity
+carousels, salary/statement credit-detail blocks and previous brand assets are
+obsolete and must not be reintroduced.

@@ -1,5 +1,9 @@
 package com.baraa.masroof.presentation.settings
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +25,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,7 +36,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.BuildConfig
 import com.baraa.masroof.R
 import com.baraa.masroof.application.update.UpdateChannel
@@ -73,7 +74,7 @@ fun SettingsAboutScreen(
 
     LaunchedEffect(updateMessageText) {
         if (updateMessageText != null) {
-            snackbarHostState.showSnackbar(updateMessageText)
+            snackbarHostState.showSnackbar(com.baraa.masroof.application.locale.AppDigits.display(updateMessageText))
             onClearUpdateMessage()
         }
     }
@@ -92,7 +93,7 @@ fun SettingsAboutScreen(
                 verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
             ) {
             MasroofLogo(
-                size = 72.dp,
+                size = MasroofSizes.size72,
                 contentDescription = null,
             )
             Text(
@@ -123,6 +124,7 @@ fun SettingsAboutScreen(
                 icon = MasroofIcons.periodHint,
                 title = stringResource(R.string.settings_about_privacy_title),
                 body = stringResource(R.string.settings_about_privacy_body),
+                contextualExplanation = true,
             )
             AboutInfoCard(
                 icon = MasroofIcons.externalIn,
@@ -190,23 +192,17 @@ private fun UpdateSectionCard(
     onInstallUpdate: () -> Unit,
 ) {
     MasroofCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             IconLabelRow(
                 icon = MasroofIcons.export,
                 label = stringResource(R.string.settings_updates_title),
                 iconTint = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                stringResource(R.string.settings_updates_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                guidance = stringResource(R.string.settings_updates_hint),
             )
 
-            Text(
-                stringResource(R.string.settings_update_channel_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_update_channel_title),
+                stringResource(R.string.settings_update_channel_hint), style = MaterialTheme.typography.titleSmall,
+                contentColor = MaterialTheme.colorScheme.onSurface)
             UpdateChannelOption(
                 channel = UpdateChannel.STABLE,
                 label = stringResource(R.string.settings_update_channel_stable),
@@ -218,11 +214,6 @@ private fun UpdateSectionCard(
                 label = stringResource(R.string.settings_update_channel_nightly),
                 selectedChannel = updateChannel,
                 onSelectChannel = onSelectUpdateChannel,
-            )
-            Text(
-                stringResource(R.string.settings_update_channel_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             OutlinedTextField(
@@ -265,7 +256,7 @@ private fun UpdateSectionCard(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (updateState is AppUpdateUiState.Checking) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(MasroofSizes.size18))
                 } else {
                     Text(stringResource(R.string.settings_check_updates))
                 }
@@ -282,7 +273,7 @@ private fun UpdateSectionCard(
                     )
 
                 is AppUpdateUiState.Available ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                         Text(
                             stringResource(
                                 R.string.settings_updates_available,
@@ -316,7 +307,7 @@ private fun UpdateSectionCard(
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
                     ) {
                         CircularProgressIndicator(progress = { progress })
                         Text(
@@ -328,7 +319,7 @@ private fun UpdateSectionCard(
                 }
 
                 is AppUpdateUiState.ReadyToInstall ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                         Text(
                             stringResource(
                                 R.string.settings_updates_ready,
@@ -364,7 +355,7 @@ private fun UpdateChannelOption(
                 onClick = { onSelectChannel(channel) },
                 role = Role.RadioButton,
             )
-            .padding(vertical = 4.dp),
+            .padding(vertical = MasroofSpacing.inlineGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(
@@ -374,7 +365,7 @@ private fun UpdateChannelOption(
         Text(
             label,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = MasroofSpacing.cardInnerGap),
         )
     }
 }
@@ -387,7 +378,7 @@ private fun RowActions(
     secondaryLabel: String?,
     onSecondary: (() -> Unit)?,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         Button(
             onClick = onPrimary,
             enabled = primaryEnabled,
@@ -428,11 +419,13 @@ private fun AboutInfoCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     body: String,
+    contextualExplanation: Boolean = false,
 ) {
     MasroofCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconLabelRow(icon = icon, label = title, iconTint = MaterialTheme.colorScheme.primary)
-            Text(
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+            IconLabelRow(icon = icon, label = title, iconTint = MaterialTheme.colorScheme.primary,
+                guidance = body.takeIf { contextualExplanation })
+            if (!contextualExplanation) Text(
                 body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
