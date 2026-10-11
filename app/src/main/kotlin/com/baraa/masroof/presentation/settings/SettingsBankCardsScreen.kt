@@ -11,6 +11,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -46,7 +50,10 @@ fun SettingsBankCardsScreen(
     onDismissLinkDebit: () -> Unit,
     onConfirmLinkDebit: (ManagedCardUi, ManagedAccountUi) -> Unit,
     onMarkDebit: (ManagedCardUi) -> Unit,
+    onOpenBank: (() -> Unit)? = null,
 ) {
+    var referenceTab by rememberSaveable { mutableStateOf("followed") }
+
     val unregisteredCards = state.unregisteredCards.filter { it.bank == bank }
     val followedCards = state.followedCards.filter { it.bank == bank }
     val stoppedCards = state.stoppedCards.filter { it.bank == bank }
@@ -97,7 +104,7 @@ fun SettingsBankCardsScreen(
     )
 
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_bank_cards_title),
+        title = stringResource(R.string.reference_manage_cards),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -110,7 +117,15 @@ fun SettingsBankCardsScreen(
             SettingsScreenHeader(
                 bank = bank,
                 hint = stringResource(R.string.settings_cards_hint),
+                onOpenBank = onOpenBank,
             )
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
+                    "stopped" to R.string.reference_stopped).forEach { (key, label) ->
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
+                }
+            }
+
 
             if (followedCards.isEmpty() && unregisteredCards.isEmpty() && stoppedCards.isEmpty()) {
                 Text(
@@ -120,13 +135,13 @@ fun SettingsBankCardsScreen(
                 )
             }
 
-            if (unregisteredCards.isNotEmpty()) {
+            if (referenceTab == "unconfirmed" && unregisteredCards.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_cards_unregistered))
                 unregisteredCards.forEach { card ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.cardPayment,
                         bank = card.bank,
-                        title = card.displayLabel,
+                        title = registryLabel(card),
                         showBankLabel = false,
                         footer = {
                             CardOwnershipInlinePrompt(
@@ -139,8 +154,8 @@ fun SettingsBankCardsScreen(
                 }
             }
 
-            if (followedCards.isNotEmpty()) {
-                SettingsGroupTitle(stringResource(R.string.settings_cards_followed))
+            if (referenceTab == "followed" && followedCards.isNotEmpty()) {
+
                 if (bankTree != null) {
                     bankTree.creditCards.forEach { card ->
                         SettingsRegistryCardRow(
@@ -182,13 +197,13 @@ fun SettingsBankCardsScreen(
                 }
             }
 
-            if (stoppedCards.isNotEmpty()) {
+            if (referenceTab == "stopped" && stoppedCards.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_cards_stopped))
                 stoppedCards.forEach { card ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.cardPayment,
                         bank = card.bank,
-                        title = card.displayLabel,
+                        title = registryLabel(card),
                         showBankLabel = false,
                         endAction = {
                             SettingsResumeTrackingButton(
@@ -225,15 +240,9 @@ internal fun SettingsRegistryCardRow(
     SettingsRegistryItemCard(
         icon = MasroofIcons.cardPayment,
         bank = card.bank,
-        title = card.displayLabel,
+        title = registryLabel(card),
         showBankLabel = false,
-        endAction = {
-            SettingsStopTrackingButton(
-                onClick = { onRequestStopTracking(card) },
-                enabled = !updating,
-                contentDescription = stringResource(R.string.ownership_action_stop_tracking),
-            )
-        },
+        onTitleClick = { onRenameCard(card) },
         footer = {
             cardSubtitle(card)?.let { subtitle ->
                 Text(
@@ -251,6 +260,8 @@ internal fun SettingsRegistryCardRow(
                 onPickRole = { onPickCardRole(card) },
                 onLinkDebit = { onLinkDebitCard(card) },
                 onMarkDebit = { onMarkDebit(card) },
+                includeRename = false,
+                onStop = { onRequestStopTracking(card) },
             )
         },
     )

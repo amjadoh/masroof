@@ -33,66 +33,14 @@ fun MasroofMoneyRow(
     style: MasroofMoneyRowStyle = MasroofMoneyRowStyle.Neutral,
     leadingIcon: ImageVector? = null,
 ) {
-    val extended = MasroofThemeExtras.extendedColors
-    val (background, borderColor) = when (style) {
-        MasroofMoneyRowStyle.Inflow -> extended.cardSurface to extended.cardBorder
-        MasroofMoneyRowStyle.Outflow -> extended.cardSurface to extended.cardBorder
-        MasroofMoneyRowStyle.Highlight -> extended.highlight to extended.highlightBorder
-        MasroofMoneyRowStyle.Neutral -> extended.miniBackground to extended.cardBorder
-    }
-    val valueColor = when (style) {
-        MasroofMoneyRowStyle.Inflow -> extended.inflow
-        MasroofMoneyRowStyle.Outflow -> extended.outflow
-        MasroofMoneyRowStyle.Highlight -> extended.outflow
+    val colors = MasroofThemeExtras.extendedColors
+    val color = when (style) {
+        MasroofMoneyRowStyle.Inflow -> colors.inflow
+        MasroofMoneyRowStyle.Outflow -> colors.outflow
+        MasroofMoneyRowStyle.Highlight -> colors.liability
         MasroofMoneyRowStyle.Neutral -> MaterialTheme.colorScheme.onSurface
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MasroofRowShape)
-            .background(background)
-            .then(
-                if (borderColor != Color.Transparent) {
-                    Modifier.border(MasroofSpacing.borderWidth, borderColor, MasroofRowShape)
-                } else {
-                    Modifier
-                },
-            )
-            .padding(
-                horizontal = MasroofSpacing.rowHorizontalPadding,
-                vertical = MasroofSpacing.rowVerticalPadding,
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f, fill = false),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(MasroofIconSizes.moneyRowLeading),
-                    tint = valueColor,
-                )
-                Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
-            }
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold),
-            color = valueColor,
-        )
-    }
+    MasroofDetailRow(label, value, modifier, valueColor = color)
 }
 
 @Composable

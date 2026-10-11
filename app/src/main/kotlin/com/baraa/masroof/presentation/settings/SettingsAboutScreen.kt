@@ -16,12 +16,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,6 +59,7 @@ fun SettingsAboutScreen(
     logErrorCount: Int = 0,
     onBack: () -> Unit,
     onOpenLogs: () -> Unit,
+    onOpenUpdates: () -> Unit = {},
     onOpenDesignCatalog: () -> Unit = {},
     onSaveGithubToken: (String) -> Unit,
     onClearGithubToken: () -> Unit,
@@ -69,7 +70,6 @@ fun SettingsAboutScreen(
     onClearUpdateMessage: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    var tokenInput by com.baraa.masroof.presentation.common.rememberSensitiveInput()
     val updateMessageText = updateMessage?.let { resolveUpdateMessage(it) }
 
     LaunchedEffect(updateMessageText) {
@@ -92,34 +92,20 @@ fun SettingsAboutScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
             ) {
-            MasroofLogo(
-                size = MasroofSizes.size72,
-                contentDescription = null,
-            )
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                stringResource(R.string.settings_about_version, appVersion),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (isNightlyBuild) {
-                MasroofBadge(
-                    text = stringResource(R.string.badge_nightly_release),
-                    accent = MasroofCardAccent.Liability,
-                )
+            MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
+                vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                    MasroofLogo(size = com.baraa.masroof.presentation.theme.MasroofReference.aboutLogo, contentDescription = null)
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_about_version, appVersion), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isNightlyBuild) MasroofBadge(stringResource(R.string.badge_nightly_release), MasroofCardAccent.Liability)
+                    Text(stringResource(R.string.settings_about_tagline), style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Text(
-                stringResource(R.string.settings_about_tagline),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             AboutInfoCard(
                 icon = MasroofIcons.periodHint,
                 title = stringResource(R.string.settings_about_privacy_title),
@@ -132,14 +118,6 @@ fun SettingsAboutScreen(
                 body = stringResource(R.string.bank_aljazira),
             )
 
-            SettingsNavRow(
-                icon = MasroofIcons.recentTransactions,
-                title = stringResource(R.string.settings_logs_title),
-                subtitle = stringResource(R.string.settings_logs_subtitle),
-                badgeCount = logErrorCount.takeIf { it > 0 },
-                onClick = onOpenLogs,
-            )
-
             if (BuildConfig.ENABLE_DESIGN_CATALOG) {
                 SettingsNavRow(
                     icon = MasroofIcons.periodHint,
@@ -149,25 +127,13 @@ fun SettingsAboutScreen(
                 )
             }
 
-            UpdateSectionCard(
-                updateChannel = updateChannel,
-                onSelectUpdateChannel = onSelectUpdateChannel,
-                githubTokenConfigured = githubTokenConfigured,
-                tokenInput = tokenInput,
-                onTokenInputChange = { tokenInput = it },
-                onSaveGithubToken = {
-                    onSaveGithubToken(tokenInput)
-                    tokenInput = ""
-                },
-                onClearGithubToken = {
-                    tokenInput = ""
-                    onClearGithubToken()
-                },
-                updateState = updateState,
-                onCheckForUpdates = onCheckForUpdates,
-                onDownloadUpdate = onDownloadUpdate,
-                onInstallUpdate = onInstallUpdate,
-            )
+            MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_updates_title),
+                    stringResource(R.string.settings_updates_hint), MasroofIcons.importBackup, onOpenUpdates)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_logs_title),
+                    stringResource(R.string.settings_logs_subtitle), MasroofIcons.logs, onOpenLogs, divider = false)
+            }
+
             }
         }
         SnackbarHost(
@@ -178,7 +144,7 @@ fun SettingsAboutScreen(
 }
 
 @Composable
-private fun UpdateSectionCard(
+internal fun UpdateSectionCard(
     updateChannel: UpdateChannel,
     onSelectUpdateChannel: (UpdateChannel) -> Unit,
     githubTokenConfigured: Boolean,
@@ -190,183 +156,75 @@ private fun UpdateSectionCard(
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
+    message: AppUpdateMessage? = null,
 ) {
-    MasroofCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            IconLabelRow(
-                icon = MasroofIcons.export,
-                label = stringResource(R.string.settings_updates_title),
-                iconTint = MaterialTheme.colorScheme.primary,
-                guidance = stringResource(R.string.settings_updates_hint),
-            )
-
-            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_update_channel_title),
-                stringResource(R.string.settings_update_channel_hint), style = MaterialTheme.typography.titleSmall,
-                contentColor = MaterialTheme.colorScheme.onSurface)
-            UpdateChannelOption(
-                channel = UpdateChannel.STABLE,
-                label = stringResource(R.string.settings_update_channel_stable),
-                selectedChannel = updateChannel,
-                onSelectChannel = onSelectUpdateChannel,
-            )
-            UpdateChannelOption(
-                channel = UpdateChannel.NIGHTLY,
-                label = stringResource(R.string.settings_update_channel_nightly),
-                selectedChannel = updateChannel,
-                onSelectChannel = onSelectUpdateChannel,
-            )
-
-            OutlinedTextField(
-                value = tokenInput,
-                onValueChange = onTokenInputChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.settings_github_token_label)) },
-                placeholder = { Text(stringResource(R.string.settings_github_token_placeholder)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-            )
-
-            RowActions(
-                primaryLabel = stringResource(R.string.settings_github_token_save),
-                onPrimary = onSaveGithubToken,
-                primaryEnabled = tokenInput.isNotBlank(),
-                secondaryLabel = if (githubTokenConfigured) {
-                    stringResource(R.string.settings_github_token_clear)
-                } else {
-                    null
-                },
-                onSecondary = if (githubTokenConfigured) onClearGithubToken else null,
-            )
-
-            Text(
-                if (githubTokenConfigured) {
-                    stringResource(R.string.settings_github_token_configured)
-                } else {
-                    stringResource(R.string.settings_github_token_missing)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            OutlinedButton(
-                onClick = onCheckForUpdates,
-                enabled = updateState !is AppUpdateUiState.Checking &&
-                    updateState !is AppUpdateUiState.Downloading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (updateState is AppUpdateUiState.Checking) {
-                    CircularProgressIndicator(modifier = Modifier.size(MasroofSizes.size18))
-                } else {
-                    Text(stringResource(R.string.settings_check_updates))
+    val failed = message in setOf(AppUpdateMessage.AUTH_FAILED, AppUpdateMessage.CHECK_FAILED,
+        AppUpdateMessage.DOWNLOAD_FAILED, AppUpdateMessage.INSTALL_FAILED, AppUpdateMessage.TOKEN_REQUIRED)
+    var accessOpen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    MasroofCard {
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_update_channel_title),
+            stringResource(R.string.settings_update_channel_hint), style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+            com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.settings_update_channel_stable),
+                updateChannel == UpdateChannel.STABLE, { onSelectUpdateChannel(UpdateChannel.STABLE) })
+            com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.settings_update_channel_nightly),
+                updateChannel == UpdateChannel.NIGHTLY, { onSelectUpdateChannel(UpdateChannel.NIGHTLY) })
+        }
+    }
+    MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
+        vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            androidx.compose.material3.Icon(if (failed) MasroofIcons.error else when (updateState) {
+                AppUpdateUiState.UpToDate -> MasroofIcons.success
+                AppUpdateUiState.Checking -> MasroofIcons.retry
+                else -> MasroofIcons.importBackup
+            }, null, Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox), tint = MaterialTheme.colorScheme.primary)
+            when (updateState) {
+                AppUpdateUiState.Idle -> Text(if (failed && message != null) resolveUpdateMessage(message)
+                    else stringResource(R.string.reference_update_idle), style = MaterialTheme.typography.titleMedium,
+                    color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                AppUpdateUiState.Checking -> {
+                    Text(stringResource(R.string.reference_update_checking), style = MaterialTheme.typography.titleMedium)
+                    CircularProgressIndicator()
+                }
+                AppUpdateUiState.UpToDate -> Text(stringResource(R.string.settings_updates_up_to_date), style = MaterialTheme.typography.titleMedium)
+                is AppUpdateUiState.Available -> {
+                    Text(stringResource(R.string.settings_updates_available, updateState.manifest.versionName), style = MaterialTheme.typography.titleMedium)
+                    updateState.manifest.releaseNotes?.let { notes -> Text(notes, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Button(onDownloadUpdate, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_download_update)) }
+                }
+                is AppUpdateUiState.Downloading -> {
+                    val progress = if (updateState.totalBytes > 0) updateState.bytesRead.toFloat() / updateState.totalBytes.toFloat() else 0f
+                    Text(stringResource(R.string.reference_update_downloading, (progress.coerceIn(0f, 1f) * 100).toInt()), style = MaterialTheme.typography.titleMedium)
+                    androidx.compose.material3.LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                }
+                is AppUpdateUiState.ReadyToInstall -> {
+                    Text(stringResource(R.string.settings_updates_ready, updateState.manifest.versionName), style = MaterialTheme.typography.titleMedium)
+                    Button(onInstallUpdate, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_install_update)) }
                 }
             }
-
-            when (updateState) {
-                AppUpdateUiState.Idle -> Unit
-                AppUpdateUiState.Checking -> Unit
-                AppUpdateUiState.UpToDate ->
-                    Text(
-                        stringResource(R.string.settings_updates_up_to_date),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-
-                is AppUpdateUiState.Available ->
-                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                        Text(
-                            stringResource(
-                                R.string.settings_updates_available,
-                                updateState.manifest.versionName,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        updateState.manifest.releaseNotes?.let { notes ->
-                            Text(
-                                notes,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Button(
-                            onClick = onDownloadUpdate,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.settings_download_update))
-                        }
-                    }
-
-                is AppUpdateUiState.Downloading -> {
-                    val progress =
-                        if (updateState.totalBytes > 0L) {
-                            updateState.bytesRead.toFloat() / updateState.totalBytes.toFloat()
-                        } else {
-                            0f
-                        }
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-                    ) {
-                        CircularProgressIndicator(progress = { progress })
-                        Text(
-                            stringResource(R.string.settings_downloading_update),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-
-                is AppUpdateUiState.ReadyToInstall ->
-                    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                        Text(
-                            stringResource(
-                                R.string.settings_updates_ready,
-                                updateState.manifest.versionName,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Button(
-                            onClick = onInstallUpdate,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.settings_install_update))
-                        }
-                    }
+            if (updateState !is AppUpdateUiState.Downloading && updateState !is AppUpdateUiState.Checking) {
+                if (updateState is AppUpdateUiState.Available || updateState is AppUpdateUiState.ReadyToInstall) {
+                    OutlinedButton(onCheckForUpdates, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_check_updates)) }
+                } else Button(onCheckForUpdates, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_check_updates)) }
             }
         }
     }
-}
-
-@Composable
-private fun UpdateChannelOption(
-    channel: UpdateChannel,
-    label: String,
-    selectedChannel: UpdateChannel,
-    onSelectChannel: (UpdateChannel) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(
-                selected = channel == selectedChannel,
-                onClick = { onSelectChannel(channel) },
-                role = Role.RadioButton,
-            )
-            .padding(vertical = MasroofSpacing.inlineGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(
-            selected = channel == selectedChannel,
-            onClick = { onSelectChannel(channel) },
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = MasroofSpacing.cardInnerGap),
-        )
+    MasroofCard {
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.reference_update_access),
+            stringResource(R.string.settings_updates_hint), style = MaterialTheme.typography.titleMedium)
+        OutlinedButton({ accessOpen = !accessOpen }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.reference_configure_access)) }
+        if (accessOpen) {
+            OutlinedTextField(tokenInput, onTokenInputChange, Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.settings_github_token_label)) },
+                visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+            RowActions(stringResource(R.string.settings_github_token_save), onSaveGithubToken, tokenInput.isNotBlank(),
+                if (githubTokenConfigured) stringResource(R.string.settings_github_token_clear) else null,
+                if (githubTokenConfigured) onClearGithubToken else null)
+        }
     }
 }
 
@@ -398,7 +256,7 @@ private fun RowActions(
 }
 
 @Composable
-private fun resolveUpdateMessage(message: AppUpdateMessage): String =
+internal fun resolveUpdateMessage(message: AppUpdateMessage): String =
     when (message) {
         AppUpdateMessage.UP_TO_DATE -> stringResource(R.string.settings_updates_up_to_date)
         AppUpdateMessage.UPDATE_AVAILABLE -> stringResource(R.string.settings_updates_available_snackbar)

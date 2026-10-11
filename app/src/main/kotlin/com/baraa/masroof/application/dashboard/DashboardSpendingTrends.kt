@@ -10,6 +10,7 @@ data class DashboardSpendingTrends(
     val creditCards: DailySpendingTrend,
     val byAccount: Map<String, DailySpendingTrend>,
     val byCard: Map<String, DailySpendingTrend>,
+    val debitCards: DailySpendingTrend? = null,
 )
 
 object DashboardSpendingTrendsBuilder {
@@ -43,6 +44,7 @@ object DashboardSpendingTrendsBuilder {
         }
         val cardRows = linkedMapOf<String, List<FinancialTransaction>>()
         val creditKeys = mutableSetOf<String>()
+        val debitKeys = mutableSetOf<String>()
         cards.creditFacilities.facilities.flatMap { it.allCards }.forEach { card ->
             val key = CardTransactionInvolvementResolver.cardKey(card.bank.id, card.last4)
             val container = FinancialContainerIdFactory.cardId(card.bank, card.last4)
@@ -54,16 +56,18 @@ object DashboardSpendingTrendsBuilder {
         }
         cards.creditFacilities.debitCards.forEach { card ->
             val key = CardTransactionInvolvementResolver.cardKey(card.bank.id, card.last4)
+            debitKeys.add(key)
             cardRows[key] = transactions.filter { transaction ->
                 key in cards.transactionDebitSpendInvolvement[transaction.id].orEmpty()
             }
         }
         DashboardSpendingTrends(
             overall = trend(transactions, outflows = true),
-            accounts = trend(accountRows.values.flatten(), outflows = true),
+            accounts = trend(accountRows.values.flatten()),
             creditCards = trend(creditKeys.flatMap { cardRows[it].orEmpty() }),
-            byAccount = accountRows.mapValues { trend(it.value, outflows = true) },
+            byAccount = accountRows.mapValues { trend(it.value) },
             byCard = cardRows.mapValues { trend(it.value) },
+            debitCards = trend(debitKeys.flatMap { cardRows[it].orEmpty() }),
         )
     }
 }

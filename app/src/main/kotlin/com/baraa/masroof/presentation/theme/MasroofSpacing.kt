@@ -14,7 +14,7 @@ object MasroofSpacing {
     val screenHorizontal = 16.dp
     val screenVertical = 16.dp
     val screenPaddingLarge = 24.dp
-    val sectionGap = 12.dp
+    val sectionGap = MasroofReference.sectionGap
     val sectionHeaderGap = 8.dp
     val cardInnerGap = 8.dp
     val listItemGap = 8.dp
@@ -45,9 +45,9 @@ object MasroofSpacing {
     val customizeButtonRadius = 10.dp
     val customizeButtonVerticalPadding = 7.dp
     val inlineGap = 4.dp
-    val chartHeight = 208.dp
+    val chartHeight = MasroofReference.chartHeight
     val chartVerticalPadding = 12.dp
-    val chartLineWidth = 2.dp
+    val chartLineWidth = MasroofReference.chartStroke
     val chartPointRadius = 3.dp
     val donutChartSize = 96.dp
     val donutChartSizeLarge = 128.dp

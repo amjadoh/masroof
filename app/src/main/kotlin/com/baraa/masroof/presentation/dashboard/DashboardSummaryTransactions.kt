@@ -117,13 +117,14 @@ fun DashboardSummaryTransactionsSection(
     onViewAll: (() -> Unit)? = null,
     ownedCards: List<OwnedCardUi> = emptyList(),
     modifier: Modifier = Modifier,
+    title: String? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
     ) {
         MasroofSectionHeader(
-            title = stringResource(R.string.dashboard_summary_transactions_title, transactions.size),
+            title = title ?: stringResource(R.string.dashboard_summary_transactions_title, transactions.size),
             onViewAll = if (onViewAll != null && transactions.isNotEmpty()) onViewAll else null,
             viewAllLabel = if (onViewAll != null && transactions.isNotEmpty()) {
                 stringResource(R.string.dashboard_summary_view_all_transactions)
@@ -138,12 +139,14 @@ fun DashboardSummaryTransactionsSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
+            com.baraa.masroof.presentation.common.MasroofCard {
             transactions.forEach { row ->
                 TransactionPreviewRow(
                     row = row,
                     ownedCards = ownedCards,
                     onClick = { onOpenTransaction(row.id) },
                 )
+            }
             }
         }
     }

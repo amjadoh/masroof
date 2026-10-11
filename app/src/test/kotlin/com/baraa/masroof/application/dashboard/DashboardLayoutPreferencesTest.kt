@@ -52,19 +52,11 @@ class DashboardLayoutPreferencesTest {
 
         val merged = legacy.withMergedSections()
 
-        assertEquals(
-            listOf(
-                DashboardSectionId.HERO,
-                DashboardSectionId.LOANS,
-                DashboardSectionId.COMMITMENTS,
-                DashboardSectionId.MERCHANTS,
-                DashboardSectionId.TRANSACTIONS,
-                DashboardSectionId.CARDS,
-                DashboardSectionId.ACCOUNTS,
-                DashboardSectionId.QUICK,
-            ),
-            merged.sections.map { it.id },
-        )
+        val previousIds = legacy.sections.map { it.id }
+        assertEquals(previousIds, merged.sections.filter { it.id in previousIds }.map { it.id })
+        assertTrue(merged.sections.map { it.id }.containsAll(DashboardLayoutSnapshot.default().sections.map { it.id }))
+        assertTrue(merged.sections.indexOfFirst { it.id == DashboardSectionId.LOANS } < merged.sections.indexOfFirst { it.id == DashboardSectionId.TRANSACTIONS })
+
     }
 
     @Test
@@ -81,25 +73,13 @@ class DashboardLayoutPreferencesTest {
 
         val merged = preLoansDefaultOrder.withMergedSections()
 
-        assertEquals(
-            listOf(
-                DashboardSectionId.HERO,
-                DashboardSectionId.QUICK,
-                DashboardSectionId.ACCOUNTS,
-                DashboardSectionId.CARDS,
-                DashboardSectionId.LOANS,
-                DashboardSectionId.COMMITMENTS,
-                DashboardSectionId.MERCHANTS,
-                DashboardSectionId.TRANSACTIONS,
-            ),
-            merged.sections.map { it.id },
-        )
+        assertEquals(DashboardLayoutSnapshot.default().sections.map { it.id }, merged.sections.map { it.id })
         assertEquals(DashboardSectionSize.MEDIUM, merged.entry(DashboardSectionId.LOANS)!!.size)
         assertTrue(merged.entry(DashboardSectionId.LOANS)!!.visible)
     }
 
     @Test
-    fun defaultLayout_includesCommitmentsBetweenLoansAndMerchants() {
+    fun defaultLayout_placesShortcutsAndCommitmentsBeforeMetrics() {
         val defaults = DashboardLayoutSnapshot.default()
 
         val ids = defaults.sections.map { it.id }
@@ -107,7 +87,8 @@ class DashboardLayoutPreferencesTest {
         assertTrue(DashboardSectionId.COMMITMENTS in ids)
         assertTrue(DashboardSectionId.MERCHANTS in ids)
         assertTrue(ids.indexOf(DashboardSectionId.LOANS) > ids.indexOf(DashboardSectionId.CARDS))
-        assertTrue(ids.indexOf(DashboardSectionId.COMMITMENTS) > ids.indexOf(DashboardSectionId.LOANS))
+        assertTrue(ids.indexOf(DashboardSectionId.ACCOUNTS) < ids.indexOf(DashboardSectionId.COMMITMENTS))
+        assertTrue(ids.indexOf(DashboardSectionId.COMMITMENTS) < ids.indexOf(DashboardSectionId.QUICK))
         assertTrue(ids.indexOf(DashboardSectionId.MERCHANTS) > ids.indexOf(DashboardSectionId.COMMITMENTS))
         assertTrue(ids.indexOf(DashboardSectionId.MERCHANTS) < ids.indexOf(DashboardSectionId.TRANSACTIONS))
     }

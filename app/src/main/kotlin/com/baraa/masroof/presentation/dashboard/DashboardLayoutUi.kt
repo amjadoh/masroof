@@ -15,6 +15,7 @@ fun Modifier.dashboardSectionFrame(
     size: DashboardSectionSize,
     editing: Boolean,
 ): Modifier {
+    if (!editing) return this
     val extended = MasroofThemeExtras.extendedColors
     val padding = when (size) {
         DashboardSectionSize.SMALL -> MasroofSpacing.none

@@ -8,11 +8,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -91,33 +92,14 @@ fun StatementReconciliationScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap),
-            ) {
-                Icon(
-                    imageVector = MasroofIcons.recentTransactions,
-                    contentDescription = null,
-                    modifier = Modifier.size(MasroofIconSizes.lg),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = stringResource(R.string.settings_statement_reconciliation_intro),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = stringResource(R.string.settings_statement_reconciliation_limits),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(
-                onClick = onPickFile,
-                enabled = !state.busy,
-                modifier = Modifier.testTag(STATEMENT_RECONCILIATION_PICK_TAG),
-            ) {
-                Text(stringResource(R.string.settings_statement_pick_file))
+            MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_statement_reconciliation_title),
+                    stringResource(R.string.settings_statement_reconciliation_intro), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.settings_statement_reconciliation_limits), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onPickFile, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag(STATEMENT_RECONCILIATION_PICK_TAG)) {
+                    Text(stringResource(R.string.settings_statement_pick_file))
+                }
             }
             if (state.busy) {
                 CircularProgressIndicator()

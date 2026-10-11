@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
@@ -75,7 +76,7 @@ class HardeningJourneySmokeTest {
     @Test
     fun reviewCorrection_persistsChosenTypeAndReloads() {
         openReviewQueue()
-        clickText(JourneyFixtures.CORRECTION_BODY, scroll = true)
+        clickText(text(R.string.reference_review_evidence), scroll = true)
         clickTag(reviewResolveTypeTestTag(FinancialTransactionType.EXPENSE))
         waitUntil("review queue empty or action failure") {
             textExists(text(R.string.review_empty)) ||
@@ -101,7 +102,7 @@ class HardeningJourneySmokeTest {
         openReviewQueue()
         awaitText(text(R.string.review_empty), scroll = false)
         clickText(text(R.string.review_tab_ignored))
-        clickText(JourneyFixtures.RESTORE_BODY, scroll = true)
+        clickText(text(R.string.reference_review_evidence), scroll = true)
         clickTag(REVIEW_RESTORE_AS_IS_TEST_TAG)
         waitUntil("ignored list empty or restore failure") {
             textExists(text(R.string.review_ignored_empty)) ||
@@ -123,31 +124,25 @@ class HardeningJourneySmokeTest {
     }
 
     private fun awaitFinancialShell() {
-        awaitText(text(R.string.dashboard_empty_period), scroll = true)
+        waitUntil("financial navigation is ready") {
+            contentDescriptionExists(text(R.string.dashboard_open_settings)) &&
+                contentDescriptionExists(text(R.string.approved_nav_home))
+        }
         assertBlockedScreenAbsent()
+        composeRule.onNodeWithContentDescription(text(R.string.approved_nav_home))
+            .assertIsDisplayed().assertIsSelected()
         composeRule.onNodeWithContentDescription(text(R.string.dashboard_open_settings))
             .assertIsDisplayed()
     }
 
     private fun openReviewQueue() {
-        val settings = text(R.string.dashboard_open_settings)
-        waitUntil("settings action") { contentDescriptionExists(settings) }
-        composeRule.onNodeWithContentDescription(settings).performClick()
-        clickText(text(R.string.settings_hub_review_title), scroll = true)
+        clickText(text(R.string.approved_nav_review))
         awaitText(text(R.string.review_title), scroll = false)
     }
 
     private fun returnToDashboard() {
-        pressBack()
-        awaitText(text(R.string.settings_title), scroll = false)
-        pressBack()
+        clickText(text(R.string.approved_nav_home))
         composeRule.waitForIdle()
-    }
-
-    private fun pressBack() {
-        composeRule.activityRule.scenario.onActivity { activity ->
-            activity.onBackPressedDispatcher.onBackPressed()
-        }
     }
 
     private fun awaitText(value: String, scroll: Boolean) {

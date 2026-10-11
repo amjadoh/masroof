@@ -1,54 +1,42 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.baraa.masroof.presentation.common.MasroofText as Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
+import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.presentation.theme.MasroofShapes
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 
 @Composable
-fun ReviewNotificationIconButton(
-    reviewCount: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val layoutDirection = LocalLayoutDirection.current
-    // TopStart flips with locale: top-left in English (LTR), top-right in Arabic (RTL).
-    val badgeOffsetX = if (layoutDirection == LayoutDirection.Rtl) (-4).dp else MasroofSpacing.inlineGap
-
-    Box(modifier = modifier.size(MasroofSpacing.heroIconSize)) {
-        IconButton(onClick = onClick, modifier = Modifier.matchParentSize()) {
-            Icon(
-                imageVector = MasroofIcons.notifications,
-                contentDescription = if (reviewCount > 0) {
-                    stringResource(R.string.notification_center_badge_count, reviewCount)
-                } else {
-                    stringResource(R.string.notification_center_title)
-                },
-            )
+fun ReviewNotificationIconButton(reviewCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = MasroofThemeExtras.extendedColors
+    Box(modifier.size(MasroofReference.iconButton)) {
+        Surface(onClick = onClick, modifier = Modifier.matchParentSize(), shape = MasroofShapes.small,
+            border = BorderStroke(MasroofSpacing.borderWidth, colors.cardBorder)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(MasroofIcons.notifications,
+                    if (reviewCount > 0) stringResource(R.string.notification_center_badge_count, reviewCount)
+                    else stringResource(R.string.notification_center_title),
+                    Modifier.size(MasroofReference.icon))
+            }
         }
-        if (reviewCount > 0) {
-            Badge(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = badgeOffsetX, y = MasroofSpacing.smallGap),
-            ) {
-                Text(
-                    if (reviewCount > 99) "99+" else reviewCount.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+        if (reviewCount > 0) Surface(modifier = Modifier.align(Alignment.TopEnd)
+            .offset(x = MasroofReference.notificationOffsetX, y = MasroofReference.notificationOffsetY)
+            .size(MasroofReference.notificationBadge), shape = MasroofShapes.extraLarge,
+            color = colors.liability, contentColor = if (MaterialTheme.colorScheme.background == com.baraa.masroof.presentation.theme.MasroofDarkColors.Background)
+                colors.liabilitySoft else MaterialTheme.colorScheme.surface) {
+            Box(contentAlignment = Alignment.Center) {
+                MasroofText(if (reviewCount > 99) "99+" else reviewCount.toString(), style = MasroofReference.notificationCount)
             }
         }
     }

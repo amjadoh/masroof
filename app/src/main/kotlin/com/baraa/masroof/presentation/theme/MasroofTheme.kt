@@ -78,6 +78,7 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer = MasroofDarkColors.OnErrorContainer,
 )
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MasroofTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -106,6 +107,7 @@ fun MasroofTheme(
     CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,
         LocalMasroofExtendedColors provides extendedColors,
+        androidx.compose.material3.LocalMinimumInteractiveComponentEnforcement provides false,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

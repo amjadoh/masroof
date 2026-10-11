@@ -36,6 +36,30 @@ class DatabaseBackupEncryptionTest {
     private val card = CardReference(Bank.BANK_ALJAZIRA, "7271")
     private val passphrase = "passphrase-DO-NOT-LOG-7f3a".toCharArray()
 
+    @Test
+    fun previewAuthenticatesWithoutClosingOrReplacingData_andWipesSecrets() = runBlocking {
+        val live = openDatabase()
+        try {
+            insertProbe(live)
+            val destination = File(context.cacheDir, "preview-only.masroof")
+            val closed = AtomicBoolean(false)
+            val verifier = service(live, closeDatabase = { closed.set(true) })
+            assertTrue(verifier.exportTo(Uri.fromFile(destination), passphrase.copyOf()).isSuccess)
+            val before = digest(context.getDatabasePath(MasroofDatabase.NAME))
+            val secret = passphrase.copyOf()
+            assertEquals(BackupVerificationOutcome.VERIFIED, verifier.verify(Uri.fromFile(destination), secret))
+            assertTrue(secret.all { it == '\u0000' })
+            assertFalse(closed.get())
+            assertTrue(live.isOpen)
+            assertEquals(before, digest(context.getDatabasePath(MasroofDatabase.NAME)))
+            assertFalse(onboardingCompleted())
+            assertEquals(BackupVerificationOutcome.AUTHENTICATION_FAILED,
+                verifier.verify(Uri.fromFile(destination), "incorrect-password".toCharArray()))
+            assertFalse(closed.get())
+            assertEquals(before, digest(context.getDatabasePath(MasroofDatabase.NAME)))
+        } finally { live.close() }
+    }
+
     @Before
     fun resetStorage() {
         context.deleteDatabase(MasroofDatabase.NAME)

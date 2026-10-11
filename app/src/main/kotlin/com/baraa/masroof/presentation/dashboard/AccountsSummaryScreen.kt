@@ -96,7 +96,7 @@ fun AccountsSummaryScreen(
             )
 
             SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
-                explanation = stringResource(R.string.approved_expense_basis))
+                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
             AccountsSummaryHeader(
                 accountCount = state.ownedAccounts.size,
                 onManageAccounts = onManageAccounts,
@@ -163,11 +163,7 @@ private fun AccountsSummaryHeader(
     accountCount: Int,
     onManageAccounts: () -> Unit,
 ) {
-    MasroofSectionHeader(
-        title = stringResource(R.string.dashboard_accounts_count_label, accountCount),
-        trailingLabel = stringResource(R.string.dashboard_manage_accounts),
-        onTrailingClick = onManageAccounts,
-    )
+    MasroofSectionHeader(title = stringResource(R.string.reference_followed_accounts))
 }
 
 private fun resolveOwnedAccountUi(
@@ -183,10 +179,9 @@ private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> U
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
     EntitySummaryCard(account.displayLabel(), "",
         MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick,
-        guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint)) {
-        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable)
-        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_inflow), movement?.inflow?.let { formatLocalizedMoney(it) } ?: unavailable)
-        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_spent), movement?.outflow?.let { formatLocalizedMoney(it) } ?: unavailable)
-        trend?.let { com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_daily_average), formatLocalizedMoney(it.averageDailySpending)) }
+        guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint), actionLabel = stringResource(R.string.reference_account_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank)) {
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_inflow), movement?.inflow?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_spent), movement?.outflow?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
     }
 }

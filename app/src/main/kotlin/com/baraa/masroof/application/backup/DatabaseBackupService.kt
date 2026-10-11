@@ -132,6 +132,52 @@ class DatabaseBackupService(
         }.getOrDefault(BackupPackageKind.UNRECOGNIZED)
     }
 
+    override suspend fun verify(source: Uri, passphrase: CharArray): BackupVerificationOutcome {
+        var staging: File? = null
+        return try {
+            withContext(Dispatchers.IO) {
+                operationMutex.withLock {
+                    val directory = createStagingDir("verify")
+                    staging = directory
+                    val plainZip = createOwnerOnlyFile(directory, "decrypted-package.zip")
+                    val raw = appContext.contentResolver.openInputStream(source)
+                        ?: return@withLock BackupVerificationOutcome.INVALID_PACKAGE
+                    raw.use { input ->
+                        FileOutputStream(plainZip).use { output ->
+                            BackupEnvelope.decrypt(input, output, passphrase,
+                                maxPlaintextBytes = archiveLimits.maxTotalUncompressedBytes)
+                        }
+                    }
+                    FileInputStream(plainZip).use { extractValidated(it, directory) }
+                    val manifest = BackupPackageCodec.decodeManifest(File(directory, BackupPackageFormat.MANIFEST_ENTRY).readText())
+                    if (!BackupPackageCodec.validateManifestForImport(manifest, MasroofDatabase.VERSION,
+                            MasroofDatabase.IDENTITY_HASH, MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS)) {
+                        return@withLock BackupVerificationOutcome.INVALID_PACKAGE
+                    }
+                    val expected = BackupPackageCodec.expectedIdentityHashForImport(manifest, MasroofDatabase.VERSION,
+                        MasroofDatabase.IDENTITY_HASH, MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS)
+                    if (expected == null || readIdentityHash(File(directory, BackupPackageFormat.DATABASE_ENTRY)) != expected) {
+                        return@withLock BackupVerificationOutcome.INVALID_PACKAGE
+                    }
+                    BackupPackageCodec.decodePreferences(File(directory, BackupPackageFormat.PREFERENCES_ENTRY).readText())
+                    BackupVerificationOutcome.VERIFIED
+                }
+            }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (failure: BackupFailureException) {
+            if (failure.category == BackupFailureCategory.AUTHENTICATION_FAILED) BackupVerificationOutcome.AUTHENTICATION_FAILED
+            else BackupVerificationOutcome.INVALID_PACKAGE
+        } catch (_: Exception) {
+            BackupVerificationOutcome.FAILED
+        } finally {
+            passphrase.fill('\u0000')
+            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) {
+                staging?.let(SensitiveFileCleanup::delete)
+            }
+        }
+    }
+
     override suspend fun importFrom(
         source: Uri,
         passphrase: CharArray,

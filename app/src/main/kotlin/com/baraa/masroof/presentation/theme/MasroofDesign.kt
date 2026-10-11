@@ -20,6 +20,7 @@ object MasroofDesign {
     val iconSizes = MasroofIconSizes
     val elevation = MasroofElevation
     val guidance = MasroofGuidanceStyle
+    val reference = MasroofReference
 }
 
 /** One geometry and visual policy for all contextual explanations. */

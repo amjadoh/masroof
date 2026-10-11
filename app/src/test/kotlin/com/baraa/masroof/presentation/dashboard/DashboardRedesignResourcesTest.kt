@@ -29,9 +29,9 @@ class DashboardRedesignResourcesTest {
         assertEquals("Outflow details", context.getString(R.string.dashboard_expense_details_title))
         assertEquals("Inflow details", context.getString(R.string.dashboard_income_details_title))
         assertEquals("View all ›", context.getString(R.string.dashboard_view_all))
-        assertEquals("Accounts summary", context.getString(R.string.dashboard_accounts_summary_screen_title))
-        assertEquals("Cards summary", context.getString(R.string.dashboard_cards_summary_screen_title))
-        assertEquals("Loans summary", context.getString(R.string.dashboard_loans_summary_screen_title))
+        assertEquals("Accounts", context.getString(R.string.dashboard_accounts_summary_screen_title))
+        assertEquals("Cards", context.getString(R.string.dashboard_cards_summary_screen_title))
+        assertEquals("Loans", context.getString(R.string.dashboard_loans_summary_screen_title))
         assertEquals("Manage accounts", context.getString(R.string.dashboard_manage_accounts))
         assertEquals("Manage cards", context.getString(R.string.dashboard_manage_cards))
         assertEquals("Manage loans", context.getString(R.string.dashboard_manage_loans))
@@ -55,7 +55,7 @@ class DashboardRedesignResourcesTest {
         assertEquals("تخصيص", context.getString(R.string.dashboard_customize))
         assertEquals("تخصيص الشاشة الرئيسية", context.getString(R.string.dashboard_customize_sheet_title))
         assertEquals("ملخص القروض", context.getString(R.string.dashboard_customize_section_loans))
-        assertEquals("تفاصيل المخرجات", context.getString(R.string.dashboard_expense_details_title))
+        assertEquals("تفاصيل الصادر", context.getString(R.string.dashboard_expense_details_title))
     }
 
     @Test
