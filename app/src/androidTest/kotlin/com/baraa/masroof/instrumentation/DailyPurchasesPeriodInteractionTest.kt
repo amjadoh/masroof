@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -201,21 +202,19 @@ class DailyPurchasesPeriodInteractionTest {
 
     private fun assertAverageLine(trend: DailySpendingTrend, dark: Boolean) {
         val bitmap = compose.onNodeWithTag("daily-expenses-chart").captureToImage().asAndroidBitmap()
-        val density = compose.activity.resources.displayMetrics.density
+        val density = bitmap.height / MasroofReference.chartHeight.value
         val range = MasroofLineChart.referenceRange(trend.points.map { it.spending.amount } + trend.averageDailySpending.amount)
         val plotHeight = bitmap.height - (MasroofReference.chartTop.value + MasroofReference.chartBottom.value) * density
         val fraction = trend.averageDailySpending.amount.subtract(range.minimum).toFloat() / range.span.toFloat()
-        val y = (MasroofReference.chartTop.value * density + plotHeight * (1 - fraction)).toInt()
-        val expected = if (dark) 168 else 107
-        var hits = 0
-        for (x in (MasroofReference.chartLeft.value * density).toInt() until bitmap.width - (MasroofReference.chartRight.value * density).toInt()) {
-            val color = bitmap.getPixel(x, y.coerceIn(0, bitmap.height - 1))
-            val r = android.graphics.Color.red(color)
-            val g = android.graphics.Color.green(color)
-            if (kotlin.math.abs(r - expected) < 20 && kotlin.math.abs(g - r) < 20) hits++
+        val y = MasroofReference.chartTop.value * density + plotHeight * (1 - fraction)
+        val foreground = (if (dark) MasroofDarkColors.OnSurfaceVariant else MasroofLightColors.OnSurfaceVariant).toArgb()
+        val background = (if (dark) MasroofDarkColors.Surface else MasroofLightColors.Surface).toArgb()
+        try {
+            assertTrue("Average line must have the correct position, stroke coverage and dash pattern: density=$density y=$y",
+                AverageLinePixels.matches(bitmap, y, foreground, background))
+        } finally {
+            bitmap.recycle()
         }
-        assertTrue("The horizontal average line must be drawn at the computed value: $hits", hits > 30)
-        bitmap.recycle()
     }
 
     private fun capture(name: String) {

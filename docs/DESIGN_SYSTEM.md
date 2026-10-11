@@ -135,6 +135,14 @@ not a separately approved source. Native functional tests do not prove pixel fid
 Only reviewed screenshots support visual assertions. Do not modify the approved
 prototype to conceal implementation discrepancies.
 
+Average-line raster assertions integrate foreground coverage across the physical
+stroke band and verify its weighted center and dash gaps. A thin antialiased
+stroke need not contain a fully opaque pixel in a single rounded row at 1x.
+`AverageLinePixelContractTest` checks subpixel phases in both themes at multiple
+densities and rejects missing, shifted, solid, wrong-color and wrong-width lines.
+The production Home interaction test uses this same pixel contract against the
+actual captured chart, with the expected mean independently computed from its data.
+
 Reference measurements use the final computed CSS cascade, including inherited
 button typography. Lucide outline icons and the original approved logo are reused
 through shared components. Contextual guidance and screen-reader chart navigation
