@@ -104,7 +104,7 @@ fun DashboardRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardScreen(
+internal fun DashboardScreen(
     state: DashboardUiState,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -320,7 +320,7 @@ private fun DashboardCustomizableSections(
                 DashboardSectionId.CARDS, DashboardSectionId.LOANS -> Unit
 
                 DashboardSectionId.COMMITMENTS -> {
-                    CommitmentsSection(overview = state.commitmentsOverview)
+                    CommitmentsSection(overview = state.commitmentsOverview, onOpenCredit = onOpenCardsSummary)
                 }
 
                 DashboardSectionId.MERCHANTS -> {
@@ -375,14 +375,13 @@ private fun DashboardCustomizableSections(
                             )
                         }
                     } else {
-                        state.recentTransactions.forEach { row ->
-                            TransactionPreviewRow(
-                                row = row,
-                                ownedCards = state.ownedCards,
-                                onClick = { onOpenTransaction(row.id) },
-                            )
-                            Spacer(Modifier.height(MasroofSpacing.listItemGap))
+                        com.baraa.masroof.presentation.common.MasroofCard {
+                            state.recentTransactions.forEach { row ->
+                                TransactionPreviewRow(row = row, ownedCards = state.ownedCards,
+                                    onClick = { onOpenTransaction(row.id) })
+                            }
                         }
+
                     }
                 }
             }

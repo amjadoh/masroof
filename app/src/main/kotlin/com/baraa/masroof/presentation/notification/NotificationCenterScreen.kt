@@ -4,6 +4,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -48,7 +50,7 @@ fun NotificationCenterRoute(
 }
 
 @Composable
-private fun NotificationCenterScreen(
+internal fun NotificationCenterScreen(
     state: NotificationCenterUiState,
     onBack: () -> Unit,
     onOpenNotification: (NotificationItem) -> Unit,
@@ -87,17 +89,17 @@ private fun NotificationCenterScreen(
             }
 
             else -> {
-                LazyColumn(
-                    modifier = contentModifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-                ) {
-                    items(state.items, key = { it.id }) { item ->
-                        NotificationCenterRow(
-                            item = item,
-                            onClick = { onOpenNotification(item) },
-                        )
+                Column(contentModifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    com.baraa.masroof.presentation.common.MasroofCard {
+                        Text(stringResource(R.string.notification_center_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.notification_center_badge_count, state.unreadCount),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.items.forEachIndexed { index, item ->
+                            NotificationCenterRow(item, { onOpenNotification(item) }, index != state.items.lastIndex)
+                        }
                     }
                 }
+
             }
         }
     }
@@ -107,13 +109,16 @@ private fun NotificationCenterScreen(
 private fun NotificationCenterRow(
     item: NotificationItem,
     onClick: () -> Unit,
+    divider: Boolean = true,
 ) {
-    SettingsNavRow(
+    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(
         icon = notificationIcon(item.type),
         title = notificationTitle(item),
         subtitle = notificationSubtitle(item),
         onClick = onClick,
-        badgeCount = if (item.isRead) null else 1,
+        divider = divider,
+        status = if (item.isRead) null else stringResource(R.string.reference_unread),
+        showChevron = false,
     )
 }
 

@@ -83,9 +83,9 @@ fun MasroofRoot(
     var generation by rememberSaveable { mutableStateOf(0) }
     fun navigate(destination: HomeDestination) { requested = destination; generation++ }
     Column(Modifier.fillMaxSize()) {
-        if (onboarding.step == OnboardingStep.HOME) {
+        run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
-                ReviewNotificationIconButton(reviewCount = notifications.unreadCount,
+                if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount,
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
         }
@@ -110,32 +110,18 @@ fun MasroofRoot(
             )
         }
         if (onboarding.step == OnboardingStep.HOME) {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = MasroofElevation.navCard) {
-                val entries = listOf(
-                    Triple(HomeDestination.Dashboard, R.string.approved_nav_home, MasroofIcons.appLogo),
-                    Triple(HomeDestination.AllTransactions, R.string.approved_nav_transactions, MasroofIcons.recentTransactions),
-                    Triple(HomeDestination.Review, R.string.approved_nav_review, MasroofIcons.reviewQueue),
-                    Triple(HomeDestination.Settings, R.string.approved_nav_settings, MasroofIcons.settings),
-                )
-                entries.forEach { (destination, label, icon) ->
-                    val accessibilityLabel = stringResource(if (destination == HomeDestination.Settings)
-                        R.string.dashboard_open_settings else label)
-                    NavigationBarItem(
-                        modifier = Modifier.semantics { contentDescription = accessibilityLabel },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        ),
-                        selected = selected == destination || (destination == HomeDestination.Dashboard &&
-                            selected !in listOf(HomeDestination.AllTransactions, HomeDestination.Review, HomeDestination.Settings)),
-                        onClick = { navigate(destination) },
-                        icon = { Icon(icon, contentDescription = null) },
-                        label = { Text(stringResource(label)) },
-                    )
-                }
-            }
+            val entries = listOf(
+                Triple(HomeDestination.Dashboard, R.string.approved_nav_home, MasroofIcons.dashboard),
+                Triple(HomeDestination.AllTransactions, R.string.approved_nav_transactions, MasroofIcons.recentTransactions),
+                Triple(HomeDestination.Review, R.string.approved_nav_review, MasroofIcons.reviewQueue),
+                Triple(HomeDestination.Settings, R.string.approved_nav_settings, MasroofIcons.settings),
+            )
+            com.baraa.masroof.presentation.common.MasroofBottomNavigation(entries.map { (destination, label, icon) ->
+                com.baraa.masroof.presentation.common.MasroofNavigationItem(stringResource(label), icon,
+                    selected == destination,
+                    stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label))
+            }) { index -> navigate(entries[index].first) }
+
         }
     }
 }
@@ -262,6 +248,8 @@ private fun MasroofContent(
                 homeDestination == HomeDestination.NotificationCenter ->
                     homeDestination = HomeDestination.Dashboard
 
+                homeDestination == HomeDestination.DailyExpenses -> homeDestination = HomeDestination.MerchantsSummary
+
                 homeDestination == HomeDestination.Settings -> {
                     homeDestination = settingsReturnDestination
                     dashboardViewModel.refresh()
@@ -309,7 +297,7 @@ private fun MasroofContent(
                 onOpenAllTransactions = { openTransactionList() },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenSettings = { openSettings() },
-                onOpenCommitments = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.MyCommitments)) },
+                onOpenCommitments = { homeDestination = HomeDestination.CommitmentsSummary },
                 onManageCardsInSettings = {
                     openSettings(
                         launch = resolveManageSettingsLaunch(
@@ -428,6 +416,7 @@ private fun MasroofContent(
             HomeDestination.MerchantsSummary -> MerchantSpendingSummaryRoute(
                 viewModel = dashboardViewModel,
                 onBack = { homeDestination = HomeDestination.Dashboard },
+                onOpenDaily = { homeDestination = HomeDestination.DailyExpenses },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenAllTransactions = { filter ->
                     openTransactionList(
@@ -436,6 +425,28 @@ private fun MasroofContent(
                     )
                 },
             )
+            HomeDestination.CommitmentsSummary -> com.baraa.masroof.presentation.dashboard.CommitmentsSummaryScreen(
+                dashboardState, { homeDestination = HomeDestination.Dashboard }, { row ->
+                    when (row.source) {
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.CREDIT_CARD -> {
+                            pendingCardsSummaryCardKey = row.creditFacilityKey
+                            cardsSummaryDetailExitsToHome = true
+                            homeDestination = HomeDestination.CardsSummary
+                        }
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.LOAN -> {
+                            pendingLoansSummaryLoanKey = row.loanKey
+                            loansSummaryDetailExitsToHome = true
+                            homeDestination = HomeDestination.LoansSummary
+                        }
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.USER -> row.userCommitmentId?.let { id ->
+                            openSettings(returnTo = HomeDestination.CommitmentsSummary,
+                                launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
+                        }
+                    }
+                })
+            HomeDestination.DailyExpenses -> com.baraa.masroof.presentation.dashboard.DailyExpensesScreen(
+                state = dashboardState, onBack = { homeDestination = HomeDestination.MerchantsSummary },
+                onOpenTransaction = dashboardViewModel::openTransactionDetail)
             HomeDestination.NotificationCenter -> NotificationCenterRoute(
                 viewModel = notificationCenterViewModel,
                 externalState = notificationExternalState,

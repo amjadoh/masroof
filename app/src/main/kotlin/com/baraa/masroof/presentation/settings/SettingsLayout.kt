@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.settings
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
@@ -32,9 +34,22 @@ fun SettingsScreenHeader(
     bank: Bank,
     hint: String,
     modifier: Modifier = Modifier,
+    onOpenBank: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier) {
-        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(settingsBankLabel(bank), hint,
-            style = MasroofTextStyles.screenLabel, contentColor = MaterialTheme.colorScheme.primary)
+    com.baraa.masroof.presentation.common.MasroofCard(modifier.then(if (onOpenBank != null) Modifier.clickable(onClick = onOpenBank) else Modifier)) {
+        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
+            androidx.compose.material3.Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
+                color = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.accountSoft) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox),
+                    contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    androidx.compose.material3.Icon(com.baraa.masroof.presentation.common.MasroofIcons.moneyMovement, null,
+                        androidx.compose.ui.Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon),
+                        tint = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.account)
+                }
+            }
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(settingsBankLabel(bank), hint,
+                style = MasroofTextStyles.screenLabel, contentColor = MaterialTheme.colorScheme.onSurface)
+        }
     }
 }

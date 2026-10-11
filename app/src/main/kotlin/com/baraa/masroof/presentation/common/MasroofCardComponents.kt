@@ -37,6 +37,7 @@ import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 @Composable
 fun MasroofCard(
     modifier: Modifier = Modifier,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(MasroofSpacing.cardInnerPadding + MasroofSpacing.borderWidth),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val extended = MasroofThemeExtras.extendedColors
@@ -62,7 +63,7 @@ fun MasroofCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(MasroofSpacing.cardInnerPadding),
+                    .padding(contentPadding),
                 content = content,
             )
         }
@@ -103,6 +104,7 @@ fun MasroofBadge(
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun MasroofCompactCard(
     label: String,
@@ -115,77 +117,10 @@ fun MasroofCompactCard(
     contentPadding: androidx.compose.ui.unit.Dp = MasroofSpacing.compactCardContentPadding,
     clickable: Boolean = false,
     onClick: (() -> Unit)? = null,
+    guidance: String? = null,
 ) {
-    val extended = MasroofThemeExtras.extendedColors
-    Card(
-        modifier = modifier
-            .heightIn(min = MasroofSpacing.compactCardMinHeight)
-            .then(
-                if (clickable && onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
-            ),
-        shape = MasroofCardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = extended.navCardSurface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = MasroofSpacing.none),
-        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, extended.navCardBorder),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = contentPadding, vertical = contentPadding + MasroofSpacing.hairlineGap),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(MasroofSpacing.compactCardChevronHeight),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                if (clickable) {
-                    Icon(
-                        imageVector = MasroofIcons.periodNext,
-                        contentDescription = null,
-                        modifier = Modifier.size(MasroofIconSizes.compactCardChevron),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .size(MasroofIconSizes.logo)
-                    .clip(MasroofComponentShapes.iconContainer)
-                    .background(iconBackground),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(MasroofIconSizes.compactCardLeading),
-                    tint = iconTint,
-                )
-            }
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = MasroofSpacing.compactCardLabelTop),
-            )
-            Text(
-                value,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
-                color = valueColor,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = MasroofSpacing.compactCardValueTop),
-            )
-        }
-    }
+    MasroofMetric(label, value, valueColor,
+        modifier = modifier.then(if (clickable && onClick != null) Modifier.clickable(onClick = onClick) else Modifier), guidance = guidance)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

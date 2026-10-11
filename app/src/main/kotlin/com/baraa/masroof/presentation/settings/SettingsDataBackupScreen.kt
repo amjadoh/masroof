@@ -11,10 +11,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextField
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,6 +26,8 @@ import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.SmsPermissionNotice
+
+enum class BackupPage { Hub, Export, Restore, Tools }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +49,16 @@ fun SettingsDataBackupScreen(
     onRequestFxRateCorrection: () -> Unit,
     onConfirmFxRateCorrection: () -> Unit,
     onDismissFxRateCorrection: () -> Unit,
+    page: BackupPage = BackupPage.Hub,
+    onOpenPage: (BackupPage) -> Unit = {},
+    onVerifyPendingImport: () -> Unit = {},
 ) {
+    var showRestoreConfirm by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var exportConfirmation by com.baraa.masroof.presentation.common.rememberSensitiveInput()
+    val cancelOnLeave by androidx.compose.runtime.rememberUpdatedState(onCancelPendingImport)
+    androidx.compose.runtime.DisposableEffect(page) {
+        onDispose { if (page == BackupPage.Restore) cancelOnLeave() }
+    }
     if (state.fxRateCorrectionAwaitingConfirm) {
         AlertDialog(
             onDismissRequest = onDismissFxRateCorrection,
@@ -87,7 +100,7 @@ fun SettingsDataBackupScreen(
             },
         )
     }
-    if (state.awaitingImportConfirm) {
+    if (state.awaitingImportConfirm && (showRestoreConfirm || !state.backupVerified)) {
         AlertDialog(
             onDismissRequest = onCancelPendingImport,
             title = { Text(stringResource(R.string.settings_import_confirm_title)) },
@@ -167,7 +180,12 @@ fun SettingsDataBackupScreen(
     }
 
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_data_backup_section),
+        title = stringResource(when (page) {
+            BackupPage.Hub -> R.string.reference_backup_title
+            BackupPage.Export -> R.string.reference_export_title
+            BackupPage.Restore -> R.string.reference_restore_title
+            BackupPage.Tools -> R.string.reference_data_tools_title
+        }),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -177,37 +195,43 @@ fun SettingsDataBackupScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            if (!state.smsPermissionGranted) {
-                SmsPermissionNotice(
-                    onRequestPermission = onRequestSmsPermission,
-                    onOpenAppSettings = onOpenAppSettings,
-                )
+            if (page == BackupPage.Hub) {
+                com.baraa.masroof.presentation.common.MasroofCard {
+                    Text(stringResource(R.string.reference_backup_title), style = MaterialTheme.typography.titleMedium)
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.reference_export_title),
+                        stringResource(R.string.settings_export_subtitle), MasroofIcons.export, { onOpenPage(BackupPage.Export) })
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.reference_restore_title),
+                        stringResource(R.string.settings_import_subtitle), MasroofIcons.importBackup, { onOpenPage(BackupPage.Restore) })
+                }
+                com.baraa.masroof.presentation.common.MasroofCard {
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.reference_data_tools_title),
+                        stringResource(R.string.settings_reparse_title), MasroofIcons.sms, { onOpenPage(BackupPage.Tools) })
+                }
+                return@Column
             }
-
-            SettingsReparseRow(
-                title = stringResource(R.string.settings_import_sms_title),
-                subtitle = stringResource(R.string.settings_import_sms_subtitle),
-                detail = null,
-                icon = MasroofIcons.externalIn,
-                actionIcon = MasroofIcons.rescan,
-                running = state.importingSms,
-                enabled = !state.importingSms && !state.reparsingStored && !state.updating &&
-                    !state.exportingBackup && !state.importingBackup,
-                onRefresh = onImportSms,
-            )
-
-            SettingsReparseRow(
-                title = stringResource(R.string.settings_reparse_title),
-                subtitle = "",
-                guidance = stringResource(R.string.settings_reparse_stored_hint) + "\n\n" + stringResource(R.string.settings_reparse_stored_example),
-                icon = MasroofIcons.rescan,
-                actionIcon = MasroofIcons.retry,
-                running = state.reparsingStored,
-                enabled = !state.reparsingStored && !state.updating &&
-                    !state.exportingBackup && !state.importingBackup,
-                onRefresh = onReparseStored,
-            )
-
+            if (page == BackupPage.Tools) {
+                if (!state.smsPermissionGranted) SmsPermissionNotice(onRequestPermission = onRequestSmsPermission, onOpenAppSettings = onOpenAppSettings)
+                com.baraa.masroof.presentation.common.MasroofCard {
+                    Text(stringResource(R.string.reference_data_tools_title), style = MaterialTheme.typography.titleMedium)
+                    Column(verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap)) {
+                        com.baraa.masroof.presentation.common.MasroofButton(onImportSms, Modifier.fillMaxWidth(), enabled = !state.importingSms && !state.reparsingStored) {
+                            Text(stringResource(R.string.settings_import_sms_title))
+                        }
+                        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_reparse_title),
+                            stringResource(R.string.settings_reparse_stored_hint) + "\n\n" + stringResource(R.string.settings_reparse_stored_example))
+                        com.baraa.masroof.presentation.common.MasroofOutlinedButton(onReparseStored, Modifier.fillMaxWidth(), enabled = !state.reparsingStored && !state.importingSms) {
+                            Text(stringResource(R.string.settings_reparse_title))
+                        }
+                        com.baraa.masroof.presentation.common.MasroofOutlinedButton(onRequestFxRateCorrection, Modifier.fillMaxWidth(),
+                            enabled = state.fxRateCorrectionUpdatable > 0 && !state.fxRateCorrectionRunning && !state.reparsingStored && !state.importingSms) {
+                            Text(stringResource(R.string.settings_fx_rate_correction_title))
+                        }
+                    }
+                }
+            }
+            if (page == BackupPage.Export) {
+            com.baraa.masroof.presentation.common.MasroofCard {
+                Text(stringResource(R.string.reference_export_title), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = state.exportPassphrase,
                 onValueChange = onExportPassphraseChange,
@@ -222,57 +246,51 @@ fun SettingsDataBackupScreen(
                 enabled = !state.exportingBackup && !state.importingBackup,
             )
 
-            SettingsNavRow(
-                icon = MasroofIcons.export,
-                title = stringResource(R.string.settings_export_title),
-                subtitle = stringResource(R.string.settings_export_subtitle),
-                onClick = onRequestExport,
-                enabled = !state.exportingBackup && !state.importingBackup && !state.reparsingStored,
-            )
+            OutlinedTextField(value = exportConfirmation, onValueChange = { exportConfirmation = it },
+                modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.reference_confirm_password)) },
+                visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true)
+            com.baraa.masroof.presentation.common.MasroofButton(
+                onClick = { onRequestExport(); exportConfirmation = "" }, modifier = Modifier.fillMaxWidth(),
+                enabled = !state.exportingBackup && !state.importingBackup && !state.reparsingStored &&
+                    state.exportPassphrase.isNotEmpty() && state.exportPassphrase == exportConfirmation) {
+                Text(stringResource(R.string.reference_choose_save_location))
+            }
 
-            OutlinedTextField(
-                value = state.importPassphrase,
-                onValueChange = onImportPassphraseChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
-                trailingIcon = {
-                    com.baraa.masroof.presentation.common.MasroofGuidanceButton(title = stringResource(R.string.settings_import_passphrase_label), message = stringResource(R.string.settings_import_passphrase_hint))
-                },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                enabled = !state.exportingBackup && !state.importingBackup,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.importBackup,
-                title = stringResource(R.string.settings_import_title),
-                subtitle = stringResource(R.string.settings_import_subtitle),
-                onClick = onRequestImport,
-                enabled = !state.exportingBackup && !state.importingBackup && !state.reparsingStored,
-            )
-
-            SettingsReparseRow(
-                title = stringResource(R.string.settings_fx_rate_correction_title),
-                subtitle = if (state.fxRateCorrectionUpdatable == 0 && state.fxRateCorrectionManualFollowUp == 0) {
-                    stringResource(R.string.settings_fx_rate_correction_none)
-                } else {
-                    stringResource(
-                        R.string.settings_fx_rate_correction_subtitle,
-                        state.fxRateCorrectionUpdatable,
-                        state.fxRateCorrectionManualFollowUp,
-                    )
-                },
-                icon = MasroofIcons.retry,
-                actionIcon = MasroofIcons.retry,
-                running = state.fxRateCorrectionRunning,
-                enabled = state.fxRateCorrectionUpdatable > 0 &&
-                    !state.fxRateCorrectionRunning &&
-                    !state.reparsingStored &&
-                    !state.importingSms,
-                onRefresh = onRequestFxRateCorrection,
-            )
-
+            }
+            }
+            if (page == BackupPage.Restore) {
+                Text(stringResource(R.string.reference_restore_steps), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                com.baraa.masroof.presentation.common.MasroofCard {
+                    Text(stringResource(R.string.reference_restore_title), style = MaterialTheme.typography.titleMedium)
+                    when {
+                        state.backupVerified -> {
+                            com.baraa.masroof.presentation.common.MasroofBadge(stringResource(R.string.reference_verified_backup),
+                                com.baraa.masroof.presentation.common.MasroofCardAccent.Inflow)
+                            com.baraa.masroof.presentation.common.MasroofButton({ showRestoreConfirm = true }, Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.reference_continue_restore))
+                            }
+                        }
+                        state.awaitingImportPassword -> {
+                            OutlinedTextField(state.importPassphrase, onImportPassphraseChange, Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
+                                visualTransformation = PasswordVisualTransformation(), singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+                            com.baraa.masroof.presentation.common.MasroofButton(onVerifyPendingImport, Modifier.fillMaxWidth(),
+                                enabled = state.importPassphrase.isNotEmpty() && !state.importingBackup) {
+                                Text(stringResource(R.string.reference_verify_backup))
+                            }
+                        }
+                        else -> com.baraa.masroof.presentation.common.MasroofButton(onRequestImport, Modifier.fillMaxWidth(),
+                            enabled = !state.importingBackup) { Text(stringResource(R.string.reference_choose_backup)) }
+                    }
+                    if (state.awaitingImportPassword || state.backupVerified) {
+                        TextButton(onClick = { onCancelPendingImport(); onRequestImport() }, enabled = !state.importingBackup) {
+                            Text(stringResource(R.string.reference_choose_another_backup))
+                        }
+                    }
+                }
+            }
             if (state.exportingBackup || state.importingBackup) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),

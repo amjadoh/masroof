@@ -81,6 +81,8 @@ class SettingsViewModel(
     private val _logEntries = MutableStateFlow(appLogService.readAll())
     val logEntries: StateFlow<List<com.baraa.masroof.application.logging.AppLogEntry>> = _logEntries.asStateFlow()
     private var pendingImportUri: Uri? = null
+    private var pendingImportGeneration: Long = 0
+    private var verificationJob: kotlinx.coroutines.Job? = null
     private var pendingLegacyImport: Boolean = false
     private var pendingExportPassphrase: CharArray? = null
 
@@ -783,6 +785,7 @@ class SettingsViewModel(
 
     fun offerImport(uri: Uri) {
         if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
+        pendingImportGeneration++
         viewModelScope.launch {
             _uiState.update { it.copy(importingBackup = true, backupMessage = null) }
             try {
@@ -800,10 +803,13 @@ class SettingsViewModel(
                     }
                     BackupPackageKind.ENCRYPTED -> {
                         if (_uiState.value.importPassphrase.isEmpty()) {
+                            pendingImportUri = uri
+                            pendingLegacyImport = false
                             _uiState.update {
                                 it.copy(
                                     importingBackup = false,
-                                    backupMessage = BackupMessage.PASSPHRASE_REQUIRED,
+                                    awaitingImportPassword = true, backupVerified = false,
+                                    backupMessage = null,
                                 )
                             }
                         } else {
@@ -837,10 +843,44 @@ class SettingsViewModel(
     }
 
     fun cancelPendingImport() {
+        val verifying = verificationJob?.isActive == true
+        pendingImportGeneration++
+        verificationJob?.cancel()
+        verificationJob = null
         pendingImportUri = null
         pendingLegacyImport = false
         _uiState.update {
-            it.copy(awaitingImportConfirm = false, awaitingLegacyImportConfirm = false)
+            it.copy(awaitingImportConfirm = false, awaitingLegacyImportConfirm = false, awaitingImportPassword = false,
+                backupVerified = false, importingBackup = if (verifying) false else it.importingBackup, importPassphrase = "")
+        }
+    }
+
+    fun verifyPendingImport() {
+        val uri = pendingImportUri ?: return
+        val passphrase = _uiState.value.importPassphrase.toCharArray()
+        if (passphrase.isEmpty() || _uiState.value.importingBackup) return
+        val generation = pendingImportGeneration
+        verificationJob = viewModelScope.launch {
+            _uiState.update { it.copy(importingBackup = true, backupMessage = null) }
+            try {
+                val result = databaseBackupService.verify(uri, passphrase)
+                if (generation != pendingImportGeneration) return@launch
+                _uiState.update { state ->
+                    when (result) {
+                        com.baraa.masroof.application.backup.BackupVerificationOutcome.VERIFIED -> state.copy(
+                            importingBackup = false, awaitingImportPassword = false, backupVerified = true,
+                            awaitingImportConfirm = true)
+                        com.baraa.masroof.application.backup.BackupVerificationOutcome.AUTHENTICATION_FAILED -> state.copy(
+                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_AUTH_FAILED)
+                        com.baraa.masroof.application.backup.BackupVerificationOutcome.INVALID_PACKAGE -> state.copy(
+                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_INVALID)
+                        com.baraa.masroof.application.backup.BackupVerificationOutcome.FAILED -> state.copy(
+                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_FAILED)
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } finally { passphrase.fill('\u0000') }
         }
     }
 

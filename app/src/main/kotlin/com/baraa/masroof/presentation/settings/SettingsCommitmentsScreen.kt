@@ -12,6 +12,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -29,9 +31,19 @@ fun SettingsCommitmentsScreen(
     onOpenCommitment: (ManagedCommitmentUi) -> Unit,
     onOpenCommitmentById: (String) -> Unit = {},
     onListTabChange: (CommitmentsListTab) -> Unit = {},
+    onToggle: (ManagedCommitmentUi) -> Unit = {},
+    onDelete: (ManagedCommitmentUi) -> Unit = {},
 ) {
+    var deleteTarget by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<ManagedCommitmentUi?>(null) }
+    deleteTarget?.let { target ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { deleteTarget = null },
+            title = { Text(stringResource(R.string.settings_commitment_delete_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_commitment_delete_confirm_body)) },
+            confirmButton = { com.baraa.masroof.presentation.common.MasroofTextButton({ deleteTarget = null; onDelete(target) }) { Text(stringResource(R.string.reference_delete)) } },
+            dismissButton = { com.baraa.masroof.presentation.common.MasroofTextButton({ deleteTarget = null }) { Text(stringResource(R.string.settings_cancel)) } })
+    }
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_commitments_section),
+        title = stringResource(R.string.reference_manage_commitments),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -41,29 +53,13 @@ fun SettingsCommitmentsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal),
-                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
-            ) {
-                FilterChip(
-                    selected = state.commitmentsListTab == CommitmentsListTab.ACTIVE,
-                    onClick = { onListTabChange(CommitmentsListTab.ACTIVE) },
-                    label = { Text(stringResource(R.string.settings_commitments_tab_active)) },
-                )
-                FilterChip(
-                    selected = state.commitmentsListTab == CommitmentsListTab.DISABLED,
-                    onClick = { onListTabChange(CommitmentsListTab.DISABLED) },
-                    label = { Text(stringResource(R.string.settings_commitments_tab_disabled)) },
-                )
-                FilterChip(
-                    selected = state.commitmentsListTab == CommitmentsListTab.RECORD,
-                    onClick = { onListTabChange(CommitmentsListTab.RECORD) },
-                    label = { Text(stringResource(R.string.settings_commitments_tab_record)) },
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                listOf(CommitmentsListTab.ACTIVE to R.string.settings_commitments_tab_active,
+                    CommitmentsListTab.DISABLED to R.string.settings_commitments_tab_disabled,
+                    CommitmentsListTab.RECORD to R.string.settings_commitments_tab_record).forEach { (tab, label) ->
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), state.commitmentsListTab == tab, { onListTabChange(tab) })
+                }
             }
-
             when (state.commitmentsListTab) {
                 CommitmentsListTab.ACTIVE,
                 CommitmentsListTab.DISABLED,
@@ -87,12 +83,20 @@ fun SettingsCommitmentsScreen(
                         return@Column
                     }
                     commitments.forEach { commitment ->
-                        SettingsNavRow(
-                            icon = if (commitment.active) MasroofIcons.calendar else MasroofIcons.warning,
-                            title = commitment.name,
-                            subtitle = commitmentSubtitle(commitment),
-                            onClick = { onOpenCommitment(commitment) },
-                        )
+                        com.baraa.masroof.presentation.common.MasroofCard {
+                            Text(commitment.name, style = MaterialTheme.typography.titleMedium)
+                            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.settings_commitment_amount), formatLocalizedMoney(commitment.amount))
+                            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.settings_commitment_recurrence),
+                                commitment.recurrence?.let { recurrenceLabel(it) } ?: stringResource(R.string.settings_commitment_recurrence_none))
+                            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.settings_commitment_transaction_date),
+                                formatLocalizedTransactionDate(commitment.transactionDate))
+                            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_edit), { onOpenCommitment(commitment) })
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(if (commitment.active) R.string.reference_pause else R.string.settings_commitment_enable), { onToggle(commitment) })
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_delete), { deleteTarget = commitment }, danger = true)
+                            }
+                        }
+
                     }
                 }
                 CommitmentsListTab.RECORD -> {
@@ -138,24 +142,8 @@ private fun recordSubtitle(entry: CommitmentRecordEntryUi): String {
 }
 
 @Composable
-private fun commitmentSubtitle(commitment: ManagedCommitmentUi): String {
-    if (!commitment.active && commitment.pauseIntervals.isNotEmpty()) {
-        val latest = commitment.pauseIntervals.last()
-        val pausedLabel = formatLocalizedTransactionDate(latest.pausedAt)
-        val resumedLabel = latest.resumedAt?.let { formatLocalizedTransactionDate(it) }
-        return if (resumedLabel != null) {
-            stringResource(
-                R.string.settings_commitment_pause_interval_resumed,
-                pausedLabel,
-                resumedLabel,
-            )
-        } else {
-            stringResource(R.string.settings_commitment_pause_interval_open, pausedLabel)
-        }
-    }
-    return buildString {
-        append(formatLocalizedMoney(commitment.amount))
-        append(" · ")
-        append(formatLocalizedTransactionDate(commitment.transactionDate))
-    }
-}
+private fun recurrenceLabel(value: com.baraa.masroof.domain.model.CommitmentRecurrence): String = stringResource(when (value) {
+    com.baraa.masroof.domain.model.CommitmentRecurrence.WEEKLY -> R.string.settings_commitment_recurrence_weekly
+    com.baraa.masroof.domain.model.CommitmentRecurrence.MONTHLY -> R.string.settings_commitment_recurrence_monthly
+    com.baraa.masroof.domain.model.CommitmentRecurrence.YEARLY -> R.string.settings_commitment_recurrence_yearly
+})

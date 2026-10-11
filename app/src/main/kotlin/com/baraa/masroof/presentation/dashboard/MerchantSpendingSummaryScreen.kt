@@ -33,6 +33,7 @@ fun MerchantSpendingSummaryRoute(
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
     onOpenAllTransactions: (TransactionListFilterState) -> Unit,
+    onOpenDaily: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedMerchantKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -58,6 +59,7 @@ fun MerchantSpendingSummaryRoute(
             state = state,
             onBack = onBack,
             onOpenMerchant = { selectedMerchantKey = it.merchantKey },
+            onOpenDaily = onOpenDaily,
         )
     }
 }
@@ -67,6 +69,7 @@ fun MerchantSpendingSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenMerchant: (MerchantSpendingRow) -> Unit,
+    onOpenDaily: () -> Unit = {},
 ) {
     val overview = state.merchantSpending
     DashboardSummaryScaffold(
@@ -78,6 +81,10 @@ fun MerchantSpendingSummaryScreen(
             modifier = contentModifier,
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_period_view), true, {})
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_day_view), false, onOpenDaily)
+            }
             MasroofSectionTitle(
                 title = stringResource(R.string.dashboard_merchants_summary_title),
             )

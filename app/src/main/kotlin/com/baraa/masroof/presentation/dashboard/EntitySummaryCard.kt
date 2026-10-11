@@ -18,19 +18,38 @@ import com.baraa.masroof.presentation.theme.MasroofIconSizes
 @Composable
 internal fun EntitySummaryCard(title: String, subtitle: String, icon: ImageVector, accent: Color,
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, leading: (@Composable () -> Unit)? = null,
-    guidance: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    guidance: String? = null,
+    bankLabel: String? = null,
+    actionLabel: String = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_details),
+    content: @Composable ColumnScope.() -> Unit) {
     MasroofCard(modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-            if (leading != null) leading() else Icon(icon, null, tint = accent, modifier = Modifier.size(MasroofIconSizes.logo))
+            androidx.compose.material3.Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
+                color = when (accent) {
+                    com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.card -> com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardSoft
+                    com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liability -> com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liabilitySoft
+                    else -> com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.accountSoft
+                }) {
+                Box(Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = accent, modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon))
+                }
+            }
             Column(Modifier.weight(1f)) {
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
-                    style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
-                if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = com.baraa.masroof.presentation.theme.MasroofFontWeights.semiBold), contentColor = MaterialTheme.colorScheme.onSurface)
             }
-            if (onClick != null) Icon(MasroofIcons.periodNext, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            bankLabel?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+        Spacer(Modifier.height(com.baraa.masroof.presentation.theme.MasroofReference.chartHeadGap))
+        if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         content()
+        if (onClick != null) {
+            Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+            androidx.compose.material3.Button(onClick = onClick, modifier = Modifier.fillMaxWidth(),
+                shape = com.baraa.masroof.presentation.theme.MasroofShapes.small) {
+                Text(actionLabel)
+            }
+        }
     }
 }

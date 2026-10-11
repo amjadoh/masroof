@@ -10,8 +10,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.Bank
@@ -33,7 +37,10 @@ fun SettingsBankLoansScreen(
     onResumeTracking: (ManagedLoanUi) -> Unit,
     onDismissStopConfirm: () -> Unit,
     onConfirmStopTracking: () -> Unit,
+    onOpenBank: (() -> Unit)? = null,
 ) {
+    var referenceTab by rememberSaveable { mutableStateOf("followed") }
+
     val bankLoans = state.loans.filter { it.bank == bank }
     val unregisteredLoans = bankLoans.filter { it.ownership == OwnershipStatus.UNKNOWN }
     val followedLoans = bankLoans.filter { it.ownership == OwnershipStatus.OWNED }
@@ -47,7 +54,7 @@ fun SettingsBankLoansScreen(
     )
 
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_bank_loans_title),
+        title = stringResource(R.string.reference_manage_loans),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -60,7 +67,15 @@ fun SettingsBankLoansScreen(
             SettingsScreenHeader(
                 bank = bank,
                 hint = stringResource(R.string.settings_loans_hint),
+                onOpenBank = onOpenBank,
             )
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
+                    "stopped" to R.string.reference_stopped).forEach { (key, label) ->
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
+                }
+            }
+
 
             if (bankLoans.isEmpty()) {
                 Text(
@@ -70,14 +85,15 @@ fun SettingsBankLoansScreen(
                 )
             }
 
-            if (unregisteredLoans.isNotEmpty()) {
+            if (referenceTab == "unconfirmed" && unregisteredLoans.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_loans_unregistered))
                 unregisteredLoans.forEach { loan ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.moneyMovement,
+                        accent = com.baraa.masroof.presentation.common.MasroofCardAccent.Liability,
                         bank = loan.bank,
                         title = loanDisplayLabel(loan),
-                        showBankLabel = false,
+                        showBankLabel = true,
                         footer = {
                             AccountOwnershipInlinePrompt(
                                 enabled = !state.updating,
@@ -90,14 +106,15 @@ fun SettingsBankLoansScreen(
                 }
             }
 
-            if (followedLoans.isNotEmpty()) {
-                SettingsGroupTitle(stringResource(R.string.settings_loans_followed))
+            if (referenceTab == "followed" && followedLoans.isNotEmpty()) {
+
                 followedLoans.forEach { loan ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.moneyMovement,
+                        accent = com.baraa.masroof.presentation.common.MasroofCardAccent.Liability,
                         bank = loan.bank,
                         title = loanDisplayLabel(loan),
-                        showBankLabel = false,
+                        showBankLabel = true,
                         endAction = {
                             SettingsStopTrackingButton(
                                 onClick = { onRequestStopTracking(loan) },
@@ -109,14 +126,15 @@ fun SettingsBankLoansScreen(
                 }
             }
 
-            if (stoppedLoans.isNotEmpty()) {
+            if (referenceTab == "stopped" && stoppedLoans.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_loans_stopped))
                 stoppedLoans.forEach { loan ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.moneyMovement,
+                        accent = com.baraa.masroof.presentation.common.MasroofCardAccent.Liability,
                         bank = loan.bank,
                         title = loanDisplayLabel(loan),
-                        showBankLabel = false,
+                        showBankLabel = true,
                         endAction = {
                             SettingsResumeTrackingButton(
                                 onClick = { onResumeTracking(loan) },

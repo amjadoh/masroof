@@ -23,7 +23,7 @@ fun LoanDetailScreen(
     )
 
     DashboardSummaryScaffold(
-        title = loan.displayLabel,
+        title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_loan_detail_title),
         state = state,
         onBack = onBack,
         showPeriod = false,
@@ -41,6 +41,7 @@ fun LoanDetailScreen(
                 transactions = loanTransactions,
                 onOpenTransaction = onOpenTransaction,
                 ownedCards = state.ownedCards,
+                title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_loan_movements),
             )
         }
     }

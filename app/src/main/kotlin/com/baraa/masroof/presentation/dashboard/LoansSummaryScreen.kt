@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -112,10 +112,6 @@ fun LoansSummaryScreen(
                 )
             } else {
                 DashboardSummaryHeroCard(spec = loansSummaryHeroSpec(overview = followedLoans))
-                LoansSummaryHeader(
-                    loanCount = followedLoans.loans.size,
-                    onManageLoans = onManageLoans,
-                )
                 followedLoans.loans.forEach { loan ->
                     LoanCompactListRow(
                         loan = loan,
@@ -123,25 +119,6 @@ fun LoansSummaryScreen(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LoansSummaryHeader(
-    loanCount: Int,
-    onManageLoans: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        MasroofSectionTitle(
-            title = stringResource(R.string.dashboard_loans_count_label, loanCount),
-        )
-        TextButton(onClick = onManageLoans) {
-            Text(stringResource(R.string.dashboard_manage_loans))
         }
     }
 }

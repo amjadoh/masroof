@@ -665,6 +665,8 @@ class DashboardViewModel(
                     last4 = it.last4,
                     displayName = it.displayName,
                     cardNetwork = it.cardNetwork,
+                    cardRole = it.cardRole,
+                    parentCardLast4 = it.parentCardLast4,
                 )
             }
 }

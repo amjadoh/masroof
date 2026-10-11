@@ -19,7 +19,7 @@ fun MasroofLogo(
     contentDescription: String? = null,
 ) {
     Image(
-        painter = painterResource(R.drawable.ic_masroof_logo),
+        painter = painterResource(R.drawable.masroof_approved_logo),
         contentDescription = contentDescription,
         modifier = modifier.size(size).clip(MasroofLogoShape),
     )

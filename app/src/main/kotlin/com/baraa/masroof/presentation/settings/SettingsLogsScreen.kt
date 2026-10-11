@@ -16,18 +16,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,19 +61,22 @@ fun SettingsLogsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val entries by viewModel.logEntries.collectAsState()
+    LaunchedEffect(Unit) { viewModel.refreshLogs() }
+    SettingsLogsContent(state, entries, onBack, onRequestExport, viewModel::clearLogs, viewModel::clearLogMessage)
+}
+
+@Composable
+internal fun SettingsLogsContent(state: SettingsUiState, entries: List<AppLogEntry>, onBack: () -> Unit,
+    onRequestExport: () -> Unit, onClearLogs: () -> Unit, onClearMessage: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     val messageText = state.logMessage?.let { resolveLogMessage(it) }
     var selectedFilter by rememberSaveable { mutableStateOf(SettingsLogFilter.ALL) }
     var showClearConfirm by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshLogs()
-    }
-
     LaunchedEffect(messageText) {
         if (messageText != null) {
             snackbarHostState.showSnackbar(com.baraa.masroof.application.locale.AppDigits.display(messageText))
-            viewModel.clearLogMessage()
+            onClearMessage()
         }
     }
 
@@ -86,7 +89,7 @@ fun SettingsLogsScreen(
                 TextButton(
                     onClick = {
                         showClearConfirm = false
-                        viewModel.clearLogs()
+                        onClearLogs()
                     },
                 ) {
                     Text(
@@ -247,22 +250,10 @@ private fun LogFilterChips(
     selected: SettingsLogFilter,
     onSelected: (SettingsLogFilter) -> Unit,
 ) {
-    val chipColors = FilterChipDefaults.filterChipColors(
-        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    )
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-    ) {
+    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         SettingsLogFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = selected == filter,
-                onClick = { onSelected(filter) },
-                label = { Text(logFilterLabel(filter)) },
-                colors = chipColors,
-            )
+            com.baraa.masroof.presentation.common.MasroofChoice(logFilterLabel(filter), selected == filter, { onSelected(filter) })
         }
     }
 }
@@ -321,9 +312,10 @@ private fun LogEntryCard(
     zoneId: ZoneId,
     timestampLabels: LogTimestampLabels,
 ) {
+    var expanded by rememberSaveable(entry.id) { mutableStateOf(false) }
     val extendedColors = MasroofThemeExtras.extendedColors
     val accentColor = when (entry.level) {
-        AppLogLevel.INFO -> MaterialTheme.colorScheme.primary
+        AppLogLevel.INFO -> extendedColors.inflow
         AppLogLevel.WARN -> extendedColors.liability
         AppLogLevel.ERROR -> MaterialTheme.colorScheme.error
     }
@@ -346,24 +338,22 @@ private fun LogEntryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Surface(
-            modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = MasroofOpacity.emphasized),
-        ) {
-            Text(
-                logCategoryLabel(entry.category),
-                modifier = Modifier.padding(horizontal = MasroofSpacing.cardInnerGap, vertical = MasroofSpacing.inlineGap),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(logCategoryLabel(entry.category), modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             entry.message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
         )
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(stringResource(R.string.reference_event_details))
+        }
+        if (expanded) {
+            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_event_id), entry.id.toString())
+            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_event_time),
+                java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", locale).format(java.time.Instant.ofEpochMilli(entry.timestampEpochMs).atZone(zoneId)))
+        }
     }
 }
 

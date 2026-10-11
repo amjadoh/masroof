@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextField
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -213,7 +213,7 @@ fun SettingsLinkDebitDialog(
             Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                 accounts.forEach { account ->
                     Text(
-                        text = account.displayLabel,
+                        text = registryLabel(account),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -232,6 +232,7 @@ fun SettingsLinkDebitDialog(
     )
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsCardMetadataActions(
     card: ManagedCardUi,
@@ -241,39 +242,19 @@ fun SettingsCardMetadataActions(
     onPickRole: () -> Unit,
     onLinkDebit: () -> Unit,
     onMarkDebit: () -> Unit,
+    includeRename: Boolean = true,
+    onStop: (() -> Unit)? = null,
 ) {
-    val isCreditCard = card.cardType == CardType.CREDIT
-    val canLinkDebit = card.cardType == CardType.DEBIT ||
-        card.cardNetwork == CardNetwork.MADA ||
-        card.cardType == null
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = MasroofSpacing.cardInnerGap),
-        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-    ) {
-        TextButton(onClick = onRename, enabled = enabled) {
-            Text(stringResource(R.string.settings_action_rename))
-        }
-        TextButton(onClick = onPickNetwork, enabled = enabled) {
-            Text(stringResource(R.string.settings_action_network))
-        }
-        if (isCreditCard) {
-            TextButton(onClick = onPickRole, enabled = enabled) {
-                Text(stringResource(R.string.settings_action_role))
-            }
-        }
-        if (canLinkDebit) {
-            TextButton(onClick = onLinkDebit, enabled = enabled) {
-                Text(stringResource(R.string.settings_action_link_account))
-            }
-        }
-        if (card.cardType != CardType.DEBIT && card.cardType != CardType.CREDIT) {
-            TextButton(onClick = onMarkDebit, enabled = enabled) {
-                Text(stringResource(R.string.settings_action_mark_debit))
-            }
-        }
+    androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = MasroofSpacing.sectionGap),
+        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+        if (includeRename) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), onRename, enabled = enabled)
+        com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_network), onPickNetwork, enabled = enabled)
+        if (card.cardType == CardType.CREDIT) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_role), onPickRole, enabled = enabled)
+        if (card.cardType == CardType.DEBIT || card.cardNetwork == CardNetwork.MADA || card.cardType == null)
+            com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_link_account), onLinkDebit, enabled = enabled)
+        if (card.cardType == null) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_mark_debit), onMarkDebit, enabled = enabled)
+        onStop?.let { com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), it, enabled = enabled, warning = true) }
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -54,7 +55,7 @@ fun SettingsBankScreen(
     }
 
     MasroofSecondaryScaffold(
-        title = settingsBankLabel(bank),
+        title = stringResource(R.string.reference_bank_registered),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -64,29 +65,13 @@ fun SettingsBankScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            SettingsNavRow(
-                icon = MasroofIcons.externalIn,
-                title = stringResource(R.string.settings_bank_accounts_title),
-                subtitle = accountsSubtitle,
-                onClick = onOpenAccounts,
-                enabled = summary.accountCount > 0,
-            )
+            com.baraa.masroof.presentation.common.MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofText(settingsBankLabel(bank), style = MaterialTheme.typography.titleMedium)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_accounts_title), accountsSubtitle, MasroofIcons.moneyMovement, onOpenAccounts)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_cards_title), cardsSubtitle, MasroofIcons.cardPayment, onOpenCards)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_loans_title), loansSubtitle, MasroofIcons.savings, onOpenLoans, divider = false)
+            }
 
-            SettingsNavRow(
-                icon = MasroofIcons.cardPayment,
-                title = stringResource(R.string.settings_bank_cards_title),
-                subtitle = cardsSubtitle,
-                onClick = onOpenCards,
-                enabled = summary.cardCount > 0,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.moneyMovement,
-                title = stringResource(R.string.settings_bank_loans_title),
-                subtitle = loansSubtitle,
-                onClick = onOpenLoans,
-                enabled = summary.loanCount > 0,
-            )
         }
     }
 }

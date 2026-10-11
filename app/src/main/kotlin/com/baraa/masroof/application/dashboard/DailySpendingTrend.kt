@@ -14,12 +14,17 @@ import java.time.ZoneId
 data class DailySpendingPoint(
     val date: LocalDate,
     val spending: SignedMoneyAmount,
+    val beforeRefunds: SignedMoneyAmount = SignedMoneyAmount(spending.amount.max(BigDecimal.ZERO), spending.currency),
+    val refunds: SignedMoneyAmount = SignedMoneyAmount(spending.amount.negate().max(BigDecimal.ZERO), spending.currency),
 )
 
 data class DailySpendingTrend(
     val points: List<DailySpendingPoint>,
     val averageDailySpending: SignedMoneyAmount,
+    val transactionIdsByDate: Map<LocalDate, Set<String>> = emptyMap(),
 ) {
+    val totalBeforeRefunds: SignedMoneyAmount get() = SpendingAmounts.sum(points.map { it.beforeRefunds })
+    val totalRefunds: SignedMoneyAmount get() = SpendingAmounts.sum(points.map { it.refunds })
     val totalSpending: SignedMoneyAmount
         get() = SpendingAmounts.sum(points.map { it.spending })
     init {
@@ -64,6 +69,9 @@ object DailySpendingTrendBuilder {
     ): DailySpendingTrend {
         val parsedRecordsById = parsedRecords.associateBy { it.event.id }
         val totalsByDay = mutableMapOf<LocalDate, BigDecimal>()
+        val grossByDay = mutableMapOf<LocalDate, BigDecimal>()
+        val refundsByDay = mutableMapOf<LocalDate, BigDecimal>()
+        val idsByDay = mutableMapOf<LocalDate, MutableSet<String>>()
 
         transactions.forEach { transaction ->
             val signedAmount = transaction.signedSpendingAmount(
@@ -74,6 +82,9 @@ object DailySpendingTrendBuilder {
             ) ?: return@forEach
             val date = transaction.occurredAt.atZone(zoneId).toLocalDate()
             if (date.isBefore(period.startDate) || !date.isBefore(period.endDateExclusive)) return@forEach
+            idsByDay.getOrPut(date) { mutableSetOf() }.add(transaction.id)
+            if (signedAmount.signum() >= 0) grossByDay[date] = (grossByDay[date] ?: BigDecimal.ZERO).add(signedAmount)
+            else refundsByDay[date] = (refundsByDay[date] ?: BigDecimal.ZERO).subtract(signedAmount)
             totalsByDay[date] = (totalsByDay[date] ?: BigDecimal.ZERO)
                 .add(signedAmount)
                 .setScale(Money.SCALE, RoundingMode.HALF_EVEN)
@@ -90,6 +101,8 @@ object DailySpendingTrendBuilder {
                         .setScale(Money.SCALE, RoundingMode.HALF_EVEN),
                     currency = primaryCurrency,
                 ),
+                beforeRefunds = SignedMoneyAmount((grossByDay[date] ?: BigDecimal.ZERO).setScale(Money.SCALE), primaryCurrency),
+                refunds = SignedMoneyAmount((refundsByDay[date] ?: BigDecimal.ZERO).setScale(Money.SCALE), primaryCurrency),
             )
         }.toList()
         val total = points.fold(BigDecimal.ZERO) { sum, point -> sum.add(point.spending.amount) }
@@ -97,6 +110,7 @@ object DailySpendingTrendBuilder {
 
         return DailySpendingTrend(
             points = points,
+            transactionIdsByDate = idsByDay.mapValues { it.value.toSet() },
             averageDailySpending = SignedMoneyAmount(
                 amount = total.divide(
                     points.size.toBigDecimal(),

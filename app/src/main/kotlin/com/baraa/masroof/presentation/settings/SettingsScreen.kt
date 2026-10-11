@@ -166,6 +166,8 @@ fun SettingsRoute(
                 navigateTo(SettingsDestination.CommitmentDetail(commitmentId))
             },
             onListTabChange = viewModel::setCommitmentsListTab,
+            onToggle = { viewModel.toggleCommitmentActive(it.id) },
+            onDelete = { viewModel.deleteCommitment(it.id) },
         )
 
         is SettingsDestination.CommitmentDetail -> {
@@ -245,6 +247,7 @@ fun SettingsRoute(
             bank = Bank(current.bankId),
             state = state,
             onBack = { popOrExit() },
+            onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
             onConfirmOwned = viewModel::confirmAccountOwned,
             onMarkExternal = viewModel::markAccountExternal,
             onRequestStopTracking = viewModel::requestStopAccountTracking,
@@ -263,6 +266,7 @@ fun SettingsRoute(
             bank = Bank(current.bankId),
             state = state,
             onBack = { popOrExit() },
+            onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
             onConfirmOwned = viewModel::confirmCardOwned,
             onMarkExternal = viewModel::markCardExternal,
             onRequestStopTracking = viewModel::requestStopTracking,
@@ -290,6 +294,7 @@ fun SettingsRoute(
             bank = Bank(current.bankId),
             state = state,
             onBack = { popOrExit() },
+            onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
             onConfirmOwned = viewModel::confirmLoanOwned,
             onMarkExternal = viewModel::markLoanExternal,
             onRequestStopTracking = viewModel::requestStopLoanTracking,
@@ -313,9 +318,21 @@ fun SettingsRoute(
             onBack = { popOrExit() },
         )
 
-        SettingsDestination.DataBackup -> SettingsDataBackupScreen(
+        SettingsDestination.DataBackup, SettingsDestination.ExportBackup, SettingsDestination.RestoreBackup, SettingsDestination.DataTools -> SettingsDataBackupScreen(
             state = state,
             onBack = { popOrExit() },
+            page = when (current) {
+                SettingsDestination.ExportBackup -> BackupPage.Export
+                SettingsDestination.RestoreBackup -> BackupPage.Restore
+                SettingsDestination.DataTools -> BackupPage.Tools
+                else -> BackupPage.Hub
+            },
+            onOpenPage = { page -> navigateTo(when (page) {
+                BackupPage.Export -> SettingsDestination.ExportBackup
+                BackupPage.Restore -> SettingsDestination.RestoreBackup
+                BackupPage.Tools -> SettingsDestination.DataTools
+                BackupPage.Hub -> SettingsDestination.DataBackup
+            }) },
             onReparseStored = viewModel::reparseStoredMessages,
             onImportSms = viewModel::importSmsFromPhone,
             onClearSmsImportMessage = viewModel::clearSmsImportMessage,
@@ -326,6 +343,7 @@ fun SettingsRoute(
             onRequestExport = onRequestExport,
             onRequestImport = onRequestImport,
             onConfirmPendingImport = viewModel::confirmPendingImport,
+            onVerifyPendingImport = viewModel::verifyPendingImport,
             onCancelPendingImport = viewModel::cancelPendingImport,
             onClearBackupMessage = viewModel::clearBackupMessage,
             onRequestFxRateCorrection = viewModel::requestHistoricalMerchantRateCorrection,
@@ -343,6 +361,7 @@ fun SettingsRoute(
             logErrorCount = logErrorCount,
             onBack = { popOrExit() },
             onOpenLogs = { navigateTo(SettingsDestination.Logs) },
+            onOpenUpdates = { navigateTo(SettingsDestination.Updates) },
             onOpenDesignCatalog = { navigateTo(SettingsDestination.DesignCatalog) },
             onSaveGithubToken = viewModel::saveGithubToken,
             onClearGithubToken = viewModel::clearGithubToken,
@@ -352,6 +371,15 @@ fun SettingsRoute(
             onInstallUpdate = viewModel::installPendingUpdate,
             onClearUpdateMessage = viewModel::clearUpdateMessage,
         )
+
+        SettingsDestination.Updates -> SettingsUpdatesScreen(
+            updateChannel = state.updateChannel, githubTokenConfigured = state.githubTokenConfigured,
+            updateState = state.updateState, updateMessage = state.updateMessage,
+            onBack = { popOrExit() }, onSelectUpdateChannel = viewModel::setUpdateChannel,
+            onSaveGithubToken = viewModel::saveGithubToken, onClearGithubToken = viewModel::clearGithubToken,
+            onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
+            onDownloadUpdate = viewModel::downloadUpdate, onInstallUpdate = viewModel::installPendingUpdate,
+            onClearUpdateMessage = viewModel::clearUpdateMessage)
 
         SettingsDestination.Logs -> SettingsLogsScreen(
             viewModel = viewModel,
@@ -403,7 +431,7 @@ private fun SettingsBankHubLoadingScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsHubScreen(
+internal fun SettingsHubScreen(
     state: SettingsUiState,
     reviewRequiredCount: Int,
     onBack: () -> Unit,
@@ -423,103 +451,37 @@ private fun SettingsHubScreen(
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
         if (state.loading) {
-            Column(
-                modifier = contentModifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-            }
+            Column(contentModifier.fillMaxSize(), verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator() }
             return@MasroofSecondaryScaffold
         }
-
-        Column(
-            modifier = contentModifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
-        ) {
-            SettingsGroupTitle(stringResource(R.string.settings_my_finances_section))
-
-            SettingsNavRow(
-                icon = MasroofIcons.externalIn,
-                title = stringResource(R.string.settings_accounts_section),
-                subtitle = SettingsRegistryCategory.Accounts.hubSubtitle(state),
-                onClick = onOpenAccounts,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.cardPayment,
-                title = stringResource(R.string.settings_cards_section),
-                subtitle = SettingsRegistryCategory.Cards.hubSubtitle(state),
-                onClick = onOpenCards,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.moneyMovement,
-                title = stringResource(R.string.settings_loans_followed),
-                subtitle = SettingsRegistryCategory.Loans.hubSubtitle(state),
-                onClick = onOpenLoans,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.calendar,
-                title = stringResource(R.string.settings_commitments_section),
-                subtitle = stringResource(
-                    R.string.settings_commitments_hub_subtitle,
-                    state.activeCommitments.size,
-                    state.disabledCommitments.size,
-                ),
-                onClick = onOpenCommitments,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.notifications,
-                title = stringResource(R.string.settings_hub_review_title),
-                subtitle = reviewHubSubtitle(reviewRequiredCount),
-                badgeCount = reviewRequiredCount.takeIf { it > 0 },
-                onClick = onOpenReview,
-            )
-
-            SettingsGroupTitle(stringResource(R.string.settings_app_section))
-
-            SettingsNavRow(
-                icon = MasroofIcons.theme,
-                title = stringResource(R.string.settings_app_section),
-                subtitle = appHubSubtitle(state.languageTag, state.themeMode),
-                onClick = onOpenApp,
-            )
-
-            SettingsGroupTitle(stringResource(R.string.settings_data_backup_section))
-
-            SettingsNavRow(
-                icon = MasroofIcons.rescan,
-                title = stringResource(R.string.settings_data_backup_section),
-                subtitle = stringResource(R.string.settings_data_backup_hub_subtitle),
-                onClick = onOpenDataBackup,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.recentTransactions,
-                title = stringResource(R.string.settings_statement_reconciliation_title),
-                subtitle = stringResource(R.string.settings_statement_reconciliation_subtitle),
-                onClick = onOpenStatementReconciliation,
-            )
-
-            SettingsNavRow(
-                icon = MasroofIcons.periodHint,
-                title = stringResource(R.string.settings_about_section),
-                subtitle = stringResource(R.string.settings_about_subtitle, state.appVersion),
-                onClick = onOpenAbout,
-            )
-
-            state.error?.let {
-                Text(
-                    stringResource(R.string.settings_update_failed),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+        Column(contentModifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap)) {
+            com.baraa.masroof.presentation.common.MasroofCard {
+                Text(stringResource(R.string.reference_manage_title), style = MaterialTheme.typography.titleMedium)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_accounts_section),
+                    SettingsRegistryCategory.Accounts.hubSubtitle(state), MasroofIcons.moneyMovement, onOpenAccounts)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_cards_section),
+                    SettingsRegistryCategory.Cards.hubSubtitle(state), MasroofIcons.cardPayment, onOpenCards)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_loans_followed),
+                    SettingsRegistryCategory.Loans.hubSubtitle(state), MasroofIcons.savings, onOpenLoans)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_commitments_section),
+                    stringResource(R.string.settings_commitments_hub_subtitle, state.activeCommitments.size, state.disabledCommitments.size), MasroofIcons.calendar, onOpenCommitments, divider = false)
             }
+            com.baraa.masroof.presentation.common.MasroofCard {
+                Text(stringResource(R.string.settings_app_section), style = MaterialTheme.typography.titleMedium)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.reference_preferences_title),
+                    appHubSubtitle(state.languageTag, state.themeMode), MasroofIcons.palette, onOpenApp)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_data_backup_section),
+                    stringResource(R.string.settings_data_backup_hub_subtitle), MasroofIcons.backup, onOpenDataBackup)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title),
+                    stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onOpenStatementReconciliation)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_about_section),
+                    stringResource(R.string.settings_about_subtitle, state.appVersion), MasroofIcons.periodHint, onOpenAbout, divider = false)
+            }
+            Text(stringResource(R.string.reference_tracking_note), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            state.error?.let { Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -539,11 +501,3 @@ private fun appHubSubtitle(languageTag: String, themeMode: ThemeMode): String =
             ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
         },
     )
-
-@Composable
-private fun reviewHubSubtitle(reviewRequiredCount: Int): String =
-    if (reviewRequiredCount > 0) {
-        stringResource(R.string.settings_hub_review_subtitle_count, reviewRequiredCount)
-    } else {
-        stringResource(R.string.settings_hub_review_subtitle_none)
-    }

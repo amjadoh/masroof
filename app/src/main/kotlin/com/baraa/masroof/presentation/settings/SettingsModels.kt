@@ -166,6 +166,8 @@ data class SettingsUiState(
     val exportingBackup: Boolean = false,
     val importingBackup: Boolean = false,
     val awaitingImportConfirm: Boolean = false,
+    val awaitingImportPassword: Boolean = false,
+    val backupVerified: Boolean = false,
     val awaitingLegacyImportConfirm: Boolean = false,
     val exportPassphrase: String = "",
     val importPassphrase: String = "",

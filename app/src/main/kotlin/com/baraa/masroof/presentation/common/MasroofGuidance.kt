@@ -2,6 +2,8 @@ package com.baraa.masroof.presentation.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,8 +67,8 @@ fun MasroofGuidanceButton(
     val position = remember(density) {
         with(density) { MasroofGuidancePositionProvider(MasroofGuidanceStyle.anchorGap.roundToPx(), MasroofGuidanceStyle.windowMargin.roundToPx()) }
     }
-    Box(modifier) {
-        IconButton(onClick = { open = !open }, modifier = Modifier.size(MasroofGuidanceStyle.touchTarget)) {
+    Box(modifier.size(MasroofGuidanceStyle.iconSize)) {
+        Box(modifier = Modifier.size(MasroofGuidanceStyle.iconSize).clickable(role = Role.Button) { open = !open }) {
             Icon(MasroofIcons.guidance, com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.guidance_about, title)),
                 tint = contentColor, modifier = Modifier.size(MasroofGuidanceStyle.iconSize))
         }

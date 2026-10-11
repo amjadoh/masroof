@@ -2,6 +2,7 @@ package com.baraa.masroof.presentation.dashboard
 
 import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,151 +36,36 @@ import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun CommitmentsSection(
-    overview: CommitmentsOverview,
-    modifier: Modifier = Modifier,
-) {
+fun CommitmentsSection(overview: CommitmentsOverview, modifier: Modifier = Modifier,
+    onOpenCredit: (() -> Unit)? = null) {
     if (!overview.hasContent) return
-
-    val extended = MasroofThemeExtras.extendedColors
-    val paidFraction = commitmentDonutPaidFraction(overview.total.amount, overview.paid.amount)
-    val donutSize = MasroofSpacing.donutChartSizeLarge
-
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
-        MasroofSectionHeader(
-            title = stringResource(R.string.dashboard_commitments_title),
-            icon = MasroofIcons.calendar,
-        )
-
-        MasroofCard {
-            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = MasroofSpacing.listItemGap),
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        CommitmentSummaryMetric(
-                            label = stringResource(R.string.dashboard_commitments_total),
-                            value = formatLocalizedMoney(overview.total),
-                            valueColor = MaterialTheme.colorScheme.onSurface,
-                        )
+    val colors = MasroofThemeExtras.extendedColors
+    val pending = overview.rows.filter { it.status == CommitmentPaymentStatus.UNPAID }
+    Column(modifier.padding(top = com.baraa.masroof.presentation.theme.MasroofReference.sectionHeadingTop - MasroofSpacing.sectionGap),
+        verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.sectionHeadingBottom)) {
+        Text(stringResource(R.string.reference_period_commitments), style = MaterialTheme.typography.titleMedium)
+        androidx.compose.material3.Surface(color = colors.liabilitySoft,
+            shape = com.baraa.masroof.presentation.theme.MasroofComponentShapes.radius14) {
+            Row(Modifier.fillMaxWidth().padding(com.baraa.masroof.presentation.theme.MasroofReference.contextualBandPadding),
+                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
+                verticalAlignment = Alignment.Top) {
+                androidx.compose.material3.Icon(MasroofIcons.clock, null,
+                    Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon), tint = colors.liability)
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.reference_waiting_payment, formatLocalizedMoney(overview.remaining)),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = MasroofFontWeights.semiBold))
+                    pending.take(2).forEach { row ->
+                        Text(row.displayName + (row.expectedDate?.let {
+                            " · " + java.time.format.DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0]).format(it)
+                        } ?: ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    MasroofDonutChart(
-                        paidFraction = paidFraction,
-                        centerTitle = "",
-                        centerValue = "",
-                        showCenterContent = false,
-                        size = donutSize,
-                    )
-                }
-
-                DashboardSummaryTotalRow(
-                    label = stringResource(R.string.dashboard_commitments_paid),
-                    amount = overview.paid,
-                    amountColor = extended.inflow,
-                )
-
-                DashboardSummaryTotalRow(
-                    label = stringResource(R.string.dashboard_commitments_remaining),
-                    amount = overview.remaining,
-                    amountColor = extended.outflow,
-                )
-
-                DashboardSummaryCardDivider()
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
-                ) {
-                    overview.rows.forEach { row ->
-                        CommitmentDashboardRowItem(row = row)
+                    if (onOpenCredit != null && pending.any { it.source == CommitmentDashboardSource.CREDIT_CARD }) {
+                        com.baraa.masroof.presentation.common.MasroofTextButton(onClick = onOpenCredit) {
+                            Text(stringResource(R.string.reference_card_details), style = MaterialTheme.typography.bodySmall, color = colors.liability)
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CommitmentSummaryMetric(
-    label: String,
-    value: String,
-    valueColor: Color,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.semiBold),
-            color = valueColor,
-        )
-    }
-}
-
-@Composable
-private fun CommitmentDashboardRowItem(
-    row: CommitmentDashboardRow,
-) {
-    val extended = MasroofThemeExtras.extendedColors
-    val locale = LocalConfiguration.current.locales[0]
-    val dateFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
-    val statusLabel = when (row.status) {
-        CommitmentPaymentStatus.PAID -> stringResource(R.string.dashboard_commitments_status_paid)
-        CommitmentPaymentStatus.UNPAID -> stringResource(R.string.dashboard_commitments_status_unpaid)
-    }
-    val statusColor = when (row.status) {
-        CommitmentPaymentStatus.PAID -> extended.inflow
-        CommitmentPaymentStatus.UNPAID -> extended.liability
-    }
-    val displayName = when (row.source) {
-        CommitmentDashboardSource.CREDIT_CARD -> stringResource(
-            R.string.dashboard_credit_card_last4,
-            formatCardLast4(row.creditFacilityKey?.substringAfterLast(':')),
-        )
-        else -> row.displayName
-    }
-    val expectedDateLabel = row.expectedDate?.let(dateFormatter::format)
-        ?: stringResource(R.string.dashboard_commitments_no_expected_date)
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            displayName,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.medium),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            expectedDateLabel,
-            modifier = Modifier.widthIn(min = MasroofSpacing.metricTileHeight / 2),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        MasroofAmountText(
-            amount = formatLocalizedMoney(row.amount),
-            role = MasroofAmountRole.List,
-            color = statusColor,
-        )
-        Text(
-            statusLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = MasroofFontWeights.semiBold),
-            color = statusColor,
-        )
     }
 }

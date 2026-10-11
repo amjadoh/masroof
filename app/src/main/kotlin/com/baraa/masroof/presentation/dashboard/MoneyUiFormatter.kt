@@ -29,8 +29,8 @@ object MoneyUiFormatter {
             groupingSeparator = ','
             decimalSeparator = '.'
         }
-        val formatter = DecimalFormat("#,##0.00", symbols)
-        formatter.minimumFractionDigits = Money.SCALE
+        val formatter = DecimalFormat("#,##0.##", symbols)
+        formatter.minimumFractionDigits = if (amount.remainder(BigDecimal.ONE).signum() == 0) 0 else Money.SCALE
         formatter.maximumFractionDigits = Money.SCALE
         val number = formatter.format(amount)
         return "$number ${currencyLabel(currency, languageTag)}"
