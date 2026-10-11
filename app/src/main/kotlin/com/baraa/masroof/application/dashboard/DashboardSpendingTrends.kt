@@ -11,6 +11,7 @@ data class DashboardSpendingTrends(
     val byAccount: Map<String, DailySpendingTrend>,
     val byCard: Map<String, DailySpendingTrend>,
     val debitCards: DailySpendingTrend? = null,
+    val purchases: DailySpendingTrend,
 )
 
 object DashboardSpendingTrendsBuilder {
@@ -61,13 +62,19 @@ object DashboardSpendingTrendsBuilder {
                 key in cards.transactionDebitSpendInvolvement[transaction.id].orEmpty()
             }
         }
+        val cardTransactionIds = cardRows.values.flatten().map { it.id }.toSet()
+        val parsedById = parsedRecords.associateBy { it.event.id }
+        val purchaseRows = transactions.filter {
+            DailyPurchasesScope.includes(it, it.id in cardTransactionIds, parsedById)
+        }
         DashboardSpendingTrends(
             overall = trend(transactions, outflows = true),
             accounts = trend(accountRows.values.flatten()),
             creditCards = trend(creditKeys.flatMap { cardRows[it].orEmpty() }),
             byAccount = accountRows.mapValues { trend(it.value) },
-            byCard = cardRows.mapValues { trend(it.value) },
-            debitCards = trend(debitKeys.flatMap { cardRows[it].orEmpty() }),
+            byCard = cardRows.mapValues { (key, rows) -> trend(rows, outflows = key in debitKeys) },
+            debitCards = trend(debitKeys.flatMap { cardRows[it].orEmpty() }, outflows = true),
+            purchases = trend(purchaseRows, outflows = true),
         )
     }
 }

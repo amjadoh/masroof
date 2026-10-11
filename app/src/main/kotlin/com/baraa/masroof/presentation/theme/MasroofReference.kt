@@ -56,6 +56,12 @@ object MasroofReference {
     val selectedPoint = 6.dp
     val chartDash = 4.dp
     val chartDashStroke = 3.dp
+    val averageLineStroke = 1.5.dp
+    val averageLegendWidth = 22.dp
+    val averageDash = 5.dp
+    val scopeTabInset = 4.dp
+    val scopeTabRadius = 9.dp
+    val periodHeaderHorizontal = 8.dp
     val axisUnitLeft = 12.dp
     val axisUnitBaseline = 14.dp
     val axisLabelOffset = 10.dp
@@ -78,7 +84,7 @@ object MasroofReference {
         lineHeight = 20.8.sp, fontWeight = MasroofFontWeights.normal)
     val selectedAmount = metricValue
     val chartLabel = TextStyle(fontFamily = MasroofFontFamily, fontSize = 11.sp,
-        lineHeight = 17.6.sp)
+        lineHeight = 17.6.sp, textDirection = androidx.compose.ui.text.style.TextDirection.ContentOrLtr)
     val borderDark = Color(0xFF323232)
     val navLight = Color(0xFFE6F3F1)
     val navDark = Color(0xFF14312E)

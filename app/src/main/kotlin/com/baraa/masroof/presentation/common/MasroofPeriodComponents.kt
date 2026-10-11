@@ -3,22 +3,24 @@ package com.baraa.masroof.presentation.common
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextAlign
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.theme.*
 
@@ -27,20 +29,43 @@ fun MasroofPeriodPill(label: String, onPrevious: () -> Unit, onNext: () -> Unit,
     modifier: Modifier = Modifier, previousContentDescription: String? = null,
     nextContentDescription: String? = null, onCustomize: (() -> Unit)? = null,
     customizeLabel: String? = null, guidance: String? = null) {
-    var open by remember { mutableStateOf(false) }
-    Surface(onClick = { open = true }, modifier = modifier.padding(bottom = MasroofSpacing.inlineGap).fillMaxWidth(), shape = MasroofShapes.small,
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val previous = previousContentDescription ?: stringResource(R.string.dashboard_period_previous)
+    val next = nextContentDescription ?: stringResource(R.string.dashboard_period_next)
+    Surface(modifier = modifier.padding(bottom = MasroofSpacing.inlineGap).fillMaxWidth(), shape = MasroofShapes.small,
         border = BorderStroke(MasroofSpacing.borderWidth, MasroofThemeExtras.extendedColors.cardBorder)) {
-        ReferencePeriodContent(label, guidance)
-    }
-    if (open) AlertDialog(onDismissRequest = { open = false }, title = { MasroofText(label) },
-        text = {
-            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                TextButton(onClick = { onPrevious(); open = false }) { MasroofText(previousContentDescription.orEmpty()) }
-                TextButton(onClick = { onNext(); open = false }) { MasroofText(nextContentDescription.orEmpty()) }
+        Column(Modifier.padding(MasroofSpacing.sectionHeaderGap)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = MasroofReference.periodHeaderHorizontal),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+                    Icon(MasroofOutlineIcons.CalendarDays, null, Modifier.size(MasroofReference.icon),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    MasroofText(stringResource(R.string.dashboard_salary_period_short),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    guidance?.let { MasroofGuidanceButton(label, it) }
+                }
+                if (onCustomize != null && customizeLabel != null) TextButton(onClick = onCustomize,
+                    modifier = Modifier.heightIn(min = MasroofSpacing.minimumTouchTarget).testTag("dashboard-customize")) {
+                    Icon(MasroofIcons.customize, null, Modifier.size(MasroofReference.icon))
+                    MasroofText(customizeLabel, Modifier.padding(start = MasroofSpacing.smallGap),
+                        style = MaterialTheme.typography.titleSmall)
+                }
             }
-        }, confirmButton = {
-            if (onCustomize != null && customizeLabel != null) TextButton(onClick = { open = false; onCustomize() }) { MasroofText(customizeLabel) }
-        }, dismissButton = { TextButton(onClick = { open = false }) { MasroofText(stringResource(R.string.settings_cancel)) } })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(MasroofSpacing.minimumTouchTarget).testTag("period-previous")) {
+                    Icon(if (rtl) MasroofOutlineIcons.ChevronRight else MasroofOutlineIcons.ChevronLeft, previous,
+                        Modifier.size(MasroofReference.icon))
+                }
+                MasroofText(label, Modifier.weight(1f).testTag("period-range"), style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center)
+                IconButton(onClick = onNext, modifier = Modifier.size(MasroofSpacing.minimumTouchTarget).testTag("period-next")) {
+                    Icon(if (rtl) MasroofOutlineIcons.ChevronLeft else MasroofOutlineIcons.ChevronRight, next,
+                        Modifier.size(MasroofReference.icon))
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -25,6 +25,7 @@ import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofInteractiveLineChart
 import com.baraa.masroof.presentation.common.MasroofReferenceMoney
 import com.baraa.masroof.presentation.common.MasroofText
+import com.baraa.masroof.presentation.common.MasroofChartAverageLegend
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.theme.MasroofHeroRole
 import com.baraa.masroof.presentation.theme.MasroofReference
@@ -35,8 +36,17 @@ import java.time.format.DateTimeFormatter
 fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Modifier = Modifier,
     explanation: String = stringResource(R.string.approved_card_expense_basis),
     role: MasroofHeroRole = MasroofHeroRole.Brand, onDaySelected: ((java.time.LocalDate) -> Unit)? = null,
-    selectedDate: java.time.LocalDate? = null) {
-    if (trend == null || trend.points.isEmpty()) return
+    selectedDate: java.time.LocalDate? = null, showAverage: Boolean = false,
+    controls: (@Composable () -> Unit)? = null) {
+    if (trend == null) return
+    if (trend.points.isEmpty()) {
+        MasroofCard(modifier) {
+            MasroofGuidanceLabel(title, explanation, style = MaterialTheme.typography.titleMedium)
+            controls?.invoke()
+            MasroofText(stringResource(R.string.dashboard_chart_no_elapsed_days), style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
     val locale = LocalConfiguration.current.locales[0]
     val date = DateTimeFormatter.ofPattern("d MMM", locale)
     val tick = DateTimeFormatter.ofPattern("d/M", locale)
@@ -53,17 +63,23 @@ fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Mo
                 contentColor = MaterialTheme.colorScheme.onSurface)
             Icon(com.baraa.masroof.presentation.common.MasroofIcons.analysis, null, Modifier.size(MasroofReference.icon))
         }
-        Column(Modifier.fillMaxWidth().paddingForReferenceChartHead(),
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.none)) {
-            MasroofText(date.format(point.date), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            MasroofReferenceMoney(formatLocalizedMoney(point.spending), style = MasroofReference.selectedAmount)
+        controls?.let { content -> Column(Modifier.fillMaxWidth().padding(top = MasroofSpacing.sectionGap)) { content() } }
+        Row(Modifier.fillMaxWidth().paddingForReferenceChartHead(), verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.none)) {
+                MasroofText(date.format(point.date), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MasroofReferenceMoney(formatLocalizedMoney(point.spending), style = MasroofReference.selectedAmount)
+            }
+            if (showAverage) MasroofChartAverageLegend(
+                stringResource(R.string.dashboard_chart_average_value, formatLocalizedMoney(trend.averageDailySpending)),
+                Modifier.weight(1f).testTag("daily-expenses-average"))
         }
         MasroofInteractiveLineChart(trend.points.map { it.spending.amount }, trend.averageDailySpending.amount,
             Modifier.testTag("daily-expenses-chart"), index,
             onPointSelected = { selected = it; onDaySelected?.invoke(trend.points[it].date) },
             pointLabel = { labels[it] }, role = role, axisLabel = { tick.format(trend.points[it].date) },
-            currencyLabel = currency)
+            currencyLabel = currency, showAverage = showAverage)
     }
 }
 

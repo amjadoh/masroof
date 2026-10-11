@@ -242,6 +242,9 @@ private fun MasroofContent(
                 homeDestination == HomeDestination.LoansSummary ->
                     homeDestination = HomeDestination.Dashboard
 
+                homeDestination == HomeDestination.CommitmentsSummary ->
+                    homeDestination = HomeDestination.Dashboard
+
                 homeDestination == HomeDestination.MerchantsSummary ->
                     homeDestination = HomeDestination.Dashboard
 

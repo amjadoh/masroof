@@ -169,7 +169,7 @@ fun CardsSummaryScreen(
                     )
                     state.spendingTrends?.debitCards?.let { trend ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.metricGap)) {
-                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_purchases), formatLocalizedMoney(trend.totalBeforeRefunds),
+                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.dashboard_expenses_before_refunds), formatLocalizedMoney(trend.totalBeforeRefunds),
                                 com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
                             com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_refunds), formatLocalizedMoney(trend.totalRefunds),
                                 com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))

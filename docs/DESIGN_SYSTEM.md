@@ -90,8 +90,15 @@ the shared help component. `MasroofGuidanceBoundaryTest` prevents inline hint te
 scope from the existing persisted dashboard context. Compose does not sum money.
 Overall expenses include expenses, bills, fees, loan repayments, external outgoing
 transfers and withdrawals, less refunds. Self-transfers and card settlements are
-excluded to avoid double counting purchases. Credit/debit charts show purchases,
-bills and ordinary fees less refunds. FX requires a resolved local equivalent;
+excluded to avoid double counting purchases. Home has one chart with two scopes:
+Daily purchases is the default and includes attributed credit/Mada purchases,
+cash withdrawals and external outgoing transfers, less card-attributed refunds;
+bills, repayments and standalone fees stay in All daily expenses only. Scope tabs
+share complete labels, equal columns and a high-contrast selected color pair.
+Credit charts retain purchases, bills and ordinary fees less refunds. Mada charts
+include only their confirmed card purchases, cash withdrawals and refunds;
+an account link alone never assigns an unidentified withdrawal to a card.
+FX requires a resolved local equivalent;
 unresolved foreign amounts are not silently added to SAR.
 Account charts and inline movements use the same registry-linked debit scope as
 account summaries, including Google Pay purchases without an account SMS field
@@ -99,6 +106,11 @@ and verified debit refunds. Links remain qualified by bank and account identity.
 
 The daily mean uses all elapsed dates in the selected period including zero days;
 completed periods use their full duration. It is not a fixed fourteen-day mean.
+Future periods have no elapsed points or calculated mean. Home draws a dashed
+horizontal line at the selected scope's actual mean, with a matching legend and
+accessible description. The line is not positioned at a decorative midpoint.
+`MasroofChartScopeTabs` and `MasroofChartAverageLegend` live in common components;
+their geometry is in `MasroofReference`.
 The selected date and amount are visible above the chart. Tap or scrub the line
 to choose a day. Previous/next are available as screen-reader actions; no separate
 previous/next day buttons are displayed.
@@ -129,3 +141,9 @@ through shared components. Contextual guidance and screen-reader chart navigatio
 follow the later user approvals.
 
 Home shortcuts share one card with four columns and light separators in both languages. Full labels use the same body typography; narrow windows scroll the single row rather than wrapping words or switching to two rows.
+
+Home salary-period navigation uses `MasroofPeriodPill`: a visible salary heading
+and Customize action above previous-arrow, centered date range, next-arrow.
+The previous arrow is on the right in Arabic and left in English. Other pages
+keep the read-only period display. Commitment summary handles both screen Back
+and Android system Back through the same Home callback.
