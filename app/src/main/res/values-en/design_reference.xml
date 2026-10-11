@@ -14,7 +14,7 @@
     <string name="reference_preferences_title">Appearance and language</string>
     <string name="reference_manage_title">Manage your accounts</string>
     <string name="reference_period_average">Through %1$s · %2$d days</string>
-    <string name="reference_accounts_scope">Purchases, bills and fees, minus refunds. Transfers, cash withdrawals, credit card payments and loan repayments are excluded.</string>
+    <string name="reference_accounts_scope">Includes outgoing external transfers, bills, loan installments, credit card settlements, non-credit purchases, cash withdrawals and fees attributed to your accounts, less account refunds. Excludes transfers between your own accounts, credit purchases and refunds, and incoming movements.</string>
     <string name="reference_details">Details</string>
     <string name="reference_tracking_note">Financial summaries are on Home. Ownership, names and tracking are managed here.</string>
     <string name="reference_backup_title">Backup</string>
@@ -98,4 +98,5 @@
     <string name="reference_manage_commitments">My commitments · Manage</string>
     <string name="reference_pause_commitment">Pause commitment</string>
     <string name="reference_delete_commitment">Delete commitment</string>
+    <string name="reference_account_detail_scope">Includes outgoing external transfers, bills, loan installments, credit settlements, non-credit purchases, cash withdrawals, fees and outgoing internal transfers from this account, less account refunds. Excludes incoming movements and credit purchases and refunds.</string>
 </resources>

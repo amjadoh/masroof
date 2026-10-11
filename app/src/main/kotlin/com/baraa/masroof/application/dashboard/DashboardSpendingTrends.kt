@@ -32,17 +32,6 @@ object DashboardSpendingTrendsBuilder {
                 includeFinancialOutflows = outflows,
             )
 
-        val accountRows = ownedAccounts.associate { account ->
-            val container = FinancialContainerIdFactory.accountId(account.bank, account.maskedNumber)
-            val rows = transactions.filter { transaction ->
-                container != null && (
-                    transaction.sourceContainerId == container ||
-                        transaction.destinationContainerId == container ||
-                        container in accounts.transactionAccountInvolvement[transaction.id].orEmpty()
-                    )
-            }
-            "${account.bank.id}:${account.maskedNumber}" to rows
-        }
         val cardRows = linkedMapOf<String, List<FinancialTransaction>>()
         val creditKeys = mutableSetOf<String>()
         val debitKeys = mutableSetOf<String>()
@@ -67,11 +56,13 @@ object DashboardSpendingTrendsBuilder {
         val purchaseRows = transactions.filter {
             DailyPurchasesScope.includes(it, it.id in cardTransactionIds, parsedById)
         }
+        val accountTrends = AccountDailySpendingTrendsBuilder.build(context, accounts.transactionAccountInvolvement, creditKeys,
+            cards.transactionCardInvolvement)
         DashboardSpendingTrends(
             overall = trend(transactions, outflows = true),
-            accounts = trend(accountRows.values.flatten()),
+            accounts = accountTrends.aggregate,
             creditCards = trend(creditKeys.flatMap { cardRows[it].orEmpty() }),
-            byAccount = accountRows.mapValues { trend(it.value) },
+            byAccount = accountTrends.byAccount,
             byCard = cardRows.mapValues { (key, rows) -> trend(rows, outflows = key in debitKeys) },
             debitCards = trend(debitKeys.flatMap { cardRows[it].orEmpty() }, outflows = true),
             purchases = trend(purchaseRows, outflows = true),

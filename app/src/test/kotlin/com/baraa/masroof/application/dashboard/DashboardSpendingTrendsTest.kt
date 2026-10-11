@@ -31,7 +31,7 @@ class DashboardSpendingTrendsTest {
     private val period = FinancialPeriod(date, date.plusDays(3))
 
     @Test
-    fun accountChartsExcludeMovements_whileOverallKeepsApprovedOutflows() {
+    fun accountChartsIncludeConfirmedOutflows_whileOverallKeepsItsOwnScope() {
         val accountId = FinancialContainerIdFactory.accountId(bank, "1111")
         val registry = listOf(AccountRegistryEntry.forTest(bank, "1111"))
         val purchase = transaction("purchase", "100", accountId)
@@ -42,12 +42,12 @@ class DashboardSpendingTrendsTest {
         val input = context(registry, listOf(purchase,withdrawal,transfer,installment,refund))
         val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input),
             CardsDashboardSection(CreditFacilitiesOverview(emptyList(),emptyList(),Currency.SAR),emptyMap(),emptyMap()))
-        assertEquals("80.00", result.accounts.totalSpending.amount.toPlainString())
-        assertEquals("80.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("2780.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals("2780.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
         assertEquals("2780.00", result.overall.totalSpending.amount.toPlainString())
-        assertEquals("100.00", result.accounts.totalBeforeRefunds.amount.toPlainString())
+        assertEquals("2800.00", result.accounts.totalBeforeRefunds.amount.toPlainString())
         assertEquals("20.00", result.accounts.totalRefunds.amount.toPlainString())
-        assertEquals(setOf("purchase","refund"), result.accounts.transactionIdsByDate[date])
+        assertEquals(setOf("purchase","withdrawal","external","installment","refund"), result.accounts.transactionIdsByDate[date])
     }
 
     @Test
@@ -71,9 +71,9 @@ class DashboardSpendingTrendsTest {
         )
         val result = DashboardSpendingTrendsBuilder.build(context, accountSection, cards)
         assertEquals("180.00", result.overall.totalSpending.amount.toPlainString())
-        assertEquals("130.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals("30.00", result.accounts.totalSpending.amount.toPlainString())
         assertEquals("150.00", result.creditCards.totalSpending.amount.toPlainString())
-        assertEquals("130.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("30.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
         assertEquals("0.00", result.byAccount.getValue("${otherBank.id}:1111").totalSpending.amount.toPlainString())
         assertEquals("100.00", result.byCard.getValue("${bank.id}:3333").totalSpending.amount.toPlainString())
         assertEquals("50.00", result.byCard.getValue("${otherBank.id}:2222").totalSpending.amount.toPlainString())
@@ -173,6 +173,85 @@ class DashboardSpendingTrendsTest {
         val trend = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards).purchases
         assertEquals("200.00", trend.totalSpending.amount.toPlainString())
         assertEquals(setOf("row-0", "row-5"), trend.transactionIdsByDate[date])
+    }
+
+    @Test
+    fun accountsCountSettlementsAndSourceInternalLeg_onlyDetailsIncludeInternal() {
+        val a = FinancialContainerIdFactory.accountId(bank, "1111")
+        val b = FinancialContainerIdFactory.accountId(bank, "2222")
+        fun out(id: String, value: String, type: FinancialTransactionType) = transaction(id, value, a).copy(type = type)
+        val cashRows = listOf(transaction("purchase", "30", a),
+            out("bill", "40", FinancialTransactionType.BILL_PAYMENT), out("loan", "50", FinancialTransactionType.LOAN_REPAYMENT),
+            out("settlement", "60", FinancialTransactionType.CREDIT_CARD_PAYMENT), out("external", "70", FinancialTransactionType.EXTERNAL_TRANSFER_OUT),
+            out("cash", "80", FinancialTransactionType.CASH_WITHDRAWAL), out("fee", "10", FinancialTransactionType.FEE))
+        val internal = out("internal", "100", FinancialTransactionType.SELF_TRANSFER).copy(destinationContainerId = b)
+        val back = internal.copy(id = "internal-back", sourceContainerId = b, destinationContainerId = a, amount = Money.of("35", Currency.SAR))
+        val refund = transaction("refund", "20", null).copy(type = FinancialTransactionType.REFUND, destinationContainerId = a)
+        val credit = transaction("credit", "90", a).copy(linkedParsedEventIds = listOf("cc-purchase"))
+        val creditRefund = refund.copy(id = "credit-refund", amount = Money.of("15", Currency.SAR), linkedParsedEventIds = listOf("cc-refund"))
+        val salary = refund.copy(id = "salary", type = FinancialTransactionType.INCOME, amount = Money.of("1000", Currency.SAR))
+        val inbound = salary.copy(id = "external-in", type = FinancialTransactionType.EXTERNAL_TRANSFER_IN)
+        val input = context(listOf(AccountRegistryEntry.forTest(bank, "1111"), AccountRegistryEntry.forTest(bank, "2222")),
+            cashRows + listOf(internal, back, refund, credit, creditRefund, salary, inbound, internal)).copy(
+            evidence = DashboardEvidence(listOf(debitRecord("cc-purchase", MessageFamily.PURCHASE), debitRecord("cc-refund", MessageFamily.REFUND))
+                .map { it.copy(details = ParsedEventDetails(cardSmsChannel = CardSmsChannel.CREDIT)) }, emptyMap()))
+        val emptyCards = CardsDashboardSection(CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR), emptyMap(), emptyMap())
+        val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), emptyCards)
+        assertEquals("320.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals("106.67", result.accounts.averageDailySpending.amount.toPlainString())
+        assertEquals("420.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("35.00", result.byAccount.getValue("${bank.id}:2222").totalSpending.amount.toPlainString())
+        assertEquals((cashRows.map { it.id } + refund.id).toSet(), result.accounts.transactionIdsByDate[date])
+        assertEquals((cashRows.map { it.id } + listOf(refund.id, internal.id)).toSet(), result.byAccount.getValue("${bank.id}:1111").transactionIdsByDate[date])
+        assertEquals(setOf(back.id), result.byAccount.getValue("${bank.id}:2222").transactionIdsByDate[date])
+        assertEquals("335.00", result.overall.totalSpending.amount.toPlainString())
+    }
+
+    @Test
+    fun accountSourceIsBankQualified_unknownSourcesAndForeignRefundsStayOut() {
+        val a = FinancialContainerIdFactory.accountId(bank, "1111")
+        val other = FinancialContainerIdFactory.accountId(otherBank, "1111")
+        val rows = listOf(transaction("own", "25", a), transaction("other", "50", other), transaction("unknown", "200", null),
+            transaction("unknown-bill", "300", null).copy(type = FinancialTransactionType.BILL_PAYMENT),
+            transaction("foreign-refund", "100", null).copy(type = FinancialTransactionType.REFUND, destinationContainerId = other))
+        val input = context(listOf(AccountRegistryEntry.forTest(bank, "1111")), rows)
+        val cards = CardsDashboardSection(CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR), emptyMap(), emptyMap())
+        val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards)
+        assertEquals("25.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals(setOf("own"), result.accounts.transactionIdsByDate[date])
+    }
+
+    @Test
+    fun accountFeeInstallmentAndResolvedFx_areCountedWithTheirActualAmounts() {
+        val a = FinancialContainerIdFactory.accountId(bank, "1111")
+        val fee = transaction("installment", "180", a).copy(type = FinancialTransactionType.FEE, linkedParsedEventIds = listOf("financing"))
+        val record = debitRecord("financing", MessageFamily.FINANCING_INSTALLMENT).copy(
+            event = debitRecord("financing", MessageFamily.FINANCING_INSTALLMENT).event.copy(cardRef = null),
+            details = ParsedEventDetails(loanType = com.baraa.masroof.domain.model.LoanType.PERSONAL))
+        val foreign = transaction("usd", "10", a).copy(amount = Money.of("10", Currency.USD))
+        val unresolved = foreign.copy(id = "unresolved")
+        val input = context(listOf(AccountRegistryEntry.forTest(bank, "1111")), listOf(fee, foreign, unresolved)).copy(
+            evidence = DashboardEvidence(listOf(record), emptyMap()), sarEquivalents = mapOf(foreign.id to Money.of("37.50", Currency.SAR)))
+        val cards = CardsDashboardSection(CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR), emptyMap(), emptyMap())
+        val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards)
+        assertEquals("217.50", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals("72.50", result.accounts.averageDailySpending.amount.toPlainString())
+        assertEquals(setOf(fee.id, foreign.id), result.accounts.transactionIdsByDate[date])
+    }
+
+    @Test
+    fun creditAttributionWinsOverAccountLink_whileItsSettlementStillCounts() {
+        val a = FinancialContainerIdFactory.accountId(bank, "1111")
+        val credit = transaction("credit", "100", a)
+        val refund = transaction("credit-refund", "20", null).copy(type = FinancialTransactionType.REFUND, destinationContainerId = a)
+        val settlement = transaction("settlement", "80", a).copy(type = FinancialTransactionType.CREDIT_CARD_PAYMENT)
+        val input = context(listOf(AccountRegistryEntry.forTest(bank, "1111")), listOf(credit, refund, settlement))
+        val cards = CardsDashboardSection(CreditFacilitiesOverview(listOf(facility(row(bank, "3333"))), emptyList(), Currency.SAR),
+            listOf(credit, refund, settlement).associate { it.id to setOf("${bank.id}:3333") }, emptyMap())
+        val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards)
+        assertEquals("80.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals(setOf(settlement.id), result.accounts.transactionIdsByDate[date])
+        assertEquals("80.00", result.creditCards.totalSpending.amount.toPlainString())
     }
 
     private fun mada(last4: String) = DebitCardOverview(bank, last4, "Mada", "Account", "1111", null,

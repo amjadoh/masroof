@@ -33,7 +33,7 @@ fun AccountPeriodSummaryCard(summary: CurrentAccountSummary, modifier: Modifier 
                 colors.outflow, Modifier.weight(1f))
         }
         SpendingTrendSection(trend, stringResource(R.string.approved_account_daily),
-            explanation = stringResource(R.string.reference_accounts_scope), role = MasroofHeroRole.Account)
+            explanation = stringResource(R.string.reference_account_detail_scope), role = MasroofHeroRole.Account)
         AccountReferenceGroup(R.string.reference_inflow_external, listOf(
             R.string.dashboard_salary to summary.inflow.salary,
             R.string.dashboard_external_in_short to summary.inflow.externalTransfersIn,
