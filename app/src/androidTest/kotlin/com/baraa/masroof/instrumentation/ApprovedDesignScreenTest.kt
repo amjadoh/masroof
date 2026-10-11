@@ -240,7 +240,7 @@ class ApprovedDesignScreenTest {
         return DashboardUiState(loading = false, period = period,
             creditFacilities = CreditFacilitiesOverview(listOf(facility), emptyList(), Currency.SAR),
             ownedCards = listOf(OwnedCardUi(bank, "1234", "بطاقة السفر", CardNetwork.VISA), OwnedCardUi(bank, "5678", "بطاقة العائلة", CardNetwork.MASTERCARD)),
-            spendingTrends = DashboardSpendingTrends(trend, trend, trend, emptyMap(), mapOf("${bank.id}:1234" to trend, "${bank.id}:5678" to trend)))
+            spendingTrends = DashboardSpendingTrends(trend, trend, trend, emptyMap(), mapOf("${bank.id}:1234" to trend, "${bank.id}:5678" to trend), purchases = trend))
     }
 
     private fun capture(name: String) {

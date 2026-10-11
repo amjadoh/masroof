@@ -29,6 +29,15 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTransaction: (String) -> Unit) {
     val ordinary = state.dailySpendingTrend ?: return
+    if (ordinary.points.isEmpty()) {
+        DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) { modifier ->
+            com.baraa.masroof.presentation.common.MasroofCard(modifier) {
+                com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.dashboard_chart_no_elapsed_days),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        return
+    }
     var scope by rememberSaveable { mutableStateOf("all") }
     var day by rememberSaveable { mutableStateOf(ordinary.points.last().date.toString()) }
     val trend = if (scope == "all") ordinary else state.spendingTrends?.byCard?.get(scope) ?: ordinary

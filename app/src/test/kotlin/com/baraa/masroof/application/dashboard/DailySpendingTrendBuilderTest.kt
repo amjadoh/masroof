@@ -134,6 +134,24 @@ class DailySpendingTrendBuilderTest {
         assertEquals("0.00", trend.totalSpending.amount.toPlainString())
     }
 
+    @Test
+    fun futurePeriod_hasNoPointsNoAverageAndNoTransactionIds() {
+        val trend = build(listOf(transaction("future", FinancialTransactionType.EXPENSE, "100", "2026-07-27T07:00:00Z")),
+            today = LocalDate.parse("2026-07-26"))
+        assertEquals(emptyList<DailySpendingPoint>(), trend.points)
+        assertEquals("0.00", trend.averageDailySpending.amount.toPlainString())
+        assertEquals(emptyMap<LocalDate, Set<String>>(), trend.transactionIdsByDate)
+    }
+
+    @Test
+    fun futureTransactionsInCurrentPeriod_doNotLeakIntoDaySelection() {
+        val trend = build(listOf(transaction("future", FinancialTransactionType.EXPENSE, "100", "2026-07-29T07:00:00Z")),
+            today = LocalDate.parse("2026-07-28"))
+        assertEquals(2, trend.points.size)
+        assertEquals("0.00", trend.totalSpending.amount.toPlainString())
+        assertEquals(emptyMap<LocalDate, Set<String>>(), trend.transactionIdsByDate)
+    }
+
     private fun build(
         transactions: List<FinancialTransaction>,
         today: LocalDate = LocalDate.parse("2026-07-29"),

@@ -138,9 +138,9 @@ fun MasroofLineChart(values: List<BigDecimal>, referenceValue: BigDecimal,
     modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
     onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
     role: MasroofHeroRole = MasroofHeroRole.Brand,
-    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "") {
+    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "", showAverage: Boolean = false) {
     MasroofInteractiveLineChart(values, referenceValue, modifier, selectedPointIndex,
-        onPointSelected, pointLabel, role, axisLabel, currencyLabel)
+        onPointSelected, pointLabel, role, axisLabel, currencyLabel, showAverage)
 }
 
 @Composable
@@ -148,7 +148,7 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
     modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
     onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
     role: MasroofHeroRole = MasroofHeroRole.Brand,
-    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "") {
+    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "", showAverage: Boolean = false) {
     if (values.isEmpty()) return
     val selected = MasroofLineChartLayout.coerceSelectedIndex(selectedPointIndex, values.size)
     val mirror = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -158,7 +158,9 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
     val surface = MaterialTheme.colorScheme.surface
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = MasroofReference.chartLabel.copy(color = muted)
-    val range = remember(values) { MasroofLineChart.referenceRange(values) }
+    val range = remember(values, referenceValue, showAverage) {
+        MasroofLineChart.referenceRange(if (showAverage) values + referenceValue else values)
+    }
     val density = LocalDensity.current
     val left = with(density) { MasroofReference.chartLeft.toPx() }
     val right = with(density) { MasroofReference.chartRight.toPx() }
@@ -179,8 +181,11 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
     val dayAxis = stringResource(com.baraa.masroof.R.string.reference_axis_day)
     val previousLabel = stringResource(R.string.chart_previous_point)
     val nextLabel = stringResource(R.string.chart_next_point)
+    val averageAnnouncement = stringResource(R.string.dashboard_chart_average_value,
+        com.baraa.masroof.application.locale.AppDigits.display("${referenceValue.toPlainString()} $currencyLabel"))
     val semantics = Modifier.semantics {
-        selected?.let { contentDescription = com.baraa.masroof.application.locale.AppDigits.display(pointLabel(it)) }
+        selected?.let { contentDescription = com.baraa.masroof.application.locale.AppDigits.display(pointLabel(it)) +
+            if (showAverage) " · $averageAnnouncement" else "" }
         if (onPointSelected != null && selected != null) customActions = buildList {
             if (selected > 0) add(CustomAccessibilityAction(previousLabel) { onPointSelected(selected - 1); true })
             if (selected < values.lastIndex) add(CustomAccessibilityAction(nextLabel) { onPointSelected(selected + 1); true })
@@ -233,6 +238,12 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
             drawLine(grid, Offset(left, y), Offset(left + width, y), strokeWidth = gridStroke)
             val number = java.text.DecimalFormat("#,##0.##", java.text.DecimalFormatSymbols(java.util.Locale.US)).format(value)
             label(number, left - tickOffset, y + tickBaseline, true)
+        }
+        if (showAverage) {
+            val averageY = MasroofLineChartLayout.yFor(referenceValue, range, top, plotHeight)
+            drawLine(muted, Offset(left, averageY), Offset(left + width, averageY),
+                MasroofReference.averageLineStroke.toPx(), pathEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(MasroofReference.averageDash.toPx(), MasroofReference.averageDash.toPx())))
         }
         val path = Path()
         values.indices.forEach { i -> val p = point(i); if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }

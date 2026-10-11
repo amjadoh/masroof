@@ -23,12 +23,15 @@ data class DailySpendingTrend(
     val averageDailySpending: SignedMoneyAmount,
     val transactionIdsByDate: Map<LocalDate, Set<String>> = emptyMap(),
 ) {
-    val totalBeforeRefunds: SignedMoneyAmount get() = SpendingAmounts.sum(points.map { it.beforeRefunds })
-    val totalRefunds: SignedMoneyAmount get() = SpendingAmounts.sum(points.map { it.refunds })
+    val totalBeforeRefunds: SignedMoneyAmount get() = if (points.isEmpty()) SignedMoneyAmount.zero(averageDailySpending.currency)
+        else SpendingAmounts.sum(points.map { it.beforeRefunds })
+    val totalRefunds: SignedMoneyAmount get() = if (points.isEmpty()) SignedMoneyAmount.zero(averageDailySpending.currency)
+        else SpendingAmounts.sum(points.map { it.refunds })
     val totalSpending: SignedMoneyAmount
-        get() = SpendingAmounts.sum(points.map { it.spending })
+        get() = if (points.isEmpty()) SignedMoneyAmount.zero(averageDailySpending.currency)
+            else SpendingAmounts.sum(points.map { it.spending })
     init {
-        require(points.isNotEmpty())
+        require(points.isNotEmpty() || averageDailySpending.amount.signum() == 0)
         require(points.all { it.spending.currency == averageDailySpending.currency })
     }
 
@@ -67,6 +70,9 @@ object DailySpendingTrendBuilder {
         today: LocalDate,
         includeFinancialOutflows: Boolean = false,
     ): DailySpendingTrend {
+        if (period.startDate.isAfter(today)) return DailySpendingTrend(
+            emptyList(), SignedMoneyAmount.zero(primaryCurrency),
+        )
         val parsedRecordsById = parsedRecords.associateBy { it.event.id }
         val totalsByDay = mutableMapOf<LocalDate, BigDecimal>()
         val grossByDay = mutableMapOf<LocalDate, BigDecimal>()
@@ -81,7 +87,7 @@ object DailySpendingTrendBuilder {
                 includeFinancialOutflows = includeFinancialOutflows,
             ) ?: return@forEach
             val date = transaction.occurredAt.atZone(zoneId).toLocalDate()
-            if (date.isBefore(period.startDate) || !date.isBefore(period.endDateExclusive)) return@forEach
+            if (date.isBefore(period.startDate) || !date.isBefore(period.endDateExclusive) || date.isAfter(today)) return@forEach
             idsByDay.getOrPut(date) { mutableSetOf() }.add(transaction.id)
             if (signedAmount.signum() >= 0) grossByDay[date] = (grossByDay[date] ?: BigDecimal.ZERO).add(signedAmount)
             else refundsByDay[date] = (refundsByDay[date] ?: BigDecimal.ZERO).subtract(signedAmount)
