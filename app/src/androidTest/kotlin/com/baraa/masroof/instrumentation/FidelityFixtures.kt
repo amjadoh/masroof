@@ -44,7 +44,7 @@ internal object FidelityFixtures {
         Row(12,"فاتورة الإنترنت",FinancialTransactionType.BILL_PAYMENT,"200","2026-10-05","3001"),
         Row(13,"فاتورة الكهرباء",FinancialTransactionType.BILL_PAYMENT,"400","2026-10-09","3001"),
         Row(14,"حوالة صادرة",FinancialTransactionType.EXTERNAL_TRANSFER_OUT,"500","2026-10-01","3001"),
-        Row(15,"سحب نقدي",FinancialTransactionType.CASH_WITHDRAWAL,"400","2026-10-06","3001"),
+        Row(15,"سحب نقدي",FinancialTransactionType.CASH_WITHDRAWAL,"400","2026-10-06","3001","4421"),
         Row(16,"رسوم بنكية",FinancialTransactionType.FEE,"50","2026-10-02","3001"),
         Row(17,"من الجاري إلى الادخار",FinancialTransactionType.SELF_TRANSFER,"1000","2026-10-08","3001",destination="5002"),
     )
@@ -72,7 +72,7 @@ internal object FidelityFixtures {
         val ordinary = trend(transactions)
         val overall = trend(transactions, true)
         val perCard = listOf("7271","8842","4421").associate { number ->
-            "${bank.id}:$number" to trend(transactions.filterIndexed { i, _ -> rows[i].card == number }) }
+            "${bank.id}:$number" to trend(transactions.filterIndexed { i, _ -> rows[i].card == number }, outflows = number == "4421") }
         val accountTrend = trend(transactions.filterIndexed { i, _ -> rows[i].account != null })
         val snapshot = CreditCardBalanceSnapshot(money("5000"),money("2200"),LocalDate.parse("2026-10-15"),
             Instant.parse("2026-10-02T07:00:00Z"),Instant.parse("2026-10-02T07:00:00Z"))
@@ -80,7 +80,7 @@ internal object FidelityFixtures {
         val child = primary.copy(last4="8842",calendarMonthSpendingNet=signed("600"),statementSpendingNet=signed("600"),salaryPeriodSpendingNet=signed("600"),snapshot=null)
         val facility = CreditFacilityOverview(bank,primary,listOf(child),StatementDueSnapshot(money("2200"),snapshot.updatedAt,snapshot.dueDate),
             signed("1400"),signed("1400"),primary.statementPeriodLabel,null,Currency.SAR)
-        val mada = DebitCardOverview(bank,"4421","مدى •• 4421","الجاري •• 3001","3001",CardNetwork.MADA,signed("1650"),null)
+        val mada = DebitCardOverview(bank,"4421","مدى •• 4421","الجاري •• 3001","3001",CardNetwork.MADA,signed("2050"),null)
         val allCards = CreditFacilitiesOverview(listOf(facility),listOf(mada),Currency.SAR)
         val previews = rows.mapIndexed { i, row ->
             val tx = transactions[i]
@@ -108,7 +108,8 @@ internal object FidelityFixtures {
             creditFacilities=allCards, loansOverview=LoansOverview(listOf(LoanOverview(bank,LoanType.PERSONAL,"القرض الشخصي",money("84200"),Instant.parse("2026-09-27T07:00:00Z"),money("1800"),Instant.parse("2026-09-27T07:00:00Z"),signed("1800"),null)),null,Currency.SAR),
             commitmentsOverview=obligations,merchantSpending=merchant,dailySpendingTrend=ordinary,
             spendingTrends=DashboardSpendingTrends(overall,accountTrend,trend(transactions.filterIndexed { i, _ -> rows[i].card in listOf("7271","8842") }),
-                mapOf("${bank.id}:3001" to accountTrend,"${bank.id}:5002" to trend(emptyList())),perCard,perCard.getValue("${bank.id}:4421")),
+                mapOf("${bank.id}:3001" to accountTrend,"${bank.id}:5002" to trend(emptyList())),perCard,perCard.getValue("${bank.id}:4421"),
+                purchases = trend(transactions.filterIndexed { i, tx -> rows[i].card != null || tx.type in listOf(FinancialTransactionType.CASH_WITHDRAWAL, FinancialTransactionType.EXTERNAL_TRANSFER_OUT) }, true)),
             recentTransactions=previews.sortedByDescending { it.localDate }.take(3),allTransactions=previews.sortedByDescending { it.localDate },
             transactionAccountInvolvement=rows.associate { "ref-${it.id}" to listOfNotNull(it.account?.let(::account),it.destination?.let(::account)).toSet() },
             transactionCardInvolvement=rows.associate { "ref-${it.id}" to listOfNotNull(it.card?.let { number -> "${bank.id}:$number" }).toSet() },

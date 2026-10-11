@@ -137,7 +137,7 @@ internal fun DashboardScreen(
     var flowDetailMode by rememberSaveable { mutableStateOf<DashboardFlowDetailMode?>(null) }
     val context = LocalContext.current
     val periodRangeLabel = state.period?.let {
-        FinancialPeriodUiFormatter.formatRange(context, it)
+        FinancialPeriodUiFormatter.formatRange(context, it, compact = true)
     } ?: state.periodLabel
     val isPullRefreshing = (state.loading && state.summary != null) || state.rescanning
     val activeLayout = state.customizeDraft ?: state.dashboardLayout
@@ -324,9 +324,8 @@ private fun DashboardCustomizableSections(
                 }
 
                 DashboardSectionId.MERCHANTS -> {
-                    state.spendingTrends?.overall?.let { trend ->
-                        SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses),
-                            explanation = stringResource(R.string.approved_expense_basis))
+                    state.spendingTrends?.let { trends ->
+                        HomeSpendingTrendSection(trends)
                         DashboardAnalysisSection(
                             merchantOverview = state.merchantSpending,
                             onViewAll = onOpenMerchantsSummary,

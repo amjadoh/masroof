@@ -9,8 +9,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object FinancialPeriodUiFormatter {
-    fun formatRange(context: Context, period: FinancialPeriod): String {
-        val dayMonth = dayMonthFormatter(context)
+    fun formatRange(context: Context, period: FinancialPeriod, compact: Boolean = false): String {
+        val locale = context.resources.configuration.locales[0]
+        val dayMonth = if (compact) DateTimeFormatter.ofPattern("d MMM", locale) else dayMonthFormatter(context)
         val start = dayMonth.format(period.startDate)
         val end = dayMonth.format(period.displayEndDateInclusive)
         return "$start — $end ${period.displayEndDateInclusive.year}"

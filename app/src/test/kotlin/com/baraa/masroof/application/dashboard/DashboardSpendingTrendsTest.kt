@@ -122,6 +122,62 @@ class DashboardSpendingTrendsTest {
         assertEquals("33.33", trends.accounts.averageDailySpending.amount.toPlainString())
     }
 
+    @Test
+    fun purchasesDefault_keepsCardPurchasesCashAndExternalTransfers_withoutDuplicateMovements() {
+        val accountId = FinancialContainerIdFactory.accountId(bank, "1111")
+        val cardId = FinancialContainerIdFactory.cardId(bank, "2222")
+        val credit = transaction("credit", "100", cardId)
+        val debit = transaction("debit", "120", accountId)
+        val cash = transaction("cash", "200", accountId).copy(type = FinancialTransactionType.CASH_WITHDRAWAL)
+        val unknownCash = cash.copy(id = "cash-without-card", amount = Money.of("50", Currency.SAR))
+        val external = cash.copy(id = "external", type = FinancialTransactionType.EXTERNAL_TRANSFER_OUT, amount = Money.of("300", Currency.SAR))
+        val refund = debit.copy(id = "refund", type = FinancialTransactionType.REFUND, amount = Money.of("20", Currency.SAR))
+        val excluded = listOf(
+            transaction("account-only", "70", accountId),
+            transaction("bill", "80", cardId).copy(type = FinancialTransactionType.BILL_PAYMENT),
+            transaction("fee", "10", cardId).copy(type = FinancialTransactionType.FEE),
+            transaction("loan", "150", accountId).copy(type = FinancialTransactionType.LOAN_REPAYMENT),
+            transaction("settlement", "100", accountId).copy(type = FinancialTransactionType.CREDIT_CARD_PAYMENT),
+            transaction("self-transfer", "500", accountId).copy(type = FinancialTransactionType.SELF_TRANSFER),
+        )
+        val input = context(listOf(AccountRegistryEntry.forTest(bank, "1111")),
+            listOf(credit, credit, debit, cash, unknownCash, external, refund) + excluded)
+        val cards = CardsDashboardSection(
+            CreditFacilitiesOverview(listOf(facility(row(bank, "2222"))), listOf(mada("2210"), mada("2211")), Currency.SAR),
+            mapOf(credit.id to setOf("${bank.id}:2222")),
+            listOf(debit, cash, refund).associate { it.id to setOf("${bank.id}:2210") },
+        )
+        val trends = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards)
+        assertEquals("750.00", trends.purchases.totalSpending.amount.toPlainString())
+        assertEquals("250.00", trends.purchases.averageDailySpending.amount.toPlainString())
+        assertEquals(setOf("credit", "debit", "cash", "cash-without-card", "external", "refund"), trends.purchases.transactionIdsByDate[date])
+        assertEquals("1060.00", trends.overall.totalSpending.amount.toPlainString())
+        assertEquals("300.00", trends.byCard.getValue("${bank.id}:2210").totalSpending.amount.toPlainString())
+        assertEquals("100.00", trends.byCard.getValue("${bank.id}:2210").averageDailySpending.amount.toPlainString())
+        assertEquals("0.00", trends.byCard.getValue("${bank.id}:2211").totalSpending.amount.toPlainString())
+        assertEquals("300.00", trends.debitCards!!.totalSpending.amount.toPlainString())
+    }
+
+    @Test
+    fun persistedFamiliesExcludeCardBillsSettlementsAndInstallments_evenWithExpenseType() {
+        val cardId = FinancialContainerIdFactory.cardId(bank, "2222")
+        val families = listOf(MessageFamily.PURCHASE, MessageFamily.BILL_PAYMENT,
+            MessageFamily.CARD_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.FEE, MessageFamily.WITHDRAWAL)
+        val rows = families.mapIndexed { i, _ -> transaction("row-$i", "100", cardId).copy(linkedParsedEventIds = listOf("event-$i")) }
+        val input = context(emptyList(), rows).copy(evidence = DashboardEvidence(families.mapIndexed { i, family ->
+            debitRecord("event-$i", family).copy(event = debitRecord("event-$i", family).event.copy(cardRef = CardReference(bank, "2222")),
+                details = ParsedEventDetails(cardSmsChannel = CardSmsChannel.CREDIT))
+        }, emptyMap()))
+        val cards = CardsDashboardSection(CreditFacilitiesOverview(listOf(facility(row(bank, "2222"))), emptyList(), Currency.SAR),
+            rows.associate { it.id to setOf("${bank.id}:2222") }, emptyMap())
+        val trend = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input), cards).purchases
+        assertEquals("200.00", trend.totalSpending.amount.toPlainString())
+        assertEquals(setOf("row-0", "row-5"), trend.transactionIdsByDate[date])
+    }
+
+    private fun mada(last4: String) = DebitCardOverview(bank, last4, "Mada", "Account", "1111", null,
+        SignedMoneyAmount.zero(Currency.SAR), null)
+
     private fun debitRecord(id: String, family: MessageFamily) = ParsedEventRecord(
         event = ParsedEvent(id = id, rawSmsId = "sms-$id", bank = bank, messageFamily = family,
             direction = MoneyDirection.OUTGOING, amount = Money.of("120", Currency.SAR),

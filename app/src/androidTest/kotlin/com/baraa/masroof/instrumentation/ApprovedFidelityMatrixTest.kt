@@ -171,6 +171,10 @@ class ApprovedFidelityMatrixTest {
                 onManageAccounts = {},
                 onOpenAccount = {}
             )
+            "debitDetail" -> DebitCardDetailScreen(
+                debit = financial.creditFacilities!!.debitCards.first(), state = financial,
+                cardNetwork = com.baraa.masroof.domain.model.CardNetwork.MADA, onBack = {}, onOpenTransaction = {},
+            )
             "accountDetail" -> AccountDetailScreen(
                 account = financial.ownedAccounts.first(),
                 state = financial,
