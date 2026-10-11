@@ -163,6 +163,32 @@ class ApprovedDesignScreenTest {
     }
 
     @Test
+    fun failedLoad_showsErrorInsteadOfEmptyCards_andPreservesCachedDataWithNotice() {
+        val state = mutableStateOf(DashboardUiState(loading = false, error = DashboardError.LOAD_FAILED))
+        compose.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme(darkTheme = false) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        CardsSummaryScreen(state.value, onBack = {}, onManageCards = {}, onOpenCard = {},
+                            onOpenDebit = {}, cardNetworksByLast4 = emptyMap())
+                    }
+                }
+            }
+        }
+        compose.onNodeWithText(ar(R.string.dashboard_load_error)).assertIsDisplayed()
+        compose.onNodeWithText(ar(R.string.dashboard_cards_summary_empty)).assertDoesNotExist()
+        capture("approved-load-error-light")
+        compose.runOnIdle {
+            state.value = fixture().copy(error = DashboardError.LOAD_FAILED, currentAccount = CurrentAccountSummary.zero(Currency.SAR))
+        }
+        compose.onNodeWithText(ar(R.string.dashboard_load_error)).assertIsDisplayed()
+        compose.onNodeWithText(ar(R.string.dashboard_cards_summary_empty)).assertDoesNotExist()
+        scrollTo(hasText("بطاقة السفر", substring = true))
+        compose.onNode(hasText("بطاقة السفر", substring = true) and hasClickAction()).assertIsDisplayed()
+    }
+
+    @Test
     fun debitOnlySummary_doesNotInventACreditDueOrCreditChart() {
         val original = fixture()
         val trend = requireNotNull(original.spendingTrends).overall

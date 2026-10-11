@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import com.baraa.masroof.application.dashboard.CreditFacilityOverview
+import com.baraa.masroof.application.dashboard.statementDueFor
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofDetailRow
 import com.baraa.masroof.presentation.theme.MasroofHeroRole
@@ -33,10 +34,9 @@ fun CreditCardDetailSummaryCard(
     val locale = LocalConfiguration.current.locales[0]
     val date = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
-    val statement = facility?.facilityDue
-    val ownStatement = row.snapshot?.takeIf { it.statementIssuedAt != null }
-    val due = statement?.amount ?: ownStatement?.dueAmount
-    val dueDate = statement?.dueDate ?: ownStatement?.dueDate
+    val statement = row.statementDueFor(facility)
+    val due = statement?.amount
+    val dueDate = statement?.dueDate
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofHeroCard(
             title = row.displayLabel(ownedCards) + " · " + stringResource(R.string.approved_available_balance),

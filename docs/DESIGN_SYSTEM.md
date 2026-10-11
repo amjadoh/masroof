@@ -39,8 +39,14 @@ All entity summaries use the same neutral card shell, with type-specific facts:
 - Account: calculated inflow/outflow/net movement, with its calculation described.
 - Credit: recorded available balance, facility amount due and due date.
   Supplementary cards explain shared facility due; it is counted once in totals.
+  The due amount and date come from the same statement. A missing latest date
+  is displayed as unavailable rather than filled from an older statement.
 - Debit: linked account and net purchases/refunds, without a fictional credit due.
 - Loan: recorded remaining balance, latest installment and its recorded date.
+
+Summary pages distinguish a failed load from an empty portfolio. A failed refresh
+keeps the previous same-period data with an error notice; a failed initial load
+does not display a misleading empty state.
 
 Arabic expenses terminology is «المصاريف», «متوسط المصاريف اليومية» and
 «المصاريف حسب التاجر». Merchant analysis requires at least two eligible purchases.
@@ -54,6 +60,9 @@ transfers and withdrawals, less refunds. Self-transfers and card settlements are
 excluded to avoid double counting purchases. Credit/debit charts show purchases,
 bills and ordinary fees less refunds. FX requires a resolved local equivalent;
 unresolved foreign amounts are not silently added to SAR.
+Account charts and inline movements use the same registry-linked debit scope as
+account summaries, including Google Pay purchases without an account SMS field
+and verified debit refunds. Links remain qualified by bank and account identity.
 
 The daily mean uses all elapsed dates in the selected period including zero days;
 completed periods use their full duration. It is not a fixed fourteen-day mean.
