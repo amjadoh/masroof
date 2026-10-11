@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CommitmentsSummaryScreen(state: DashboardUiState, onBack: () -> Unit,
     onOpenCommitment: (CommitmentDashboardRow) -> Unit) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
     val overview = state.commitmentsOverview
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
     val colors = MasroofThemeExtras.extendedColors

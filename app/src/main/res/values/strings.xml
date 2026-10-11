@@ -700,4 +700,12 @@
     <string name="guidance_title">توضيح</string>
     <string name="guidance_about">توضيح: %1$s</string>
     <string name="approved_card_expense_basis">تشمل المشتريات والفواتير والرسوم، بعد خصم الاستردادات. لا تشمل سداد البطاقة أو التحويل بين حساباتك أو أقساط القروض.</string>
+
+    <string name="dashboard_daily_purchases">المشتريات اليومية</string>
+    <string name="dashboard_chart_average_value">المتوسط %1$s</string>
+    <string name="dashboard_chart_no_elapsed_days">لم تبدأ هذه الفترة بعد؛ لا توجد أيام منقضية لعرض المصاريف أو حساب المتوسط.</string>
+    <string name="dashboard_purchases_trend_basis">تشمل مشتريات بطاقات الائتمان ومدى والسحب النقدي والتحويلات الخارجية الصادرة، بعد خصم الاستردادات المرتبطة بالبطاقات. تستبعد الفواتير وأقساط القروض والرسوم المستقلة وسداد البطاقات والتحويلات بين حساباتك. المتوسط يحسب على أيام الفترة المنقضية، بما فيها الأيام بلا مصاريف.</string>
+    <string name="dashboard_all_trend_basis">تشمل المشتريات والفواتير والرسوم وأقساط القروض والسحب النقدي والتحويلات الخارجية الصادرة، بعد خصم الاستردادات. تستبعد سداد البطاقات والتحويلات بين حساباتك لتجنب التكرار. المتوسط يحسب على أيام الفترة المنقضية، بما فيها الأيام بلا مصاريف.</string>
+    <string name="dashboard_mada_trend_basis">تشمل مشتريات مدى والسحب النقدي المؤكد ارتباطه بهذه البطاقة، بعد خصم الاستردادات. لا ينسب السحب إلى بطاقة محددة دون بيانات تؤكد ارتباطه بها.</string>
+    <string name="dashboard_expenses_before_refunds">المصاريف قبل الاستردادات</string>
 </resources>

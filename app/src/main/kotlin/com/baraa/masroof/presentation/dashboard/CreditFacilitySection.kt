@@ -33,7 +33,7 @@ fun DebitCardDetailSummaryCard(debit: DebitCardOverview, network: CardNetwork?, 
             com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_debit_card_linked_account),
                 debit.linkedAccountLabel ?: debit.linkedAccountMaskedNumber?.let { formatCardLast4(it) }
                     ?: stringResource(R.string.dashboard_value_unavailable))
-            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_purchases),
+            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_expenses_before_refunds),
                 trend?.let { formatLocalizedMoney(it.totalBeforeRefunds) } ?: stringResource(R.string.dashboard_value_unavailable))
             com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_refunds),
                 trend?.let { formatLocalizedMoney(it.totalRefunds) } ?: stringResource(R.string.dashboard_value_unavailable),
@@ -52,7 +52,7 @@ fun DebitCardSummaryTile(debit: DebitCardOverview, network: CardNetwork?, modifi
         bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank)) {
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_debit_card_linked_account),
             debit.linkedAccountLabel ?: debit.linkedAccountMaskedNumber?.let { formatCardLast4(it) } ?: stringResource(R.string.dashboard_value_unavailable), dense = true)
-        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_purchases),
+        com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_expenses_before_refunds),
             trend?.let { formatLocalizedMoney(it.totalBeforeRefunds) } ?: stringResource(R.string.dashboard_value_unavailable), dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_refunds),
             trend?.let { formatLocalizedMoney(it.totalRefunds) } ?: stringResource(R.string.dashboard_value_unavailable),
