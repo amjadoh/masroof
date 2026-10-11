@@ -25,8 +25,9 @@ object MoneyUiFormatter {
     fun format(amount: BigDecimal, currency: Currency, languageTag: String): String {
         val locale = AppLocale.displayLocale(languageTag)
         val symbols = DecimalFormatSymbols(locale).apply {
-            groupingSeparator = if (languageTag == AppLocale.TAG_EN) ',' else ','
-            decimalSeparator = if (languageTag == AppLocale.TAG_EN) '.' else '.'
+            zeroDigit = '0'
+            groupingSeparator = ','
+            decimalSeparator = '.'
         }
         val formatter = DecimalFormat("#,##0.00", symbols)
         formatter.minimumFractionDigits = Money.SCALE
@@ -37,7 +38,7 @@ object MoneyUiFormatter {
 
     fun currencyLabel(currency: Currency, languageTag: String): String =
         when (currency) {
-            Currency.SAR -> if (languageTag == AppLocale.TAG_EN) "SAR" else "ر.س"
+            Currency.SAR -> if (AppLocale.isEnglish(languageTag)) "SAR" else "ر.س"
             Currency.USD -> "USD"
             Currency.EUR -> "EUR"
             Currency.GBP -> "GBP"

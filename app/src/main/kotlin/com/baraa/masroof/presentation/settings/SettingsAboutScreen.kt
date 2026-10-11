@@ -25,7 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -74,7 +74,7 @@ fun SettingsAboutScreen(
 
     LaunchedEffect(updateMessageText) {
         if (updateMessageText != null) {
-            snackbarHostState.showSnackbar(updateMessageText)
+            snackbarHostState.showSnackbar(com.baraa.masroof.application.locale.AppDigits.display(updateMessageText))
             onClearUpdateMessage()
         }
     }

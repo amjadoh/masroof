@@ -26,7 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +72,7 @@ fun SettingsLogsScreen(
 
     LaunchedEffect(messageText) {
         if (messageText != null) {
-            snackbarHostState.showSnackbar(messageText)
+            snackbarHostState.showSnackbar(com.baraa.masroof.application.locale.AppDigits.display(messageText))
             viewModel.clearLogMessage()
         }
     }

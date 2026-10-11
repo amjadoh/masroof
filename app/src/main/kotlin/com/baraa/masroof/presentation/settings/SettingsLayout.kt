@@ -2,7 +2,7 @@ package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.baraa.masroof.domain.model.Bank

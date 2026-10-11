@@ -51,6 +51,19 @@ does not display a misleading empty state.
 Arabic expenses terminology is «المصاريف», «متوسط المصاريف اليومية» and
 «المصاريف حسب التاجر». Merchant analysis requires at least two eligible purchases.
 
+## Digits in every language
+
+The display policy is `application/locale/AppDigits`: all visible digits use
+`0123456789`. Arabic remains Arabic with RTL layout and Arabic month names.
+`AppLocale.displayLocale` requests the `latn` numbering system; `MoneyUiFormatter`
+fixes decimal digits and separators. All app text uses `MasroofText`, which also
+normalizes imported names and SMS evidence at display time. Editable public text
+uses `AppDigitsVisualTransformation` without modifying stored input or cursor
+positions. Password fields keep their masking. Original SMS, financial facts and
+backups retain their source values. `AppDigitsBoundaryTest` prevents direct text
+bypasses and Eastern digits in display resources; native screen tests check text
+in both themes and the Arabic date picker.
+
 ## Financial chart scope
 
 `application/dashboard/DashboardSpendingTrendsBuilder` computes every display

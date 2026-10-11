@@ -43,7 +43,7 @@ fun DashboardSummaryScaffold(
             if (showPeriod) MasroofPeriodDisplay(label = periodRangeLabel)
 
             if (showPeriod) state.periodAdjustmentHint?.let { hint ->
-                androidx.compose.material3.Text(
+                com.baraa.masroof.presentation.common.MasroofText(
                     hint,
                     modifier = Modifier.fillMaxWidth(),
                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
@@ -52,7 +52,7 @@ fun DashboardSummaryScaffold(
             }
 
             if (state.error != null) {
-                androidx.compose.material3.Text(
+                com.baraa.masroof.presentation.common.MasroofText(
                     stringResource(R.string.dashboard_load_error),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.error,

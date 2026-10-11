@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -40,7 +40,7 @@ import org.junit.runner.RunWith
 /** Production screens with explicit test facts; no real financial records are read. */
 @RunWith(AndroidJUnit4::class)
 class ApprovedDesignScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
 
     @Test
     fun creditSummaryAndDetail_matchBothThemes_andChartChangesSelectedDay() {
@@ -240,6 +240,7 @@ class ApprovedDesignScreenTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
+        assertNoEasternDigits()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.waitForIdleSync()
         // Semantics can settle a frame before the compositor presents it.
@@ -255,5 +256,62 @@ class ApprovedDesignScreenTest {
         val uri = resolver.insert(collection, values) ?: error("Screenshot output missing")
         resolver.openOutputStream(uri)!!.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
+    }
+
+    private fun assertNoEasternDigits() {
+        val nodes = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true)
+            .fetchSemanticsNodes()
+        val violations = nodes.flatMap { it.config[SemanticsProperties.Text] }.map { it.text }
+            .filter { text -> text.any { it in '\u0660'..'\u0669' || it in '\u06F0'..'\u06F9' } }
+        assertTrue("Visible text must use 0123456789: $violations", violations.isEmpty())
+    }
+
+    @Test
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+    fun arabicCalendar_usesAsciiDigitsForDaysYearsAndSelection() {
+        compose.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme(darkTheme = false) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        androidx.compose.material3.DatePicker(state = androidx.compose.material3.rememberDatePickerState(
+                            initialSelectedDateMillis = Instant.parse("2026-10-11T00:00:00Z").toEpochMilli()))
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        assertTrue(compose.onAllNodes(hasText("2026", substring = true)).fetchSemanticsNodes().isNotEmpty())
+        capture("approved-ascii-calendar-light")
+    }
+
+    @Test
+    fun renameAccount_displaysImportedEasternDigitsAsAscii_withoutChangingSavedName() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val hostResources = compose.activity.resources
+        val originalConfiguration = android.content.res.Configuration(hostResources.configuration)
+        val localizedConfiguration = AppLocaleContext.wrap(compose.activity, "ar").resources.configuration
+        // Dialog windows use the host Activity resources rather than LocalContext overrides.
+        instrumentation.runOnMainSync { hostResources.updateConfiguration(localizedConfiguration, hostResources.displayMetrics) }
+        try {
+            val savedName = mutableStateOf<String?>(null)
+            compose.setContent {
+                val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+                CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                    MasroofTheme(darkTheme = false) {
+                        com.baraa.masroof.presentation.settings.SettingsRenameAccountDialog(
+                            target = com.baraa.masroof.presentation.settings.ManagedAccountUi("test", Bank.BANK_ALJAZIRA,
+                                "3001", com.baraa.masroof.domain.model.OwnershipStatus.OWNED, "حساب ٣٠٠١"),
+                            updating = false, onDismiss = {}, onSave = { savedName.value = it })
+                    }
+                }
+            }
+            compose.waitForIdle()
+            capture("approved-ascii-account-input-light")
+            compose.onNodeWithText(ar(R.string.settings_save)).performClick()
+            compose.runOnIdle { org.junit.Assert.assertEquals("حساب ٣٠٠١", savedName.value) }
+        } finally {
+            instrumentation.runOnMainSync { hostResources.updateConfiguration(originalConfiguration, hostResources.displayMetrics) }
+        }
     }
 }
