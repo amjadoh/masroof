@@ -1,23 +1,21 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import com.baraa.masroof.presentation.common.MasroofTextStyles
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CurrentAccountSummary
 import com.baraa.masroof.application.dashboard.cashPosition
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.common.MasroofCard
-import com.baraa.masroof.presentation.common.MasroofCardAccent
 import com.baraa.masroof.presentation.common.MasroofMoneyRow
 import com.baraa.masroof.presentation.common.MasroofMoneyRowStyle
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
@@ -32,39 +30,21 @@ fun AccountPeriodSummaryCard(
     val movement = summary.cashPosition()
     val net = movement.remaining
 
-    MasroofCard(modifier = modifier, accent = MasroofCardAccent.Account) {
-        DashboardSummaryPrimaryMetric(
-            title = stringResource(R.string.dashboard_remaining_title),
-            amount = formatLocalizedMoney(net),
-            tone = when {
-                net.amount.signum() > 0 -> DashboardMetricTone.Inflow
-                net.amount.signum() < 0 -> DashboardMetricTone.Outflow
-                else -> DashboardMetricTone.Neutral
-            },
-            hint = stringResource(
-                R.string.dashboard_remaining_formula,
-                formatLocalizedMoney(movement.inflow),
-                formatLocalizedMoney(movement.outflow),
-            ),
-            modifier = Modifier.fillMaxWidth(),
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        com.baraa.masroof.presentation.common.MasroofHeroCard(
+            title = stringResource(R.string.dashboard_remaining_title), value = formatLocalizedMoney(net),
+            guidance = stringResource(R.string.dashboard_remaining_formula, formatLocalizedMoney(movement.inflow), formatLocalizedMoney(movement.outflow)) + "\n\n" +
+                stringResource(R.string.dashboard_account_remaining_calculated_hint),
+            role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account,
         )
-
-        Text(
-            stringResource(R.string.dashboard_account_remaining_calculated_hint),
-            style = MasroofTextStyles.hint,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-
-        DashboardSummaryCardDivider()
-
+        MasroofCard {
         DashboardSummaryBreakdownHeader(
             title = stringResource(R.string.dashboard_current_account_inflows),
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
         )
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+            modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
         ) {
             AccountFlowMoneyRow(
                 label = stringResource(R.string.dashboard_salary),
@@ -97,11 +77,11 @@ fun AccountPeriodSummaryCard(
 
         DashboardSummaryBreakdownHeader(
             title = stringResource(R.string.dashboard_money_movement),
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = MasroofSpacing.cardInnerGap),
         )
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+            modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
         ) {
             AccountDirectionMoneyRow(
                 label = stringResource(R.string.dashboard_external_out_short),
@@ -154,8 +134,8 @@ fun AccountPeriodSummaryCard(
             DashboardSummaryCardDivider()
             DashboardSummaryBreakdownHeader(title = stringResource(R.string.dashboard_self_transfers))
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
             ) {
                 AccountFlowMoneyRow(
                     label = stringResource(R.string.dashboard_self_transfer_in),
@@ -170,9 +150,10 @@ fun AccountPeriodSummaryCard(
             }
             SelfTransfersHint(
                 style = SelfTransfersHintStyle.IncludedInTotals,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
             )
         }
+    }
     }
 }
 

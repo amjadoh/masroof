@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.notification
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,15 +11,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.notification.NotificationAction
 import com.baraa.masroof.application.notification.NotificationItem
@@ -72,7 +73,7 @@ private fun NotificationCenterScreen(
                 Column(
                     modifier = contentModifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(MasroofSpacing.screenPaddingLarge),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -88,7 +89,7 @@ private fun NotificationCenterScreen(
             else -> {
                 LazyColumn(
                     modifier = contentModifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
                 ) {
                     items(state.items, key = { it.id }) { item ->
                         NotificationCenterRow(

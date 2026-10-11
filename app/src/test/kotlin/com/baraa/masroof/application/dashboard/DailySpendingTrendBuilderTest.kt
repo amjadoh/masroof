@@ -92,6 +92,48 @@ class DailySpendingTrendBuilderTest {
         assertEquals("50.00", trend.averageDailySpending.amount.toPlainString())
     }
 
+    @Test
+    fun allOutputs_includeCashTransfersAndRepayments_withoutCountingSettlementsTwice() {
+        val at = "2026-07-27T07:00:00Z"
+        val types = listOf(
+            FinancialTransactionType.EXPENSE to "100",
+            FinancialTransactionType.BILL_PAYMENT to "30",
+            FinancialTransactionType.FEE to "10",
+            FinancialTransactionType.LOAN_REPAYMENT to "200",
+            FinancialTransactionType.EXTERNAL_TRANSFER_OUT to "300",
+            FinancialTransactionType.CASH_WITHDRAWAL to "50",
+            FinancialTransactionType.REFUND to "20",
+            FinancialTransactionType.CREDIT_CARD_PAYMENT to "100",
+            FinancialTransactionType.SELF_TRANSFER to "500",
+            FinancialTransactionType.INCOME to "1000",
+        )
+        val trend = DailySpendingTrendBuilder.build(period,
+            types.mapIndexed { index, (type, amount) -> transaction("$index", type, amount, at) },
+            emptyList(), Currency.SAR, emptyMap(), zone, LocalDate.parse("2026-07-29"),
+            includeFinancialOutflows = true)
+        assertEquals("670.00", trend.totalSpending.amount.toPlainString())
+        assertEquals("223.33", trend.averageDailySpending.amount.toPlainString())
+        assertEquals(listOf("670.00", "0.00", "0.00"), trend.points.map { it.spending.amount.toPlainString() })
+    }
+
+    @Test
+    fun averageUsesElapsedDays_includingZeroDays_beyondFourteenDays() {
+        val longPeriod = FinancialPeriod(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-08-01"))
+        val trend = DailySpendingTrendBuilder.build(longPeriod,
+            listOf(transaction("expense", FinancialTransactionType.EXPENSE, "200", "2026-07-01T07:00:00Z")),
+            emptyList(), Currency.SAR, emptyMap(), zone, LocalDate.parse("2026-07-20"), true)
+        assertEquals(20, trend.points.size)
+        assertEquals("10.00", trend.averageDailySpending.amount.toPlainString())
+    }
+
+    @Test
+    fun unresolvedForeignAmounts_areNotAddedAsLocalCurrency() {
+        val trend = DailySpendingTrendBuilder.build(period,
+            listOf(transaction("usd", FinancialTransactionType.EXPENSE, "100", "2026-07-27T07:00:00Z", Currency.USD)),
+            emptyList(), Currency.SAR, emptyMap(), zone, LocalDate.parse("2026-07-29"), true)
+        assertEquals("0.00", trend.totalSpending.amount.toPlainString())
+    }
+
     private fun build(
         transactions: List<FinancialTransaction>,
         today: LocalDate = LocalDate.parse("2026-07-29"),

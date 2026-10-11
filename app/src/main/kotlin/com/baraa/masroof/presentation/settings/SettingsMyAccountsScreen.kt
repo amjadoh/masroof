@@ -1,15 +1,15 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.AccountType
 import com.baraa.masroof.presentation.common.MasroofIcons
@@ -26,7 +26,7 @@ fun SettingsAccountTypeDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_account_type_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                 AccountType.entries.forEach { type ->
                     TextButton(
                         onClick = { onSelect(type) },

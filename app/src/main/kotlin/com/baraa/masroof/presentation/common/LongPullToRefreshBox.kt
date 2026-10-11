@@ -1,5 +1,9 @@
 package com.baraa.masroof.presentation.common
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofSizes
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -13,12 +17,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -32,12 +34,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** Pull distance before refresh can arm (~ deliberate long pull). */
-val LongPullToRefreshThreshold: Dp = 180.dp
+val LongPullToRefreshThreshold: Dp = MasroofSizes.size180
 
 /** Must stay at/above [LongPullToRefreshThreshold] this long before release triggers refresh. */
 const val LongPullToRefreshHoldMs: Long = 400L
@@ -182,7 +183,7 @@ fun LongPullToRefreshBox(
             CircularProgressIndicator(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 12.dp)
+                    .padding(top = MasroofSpacing.sectionGap)
                     .alpha(
                         when {
                             isRefreshing -> 1f

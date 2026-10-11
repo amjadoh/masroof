@@ -1,14 +1,14 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.common.MasroofTextStyles
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import com.baraa.masroof.presentation.common.MasroofHeroCard
+import com.baraa.masroof.presentation.common.MasroofDetailRow
+import com.baraa.masroof.presentation.theme.MasroofHeroRole
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofCardAccent
 
@@ -20,35 +20,20 @@ data class DashboardSummaryHeroSpec(
 )
 
 @Composable
-fun DashboardSummaryHeroCard(
-    spec: DashboardSummaryHeroSpec,
-    modifier: Modifier = Modifier,
-) {
-    MasroofCard(modifier = modifier, accent = spec.accent) {
-        DashboardSummaryPrimaryMetric(
-            title = spec.primary.title,
-            amount = spec.primary.amount,
-            tone = spec.primary.tone,
-            hint = spec.primary.hint,
-            signedAmount = spec.primary.signedAmount,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        spec.footerHint?.let { hint ->
-            Text(
-                hint,
-                style = MasroofTextStyles.hint,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-
+fun DashboardSummaryHeroCard(spec: DashboardSummaryHeroSpec, modifier: Modifier = Modifier) {
+    val role = when (spec.accent) {
+        MasroofCardAccent.Account -> MasroofHeroRole.Account
+        MasroofCardAccent.Credit -> MasroofHeroRole.Card
+        MasroofCardAccent.Liability -> MasroofHeroRole.Liability
+        MasroofCardAccent.Inflow -> MasroofHeroRole.Inflow
+        MasroofCardAccent.Outflow -> MasroofHeroRole.Outflow
+        MasroofCardAccent.None -> MasroofHeroRole.Brand
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        MasroofHeroCard(title = spec.primary.title, value = spec.primary.amount, role = role,
+            guidance = listOfNotNull(spec.primary.hint, spec.footerHint).distinct().joinToString("\n\n"))
         if (spec.secondary.isNotEmpty()) {
-            DashboardSummaryCardDivider()
-            DashboardSummaryMetricGrid(
-                metrics = spec.secondary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            MasroofCard { spec.secondary.forEach { MasroofDetailRow(it.title, it.amount) } }
         }
     }
 }

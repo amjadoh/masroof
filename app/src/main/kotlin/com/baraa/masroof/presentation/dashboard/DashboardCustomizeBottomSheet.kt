@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
 import androidx.compose.foundation.layout.Arrangement
@@ -14,28 +17,19 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DashboardLayoutSnapshot
 import com.baraa.masroof.application.dashboard.DashboardSectionId
@@ -67,7 +61,7 @@ fun DashboardCustomizeBottomSheet(
         ) {
             Text(
                 stringResource(R.string.dashboard_customize_sheet_title),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.bold),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = MasroofSpacing.screenHorizontal, vertical = MasroofSpacing.sectionHeaderGap),
@@ -78,7 +72,7 @@ fun DashboardCustomizeBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
             ) {
                 items(
-                    items = draft.sections,
+                    items = draft.sections.filter { it.id != DashboardSectionId.CARDS && it.id != DashboardSectionId.LOANS },
                     key = { it.id.name },
                 ) { entry ->
                     CustomizeSectionRow(
@@ -86,7 +80,6 @@ fun DashboardCustomizeBottomSheet(
                         canMoveUp = draft.sections.indexOf(entry) > 0,
                         canMoveDown = draft.sections.indexOf(entry) < draft.sections.lastIndex,
                         onToggle = { onToggleSection(entry.id) },
-                        onSizeSelected = { onSetSectionSize(entry.id, it) },
                         onMoveUp = { onMoveSection(entry.id, -1) },
                         onMoveDown = { onMoveSection(entry.id, 1) },
                         extraContent = if (entry.id == DashboardSectionId.QUICK) {
@@ -130,12 +123,10 @@ private fun CustomizeSectionRow(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onToggle: () -> Unit,
-    onSizeSelected: (DashboardSectionSize) -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     extraContent: (@Composable () -> Unit)?,
 ) {
-    var sizeMenuExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -160,37 +151,8 @@ private fun CustomizeSectionRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     sectionTitle(entry.id),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = MasroofFontWeights.semiBold),
                 )
-                ExposedDropdownMenuBox(
-                    expanded = sizeMenuExpanded,
-                    onExpandedChange = { sizeMenuExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = sectionSizeLabel(entry.size),
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        textStyle = MaterialTheme.typography.labelSmall,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sizeMenuExpanded) },
-                    )
-                    ExposedDropdownMenu(
-                        expanded = sizeMenuExpanded,
-                        onDismissRequest = { sizeMenuExpanded = false },
-                    ) {
-                        DashboardSectionSize.entries.forEach { size ->
-                            DropdownMenuItem(
-                                text = { Text(sectionSizeLabel(size)) },
-                                onClick = {
-                                    onSizeSelected(size)
-                                    sizeMenuExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
             }
             Column {
                 IconButton(onClick = onMoveUp, enabled = canMoveUp) {
@@ -236,16 +198,6 @@ private fun sectionTitle(id: DashboardSectionId): String =
             DashboardSectionId.COMMITMENTS -> R.string.dashboard_customize_section_commitments
             DashboardSectionId.MERCHANTS -> R.string.dashboard_customize_section_merchants
             DashboardSectionId.TRANSACTIONS -> R.string.dashboard_customize_section_transactions
-        },
-    )
-
-@Composable
-private fun sectionSizeLabel(size: DashboardSectionSize): String =
-    stringResource(
-        when (size) {
-            DashboardSectionSize.SMALL -> R.string.dashboard_customize_size_small
-            DashboardSectionSize.MEDIUM -> R.string.dashboard_customize_size_medium
-            DashboardSectionSize.LARGE -> R.string.dashboard_customize_size_large
         },
     )
 

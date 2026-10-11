@@ -2,7 +2,7 @@ package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.baraa.masroof.domain.model.Bank
@@ -34,15 +34,7 @@ fun SettingsScreenHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        Text(
-            settingsBankLabel(bank),
-            style = MasroofTextStyles.screenLabel,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            hint,
-            style = MasroofTextStyles.hint,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(settingsBankLabel(bank), hint,
+            style = MasroofTextStyles.screenLabel, contentColor = MaterialTheme.colorScheme.primary)
     }
 }

@@ -11,7 +11,6 @@ import com.baraa.masroof.application.locale.AppLocaleRepository
 import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.application.theme.ThemePreferencesRepository
 import com.baraa.masroof.application.logging.AppLogCategories
-import com.baraa.masroof.application.logging.AppLogFormatting
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.update.AppUpdateService
 import com.baraa.masroof.application.update.ApkInstaller

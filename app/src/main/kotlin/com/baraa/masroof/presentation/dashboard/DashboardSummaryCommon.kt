@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofPeriodDisplay
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
@@ -22,6 +21,7 @@ fun DashboardSummaryScaffold(
     title: String,
     state: DashboardUiState,
     onBack: () -> Unit,
+    showPeriod: Boolean = true,
     content: @Composable (Modifier) -> Unit,
 ) {
     val context = LocalContext.current
@@ -40,14 +40,13 @@ fun DashboardSummaryScaffold(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            MasroofPeriodDisplay(label = periodRangeLabel)
+            if (showPeriod) MasroofPeriodDisplay(label = periodRangeLabel, guidance = state.periodAdjustmentHint)
 
-            state.periodAdjustmentHint?.let { hint ->
-                androidx.compose.material3.Text(
-                    hint,
-                    modifier = Modifier.fillMaxWidth(),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+            if (state.error != null) {
+                com.baraa.masroof.presentation.common.MasroofText(
+                    stringResource(R.string.dashboard_load_error),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
                 )
             }
 
@@ -55,12 +54,12 @@ fun DashboardSummaryScaffold(
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(32.dp),
+                        .padding(MasroofSpacing.contentPaddingLarge),
                     contentAlignment = androidx.compose.ui.Alignment.Center,
                 ) {
                     androidx.compose.material3.CircularProgressIndicator()
                 }
-            } else {
+            } else if (state.error == null || state.currentAccount != null) {
                 content(Modifier.fillMaxWidth())
             }
         }

@@ -19,7 +19,21 @@ class MoneyUiFormatterTest {
     fun format_arabicUsesRiyalSymbol() {
         val formatted = MoneyUiFormatter.format(Money.of("1234.50", Currency.SAR), AppLocale.TAG_AR)
         assertTrue(formatted.contains("ر.س"))
-        assertTrue(formatted.contains("٥٠") || formatted.contains("50"))
+        assertEquals("1,234.50 ر.س", formatted)
+    }
+
+    @Test
+    fun format_allCurrenciesAndSignsUseAsciiDigits_inBothLanguagesAndRegionalTags() {
+        listOf("ar", "ar-SA", "en", "en-US").forEach { language ->
+            Currency.entries.forEach { currency ->
+                listOf("0", "-1234.5", "18500").forEach { amount ->
+                    val formatted = MoneyUiFormatter.format(java.math.BigDecimal(amount), currency, language)
+                    assertTrue(formatted.none { it in '\u0660'..'\u0669' || it in '\u06F0'..'\u06F9' })
+                    assertTrue(formatted.any { it in '0'..'9' })
+                }
+            }
+        }
+        assertEquals("SAR", MoneyUiFormatter.currencyLabel(Currency.SAR, "en-US"))
     }
 
     @Test

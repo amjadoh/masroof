@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.common
 
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -7,7 +8,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,9 +26,9 @@ fun ReviewNotificationIconButton(
 ) {
     val layoutDirection = LocalLayoutDirection.current
     // TopStart flips with locale: top-left in English (LTR), top-right in Arabic (RTL).
-    val badgeOffsetX = if (layoutDirection == LayoutDirection.Rtl) (-4).dp else 4.dp
+    val badgeOffsetX = if (layoutDirection == LayoutDirection.Rtl) (-4).dp else MasroofSpacing.inlineGap
 
-    Box(modifier = modifier.size(48.dp)) {
+    Box(modifier = modifier.size(MasroofSpacing.heroIconSize)) {
         IconButton(onClick = onClick, modifier = Modifier.matchParentSize()) {
             Icon(
                 imageVector = MasroofIcons.notifications,
@@ -42,7 +43,7 @@ fun ReviewNotificationIconButton(
             Badge(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .offset(x = badgeOffsetX, y = 6.dp),
+                    .offset(x = badgeOffsetX, y = MasroofSpacing.smallGap),
             ) {
                 Text(
                     if (reviewCount > 99) "99+" else reviewCount.toString(),

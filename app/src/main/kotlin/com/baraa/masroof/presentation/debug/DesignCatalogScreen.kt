@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.debug
 
+import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,18 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,6 +75,10 @@ fun DesignCatalogScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(com.baraa.masroof.presentation.theme.MasroofDesign.version, style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.approved_daily_average),
+                stringResource(R.string.approved_average_basis, 15))
+            com.baraa.masroof.presentation.common.MasroofHeroCard("مصروف", "1,250", role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
             TypographySection()
             ColorSection()
             SpacingSection()
@@ -100,6 +104,7 @@ private fun TypographySection() {
     CatalogSection(title = stringResource(R.string.settings_design_catalog_typography)) {
         MasroofCard {
             Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                Text("displayMedium", style = MaterialTheme.typography.displayMedium)
                 Text("headlineSmall", style = MaterialTheme.typography.headlineSmall)
                 Text("titleMedium", style = MaterialTheme.typography.titleMedium)
                 Text("bodyLarge", style = MaterialTheme.typography.bodyLarge)
@@ -145,8 +150,8 @@ private fun ColorSwatch(
         Box(
             modifier = Modifier
                 .size(MasroofIconSizes.logo)
-                .background(color, RoundedCornerShape(MasroofSpacing.compactCardIconContainerRadius))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(MasroofSpacing.compactCardIconContainerRadius)),
+                .background(color, MasroofComponentShapes.iconContainer)
+                .border(MasroofSpacing.borderWidth, MaterialTheme.colorScheme.outline, MasroofComponentShapes.iconContainer),
         )
         Text(label, style = MaterialTheme.typography.bodyMedium)
     }
@@ -183,7 +188,7 @@ private fun SpacingSample(
                 .height(MasroofSpacing.sectionHeaderGap)
                 .background(
                     MaterialTheme.colorScheme.primaryContainer,
-                    RoundedCornerShape(MasroofSpacing.inlineGap),
+                    MasroofComponentShapes.tokenSwatch,
                 ),
         )
         Text(label, style = MaterialTheme.typography.labelMedium)
@@ -233,13 +238,13 @@ private fun IconSizeSample(
 private fun ComponentSection() {
     CatalogSection(title = stringResource(R.string.settings_design_catalog_components)) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofCard(accent = MasroofCardAccent.Account) {
+            MasroofCard() {
                 Text("MasroofCard · Account", style = MaterialTheme.typography.bodyMedium)
             }
-            MasroofCard(accent = MasroofCardAccent.Credit) {
+            MasroofCard() {
                 Text("MasroofCard · Credit", style = MaterialTheme.typography.bodyMedium)
             }
-            MasroofCard(accent = MasroofCardAccent.Inflow) {
+            MasroofCard() {
                 Text("MasroofCard · Inflow", style = MaterialTheme.typography.bodyMedium)
             }
             MasroofMoneyRow(

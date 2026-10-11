@@ -1,19 +1,35 @@
 package com.baraa.masroof.presentation.navigation
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import com.baraa.masroof.presentation.common.MasroofText as Text
+import androidx.compose.runtime.key
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.baraa.masroof.R
+import com.baraa.masroof.presentation.common.MasroofAppBar
+import com.baraa.masroof.presentation.common.ReviewNotificationIconButton
+import com.baraa.masroof.presentation.common.MasroofIcons
+import com.baraa.masroof.presentation.theme.MasroofElevation
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
-import com.baraa.masroof.application.dashboard.DebitCardOverview
 import com.baraa.masroof.application.notification.NotificationAction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.presentation.common.MasroofScreenBackground
@@ -60,6 +76,89 @@ fun MasroofRoot(
     onRequestExportLogs: () -> Unit,
     onRequestRestoreBackup: () -> Unit,
 ) {
+    val onboarding by onboardingViewModel.uiState.collectAsState()
+    val notifications by notificationCenterViewModel.uiState.collectAsState()
+    var requested by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
+    var selected by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
+    var generation by rememberSaveable { mutableStateOf(0) }
+    fun navigate(destination: HomeDestination) { requested = destination; generation++ }
+    Column(Modifier.fillMaxSize()) {
+        if (onboarding.step == OnboardingStep.HOME) {
+            MasroofAppBar(title = stringResource(R.string.app_name)) {
+                ReviewNotificationIconButton(reviewCount = notifications.unreadCount,
+                    onClick = { navigate(HomeDestination.NotificationCenter) })
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            MasroofContent(
+                onboardingViewModel = onboardingViewModel,
+                dashboardViewModel = dashboardViewModel,
+                reviewViewModel = reviewViewModel,
+                settingsViewModel = settingsViewModel,
+                statementReconciliationViewModel = statementReconciliationViewModel,
+                notificationCenterViewModel = notificationCenterViewModel,
+                onRequestPermissions = onRequestPermissions,
+                onOpenAppSettings = onOpenAppSettings,
+                onLocaleChanged = onLocaleChanged,
+                onRequestExport = onRequestExport,
+                onRequestImport = onRequestImport,
+                onRequestExportLogs = onRequestExportLogs,
+                onRequestRestoreBackup = onRequestRestoreBackup,
+
+                requestedDestination = requested, navigationGeneration = generation,
+                onDestinationChanged = { selected = it },
+            )
+        }
+        if (onboarding.step == OnboardingStep.HOME) {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = MasroofElevation.navCard) {
+                val entries = listOf(
+                    Triple(HomeDestination.Dashboard, R.string.approved_nav_home, MasroofIcons.appLogo),
+                    Triple(HomeDestination.AllTransactions, R.string.approved_nav_transactions, MasroofIcons.recentTransactions),
+                    Triple(HomeDestination.Review, R.string.approved_nav_review, MasroofIcons.reviewQueue),
+                    Triple(HomeDestination.Settings, R.string.approved_nav_settings, MasroofIcons.settings),
+                )
+                entries.forEach { (destination, label, icon) ->
+                    val accessibilityLabel = stringResource(if (destination == HomeDestination.Settings)
+                        R.string.dashboard_open_settings else label)
+                    NavigationBarItem(
+                        modifier = Modifier.semantics { contentDescription = accessibilityLabel },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        ),
+                        selected = selected == destination || (destination == HomeDestination.Dashboard &&
+                            selected !in listOf(HomeDestination.AllTransactions, HomeDestination.Review, HomeDestination.Settings)),
+                        onClick = { navigate(destination) },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MasroofContent(
+    onboardingViewModel: OnboardingViewModel,
+    dashboardViewModel: DashboardViewModel,
+    reviewViewModel: ReviewViewModel,
+    settingsViewModel: SettingsViewModel,
+    statementReconciliationViewModel: StatementReconciliationViewModel,
+    notificationCenterViewModel: NotificationCenterViewModel,
+    onRequestPermissions: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onLocaleChanged: () -> Unit,
+    onRequestExport: () -> Unit,
+    onRequestImport: () -> Unit,
+    onRequestExportLogs: () -> Unit,
+    onRequestRestoreBackup: () -> Unit,
+    requestedDestination: HomeDestination,
+    navigationGeneration: Int,
+    onDestinationChanged: (HomeDestination) -> Unit,
+) {
     val onboardingState by onboardingViewModel.uiState.collectAsState()
     val reviewState by reviewViewModel.uiState.collectAsState()
     val dashboardState by dashboardViewModel.uiState.collectAsState()
@@ -83,6 +182,27 @@ fun MasroofRoot(
     var pendingCardsSummaryCardKey by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
+
+    var consumedNavigationGeneration by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(navigationGeneration) {
+        if (navigationGeneration > consumedNavigationGeneration) {
+            consumedNavigationGeneration = navigationGeneration
+            settingsReturnDestination = HomeDestination.Dashboard
+            reviewReturnDestination = HomeDestination.Dashboard
+            transactionListReturnDestination = HomeDestination.Dashboard
+            dashboardViewModel.closeTransactionDetail()
+            reviewViewModel.closeDetail()
+            transactionListSeedFilter = null
+            pendingLoansSummaryLoanKey = null
+            pendingCardsSummaryCardKey = null
+            pendingCardsSummaryDebitKey = null
+            if (requestedDestination == HomeDestination.Settings) {
+                pendingSettingsLaunch = SettingsLaunchRequest(SettingsDestination.Hub)
+            }
+            homeDestination = requestedDestination
+        }
+    }
+    LaunchedEffect(homeDestination) { onDestinationChanged(homeDestination) }
 
     // [launch] replaces the Settings stack so the first back returns to [returnTo].
     fun openSettings(
@@ -180,6 +300,7 @@ fun MasroofRoot(
             }
         }
 
+        key(navigationGeneration) {
         when (homeDestination) {
             HomeDestination.Dashboard -> DashboardRoute(
                 viewModel = dashboardViewModel,
@@ -188,6 +309,7 @@ fun MasroofRoot(
                 onOpenAllTransactions = { openTransactionList() },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenSettings = { openSettings() },
+                onOpenCommitments = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.MyCommitments)) },
                 onManageCardsInSettings = {
                     openSettings(
                         launch = resolveManageSettingsLaunch(
@@ -393,6 +515,7 @@ fun MasroofRoot(
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
+        }
         }
     } else {
         OnboardingRoute(

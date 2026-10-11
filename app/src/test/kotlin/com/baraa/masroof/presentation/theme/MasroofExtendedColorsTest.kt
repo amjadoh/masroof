@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.theme
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,7 +14,6 @@ class MasroofExtendedColorsTest {
         assertNotEquals(light.cardSurface, dark.cardSurface)
         assertNotEquals(light.navCardSurface, dark.navCardSurface)
         assertNotEquals(light.miniBackground, dark.miniBackground)
-        assertNotEquals(light.backgroundGradientTop, dark.backgroundGradientTop)
 
         assertTrue(isDark(dark.cardSurface))
         assertTrue(isDark(dark.navCardSurface))
@@ -36,9 +36,9 @@ class MasroofExtendedColorsTest {
     }
 
     @Test
-    fun darkNavCardSurface_isHigherThanCardSurface() {
+    fun darkNavigationAndCards_shareTheApprovedSurface() {
         val dark = darkExtendedColors()
-        assertTrue(relativeLuminance(dark.navCardSurface) > relativeLuminance(dark.cardSurface))
+        assertEquals(dark.cardSurface, dark.navCardSurface)
     }
 
     private fun isDark(color: androidx.compose.ui.graphics.Color): Boolean {

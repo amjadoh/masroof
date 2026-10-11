@@ -9,7 +9,7 @@ class MasroofDesignTokensTest {
         assertEquals(MasroofSpacing.screenHorizontal, MasroofSpacing.screenVertical)
         assertEquals(24, MasroofSpacing.screenPaddingLarge.value.toInt())
         assertEquals(12, MasroofSpacing.sectionGap.value.toInt())
-        assertEquals(14, MasroofSpacing.cardInnerPadding.value.toInt())
+        assertEquals(16, MasroofSpacing.cardInnerPadding.value.toInt())
     }
 
     @Test
@@ -19,14 +19,14 @@ class MasroofDesignTokensTest {
     }
 
     @Test
-    fun elevation_cardIsHigherThanNavCard() {
-        assertEquals(8, MasroofElevation.card.value.toInt())
-        assertEquals(6, MasroofElevation.navCard.value.toInt())
+    fun elevation_approvedCardsAreFlat() {
+        assertEquals(0, MasroofElevation.card.value.toInt())
+        assertEquals(0, MasroofElevation.navCard.value.toInt())
     }
 
     @Test
     fun iconSizes_logoAndHero_areDefined() {
-        assertEquals(28, MasroofIconSizes.logo.value.toInt())
+        assertEquals(36, MasroofIconSizes.logo.value.toInt())
         assertEquals(48, MasroofIconSizes.hero.value.toInt())
     }
 }

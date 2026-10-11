@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.settings
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,16 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.CardNetwork
 import com.baraa.masroof.domain.model.CardRole
@@ -39,6 +39,7 @@ fun SettingsRenameCardDialog(
         title = { Text(stringResource(R.string.settings_rename_card_title)) },
         text = {
             OutlinedTextField(
+                visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.settings_display_name_label)) },
@@ -73,6 +74,7 @@ fun SettingsRenameAccountDialog(
         title = { Text(stringResource(R.string.settings_rename_account_title)) },
         text = {
             OutlinedTextField(
+                visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.settings_display_name_label)) },
@@ -105,7 +107,7 @@ fun SettingsCardNetworkDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_card_network_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                 CardNetwork.entries.filter { it != CardNetwork.UNKNOWN }.forEach { network ->
                     Text(
                         text = cardNetworkLabel(network),
@@ -113,7 +115,7 @@ fun SettingsCardNetworkDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !updating) { onSelect(network) }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = MasroofSpacing.cardInnerGap),
                     )
                 }
                 Text(
@@ -123,7 +125,7 @@ fun SettingsCardNetworkDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !updating) { onSelect(null) }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = MasroofSpacing.cardInnerGap),
                 )
             }
         },
@@ -151,14 +153,14 @@ fun SettingsCardRoleDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_card_role_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                 Text(
                     text = stringResource(R.string.settings_card_role_primary),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !updating) { onSetPrimary() }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = MasroofSpacing.cardInnerGap),
                 )
                 primaryCards
                     .filter { it.last4 != target.last4 }
@@ -172,7 +174,7 @@ fun SettingsCardRoleDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(enabled = !updating) { onSetSupplementary(primary.last4) }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = MasroofSpacing.cardInnerGap),
                         )
                     }
                 Text(
@@ -182,7 +184,7 @@ fun SettingsCardRoleDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !updating) { onClearRole() }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = MasroofSpacing.cardInnerGap),
                 )
             }
         },
@@ -208,7 +210,7 @@ fun SettingsLinkDebitDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_link_debit_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                 accounts.forEach { account ->
                     Text(
                         text = account.displayLabel,
@@ -216,7 +218,7 @@ fun SettingsLinkDebitDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(enabled = !updating) { onLink(account) }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = MasroofSpacing.cardInnerGap),
                     )
                 }
             }
@@ -248,8 +250,8 @@ fun SettingsCardMetadataActions(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(top = MasroofSpacing.cardInnerGap),
+        horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
     ) {
         TextButton(onClick = onRename, enabled = enabled) {
             Text(stringResource(R.string.settings_action_rename))

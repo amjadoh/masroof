@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.settings
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,14 +19,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -125,6 +125,7 @@ fun SettingsCommitmentEditorScreen(
             MasroofCard {
                 Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
                     OutlinedTextField(
+                        visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                         value = name,
                         onValueChange = { name = it },
                         label = { Text(stringResource(R.string.settings_commitment_name)) },
@@ -132,6 +133,7 @@ fun SettingsCommitmentEditorScreen(
                         singleLine = true,
                     )
                     OutlinedTextField(
+                        visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
                         value = amountText,
                         onValueChange = { amountText = it },
                         label = { Text(stringResource(R.string.settings_commitment_amount)) },

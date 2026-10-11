@@ -15,14 +15,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
@@ -84,6 +83,7 @@ fun IconLabelRow(
     modifier: Modifier = Modifier,
     trailing: String? = null,
     iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    guidance: String? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -106,6 +106,7 @@ fun IconLabelRow(
         trailing?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         }
+        guidance?.let { MasroofGuidanceButton(label, it) }
     }
 }
 
@@ -128,6 +129,7 @@ fun IconTextButton(
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
     ) {
         if (brandedLogo) {
@@ -157,7 +159,7 @@ fun IconTextButtonOutlined(
         enabled = enabled,
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, MaterialTheme.colorScheme.outline),
     ) {
         Icon(
             imageVector = icon,

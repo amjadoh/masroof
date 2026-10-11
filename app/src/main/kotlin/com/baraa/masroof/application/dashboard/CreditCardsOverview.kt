@@ -60,3 +60,11 @@ data class StatementDueSnapshot(
     val updatedAt: Instant,
     val dueDate: LocalDate?,
 )
+
+/** Keep the amount and date from one statement; never borrow an older date. */
+fun CreditCardDashboardRow.statementDueFor(facility: CreditFacilityOverview? = null): StatementDueSnapshot? {
+    val matchingFacility = facility?.takeIf { candidate ->
+        candidate.bank == bank && candidate.allCards.any { it.bank == bank && it.last4 == last4 }
+    }
+    return matchingFacility?.facilityDue ?: resolveLatestStatementDue(listOf(this))
+}

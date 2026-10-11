@@ -1,38 +1,27 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.LoanOverview
-import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
-import com.baraa.masroof.domain.model.FinancialTransactionType
-import com.baraa.masroof.presentation.common.MasroofCard
-import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSectionTitle
-import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 
 @Composable
 fun LoansSummaryRoute(
@@ -82,23 +71,6 @@ fun LoansSummaryRoute(
                 state = state,
                 onBack = { clearLoanSelection() },
                 onOpenTransaction = onOpenTransaction,
-                onViewAllTransactions = {
-                    val loanContainerId = FinancialContainerIdFactory.loanId(
-                        selectedLoan.bank,
-                        selectedLoan.loanType,
-                    )
-                    val loanTransactionIds = state.allTransactions
-                        .filter { tx ->
-                            loanContainerId in state.transactionLoanInvolvement[tx.id].orEmpty() ||
-                                (tx.type == FinancialTransactionType.LOAN_REPAYMENT &&
-                                    tx.destinationContainerId == loanContainerId)
-                        }
-                        .map { it.id }
-                        .toSet()
-                    onOpenAllTransactions(
-                        TransactionListFilterState(transactionIds = loanTransactionIds),
-                    )
-                },
             )
         }
 
@@ -126,10 +98,11 @@ fun LoansSummaryScreen(
         title = stringResource(R.string.dashboard_loans_summary_screen_title),
         state = state,
         onBack = onBack,
+        showPeriod = false,
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             if (followedLoans == null || !followedLoans.hasContent) {
                 Text(
@@ -174,66 +147,6 @@ private fun LoansSummaryHeader(
 }
 
 @Composable
-fun LoanCompactListRow(
-    loan: LoanOverview,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val extended = MasroofThemeExtras.extendedColors
-
-    MasroofCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            LoanIdentityBadge()
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    loan.displayLabel,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    stringResource(R.string.dashboard_loan_remaining),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                Text(
-                    loan.remainingBalance?.let { formatLocalizedMoney(it) }
-                        ?: stringResource(R.string.dashboard_value_unavailable),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = extended.liability,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Icon(
-                    imageVector = MasroofIcons.periodNext,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    stringResource(R.string.dashboard_credit_card_open_details),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = extended.account,
-                )
-            }
-        }
-    }
+fun LoanCompactListRow(loan: LoanOverview, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    LoanSummaryTile(loan, modifier, onClick)
 }
