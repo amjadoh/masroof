@@ -70,22 +70,32 @@ object DailySpendingTrendBuilder {
         today: LocalDate,
         includeFinancialOutflows: Boolean = false,
     ): DailySpendingTrend {
+        val parsedById = parsedRecords.associateBy { it.event.id }
+        val amounts = transactions.distinctBy { it.id }.associate { transaction ->
+            transaction.id to transaction.signedSpendingAmount(primaryCurrency, sarEquivalents, parsedById, includeFinancialOutflows)
+        }.mapNotNull { (id, amount) -> amount?.let { id to it } }.toMap()
+        return buildWithAmounts(period, transactions, primaryCurrency, zoneId, today, amounts)
+    }
+
+    /** Shared date/FX-independent projection after a specialist has classified each contribution. */
+    internal fun buildWithAmounts(
+        period: FinancialPeriod,
+        transactions: List<FinancialTransaction>,
+        primaryCurrency: Currency,
+        zoneId: ZoneId,
+        today: LocalDate,
+        signedAmounts: Map<String, BigDecimal>,
+    ): DailySpendingTrend {
         if (period.startDate.isAfter(today)) return DailySpendingTrend(
             emptyList(), SignedMoneyAmount.zero(primaryCurrency),
         )
-        val parsedRecordsById = parsedRecords.associateBy { it.event.id }
         val totalsByDay = mutableMapOf<LocalDate, BigDecimal>()
         val grossByDay = mutableMapOf<LocalDate, BigDecimal>()
         val refundsByDay = mutableMapOf<LocalDate, BigDecimal>()
         val idsByDay = mutableMapOf<LocalDate, MutableSet<String>>()
 
-        transactions.forEach { transaction ->
-            val signedAmount = transaction.signedSpendingAmount(
-                primaryCurrency = primaryCurrency,
-                sarEquivalents = sarEquivalents,
-                parsedRecordsById = parsedRecordsById,
-                includeFinancialOutflows = includeFinancialOutflows,
-            ) ?: return@forEach
+        transactions.distinctBy { it.id }.forEach { transaction ->
+            val signedAmount = signedAmounts[transaction.id] ?: return@forEach
             val date = transaction.occurredAt.atZone(zoneId).toLocalDate()
             if (date.isBefore(period.startDate) || !date.isBefore(period.endDateExclusive) || date.isAfter(today)) return@forEach
             idsByDay.getOrPut(date) { mutableSetOf() }.add(transaction.id)
