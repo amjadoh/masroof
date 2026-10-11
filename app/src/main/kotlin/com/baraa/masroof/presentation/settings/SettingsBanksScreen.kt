@@ -26,6 +26,7 @@ fun SettingsBanksScreen(
         title = stringResource(R.string.settings_banks_section),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
+        actions = { com.baraa.masroof.presentation.common.MasroofGuidanceButton(stringResource(R.string.settings_banks_section), stringResource(R.string.settings_banks_hint)) },
     ) { contentModifier ->
         Column(
             modifier = contentModifier
@@ -33,11 +34,6 @@ fun SettingsBanksScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            Text(
-                stringResource(R.string.settings_banks_hint),
-                style = MasroofTextStyles.hint,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             if (state.bankSummaries.isEmpty()) {
                 Text(

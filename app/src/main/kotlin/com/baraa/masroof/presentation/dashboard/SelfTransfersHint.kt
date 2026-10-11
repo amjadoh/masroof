@@ -23,10 +23,6 @@ fun SelfTransfersHint(
         SelfTransfersHintStyle.NeutralExcluded -> R.string.dashboard_self_transfers_neutral_hint
         SelfTransfersHintStyle.IncludedInTotals -> R.string.dashboard_self_transfers_included_hint
     }
-    Text(
-        stringResource(textRes),
-        modifier = modifier,
-        style = MasroofTextStyles.hint,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.dashboard_self_transfers),
+        stringResource(textRes), modifier = modifier)
 }

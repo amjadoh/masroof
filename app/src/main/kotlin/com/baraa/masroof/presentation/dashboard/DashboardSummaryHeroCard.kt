@@ -30,7 +30,8 @@ fun DashboardSummaryHeroCard(spec: DashboardSummaryHeroSpec, modifier: Modifier 
         MasroofCardAccent.None -> MasroofHeroRole.Brand
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        MasroofHeroCard(spec.primary.title, spec.primary.amount, spec.primary.hint ?: spec.footerHint, role)
+        MasroofHeroCard(title = spec.primary.title, value = spec.primary.amount, role = role,
+            guidance = listOfNotNull(spec.primary.hint, spec.footerHint).distinct().joinToString("\n\n"))
         if (spec.secondary.isNotEmpty()) {
             MasroofCard { spec.secondary.forEach { MasroofDetailRow(it.title, it.amount) } }
         }

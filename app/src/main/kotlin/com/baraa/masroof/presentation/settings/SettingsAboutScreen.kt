@@ -124,6 +124,7 @@ fun SettingsAboutScreen(
                 icon = MasroofIcons.periodHint,
                 title = stringResource(R.string.settings_about_privacy_title),
                 body = stringResource(R.string.settings_about_privacy_body),
+                contextualExplanation = true,
             )
             AboutInfoCard(
                 icon = MasroofIcons.externalIn,
@@ -196,18 +197,12 @@ private fun UpdateSectionCard(
                 icon = MasroofIcons.export,
                 label = stringResource(R.string.settings_updates_title),
                 iconTint = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                stringResource(R.string.settings_updates_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                guidance = stringResource(R.string.settings_updates_hint),
             )
 
-            Text(
-                stringResource(R.string.settings_update_channel_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_update_channel_title),
+                stringResource(R.string.settings_update_channel_hint), style = MaterialTheme.typography.titleSmall,
+                contentColor = MaterialTheme.colorScheme.onSurface)
             UpdateChannelOption(
                 channel = UpdateChannel.STABLE,
                 label = stringResource(R.string.settings_update_channel_stable),
@@ -219,11 +214,6 @@ private fun UpdateSectionCard(
                 label = stringResource(R.string.settings_update_channel_nightly),
                 selectedChannel = updateChannel,
                 onSelectChannel = onSelectUpdateChannel,
-            )
-            Text(
-                stringResource(R.string.settings_update_channel_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             OutlinedTextField(
@@ -429,11 +419,13 @@ private fun AboutInfoCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     body: String,
+    contextualExplanation: Boolean = false,
 ) {
     MasroofCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-            IconLabelRow(icon = icon, label = title, iconTint = MaterialTheme.colorScheme.primary)
-            Text(
+            IconLabelRow(icon = icon, label = title, iconTint = MaterialTheme.colorScheme.primary,
+                guidance = body.takeIf { contextualExplanation })
+            if (!contextualExplanation) Text(
                 body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

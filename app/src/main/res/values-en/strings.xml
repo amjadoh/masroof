@@ -687,6 +687,9 @@
     <string name="approved_commitments">Commitments</string>
     <string name="approved_total_expenses">Total expenses</string>
     <string name="approved_shortcuts">Quick access</string>
-    <string name="approved_expense_basis">After refunds, excluding repeated card settlement and transfers between your accounts.</string>
+    <string name="approved_expense_basis">Includes purchases, bills, fees, loan repayments, cash withdrawals and outgoing external transfers, less refunds. Self-transfers and card settlements are excluded to avoid counting purchases twice.</string>
     <string name="approved_average_basis">Average over %1$d days, including days with no expenses.</string>
+    <string name="guidance_title">Explanation</string>
+    <string name="guidance_about">About %1$s</string>
+    <string name="approved_card_expense_basis">Includes purchases, bills and ordinary fees, less refunds. Excludes card settlements, self-transfers and loan repayments.</string>
 </resources>

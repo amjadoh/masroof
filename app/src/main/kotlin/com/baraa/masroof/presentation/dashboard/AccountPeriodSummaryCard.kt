@@ -33,19 +33,11 @@ fun AccountPeriodSummaryCard(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         com.baraa.masroof.presentation.common.MasroofHeroCard(
             title = stringResource(R.string.dashboard_remaining_title), value = formatLocalizedMoney(net),
-            hint = stringResource(R.string.dashboard_remaining_formula, formatLocalizedMoney(movement.inflow), formatLocalizedMoney(movement.outflow)),
+            guidance = stringResource(R.string.dashboard_remaining_formula, formatLocalizedMoney(movement.inflow), formatLocalizedMoney(movement.outflow)) + "\n\n" +
+                stringResource(R.string.dashboard_account_remaining_calculated_hint),
             role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account,
         )
         MasroofCard {
-        Text(
-            stringResource(R.string.dashboard_account_remaining_calculated_hint),
-            style = MasroofTextStyles.hint,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
-        )
-
-        DashboardSummaryCardDivider()
-
         DashboardSummaryBreakdownHeader(
             title = stringResource(R.string.dashboard_current_account_inflows),
             modifier = Modifier.padding(top = MasroofSpacing.inlineGap),

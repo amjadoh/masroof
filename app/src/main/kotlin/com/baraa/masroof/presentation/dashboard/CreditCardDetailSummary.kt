@@ -41,7 +41,7 @@ fun CreditCardDetailSummaryCard(
         MasroofHeroCard(
             title = row.displayLabel(ownedCards) + " · " + stringResource(R.string.approved_available_balance),
             value = row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable,
-            hint = listOfNotNull(
+            subtitle = listOfNotNull(
                 stringResource(R.string.dashboard_credit_card_credit_badge),
                 cardNetwork?.let { com.baraa.masroof.presentation.settings.cardNetworkLabel(it) },
                 com.baraa.masroof.presentation.common.formatCardLast4(row.last4),
@@ -49,12 +49,12 @@ fun CreditCardDetailSummaryCard(
             role = MasroofHeroRole.Card,
         )
         MasroofCard {
-            MasroofDetailRow(stringResource(R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable)
+            MasroofDetailRow(stringResource(R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable,
+                guidance = if (facility != null && facility.primaryLast4 != row.last4) stringResource(R.string.approved_shared_due) else null)
             MasroofDetailRow(stringResource(R.string.approved_due_date), dueDate?.let(date::format) ?: unavailable)
             row.snapshot?.updatedAt?.let { MasroofDetailRow(stringResource(R.string.approved_balance_date), date.format(it.atZone(zoneId))) }
             if (facility != null && facility.primaryLast4 != row.last4) {
                 MasroofDetailRow(stringResource(R.string.approved_linked_primary), facility.primaryLast4)
-                Text(stringResource(R.string.approved_shared_due), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

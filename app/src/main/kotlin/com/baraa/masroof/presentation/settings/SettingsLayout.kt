@@ -34,15 +34,7 @@ fun SettingsScreenHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        Text(
-            settingsBankLabel(bank),
-            style = MasroofTextStyles.screenLabel,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            hint,
-            style = MasroofTextStyles.hint,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(settingsBankLabel(bank), hint,
+            style = MasroofTextStyles.screenLabel, contentColor = MaterialTheme.colorScheme.primary)
     }
 }

@@ -76,6 +76,8 @@ fun DesignCatalogScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(com.baraa.masroof.presentation.theme.MasroofDesign.version, style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.approved_daily_average),
+                stringResource(R.string.approved_average_basis, 15))
             com.baraa.masroof.presentation.common.MasroofHeroCard("مصروف", "1,250", role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
             TypographySection()
             ColorSection()

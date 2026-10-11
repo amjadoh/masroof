@@ -19,6 +19,28 @@ object MasroofDesign {
     val shapes = MasroofShapes
     val iconSizes = MasroofIconSizes
     val elevation = MasroofElevation
+    val guidance = MasroofGuidanceStyle
+}
+
+/** One geometry and visual policy for all contextual explanations. */
+object MasroofGuidanceStyle {
+    val iconSize = MasroofIconSizes.md
+    val touchTarget = 48.dp
+    val maxWidth = 320.dp
+    val contentPadding = MasroofSpacing.cardInnerPadding
+    val anchorGap = MasroofSpacing.inlineGap
+    val windowMargin = MasroofSpacing.screenHorizontal
+    val shape = MasroofShapes.small
+    val elevation = 6.dp
+    val backgroundColor: androidx.compose.ui.graphics.Color
+        @androidx.compose.runtime.Composable get() =
+            if (androidx.compose.material3.MaterialTheme.colorScheme.background == MasroofDarkColors.Background) {
+                MasroofDarkColors.SurfaceContainerHigh
+            } else {
+                MasroofLightColors.Surface
+            }
+    val borderColor: androidx.compose.ui.graphics.Color
+        @androidx.compose.runtime.Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
 }
 
 /** Component geometry outside the spacing rhythm (charts, sheets and badges). */

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,7 +24,8 @@ import java.time.format.DateTimeFormatter
 
 /** The same accessible interaction and averaging window at every scope. */
 @Composable
-fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Modifier = Modifier) {
+fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Modifier = Modifier,
+    explanation: String = stringResource(R.string.approved_card_expense_basis)) {
     if (trend == null) return
     val locale = LocalConfiguration.current.locales[0]
     val date = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
@@ -34,10 +34,11 @@ fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Mo
     val point = trend.points[index]
     val pointLabels = trend.points.map { "${date.format(it.date)} · ${formatLocalizedMoney(it.spending)}" }
     MasroofCard(modifier = modifier) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        MasroofDetailRow(stringResource(R.string.approved_daily_average), formatLocalizedMoney(trend.averageDailySpending))
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, explanation,
+            style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
+        MasroofDetailRow(stringResource(R.string.approved_daily_average), formatLocalizedMoney(trend.averageDailySpending),
+            guidance = stringResource(R.string.approved_average_basis, trend.points.size))
         Text("${date.format(trend.points.first().date)} — ${date.format(trend.points.last().date)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.approved_average_basis, trend.points.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MasroofDetailRow(date.format(point.date), formatLocalizedMoney(point.spending))
         MasroofInteractiveLineChart(
             modifier = Modifier.testTag("daily-expenses-chart"),
@@ -48,8 +49,10 @@ fun SpendingTrendSection(trend: DailySpendingTrend?, title: String, modifier: Mo
             pointLabel = { i -> pointLabels[i] },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = { selected = (index - 1).coerceAtLeast(0) }, enabled = index > 0) { Text(stringResource(R.string.chart_previous_point)) }
-            TextButton(onClick = { selected = (index + 1).coerceAtMost(trend.points.lastIndex) }, enabled = index < trend.points.lastIndex) { Text(stringResource(R.string.chart_next_point)) }
+            Text(date.format(trend.points.first().date), Modifier.testTag("chart-first-date"), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(date.format(trend.points.last().date), Modifier.testTag("chart-last-date"), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

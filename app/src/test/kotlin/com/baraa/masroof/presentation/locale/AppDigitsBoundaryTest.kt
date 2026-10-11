@@ -9,7 +9,7 @@ class AppDigitsBoundaryTest {
     fun presentationUsesSharedText_andResourcesContainNoEasternDigits() {
         val presentation = File("src/main/kotlin/com/baraa/masroof/presentation")
         assertTrue(presentation.isDirectory)
-        val directText = Regex("import androidx\\.compose\\.(?:material3|material|foundation\\.text)\\.(?:Text|BasicText|ClickableText)\\b|androidx\\.compose\\.material3\\.Text\\(")
+        val directText = Regex("import androidx\\.compose\\.(?:material3|material|foundation\\.text)\\.(?:Text|BasicText|ClickableText)\\b|androidx\\.compose\\.material3\\.Text\\(|import androidx\\.compose\\.material3\\.\\*")
         val bypasses = presentation.walkTopDown().filter { it.extension == "kt" && it.name != "MasroofText.kt" }
             .filter { directText.containsMatchIn(it.readText()) }.map { it.path }.toList()
         assertTrue("Use MasroofText so imported digits are normalized: $bypasses", bypasses.isEmpty())

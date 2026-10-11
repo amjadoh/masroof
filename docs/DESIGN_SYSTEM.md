@@ -64,7 +64,24 @@ backups retain their source values. `AppDigitsBoundaryTest` prevents direct text
 bypasses and Eastern digits in display resources; native screen tests check text
 in both themes and the Arabic date picker.
 
-## Financial chart scope
+## Contextual explanations
+
+`presentation/common/MasroofGuidance.kt` is the only contextual-help component.
+Use `MasroofGuidanceButton` beside the subject, or `MasroofGuidanceLabel` for a
+label and its help icon. The neutral circled exclamation is mapped in MasroofIcons.
+`MasroofDesign.guidance` exposes the icon size, accessible touch area, popover
+width, padding, shape, elevation and edge spacing. Colors and typography use the
+shared MaterialTheme. The small anchored popover fits the window in RTL and LTR,
+flips above its subject when necessary, and dismisses on outside press or Back.
+Explanations are hidden until requested and never invoke a parent action.
+
+Use this pattern for chart scope, averaging basis, account calculations, shared
+credit dues, period adjustments, filters, registry tracking, backup passphrases,
+re-analysis, updates, privacy, logs and restore help. Essential status, errors,
+confirmation text and identifying data remain visible. The debug catalog includes
+the shared help component. `MasroofGuidanceBoundaryTest` prevents inline hint text.
+
+## Financial chart scope and direction
 
 `application/dashboard/DashboardSpendingTrendsBuilder` computes every display
 scope from the existing persisted dashboard context. Compose does not sum money.
@@ -79,8 +96,12 @@ and verified debit refunds. Links remain qualified by bank and account identity.
 
 The daily mean uses all elapsed dates in the selected period including zero days;
 completed periods use their full duration. It is not a fixed fourteen-day mean.
-The selected date and amount are visible above the chart, with accessible
-previous/next controls as an alternative to tapping a point.
+The selected date and amount are visible above the chart. Tap or scrub the line
+to choose a day. Previous/next are available as screen-reader actions; no separate
+previous/next day buttons are displayed.
+Chronological points start on the right in Arabic and on the left in English;
+date endpoints below the chart follow that same direction. Touch coordinates are
+mapped back to the logical date index before showing that date's actual amount.
 
 The debug design catalog remains available under Settings → About and displays
 the current tokens. Removed background gradients, raised-card shadows, entity

@@ -38,6 +38,7 @@ fun MasroofPeriodPill(
     nextContentDescription: String? = null,
     onCustomize: (() -> Unit)? = null,
     customizeLabel: String? = null,
+    guidance: String? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -77,7 +78,7 @@ fun MasroofPeriodPill(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             stringResource(R.string.dashboard_salary_period_short),
                             style = MaterialTheme.typography.labelSmall,
@@ -91,6 +92,7 @@ fun MasroofPeriodPill(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    guidance?.let { MasroofGuidanceButton(label, it) }
                 }
                 IconButton(onClick = onNext) {
                     Icon(
@@ -139,6 +141,7 @@ fun MasroofPeriodPill(
 fun MasroofPeriodDisplay(
     label: String,
     modifier: Modifier = Modifier,
+    guidance: String? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -163,7 +166,7 @@ fun MasroofPeriodDisplay(
                 tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.weight(1f, fill = false), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     stringResource(R.string.dashboard_salary_period_short),
                     style = MaterialTheme.typography.labelSmall,
@@ -177,6 +180,7 @@ fun MasroofPeriodDisplay(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            guidance?.let { MasroofGuidanceButton(label, it) }
         }
     }
 }
