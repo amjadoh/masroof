@@ -171,7 +171,7 @@ fun MasroofInteractiveLineChart(
     val selectedLabel = resolvedSelectedIndex?.let(pointLabel).orEmpty()
     val chartSemantics = Modifier.semantics {
         if (selectedLabel.isNotBlank()) {
-            contentDescription = selectedLabel
+            contentDescription = com.baraa.masroof.application.locale.AppDigits.display(selectedLabel)
         }
         if (onPointSelected != null) {
             customActions = buildList {

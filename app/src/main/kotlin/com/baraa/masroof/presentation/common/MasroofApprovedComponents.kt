@@ -24,17 +24,18 @@ import com.baraa.masroof.presentation.theme.approvedHeroColors
 fun MasroofHeroCard(
     title: String,
     value: String,
-    hint: String? = null,
+    subtitle: String? = null,
     role: MasroofHeroRole = MasroofHeroRole.Brand,
     modifier: Modifier = Modifier,
+    guidance: String? = null,
     footer: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val (background, foreground) = approvedHeroColors(role)
     Surface(modifier.fillMaxWidth(), shape = MasroofCardShape, color = background, contentColor = foreground) {
         Column(Modifier.padding(MasroofSpacing.largeGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = foreground)
+            MasroofGuidanceLabel(title, guidance, style = MaterialTheme.typography.bodyMedium, contentColor = foreground)
             Text(value, style = MaterialTheme.typography.displayMedium, color = foreground)
-            hint?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = foreground) }
+            subtitle?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = foreground) }
             if (footer != null) {
                 HorizontalDivider(color = foreground.copy(alpha = MasroofOpacity.divider))
                 footer()
@@ -44,14 +45,14 @@ fun MasroofHeroCard(
 }
 
 @Composable
-fun MasroofDetailRow(label: String, value: String, modifier: Modifier = Modifier) {
+fun MasroofDetailRow(label: String, value: String, modifier: Modifier = Modifier, guidance: String? = null) {
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = MasroofSpacing.rowVerticalPadding),
             horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MasroofGuidanceLabel(label, guidance, Modifier.weight(1f))
             Text(value, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

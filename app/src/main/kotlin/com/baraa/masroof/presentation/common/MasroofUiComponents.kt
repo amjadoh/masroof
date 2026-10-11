@@ -83,6 +83,7 @@ fun IconLabelRow(
     modifier: Modifier = Modifier,
     trailing: String? = null,
     iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    guidance: String? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -105,6 +106,7 @@ fun IconLabelRow(
         trailing?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         }
+        guidance?.let { MasroofGuidanceButton(label, it) }
     }
 }
 

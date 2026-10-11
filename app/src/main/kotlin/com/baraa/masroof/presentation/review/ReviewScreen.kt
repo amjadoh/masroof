@@ -380,11 +380,7 @@ private fun ReviewDetailScreen(
             }
             if (detail.showRestoreActions) {
                 MasroofCard {
-                    Text(
-                        stringResource(R.string.review_restore_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.review_restore_actions_title), message = stringResource(R.string.review_restore_hint))
                 }
                 MasroofSectionHeader(
                     title = stringResource(R.string.review_restore_actions_title),

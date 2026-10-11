@@ -695,6 +695,9 @@
     <string name="approved_commitments">الالتزامات</string>
     <string name="approved_total_expenses">إجمالي المصاريف</string>
     <string name="approved_shortcuts">الوصول السريع</string>
-    <string name="approved_expense_basis">بعد الاستردادات، دون تكرار سداد البطاقة أو التحويل بين حساباتك.</string>
+    <string name="approved_expense_basis">تشمل المشتريات والفواتير والرسوم وأقساط القروض والسحب النقدي والحوالات الصادرة، بعد خصم الاستردادات. تستبعد التحويلات بين حساباتك وسداد البطاقة لتجنب تكرار احتساب المشتريات.</string>
     <string name="approved_average_basis">أيام احتساب المتوسط: %1$d، مع احتساب الأيام دون مصاريف.</string>
+    <string name="guidance_title">توضيح</string>
+    <string name="guidance_about">توضيح: %1$s</string>
+    <string name="approved_card_expense_basis">تشمل المشتريات والفواتير والرسوم، بعد خصم الاستردادات. لا تشمل سداد البطاقة أو التحويل بين حساباتك أو أقساط القروض.</string>
 </resources>

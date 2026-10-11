@@ -99,6 +99,7 @@ fun SettingsReparseRow(
     enabled: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    guidance: String? = null,
 ) {
     MasroofNavCard(
         onClick = onRefresh,
@@ -117,8 +118,9 @@ fun SettingsReparseRow(
             )
             Spacer(Modifier.width(MasroofSpacing.sectionGap))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
-                Text(title, style = MasroofTextStyles.cardTitle, color = MaterialTheme.colorScheme.onSurface)
-                Text(
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
+                    style = MasroofTextStyles.cardTitle, contentColor = MaterialTheme.colorScheme.onSurface)
+                if (subtitle.isNotBlank()) Text(
                     subtitle,
                     style = MasroofTextStyles.hint,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

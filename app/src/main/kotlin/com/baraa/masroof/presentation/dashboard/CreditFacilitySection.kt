@@ -65,10 +65,10 @@ fun CreditFacilityCard(facility: CreditFacilityOverview, cardNetworksByLast4: Ma
                 leading = { CardNetworkBadge(cardNetworksByLast4[CardOwnershipKey.of(row)], row.last4) }) {
                 val unavailable = stringResource(R.string.dashboard_value_unavailable)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_available_balance), row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable)
-                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount), facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable)
+                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount), facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable,
+                    guidance = if (row.last4 != facility.primaryLast4) stringResource(R.string.approved_shared_due) else null)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_date), facility.facilityDue?.dueDate?.let(date::format) ?: unavailable)
                 trends[CardOwnershipKey.of(row)]?.let { com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_daily_average), formatLocalizedMoney(it.averageDailySpending)) }
-                if (row.last4 != facility.primaryLast4) Text(stringResource(R.string.approved_shared_due), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

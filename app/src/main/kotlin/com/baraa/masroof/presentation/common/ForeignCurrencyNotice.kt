@@ -29,11 +29,7 @@ fun ForeignCurrencyNotice(
                 stringResource(R.string.dashboard_excluded_other_currency, excludedCount),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text(
-                stringResource(R.string.dashboard_excluded_other_currency_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.guidance_title), message = stringResource(R.string.dashboard_excluded_other_currency_hint))
         }
     }
 }

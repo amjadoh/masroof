@@ -47,23 +47,13 @@ fun DashboardSummaryPrimaryMetric(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
     ) {
-        Text(
-            title,
-            style = MasroofTextStyles.breakdownLabel,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, hint,
+            style = MasroofTextStyles.breakdownLabel)
         MasroofAmountText(
             amount = amount,
             role = MasroofAmountRole.Hero,
             color = resolveMetricToneColor(tone, signedAmount),
         )
-        hint?.let {
-            Text(
-                it,
-                style = MasroofTextStyles.hint,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

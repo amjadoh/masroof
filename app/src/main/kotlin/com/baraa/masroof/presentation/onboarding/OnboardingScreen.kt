@@ -246,26 +246,16 @@ private fun WelcomeStep(
             enabled = !restoringBackup,
         )
         Spacer(Modifier.height(MasroofSpacing.sectionGap))
-        Text(
-            stringResource(R.string.onboarding_restore_backup_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.onboarding_restore_backup), message = stringResource(R.string.onboarding_restore_backup_hint), modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
         OutlinedTextField(
             value = restorePassphrase,
             onValueChange = onRestorePassphraseChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
-            supportingText = {
-                Text(
-                    stringResource(R.string.settings_import_passphrase_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
+            trailingIcon = {
+                    com.baraa.masroof.presentation.common.MasroofGuidanceButton(title = stringResource(R.string.settings_import_passphrase_label), message = stringResource(R.string.settings_import_passphrase_hint))
+                },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,

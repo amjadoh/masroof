@@ -95,7 +95,8 @@ fun AccountsSummaryScreen(
                 ),
             )
 
-            SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily))
+            SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
+                explanation = stringResource(R.string.approved_expense_basis))
             AccountsSummaryHeader(
                 accountCount = state.ownedAccounts.size,
                 onManageAccounts = onManageAccounts,
@@ -180,8 +181,9 @@ private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> U
     trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null) {
     val movement = account.periodSummary?.cashPosition()
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
-    EntitySummaryCard(account.displayLabel(), stringResource(R.string.dashboard_account_remaining_calculated_hint),
-        MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick) {
+    EntitySummaryCard(account.displayLabel(), "",
+        MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick,
+        guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint)) {
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_inflow), movement?.inflow?.let { formatLocalizedMoney(it) } ?: unavailable)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_spent), movement?.outflow?.let { formatLocalizedMoney(it) } ?: unavailable)

@@ -51,6 +51,7 @@ import com.baraa.masroof.domain.model.ReviewKind
 object MasroofIcons {
     val appLogo: ImageVector = Icons.Filled.AccountBalanceWallet
     val periodHint: ImageVector = Icons.Filled.Info
+    val guidance: ImageVector = Icons.Filled.ErrorOutline
     val netSpending: ImageVector = Icons.AutoMirrored.Filled.TrendingDown
     val income: ImageVector = Icons.AutoMirrored.Filled.TrendingUp
     val refunds: ImageVector = Icons.AutoMirrored.Filled.Undo

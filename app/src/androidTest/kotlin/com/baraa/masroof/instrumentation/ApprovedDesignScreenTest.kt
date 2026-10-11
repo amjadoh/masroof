@@ -76,7 +76,6 @@ class ApprovedDesignScreenTest {
         compose.waitForIdle()
         capture("approved-credit-detail-dark")
         scrollTo(hasTestTag("daily-expenses-chart"))
-        val before = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().config[SemanticsProperties.ContentDescription]
         val chartBounds = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("daily-expenses-chart").performTouchInput {
             click(Offset(chartBounds.width * (1f - 6f / 14f), chartBounds.height * 0.12f))
@@ -85,10 +84,13 @@ class ApprovedDesignScreenTest {
         val expectedAmount = MoneyUiFormatter.format(SignedMoneyAmount.of(Money.of("120", Currency.SAR)), "ar")
         assertTrue("Touching a point must expose its actual amount", tapped.any { it.contains(expectedAmount) })
         capture("approved-credit-point-selected-dark")
-        scrollTo(hasText(ar(R.string.chart_previous_point)))
-        compose.onNodeWithText(ar(R.string.chart_previous_point)).performClick()
+        compose.onNodeWithText(ar(R.string.chart_previous_point)).assertDoesNotExist()
+        compose.onNodeWithText(ar(R.string.chart_next_point)).assertDoesNotExist()
+        val previousDayAction = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].first { it.label == ar(R.string.chart_previous_point) }
+        compose.runOnIdle { assertTrue(previousDayAction.action()) }
         val after = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().config[SemanticsProperties.ContentDescription]
-        assertNotEquals(before, after)
+        assertNotEquals(tapped, after)
         capture("approved-credit-chart-dark")
         compose.runOnIdle { selected.value = null }
         compose.waitForIdle()

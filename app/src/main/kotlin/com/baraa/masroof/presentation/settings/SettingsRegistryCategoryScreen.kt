@@ -29,6 +29,7 @@ fun SettingsRegistryCategoryScreen(
         title = category.screenTitle(),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
+        actions = { com.baraa.masroof.presentation.common.MasroofGuidanceButton(category.screenTitle(), category.screenHint()) },
     ) { contentModifier ->
         Column(
             modifier = contentModifier
@@ -36,11 +37,6 @@ fun SettingsRegistryCategoryScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            Text(
-                category.screenHint(),
-                style = MasroofTextStyles.hint,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             if (banks.isEmpty()) {
                 Text(

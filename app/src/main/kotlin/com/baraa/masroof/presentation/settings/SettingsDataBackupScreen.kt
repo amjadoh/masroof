@@ -198,8 +198,8 @@ fun SettingsDataBackupScreen(
 
             SettingsReparseRow(
                 title = stringResource(R.string.settings_reparse_title),
-                subtitle = stringResource(R.string.settings_reparse_stored_hint),
-                detail = stringResource(R.string.settings_reparse_stored_example),
+                subtitle = "",
+                guidance = stringResource(R.string.settings_reparse_stored_hint) + "\n\n" + stringResource(R.string.settings_reparse_stored_example),
                 icon = MasroofIcons.rescan,
                 actionIcon = MasroofIcons.retry,
                 running = state.reparsingStored,
@@ -213,12 +213,8 @@ fun SettingsDataBackupScreen(
                 onValueChange = onExportPassphraseChange,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.settings_export_passphrase_label)) },
-                supportingText = {
-                    Text(
-                        stringResource(R.string.settings_export_passphrase_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                trailingIcon = {
+                    com.baraa.masroof.presentation.common.MasroofGuidanceButton(title = stringResource(R.string.settings_export_passphrase_label), message = stringResource(R.string.settings_export_passphrase_hint))
                 },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -239,12 +235,8 @@ fun SettingsDataBackupScreen(
                 onValueChange = onImportPassphraseChange,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.settings_import_passphrase_label)) },
-                supportingText = {
-                    Text(
-                        stringResource(R.string.settings_import_passphrase_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                trailingIcon = {
+                    com.baraa.masroof.presentation.common.MasroofGuidanceButton(title = stringResource(R.string.settings_import_passphrase_label), message = stringResource(R.string.settings_import_passphrase_hint))
                 },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),

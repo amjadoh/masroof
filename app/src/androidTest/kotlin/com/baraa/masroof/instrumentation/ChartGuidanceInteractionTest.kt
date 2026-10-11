@@ -1,0 +1,171 @@
+package com.baraa.masroof.instrumentation
+
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.provider.MediaStore
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.espresso.Espresso
+import androidx.test.platform.app.InstrumentationRegistry
+import com.baraa.masroof.R
+import com.baraa.masroof.application.dashboard.DailySpendingPoint
+import com.baraa.masroof.application.dashboard.DailySpendingTrend
+import com.baraa.masroof.application.dashboard.SignedMoneyAmount
+import com.baraa.masroof.core.money.Currency
+import com.baraa.masroof.core.money.Money
+import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
+import com.baraa.masroof.presentation.common.MasroofNavCard
+import com.baraa.masroof.presentation.common.MasroofText
+import com.baraa.masroof.presentation.dashboard.MoneyUiFormatter
+import com.baraa.masroof.presentation.dashboard.SpendingTrendSection
+import com.baraa.masroof.presentation.locale.AppLocaleContext
+import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.presentation.theme.MasroofTheme
+import java.time.LocalDate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+
+/** Exercises the actual Home chart component, using explicit synthetic daily totals. */
+class ChartGuidanceInteractionTest {
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun chartAndHelp_workInBothLanguagesAndThemes_withCorrectTouchDirection() {
+        val language = mutableStateOf("ar")
+        val dark = mutableStateOf(false)
+        val start = LocalDate.parse("2026-10-01")
+        val points = listOf("15", "120", "30", "80", "45").mapIndexed { index, amount ->
+            DailySpendingPoint(start.plusDays(index.toLong()), SignedMoneyAmount.of(Money.of(amount, Currency.SAR)))
+        }
+        val trend = DailySpendingTrend(points, SignedMoneyAmount.of(Money.of("58", Currency.SAR)))
+        compose.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, language.value)
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme(darkTheme = dark.value) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Column(Modifier.fillMaxSize().testTag("chart-demo-root").verticalScroll(rememberScrollState())
+                            .padding(MasroofSpacing.screenHorizontal)) {
+                            MasroofText(stringResource(R.string.approved_nav_home), style = MaterialTheme.typography.headlineSmall)
+                            SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses),
+                                explanation = stringResource(R.string.approved_expense_basis))
+                        }
+                    }
+                }
+            }
+        }
+        listOf("ar" to false, "ar" to true, "en" to false, "en" to true).forEach { (tag, isDark) ->
+            compose.runOnIdle { language.value = tag; dark.value = isDark }
+            compose.waitForIdle()
+            val first = compose.onNodeWithTag("chart-first-date").fetchSemanticsNode().boundsInRoot
+            val last = compose.onNodeWithTag("chart-last-date").fetchSemanticsNode().boundsInRoot
+            assertTrue(if (tag == "ar") first.center.x > last.center.x else first.center.x < last.center.x)
+            val chart = compose.onNodeWithTag("daily-expenses-chart")
+            fun select(fraction: Float, amount: String) {
+                chart.performTouchInput { click(Offset(width * fraction, height * 0.4f)) }
+                val description = chart.fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString()
+                val expected = MoneyUiFormatter.format(Money.of(amount, Currency.SAR), tag)
+                assertTrue("Touched date must show its own amount: $description", description.contains(expected))
+            }
+            select(if (tag == "ar") 0.98f else 0.02f, "15")
+            select(if (tag == "ar") 0.02f else 0.98f, "45")
+            select(if (tag == "ar") 0.75f else 0.25f, "120")
+            val appearance = if (isDark) "dark" else "light"
+            capture("chart-selected-$tag-$appearance")
+            val context = AppLocaleContext.wrap(compose.activity, tag)
+            compose.onNodeWithText(context.getString(R.string.chart_previous_point)).assertDoesNotExist()
+            compose.onNodeWithText(context.getString(R.string.chart_next_point)).assertDoesNotExist()
+            val message = context.getString(R.string.approved_expense_basis)
+            val label = context.getString(R.string.approved_all_expenses)
+            val about = context.getString(R.string.guidance_about, label)
+            compose.onNodeWithText(message).assertDoesNotExist()
+            compose.onNodeWithContentDescription(about).performClick()
+            compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+            compose.onNodeWithText(message).assertIsDisplayed()
+            capture("chart-guidance-$tag-$appearance")
+            Espresso.pressBack()
+            compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+            compose.onNodeWithContentDescription(about).performClick()
+            pressOutsidePopup()
+            compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+            val averageLabel = context.getString(R.string.approved_daily_average)
+            compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, averageLabel)).performClick()
+            compose.onNodeWithText(context.getString(R.string.approved_average_basis, 5)).assertIsDisplayed()
+            Espresso.pressBack()
+        }
+    }
+
+    @Test
+    fun pressingExplanation_doesNotTriggerItsParentAction() {
+        var actions = 0
+        compose.setContent {
+            MasroofTheme {
+                MasroofNavCard(onClick = { actions++ }) {
+                    MasroofGuidanceLabel("Action", "Contextual explanation")
+                }
+            }
+        }
+        compose.onNode(hasContentDescription("Action", substring = true)).performClick()
+        compose.onNodeWithText("Contextual explanation").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(0, actions) }
+        Espresso.pressBack()
+        compose.onNode(hasText("Action") and hasClickAction()).performClick()
+        compose.runOnIdle { assertEquals(1, actions) }
+    }
+
+    private fun capture(name: String) {
+        compose.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        android.os.SystemClock.sleep(250)
+        val screenshot = instrumentation.uiAutomation.takeScreenshot() ?: error("Screenshot missing")
+        val resolver = instrumentation.targetContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, "$name.png")
+            put(MediaStore.Downloads.MIME_TYPE, "image/png")
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/masroof-chart-guidance/")
+        }
+        val uri = resolver.insert(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: error("Output missing")
+        resolver.openOutputStream(uri)!!.use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        screenshot.recycle()
+    }
+
+    private fun pressOutsidePopup() {
+        // Inject through Android's window manager: a Popup lives in a separate window.
+        compose.waitForIdle()
+        val decor = compose.activity.window.decorView
+        val location = IntArray(2)
+        decor.getLocationOnScreen(location)
+        val bottom = androidx.core.view.ViewCompat.getRootWindowInsets(decor)
+            ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+        val x = location[0] + decor.width / 2f
+        val y = location[1] + decor.height - bottom - 24f * decor.resources.displayMetrics.density
+        val time = android.os.SystemClock.uptimeMillis()
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP).forEach { action ->
+            val event = android.view.MotionEvent.obtain(time, time + if (action == android.view.MotionEvent.ACTION_UP) 30 else 0, action, x, y, 0)
+            event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            automation.injectInputEvent(event, true)
+            event.recycle()
+        }
+        compose.waitForIdle()
+    }
+}

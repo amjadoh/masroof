@@ -36,7 +36,8 @@ fun AccountDetailScreen(
                 )
             }
 
-            SpendingTrendSection(state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"), androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_account_daily))
+            SpendingTrendSection(state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"), androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_account_daily),
+                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_expense_basis))
             DashboardSummaryTransactionsSection(
                 transactions = accountTransactions,
                 onOpenTransaction = onOpenTransaction,

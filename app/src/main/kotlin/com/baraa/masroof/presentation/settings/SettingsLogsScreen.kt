@@ -132,17 +132,13 @@ fun SettingsLogsScreen(
             title = stringResource(R.string.settings_logs_title),
             onBack = onBack,
             backContentDescription = stringResource(R.string.settings_back),
+            actions = { com.baraa.masroof.presentation.common.MasroofGuidanceButton(stringResource(R.string.settings_logs_title), stringResource(R.string.settings_logs_hint)) },
         ) { contentModifier ->
             Column(
                 modifier = contentModifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(SettingsSpacing.groupGap)) {
-                    Text(
-                        stringResource(R.string.settings_logs_hint),
-                        style = MasroofTextStyles.hint,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.surfaceVariant,

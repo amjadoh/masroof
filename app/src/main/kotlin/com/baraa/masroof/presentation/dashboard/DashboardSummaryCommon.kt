@@ -40,16 +40,7 @@ fun DashboardSummaryScaffold(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            if (showPeriod) MasroofPeriodDisplay(label = periodRangeLabel)
-
-            if (showPeriod) state.periodAdjustmentHint?.let { hint ->
-                com.baraa.masroof.presentation.common.MasroofText(
-                    hint,
-                    modifier = Modifier.fillMaxWidth(),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            if (showPeriod) MasroofPeriodDisplay(label = periodRangeLabel, guidance = state.periodAdjustmentHint)
 
             if (state.error != null) {
                 com.baraa.masroof.presentation.common.MasroofText(

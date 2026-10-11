@@ -78,12 +78,7 @@ fun TransactionListFilterBottomSheet(
                 }
             }
 
-            Text(
-                text = stringResource(R.string.transaction_list_multi_filter_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal),
-            )
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.transaction_list_filter_sheet_title), message = stringResource(R.string.transaction_list_multi_filter_hint), modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal))
 
             if (availableTypes.isNotEmpty()) {
                 TransactionListFilterChipSection(

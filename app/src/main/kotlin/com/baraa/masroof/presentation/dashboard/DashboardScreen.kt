@@ -193,16 +193,8 @@ private fun DashboardScreen(
                     nextContentDescription = stringResource(R.string.dashboard_period_next),
                     onCustomize = onOpenCustomize,
                     customizeLabel = stringResource(R.string.dashboard_customize),
+                    guidance = state.periodAdjustmentHint,
                 )
-
-                state.periodAdjustmentHint?.let { hint ->
-                    Text(
-                        hint,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
 
                 if (!state.isCurrentPeriod) {
                     IconTextButtonOutlined(
@@ -333,8 +325,8 @@ private fun DashboardCustomizableSections(
 
                 DashboardSectionId.MERCHANTS -> {
                     state.spendingTrends?.overall?.let { trend ->
-                        SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses))
-                        Text(stringResource(R.string.approved_expense_basis), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        SpendingTrendSection(trend, stringResource(R.string.approved_all_expenses),
+                            explanation = stringResource(R.string.approved_expense_basis))
                         DashboardAnalysisSection(
                             merchantOverview = state.merchantSpending,
                             onViewAll = onOpenMerchantsSummary,
