@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,4 +43,12 @@ fun MasroofText(
         letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign,
         lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines,
         minLines = minLines, onTextLayout = onTextLayout, style = style)
+}
+
+/** Span ranges stay valid because every digit substitution has the same length. */
+@Composable
+fun MasroofText(text: AnnotatedString, modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified, style: TextStyle = LocalTextStyle.current) {
+    val displayed = AnnotatedString(AppDigits.display(text.text), text.spanStyles, text.paragraphStyles)
+    Text(displayed, modifier, color = color, style = style)
 }

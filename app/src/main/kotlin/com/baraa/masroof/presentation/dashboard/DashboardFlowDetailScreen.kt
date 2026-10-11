@@ -67,17 +67,11 @@ fun DashboardFlowDetailScreen(
             modifier = contentModifier,
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            MasroofCard(
-            ) {
-                DashboardSummaryPrimaryMetric(
-                    title = stringResource(presentation.totalTitleRes),
-                    amount = formattedTotal,
-                    tone = presentation.tone,
-                    hint = stringResource(presentation.totalHintRes),
-                )
-
-                DashboardSummaryCardDivider()
-
+            com.baraa.masroof.presentation.common.MasroofHeroCard(
+                stringResource(presentation.totalTitleRes), formattedTotal,
+                guidance = stringResource(presentation.totalHintRes),
+                role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.presentation.theme.MasroofHeroRole.Inflow else com.baraa.masroof.presentation.theme.MasroofHeroRole.Outflow)
+            MasroofCard {
                 when (mode) {
                     DashboardFlowDetailMode.Expense -> FlowDetailExpenseSummarySection(summary = summary)
                     DashboardFlowDetailMode.Income -> FlowDetailIncomeSummarySection(summary = summary)
@@ -117,18 +111,6 @@ private fun FlowDetailExpenseSummarySection(summary: CurrentAccountSummary) {
                 direction = TransactionDirectionUi.OUTWARD,
             )
         }
-        if (summary.outflow.selfTransfersOut.amount.signum() > 0) {
-            DashboardSummaryBreakdownHeader(
-                title = stringResource(R.string.dashboard_self_transfers),
-                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
-            )
-            FlowDetailSummaryRow(
-                label = stringResource(R.string.dashboard_self_transfer_out),
-                amount = summary.outflow.selfTransfersOut,
-                direction = TransactionDirectionUi.NEUTRAL,
-            )
-            SelfTransfersHint(style = SelfTransfersHintStyle.NeutralExcluded)
-        }
     }
 }
 
@@ -143,18 +125,6 @@ private fun FlowDetailIncomeSummarySection(summary: CurrentAccountSummary) {
                 direction = TransactionDirectionUi.INCOME,
             )
         }
-        if (summary.inflow.selfTransfersIn.amount.signum() > 0) {
-            DashboardSummaryBreakdownHeader(
-                title = stringResource(R.string.dashboard_self_transfers),
-                modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
-            )
-            FlowDetailSummaryRow(
-                label = stringResource(R.string.dashboard_self_transfer_in),
-                amount = summary.inflow.selfTransfersIn,
-                direction = TransactionDirectionUi.NEUTRAL,
-            )
-            SelfTransfersHint(style = SelfTransfersHintStyle.NeutralExcluded)
-        }
     }
 }
 
@@ -162,7 +132,7 @@ private fun flowExpenseTransactions(
     grouping: CurrentAccountFlowDetailGrouping,
     previewsById: Map<String, TransactionPreviewUi>,
 ): List<TransactionPreviewUi> =
-    (grouping.expense.values.flatten() + grouping.selfTransfersOut)
+    grouping.expense.values.flatten()
         .mapNotNull { previewsById[it.id] }
         .sortedByDateDesc()
 
@@ -170,7 +140,7 @@ private fun flowIncomeTransactions(
     grouping: CurrentAccountFlowDetailGrouping,
     previewsById: Map<String, TransactionPreviewUi>,
 ): List<TransactionPreviewUi> =
-    (grouping.income.values.flatten() + grouping.selfTransfersIn)
+    grouping.income.values.flatten()
         .mapNotNull { previewsById[it.id] }
         .sortedByDateDesc()
 
@@ -206,7 +176,10 @@ private data class FlowSummaryRow(
 )
 
 private fun coreExpenseSummaryRows(summary: CurrentAccountSummary): List<FlowSummaryRow> =
-    CurrentAccountFlowDetailGrouping.EXPENSE_DISPLAY_ORDER.map { category ->
+    listOf(FlowExpenseCategory.POS_PURCHASE, FlowExpenseCategory.CREDIT_CARD_PAYMENT,
+        FlowExpenseCategory.LOAN_REPAYMENT, FlowExpenseCategory.BILL_PAYMENT,
+        FlowExpenseCategory.EXTERNAL_TRANSFER_OUT, FlowExpenseCategory.CASH_WITHDRAWAL,
+        FlowExpenseCategory.FEE).map { category ->
         FlowSummaryRow(
             labelRes = expenseCategoryLabelRes(category),
             amount = expenseAmount(summary, category),

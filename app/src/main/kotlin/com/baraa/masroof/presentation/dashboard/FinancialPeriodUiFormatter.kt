@@ -13,7 +13,7 @@ object FinancialPeriodUiFormatter {
         val dayMonth = dayMonthFormatter(context)
         val start = dayMonth.format(period.startDate)
         val end = dayMonth.format(period.displayEndDateInclusive)
-        return "$start - $end"
+        return "$start — $end ${period.displayEndDateInclusive.year}"
     }
 
     fun formatSalaryPeriodTitle(context: Context, period: FinancialPeriod): String =

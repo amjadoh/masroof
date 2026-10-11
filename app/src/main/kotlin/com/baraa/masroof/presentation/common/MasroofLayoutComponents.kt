@@ -47,56 +47,21 @@ fun MasroofAppBar(
     backContentDescription: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = MasroofSpacing.none,
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = MasroofSpacing.appBarPadding,
-                        vertical = MasroofSpacing.appBarPadding,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f, fill = false),
-                ) {
-                    if (onBack != null) {
-                        BackNavigationIcon(
-                            onClick = onBack,
-                            contentDescription = backContentDescription,
-                        )
-                    }
-                    if (showLogo) {
-                        MasroofLogo(
-                            size = MasroofIconSizes.logo,
-                            contentDescription = null,
-                        )
-                        Spacer(Modifier.width(MasroofSpacing.sectionHeaderGap))
-                    }
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = MasroofFontWeights.bold,
-                            fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = actions,
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+    val reference = com.baraa.masroof.presentation.theme.MasroofReference
+    Surface(modifier.fillMaxWidth(), color = if (showLogo) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background) {
+        Row(Modifier.fillMaxWidth().padding(
+            start = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
+            end = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
+            top = if (showLogo) reference.headerTop else MasroofSpacing.screenVertical,
+            bottom = reference.headerBottom),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
+            if (onBack != null) BackNavigationIcon(onBack, backContentDescription)
+            if (showLogo) MasroofLogo(size = MasroofIconSizes.logo, contentDescription = null)
+            Text(title, Modifier.weight(1f),
+                style = if (showLogo) reference.brand else MaterialTheme.typography.headlineSmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, content = actions)
         }
     }
 }
@@ -123,7 +88,6 @@ fun MasroofSecondaryScaffold(
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = MasroofSpacing.screenHorizontal)
-                .padding(top = MasroofSpacing.screenVertical)
                 .padding(bottom = MasroofSpacing.screenVertical),
         )
     }
@@ -137,7 +101,7 @@ fun MasroofSectionTitle(
     Text(
         title,
         modifier = modifier,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
+        style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface,
     )
 }

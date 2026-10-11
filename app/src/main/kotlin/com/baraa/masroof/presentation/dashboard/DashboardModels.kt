@@ -33,6 +33,8 @@ data class OwnedCardUi(
     val last4: String,
     val displayName: String? = null,
     val cardNetwork: com.baraa.masroof.domain.model.CardNetwork? = null,
+    val cardRole: com.baraa.masroof.domain.model.CardRole? = null,
+    val parentCardLast4: String? = null,
 )
 
 data class OwnedAccountUi(

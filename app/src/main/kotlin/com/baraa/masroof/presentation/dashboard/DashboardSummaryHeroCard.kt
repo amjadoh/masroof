@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import com.baraa.masroof.presentation.common.MasroofHeroCard
@@ -17,6 +19,7 @@ data class DashboardSummaryHeroSpec(
     val primary: DashboardSummaryMetricItem,
     val secondary: List<DashboardSummaryMetricItem> = emptyList(),
     val footerHint: String? = null,
+    val subtitle: String? = null,
 )
 
 @Composable
@@ -30,10 +33,13 @@ fun DashboardSummaryHeroCard(spec: DashboardSummaryHeroSpec, modifier: Modifier 
         MasroofCardAccent.None -> MasroofHeroRole.Brand
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        MasroofHeroCard(title = spec.primary.title, value = spec.primary.amount, role = role,
+        MasroofHeroCard(title = spec.primary.title, value = spec.primary.amount, role = role, subtitle = spec.subtitle,
             guidance = listOfNotNull(spec.primary.hint, spec.footerHint).distinct().joinToString("\n\n"))
         if (spec.secondary.isNotEmpty()) {
-            MasroofCard { spec.secondary.forEach { MasroofDetailRow(it.title, it.amount) } }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.metricGap)) {
+                spec.secondary.forEach { metric -> com.baraa.masroof.presentation.common.MasroofMetric(metric.title, metric.amount,
+                    resolveMetricToneColor(metric.tone, metric.signedAmount), Modifier.weight(1f)) }
+            }
         }
     }
 }

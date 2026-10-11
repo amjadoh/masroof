@@ -1,38 +1,19 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
-import com.baraa.masroof.presentation.theme.MasroofComponentShapes
-import com.baraa.masroof.presentation.common.MasroofAmountRole
-
-import com.baraa.masroof.presentation.common.MasroofAmountText
-
-import com.baraa.masroof.presentation.common.MasroofTextStyles
-
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import com.baraa.masroof.presentation.common.MasroofText as Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import com.baraa.masroof.R
-import com.baraa.masroof.presentation.common.MasroofCard
+import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
-
+import com.baraa.masroof.presentation.theme.*
 @Composable
 fun TransactionPreviewRow(
     row: TransactionPreviewUi,
@@ -40,107 +21,40 @@ fun TransactionPreviewRow(
     ownedCards: List<OwnedCardUi> = emptyList(),
     onClick: (() -> Unit)? = null,
 ) {
-    val extended = MasroofThemeExtras.extendedColors
-    val title = row.title ?: transactionTypeLabel(row.typeLabelResHint)
-    val badge = when (row.direction) {
-        TransactionDirectionUi.INCOME,
-        TransactionDirectionUi.INWARD,
-        TransactionDirectionUi.TRANSFER_IN,
-        -> Triple(
-            stringResource(R.string.dashboard_tx_badge_income),
-            extended.inflowSoft,
-            extended.inflow,
-        )
-
-        TransactionDirectionUi.OUTWARD -> Triple(
-            stringResource(R.string.dashboard_tx_badge_expense),
-            extended.outflowSoft,
-            extended.outflow,
-        )
-
-        TransactionDirectionUi.NEUTRAL -> Triple(
-            stringResource(R.string.dashboard_tx_badge_transfer),
-            MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    val colors = MasroofThemeExtras.extendedColors
+    val inward = row.direction in listOf(TransactionDirectionUi.INCOME, TransactionDirectionUi.INWARD, TransactionDirectionUi.TRANSFER_IN)
+    val transfer = row.direction == TransactionDirectionUi.NEUTRAL
+    val (color, background) = when (row.type) {
+        com.baraa.masroof.domain.model.FinancialTransactionType.LOAN_REPAYMENT -> colors.liability to colors.liabilitySoft
+        com.baraa.masroof.domain.model.FinancialTransactionType.CREDIT_CARD_PAYMENT -> colors.card to colors.cardSoft
+        else -> if (inward) colors.inflow to colors.inflowSoft else if (transfer) colors.account to colors.accountSoft else colors.outflow to colors.outflowSoft
     }
-    val amountColor = when (row.direction) {
-        TransactionDirectionUi.INCOME,
-        TransactionDirectionUi.INWARD,
-        TransactionDirectionUi.TRANSFER_IN,
-        -> extended.inflow
-
-        TransactionDirectionUi.OUTWARD -> extended.outflow
-        TransactionDirectionUi.NEUTRAL -> MaterialTheme.colorScheme.onSurface
-    }
-
-    MasroofCard(
-        modifier = modifier.then(
-            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
+    val title = row.title?.takeIf { it.isNotBlank() } ?: transactionTypeLabel(row.typeLabelResHint)
+    val money = formatLocalizedMoney(row.amount)
+    val formatted = money.substringBeforeLast(' ')
+    val currency = money.substringAfterLast(' ')
+    val sign = if (inward) "+" else if (transfer) "" else "−"
+    Column(modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = MasroofReference.rowVertical),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.rowHorizontalPadding),
-        ) {
-            Surface(
-                shape = MasroofComponentShapes.radius12,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(MasroofSpacing.entityIconSize),
-            ) {
-                Icon(
-                    imageVector = MasroofIcons.transactionType(row.typeLabelResHint),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(MasroofSpacing.rowHorizontalPadding)
-                        .size(MasroofSpacing.largeGap),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            horizontalArrangement = Arrangement.spacedBy(MasroofReference.rowGap)) {
+            Surface(shape = MasroofShapes.small, color = background) {
+                Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                    Icon(MasroofIcons.transactionType(row.typeLabelResHint), null, Modifier.size(MasroofReference.icon), tint = color)
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MasroofTextStyles.cardTitle,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    buildString {
-                        append(transactionTypeLabel(row.typeLabelResHint))
-                        row.cardLast4?.let {
-                            append(" · ")
-                            append(cardDisplayLabelFromTransaction(row = row, cards = ownedCards).orEmpty())
-                        }
-                        append(" · ")
-                        append(formatLocalizedTransactionDate(row.localDate))
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
+                MasroofText(title, style = MasroofReference.pair.copy(fontWeight = MasroofFontWeights.semiBold))
+                MasroofText(transactionTypeLabel(row.typeLabelResHint) +
+                    (cardDisplayLabelFromTransaction(row, ownedCards)?.let { " · " + it } ?: ""),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Surface(
-                    shape = MasroofComponentShapes.radius999,
-                    color = badge.second,
-                ) {
-                    Text(
-                        badge.first,
-                        modifier = Modifier.padding(horizontal = MasroofSizes.size7, vertical = MasroofSpacing.chartPointRadius),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = MasroofFontWeights.semiBold),
-                        color = badge.third,
-                    )
-                }
-                MasroofAmountText(
-                    amount = formatLocalizedMoney(row.amount),
-                    role = MasroofAmountRole.List,
-                    color = amountColor,
-                    modifier = Modifier.padding(top = MasroofSpacing.hairlineGap),
-                )
+                MasroofText(sign + formatted, style = MasroofReference.rowAmount, color = color)
+                MasroofText(formatLocalizedTransactionDate(row.localDate) + " · " + currency,
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        HorizontalDivider(color = colors.cardBorder)
     }
 }

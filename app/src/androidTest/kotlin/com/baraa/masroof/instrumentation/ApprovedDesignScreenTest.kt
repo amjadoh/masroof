@@ -78,7 +78,10 @@ class ApprovedDesignScreenTest {
         scrollTo(hasTestTag("daily-expenses-chart"))
         val chartBounds = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("daily-expenses-chart").performTouchInput {
-            click(Offset(chartBounds.width * (1f - 6f / 14f), chartBounds.height * 0.12f))
+            val density = compose.activity.resources.displayMetrics.density
+            val left = com.baraa.masroof.presentation.theme.MasroofReference.chartLeft.value * density
+            val right = com.baraa.masroof.presentation.theme.MasroofReference.chartRight.value * density
+            click(Offset(left + (chartBounds.width-left-right) * (1f - 6f / 14f), chartBounds.height * 0.12f))
         }
         val tapped = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().config[SemanticsProperties.ContentDescription]
         val expectedAmount = MoneyUiFormatter.format(SignedMoneyAmount.of(Money.of("120", Currency.SAR)), "ar")

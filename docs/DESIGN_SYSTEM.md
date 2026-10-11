@@ -1,6 +1,9 @@
 # Approved Masroof design
 
-This document is the current UI reference. The implementation entry point is
+This document describes the central implementation tokens. The visual approval source is
+`masroof-code-based-preview.html`, SHA256
+`d3f4f86f88edfbd99b42381f7f1782645c6a893d4278096f1215b4b961029d6d`.
+Human-approved later amendments override that prototype. The implementation entry point is
 `presentation/theme/MasroofDesign.kt`, version `approved-2026-10-10`.
 
 ## One source of visual values
@@ -10,7 +13,7 @@ This document is the current UI reference. The implementation entry point is
 | Light/dark and semantic colors | `MasroofColors.kt`, `MasroofHeroColors.kt` |
 | Brand/network colors | `MasroofNetworkColors.kt`, `res/values/masroof_brand.xml` for the Android launcher |
 | Opacity and font weights | `MasroofDesign.kt` |
-| Spacing and geometry | `MasroofSpacing.kt`, `MasroofDesign.kt` |
+| Spacing and geometry | `MasroofReference.kt` through `MasroofDesign.reference`, `MasroofSpacing.kt` |
 | Typography and font weights | `MasroofTypography.kt`, `MasroofFontFamily.kt`, `MasroofFontWeights` |
 | Shapes | `MasroofShapes.kt` |
 | Icon geometry | `MasroofIconSizes.kt` |
@@ -20,7 +23,7 @@ This document is the current UI reference. The implementation entry point is
 
 Screens use these tokens through MaterialTheme and shared components. Do not add
 numeric dp/sp or color literals in feature screens. `ApprovedDesignBoundaryTest`
-enforces this boundary. Cards use radius 20, controls 12, screen/card padding 16,
+enforces this boundary. Cards use radius 20, controls 12, screen padding 16 and card padding 16 plus its 1-unit border inset,
 flat elevation, and IBM Plex Sans Arabic. Filled light-mode buttons use onPrimary
 white text. Account blue, card purple and liability amber each have paired
 readable foregrounds in both modes.
@@ -56,7 +59,7 @@ Arabic expenses terminology is «المصاريف», «متوسط المصاري
 The display policy is `application/locale/AppDigits`: all visible digits use
 `0123456789`. Arabic remains Arabic with RTL layout and Arabic month names.
 `AppLocale.displayLocale` requests the `latn` numbering system; `MoneyUiFormatter`
-fixes decimal digits and separators. All app text uses `MasroofText`, which also
+uses Western digits and separators, omits zero fractional digits for whole amounts and preserves two decimal places for fractional amounts. All app text uses `MasroofText`, which also
 normalizes imported names and SMS evidence at display time. Editable public text
 uses `AppDigitsVisualTransformation` without modifying stored input or cursor
 positions. Password fields keep their masking. Original SMS, financial facts and
@@ -103,7 +106,26 @@ Chronological points start on the right in Arabic and on the left in English;
 date endpoints below the chart follow that same direction. Touch coordinates are
 mapped back to the logical date index before showing that date's actual amount.
 
-The debug design catalog remains available under Settings → About and displays
-the current tokens. Removed background gradients, raised-card shadows, entity
+The developer design catalog is enabled only by the debug build flag
+`-PmasroofDesignCatalog=true`; ordinary builds follow the approved Settings structure. Removed background gradients, raised-card shadows, entity
 carousels, salary/statement credit-detail blocks and previous brand assets are
 obsolete and must not be reintroduced.
+
+
+## Visual verification
+
+`ApprovedFidelityMatrixTest` renders the production page functions with synthetic
+financial fixtures across 32 pages, Arabic/English and light/dark. Captures include
+the application content, excluding the Android status bar. Compare equal viewport
+sizes and the same selected day; distinguish data values from presentation defects.
+The English prototype counterpart is translated from the approved Arabic structure,
+not a separately approved source. Native functional tests do not prove pixel fidelity.
+Only reviewed screenshots support visual assertions. Do not modify the approved
+prototype to conceal implementation discrepancies.
+
+Reference measurements use the final computed CSS cascade, including inherited
+button typography. Lucide outline icons and the original approved logo are reused
+through shared components. Contextual guidance and screen-reader chart navigation
+follow the later user approvals.
+
+Home shortcuts share one card with four columns and light separators in both languages. Full labels use the same body typography; narrow windows scroll the single row rather than wrapping words or switching to two rows.

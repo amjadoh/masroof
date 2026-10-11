@@ -16,7 +16,7 @@ val MasroofCardShape = RoundedCornerShape(20.dp)
 val MasroofPillShape = RoundedCornerShape(14.dp)
 val MasroofRowShape = RoundedCornerShape(12.dp)
 val MasroofBadgeShape = RoundedCornerShape(999.dp)
-val MasroofLogoShape = RoundedCornerShape(10.dp)
+val MasroofLogoShape = RoundedCornerShape(11.dp)
 
 /** Explicit shapes for branded badges and chart surfaces; never defined in features. */
 object MasroofComponentShapes {

@@ -11,8 +11,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -40,7 +44,10 @@ fun SettingsBankAccountsScreen(
     onPickAccountType: (ManagedAccountUi) -> Unit,
     onDismissAccountType: () -> Unit,
     onSelectAccountType: (com.baraa.masroof.domain.model.AccountType) -> Unit,
+    onOpenBank: (() -> Unit)? = null,
 ) {
+    var referenceTab by rememberSaveable { mutableStateOf("followed") }
+
     val unregisteredAccounts = state.unregisteredAccounts.filter { it.bank == bank }
     val followedAccounts = state.followedAccounts.filter { it.bank == bank }
     val stoppedAccounts = state.stoppedAccounts.filter { it.bank == bank }
@@ -66,7 +73,7 @@ fun SettingsBankAccountsScreen(
     )
 
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.settings_bank_accounts_title),
+        title = stringResource(R.string.reference_manage_accounts),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -79,7 +86,15 @@ fun SettingsBankAccountsScreen(
             SettingsScreenHeader(
                 bank = bank,
                 hint = stringResource(R.string.settings_accounts_hint),
+                onOpenBank = onOpenBank,
             )
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
+                    "stopped" to R.string.reference_stopped).forEach { (key, label) ->
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
+                }
+            }
+
 
             if (followedAccounts.isEmpty() && unregisteredAccounts.isEmpty() && stoppedAccounts.isEmpty()) {
                 Text(
@@ -89,13 +104,13 @@ fun SettingsBankAccountsScreen(
                 )
             }
 
-            if (unregisteredAccounts.isNotEmpty()) {
+            if (referenceTab == "unconfirmed" && unregisteredAccounts.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_accounts_unregistered))
                 unregisteredAccounts.forEach { account ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.externalIn,
                         bank = account.bank,
-                        title = account.displayLabel,
+                        title = registryLabel(account),
                         showBankLabel = false,
                         footer = {
                             AccountOwnershipInlinePrompt(
@@ -108,8 +123,8 @@ fun SettingsBankAccountsScreen(
                 }
             }
 
-            if (followedAccounts.isNotEmpty()) {
-                SettingsGroupTitle(stringResource(R.string.settings_accounts_followed))
+            if (referenceTab == "followed" && followedAccounts.isNotEmpty()) {
+
                 if (bankTree != null) {
                     bankTree.currentAccountNodes.forEach { node ->
                         SettingsRegistryAccountRow(
@@ -152,13 +167,13 @@ fun SettingsBankAccountsScreen(
                 }
             }
 
-            if (stoppedAccounts.isNotEmpty()) {
+            if (referenceTab == "stopped" && stoppedAccounts.isNotEmpty()) {
                 SettingsGroupTitle(stringResource(R.string.settings_accounts_stopped))
                 stoppedAccounts.forEach { account ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.externalIn,
                         bank = account.bank,
-                        title = account.displayLabel,
+                        title = registryLabel(account),
                         showBankLabel = false,
                         endAction = {
                             SettingsResumeTrackingButton(
@@ -190,43 +205,18 @@ internal fun SettingsRegistryAccountRow(
     onRenameAccount: (ManagedAccountUi) -> Unit,
     onPickAccountType: (ManagedAccountUi) -> Unit,
 ) {
-    SettingsRegistryItemCard(
-        icon = MasroofIcons.externalIn,
-        bank = account.bank,
-        title = account.displayLabel,
-        showBankLabel = false,
-        endAction = {
-            SettingsStopTrackingButton(
-                onClick = { onRequestStopTracking(account) },
-                enabled = !updating,
-                contentDescription = stringResource(R.string.settings_stop_account_tracking),
-            )
-        },
+    SettingsRegistryItemCard(MasroofIcons.moneyMovement, account.bank, registryLabel(account), showBankLabel = false,
         footer = {
-            debitCards.forEach { debit ->
-                Text(
-                    stringResource(R.string.dashboard_account_linked_mada_label, debit.displayLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = MasroofSpacing.inlineGap),
-                )
+            Text(accountTypeLabel(account.accountType), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = MasroofSpacing.sectionGap))
+            debitCards.forEach { debit -> Text(stringResource(R.string.dashboard_account_linked_mada_label, registryLabel(debit)),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Row(Modifier.padding(top = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), { onRenameAccount(account) }, enabled = !updating)
+                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_account_type_title), { onPickAccountType(account) }, enabled = !updating)
+                com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), { onRequestStopTracking(account) }, enabled = !updating, warning = true)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                TextButton(
-                    onClick = { onRenameAccount(account) },
-                    enabled = !updating,
-                ) {
-                    Text(stringResource(R.string.settings_action_rename))
-                }
-                TextButton(
-                    onClick = { onPickAccountType(account) },
-                    enabled = !updating,
-                ) {
-                    Text(accountTypeLabel(account.accountType))
-                }
-            }
-        },
-    )
+        })
 }
 
 @Composable

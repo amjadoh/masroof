@@ -22,7 +22,7 @@ fun AccountDetailScreen(
     val title = account.displayLabel()
 
     DashboardSummaryScaffold(
-        title = title,
+        title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_account_detail_title),
         state = state,
         onBack = onBack,
     ) { contentModifier ->
@@ -33,15 +33,17 @@ fun AccountDetailScreen(
             if (summary != null) {
                 AccountPeriodSummaryCard(
                     summary = summary,
+                    title = account.displayLabel() + " · " + androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_remaining_title),
+                    subtitle = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank),
+                    trend = state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"),
                 )
             }
 
-            SpendingTrendSection(state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"), androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_account_daily),
-                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_expense_basis))
             DashboardSummaryTransactionsSection(
                 transactions = accountTransactions,
                 onOpenTransaction = onOpenTransaction,
                 ownedCards = state.ownedCards,
+                title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_account_movements),
             )
         }
     }

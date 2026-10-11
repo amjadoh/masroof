@@ -42,6 +42,10 @@ import com.baraa.masroof.presentation.theme.MasroofBadgeShape
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 import java.math.BigDecimal
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.drawText
+import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.presentation.theme.MasroofHeroRole
 import kotlin.math.roundToInt
 
 object MasroofLineChart {
@@ -62,6 +66,18 @@ object MasroofLineChart {
         } else {
             ValueRange(minimum, maximum)
         }
+    }
+
+    /** This is visual axis scaling only, matching the approved SVG headroom. */
+    fun referenceRange(values: List<BigDecimal>): ValueRange {
+        val min = (values + BigDecimal.ZERO).minOrNull() ?: BigDecimal.ZERO
+        val max = (values + BigDecimal.ZERO).maxOrNull() ?: BigDecimal.ZERO
+        val hundred = BigDecimal("100")
+        fun headroom(value: BigDecimal) = value.abs().multiply(BigDecimal("1.1"))
+            .divide(hundred, 0, java.math.RoundingMode.CEILING).multiply(hundred)
+        val low = if (min.signum() < 0) headroom(min).negate() else BigDecimal.ZERO
+        val high = if (max.signum() > 0) headroom(max) else if (low.signum() < 0) BigDecimal.ZERO else BigDecimal.ONE
+        return ValueRange(low, high)
     }
 
     fun nearestPointIndex(x: Float, width: Float, pointCount: Int): Int? {
@@ -118,262 +134,130 @@ internal object MasroofLineChartLayout {
 }
 
 @Composable
-fun MasroofLineChart(
-    values: List<BigDecimal>,
-    referenceValue: BigDecimal,
-    modifier: Modifier = Modifier,
-    selectedPointIndex: Int? = null,
-    onPointSelected: ((Int) -> Unit)? = null,
-    pointLabel: (Int) -> String = { "" },
-) {
-    MasroofInteractiveLineChart(
-        values = values,
-        referenceValue = referenceValue,
-        modifier = modifier,
-        selectedPointIndex = selectedPointIndex,
-        onPointSelected = onPointSelected,
-        pointLabel = pointLabel,
-    )
+fun MasroofLineChart(values: List<BigDecimal>, referenceValue: BigDecimal,
+    modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
+    onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
+    role: MasroofHeroRole = MasroofHeroRole.Brand,
+    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "") {
+    MasroofInteractiveLineChart(values, referenceValue, modifier, selectedPointIndex,
+        onPointSelected, pointLabel, role, axisLabel, currencyLabel)
 }
 
 @Composable
-fun MasroofInteractiveLineChart(
-    values: List<BigDecimal>,
-    referenceValue: BigDecimal,
-    modifier: Modifier = Modifier,
-    selectedPointIndex: Int? = null,
-    onPointSelected: ((Int) -> Unit)? = null,
-    pointLabel: (Int) -> String = { "" },
-) {
+fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDecimal,
+    modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
+    onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
+    role: MasroofHeroRole = MasroofHeroRole.Brand,
+    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "") {
     if (values.isEmpty()) return
-
-    val resolvedSelectedIndex = MasroofLineChartLayout.coerceSelectedIndex(selectedPointIndex, values.size)
-    val mirrorHorizontally = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val extended = MasroofThemeExtras.extendedColors
-    val range = remember(values, referenceValue) {
-        MasroofLineChart.valueRange(values, referenceValue)
-    }
-    val lineColor = extended.outflow
-    val referenceColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val selectedGuideColor = MaterialTheme.colorScheme.outline
-    val selectedPointHaloColor = MaterialTheme.colorScheme.surface
-    val lineWidth = MasroofSpacing.chartLineWidth
-    val pointRadius = MasroofSpacing.chartPointRadius
-    val verticalPadding = MasroofSpacing.chartVerticalPadding
-    val tooltipGap = MasroofSpacing.sectionHeaderGap
-    val tooltipHorizontalPadding = MasroofSpacing.inlineGap
+    val selected = MasroofLineChartLayout.coerceSelectedIndex(selectedPointIndex, values.size)
+    val mirror = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val line = MasroofReference.chartColor(role)
+    val grid = MasroofThemeExtras.extendedColors.cardBorder
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val surface = MaterialTheme.colorScheme.surface
+    val textMeasurer = rememberTextMeasurer()
+    val labelStyle = MasroofReference.chartLabel.copy(color = muted)
+    val range = remember(values) { MasroofLineChart.referenceRange(values) }
     val density = LocalDensity.current
-    val tooltipGapPx = with(density) { tooltipGap.toPx() }
-    val tooltipHorizontalPaddingPx = with(density) { tooltipHorizontalPadding.toPx() }
-    val previousPointLabel = stringResource(R.string.chart_previous_point)
-    val nextPointLabel = stringResource(R.string.chart_next_point)
-
-    val selectedLabel = resolvedSelectedIndex?.let(pointLabel).orEmpty()
-    val chartSemantics = Modifier.semantics {
-        if (selectedLabel.isNotBlank()) {
-            contentDescription = com.baraa.masroof.application.locale.AppDigits.display(selectedLabel)
-        }
-        if (onPointSelected != null) {
-            customActions = buildList {
-                if (resolvedSelectedIndex != null && resolvedSelectedIndex > 0) {
-                    add(
-                        CustomAccessibilityAction(previousPointLabel) {
-                            onPointSelected(resolvedSelectedIndex - 1)
-                            true
-                        },
-                    )
-                }
-                if (resolvedSelectedIndex != null && resolvedSelectedIndex < values.lastIndex) {
-                    add(
-                        CustomAccessibilityAction(nextPointLabel) {
-                            onPointSelected(resolvedSelectedIndex + 1)
-                            true
-                        },
-                    )
-                }
-            }
+    val left = with(density) { MasroofReference.chartLeft.toPx() }
+    val right = with(density) { MasroofReference.chartRight.toPx() }
+    val top = with(density) { MasroofReference.chartTop.toPx() }
+    val bottom = with(density) { MasroofReference.chartBottom.toPx() }
+    val stroke = with(density) { MasroofReference.chartStroke.toPx() }
+    val radius = with(density) { MasroofReference.chartPoint.toPx() }
+    val selectedRadius = with(density) { MasroofReference.selectedPoint.toPx() }
+    val dash = with(density) { MasroofReference.chartDash.toPx() }
+    val dashStroke = with(density) { MasroofReference.chartDashStroke.toPx() }
+    val unitLeft = with(density) { MasroofReference.axisUnitLeft.toPx() }
+    val unitBaseline = with(density) { MasroofReference.axisUnitBaseline.toPx() }
+    val tickOffset = with(density) { MasroofReference.axisLabelOffset.toPx() }
+    val tickBaseline = with(density) { MasroofReference.axisLabelBaselineOffset.toPx() }
+    val dateBaseline = with(density) { MasroofReference.dateBaselineOffset.toPx() }
+    val dayBottom = with(density) { MasroofReference.axisDayBottom.toPx() }
+    val gridStroke = with(density) { MasroofSpacing.borderWidth.toPx() }
+    val dayAxis = stringResource(com.baraa.masroof.R.string.reference_axis_day)
+    val previousLabel = stringResource(R.string.chart_previous_point)
+    val nextLabel = stringResource(R.string.chart_next_point)
+    val semantics = Modifier.semantics {
+        selected?.let { contentDescription = com.baraa.masroof.application.locale.AppDigits.display(pointLabel(it)) }
+        if (onPointSelected != null && selected != null) customActions = buildList {
+            if (selected > 0) add(CustomAccessibilityAction(previousLabel) { onPointSelected(selected - 1); true })
+            if (selected < values.lastIndex) add(CustomAccessibilityAction(nextLabel) { onPointSelected(selected + 1); true })
         }
     }
-
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(MasroofSpacing.chartHeight)
-            .then(chartSemantics)
-            .pointerInput(values.size, onPointSelected, mirrorHorizontally) {
-                val onSelect = onPointSelected ?: return@pointerInput
-                val touchSlop = viewConfiguration.touchSlop
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val pointerId = down.id
-                    fun selectAt(touchX: Float) {
-                        val chartWidth = size.width.toFloat()
-                        val logicalX = MasroofLineChartLayout.touchXForNearestPoint(
-                            touchX = touchX,
-                            width = chartWidth,
-                            mirrorHorizontally = mirrorHorizontally,
-                        )
-                        MasroofLineChart.nearestPointIndex(
-                            x = logicalX,
-                            width = chartWidth,
-                            pointCount = values.size,
-                        )?.let(onSelect)
-                    }
-                    var scrubbing: Boolean? = null
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-                        if (!change.pressed) {
-                            if (scrubbing != true) {
-                                val movement = (change.position - down.position).getDistance()
-                                if (movement < touchSlop) {
-                                    selectAt(down.position.x)
-                                    change.consume()
-                                }
-                            }
-                            break
-                        }
-                        val movement = change.position - down.position
-                        if (scrubbing == null && movement.getDistance() >= touchSlop) {
-                            scrubbing = kotlin.math.abs(movement.x) > kotlin.math.abs(movement.y)
-                            if (scrubbing == false) break
-                        }
-                        if (scrubbing == true) {
-                            selectAt(change.position.x)
-                            change.consume()
-                        }
-                    }
+    Canvas(modifier.fillMaxWidth().height(MasroofReference.chartHeight).then(semantics)
+        .pointerInput(values.size, onPointSelected, mirror, left, right) {
+            val select = onPointSelected ?: return@pointerInput
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                var scrubbing: Boolean? = null
+                fun selectAt(x: Float) {
+                    val width = (size.width - left - right).coerceAtLeast(1f)
+                    val localX = (x - left).coerceIn(0f, width)
+                    val logical = MasroofLineChartLayout.touchXForNearestPoint(localX, width, mirror)
+                    MasroofLineChart.nearestPointIndex(logical, width, values.size)?.let(select)
                 }
-            },
-    ) {
-        val chartWidthPx = constraints.maxWidth.toFloat()
-        val chartHeightPx = with(density) { MasroofSpacing.chartHeight.toPx() }
-        val topPx = with(density) { verticalPadding.toPx() }
-        val bottomPx = chartHeightPx - topPx
-        val drawableHeightPx = (bottomPx - topPx).coerceAtLeast(0f)
-
-        fun pointOffset(index: Int): Offset {
-            val x = MasroofLineChartLayout.xForPoint(
-                index = index,
-                width = chartWidthPx,
-                pointCount = values.size,
-                mirrorHorizontally = mirrorHorizontally,
-            )
-            val y = MasroofLineChartLayout.yFor(values[index], range, topPx, drawableHeightPx)
-            return Offset(x, y)
-        }
-
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val path = Path()
-                    values.forEachIndexed { index, value ->
-                        val x = MasroofLineChartLayout.xForPoint(
-                            index = index,
-                            width = size.width,
-                            pointCount = values.size,
-                            mirrorHorizontally = mirrorHorizontally,
-                        )
-                        val y = MasroofLineChartLayout.yFor(value, range, topPx, drawableHeightPx)
-                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    }
-                    val referenceY = MasroofLineChartLayout.yFor(
-                        referenceValue,
-                        range,
-                        topPx,
-                        drawableHeightPx,
-                    )
-                    val dashEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(lineWidth.toPx() * 2, lineWidth.toPx() * 2),
-                    )
-                    onDrawBehind {
-                        drawLine(
-                            color = referenceColor,
-                            start = Offset(0f, referenceY),
-                            end = Offset(size.width, referenceY),
-                            strokeWidth = lineWidth.toPx(),
-                            pathEffect = dashEffect,
-                        )
-                        drawPath(
-                            path = path,
-                            color = lineColor,
-                            style = Stroke(width = lineWidth.toPx(), cap = StrokeCap.Round),
-                        )
-                        values.forEachIndexed { index, value ->
-                            if (index == resolvedSelectedIndex) return@forEachIndexed
-                            drawCircle(
-                                color = lineColor,
-                                radius = pointRadius.toPx(),
-                                center = Offset(
-                                    MasroofLineChartLayout.xForPoint(
-                                        index = index,
-                                        width = size.width,
-                                        pointCount = values.size,
-                                        mirrorHorizontally = mirrorHorizontally,
-                                    ),
-                                    MasroofLineChartLayout.yFor(value, range, topPx, drawableHeightPx),
-                                ),
-                            )
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val movement = change.position - down.position
+                    if (!change.pressed) {
+                        if (scrubbing != true && movement.getDistance() < viewConfiguration.touchSlop) {
+                            selectAt(down.position.x); change.consume()
                         }
+                        break
                     }
-                },
-        ) {
-            resolvedSelectedIndex?.let { index ->
-                val anchor = pointOffset(index)
-                drawLine(
-                    color = selectedGuideColor,
-                    start = Offset(anchor.x, topPx),
-                    end = Offset(anchor.x, bottomPx),
-                    strokeWidth = lineWidth.toPx(),
-                )
-                drawCircle(
-                    color = lineColor,
-                    radius = pointRadius.toPx() * 2,
-                    center = anchor,
-                )
-                drawCircle(
-                    color = selectedPointHaloColor,
-                    radius = pointRadius.toPx(),
-                    center = anchor,
-                )
+                    if (scrubbing == null && movement.getDistance() >= viewConfiguration.touchSlop) {
+                        scrubbing = kotlin.math.abs(movement.x) > kotlin.math.abs(movement.y)
+                        if (scrubbing == false) break
+                    }
+                    if (scrubbing == true) { selectAt(change.position.x); change.consume() }
+                }
             }
+        }) {
+        val width = (size.width - left - right).coerceAtLeast(1f)
+        val plotHeight = (size.height - top - bottom).coerceAtLeast(1f)
+        fun point(index: Int) = Offset(left + MasroofLineChartLayout.xForPoint(index, width, values.size, mirror),
+            MasroofLineChartLayout.yFor(values[index], range, top, plotHeight))
+        fun label(text: String, x: Float, y: Float, rightAligned: Boolean = false) {
+            val result = textMeasurer.measure(com.baraa.masroof.application.locale.AppDigits.display(text), style = labelStyle)
+            drawText(result, topLeft = Offset(if (rightAligned) x - result.size.width else x, y - result.firstBaseline))
         }
-
-        resolvedSelectedIndex?.let { index ->
-            val anchor = pointOffset(index)
-            var tooltipSize by remember(index) { mutableStateOf(IntSize.Zero) }
-            val tooltipLeftPx = MasroofLineChartLayout.tooltipLeft(
-                anchorX = anchor.x,
-                tooltipWidth = tooltipSize.width.toFloat(),
-                chartWidth = chartWidthPx,
-                horizontalPadding = tooltipHorizontalPaddingPx,
-            )
-            val tooltipTopPx = (anchor.y - tooltipGapPx - tooltipSize.height).coerceAtLeast(0f)
-            Surface(
-                modifier = Modifier
-                    .align(AbsoluteAlignment.TopLeft)
-                    .onSizeChanged { tooltipSize = it }
-                    .absoluteOffset {
-                        IntOffset(
-                            tooltipLeftPx.roundToInt(),
-                            tooltipTopPx.roundToInt(),
-                        )
-                    },
-                shape = MasroofBadgeShape,
-                color = MaterialTheme.colorScheme.inverseSurface,
-                shadowElevation = MasroofSpacing.hairlineGap,
-            ) {
-                Text(
-                    text = pointLabel(index),
-                    modifier = Modifier.padding(
-                        horizontal = MasroofSpacing.badgeHorizontalPadding,
-                        vertical = MasroofSpacing.badgeVerticalPadding,
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                )
+        label(currencyLabel, unitLeft, unitBaseline)
+        val fractions = if (values.all { it.signum() == 0 }) listOf(BigDecimal.ZERO)
+            else listOf(BigDecimal.ONE, BigDecimal("0.5"), BigDecimal.ZERO)
+        fractions.forEach { fraction ->
+            val value = range.minimum + range.span.multiply(fraction)
+            val y = MasroofLineChartLayout.yFor(value, range, top, plotHeight)
+            drawLine(grid, Offset(left, y), Offset(left + width, y), strokeWidth = gridStroke)
+            val number = java.text.DecimalFormat("#,##0.##", java.text.DecimalFormatSymbols(java.util.Locale.US)).format(value)
+            label(number, left - tickOffset, y + tickBaseline, true)
+        }
+        val path = Path()
+        values.indices.forEach { i -> val p = point(i); if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
+        drawPath(path, line, style = Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        values.indices.forEach { drawCircle(line, radius, point(it)) }
+        selected?.let { index ->
+            val p = point(index)
+            drawLine(muted.copy(alpha = com.baraa.masroof.presentation.theme.MasroofOpacity.muted),
+                Offset(p.x, top), Offset(p.x, top + plotHeight), gridStroke,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashStroke, dash)))
+            drawCircle(surface, selectedRadius, p)
+            drawCircle(line, selectedRadius, p, style = Stroke(stroke))
+        }
+        val tickIndices = if (values.size <= 4) values.indices.toList() else
+            listOf(0, (values.lastIndex * 4.0 / 13.0).roundToInt(), (values.lastIndex * 9.0 / 13.0).roundToInt(), values.lastIndex).distinct()
+        tickIndices.forEach { i ->
+            val text = axisLabel(i)
+            val layout = textMeasurer.measure(com.baraa.masroof.application.locale.AppDigits.display(text), style = labelStyle)
+            val x = when {
+                i == 0 -> if (mirror) point(i).x - layout.size.width else point(i).x
+                i == values.lastIndex -> if (mirror) point(i).x else point(i).x - layout.size.width
+                else -> point(i).x - layout.size.width / 2f
             }
+            drawText(layout, topLeft = Offset(x, top + plotHeight + dateBaseline - layout.firstBaseline))
         }
+        label(dayAxis, left + width, size.height - dayBottom, true)
     }
 }

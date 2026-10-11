@@ -117,7 +117,7 @@
     <string name="settings_theme_title">المظهر</string>
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
-    <string name="settings_theme_system">تلقائي (حسب النظام)</string>
+    <string name="settings_theme_system">حسب الجهاز</string>
     <string name="settings_about_section">عن التطبيق</string>
 <string name="settings_about_subtitle">نسخة %1$s</string>
     <string name="settings_about_version">نسخة %1$s</string>
@@ -260,7 +260,7 @@
     <string name="settings_install_failed">تعذّر بدء التثبيت</string>
     <string name="settings_install_permission_required">فعّل «تثبيت التطبيقات غير المعروفة» لمصروف ثم أعد المحاولة</string>
     <string name="settings_updates_check_failed">تعذّر التحقق من التحديثات</string>
-    <string name="settings_logs_title">سجل التشخيص</string>
+    <string name="settings_logs_title">سجل التطبيق</string>
     <string name="settings_logs_subtitle">مسار الرسائل والتحديثات والأخطاء</string>
     <string name="settings_design_catalog_title">كتالوج التصميم</string>
     <string name="settings_design_catalog_subtitle">معاينة الرموز والمكوّنات المشتركة (تطوير فقط)</string>
@@ -300,7 +300,7 @@
     <string name="settings_log_category_logs">سجل</string>
     <string name="settings_logs_export">تصدير السجل</string>
     <string name="settings_logs_clear">مسح السجل</string>
-    <string name="settings_logs_clear_confirm_title">مسح سجل التشخيص؟</string>
+    <string name="settings_logs_clear_confirm_title">مسح سجل التطبيق؟</string>
     <string name="settings_logs_clear_confirm_body">لا يمكن التراجع عن هذا الإجراء.</string>
     <string name="settings_logs_clear_confirm_action">مسح</string>
     <string name="settings_logs_empty_title">لا توجد أحداث بعد</string>
@@ -313,7 +313,7 @@
     <string name="onboarding_restore_failed">تعذّر استيراد النسخة</string>
     <string name="onboarding_restore_invalid">ملف النسخة غير صالح أو غير متوافق</string>
     <string name="dashboard_open_settings">الإعدادات</string>
-<string name="notification_center_title">مركز الإشعارات</string>
+<string name="notification_center_title">التنبيهات</string>
     <string name="notification_center_badge_count">%1$d إشعار غير مقروء</string>
     <string name="notification_center_empty">لا توجد تنبيهات حالياً.</string>
     <string name="notification_center_sms_permission_title">صلاحية الرسائل غير مفعّلة</string>
@@ -332,7 +332,7 @@
     <string name="home_setup_complete">اكتمل الإعداد</string>
     <string name="bank_aljazira">بنك الجزيرة</string>
     <string name="bank_unknown">بنك غير معروف</string>
-<string name="dashboard_remaining_title">صافي حركة الحساب</string>
+<string name="dashboard_remaining_title">صافي حركة الفترة</string>
     <string name="dashboard_hero_remaining_title">صافي حركة الحسابات</string>
     <string name="dashboard_hero_footer_income">من إجمالي الوارد %1$s</string>
     <string name="dashboard_hero_footer_expense">المخرجات %1$s</string>
@@ -342,7 +342,7 @@
     <string name="dashboard_quick_total_expense">إجمالي المصاريف</string>
     <string name="dashboard_quick_total_income">متوسط المصاريف اليومية</string>
     <string name="dashboard_accounts_summary_title">ملخص الحسابات</string>
-    <string name="dashboard_accounts_summary_screen_title">ملخص الحسابات</string>
+    <string name="dashboard_accounts_summary_screen_title">الحسابات</string>
     <string name="dashboard_accounts_summary_empty">لا توجد حسابات مضافة</string>
 <string name="dashboard_account_remaining_label">المتبقي في الحساب</string>
     <string name="dashboard_account_remaining_calculated_hint">وارد − منصرف (تحويلات خارجية، سداد البطاقة الائتمانية، سحب نقدي، فواتير، أقساط تمويل، مدى، رسوم)</string>
@@ -357,7 +357,7 @@
     <string name="dashboard_summary_transactions_empty">لا توجد حركات في هذه الفترة</string>
     <string name="dashboard_summary_view_all_transactions">عرض كل الحركات ›</string>
     <string name="dashboard_cards_summary_title">ملخص البطاقات</string>
-    <string name="dashboard_cards_summary_screen_title">ملخص البطاقات</string>
+    <string name="dashboard_cards_summary_screen_title">البطاقات</string>
     <string name="dashboard_cards_summary_empty">لا توجد بطاقات متابَعة</string>
     <string name="dashboard_manage_cards">إدارة البطاقات</string>
     <string name="dashboard_cards_count_label">%1$d بطاقة</string>
@@ -376,15 +376,15 @@
     <string name="dashboard_period_previous">الفترة السابقة</string>
     <string name="dashboard_period_next">الفترة التالية</string>
     <string name="dashboard_account_item">حساب ···%1$s</string>
-    <string name="dashboard_expense_details_title">تفاصيل المخرجات</string>
-    <string name="dashboard_income_details_title">تفاصيل المدخلات</string>
+    <string name="dashboard_expense_details_title">تفاصيل الصادر</string>
+    <string name="dashboard_income_details_title">تفاصيل الوارد</string>
     <string name="dashboard_flow_detail_back">رجوع</string>
 <string name="dashboard_flow_detail_breakdown_title">تفصيل البنود</string>
     <string name="dashboard_flow_detail_expense_total">إجمالي المخرجات: %1$s</string>
     <string name="dashboard_flow_detail_expense_total_hint">لا يشمل التحويل بين حساباتك أدناه</string>
     <string name="dashboard_flow_detail_income_total">إجمالي الوارد: %1$s</string>
     <string name="dashboard_flow_detail_income_total_hint">لا يشمل التحويل بين حساباتك أدناه</string>
-    <string name="dashboard_value_unavailable">—</string>
+    <string name="dashboard_value_unavailable">غير متوفر</string>
     <string name="dashboard_tx_badge_income">وارد</string>
     <string name="dashboard_tx_badge_expense">مصروف</string>
     <string name="dashboard_tx_badge_transfer">تحويل</string>
@@ -392,8 +392,8 @@
     <string name="dashboard_salary">الراتب</string>
     <string name="dashboard_other_income">دخل آخر</string>
     <string name="dashboard_account_refunds">استرداد إلى الحساب</string>
-    <string name="dashboard_total_inflow">إجمالي المدخلات</string>
-    <string name="dashboard_total_spent">إجمالي المخرجات</string>
+    <string name="dashboard_total_inflow">إجمالي الوارد</string>
+    <string name="dashboard_total_spent">إجمالي الصادر</string>
     <string name="dashboard_self_transfer_in">وارد من حساب آخر</string>
     <string name="dashboard_self_transfer_out">صادر إلى حساب آخر</string>
     <string name="dashboard_self_transfers_neutral_hint">تحويل بين حساباتك — لا يُحسب دخلاً ولا مصاريفاً</string>
@@ -416,7 +416,7 @@
     <string name="dashboard_loan_period_payment">قسط منذ %1$s</string>
     <string name="dashboard_loan_period_payment_fallback">قسط الفترة</string>
     <string name="dashboard_loan_type_label">قرض</string>
-    <string name="dashboard_loans_summary_screen_title">ملخص القروض</string>
+    <string name="dashboard_loans_summary_screen_title">القروض</string>
     <string name="dashboard_loans_count_label">%1$d قروض</string>
     <string name="dashboard_manage_loans">إدارة القروض</string>
     <string name="dashboard_loans_remaining_total_title">إجمالي المتبقي</string>
@@ -469,7 +469,7 @@
     <string name="settings_commitment_delete">حذف</string>
     <string name="settings_commitment_delete_confirm_title">حذف الالتزام؟</string>
     <string name="settings_commitment_delete_confirm_body">سيتم حذف الالتزام نهائيًا. لن تتأثر الحركة الأصلية.</string>
-    <string name="settings_commitment_save">حفظ</string>
+    <string name="settings_commitment_save">حفظ التعديل</string>
     <string name="dashboard_merchants_summary_title">المصاريف حسب التاجر</string>
     <string name="dashboard_merchants_view_all">عرض الكل ›</string>
     <string name="dashboard_analysis_title">التحليل</string>
@@ -490,7 +490,7 @@
     <string name="dashboard_debit_card_linked_account">الحساب المرتبط</string>
 <string name="dashboard_credit_card_card_due">المبلغ المستحق</string>
     <string name="dashboard_credit_card_due_date">تاريخ الاستحقاق: %1$s</string>
-    <string name="dashboard_credit_card_aggregate_due">إجمالي المبلغ المستحق</string>
+    <string name="dashboard_credit_card_aggregate_due">المبلغ المستحق للبطاقات الائتمانية</string>
     <string name="dashboard_credit_card_updated">محدّث: %1$s</string>
 <string name="dashboard_credit_card_credit_badge">ائتمانية</string>
     <string name="dashboard_cash_withdrawals">سحب نقدي</string>
@@ -597,7 +597,7 @@
     <string name="txn_type_adjustment">تسوية</string>
     <string name="txn_type_unknown">غير محدد</string>
 
-    <string name="review_title">مراجعة الحركات</string>
+    <string name="review_title">المراجعة</string>
     <string name="review_detail_title">تفاصيل المراجعة</string>
     <string name="review_back">رجوع</string>
     <string name="review_count">%1$d حركة تحتاج مراجعة</string>

@@ -17,9 +17,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.TextButton
+import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf

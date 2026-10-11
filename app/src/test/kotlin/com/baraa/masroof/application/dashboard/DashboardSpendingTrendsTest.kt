@@ -31,6 +31,26 @@ class DashboardSpendingTrendsTest {
     private val period = FinancialPeriod(date, date.plusDays(3))
 
     @Test
+    fun accountChartsExcludeMovements_whileOverallKeepsApprovedOutflows() {
+        val accountId = FinancialContainerIdFactory.accountId(bank, "1111")
+        val registry = listOf(AccountRegistryEntry.forTest(bank, "1111"))
+        val purchase = transaction("purchase", "100", accountId)
+        val withdrawal = transaction("withdrawal", "400", accountId).copy(type = FinancialTransactionType.CASH_WITHDRAWAL)
+        val transfer = transaction("external", "500", accountId).copy(type = FinancialTransactionType.EXTERNAL_TRANSFER_OUT)
+        val installment = transaction("installment", "1800", accountId).copy(type = FinancialTransactionType.LOAN_REPAYMENT)
+        val refund = transaction("refund", "20", null).copy(type = FinancialTransactionType.REFUND, destinationContainerId = accountId)
+        val input = context(registry, listOf(purchase,withdrawal,transfer,installment,refund))
+        val result = DashboardSpendingTrendsBuilder.build(input, AccountsDashboardProjection.build(input),
+            CardsDashboardSection(CreditFacilitiesOverview(emptyList(),emptyList(),Currency.SAR),emptyMap(),emptyMap()))
+        assertEquals("80.00", result.accounts.totalSpending.amount.toPlainString())
+        assertEquals("80.00", result.byAccount.getValue("${bank.id}:1111").totalSpending.amount.toPlainString())
+        assertEquals("2780.00", result.overall.totalSpending.amount.toPlainString())
+        assertEquals("100.00", result.accounts.totalBeforeRefunds.amount.toPlainString())
+        assertEquals("20.00", result.accounts.totalRefunds.amount.toPlainString())
+        assertEquals(setOf("purchase","refund"), result.accounts.transactionIdsByDate[date])
+    }
+
+    @Test
     fun accountAndCardScopes_areBankQualified_andAggregateDistinctTransactions() {
         val accounts = listOf(AccountRegistryEntry.forTest(bank, "1111"), AccountRegistryEntry.forTest(otherBank, "1111"))
         val purchase = transaction("purchase", "100", FinancialContainerIdFactory.cardId(bank, "2222"))

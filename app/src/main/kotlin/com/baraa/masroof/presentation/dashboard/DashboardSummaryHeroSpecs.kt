@@ -56,6 +56,10 @@ fun creditFacilitiesSummaryHeroSpec(overview: CreditFacilitiesOverview, locale: 
             amount = overview.totalFacilityDue?.let { formatHeroMoney(it, locale.toLanguageTag()) }
                 ?: stringResource(R.string.dashboard_value_unavailable), tone = DashboardMetricTone.Liability),
         secondary = emptyList(),
+        subtitle = overview.facilities.singleOrNull()?.facilityDue?.dueDate?.let {
+            stringResource(R.string.reference_due_date_caption,
+                java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", locale).format(it))
+        },
     )
 
 @Composable

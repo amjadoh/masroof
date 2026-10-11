@@ -24,6 +24,10 @@ import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import com.baraa.masroof.application.dashboard.DebitCardOverview
 import com.baraa.masroof.application.dashboard.aggregateDebitSalaryPeriodSpending
 import java.time.ZoneId
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.FilterChip
+import com.baraa.masroof.application.dashboard.aggregateCreditSalaryPeriodSpending
+import com.baraa.masroof.application.dashboard.aggregateCreditStatementSpending
 
 @Composable
 fun CardsSummaryRoute(
@@ -124,13 +128,14 @@ fun CardsSummaryScreen(
     cardNetworksByLast4: Map<String, com.baraa.masroof.domain.model.CardNetwork?>,
 ) {
     val followedFacilities = state.followedCreditFacilities()
+    var creditSelected by rememberSaveable(followedFacilities?.facilities?.isEmpty()) { mutableStateOf(followedFacilities?.facilities?.isNotEmpty() == true) }
     val locale = LocalConfiguration.current.locales[0]
 
     DashboardSummaryScaffold(
         title = stringResource(R.string.dashboard_cards_summary_screen_title),
         state = state,
         onBack = onBack,
-        showPeriod = false,
+        showPeriod = true,
     ) { contentModifier ->
         Column(
             modifier = contentModifier,
@@ -143,21 +148,39 @@ fun CardsSummaryScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                if (followedFacilities.facilities.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), creditSelected, { creditSelected = true })
+                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), !creditSelected, { creditSelected = false })
+                }
+                if (creditSelected && followedFacilities.facilities.isNotEmpty()) {
                     DashboardSummaryHeroCard(spec = creditFacilitiesSummaryHeroSpec(followedFacilities, locale))
-                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.metricGap)) {
+                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_salary_spending),
+                            formatLocalizedMoney(followedFacilities.aggregateCreditSalaryPeriodSpending()), com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.card, Modifier.weight(1f))
+                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_statement_spending),
+                            formatLocalizedMoney(followedFacilities.aggregateCreditStatementSpending()), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                    }
+                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card)
                 } else {
                     com.baraa.masroof.presentation.common.MasroofHeroCard(
                         stringResource(R.string.approved_total_expenses),
                         formatLocalizedMoney(followedFacilities.aggregateDebitSalaryPeriodSpending()),
                         role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account,
                     )
+                    state.spendingTrends?.debitCards?.let { trend ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.metricGap)) {
+                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_purchases), formatLocalizedMoney(trend.totalBeforeRefunds),
+                                com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
+                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_refunds), formatLocalizedMoney(trend.totalRefunds),
+                                com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))
+                        }
+                    }
                 }
                 CardsSummaryHeader(
                     cardCount = followedFacilities.cardCount,
                     onManageCards = onManageCards,
                 )
-                followedFacilities.facilities.forEach { facility ->
+                if (creditSelected) followedFacilities.facilities.forEach { facility ->
                     CreditFacilityCard(
                         facility = facility,
                         cardNetworksByLast4 = cardNetworksByLast4,
@@ -168,7 +191,7 @@ fun CardsSummaryScreen(
                         trends = state.spendingTrends?.byCard.orEmpty(),
                     )
                 }
-                followedFacilities.debitCards.forEach { debit ->
+                if (!creditSelected) followedFacilities.debitCards.forEach { debit ->
                     DebitCardSummaryTile(
                         debit = debit,
                         network = cardNetworksByLast4[CardOwnershipKey.of(debit)] ?: debit.network,
@@ -187,9 +210,5 @@ private fun CardsSummaryHeader(
     cardCount: Int,
     onManageCards: () -> Unit,
 ) {
-    MasroofSectionHeader(
-        title = stringResource(R.string.dashboard_cards_count_label, cardCount),
-        trailingLabel = stringResource(R.string.dashboard_manage_cards),
-        onTrailingClick = onManageCards,
-    )
+    MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
 }

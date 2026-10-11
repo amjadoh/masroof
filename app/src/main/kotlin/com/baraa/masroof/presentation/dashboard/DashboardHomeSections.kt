@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
@@ -35,13 +35,14 @@ fun DashboardHeroCard(
         modifier = modifier,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.clickable(onClick = onIncome)) {
-                Text(stringResource(R.string.dashboard_total_inflow), style = MaterialTheme.typography.labelSmall)
-                Text(accountsFleet.totalInflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.clickable(onClick = onIncome), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.heroFooterGap)) {
+                Text(stringResource(R.string.reference_inflow_short), style = MaterialTheme.typography.bodySmall)
+                Text(accountsFleet.totalInflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.presentation.theme.MasroofReference.heroFooterValue)
             }
-            Column(Modifier.clickable(onClick = onOutflow), horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.dashboard_total_spent), style = MaterialTheme.typography.labelSmall)
-                Text(accountsFleet.totalOutflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.clickable(onClick = onOutflow), horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.heroFooterGap)) {
+                Text(stringResource(R.string.reference_outflow_short), style = MaterialTheme.typography.bodySmall)
+                Text(accountsFleet.totalOutflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.presentation.theme.MasroofReference.heroFooterValue)
             }
         }
     }
@@ -60,35 +61,21 @@ fun DashboardQuickSummaryRow(
             resolveMetricToneColor(spendingMetricTone(trend.totalSpending)), MasroofIcons.netSpending, extended.outflowSoft, extended.outflow, modifier = Modifier.weight(1f))
         if (showIncome) MasroofCompactCard(stringResource(R.string.approved_daily_average), formatLocalizedMoney(trend.averageDailySpending),
             MaterialTheme.colorScheme.primary, MasroofIcons.analysis, MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.weight(1f))
+            MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.weight(1f),
+            guidance = stringResource(R.string.approved_average_basis, trend.points.size))
     }
 }
 
 @Composable
 fun DashboardShortcuts(onAccounts: () -> Unit, onCards: () -> Unit, onLoans: () -> Unit, onCommitments: () -> Unit) {
-    val extended = MasroofThemeExtras.extendedColors
-    val items = listOf(
-        Triple(R.string.dashboard_accounts_summary_title, MasroofIcons.moneyMovement, onAccounts),
-        Triple(R.string.dashboard_cards_summary_title, MasroofIcons.cardPayment, onCards),
-        Triple(R.string.dashboard_loans_summary_title, MasroofIcons.savings, onLoans),
-        Triple(R.string.approved_commitments, MasroofIcons.calendar, onCommitments),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-        items.chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                pair.forEach { (label, icon, onClick) ->
-                    com.baraa.masroof.presentation.common.MasroofNavCard(onClick, modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                            Icon(icon, null, tint = when(label) {
-                                R.string.dashboard_accounts_summary_title -> extended.account
-                                R.string.dashboard_cards_summary_title -> extended.card
-                                else -> extended.liability
-                            })
-                            Text(stringResource(label), style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    com.baraa.masroof.presentation.common.MasroofShortcutStrip(listOf(
+        com.baraa.masroof.presentation.common.MasroofShortcutItem(stringResource(R.string.reference_shortcut_accounts),
+            MasroofIcons.moneyMovement, com.baraa.masroof.presentation.common.MasroofCardAccent.Account, onAccounts),
+        com.baraa.masroof.presentation.common.MasroofShortcutItem(stringResource(R.string.reference_shortcut_cards),
+            MasroofIcons.cardPayment, com.baraa.masroof.presentation.common.MasroofCardAccent.Credit, onCards),
+        com.baraa.masroof.presentation.common.MasroofShortcutItem(stringResource(R.string.reference_shortcut_loans),
+            MasroofIcons.savings, com.baraa.masroof.presentation.common.MasroofCardAccent.Liability, onLoans),
+        com.baraa.masroof.presentation.common.MasroofShortcutItem(stringResource(R.string.approved_commitments),
+            MasroofIcons.calendar, com.baraa.masroof.presentation.common.MasroofCardAccent.Liability, onCommitments),
+    ))
 }

@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
+import com.baraa.masroof.presentation.common.MasroofChoice
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -88,7 +88,7 @@ fun ReviewRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReviewListScreen(
+internal fun ReviewListScreen(
     state: ReviewUiState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
@@ -105,19 +105,19 @@ private fun ReviewListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal, vertical = MasroofSpacing.sectionHeaderGap),
+                    .padding(bottom = MasroofSpacing.sectionGap),
                 horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
             ) {
-                FilterChip(
+                MasroofChoice(
                     selected = state.listMode == ReviewListMode.PENDING,
                     onClick = { onListModeChange(ReviewListMode.PENDING) },
-                    label = { Text(stringResource(R.string.review_tab_pending)) },
+                    label = stringResource(R.string.review_tab_pending),
                     enabled = !state.loading || state.items.isNotEmpty(),
                 )
-                FilterChip(
+                MasroofChoice(
                     selected = state.listMode == ReviewListMode.IGNORED,
                     onClick = { onListModeChange(ReviewListMode.IGNORED) },
-                    label = { Text(stringResource(R.string.review_tab_ignored)) },
+                    label = stringResource(R.string.review_tab_ignored),
                     enabled = !state.loading || state.items.isNotEmpty(),
                 )
             }
@@ -234,81 +234,24 @@ private fun ReviewListScreen(
 }
 
 @Composable
-private fun ReviewListCard(item: ReviewListItemUi, onClick: () -> Unit) {
-    MasroofCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                imageVector = MasroofIcons.reviewKind(item.kind),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(MasroofIconSizes.xl),
-            )
-            Spacer(Modifier.size(MasroofSpacing.sectionGap))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        item.smsBody,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    item.amountLabel?.let {
-                        Text(
-                            it,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(start = MasroofSpacing.sectionHeaderGap),
-                        )
-                    }
-                }
-                Text(
-                    stringResource(item.kindLabelRes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    item.dateLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (item.ignored) {
-                            MasroofIcons.success
-                        } else {
-                            MasroofIcons.error
-                        },
-                        contentDescription = null,
-                        tint = if (item.ignored) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                        modifier = Modifier.size(MasroofIconSizes.xs),
-                    )
-                    Spacer(Modifier.size(MasroofSpacing.inlineGap))
-                    val reasonRes = ReviewReasonLabels.labelRes(item.reasonLabel)
-                    Text(
-                        reasonRes?.let { stringResource(it) } ?: item.reasonLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (item.ignored) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                    )
-                }
-            }
+internal fun ReviewListCard(item: ReviewListItemUi, onClick: () -> Unit) {
+    MasroofCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            com.baraa.masroof.presentation.common.MasroofBadge(stringResource(item.kindLabelRes),
+                if (item.ignored) com.baraa.masroof.presentation.common.MasroofCardAccent.Inflow
+                else com.baraa.masroof.presentation.common.MasroofCardAccent.Liability)
+        }
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
+        item.amountLabel?.let { com.baraa.masroof.presentation.common.MasroofReferenceMoney(it) }
+        Text(item.dateLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val reason = ReviewReasonLabels.labelRes(item.reasonLabel)?.let { stringResource(it) } ?: item.reasonLabel
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(item.kindLabelRes), reason,
+            style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(MasroofSpacing.sectionGap))
+        com.baraa.masroof.presentation.common.MasroofButton(onClick, Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.reference_review_evidence))
         }
     }
 }

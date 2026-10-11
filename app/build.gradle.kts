@@ -63,7 +63,7 @@ android {
     buildTypes {
         debug {
             versionNameSuffix = "-debug"
-            buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", "true")
+            buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", providers.gradleProperty("masroofDesignCatalog").orElse("false").get())
         }
         release {
             isMinifyEnabled = false

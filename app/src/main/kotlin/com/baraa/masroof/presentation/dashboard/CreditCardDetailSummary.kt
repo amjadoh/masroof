@@ -32,7 +32,7 @@ fun CreditCardDetailSummaryCard(
     facility: CreditFacilityOverview? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    val date = DateTimeFormatter.ofPattern("d MMM yyyy", locale)
+    val date = DateTimeFormatter.ofPattern("d MMM", locale)
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
     val statement = row.statementDueFor(facility)
     val due = statement?.amount
@@ -41,20 +41,28 @@ fun CreditCardDetailSummaryCard(
         MasroofHeroCard(
             title = row.displayLabel(ownedCards) + " · " + stringResource(R.string.approved_available_balance),
             value = row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable,
-            subtitle = listOfNotNull(
-                stringResource(R.string.dashboard_credit_card_credit_badge),
-                cardNetwork?.let { com.baraa.masroof.presentation.settings.cardNetworkLabel(it) },
-                com.baraa.masroof.presentation.common.formatCardLast4(row.last4),
-            ).joinToString(" · "),
+            subtitle = com.baraa.masroof.presentation.settings.settingsBankLabel(row.bank) +
+                (if (facility != null && facility.primaryLast4 != row.last4) " · " + stringResource(R.string.reference_linked_primary_caption, facility.primaryLast4) else ""),
             role = MasroofHeroRole.Card,
         )
         MasroofCard {
-            MasroofDetailRow(stringResource(R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable,
-                guidance = if (facility != null && facility.primaryLast4 != row.last4) stringResource(R.string.approved_shared_due) else null)
+            com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.reference_card_data), style = MaterialTheme.typography.titleMedium)
+            val shared = facility != null && facility.primaryLast4 != row.last4
+            MasroofDetailRow(stringResource(if (shared) R.string.reference_shared_due_amount else R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable,
+                guidance = if (facility != null && facility.primaryLast4 != row.last4) stringResource(R.string.approved_shared_due) else null,
+                valueColor = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liability)
             MasroofDetailRow(stringResource(R.string.approved_due_date), dueDate?.let(date::format) ?: unavailable)
+            val registry = ownedCards.firstOrNull { it.bank == row.bank && it.last4 == row.last4 }
+            val cardTypeLabel = when {
+                registry?.cardRole == com.baraa.masroof.domain.model.CardRole.SUPPLEMENTARY ||
+                    (facility != null && facility.primaryLast4 != row.last4) -> R.string.reference_supplementary_credit_type
+                registry?.cardRole == com.baraa.masroof.domain.model.CardRole.PRIMARY -> R.string.reference_primary_credit_type
+                else -> R.string.reference_credit_type
+            }
+            MasroofDetailRow(stringResource(R.string.reference_card_type), stringResource(cardTypeLabel))
             row.snapshot?.updatedAt?.let { MasroofDetailRow(stringResource(R.string.approved_balance_date), date.format(it.atZone(zoneId))) }
             if (facility != null && facility.primaryLast4 != row.last4) {
-                MasroofDetailRow(stringResource(R.string.approved_linked_primary), facility.primaryLast4)
+                MasroofDetailRow(stringResource(R.string.approved_linked_primary), "•• " + com.baraa.masroof.presentation.common.formatCardLast4(facility.primaryLast4), divider = false)
             }
         }
     }
