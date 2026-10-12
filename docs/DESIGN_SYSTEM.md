@@ -104,6 +104,21 @@ Account charts and inline movements use the same registry-linked debit scope as
 account summaries, including Google Pay purchases without an account SMS field
 and verified debit refunds. Links remain qualified by bank and account identity.
 
+Account chart titles keep their approved names. `AccountDailySpendingTrendsBuilder`
+uses confirmed single-account source attribution for purchases, bills, loan
+installments, card settlements, external outgoing transfers, withdrawals and
+fees, less verified account refunds. Credit charges/refunds are excluded even
+when their evidence also mentions an account; settlements remain account outflows.
+The aggregate excludes self-transfers. Per-account charts include only the outgoing
+self-transfer leg; receipts, salary and other inflows do not increase the expense line.
+Unknown sources and unresolved currency conversions stay out. These scopes affect
+charts, not the ledger or the deduplicated overall Home expense scope.
+
+Aggregate credit and primary/supplementary detail charts enable the common
+horizontal average line and legend, using each chart's own precomputed mean.
+The account aggregate and detail scope explanations use separate contextual (!)
+messages in both languages. Colors, typography and the existing titles are unchanged.
+
 The daily mean uses all elapsed dates in the selected period including zero days;
 completed periods use their full duration. It is not a fixed fourteen-day mean.
 Future periods have no elapsed points or calculated mean. Home draws a dashed

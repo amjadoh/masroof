@@ -160,7 +160,8 @@ fun CardsSummaryScreen(
                         com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_statement_spending),
                             formatLocalizedMoney(followedFacilities.aggregateCreditStatementSpending()), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                     }
-                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card)
+                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card,
+                        showAverage = true)
                 } else {
                     com.baraa.masroof.presentation.common.MasroofHeroCard(
                         stringResource(R.string.approved_total_expenses),
