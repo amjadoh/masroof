@@ -20,7 +20,7 @@ import com.baraa.masroof.presentation.theme.*
 @Composable
 fun AccountPeriodSummaryCard(summary: CurrentAccountSummary, modifier: Modifier = Modifier,
     title: String = stringResource(R.string.dashboard_remaining_title), subtitle: String? = null,
-    trend: DailySpendingTrend? = null) {
+    trend: DailySpendingTrend? = null, chartKey: String = "account") {
     val colors = MasroofThemeExtras.extendedColors
     val movement = summary.cashPosition()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
@@ -33,7 +33,8 @@ fun AccountPeriodSummaryCard(summary: CurrentAccountSummary, modifier: Modifier 
                 colors.outflow, Modifier.weight(1f))
         }
         SpendingTrendSection(trend, stringResource(R.string.approved_account_daily),
-            explanation = stringResource(R.string.reference_account_detail_scope), role = MasroofHeroRole.Account)
+            explanation = stringResource(R.string.reference_account_detail_scope), role = MasroofHeroRole.Account,
+            chartKey = chartKey, scopeLabel = title)
         AccountReferenceGroup(R.string.reference_inflow_external, listOf(
             R.string.dashboard_salary to summary.inflow.salary,
             R.string.dashboard_external_in_short to summary.inflow.externalTransfersIn,

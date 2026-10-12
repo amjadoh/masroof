@@ -20,6 +20,7 @@ class DashboardViewModelFactory(
             dashboardRegistryWorkflow = container.dashboardRegistryWorkflow,
             dashboardPeriodWorkflow = container.dashboardPeriodWorkflow,
             layoutPreferencesRepository = container.dashboardLayoutPreferencesRepository,
+            chartDataWorkflow = container.chartDataWorkflow,
             rescanService = { HistoricalSmsRescanService(container).rescan() },
             reclassificationService = container.transactionReclassificationService,
             ignoreService = container.transactionIgnoreService,
