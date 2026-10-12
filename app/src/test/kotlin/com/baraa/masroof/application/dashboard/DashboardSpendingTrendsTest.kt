@@ -48,6 +48,11 @@ class DashboardSpendingTrendsTest {
         assertEquals("2800.00", result.accounts.totalBeforeRefunds.amount.toPlainString())
         assertEquals("20.00", result.accounts.totalRefunds.amount.toPlainString())
         assertEquals(setOf("purchase","withdrawal","external","installment","refund"), result.accounts.transactionIdsByDate[date])
+        assertPartitions(result)
+        val selected = ChartDataWorkflow.select(result.accounts, setOf(ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.LOAN_REPAYMENTS))
+        assertEquals("2200.00", selected.totalSpending.amount.toPlainString())
+        assertEquals("733.33", selected.averageDailySpending.amount.toPlainString())
+        assertEquals(setOf("withdrawal", "installment"), selected.transactionIdsByDate[date])
     }
 
     @Test
@@ -252,10 +257,26 @@ class DashboardSpendingTrendsTest {
         assertEquals("80.00", result.accounts.totalSpending.amount.toPlainString())
         assertEquals(setOf(settlement.id), result.accounts.transactionIdsByDate[date])
         assertEquals("80.00", result.creditCards.totalSpending.amount.toPlainString())
+        assertPartitions(result)
     }
 
     private fun mada(last4: String) = DebitCardOverview(bank, last4, "Mada", "Account", "1111", null,
         SignedMoneyAmount.zero(Currency.SAR), null)
+
+    private fun assertPartitions(result: DashboardSpendingTrends) {
+        val trends = listOf(result.overall, result.purchases, result.accounts, result.creditCards) +
+            result.byAccount.values + result.byCard.values + listOfNotNull(result.debitCards)
+        trends.forEach { trend ->
+            org.junit.Assert.assertTrue(trend.categoryTrends.isNotEmpty())
+            trend.points.forEach { point ->
+                val parts = trend.categoryTrends.values.map { part -> part.points.first { it.date == point.date } }
+                assertEquals(point.spending.amount, parts.fold(java.math.BigDecimal.ZERO.setScale(2)) { sum, part -> sum + part.spending.amount })
+                assertEquals(point.beforeRefunds.amount, parts.fold(java.math.BigDecimal.ZERO.setScale(2)) { sum, part -> sum + part.beforeRefunds.amount })
+                assertEquals(point.refunds.amount, parts.fold(java.math.BigDecimal.ZERO.setScale(2)) { sum, part -> sum + part.refunds.amount })
+                assertEquals(trend.transactionIdsByDate[point.date].orEmpty(), trend.categoryTrends.values.flatMap { it.transactionIdsByDate[point.date].orEmpty() }.toSet())
+            }
+        }
+    }
 
     private fun debitRecord(id: String, family: MessageFamily) = ParsedEventRecord(
         event = ParsedEvent(id = id, rawSmsId = "sms-$id", bank = bank, messageFamily = family,

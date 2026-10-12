@@ -25,7 +25,6 @@ import com.baraa.masroof.application.dashboard.DebitCardOverview
 import com.baraa.masroof.application.dashboard.aggregateDebitSalaryPeriodSpending
 import java.time.ZoneId
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.FilterChip
 import com.baraa.masroof.application.dashboard.aggregateCreditSalaryPeriodSpending
 import com.baraa.masroof.application.dashboard.aggregateCreditStatementSpending
 
@@ -161,7 +160,7 @@ fun CardsSummaryScreen(
                             formatLocalizedMoney(followedFacilities.aggregateCreditStatementSpending()), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                     }
                     SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card,
-                        showAverage = true)
+                        showAverage = true, chartKey = "credit")
                 } else {
                     com.baraa.masroof.presentation.common.MasroofHeroCard(
                         stringResource(R.string.approved_total_expenses),

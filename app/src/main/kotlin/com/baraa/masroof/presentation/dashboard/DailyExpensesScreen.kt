@@ -1,34 +1,30 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.common.MasroofChoice
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofMetric
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.theme.MasroofReference
 import com.baraa.masroof.presentation.theme.MasroofThemeExtras
 import com.baraa.masroof.presentation.theme.MasroofSpacing
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTransaction: (String) -> Unit) {
-    val ordinary = state.dailySpendingTrend ?: return
+    val ordinary = state.spendingTrends?.overall ?: state.dailySpendingTrend ?: return
     if (ordinary.points.isEmpty()) {
         DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) { modifier ->
             com.baraa.masroof.presentation.common.MasroofCard(modifier) {
@@ -40,7 +36,9 @@ fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTrans
     }
     var scope by rememberSaveable { mutableStateOf("all") }
     var day by rememberSaveable { mutableStateOf(ordinary.points.last().date.toString()) }
-    val trend = if (scope == "all") ordinary else state.spendingTrends?.byCard?.get(scope) ?: ordinary
+    val source = if (scope == "all") ordinary else state.spendingTrends?.byCard?.get(scope) ?: ordinary
+    val chartKey = if (scope == "all") "home:overall" else "card:$scope"
+    val trend = selectedChartTrend(source, chartKey)
     val point = trend.points.firstOrNull { it.date.toString() == day } ?: trend.points.last()
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
     val names = state.ownedCards.associate { CardOwnershipKey.of(it.bank, it.last4) to
@@ -58,7 +56,11 @@ fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTrans
             }
             MasroofHeroCard(stringResource(R.string.reference_daily_net, date.format(point.date)), formatLocalizedMoney(point.spending))
             SpendingTrendSection(trend, stringResource(R.string.reference_daily_title), selectedDate = point.date,
-                onDaySelected = { day = it.toString() })
+                onDaySelected = { day = it.toString() }, chartKey = chartKey,
+                scopeLabel = names[scope] ?: allLabel,
+                explanation = stringResource(if (scope == "all") R.string.dashboard_all_trend_basis
+                    else if (state.creditFacilities?.debitCards?.any { CardOwnershipKey.of(it) == scope } == true)
+                        R.string.dashboard_mada_trend_basis else R.string.approved_card_expense_basis))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
                 MasroofMetric(stringResource(R.string.reference_before_refunds), formatLocalizedMoney(point.beforeRefunds),
                     MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))

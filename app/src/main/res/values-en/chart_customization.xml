@@ -1,0 +1,27 @@
+<resources>
+    <string name="chart_type_separator">", "</string>
+    <string name="sheet_close_without_saving">Close without saving</string>
+    <string name="sheet_cancel">Cancel</string>
+    <string name="sheet_move_up">Move %1$s up</string>
+    <string name="sheet_move_down">Move %1$s down</string>
+    <string name="chart_customize_title">Customize chart data</string>
+    <string name="chart_data_about">About chart data</string>
+    <string name="chart_save_apply">Save and apply</string>
+    <string name="chart_restore_defaults">Restore defaults</string>
+    <string name="chart_custom_selection">Custom · %1$d types</string>
+    <string name="chart_selected_data">Selected types: %1$s</string>
+    <string name="chart_refunds_selection_hint">Refunds are a separate choice subtracted within this chart scope; the original transaction type may be unknown. Choices affect the chart and day details, while account and card summaries retain their full scope.</string>
+    <string name="chart_full_card_average_hint">This is the average of all eligible card expenses before chart customization.</string>
+    <string name="chart_category_credit">Credit card purchases</string>
+    <string name="chart_category_mada">Mada purchases</string>
+    <string name="chart_category_account_purchases">Non-credit purchases linked to the account</string>
+    <string name="chart_category_other">Other expenses</string>
+    <string name="chart_category_cash">Cash withdrawals</string>
+    <string name="chart_category_external">Outgoing external transfers</string>
+    <string name="chart_category_bills">Bills</string>
+    <string name="chart_category_loans">Loan repayments</string>
+    <string name="chart_category_settlements">Credit card settlements</string>
+    <string name="chart_category_fees">Fees</string>
+    <string name="chart_category_internal">Outgoing internal transfers</string>
+    <string name="chart_category_refunds">Refunds within this scope</string>
+</resources>
