@@ -99,6 +99,9 @@ jobs:
           api-level: 30
           target: default
           arch: x86_64
+          # Android 11 caps wm overrides at twice the physical display dimensions.
+          # The generic 320x640 AVD cannot exercise the 1600x2000 unfolded window.
+          profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
