@@ -83,10 +83,13 @@ private fun ReferencePeriodContent(label: String, guidance: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween) {
         Icon(MasroofOutlineIcons.CalendarDays, null, Modifier.size(MasroofReference.icon))
-        MasroofText(label, style = MaterialTheme.typography.bodySmall)
+        // Reserve the trailing label before measuring a long translated date.
+        // Otherwise it can receive zero width and make the entire toolbar screen-height.
+        MasroofText(label, modifier = Modifier.weight(1f).padding(horizontal = MasroofSpacing.inlineGap),
+            style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         Row(verticalAlignment = Alignment.CenterVertically) {
             MasroofText(stringResource(R.string.dashboard_salary_period_short), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             guidance?.let { MasroofGuidanceButton(label, it) }
         }
     }
