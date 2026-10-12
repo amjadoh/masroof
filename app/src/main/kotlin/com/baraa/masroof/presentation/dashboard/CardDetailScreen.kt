@@ -51,7 +51,8 @@ fun CardDetailScreen(
             val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(row))
             trend?.let { CardReferenceAverage(it) }
             SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
-                role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card, showAverage = true)
+                role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card, showAverage = true,
+                chartKey = "card:${CardOwnershipKey.of(row)}", scopeLabel = row.displayLabel(state.ownedCards))
             DashboardSummaryTransactionsSection(
                 transactions = cardTransactions,
                 onOpenTransaction = onOpenTransaction,

@@ -96,7 +96,7 @@ fun AccountsSummaryScreen(
             )
 
             SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
-                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
+                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account, chartKey = "accounts")
             AccountsSummaryHeader(
                 accountCount = state.ownedAccounts.size,
                 onManageAccounts = onManageAccounts,

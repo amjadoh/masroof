@@ -52,6 +52,11 @@ object DashboardSpendingTrendsBuilder {
             }
         }
         val cardTransactionIds = cardRows.values.flatten().map { it.id }.toSet()
+        val creditIds = creditKeys.flatMap { cardRows[it].orEmpty() }.map { it.id }.toSet()
+        val debitIds = debitKeys.flatMap { cardRows[it].orEmpty() }.map { it.id }.toSet()
+        fun configurable(rows: List<FinancialTransaction>, allowed: Set<ChartDataCategory>, outflows: Boolean = false) =
+            trend(rows, outflows).copy(categoryTrends = ChartCategoryTrendsBuilder.build(context, rows,
+                outflows, allowed, creditIds, debitIds))
         val parsedById = parsedRecords.associateBy { it.event.id }
         val purchaseRows = transactions.filter {
             DailyPurchasesScope.includes(it, it.id in cardTransactionIds, parsedById)
@@ -59,13 +64,15 @@ object DashboardSpendingTrendsBuilder {
         val accountTrends = AccountDailySpendingTrendsBuilder.build(context, accounts.transactionAccountInvolvement, creditKeys,
             cards.transactionCardInvolvement)
         DashboardSpendingTrends(
-            overall = trend(transactions, outflows = true),
+            overall = configurable(transactions, ChartCategoryTrendsBuilder.overall, outflows = true),
             accounts = accountTrends.aggregate,
-            creditCards = trend(creditKeys.flatMap { cardRows[it].orEmpty() }),
+            creditCards = configurable(creditKeys.flatMap { cardRows[it].orEmpty() }, ChartCategoryTrendsBuilder.credit),
             byAccount = accountTrends.byAccount,
-            byCard = cardRows.mapValues { (key, rows) -> trend(rows, outflows = key in debitKeys) },
-            debitCards = trend(debitKeys.flatMap { cardRows[it].orEmpty() }, outflows = true),
-            purchases = trend(purchaseRows, outflows = true),
+            byCard = cardRows.mapValues { (key, rows) -> configurable(rows,
+                if (key in debitKeys) ChartCategoryTrendsBuilder.debit else ChartCategoryTrendsBuilder.credit,
+                outflows = key in debitKeys) },
+            debitCards = configurable(debitKeys.flatMap { cardRows[it].orEmpty() }, ChartCategoryTrendsBuilder.debit, outflows = true),
+            purchases = configurable(purchaseRows, ChartCategoryTrendsBuilder.purchases, outflows = true),
         )
     }
 }

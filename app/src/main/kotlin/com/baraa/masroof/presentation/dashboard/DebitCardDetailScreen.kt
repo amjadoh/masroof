@@ -45,7 +45,8 @@ fun DebitCardDetailScreen(
             trend?.let { CardReferenceAverage(it) }
             SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
                 role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Card,
-                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_mada_trend_basis))
+                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_mada_trend_basis),
+                chartKey = "card:${CardOwnershipKey.of(debit)}", scopeLabel = debit.displayLabel)
             DashboardSummaryTransactionsSection(
                 transactions = cardTransactions,
                 onOpenTransaction = onOpenTransaction,

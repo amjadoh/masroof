@@ -89,6 +89,10 @@ internal object FidelityFixtures {
             signed("1400"),signed("1400"),primary.statementPeriodLabel,null,Currency.SAR)
         val mada = DebitCardOverview(bank,"4421","مدى •• 4421","الجاري •• 3001","3001",CardNetwork.MADA,signed("2050"),null)
         val allCards = CreditFacilitiesOverview(listOf(facility),listOf(mada),Currency.SAR)
+        val configurableTrends = DashboardSpendingTrendsBuilder.build(accountContext,
+            AccountsDashboardProjection.build(accountContext), CardsDashboardSection(allCards,
+                rows.associate { "ref-${it.id}" to listOfNotNull(it.card?.let { number -> "${bank.id}:$number" }).toSet() },
+                rows.associate { "ref-${it.id}" to if (it.card == "4421") setOf("${bank.id}:4421") else emptySet() }))
         val previews = rows.mapIndexed { i, row ->
             val tx = transactions[i]
             val inward = tx.type in listOf(FinancialTransactionType.INCOME,FinancialTransactionType.EXTERNAL_TRANSFER_IN,FinancialTransactionType.REFUND)
@@ -114,9 +118,7 @@ internal object FidelityFixtures {
             ownedCards=listOf(OwnedCardUi(bank,"7271","البطاقة الأساسية •• 7271",CardNetwork.VISA,CardRole.PRIMARY),OwnedCardUi(bank,"8842","البطاقة الفرعية •• 8842",CardNetwork.VISA,CardRole.SUPPLEMENTARY,"7271"),OwnedCardUi(bank,"4421","مدى •• 4421",CardNetwork.MADA)),
             creditFacilities=allCards, loansOverview=LoansOverview(listOf(LoanOverview(bank,LoanType.PERSONAL,"القرض الشخصي",money("84200"),Instant.parse("2026-09-27T07:00:00Z"),money("1800"),Instant.parse("2026-09-27T07:00:00Z"),signed("1800"),null)),null,Currency.SAR),
             commitmentsOverview=obligations,merchantSpending=merchant,dailySpendingTrend=ordinary,
-            spendingTrends=DashboardSpendingTrends(overall,accountTrends.aggregate,trend(transactions.filterIndexed { i, _ -> rows[i].card in listOf("7271","8842") }),
-                accountTrends.byAccount,perCard,perCard.getValue("${bank.id}:4421"),
-                purchases = trend(transactions.filterIndexed { i, tx -> rows[i].card != null || tx.type in listOf(FinancialTransactionType.CASH_WITHDRAWAL, FinancialTransactionType.EXTERNAL_TRANSFER_OUT) }, true)),
+            spendingTrends=configurableTrends,
             recentTransactions=previews.sortedByDescending { it.localDate }.take(3),allTransactions=previews.sortedByDescending { it.localDate },
             transactionAccountInvolvement=rows.associate { "ref-${it.id}" to listOfNotNull(it.account?.let(::account),it.destination?.let(::account)).toSet() },
             transactionCardInvolvement=rows.associate { "ref-${it.id}" to listOfNotNull(it.card?.let { number -> "${bank.id}:$number" }).toSet() },

@@ -19,6 +19,10 @@ internal object AccountDailySpendingTrendsBuilder {
             CardTransactionInvolvementResolver.buildIndex(context.transactions, context.parsedRecords)): AccountDailySpendingTrends = with(context) {
         val flowContext = AccountFlowClassifier.buildContext(transactions, parsedRecords, primaryCurrency, sarEquivalents)
         val aggregateAmounts = linkedMapOf<String, BigDecimal>()
+        val allowed = setOf(ChartDataCategory.EXTERNAL_TRANSFERS, ChartDataCategory.CREDIT_SETTLEMENTS,
+            ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.BILLS, ChartDataCategory.ACCOUNT_PURCHASES,
+            ChartDataCategory.FEES, ChartDataCategory.LOAN_REPAYMENTS, ChartDataCategory.UNATTRIBUTED_REFUNDS)
+        val aggregateCategories = allowed.associateWith { linkedMapOf<String, BigDecimal>() }
         fun trend(amounts: Map<String, BigDecimal>) = DailySpendingTrendBuilder.buildWithAmounts(
             period, transactions, primaryCurrency, zoneId, today, amounts)
         val perAccount = ownedAccounts.associate { account ->
@@ -28,6 +32,7 @@ internal object AccountDailySpendingTrendsBuilder {
                 AccountFlowScopeMode.SingleAccount, debitCardScope.ownedDebitCardContainerIds,
                 debitCardScope.debitCardLinkedAccountIds)
             val amounts = linkedMapOf<String, BigDecimal>()
+            val categories = (allowed + ChartDataCategory.INTERNAL_TRANSFERS).associateWith { linkedMapOf<String, BigDecimal>() }
             transactions.distinctBy { it.id }.forEach { transaction ->
                 if (transaction.sourceContainerId != id && transaction.destinationContainerId != id &&
                     id !in involvement[transaction.id].orEmpty()) return@forEach
@@ -46,11 +51,26 @@ internal object AccountDailySpendingTrendsBuilder {
                     else -> return@forEach
                 }
                 amounts[transaction.id] = contribution
-                if (transaction.type != FinancialTransactionType.SELF_TRANSFER) aggregateAmounts[transaction.id] = contribution
+                val category = when (expense?.category) {
+                    FlowExpenseCategory.EXTERNAL_TRANSFER_OUT -> ChartDataCategory.EXTERNAL_TRANSFERS
+                    FlowExpenseCategory.CREDIT_CARD_PAYMENT -> ChartDataCategory.CREDIT_SETTLEMENTS
+                    FlowExpenseCategory.CASH_WITHDRAWAL -> ChartDataCategory.CASH_WITHDRAWALS
+                    FlowExpenseCategory.BILL_PAYMENT -> ChartDataCategory.BILLS
+                    FlowExpenseCategory.POS_PURCHASE -> ChartDataCategory.ACCOUNT_PURCHASES
+                    FlowExpenseCategory.FEE -> ChartDataCategory.FEES
+                    FlowExpenseCategory.LOAN_REPAYMENT -> ChartDataCategory.LOAN_REPAYMENTS
+                    null -> if (transaction.type == FinancialTransactionType.SELF_TRANSFER)
+                        ChartDataCategory.INTERNAL_TRANSFERS else ChartDataCategory.UNATTRIBUTED_REFUNDS
+                }
+                categories.getValue(category)[transaction.id] = contribution
+                if (transaction.type != FinancialTransactionType.SELF_TRANSFER) {
+                    aggregateAmounts[transaction.id] = contribution
+                    aggregateCategories.getValue(category)[transaction.id] = contribution
+                }
             }
-            "${account.bank.id}:${account.maskedNumber}" to trend(amounts)
+            "${account.bank.id}:${account.maskedNumber}" to trend(amounts).copy(categoryTrends = categories.mapValues { trend(it.value) })
         }
-        AccountDailySpendingTrends(trend(aggregateAmounts), perAccount)
+        AccountDailySpendingTrends(trend(aggregateAmounts).copy(categoryTrends = aggregateCategories.mapValues { trend(it.value) }), perAccount)
     }
 
     private val creditChargeTypes = setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE,

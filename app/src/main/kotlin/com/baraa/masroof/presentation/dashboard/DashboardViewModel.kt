@@ -60,6 +60,8 @@ class DashboardViewModel(
     private val appLogService: AppLogService? = null,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     maintenanceCompletions: Flow<Unit> = emptyFlow(),
+    val chartDataWorkflow: com.baraa.masroof.application.dashboard.ChartDataWorkflow =
+        com.baraa.masroof.application.dashboard.ChartDataWorkflow(com.baraa.masroof.application.dashboard.InMemoryChartDataPreferencesRepository()),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()

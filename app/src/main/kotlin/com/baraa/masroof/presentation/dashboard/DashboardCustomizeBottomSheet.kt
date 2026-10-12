@@ -1,7 +1,5 @@
 package com.baraa.masroof.presentation.dashboard
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import com.baraa.masroof.presentation.theme.MasroofFontWeights
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 
@@ -10,22 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,70 +39,17 @@ fun DashboardCustomizeBottomSheet(
     onToggleQuickExpense: () -> Unit,
     onToggleQuickIncome: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = MasroofSpacing.bottomSheetBottom),
-        ) {
-            Text(
-                stringResource(R.string.dashboard_customize_sheet_title),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.bold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal, vertical = MasroofSpacing.sectionHeaderGap),
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
-            ) {
-                items(
-                    items = draft.sections.filter { it.id != DashboardSectionId.CARDS && it.id != DashboardSectionId.LOANS },
-                    key = { it.id.name },
-                ) { entry ->
-                    CustomizeSectionRow(
-                        entry = entry,
-                        canMoveUp = draft.sections.indexOf(entry) > 0,
-                        canMoveDown = draft.sections.indexOf(entry) < draft.sections.lastIndex,
-                        onToggle = { onToggleSection(entry.id) },
-                        onMoveUp = { onMoveSection(entry.id, -1) },
-                        onMoveDown = { onMoveSection(entry.id, 1) },
-                        extraContent = if (entry.id == DashboardSectionId.QUICK) {
-                            {
-                                QuickChildToggle(
-                                    label = stringResource(R.string.dashboard_quick_total_expense),
-                                    checked = draft.quickExpenseVisible,
-                                    onToggle = onToggleQuickExpense,
-                                )
-                                QuickChildToggle(
-                                    label = stringResource(R.string.dashboard_quick_total_income),
-                                    checked = draft.quickIncomeVisible,
-                                    onToggle = onToggleQuickIncome,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    )
-                }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(top = MasroofSpacing.sectionHeaderGap))
-
-            Button(
-                onClick = onSave,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal, vertical = MasroofSpacing.sectionGap),
-            ) {
-                Text(stringResource(R.string.dashboard_customize_save))
-            }
+    com.baraa.masroof.presentation.common.MasroofBottomSheet(
+        title = stringResource(R.string.dashboard_customize_sheet_title), onDismiss = onDismiss,
+        onApply = onSave, applyLabel = stringResource(R.string.dashboard_customize_save)) {
+        draft.sections.filter { it.id != DashboardSectionId.CARDS && it.id != DashboardSectionId.LOANS }.forEach { entry ->
+            CustomizeSectionRow(entry, draft.sections.indexOf(entry) > 0,
+                draft.sections.indexOf(entry) < draft.sections.lastIndex, { onToggleSection(entry.id) },
+                { onMoveSection(entry.id, -1) }, { onMoveSection(entry.id, 1) },
+                if (entry.id == DashboardSectionId.QUICK) ({
+                    QuickChildToggle(stringResource(R.string.dashboard_quick_total_expense), draft.quickExpenseVisible, onToggleQuickExpense)
+                    QuickChildToggle(stringResource(R.string.dashboard_quick_total_income), draft.quickIncomeVisible, onToggleQuickIncome)
+                }) else null)
         }
     }
 }
@@ -131,18 +69,13 @@ private fun CustomizeSectionRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = MasroofSpacing.screenHorizontal),
+            .padding(horizontal = MasroofSpacing.none),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap),
         ) {
-            Icon(
-                imageVector = Icons.Default.DragHandle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Icon(
                 imageVector = sectionIcon(entry.id),
                 contentDescription = null,
@@ -156,10 +89,10 @@ private fun CustomizeSectionRow(
             }
             Column {
                 IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = null)
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.sheet_move_up, sectionTitle(entry.id)))
                 }
                 IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.sheet_move_down, sectionTitle(entry.id)))
                 }
             }
             Switch(checked = entry.visible, onCheckedChange = { onToggle() })
