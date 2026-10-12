@@ -87,9 +87,12 @@ fun MasroofBottomSheet(
     }
     Dialog(onDismissRequest = { if (!currentBusy) currentDismiss() }, properties = DialogProperties(
         dismissOnBackPress = !busy, dismissOnClickOutside = false,
-        usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        usePlatformDefaultWidth = true, decorFitsSystemWindows = false)) {
         // Do not derive the Android window width from locale-wrapped DisplayMetrics.
         // MATCH_PARENT follows the current Activity window, including split-screen and folding.
+        // Keep DialogLayout's platform measurement path: Compose 1.6's false branch
+        // substitutes Configuration-derived specs and rewrites Window size on every layout.
+        // The explicit MATCH_PARENT below supplies full-window specs to the true branch.
         val view = LocalView.current
         val window = remember(view) {
             generateSequence(view as View) { it.parent as? View }
