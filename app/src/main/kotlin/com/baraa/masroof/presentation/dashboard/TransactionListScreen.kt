@@ -51,9 +51,14 @@ fun TransactionListScreen(
     var selectedAccountContainerIds by rememberSaveable { mutableStateOf(listOf<String>()) }
     var seedTransactionIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var filtersSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var appliedOpenGeneration by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(-1) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(openGeneration) {
+        // A fold/configuration recreation restores the current draft; only a new
+        // navigation request should consume a seed and reset the filter sheet.
+        if (appliedOpenGeneration == openGeneration) return@LaunchedEffect
+        appliedOpenGeneration = openGeneration
         val filter = seedFilter ?: TransactionListFilterState()
         searchQuery = filter.searchQuery
         selectedTypeNames = filter.types.map { it.name }
