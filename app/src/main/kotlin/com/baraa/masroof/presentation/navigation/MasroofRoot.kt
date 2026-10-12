@@ -4,21 +4,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Icon
-import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.key
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofAppBar
 import com.baraa.masroof.presentation.common.ReviewNotificationIconButton
 import com.baraa.masroof.presentation.common.MasroofIcons
-import com.baraa.masroof.presentation.theme.MasroofElevation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -82,6 +73,7 @@ fun MasroofRoot(
     var selected by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
     var generation by rememberSaveable { mutableStateOf(0) }
     fun navigate(destination: HomeDestination) { requested = destination; generation++ }
+    androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.dashboard.LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow) {
     Column(Modifier.fillMaxSize()) {
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
@@ -124,6 +116,8 @@ fun MasroofRoot(
 
         }
     }
+}
+
 }
 
 @Composable

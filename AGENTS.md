@@ -6,6 +6,8 @@
 - Use `MasroofTheme` / `MaterialTheme` for colors and typography; extended semantic colors live in `MasroofThemeExtras.extendedColors`.
 - Spacing and sizing tokens: `MasroofSpacing`, `MasroofIconSizes`, `MasroofElevation`, `MasroofShapes`.
 - Reuse shared components from `presentation/common/` (`MasroofCard`, `MasroofSectionHeader`, `MasroofAmountText`, `MasroofMoneyRow`, `MasroofSecondaryScaffold`, etc.) instead of one-off layouts.
+- All modal bottom sheets use `MasroofBottomSheet`; geometry and adaptive widths live in `MasroofSheetTokens`. Header/actions stay fixed and only the body scrolls. Multiple-choice rows use `MasroofSheetChoices`. Draft changes apply only on Save/Apply; Back, scrim, swipe, Close and Cancel discard them. Busy financial writes block dismissal.
+- Chart category projections and filtering live in application dashboard builders / `ChartDataWorkflow`. Chart choices never change entity balances, dues, or full-scope summary metrics. Persist keys with their bank-qualified entity identity, never translated names or only last4.
 - Do not add hardcoded `dp` values in feature screens when an existing token fits; add a new token in `presentation/theme/` only when the design truly needs a new size.
 - App navigation lives in `presentation/navigation/` (`MasroofRoot`, `HomeDestination`, `SettingsDestination`).
 - Debug builds expose a design catalog at **Settings → About → Design catalog** (`presentation/debug/DesignCatalogScreen.kt`) for previewing tokens and shared components.

@@ -260,6 +260,11 @@ class AppContainer(
             ),
         )
 
+    val chartDataWorkflow = com.baraa.masroof.application.dashboard.ChartDataWorkflow(
+        com.baraa.masroof.data.preferences.SharedPrefsChartDataPreferencesRepository(
+            appContext.getSharedPreferences(com.baraa.masroof.data.preferences.SharedPrefsChartDataPreferencesRepository.PREFS_NAME,
+                Context.MODE_PRIVATE)))
+
     val notificationPreferencesRepository: NotificationPreferencesRepository =
         SharedPrefsNotificationPreferencesRepository(
             appContext.getSharedPreferences(

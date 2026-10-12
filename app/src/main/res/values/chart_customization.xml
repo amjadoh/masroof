@@ -1,0 +1,27 @@
+<resources>
+    <string name="chart_type_separator">"، "</string>
+    <string name="sheet_close_without_saving">إغلاق دون حفظ</string>
+    <string name="sheet_cancel">إلغاء</string>
+    <string name="sheet_move_up">تحريك %1$s لأعلى</string>
+    <string name="sheet_move_down">تحريك %1$s لأسفل</string>
+    <string name="chart_customize_title">تخصيص بيانات الشارت</string>
+    <string name="chart_data_about">حول بيانات الشارت</string>
+    <string name="chart_save_apply">حفظ وتطبيق</string>
+    <string name="chart_restore_defaults">استعادة الافتراضي</string>
+    <string name="chart_custom_selection">مخصص · %1$d أنواع</string>
+    <string name="chart_selected_data">الأنواع المحددة: %1$s</string>
+    <string name="chart_refunds_selection_hint">الاستردادات خيار مستقل يُخصم من المبلغ ضمن نطاق هذا الشارت؛ قد لا تحدد البيانات نوع العملية الأصلية. الاختيارات تخص الشارت وتفاصيل اليوم، ولا تغيّر ملخص الحساب أو البطاقة.</string>
+    <string name="chart_full_card_average_hint">هذا متوسط جميع المصاريف المؤهلة للبطاقة قبل تخصيص بيانات الشارت.</string>
+    <string name="chart_category_credit">مشتريات البطاقات الائتمانية</string>
+    <string name="chart_category_mada">مشتريات مدى</string>
+    <string name="chart_category_account_purchases">المشتريات غير الائتمانية المرتبطة بالحساب</string>
+    <string name="chart_category_other">المصاريف الأخرى</string>
+    <string name="chart_category_cash">السحب النقدي</string>
+    <string name="chart_category_external">الحوالات الخارجية الصادرة</string>
+    <string name="chart_category_bills">الفواتير</string>
+    <string name="chart_category_loans">أقساط القروض</string>
+    <string name="chart_category_settlements">سداد البطاقة الائتمانية</string>
+    <string name="chart_category_fees">الرسوم</string>
+    <string name="chart_category_internal">التحويلات الداخلية الصادرة</string>
+    <string name="chart_category_refunds">الاستردادات ضمن النطاق</string>
+</resources>

@@ -3,7 +3,6 @@ package com.baraa.masroof.presentation.dashboard
 import com.baraa.masroof.presentation.theme.MasroofIconSizes
 import com.baraa.masroof.presentation.theme.MasroofSpacing
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,21 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,41 +37,11 @@ fun TransactionReclassifyBottomSheet(
     onSelectType: (FinancialTransactionType) -> Unit,
     onSave: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val canSave = selectedType != null && selectedType != currentType && !saving
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = MasroofSpacing.bottomSheetBottom),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = MasroofSpacing.sectionHeaderGap,
-                        vertical = MasroofSpacing.inlineGap,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    stringResource(R.string.transaction_reclassify_sheet_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = MasroofSpacing.sectionHeaderGap),
-                )
-                IconButton(onClick = onDismiss, enabled = !saving) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.settings_cancel),
-                    )
-                }
-            }
-
+    com.baraa.masroof.presentation.common.MasroofBottomSheet(
+        title = stringResource(R.string.transaction_reclassify_sheet_title), onDismiss = onDismiss,
+        onApply = onSave, applyLabel = stringResource(R.string.transaction_reclassify_sheet_save),
+        canApply = canSave, busy = saving) {
             selectedType?.takeIf { it != currentType }?.let { pending ->
                 Text(
                     stringResource(
@@ -102,11 +61,11 @@ fun TransactionReclassifyBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    ,
             ) {
                 RECLASSIFY_TYPE_OPTIONS.forEach { type ->
                     val isCurrent = type == currentType
-                    val isSelected = type == selectedType
+                    val isSelected = type == (selectedType ?: currentType)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -120,7 +79,7 @@ fun TransactionReclassifyBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
-                            selected = isSelected || isCurrent,
+                            selected = isSelected,
                             onClick = {
                                 if (!isCurrent) onSelectType(type)
                             },
@@ -149,29 +108,5 @@ fun TransactionReclassifyBottomSheet(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = MasroofSpacing.sectionHeaderGap))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal),
-                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    enabled = !saving,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.transaction_reclassify_sheet_cancel))
-                }
-                Button(
-                    onClick = onSave,
-                    enabled = canSave,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.transaction_reclassify_sheet_save))
-                }
-            }
-        }
     }
 }

@@ -19,7 +19,8 @@ internal fun CardReferenceAverage(trend: DailySpendingTrend, inCard: Boolean = f
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
     val value = formatLocalizedMoney(trend.averageDailySpending)
     val hint = stringResource(R.string.reference_period_average, date.format(trend.points.last().date), trend.points.size)
-    val guidance = stringResource(R.string.approved_average_basis, trend.points.size)
+    val guidance = stringResource(R.string.approved_average_basis, trend.points.size) + "\n" +
+        stringResource(R.string.chart_full_card_average_hint)
     val spacing = Modifier.padding(top = MasroofReference.sectionGap)
     if (inCard) MasroofAverageBand(value, hint, guidance, spacing)
     else MasroofCard { MasroofAverageBand(value, hint, guidance, spacing) }

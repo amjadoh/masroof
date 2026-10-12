@@ -235,31 +235,13 @@ fun TransactionListScreen(
             availableAccounts = availableAccounts,
             ownedCards = ownedCards,
             ownedAccounts = ownedAccounts,
-            onTypeToggle = { type ->
-                selectedTypeNames = if (type.name in selectedTypeNames) {
-                    selectedTypeNames - type.name
-                } else {
-                    selectedTypeNames + type.name
-                }
+            onApply = { draft ->
+                selectedTypeNames = draft.types.map { it.name }
+                selectedCardLast4s = draft.cardLast4s.toList()
+                selectedAccountContainerIds = draft.accountContainerIds.toList()
+                searchQuery = draft.searchQuery
+                seedTransactionIds = draft.transactionIds
             },
-            onClearTypes = { selectedTypeNames = emptyList() },
-            onCardToggle = { last4 ->
-                selectedCardLast4s = if (last4 in selectedCardLast4s) {
-                    selectedCardLast4s - last4
-                } else {
-                    selectedCardLast4s + last4
-                }
-            },
-            onClearCards = { selectedCardLast4s = emptyList() },
-            onAccountToggle = { containerId ->
-                selectedAccountContainerIds = if (containerId in selectedAccountContainerIds) {
-                    selectedAccountContainerIds - containerId
-                } else {
-                    selectedAccountContainerIds + containerId
-                }
-            },
-            onClearAccounts = { selectedAccountContainerIds = emptyList() },
-            onClearFilters = clearFilters,
         )
     }
 }

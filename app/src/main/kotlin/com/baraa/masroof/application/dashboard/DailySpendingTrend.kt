@@ -22,6 +22,7 @@ data class DailySpendingTrend(
     val points: List<DailySpendingPoint>,
     val averageDailySpending: SignedMoneyAmount,
     val transactionIdsByDate: Map<LocalDate, Set<String>> = emptyMap(),
+    val categoryTrends: Map<ChartDataCategory, DailySpendingTrend> = emptyMap(),
 ) {
     val totalBeforeRefunds: SignedMoneyAmount get() = if (points.isEmpty()) SignedMoneyAmount.zero(averageDailySpending.currency)
         else SpendingAmounts.sum(points.map { it.beforeRefunds })
@@ -72,7 +73,7 @@ object DailySpendingTrendBuilder {
     ): DailySpendingTrend {
         val parsedById = parsedRecords.associateBy { it.event.id }
         val amounts = transactions.distinctBy { it.id }.associate { transaction ->
-            transaction.id to transaction.signedSpendingAmount(primaryCurrency, sarEquivalents, parsedById, includeFinancialOutflows)
+            transaction.id to signedSpendingAmount(transaction, primaryCurrency, sarEquivalents, parsedById, includeFinancialOutflows)
         }.mapNotNull { (id, amount) -> amount?.let { id to it } }.toMap()
         return buildWithAmounts(period, transactions, primaryCurrency, zoneId, today, amounts)
     }
@@ -138,21 +139,22 @@ object DailySpendingTrendBuilder {
         )
     }
 
-    private fun FinancialTransaction.signedSpendingAmount(
+    internal fun signedSpendingAmount(
+        transaction: FinancialTransaction,
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
         parsedRecordsById: Map<String, ParsedEventRecord>,
         includeFinancialOutflows: Boolean,
     ): BigDecimal? {
-        val amount = TransactionAmountResolver.effectiveAmount(this, primaryCurrency, sarEquivalents)
+        val amount = TransactionAmountResolver.effectiveAmount(transaction, primaryCurrency, sarEquivalents)
             ?: return null
-        return when (type) {
+        return when (transaction.type) {
             FinancialTransactionType.EXPENSE,
             FinancialTransactionType.BILL_PAYMENT,
             -> amount.amount
 
             FinancialTransactionType.FEE ->
-                amount.amount.takeUnless { !includeFinancialOutflows && LoanRepaymentAttribution.isLoanRepayment(this, parsedRecordsById) }
+                amount.amount.takeUnless { !includeFinancialOutflows && LoanRepaymentAttribution.isLoanRepayment(transaction, parsedRecordsById) }
 
             FinancialTransactionType.LOAN_REPAYMENT,
             FinancialTransactionType.EXTERNAL_TRANSFER_OUT,

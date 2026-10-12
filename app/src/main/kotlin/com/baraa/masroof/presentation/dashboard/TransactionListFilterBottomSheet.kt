@@ -1,197 +1,54 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import com.baraa.masroof.presentation.common.MasroofText as Text
-import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.FinancialTransactionType
+import com.baraa.masroof.presentation.common.*
 
+/** Filter choices are drafts until Apply. All dismissal paths discard them. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionListFilterBottomSheet(
-    visible: Boolean,
-    onDismiss: () -> Unit,
-    filterState: TransactionListFilterState,
-    availableTypes: List<FinancialTransactionType>,
-    availableCards: List<String>,
-    availableAccounts: List<String>,
-    ownedCards: List<OwnedCardUi> = emptyList(),
-    ownedAccounts: List<OwnedAccountUi> = emptyList(),
-    onTypeToggle: (FinancialTransactionType) -> Unit,
-    onClearTypes: () -> Unit,
-    onCardToggle: (String) -> Unit,
-    onClearCards: () -> Unit,
-    onAccountToggle: (String) -> Unit,
-    onClearAccounts: () -> Unit,
-    onClearFilters: () -> Unit,
-) {
+fun TransactionListFilterBottomSheet(visible: Boolean, onDismiss: () -> Unit,
+    filterState: TransactionListFilterState, availableTypes: List<FinancialTransactionType>,
+    availableCards: List<String>, availableAccounts: List<String>, ownedCards: List<OwnedCardUi> = emptyList(),
+    ownedAccounts: List<OwnedAccountUi> = emptyList(), onApply: (TransactionListFilterState) -> Unit) {
     if (!visible) return
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = MasroofSpacing.bottomSheetBottom),
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.bottomSheetSectionGap),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.transaction_list_filter_sheet_title),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = MasroofFontWeights.bold),
-                )
-                if (filterState.isActive) {
-                    TextButton(onClick = onClearFilters) {
-                        Text(stringResource(R.string.transaction_list_clear_filters))
-                    }
-                }
-            }
-
-            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label = stringResource(R.string.transaction_list_filter_sheet_title), message = stringResource(R.string.transaction_list_multi_filter_hint), modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal))
-
-            if (availableTypes.isNotEmpty()) {
-                TransactionListFilterChipSection(
-                    title = stringResource(R.string.transaction_list_filter_type_section),
-                ) {
-                    FilterChip(
-                        selected = filterState.types.isEmpty(),
-                        onClick = onClearTypes,
-                        label = { Text(stringResource(R.string.transaction_list_filter_all_types)) },
-                        colors = transactionListFilterChipColors(),
-                    )
-                    availableTypes.forEach { type ->
-                        FilterChip(
-                            selected = type in filterState.types,
-                            onClick = { onTypeToggle(type) },
-                            label = { Text(transactionTypeLabel(type)) },
-                            colors = transactionListFilterChipColors(),
-                        )
-                    }
-                }
-            }
-
-            if (availableAccounts.isNotEmpty()) {
-                TransactionListFilterChipSection(
-                    title = stringResource(R.string.transaction_list_filter_account_section),
-                ) {
-                    FilterChip(
-                        selected = filterState.accountContainerIds.isEmpty(),
-                        onClick = onClearAccounts,
-                        label = { Text(stringResource(R.string.transaction_list_filter_all_accounts)) },
-                        colors = transactionListFilterChipColors(),
-                    )
-                    availableAccounts.forEach { containerId ->
-                        FilterChip(
-                            selected = containerId in filterState.accountContainerIds,
-                            onClick = { onAccountToggle(containerId) },
-                            label = {
-                                Text(
-                                    accountDisplayLabel(ownedAccounts, containerId) ?: containerId,
-                                )
-                            },
-                            colors = transactionListFilterChipColors(),
-                        )
-                    }
-                }
-            }
-
-            if (availableCards.isNotEmpty()) {
-                TransactionListFilterChipSection(
-                    title = stringResource(R.string.transaction_list_filter_card_section),
-                ) {
-                    FilterChip(
-                        selected = filterState.cardLast4s.isEmpty(),
-                        onClick = onClearCards,
-                        label = { Text(stringResource(R.string.transaction_list_filter_all_cards)) },
-                        colors = transactionListFilterChipColors(),
-                    )
-                    availableCards.forEach { last4 ->
-                        FilterChip(
-                            selected = last4 in filterState.cardLast4s,
-                            onClick = { onCardToggle(last4) },
-                            label = {
-                                Text(cardDisplayLabel(ownedCards, last4))
-                            },
-                            colors = transactionListFilterChipColors(),
-                        )
-                    }
-                }
-            }
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MasroofSpacing.screenHorizontal),
-            ) {
-                Text(stringResource(R.string.transaction_list_filter_apply))
-            }
+    var types by rememberSaveable { mutableStateOf(filterState.types.map { it.name }) }
+    var cards by rememberSaveable { mutableStateOf(filterState.cardLast4s.toList()) }
+    var accounts by rememberSaveable { mutableStateOf(filterState.accountContainerIds.toList()) }
+    var resetAll by rememberSaveable { mutableStateOf(false) }
+    val draft = filterState.copy(types = types.mapNotNull { runCatching { FinancialTransactionType.valueOf(it) }.getOrNull() }.toSet(),
+        cardLast4s = cards.toSet(), accountContainerIds = accounts.toSet(),
+        searchQuery = if (resetAll) "" else filterState.searchQuery,
+        transactionIds = if (resetAll) emptySet() else filterState.transactionIds)
+    MasroofBottomSheet(stringResource(R.string.transaction_list_filter_sheet_title), onDismiss,
+        onApply = { onApply(draft); onDismiss() }, applyLabel = stringResource(R.string.transaction_list_filter_apply),
+        resetLabel = stringResource(R.string.transaction_list_clear_filters),
+        onReset = { types = emptyList(); cards = emptyList(); accounts = emptyList(); resetAll = true }) {
+        MasroofGuidanceLabel(stringResource(R.string.transaction_list_filter_sheet_title),
+            stringResource(R.string.transaction_list_multi_filter_hint))
+        if (availableTypes.isNotEmpty()) {
+            MasroofText(stringResource(R.string.transaction_list_filter_type_section), style = MaterialTheme.typography.titleSmall)
+            FilterChip(types.isEmpty(), onClick = { types = emptyList() }, label = { MasroofText(stringResource(R.string.transaction_list_filter_all_types)) })
+            MasroofSheetChoices(availableTypes, draft.types, { transactionTypeLabel(it) },
+                { value -> types = if (value.name in types) types - value.name else types + value.name }, { "filter-type-${it.name}" })
+        }
+        if (availableAccounts.isNotEmpty()) {
+            MasroofText(stringResource(R.string.transaction_list_filter_account_section), style = MaterialTheme.typography.titleSmall)
+            FilterChip(accounts.isEmpty(), onClick = { accounts = emptyList() }, label = { MasroofText(stringResource(R.string.transaction_list_filter_all_accounts)) })
+            MasroofSheetChoices(availableAccounts, draft.accountContainerIds, { accountDisplayLabel(ownedAccounts, it) ?: it },
+                { value -> accounts = if (value in accounts) accounts - value else accounts + value }, { "filter-account-$it" })
+        }
+        if (availableCards.isNotEmpty()) {
+            MasroofText(stringResource(R.string.transaction_list_filter_card_section), style = MaterialTheme.typography.titleSmall)
+            FilterChip(cards.isEmpty(), onClick = { cards = emptyList() }, label = { MasroofText(stringResource(R.string.transaction_list_filter_all_cards)) })
+            MasroofSheetChoices(availableCards, draft.cardLast4s, { cardDisplayLabel(ownedCards, it) },
+                { value -> cards = if (value in cards) cards - value else cards + value }, { "filter-card-$it" })
         }
     }
 }
-
-@Composable
-private fun TransactionListFilterChipSection(
-    title: String,
-    chips: @Composable () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = MasroofFontWeights.medium,
-            modifier = Modifier.padding(horizontal = MasroofSpacing.screenHorizontal),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MasroofSpacing.screenHorizontal),
-            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-        ) {
-            chips()
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun transactionListFilterChipColors() = FilterChipDefaults.filterChipColors(
-    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-)
