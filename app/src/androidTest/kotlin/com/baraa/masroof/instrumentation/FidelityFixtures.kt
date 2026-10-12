@@ -73,7 +73,14 @@ internal object FidelityFixtures {
         val overall = trend(transactions, true)
         val perCard = listOf("7271","8842","4421").associate { number ->
             "${bank.id}:$number" to trend(transactions.filterIndexed { i, _ -> rows[i].card == number }, outflows = number == "4421") }
-        val accountTrend = trend(transactions.filterIndexed { i, _ -> rows[i].account != null })
+        val registryAccounts = listOf(AccountRegistryEntry.forTest(bank, "3001"), AccountRegistryEntry.forTest(bank, "5002"))
+        val accountContext = DashboardProjectionContext(period, period.endDateExclusive.atStartOfDay(zone).toInstant(),
+            LocalDate.parse("2026-10-10"), DashboardEvidence.EMPTY, transactions, emptyMap(), 0, registryAccounts,
+            setOf(account("3001"), account("5002")), setOf("3001", "5002"), emptyList(), emptyList(),
+            DebitCardScopeFacts(setOf(card("4421")), mapOf(card("4421") to account("3001"))), java.util.Locale.ENGLISH, zone, Currency.SAR)
+        val accountTrends = AccountDailySpendingTrendsBuilder.build(accountContext,
+            AccountTransactionInvolvementResolver.buildIndex(transactions, emptyList(), registryAccounts, accountContext.debitCardScope),
+            setOf("${bank.id}:7271", "${bank.id}:8842"))
         val snapshot = CreditCardBalanceSnapshot(money("5000"),money("2200"),LocalDate.parse("2026-10-15"),
             Instant.parse("2026-10-02T07:00:00Z"),Instant.parse("2026-10-02T07:00:00Z"))
         val primary = CreditCardDashboardRow(bank,"7271",signed("800"),signed("800"),signed("800"),"2 أكتوبر — 1 نوفمبر",snapshot)
@@ -107,8 +114,8 @@ internal object FidelityFixtures {
             ownedCards=listOf(OwnedCardUi(bank,"7271","البطاقة الأساسية •• 7271",CardNetwork.VISA,CardRole.PRIMARY),OwnedCardUi(bank,"8842","البطاقة الفرعية •• 8842",CardNetwork.VISA,CardRole.SUPPLEMENTARY,"7271"),OwnedCardUi(bank,"4421","مدى •• 4421",CardNetwork.MADA)),
             creditFacilities=allCards, loansOverview=LoansOverview(listOf(LoanOverview(bank,LoanType.PERSONAL,"القرض الشخصي",money("84200"),Instant.parse("2026-09-27T07:00:00Z"),money("1800"),Instant.parse("2026-09-27T07:00:00Z"),signed("1800"),null)),null,Currency.SAR),
             commitmentsOverview=obligations,merchantSpending=merchant,dailySpendingTrend=ordinary,
-            spendingTrends=DashboardSpendingTrends(overall,accountTrend,trend(transactions.filterIndexed { i, _ -> rows[i].card in listOf("7271","8842") }),
-                mapOf("${bank.id}:3001" to accountTrend,"${bank.id}:5002" to trend(emptyList())),perCard,perCard.getValue("${bank.id}:4421"),
+            spendingTrends=DashboardSpendingTrends(overall,accountTrends.aggregate,trend(transactions.filterIndexed { i, _ -> rows[i].card in listOf("7271","8842") }),
+                accountTrends.byAccount,perCard,perCard.getValue("${bank.id}:4421"),
                 purchases = trend(transactions.filterIndexed { i, tx -> rows[i].card != null || tx.type in listOf(FinancialTransactionType.CASH_WITHDRAWAL, FinancialTransactionType.EXTERNAL_TRANSFER_OUT) }, true)),
             recentTransactions=previews.sortedByDescending { it.localDate }.take(3),allTransactions=previews.sortedByDescending { it.localDate },
             transactionAccountInvolvement=rows.associate { "ref-${it.id}" to listOfNotNull(it.account?.let(::account),it.destination?.let(::account)).toSet() },
