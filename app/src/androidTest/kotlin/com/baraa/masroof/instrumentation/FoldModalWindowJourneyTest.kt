@@ -91,12 +91,14 @@ class FoldModalWindowJourneyTest {
     }
     private fun verify(kind: String, profile: String) {
         // WindowManager layout follows Activity configuration delivery asynchronously.
-        // Wait for both dimensions, then assert the fixed footer in that actual layout.
+        // Edge-to-edge Dialog and Activity content can consume different system-bar insets.
+        // Cover all Activity content without exceeding the current full Android window.
         try { compose.waitUntil(30_000) {
             runCatching {
                 val bounds = compose.onNodeWithTag("sheet-overlay").fetchSemanticsNode().boundsInRoot
                 abs(bounds.width - compose.activity.window.decorView.width) <= 2f &&
-                    abs(bounds.height - compose.activity.findViewById<android.view.View>(android.R.id.content).height) <= 2f &&
+                    bounds.height >= compose.activity.findViewById<android.view.View>(android.R.id.content).height - 2f &&
+                    bounds.height <= compose.activity.window.decorView.height + 2f &&
                     listOf("sheet-actions", "sheet-close", "sheet-apply", "sheet-cancel").all { tag ->
                         val child = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
                         child.width > 0 && child.height > 0 && child.left >= bounds.left &&
@@ -118,8 +120,10 @@ class FoldModalWindowJourneyTest {
         assertEquals("Locale-wrapped Activity metrics must follow its current window", width,
             compose.activity.resources.displayMetrics.widthPixels.toFloat(), 2f)
         assertEquals("Overlay must span actual Activity window", width, overlay.width, 2f)
-        assertEquals("Overlay must span actual Activity content height",
-            compose.activity.findViewById<android.view.View>(android.R.id.content).height.toFloat(), overlay.height, 2f)
+        assertTrue("Overlay must cover all Activity content", overlay.height >=
+            compose.activity.findViewById<android.view.View>(android.R.id.content).height - 2f)
+        assertTrue("Overlay must fit within the current Android window",
+            overlay.height <= compose.activity.window.decorView.height + 2f)
         assertEquals(overlay.left, scrim.left, 1f); assertEquals(overlay.right, scrim.right, 1f)
         assertEquals(overlay.top, scrim.top, 1f); assertEquals(overlay.bottom, scrim.bottom, 1f)
         assertTrue("Sheet is not centered in the full window", abs(sheet.center.x - overlay.center.x) <= 2f)
