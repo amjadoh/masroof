@@ -11,7 +11,9 @@ object AppLocaleContextFactory {
     fun wrap(context: Context, languageTag: String): Context {
         val locale = AppLocale.displayLocale(languageTag)
         Locale.setDefault(locale)
-        val config = Configuration(context.resources.configuration)
+        // Override locale only. Copying the entire configuration pins window bounds,
+        // density and screen qualifiers when a foldable or multi-window host resizes.
+        val config = Configuration()
         config.setLocale(locale)
         config.setLayoutDirection(locale)
         return context.createConfigurationContext(config)

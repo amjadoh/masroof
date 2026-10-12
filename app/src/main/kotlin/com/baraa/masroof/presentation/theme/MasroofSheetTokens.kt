@@ -11,5 +11,10 @@ object MasroofSheetTokens {
     val sectionGap = MasroofSpacing.bottomSheetSectionGap
     val choiceMinHeight = 48.dp
     val shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val handleWidth = 32.dp
+    val handleHeight = 4.dp
+    val dismissDragDistance = 80.dp
+    const val scrimAlpha = 0.32f
+    const val motionMillis = 180
     const val windowHeightFraction = 0.94f
 }

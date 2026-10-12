@@ -99,6 +99,9 @@ jobs:
           api-level: 30
           target: default
           arch: x86_64
+          # Android 11 caps wm overrides at twice the physical display dimensions.
+          # The generic 320x640 AVD cannot exercise the 1600x2000 unfolded window.
+          profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
@@ -118,6 +121,16 @@ jobs:
         with:
           name: m19-statement-screenshots
           path: m19-statement-screenshots
+          if-no-files-found: warn
+
+      - name: Upload instrumentation reports and per-test window diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-reports
+          path: |
+            app/build/reports/androidTests/connected/debug/
+            app/build/outputs/androidTest-results/connected/debug/
           if-no-files-found: warn
 
   # API 30 process death. Separate from emulator-smoke so clearPackageData=true
