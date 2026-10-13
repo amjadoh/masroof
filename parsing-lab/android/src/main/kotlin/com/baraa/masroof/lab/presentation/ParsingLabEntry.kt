@@ -24,12 +24,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import com.baraa.masroof.lab.application.LabWorkflow
-import com.baraa.masroof.lab.data.LabDatabase
-import com.baraa.masroof.lab.data.LabRunResultRow
+import com.baraa.masroof.lab.application.LabRunResultView
 import com.baraa.masroof.lab.engine.*
 import com.baraa.masroof.lab.ui.copy.presentation.theme.*
 import kotlinx.serialization.encodeToString
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 /** The only host-facing API. Receives no production services, repositories or database. */
@@ -42,7 +42,7 @@ fun ParsingLabEntry(onBack: () -> Unit) {
         ViewModelProvider(store, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                LabViewModel(LabWorkflow(LabDatabase.open(context)), savedBankId) as T
+                LabViewModel(LabWorkflow.open(context), savedBankId) as T
         })[LabViewModel::class.java]
     }
     DisposableEffect(store) { onDispose { store.clear() } }
@@ -207,7 +207,7 @@ private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) 
 private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
     var sender by rememberSaveable(pack.bank.id) { mutableStateOf(pack.bank.senders.first()) }
     var body by rememberSaveable(pack.bank.id) { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var date by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
     var expected by rememberSaveable(pack.bank.id) { mutableStateOf("") }
     Text("تجربة رسالة", style = MaterialTheme.typography.titleLarge)
     LabCard {
@@ -228,7 +228,7 @@ private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
         LabCard {
             Text(sample.sender, style = MaterialTheme.typography.labelMedium)
             Text(sample.body)
-            Text(if (sample.expectedJson == null) "غير موسومة — لا تدخل قياس الدقة" else "لها إجابة متوقعة", style = MaterialTheme.typography.bodySmall)
+            Text(if (!sample.annotated) "غير موسومة — لا تدخل قياس الدقة" else "لها إجابة متوقعة", style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { sender = sample.sender;body = sample.body }, enabled = !state.busy) { Text("فتح للتجربة") }
         }
     }
@@ -236,8 +236,8 @@ private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
 
 @Composable
 private fun ResultsPanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
-    var from by rememberSaveable { mutableStateOf(LocalDate.now().minusDays(30).toString()) }
-    var to by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var from by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).minusDays(30).toString()) }
+    var to by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
     Text("اختبار العينات", style = MaterialTheme.typography.titleLarge)
     LabCard {
         LabField("من تاريخ YYYY-MM-DD", from, { from = it }, !state.busy)
@@ -249,27 +249,24 @@ private fun ResultsPanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
         FilterChip(state.selectedRun == run.id, { vm.selectRun(run.id) }, enabled = !state.busy,
             label = { Text("v${run.version} · ${run.sampleCount} عينات · ${run.fromDate} إلى ${run.toDate}") })
     }
-    val checked = state.results.filter { it.differencesJson != null }
-    val matched = checked.count { LabJson.format.decodeFromString<List<String>>(it.differencesJson!!).isEmpty() }
-    if (state.results.isNotEmpty()) Text("مطابقة كاملة: $matched / ${checked.size} عينة موسومة · ${state.results.size - checked.size} غير موسومة")
-    state.results.forEach { row -> ResultCard(row) }
+    if (state.results.rows.isNotEmpty()) Text("مطابقة كاملة: ${state.results.matched} / ${state.results.labeled} عينة موسومة · ${state.results.unlabeled} غير موسومة")
+    state.results.rows.forEach { row -> ResultCard(row) }
 }
 
 @Composable
-private fun ResultCard(row: LabRunResultRow) {
+private fun ResultCard(row: LabRunResultView) {
     var expand by rememberSaveable(row.runId, row.sampleId) { mutableStateOf(false) }
-    val outcome = remember(row.outcomeJson) { LabJson.format.decodeFromString<LabOutcome>(row.outcomeJson) }
+    val outcome = row.outcome
     LabCard {
         Text(row.body)
         Text(statusLabel(outcome.status), color = MaterialTheme.colorScheme.primary)
-        val differences = row.differencesJson?.let { LabJson.format.decodeFromString<List<String>>(it) }
+        val differences = row.differences
         Text(when { differences == null -> "لم تُحدد إجابة متوقعة"; differences.isEmpty() -> "مطابق للمُتوقع"; else -> "اختلاف: ${differences.joinToString()}" })
         TextButton(onClick = { expand = !expand }) { Text(if (expand) "إخفاء التفاصيل" else "عرض الحقائق والأدلة والمقارنة") }
         if (expand) {
             FactsText(outcome.facts)
             Text(outcome.trace.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
-            row.baselineJson?.let { baselineText ->
-                val baseline = LabJson.format.decodeFromString<LabOutcome>(baselineText)
+            row.baseline?.let { baseline ->
                 Text("محلل الجزيرة المنسوخ: ${statusLabel(baseline.status)}", style = MaterialTheme.typography.titleSmall)
                 FactsText(baseline.facts)
             }
