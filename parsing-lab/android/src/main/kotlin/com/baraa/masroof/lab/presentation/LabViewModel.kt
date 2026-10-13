@@ -41,6 +41,14 @@ class LabViewModel(private val workflow: LabWorkflow, initialBankId: String? = n
         mutable.value = mutable.value.copy(bankId = saved.bank.id);refresh()
         mutable.value = mutable.value.copy(notice = "حُفظ إصدار مستقل v${saved.version}")
     }
+    fun saveLibrary(library: SharedRuleLibrary) = action {
+        val saved = workflow.saveLibrary(library); refresh()
+        mutable.value = mutable.value.copy(preview = null, notice = "حُفظت المكتبة المشتركة v${saved.version} لجميع البنوك؛ أعد الاختبار للمقارنة")
+    }
+    fun annotate(sampleId: String, expected: ExpectedResult) = action {
+        workflow.annotate(requireNotNull(mutable.value.bankId), sampleId, expected)
+        mutable.value = mutable.value.copy(notice = "حُفظ التصحيح للاختبارات القادمة؛ نتائج التجارب السابقة محفوظة كما هي")
+    }
     fun sample(sender: String, body: String, date: String, expected: String?) = action {
         workflow.addSample(requireNotNull(mutable.value.bankId) { "اختر بنكًا" }, sender, body, date, expected);refresh()
         mutable.value = mutable.value.copy(notice = "حُفظت العينة في المختبر")

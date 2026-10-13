@@ -8,17 +8,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonObject
 import java.time.*
 import java.util.UUID
 import java.security.MessageDigest
 
 data class LabSampleView(val id: String, val sender: String, val body: String, val receivedAt: Long, val annotated: Boolean)
-data class LabRunView(val id: String, val version: Int, val fromDate: String, val toDate: String, val sampleCount: Int)
+data class LabRunView(val id: String, val version: Int, val fromDate: String, val toDate: String, val sampleCount: Int, val shared: Boolean = false)
 data class LabRunResultView(val runId: String, val sampleId: String, val body: String, val outcome: LabOutcome,
-                            val baseline: LabOutcome?, val differences: List<String>?)
+                            val baseline: LabOutcome?, val differences: List<String>?, val expected: ExpectedResult? = null)
 data class LabResultSet(val rows: List<LabRunResultView> = emptyList(), val matched: Int = 0, val labeled: Int = 0, val unlabeled: Int = 0)
 data class LabSnapshot(val banks: List<RulePack>, val samples: List<LabSampleView>, val runs: List<LabRunView>,
-                       val results: LabResultSet)
+                       val results: LabResultSet, val library: SharedRuleLibrary)
 data class LabSmsImportResult(val imported: Int, val duplicates: Int, val skipped: Int)
 
 class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource? = null) {
@@ -27,7 +28,26 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
     }
     private val dao = db.dao()
     private val json = LabJson.format
-    private val engine = DynamicLabEngine()
+    private val engine = SharedLabEngine()
+
+    suspend fun sharedLibrary(): SharedRuleLibrary = db.withTransaction {
+        dao.sharedRules()?.let { return@withTransaction json.decodeFromString<SharedRuleLibrary>(it.libraryJson) }
+        SharedRuleDefaults.create().also { dao.sharedRules(LabSharedRuleRow(it.version, json.encodeToString(it), System.currentTimeMillis())) }
+    }
+
+    suspend fun saveLibrary(draft: SharedRuleLibrary): SharedRuleLibrary = db.withTransaction {
+        val current = sharedLibrary()
+        require(draft.version == current.version) { "تغيرت المكتبة؛ أعد فتح القواعد قبل الحفظ" }
+        draft.copy(version = current.version + 1).also {
+            it.validate()
+            dao.sharedRules(LabSharedRuleRow(it.version, json.encodeToString(it), System.currentTimeMillis()))
+        }
+    }
+
+    suspend fun annotate(bankId: String, sampleId: String, expected: ExpectedResult) {
+        validateExpected(expected)
+        require(dao.annotate(bankId, sampleId, json.encodeToString(expected)) == 1) { "الرسالة غير موجودة" }
+    }
 
     suspend fun load(bankId: String?): LabSnapshot {
         val banks = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
@@ -35,8 +55,9 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
         val runs = selected?.let { dao.runs(it) }.orEmpty()
         return LabSnapshot(banks, selected?.let { dao.samples(it) }.orEmpty().map {
             LabSampleView(it.id, it.sender, it.body, it.receivedAt, it.expectedJson != null)
-        }, runs.map { LabRunView(it.id, it.version, it.fromDate, it.toDate, it.sampleCount) },
-            runs.firstOrNull()?.let { viewResults(it.id) } ?: LabResultSet())
+        }, runs.map { LabRunView(it.id, it.version, it.fromDate, it.toDate, it.sampleCount,
+            "library" in json.parseToJsonElement(it.packJson).jsonObject) },
+            runs.firstOrNull()?.let { viewResults(it.id) } ?: LabResultSet(), sharedLibrary())
     }
 
     suspend fun savePack(draft: RulePack): RulePack = db.withTransaction {
@@ -65,6 +86,14 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
     }
 
     private fun validateExpected(expected: ExpectedResult) {
+        listOf(expected.facts.card, expected.facts.source, expected.facts.destination, expected.facts.ibanSuffix).filterNotNull().forEach {
+            require(it.matches(Regex("[0-9]{4}"))) { "معرف البطاقة أو الحساب يحتاج أربعة أرقام إنجليزية" }
+        }
+        listOf(expected.facts.amount, expected.facts.balance, expected.facts.dueAmount).filterNotNull().forEach {
+            require(it.length <= 20 && it.toBigDecimalOrNull()?.let { n -> n.signum() >= 0 && n.scale() <= 2 } == true) { "المبلغ غير صالح؛ استخدم أرقامًا إنجليزية ونقطة عشرية" }
+        }
+        expected.facts.occurredAtLocal?.let { LocalDateTime.parse(it) }
+        require((expected.facts.merchant?.length ?: 0) <= 300) { "اسم التاجر طويل جدًا" }
         require(expected.status in setOf("SUCCESS", "REVIEW_REQUIRED", "NON_FINANCIAL", "UNSUPPORTED", "INVALID", "PARTIAL")) { "حالة متوقعة غير صالحة" }
         require(expected.facts.family == null || expected.facts.family in LabFamilies.editable + setOf("OTP", "UNKNOWN")) { "تصنيف متوقع غير صالح" }
         if (expected.status == "SUCCESS") {
@@ -77,23 +106,24 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
     suspend fun preview(bankId: String, sender: String, body: String): LabOutcome = withContext(Dispatchers.Default) {
         val packs = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
         require(packs.any { it.bank.id == bankId }) { "اختر بنكًا" }
-        engine.parse(packs, sender, body, "preview", Instant.now(), bankId)
+        engine.parse(packs.map { it.bank }, sharedLibrary(), sender, body, "preview", Instant.now(), bankId)
     }
 
     suspend fun previewSaved(bankId: String, sampleId: String): LabOutcome = withContext(Dispatchers.Default) {
         val sample = requireNotNull(dao.savedSample(bankId, sampleId)) { "الرسالة غير موجودة في البنك المحدد" }
         val packs = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
-        engine.parse(packs, sample.sender, sample.body, sample.id, Instant.ofEpochMilli(sample.receivedAt), bankId)
+        engine.parse(packs.map { it.bank }, sharedLibrary(), sample.sender, sample.body, sample.id, Instant.ofEpochMilli(sample.receivedAt), bankId)
     }
 
     suspend fun run(bankId: String, from: String, to: String): String {
         // Snapshot inputs before computation. Completed runs and annotations are immutable.
-        val input = db.withTransaction {
+        val captured = db.withTransaction {
             val packs = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
             val pack = packs.single { it.bank.id == bankId }
             val window = LabDateWindow.of(from, to, pack.bank.zoneId)
-            Triple(packs, pack, dao.samples(bankId).filter { window.contains(it.receivedAt) })
+            Triple(packs, pack, dao.samples(bankId).filter { window.contains(it.receivedAt) }) to sharedLibrary()
         }
+        val (input, library) = captured
         require(input.third.isNotEmpty()) { "لا توجد عينات في المدى المحدد" }
         require(input.third.size <= 1_000) { "حد الدفعة 1000 عينة" }
         val id = UUID.randomUUID().toString()
@@ -101,7 +131,7 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
             input.third.map { sample ->
                 coroutineContext.ensureActive()
                 val instant = Instant.ofEpochMilli(sample.receivedAt)
-                val outcome = engine.parse(input.first, sample.sender, sample.body, sample.id, instant, bankId)
+                val outcome = engine.parse(input.first.map { it.bank }, library, sample.sender, sample.body, sample.id, instant, bankId)
                 val expected = sample.expectedJson?.let { json.decodeFromString<ExpectedResult>(it) }
                 val baseline = if (bankId == "BANK_ALJAZIRA") LabResultProjection.baseline(sample.sender, sample.body, sample.id, instant) else null
                 LabRunResultRow(id, sample.id, sample.sender, sample.body, sample.expectedJson, json.encodeToString(outcome),
@@ -109,8 +139,8 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
             }
         }
         db.withTransaction {
-            dao.run(LabRunRow(id, bankId, input.second.version, System.currentTimeMillis(), from, to,
-                json.encodeToString(input.second), rows.size))
+            dao.run(LabRunRow(id, bankId, library.version, System.currentTimeMillis(), from, to,
+                json.encodeToString(LabRunSnapshot(input.second, library, SharedLabEngine.VERSION)), rows.size))
             dao.results(rows)
         }
         return id
@@ -150,7 +180,8 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
         val rows = dao.results(runId).map { row ->
             LabRunResultView(row.runId, row.sampleId, row.body, json.decodeFromString<LabOutcome>(row.outcomeJson),
                 row.baselineJson?.let { json.decodeFromString<LabOutcome>(it) },
-                row.differencesJson?.let { json.decodeFromString<List<String>>(it) })
+                row.differencesJson?.let { json.decodeFromString<List<String>>(it) },
+                row.expectedJson?.let { json.decodeFromString<ExpectedResult>(it) })
         }
         val labeled = rows.filter { it.differences != null }
         return LabResultSet(rows, labeled.count { it.differences!!.isEmpty() }, labeled.size, rows.size - labeled.size)
@@ -160,7 +191,7 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
         return savePack(json.decodeFromString<RulePack>(text))
     }
     suspend fun reset() = db.withTransaction {
-        dao.clearResults(); dao.clearRuns(); dao.clearSamples(); dao.clearVersions(); dao.clearBanks()
+        dao.clearResults(); dao.clearRuns(); dao.clearSamples(); dao.clearVersions(); dao.clearBanks(); dao.clearSharedRules()
     }
     fun close() = db.close()
 
