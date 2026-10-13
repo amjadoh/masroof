@@ -27,6 +27,13 @@ class DynamicLabEngineTest {
         val result = parse("رمز التحقق لعملية شراء عبر نقاط البيع بمبلغ 100 SAR")
         assertEquals("NON_FINANCIAL", result.status);assertEquals("OTP", result.facts.family);assertNull(result.facts.amount)
     }
+    @Test fun customSecurityPhrasesAreAdditive_andCannotDisableBuiltInProtection() {
+        val rule = RuleSpec("security.pin", "OTP", listOf("pin code"))
+        val custom = parse("PIN code 9876 شراء عبر نقاط البيع بمبلغ 100 SAR", listOf(purchase, rule))
+        assertEquals("NON_FINANCIAL", custom.status);assertEquals("OTP", custom.facts.family)
+        val builtIn = parse("رمز التحقق شراء عبر نقاط البيع بمبلغ 100 SAR", listOf(purchase, rule.copy(excludes = listOf("رمز التحقق"))))
+        assertEquals("OTP", builtIn.facts.family)
+    }
     @Test fun contradictoryAmountsNeverSelectFirst() {
         val result = parse("شراء عبر نقاط البيع\nبمبلغ 100 SAR\nبمبلغ 200 SAR")
         assertEquals("REVIEW_REQUIRED", result.status);assertNull(result.facts.amount)
