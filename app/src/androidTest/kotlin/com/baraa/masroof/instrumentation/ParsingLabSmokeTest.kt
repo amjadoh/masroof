@@ -2,15 +2,47 @@ package com.baraa.masroof.instrumentation
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.runtime.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import com.baraa.masroof.lab.presentation.ParsingLabEntry
+import com.baraa.masroof.BuildConfig
+import com.baraa.masroof.R
+import com.baraa.masroof.presentation.settings.SettingsHubScreen
+import com.baraa.masroof.presentation.settings.SettingsUiState
+import com.baraa.masroof.presentation.settings.SettingsDeveloperScreen
+import com.baraa.masroof.presentation.theme.MasroofTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
 
 class ParsingLabSmokeTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun normalAppSettingsOpensDeveloperMenuAndLab() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assertEquals("com.baraa.masroof", context.packageName)
+        assertTrue(BuildConfig.ENABLE_PARSING_LAB)
+        compose.setContent {
+            var screen by remember { mutableStateOf("settings") }
+            MasroofTheme {
+                when (screen) {
+                    "settings" -> SettingsHubScreen(state = SettingsUiState(loading = false), reviewRequiredCount = 0,
+                        onBack = {}, onOpenAccounts = {}, onOpenCards = {}, onOpenLoans = {}, onOpenCommitments = {},
+                        onOpenReview = {}, onOpenApp = {}, onOpenDataBackup = {}, onOpenStatementReconciliation = {},
+                        onOpenAbout = {}, onOpenDeveloperSettings = { screen = "developer" })
+                    "developer" -> SettingsDeveloperScreen(onBack = { screen = "settings" }, onOpenLab = { screen = "lab" })
+                    else -> ParsingLabEntry(onBack = { screen = "developer" })
+                }
+            }
+        }
+        compose.onNodeWithText(context.getString(R.string.settings_developer_title)).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.settings_parsing_lab_title)).performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("مصروف · مختبر التحليل").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("مصروف · مختبر التحليل").assertIsDisplayed()
+    }
 
     @Test fun seedsSamples_runsDatedBatch_andShowsExpectedComparison() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
