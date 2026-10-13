@@ -1,18 +1,28 @@
 package com.baraa.masroof.lab.application
 
+import android.content.Context
 import androidx.room.withTransaction
 import com.baraa.masroof.lab.data.*
 import com.baraa.masroof.lab.engine.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import java.time.*
 import java.util.UUID
 
-data class LabSnapshot(val banks: List<RulePack>, val samples: List<LabSampleRow>, val runs: List<LabRunRow>,
-                       val versions: List<LabRuleVersionRow>, val results: List<LabRunResultRow>)
+data class LabSampleView(val id: String, val sender: String, val body: String, val receivedAt: Long, val annotated: Boolean)
+data class LabRunView(val id: String, val version: Int, val fromDate: String, val toDate: String, val sampleCount: Int)
+data class LabRunResultView(val runId: String, val sampleId: String, val body: String, val outcome: LabOutcome,
+                            val baseline: LabOutcome?, val differences: List<String>?)
+data class LabResultSet(val rows: List<LabRunResultView> = emptyList(), val matched: Int = 0, val labeled: Int = 0, val unlabeled: Int = 0)
+data class LabSnapshot(val banks: List<RulePack>, val samples: List<LabSampleView>, val runs: List<LabRunView>,
+                       val results: LabResultSet)
 
 class LabWorkflow(private val db: LabDatabase) {
+    companion object {
+        fun open(context: Context) = LabWorkflow(LabDatabase.open(context))
+    }
     private val dao = db.dao()
     private val json = LabJson.format
     private val engine = DynamicLabEngine()
@@ -21,8 +31,10 @@ class LabWorkflow(private val db: LabDatabase) {
         val banks = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
         val selected = bankId ?: banks.firstOrNull()?.bank?.id
         val runs = selected?.let { dao.runs(it) }.orEmpty()
-        return LabSnapshot(banks, selected?.let { dao.samples(it) }.orEmpty(), runs,
-            selected?.let { dao.versions(it) }.orEmpty(), runs.firstOrNull()?.let { dao.results(it.id) }.orEmpty())
+        return LabSnapshot(banks, selected?.let { dao.samples(it) }.orEmpty().map {
+            LabSampleView(it.id, it.sender, it.body, it.receivedAt, it.expectedJson != null)
+        }, runs.map { LabRunView(it.id, it.version, it.fromDate, it.toDate, it.sampleCount) },
+            runs.firstOrNull()?.let { viewResults(it.id) } ?: LabResultSet())
     }
 
     suspend fun savePack(draft: RulePack): RulePack = db.withTransaction {
@@ -83,6 +95,7 @@ class LabWorkflow(private val db: LabDatabase) {
         val id = UUID.randomUUID().toString()
         val rows = withContext(Dispatchers.Default) {
             input.third.map { sample ->
+                coroutineContext.ensureActive()
                 val instant = Instant.ofEpochMilli(sample.receivedAt)
                 val outcome = engine.parse(input.first, sample.sender, sample.body, sample.id, instant, bankId)
                 val expected = sample.expectedJson?.let { json.decodeFromString<ExpectedResult>(it) }
@@ -100,6 +113,16 @@ class LabWorkflow(private val db: LabDatabase) {
     }
 
     suspend fun results(runId: String) = dao.results(runId)
+    suspend fun versions(bankId: String) = dao.versions(bankId)
+    suspend fun viewResults(runId: String): LabResultSet {
+        val rows = dao.results(runId).map { row ->
+            LabRunResultView(row.runId, row.sampleId, row.body, json.decodeFromString<LabOutcome>(row.outcomeJson),
+                row.baselineJson?.let { json.decodeFromString<LabOutcome>(it) },
+                row.differencesJson?.let { json.decodeFromString<List<String>>(it) })
+        }
+        val labeled = rows.filter { it.differences != null }
+        return LabResultSet(rows, labeled.count { it.differences!!.isEmpty() }, labeled.size, rows.size - labeled.size)
+    }
     suspend fun importPack(text: String): RulePack {
         require(text.length <= 256_000) { "الملف كبير جدًا" }
         return savePack(json.decodeFromString<RulePack>(text))

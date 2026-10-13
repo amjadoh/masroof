@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.baraa.masroof.lab.application.LabSnapshot
 import com.baraa.masroof.lab.application.LabWorkflow
-import com.baraa.masroof.lab.data.LabRunResultRow
+import com.baraa.masroof.lab.application.LabResultSet
 import com.baraa.masroof.lab.engine.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 data class LabUiState(val snapshot: LabSnapshot? = null, val bankId: String? = null, val busy: Boolean = false,
                       val error: String? = null, val notice: String? = null, val preview: LabOutcome? = null,
-                      val results: List<LabRunResultRow> = emptyList(), val selectedRun: String? = null)
+                      val results: LabResultSet = LabResultSet(), val selectedRun: String? = null)
 
 class LabViewModel(private val workflow: LabWorkflow, initialBankId: String? = null) : ViewModel() {
     private val mutable = MutableStateFlow(LabUiState(bankId = initialBankId))
@@ -54,7 +54,7 @@ class LabViewModel(private val workflow: LabWorkflow, initialBankId: String? = n
         workflow.run(requireNotNull(mutable.value.bankId) { "اختر بنكًا" }, from, to);refresh()
         mutable.value = mutable.value.copy(notice = "اكتمل الاختبار وحُفظت نتائجه")
     }
-    fun selectRun(id: String) = action { mutable.value = mutable.value.copy(results = workflow.results(id), selectedRun = id) }
+    fun selectRun(id: String) = action { mutable.value = mutable.value.copy(results = workflow.viewResults(id), selectedRun = id) }
     fun seed() = action { workflow.seedExamples();refresh(); mutable.value = mutable.value.copy(notice = "العينات المضافة توضيحية ومجهّلة") }
     fun importPack(text: String) = action {
         val pack = workflow.importPack(text);mutable.value = mutable.value.copy(bankId = pack.bank.id);refresh()

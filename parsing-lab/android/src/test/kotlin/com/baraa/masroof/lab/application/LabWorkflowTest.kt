@@ -42,9 +42,12 @@ class LabWorkflowTest {
         val second = workflow.run("demo", "2026-10-01", "2026-10-01")
         assertEquals("SUCCESS", LabJson.format.decodeFromString<LabOutcome>(workflow.results(first).single().outcomeJson).status)
         assertEquals("REVIEW_REQUIRED", LabJson.format.decodeFromString<LabOutcome>(workflow.results(second).single().outcomeJson).status)
+        assertEquals(1, workflow.viewResults(first).matched)
+        assertEquals(0, workflow.viewResults(second).matched)
+        assertEquals(1, workflow.viewResults(second).labeled)
         workflow.close();db = LabDatabase.open(context);workflow = LabWorkflow(db)
         val state = workflow.load("demo")
-        assertEquals(2, state.runs.size);assertEquals(setOf(1, 2), state.versions.map { it.version }.toSet())
+        assertEquals(2, state.runs.size);assertEquals(setOf(1, 2), workflow.versions("demo").map { it.version }.toSet())
         assertEquals(expected, workflow.results(first).single().expectedJson)
     }
     @Test fun dateBoundsAreInclusiveAndIndependentOfProductionImportSetting() = runBlocking {

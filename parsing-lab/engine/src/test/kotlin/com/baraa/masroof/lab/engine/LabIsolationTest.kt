@@ -17,5 +17,9 @@ class LabIsolationTest {
         listOf("engine", "android").forEach { module ->
             assertFalse(File(root, "$module/build.gradle.kts").readText().contains("project(\":app\")"))
         }
+        File(root, "android/src/main/kotlin/com/baraa/masroof/lab/presentation").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }.forEach { file ->
+                assertFalse("UI must use application workflows: $file", file.readText().contains("com.baraa.masroof.lab.data."))
+            }
     }
 }
