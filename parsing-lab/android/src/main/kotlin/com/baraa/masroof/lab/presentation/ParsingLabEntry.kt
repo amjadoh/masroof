@@ -1,5 +1,11 @@
 package com.baraa.masroof.lab.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.time.Instant
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -81,7 +87,7 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
             state.notice?.let { Text(it, color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
-            if (state.snapshot?.banks?.isNotEmpty() == true) {
+            if (tab != "play" && state.snapshot?.banks?.isNotEmpty() == true) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                     state.snapshot.banks.forEach { bank -> FilterChip(selected = bank.bank.id == state.bankId,
                         onClick = { vm.selectBank(bank.bank.id) }, enabled = !state.busy,
@@ -208,33 +214,64 @@ private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) 
 
 @Composable
 private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
-    var sender by rememberSaveable(pack.bank.id) { mutableStateOf(pack.bank.senders.first()) }
-    var body by rememberSaveable(pack.bank.id) { mutableStateOf("") }
-    var date by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
-    var expected by rememberSaveable(pack.bank.id) { mutableStateOf("") }
-    Text("تجربة رسالة", style = MaterialTheme.typography.titleLarge)
+    val context = LocalContext.current
+    var from by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).minusDays(30).toString()) }
+    var to by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
+    var expanded by remember { mutableStateOf(false) }
+    var permissionError by rememberSaveable { mutableStateOf(false) }
+    var pendingBank by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingFrom by rememberSaveable { mutableStateOf("") }
+    var pendingTo by rememberSaveable { mutableStateOf("") }
+    var visible by remember(pack.bank.id) { mutableIntStateOf(20) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val bank = pendingBank
+        pendingBank = null
+        permissionError = !granted
+        if (granted && bank != null) vm.importPhoneSms(bank, pendingFrom, pendingTo)
+    }
+    Text("استيراد رسائل البنك", style = MaterialTheme.typography.titleLarge)
     LabCard {
-        LabField("المرسل", sender, { sender = it;vm.clearPreview() }, !state.busy)
-        LabField("النص الأصلي", body, { body = it;vm.clearPreview() }, !state.busy, true)
-        LabField("تاريخ العينة YYYY-MM-DD", date, { date = it }, !state.busy)
-        Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-            Button(onClick = { vm.preview(sender, body) }, enabled = !state.busy && body.isNotBlank()) { Text("حلّل") }
-            OutlinedButton(onClick = { vm.sample(sender, body, date, expected) }, enabled = !state.busy && body.isNotBlank()) { Text("حفظ العينة") }
+        Text("اختيار البنك", style = MaterialTheme.typography.labelLarge)
+        Box {
+            OutlinedButton(onClick = { expanded = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(pack.bank.name) }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                state.snapshot?.banks.orEmpty().forEach { bank ->
+                    DropdownMenuItem(text = { Text(bank.bank.name) }, onClick = { expanded = false; vm.selectBank(bank.bank.id) })
+                }
+            }
         }
-        Text("الحفظ يضيف عينة مستقلة. راجع الإجابة المتوقعة يدويًا لقياس الدقة.", style = MaterialTheme.typography.bodySmall)
-        LabField("إجابة متوقعة JSON — اختياري", expected, { expected = it }, !state.busy, true)
-        TextButton(onClick = { expected = LabJson.format.encodeToString(ExpectedResult("SUCCESS", LabFacts("PURCHASE", "OUTGOING", "100.00", "SAR"))) }, enabled = !state.busy) { Text("نموذج إجابة لتعديله يدويًا") }
+        Text("مرسلون: ${pack.bank.senders.joinToString()}", style = MaterialTheme.typography.bodySmall)
+        LabDateField("من تاريخ", from, !state.busy) { from = it }
+        LabDateField("إلى تاريخ", to, !state.busy) { to = it }
+        val validRange = from <= to
+        if (!validRange) Text("تاريخ البداية يجب أن يسبق النهاية أو يساويها", color = MaterialTheme.colorScheme.error)
+        Text("يشمل يوم البداية والنهاية حسب توقيت ${pack.bank.zoneId}. الحد 1000 رسالة في الاستيراد.", style = MaterialTheme.typography.bodySmall)
+        Button(onClick = {
+            permissionError = false
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+                vm.importPhoneSms(pack.bank.id, from, to)
+            } else {
+                pendingBank = pack.bank.id; pendingFrom = from; pendingTo = to
+                permission.launch(Manifest.permission.READ_SMS)
+            }
+        }, enabled = !state.busy && validRange && pendingBank == null, modifier = Modifier.fillMaxWidth()) { Text("استيراد الرسائل") }
+        if (permissionError) Text("لم يُمنح إذن قراءة الرسائل. يمكنك تفعيله من إعدادات أذونات التطبيق ثم إعادة الاستيراد.", color = MaterialTheme.colorScheme.error)
+        Text("تُحفظ الرسائل في قاعدة المختبر فقط. إعادة الاستيراد لا تكرر الرسائل، ولا تُنشئ عمليات في مصروف.", style = MaterialTheme.typography.bodySmall)
     }
     state.preview?.let { OutcomeCard(it) }
-    Text("العينات المحفوظة", style = MaterialTheme.typography.titleMedium)
-    state.snapshot?.samples.orEmpty().forEach { sample ->
+    val samples = state.snapshot?.samples.orEmpty()
+    Text("الرسائل المحفوظة · ${samples.size}", style = MaterialTheme.typography.titleMedium)
+    if (samples.isEmpty()) Text("اختر البنك والفترة لبدء الاستيراد")
+    samples.take(visible).forEach { sample ->
         LabCard {
             Text(sample.sender, style = MaterialTheme.typography.labelMedium)
+            Text(Instant.ofEpochMilli(sample.receivedAt).atZone(ZoneId.of(pack.bank.zoneId)).toLocalDateTime().toString(), style = MaterialTheme.typography.bodySmall)
             Text(sample.body)
             Text(if (!sample.annotated) "غير موسومة — لا تدخل قياس الدقة" else "لها إجابة متوقعة", style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { sender = sample.sender;body = sample.body }, enabled = !state.busy) { Text("فتح للتجربة") }
+            TextButton(onClick = { vm.previewSaved(sample.id) }, enabled = !state.busy) { Text("تحليل الرسالة") }
         }
     }
+    if (visible < samples.size) TextButton(onClick = { visible += 20 }) { Text("عرض المزيد") }
 }
 
 @Composable
@@ -243,10 +280,10 @@ private fun ResultsPanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
     var to by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
     Text("اختبار العينات", style = MaterialTheme.typography.titleLarge)
     LabCard {
-        LabField("من تاريخ YYYY-MM-DD", from, { from = it }, !state.busy)
-        LabField("إلى تاريخ YYYY-MM-DD — شامل", to, { to = it }, !state.busy)
+        LabDateField("من تاريخ", from, !state.busy) { from = it }
+        LabDateField("إلى تاريخ", to, !state.busy) { to = it }
         Text("النطاق يختار عينات المختبر المحفوظة حسب توقيت ${pack.bank.zoneId}.", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { vm.run(from, to) }, enabled = !state.busy) { Text("تشغيل وحفظ النتائج") }
+        Button(onClick = { vm.run(from, to) }, enabled = !state.busy && from <= to) { Text("تشغيل وحفظ النتائج") }
     }
     state.snapshot?.runs.orEmpty().forEach { run ->
         FilterChip(state.selectedRun == run.id, { vm.selectRun(run.id) }, enabled = !state.busy,

@@ -20,6 +20,7 @@ data class LabRunResultRow(val runId: String, val sampleId: String, val sender: 
 
 @Dao
 interface LabDao {
+    @Query("SELECT * FROM lab_samples WHERE bankId = :bankId AND id = :id") suspend fun savedSample(bankId: String, id: String): LabSampleRow?
     @Query("SELECT * FROM lab_banks ORDER BY name") suspend fun banks(): List<LabBankRow>
     @Query("SELECT * FROM lab_samples WHERE bankId = :bankId ORDER BY receivedAt, id") suspend fun samples(bankId: String): List<LabSampleRow>
     @Query("SELECT * FROM lab_runs WHERE bankId = :bankId ORDER BY startedAt DESC") suspend fun runs(bankId: String): List<LabRunRow>
@@ -28,6 +29,7 @@ interface LabDao {
     @Upsert suspend fun bank(row: LabBankRow)
     @Insert suspend fun version(row: LabRuleVersionRow)
     @Insert suspend fun sample(row: LabSampleRow)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun importedSamples(rows: List<LabSampleRow>): List<Long>
     @Insert suspend fun run(row: LabRunRow)
     @Insert suspend fun results(rows: List<LabRunResultRow>)
     @Query("DELETE FROM lab_run_results") suspend fun clearResults()

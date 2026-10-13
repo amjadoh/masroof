@@ -50,6 +50,14 @@ class LabViewModel(private val workflow: LabWorkflow, initialBankId: String? = n
         mutable.value = mutable.value.copy(preview = outcome)
     }
     fun clearPreview() { mutable.value = mutable.value.copy(preview = null) }
+    fun previewSaved(id: String) = action {
+        mutable.value = mutable.value.copy(preview = workflow.previewSaved(requireNotNull(mutable.value.bankId), id))
+    }
+    fun importPhoneSms(bankId: String, from: String, to: String) = action {
+        val result = workflow.importPhoneSms(bankId, from, to)
+        mutable.value = mutable.value.copy(bankId = bankId, preview = null);refresh()
+        mutable.value = mutable.value.copy(notice = "استُوردت ${result.imported} رسالة إلى المختبر · ${result.duplicates} مكررة · ${result.skipped} متجاوزة")
+    }
     fun run(from: String, to: String) = action {
         workflow.run(requireNotNull(mutable.value.bankId) { "اختر بنكًا" }, from, to);refresh()
         mutable.value = mutable.value.copy(notice = "اكتمل الاختبار وحُفظت نتائجه")
