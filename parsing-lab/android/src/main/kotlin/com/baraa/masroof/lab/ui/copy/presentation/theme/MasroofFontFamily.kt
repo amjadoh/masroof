@@ -6,8 +6,8 @@ import androidx.compose.ui.text.font.FontWeight
 import com.baraa.masroof.lab.android.R
 
 val MasroofFontFamily = FontFamily(
-    Font(R.font.ibm_plex_sans_arabic_regular, FontWeight.Normal),
-    Font(R.font.ibm_plex_sans_arabic_medium, FontWeight.Medium),
-    Font(R.font.ibm_plex_sans_arabic_semibold, FontWeight.SemiBold),
-    Font(R.font.ibm_plex_sans_arabic_bold, FontWeight.Bold),
+    Font(R.font.lab_ibm_plex_sans_arabic_regular, FontWeight.Normal),
+    Font(R.font.lab_ibm_plex_sans_arabic_medium, FontWeight.Medium),
+    Font(R.font.lab_ibm_plex_sans_arabic_semibold, FontWeight.SemiBold),
+    Font(R.font.lab_ibm_plex_sans_arabic_bold, FontWeight.Bold),
 )
