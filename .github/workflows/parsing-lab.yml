@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [feat/masroof-parsing-lab]
+    branches: [main, feat/masroof-parsing-lab]
 permissions:
   contents: read
 concurrency:
@@ -26,8 +26,8 @@ jobs:
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
       - name: Test cloned baseline, dynamic engine, database isolation and host
         run: ./gradlew :parsing-lab:engine:test :parsing-lab:android:testDebugUnitTest :app:testDebugUnitTest --stacktrace
-      - name: Build separate experimental installation
-        run: ./gradlew :app:assembleDebug -PmasroofParsingLab=true --stacktrace
+      - name: Build Masroof with integrated parsing lab
+        run: ./gradlew :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: masroof-parsing-lab-debug
