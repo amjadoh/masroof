@@ -363,6 +363,7 @@ fun SettingsRoute(
             onOpenLogs = { navigateTo(SettingsDestination.Logs) },
             onOpenUpdates = { navigateTo(SettingsDestination.Updates) },
             onOpenDesignCatalog = { navigateTo(SettingsDestination.DesignCatalog) },
+            onOpenDeveloperSettings = { navigateTo(SettingsDestination.DeveloperSettings) },
             onSaveGithubToken = viewModel::saveGithubToken,
             onClearGithubToken = viewModel::clearGithubToken,
             onSelectUpdateChannel = viewModel::setUpdateChannel,
@@ -390,6 +391,16 @@ fun SettingsRoute(
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
+        SettingsDestination.DeveloperSettings -> if (com.baraa.masroof.BuildConfig.ENABLE_PARSING_LAB) {
+            SettingsDeveloperScreen(onBack = { popOrExit() }, onOpenLab = { navigateTo(SettingsDestination.ParsingLab) })
+        } else {
+            LaunchedEffect(Unit) { popOrExit() }
+        }
+        SettingsDestination.ParsingLab -> if (com.baraa.masroof.BuildConfig.ENABLE_PARSING_LAB) {
+            com.baraa.masroof.lab.presentation.ParsingLabEntry(onBack = { popOrExit() })
+        } else {
+            LaunchedEffect(Unit) { popOrExit() }
+        }
     }
 }
 
