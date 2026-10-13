@@ -1,12 +1,20 @@
 package com.baraa.masroof.lab.engine
 
-import com.baraa.masroof.lab.copy.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.lab.copy.bank.BankRoutingResult
+import com.baraa.masroof.lab.copy.bank.BankSmsRegistry
+import com.baraa.masroof.lab.copy.bank.aljazira.AlJaziraSmsAdapter
 import com.baraa.masroof.lab.copy.parsing.model.*
 import java.time.Instant
 
 object LabResultProjection {
-    fun baseline(sender: String, body: String, id: String, receivedAt: Instant): LabOutcome =
-        project(AlJaziraParsingPipeline().parse(SmsParseInput(id, sender, body, receivedAt)))
+    fun baseline(sender: String, body: String, id: String, receivedAt: Instant): LabOutcome {
+        val route = BankSmsRegistry(listOf(AlJaziraSmsAdapter())).route(sender, body)
+        return when (route) {
+            is BankRoutingResult.Matched -> project(route.adapter.parse(SmsParseInput(id, sender, body, receivedAt)))
+            is BankRoutingResult.NotMatched -> LabOutcome("UNSUPPORTED", trace = listOf("المرسل لا يطابق البنك المرجعي"))
+            else -> LabOutcome("REVIEW_REQUIRED", trace = listOf("توجيه البنك المرجعي يحتاج مراجعة"))
+        }
+    }
 
     fun project(result: ParseResult): LabOutcome {
         val event = when (result) {
