@@ -62,4 +62,11 @@ class LabWorkflowTest {
         catch (_: IllegalArgumentException) { }
         assertEquals(1, workflow.load("demo").banks.size)
     }
+    @Test fun annotationsCanDescribeUnroutedMessagesWithoutInventingAFamily() = runBlocking {
+        workflow.savePack(pack)
+        val expected = LabJson.format.encodeToString(ExpectedResult("REVIEW_REQUIRED", LabFacts()))
+        workflow.addSample("demo", "OTHER", "شراء بمبلغ 100 SAR", "2026-10-01", expected)
+        val run = workflow.run("demo", "2026-10-01", "2026-10-01")
+        assertEquals(1, workflow.viewResults(run).matched)
+    }
 }

@@ -64,7 +64,7 @@ class LabWorkflow(private val db: LabDatabase) {
 
     private fun validateExpected(expected: ExpectedResult) {
         require(expected.status in setOf("SUCCESS", "REVIEW_REQUIRED", "NON_FINANCIAL", "UNSUPPORTED", "INVALID", "PARTIAL")) { "حالة متوقعة غير صالحة" }
-        require(expected.facts.family in LabFamilies.editable + setOf("OTP", "UNKNOWN")) { "تصنيف متوقع غير صالح" }
+        require(expected.facts.family == null || expected.facts.family in LabFamilies.editable + setOf("OTP", "UNKNOWN")) { "تصنيف متوقع غير صالح" }
         if (expected.status == "SUCCESS") {
             require(expected.facts.family in LabFamilies.financial && expected.facts.direction in setOf("INCOMING", "OUTGOING") &&
                 expected.facts.currency in setOf("SAR", "USD", "EUR", "GBP") &&
