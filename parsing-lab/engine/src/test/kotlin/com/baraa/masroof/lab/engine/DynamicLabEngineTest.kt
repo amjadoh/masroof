@@ -48,6 +48,8 @@ class DynamicLabEngineTest {
         assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR", listOf(purchase.copy(direction = "INCOMING"))).status)
         assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 12345").status)
         assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: غير واضح").status)
+        assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 1234****").status)
+        assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 1234.5").status)
     }
     @Test fun classificationTiesAndNoticeMovementCollisionStayReviewable() {
         val transfer = RuleSpec("transfer", "TRANSFER_OUT", listOf("حوالة صادرة"))
@@ -87,7 +89,7 @@ class DynamicLabEngineTest {
     }
     @Test fun expectedAmountDirectionAndIdentityAreIndependentOfPrediction() {
         val outcome = parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 1234")
-        val expected = ExpectedResult("SUCCESS", LabFacts("PURCHASE", "INCOMING", "200.00", "SAR", card = "9999"))
-        assertEquals(setOf("direction", "amount", "card"), LabComparison.differences(expected, outcome).toSet())
+        val expected = ExpectedResult("SUCCESS", LabFacts("PURCHASE", "INCOMING", "200.00", "SAR", card = "9999", balance = "999.00"))
+        assertEquals(setOf("direction", "amount", "card", "balance"), LabComparison.differences(expected, outcome).toSet())
     }
 }

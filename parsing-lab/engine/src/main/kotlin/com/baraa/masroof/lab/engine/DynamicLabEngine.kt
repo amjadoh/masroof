@@ -65,7 +65,7 @@ class DynamicLabEngine {
         }
         fun suffix(rule: RuleSpec, labels: List<String>, field: String): String? {
             val values = labels.flatMap { label ->
-                val regex = Regex(Regex.escape(ArabicTextFolding.foldForComparison(label)) + "\\s*[:：]?\\s*[*•xX]*([0-9]+)")
+                val regex = Regex(Regex.escape(ArabicTextFolding.foldForComparison(label)) + "\\s*[:：]?\\s*[*•xX]*([0-9]+)(?![0-9.*•xX])")
                 regex.findAll(text).mapNotNull { m ->
                     if (m.groupValues[1].length != 4) {
                         errors += "حقل $field يجب أن يكون آخر أربعة أرقام";null

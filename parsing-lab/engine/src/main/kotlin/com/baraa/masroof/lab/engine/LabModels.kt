@@ -102,6 +102,7 @@ object LabComparison {
             "destination" to (e.destination to a.destination), "merchant" to (e.merchant to a.merchant)).forEach { (key, pair) ->
             if (pair.first != null && pair.first != pair.second) add(key)
         }
+        if (e.balance != null && !sameAmount(e.balance, a.balance)) add("balance")
     }
     private fun sameAmount(a: String?, b: String?): Boolean = when {
         a == null || b == null -> a == b
