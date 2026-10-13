@@ -168,7 +168,9 @@ private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) 
     var source by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.sourceLabels?.joinToString("\n").orEmpty()) }
     var destination by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.destinationLabels?.joinToString("\n").orEmpty()) }
     var merchant by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.merchantLabels?.joinToString("\n") ?: "لدى") }
-    var direction by rememberSaveable(pack.bank.id, ruleId, family) { mutableStateOf(current?.direction ?: LabFamilies.direction(family)) }
+    var direction by rememberSaveable(pack.bank.id, ruleId, family) {
+        mutableStateOf(current?.takeIf { it.family == family }?.direction ?: LabFamilies.direction(family))
+    }
     Text("قواعد v${pack.version}", style = MaterialTheme.typography.titleLarge)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         pack.rules.forEach { r -> FilterChip(ruleId == r.id, { ruleId = r.id },
@@ -282,7 +284,7 @@ private fun OutcomeCard(outcome: LabOutcome) {
         FactsText(outcome.facts)
         Text("سبب القرار", style = MaterialTheme.typography.titleSmall)
         outcome.trace.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-        outcome.evidence.forEach { e -> Text("${e.field}: ${e.value} ← ${e.label} · ${e.ruleId} · موضع ${e.start}–${e.endExclusive}", style = MaterialTheme.typography.bodySmall) }
+        outcome.evidence.forEach { e -> Text("${e.field}: ${e.value} ← ${e.label} · ${e.ruleId} · موضع في النص المطبّع ${e.start}–${e.endExclusive}", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
