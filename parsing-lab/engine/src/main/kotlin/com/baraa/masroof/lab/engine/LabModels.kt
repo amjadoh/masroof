@@ -2,6 +2,7 @@ package com.baraa.masroof.lab.engine
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import com.baraa.masroof.lab.copy.core.text.ArabicTextFolding
 
 @Serializable
 data class BankProfile(val id: String, val name: String, val senders: List<String>, val zoneId: String = "Asia/Riyadh")
@@ -76,7 +77,10 @@ object RulePackValidation {
             require(r.phrases.isNotEmpty()) { "عبارة التعرف مطلوبة" }
             listOf(r.phrases, r.excludes, r.amountLabels, r.cardLabels, r.sourceLabels, r.destinationLabels,
                 r.merchantLabels, r.balanceLabels).forEach { terms ->
-                require(terms.size <= 20 && terms.all { it.isNotBlank() && it.length <= 100 && '\n' !in it }) { "وسم فارغ أو طويل" }
+                require(terms.size <= 20 && terms.all {
+                    it.length <= 100 && '\n' !in it && '\r' !in it &&
+                        ArabicTextFolding.foldForComparison(it).isNotBlank()
+                }) { "وسم فارغ أو طويل" }
             }
         }
     }

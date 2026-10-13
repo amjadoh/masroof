@@ -77,6 +77,8 @@ class DynamicLabEngineTest {
         assertEquals("UNKNOWN", parse("شراء عبر نقاط البيع بمبلغ 100 SAR", listOf(purchase.copy(phrases = listOf(".*")))).facts.family)
         assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(schema = 2)) }
         assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(rules = listOf(purchase.copy(phrases = listOf(""))))) }
+        assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(rules = listOf(purchase.copy(phrases = listOf("ــ\u200b"))))) }
+        assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(rules = listOf(purchase.copy(amountLabels = listOf("ــ"))))) }
     }
     @Test fun baselineHonorsItsOwnSenderRegistryBeforeParsing() {
         val body = "شراء عبر نقاط البيع\nبمبلغ 100 SAR"
