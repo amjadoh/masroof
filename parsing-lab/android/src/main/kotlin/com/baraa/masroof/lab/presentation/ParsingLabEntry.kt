@@ -171,7 +171,8 @@ private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) 
     var direction by rememberSaveable(pack.bank.id, ruleId, family) { mutableStateOf(current?.direction ?: LabFamilies.direction(family)) }
     Text("قواعد v${pack.version}", style = MaterialTheme.typography.titleLarge)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-        pack.rules.forEach { r -> FilterChip(ruleId == r.id, { ruleId = r.id }, label = { Text(r.id) }, enabled = !busy) }
+        pack.rules.forEach { r -> FilterChip(ruleId == r.id, { ruleId = r.id },
+            label = { Text("${familyLabel(r.family)} · ${r.phrases.firstOrNull().orEmpty()}") }, enabled = !busy) }
         FilterChip(ruleId == null, { ruleId = null }, label = { Text("قاعدة جديدة") }, enabled = !busy)
     }
     LabCard {
@@ -311,6 +312,9 @@ private fun statusLabel(status: String) = when (status) {
     "SUCCESS" -> "نجاح التحليل التجريبي"
     "NON_FINANCIAL" -> "رسالة غير مالية"
     "REVIEW_REQUIRED" -> "تحتاج مراجعة"
+    "UNSUPPORTED" -> "غير مدعوم"
+    "INVALID" -> "مدخلات غير صالحة"
+    "PARTIAL" -> "تحليل جزئي"
     else -> status
 }
 private fun familyLabel(family: String) = when (family) {

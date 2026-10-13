@@ -71,6 +71,11 @@ class DynamicLabEngineTest {
         assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(schema = 2)) }
         assertThrows(IllegalArgumentException::class.java) { RulePackValidation.check(pack.copy(rules = listOf(purchase.copy(phrases = listOf(""))))) }
     }
+    @Test fun baselineHonorsItsOwnSenderRegistryBeforeParsing() {
+        val body = "شراء عبر نقاط البيع\nبمبلغ 100 SAR"
+        assertEquals("SUCCESS", LabResultProjection.baseline("AlJazira", body, "s", Instant.now()).status)
+        assertEquals("UNSUPPORTED", LabResultProjection.baseline("OTHER", body, "s", Instant.now()).status)
+    }
     @Test fun expectedAmountDirectionAndIdentityAreIndependentOfPrediction() {
         val outcome = parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 1234")
         val expected = ExpectedResult("SUCCESS", LabFacts("PURCHASE", "INCOMING", "200.00", "SAR", card = "9999"))
