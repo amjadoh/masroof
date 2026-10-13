@@ -61,6 +61,7 @@ fun SettingsAboutScreen(
     onOpenLogs: () -> Unit,
     onOpenUpdates: () -> Unit = {},
     onOpenDesignCatalog: () -> Unit = {},
+    onOpenDeveloperSettings: () -> Unit = {},
     onSaveGithubToken: (String) -> Unit,
     onClearGithubToken: () -> Unit,
     onSelectUpdateChannel: (UpdateChannel) -> Unit,
@@ -124,6 +125,15 @@ fun SettingsAboutScreen(
                     title = stringResource(R.string.settings_design_catalog_title),
                     subtitle = stringResource(R.string.settings_design_catalog_subtitle),
                     onClick = onOpenDesignCatalog,
+                )
+            }
+
+            if (BuildConfig.ENABLE_PARSING_LAB) {
+                SettingsNavRow(
+                    icon = MasroofIcons.periodHint,
+                    title = stringResource(R.string.settings_developer_title),
+                    subtitle = stringResource(R.string.settings_parsing_lab_title),
+                    onClick = onOpenDeveloperSettings,
                 )
             }
 

@@ -69,6 +69,8 @@ internal fun resolvePendingDestination(
         SettingsDestination.About,
         SettingsDestination.Logs,
         SettingsDestination.DesignCatalog,
+        SettingsDestination.DeveloperSettings,
+        SettingsDestination.ParsingLab,
         -> pending
     }
 

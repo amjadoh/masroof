@@ -38,6 +38,7 @@ android {
         buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
         buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", "false")
+        buildConfigField("boolean", "ENABLE_PARSING_LAB", "false")
 
         testInstrumentationRunner = "com.baraa.masroof.instrumentation.MasroofAndroidTestRunner"
         // Orchestrator clears app data before each device smoke so journeys do not leak.
@@ -63,6 +64,9 @@ android {
     buildTypes {
         debug {
             versionNameSuffix = "-debug"
+            val parsingLab = providers.gradleProperty("masroofParsingLab").orElse("false").get().toBoolean()
+            buildConfigField("boolean", "ENABLE_PARSING_LAB", parsingLab.toString())
+            if (parsingLab) applicationIdSuffix = ".lab"
             buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", providers.gradleProperty("masroofDesignCatalog").orElse("false").get())
         }
         release {
@@ -124,6 +128,7 @@ ksp {
 }
 
 dependencies {
+    implementation(project(":parsing-lab:android"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
