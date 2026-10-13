@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Masroof"
 include(":app")
+include(":parsing-lab:engine", ":parsing-lab:android")
