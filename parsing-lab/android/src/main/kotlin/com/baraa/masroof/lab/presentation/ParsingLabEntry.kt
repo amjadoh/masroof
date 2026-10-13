@@ -101,6 +101,9 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                         Text(pack.bank.name, style = MaterialTheme.typography.titleMedium)
                         Text("الإصدار v${pack.version} · ${pack.rules.size} قواعد · ${state.snapshot?.samples?.size ?: 0} عينات")
                         Text("مرسلون: ${pack.bank.senders.joinToString()}")
+                        if (pack.bank.id == "BANK_ALJAZIRA" && pack.rules.any { it.id == "purchase.pos" && it.family == "PURCHASE" }) {
+                            OutlinedButton(onClick = vm::upgradeExamplePurchase, enabled = !state.busy) { Text("تحديث قالب المشتريات الإنجليزية") }
+                        }
                         Text("معرفة المرسل تحدد البنك. فهم الرسائل يحتاج قواعد وعينات.", style = MaterialTheme.typography.bodySmall)
                     }
                     BankEditor(pack, state.busy, vm::savePack)

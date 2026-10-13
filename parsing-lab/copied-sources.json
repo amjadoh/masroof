@@ -1,5 +1,12 @@
 {
   "sourceCommit": "7e21ff0cfe790c71cee5ee1e12c0784a743588c8",
+  "localPatches": [
+    {
+      "copy": "parsing-lab/engine/src/main/kotlin/com/baraa/masroof/lab/copy/bank/aljazira/extraction/CardExtractor.kt",
+      "reason": "Independent fix for standalone English Credit card last4 lines without a colon; original provenance hashes below are retained.",
+      "test": "parsing-lab/engine/src/test/resources/testdata/bank_aljazira/purchase/pos/purchase_pos_en_credit_no_colon_001.json"
+    }
+  ],
   "files": [
     {
       "source": "app/src/main/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraBankDetector.kt",
