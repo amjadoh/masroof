@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import java.time.*
 import java.util.UUID
+import java.security.MessageDigest
 
 data class LabSampleView(val id: String, val sender: String, val body: String, val receivedAt: Long, val annotated: Boolean)
 data class LabRunView(val id: String, val version: Int, val fromDate: String, val toDate: String, val sampleCount: Int)
@@ -18,10 +19,11 @@ data class LabRunResultView(val runId: String, val sampleId: String, val body: S
 data class LabResultSet(val rows: List<LabRunResultView> = emptyList(), val matched: Int = 0, val labeled: Int = 0, val unlabeled: Int = 0)
 data class LabSnapshot(val banks: List<RulePack>, val samples: List<LabSampleView>, val runs: List<LabRunView>,
                        val results: LabResultSet)
+data class LabSmsImportResult(val imported: Int, val duplicates: Int, val skipped: Int)
 
-class LabWorkflow(private val db: LabDatabase) {
+class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource? = null) {
     companion object {
-        fun open(context: Context) = LabWorkflow(LabDatabase.open(context))
+        fun open(context: Context) = LabWorkflow(LabDatabase.open(context), AndroidLabInboxSource(context.applicationContext.contentResolver))
     }
     private val dao = db.dao()
     private val json = LabJson.format
@@ -78,17 +80,19 @@ class LabWorkflow(private val db: LabDatabase) {
         engine.parse(packs, sender, body, "preview", Instant.now(), bankId)
     }
 
+    suspend fun previewSaved(bankId: String, sampleId: String): LabOutcome = withContext(Dispatchers.Default) {
+        val sample = requireNotNull(dao.savedSample(bankId, sampleId)) { "الرسالة غير موجودة في البنك المحدد" }
+        val packs = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
+        engine.parse(packs, sample.sender, sample.body, sample.id, Instant.ofEpochMilli(sample.receivedAt), bankId)
+    }
+
     suspend fun run(bankId: String, from: String, to: String): String {
         // Snapshot inputs before computation. Completed runs and annotations are immutable.
         val input = db.withTransaction {
             val packs = dao.banks().map { json.decodeFromString<RulePack>(it.packJson) }
             val pack = packs.single { it.bank.id == bankId }
-            val zone = ZoneId.of(pack.bank.zoneId)
-            val start = LocalDate.parse(from); val end = LocalDate.parse(to)
-            require(!end.isBefore(start)) { "تاريخ النهاية يسبق البداية" }
-            val lower = start.atStartOfDay(zone).toInstant().toEpochMilli()
-            val upper = end.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-            Triple(packs, pack, dao.samples(bankId).filter { it.receivedAt >= lower && it.receivedAt < upper })
+            val window = LabDateWindow.of(from, to, pack.bank.zoneId)
+            Triple(packs, pack, dao.samples(bankId).filter { window.contains(it.receivedAt) })
         }
         require(input.third.isNotEmpty()) { "لا توجد عينات في المدى المحدد" }
         require(input.third.size <= 1_000) { "حد الدفعة 1000 عينة" }
@@ -113,6 +117,34 @@ class LabWorkflow(private val db: LabDatabase) {
     }
 
     suspend fun results(runId: String) = dao.results(runId)
+    suspend fun importPhoneSms(bankId: String, from: String, to: String): LabSmsImportResult {
+        val selected = dao.banks().singleOrNull { it.id == bankId } ?: error("اختر بنكًا محفوظًا")
+        val pack = json.decodeFromString<RulePack>(selected.packJson)
+        RulePackValidation.check(pack)
+        val window = LabDateWindow.of(from, to, pack.bank.zoneId)
+        val source = requireNotNull(inbox) { "قراءة رسائل الجوال غير متاحة" }
+        val read = try { source.read(pack.bank.senders.toSet(), window.fromInclusive, window.toExclusive) }
+            catch (e: SecurityException) { throw IllegalStateException("لم يُسمح بقراءة SMS؛ امنح المختبر إذن قراءة الرسائل", e) }
+        val allowed = pack.bank.senders.map(RulePackValidation::senderKey).toSet()
+        // Recheck the reader contract before writing. Nothing is auto-annotated or posted.
+        val valid = read.messages.filter { window.contains(it.receivedAt) && RulePackValidation.senderKey(it.sender) in allowed &&
+            it.providerId.isNotBlank() && it.body.isNotBlank() && it.body.length <= 16_000 }
+        require(valid.size <= AndroidLabInboxSource.MAX_MESSAGES) { "النطاق يتجاوز 1000 رسالة؛ اختر فترة أقصر" }
+        val rows = withContext(Dispatchers.Default) { valid.map { message ->
+            coroutineContext.ensureActive()
+            val parts = listOf(bankId, message.providerId, message.receivedAt.toString(), RulePackValidation.senderKey(message.sender), message.body)
+            val canonical = parts.joinToString("") { "${it.length}:$it" }
+            val hash = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            LabSampleRow("sms-$hash", bankId, message.sender, message.body, message.receivedAt, null)
+        } }
+        val inserted = db.withTransaction {
+            // A configuration change during permission/provider access must not use a stale bank definition.
+            require(dao.banks().singleOrNull { it.id == bankId }?.packJson == selected.packJson) { "تغير تعريف البنك؛ أعد الاستيراد" }
+            dao.importedSamples(rows).count { it != -1L }
+        }
+        return LabSmsImportResult(inserted, rows.size - inserted, read.skipped + read.messages.size - valid.size)
+    }
     suspend fun versions(bankId: String) = dao.versions(bankId)
     suspend fun viewResults(runId: String): LabResultSet {
         val rows = dao.results(runId).map { row ->

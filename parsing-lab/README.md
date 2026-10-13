@@ -19,11 +19,17 @@ keeps its existing application ID and disables the laboratory entry.
   and a finalization gate. Supported money currencies: SAR/USD/EUR/GBP,
   maximum two decimal places, explicit currency required.
 - Separate Room file `masroof_parsing_lab.db`; no production Room migrations or services.
-- Bank configuration, immutable rule versions, manual dated samples, optional manually
-  written expected results, preview and immutable batch runs. Every run stores its rule
+- Bank configuration, immutable rule versions, dated imported SMS, preserved existing annotations, saved-message preview and immutable batch runs. Every run stores its rule
   snapshot, original sample text, expected answer and both dynamic/reference outputs.
-- Inclusive sample date range in the bank's configured time zone. These dates filter
-  stored lab samples, not the phone inbox. No lab SMS permission request/receiver/worker.
+- The Experiment tab imports the selected bank's inbox SMS using native calendar pickers.
+  Both dates are inclusive in the bank's time zone (next midnight is exclusive). READ_SMS
+  is requested on demand; the lab has no receiver or background worker. Exact configured
+  sender matching filters messages before persistence. Original bodies and timestamps
+  stay in the lab database only; imported messages have no automatic expected answers.
+- Imports are atomic, limited to 1,000 matching messages and idempotent by bank/provider
+  ID/timestamp/sender/body. Provider errors, denied permission or oversized ranges save
+  nothing. Existing samples, annotations and results remain intact. Results date pickers
+  filter already saved lab messages; they do not read the inbox.
 - Rule-pack JSON import/export through a text field, latest/historical run selection,
   expected-field differences, baseline comparison for the AlJazira bank ID, and an
   explicitly confirmed lab-only reset.
@@ -34,7 +40,8 @@ Baseline output is not used to manufacture expected answers.
 
 ## Current boundaries
 
-- Manual expected answers use JSON; the interface provides an editable example.
+- The manual sample-entry screen is replaced by import. Existing expected answers remain
+  usable; newly imported messages are unannotated and do not establish an accuracy score.
 - Merchant extraction expects a labeled, separate line. Bank transaction wall-clock dates,
   currency aliases, advanced extraction and field-highlighting UI are follow-up work.
 - No ownership, posting, reconciliation, balances dashboard or production ledger writes.

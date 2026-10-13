@@ -19,6 +19,19 @@ class ParsingLabSmokeTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("إضافة الجزيرة وعينات توضيحية").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("إضافة الجزيرة وعينات توضيحية").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("الإصدار v1 · 5 قواعد · 4 عينات").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("التجربة").performClick()
+        compose.onNodeWithText("استيراد رسائل البنك").assertExists()
+        compose.onAllNodes(hasText("من تاريخ", substring = true)).onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("تأكيد").assertExists()
+        compose.onNodeWithText("إلغاء").performClick()
+        compose.onAllNodes(hasText("إلى تاريخ", substring = true)).onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("تأكيد").performClick()
+        InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(context.packageName, android.Manifest.permission.READ_SMS)
+        compose.onNodeWithText("استيراد الرسائل").performScrollTo().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodes(hasText("استُوردت", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("استيراد رسائل البنك").performScrollTo()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
+            File(context.getExternalFilesDir(null), "parsing-lab-import.png"))
         compose.onNodeWithText("النتائج").performClick()
         compose.onNodeWithText("تشغيل وحفظ النتائج").performScrollTo().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("مطابقة كاملة: 4 / 4 عينة موسومة · 0 غير موسومة").fetchSemanticsNodes().isNotEmpty() }
