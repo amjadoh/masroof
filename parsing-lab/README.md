@@ -15,7 +15,8 @@ keeps its existing application ID and disables the laboratory entry.
 - Literal, declarative bank rules: positive phrases, exclusions, amount/card/account/
   merchant labels, direction and family. No executable scripts or user-supplied regex.
 - Exact sender routing, collision rejection, fixed OTP protection, copied classification
-  arbitration and finalization gate. Supported money currencies: SAR/USD/EUR/GBP,
+  arbitration with optional additive bank OTP phrases (built-in protection cannot be disabled),
+  and a finalization gate. Supported money currencies: SAR/USD/EUR/GBP,
   maximum two decimal places, explicit currency required.
 - Separate Room file `masroof_parsing_lab.db`; no production Room migrations or services.
 - Bank configuration, immutable rule versions, manual dated samples, optional manually

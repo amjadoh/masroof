@@ -50,7 +50,7 @@ object LabJson {
 object LabFamilies {
     val financial = setOf("PURCHASE", "TRANSFER_IN", "TRANSFER_OUT", "CARD_PAYMENT", "BILL_PAYMENT",
         "FINANCING_INSTALLMENT", "WITHDRAWAL", "REFUND", "FEE")
-    val editable = financial + setOf("NON_FINANCIAL", "BALANCE_NOTICE")
+    val editable = financial + setOf("NON_FINANCIAL", "BALANCE_NOTICE", "OTP")
     fun direction(family: String) = if (family in setOf("TRANSFER_IN", "REFUND")) "INCOMING" else "OUTGOING"
     fun tier(family: String) = when (family) {
         "OTP" -> 100

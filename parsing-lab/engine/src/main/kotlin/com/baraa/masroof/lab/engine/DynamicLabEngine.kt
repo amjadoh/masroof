@@ -42,7 +42,8 @@ class DynamicLabEngine {
         var classification = AlJaziraClassificationResolver(rules).resolve(text)
         val winning = matches.filter { it.family == classification.family.name }.sortedBy { it.id }
         // Same family does not imply the same extraction or direction. Never silently pick one schema.
-        if (winning.map { it.copy(id = "same", phrases = emptyList(), excludes = emptyList()) }.distinct().size > 1) {
+        if (classification.family.name in LabFamilies.financial &&
+            winning.map { it.copy(id = "same", phrases = emptyList(), excludes = emptyList()) }.distinct().size > 1) {
             classification = AlJaziraClassification(MessageFamily.UNKNOWN, evidence = listOf("تعارض إعدادات قواعد النوع نفسه"), confidence = 0.3)
         }
         val evidence = mutableListOf<FieldEvidence>()
