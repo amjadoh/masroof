@@ -50,6 +50,8 @@ sealed interface SettingsDestination {
     data object Logs : SettingsDestination
 
     data object DesignCatalog : SettingsDestination
+    data object DeveloperSettings : SettingsDestination
+    data object ParsingLab : SettingsDestination
 }
 
 fun SettingsDestination.encode(): String =
@@ -75,6 +77,8 @@ fun SettingsDestination.encode(): String =
         SettingsDestination.About -> "about"
         SettingsDestination.Logs -> "logs"
         SettingsDestination.DesignCatalog -> "design_catalog"
+        SettingsDestination.DeveloperSettings -> "developer_settings"
+        SettingsDestination.ParsingLab -> "parsing_lab"
     }
 
 fun decodeSettingsDestination(encoded: String): SettingsDestination {
@@ -99,6 +103,8 @@ fun decodeSettingsDestination(encoded: String): SettingsDestination {
     if (encoded == "about") return SettingsDestination.About
     if (encoded == "logs") return SettingsDestination.Logs
     if (encoded == "design_catalog") return SettingsDestination.DesignCatalog
+    if (encoded == "developer_settings") return SettingsDestination.DeveloperSettings
+    if (encoded == "parsing_lab") return SettingsDestination.ParsingLab
     if (encoded.startsWith("bank:")) {
         val parts = encoded.removePrefix("bank:").split(":")
         val bankId = parts.firstOrNull().orEmpty()

@@ -1,0 +1,62 @@
+package com.baraa.masroof.lab.application
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.lab.data.LabDatabase
+import com.baraa.masroof.lab.engine.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import org.junit.*
+import org.junit.Assert.*
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class LabWorkflowTest {
+    private lateinit var context: Context
+    private lateinit var db: LabDatabase
+    private lateinit var workflow: LabWorkflow
+    private val pack = RulePack(bank = BankProfile("demo", "تجريبي", listOf("DEMO")), version = 1,
+        rules = listOf(RuleSpec("purchase", "PURCHASE", listOf("شراء"))))
+    @Before fun setup() {
+        context = ApplicationProvider.getApplicationContext();context.deleteDatabase(LabDatabase.FILE_NAME)
+        db = LabDatabase.open(context);workflow = LabWorkflow(db)
+    }
+    @After fun cleanup() { workflow.close();context.deleteDatabase(LabDatabase.FILE_NAME);context.deleteDatabase("masroof.db") }
+    @Test fun resetTouchesOnlyLabDatabase() = runBlocking {
+        val production = context.openOrCreateDatabase("masroof.db", Context.MODE_PRIVATE, null)
+        production.execSQL("CREATE TABLE sentinel (value TEXT)");production.execSQL("INSERT INTO sentinel VALUES ('keep')")
+        workflow.savePack(pack);workflow.reset()
+        assertTrue(workflow.load(null).banks.isEmpty())
+        production.rawQuery("SELECT value FROM sentinel", null).use { assertTrue(it.moveToFirst());assertEquals("keep", it.getString(0)) }
+        production.close()
+    }
+    @Test fun runsKeepVersionAndExpectedSnapshotsAcrossEditsAndRestart() = runBlocking {
+        workflow.savePack(pack)
+        val expected = LabJson.format.encodeToString(ExpectedResult("SUCCESS", LabFacts("PURCHASE", "OUTGOING", "100", "SAR")))
+        workflow.addSample("demo", "DEMO", "شراء بمبلغ 100 SAR", "2026-10-01", expected)
+        val first = workflow.run("demo", "2026-10-01", "2026-10-01")
+        workflow.savePack(pack.copy(rules = listOf(pack.rules.single().copy(amountLabels = listOf("القيمة")))))
+        val second = workflow.run("demo", "2026-10-01", "2026-10-01")
+        assertEquals("SUCCESS", LabJson.format.decodeFromString<LabOutcome>(workflow.results(first).single().outcomeJson).status)
+        assertEquals("REVIEW_REQUIRED", LabJson.format.decodeFromString<LabOutcome>(workflow.results(second).single().outcomeJson).status)
+        workflow.close();db = LabDatabase.open(context);workflow = LabWorkflow(db)
+        val state = workflow.load("demo")
+        assertEquals(2, state.runs.size);assertEquals(setOf(1, 2), state.versions.map { it.version }.toSet())
+        assertEquals(expected, workflow.results(first).single().expectedJson)
+    }
+    @Test fun dateBoundsAreInclusiveAndIndependentOfProductionImportSetting() = runBlocking {
+        workflow.savePack(pack)
+        listOf("2026-09-30", "2026-10-01", "2026-10-02").forEach { workflow.addSample("demo", "DEMO", "شراء بمبلغ 100 SAR", it, null) }
+        val run = workflow.run("demo", "2026-10-01", "2026-10-01")
+        assertEquals(1, workflow.results(run).size)
+    }
+    @Test fun duplicateSenderImportIsRejectedWithoutAddingVersion() = runBlocking {
+        workflow.savePack(pack)
+        try { workflow.savePack(pack.copy(bank = pack.bank.copy(id = "other", senders = listOf(" demo "))));fail() }
+        catch (_: IllegalArgumentException) { }
+        assertEquals(1, workflow.load("demo").banks.size)
+    }
+}

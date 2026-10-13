@@ -1,0 +1,21 @@
+package com.baraa.masroof.lab.engine
+
+import java.io.File
+import org.junit.Assert.*
+import org.junit.Test
+
+class LabIsolationTest {
+    @Test fun labHasNoProductionImportsOrAppProjectDependency() {
+        val root = File("..").takeIf { File(it, "copied-sources.json").exists() } ?: File("parsing-lab")
+        assertTrue(root.isDirectory)
+        val imports = Regex("(?m)^import (com\\.baraa\\.masroof\\.[^\\s]+)")
+        root.walkTopDown().filter { it.isFile && it.extension == "kt" && "build" !in it.toPath().map { part -> part.toString() } }.forEach { file ->
+            imports.findAll(file.readText()).forEach { match ->
+                assertTrue("Production dependency in $file: ${match.value}", match.groupValues[1].startsWith("com.baraa.masroof.lab."))
+            }
+        }
+        listOf("engine", "android").forEach { module ->
+            assertFalse(File(root, "$module/build.gradle.kts").readText().contains("project(\":app\")"))
+        }
+    }
+}
