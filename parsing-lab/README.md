@@ -1,9 +1,11 @@
 # Masroof Parsing Lab — first working increment
 
-The laboratory is opt-in. Build `:app:assembleDebug -PmasroofParsingLab=true` and open
-Settings → About → Developer settings → Bank SMS parsing lab. This build installs as
-`com.baraa.masroof.lab`, beside the regular application. A regular debug or release build
-keeps its existing application ID and disables the laboratory entry.
+The laboratory ships inside the normal Masroof APK, in debug and release builds. Open
+Settings → Developer settings → Bank SMS parsing lab (the About shortcut also remains).
+The application ID stays `com.baraa.masroof`; no separate installation or build property
+is required. The lab engine/code and `masroof_parsing_lab.db` remain independent from
+the normal financial database and services. Data from the previous separate experimental
+installation is not automatically transferred into the normal app.
 
 ## Implemented
 
@@ -56,11 +58,11 @@ Baseline output is not used to manufacture expected answers.
 ```shell
 ./gradlew :parsing-lab:engine:test :parsing-lab:android:testDebugUnitTest
 ./gradlew :app:testDebugUnitTest
-./gradlew :app:assembleDebug -PmasroofParsingLab=true
+./gradlew :app:assembleDebug
 ```
 
 `parsing-lab.yml` runs these checks in GitHub Actions on the lab branch/PR and publishes
-the separate-installation debug APK and test reports. Existing release workflow remains
+the normal debug APK with the integrated lab and test reports. Existing release workflow remains
 unchanged. GitHub Actions is the cloud test runner; configuring a separate Codex cloud
 development environment is not performed by this build configuration.
 
@@ -71,11 +73,11 @@ and reset preserving an independent `masroof.db` sentinel.
 
 ## Removal
 
-1. Remove the host entry: `ENABLE_PARSING_LAB`/debug suffix/dependency in app Gradle;
+1. Remove the host entry: `ENABLE_PARSING_LAB`/dependency in app Gradle;
    DeveloperSettings/ParsingLab destinations and About callbacks; developer screen and
    the two `parsing_lab_strings.xml` resources. Remove matching navigation/smoke tests.
 2. Remove the two includes in `settings.gradle.kts`, `parsing-lab/`, and its workflow.
-3. Existing devices retain lab data until the lab reset or experimental app uninstall.
+3. Existing devices retain lab data until the lab reset or app uninstall.
    Code deletion alone is not database deletion. Do not delete `masroof.db`.
 
 All host changes are confined to feature entry/navigation and build configuration.
