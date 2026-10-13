@@ -64,9 +64,16 @@ class DynamicLabEngine {
         }
         fun suffix(rule: RuleSpec, labels: List<String>, field: String): String? {
             val values = labels.flatMap { label ->
-                val regex = Regex(Regex.escape(ArabicTextFolding.foldForComparison(label)) + "\\s*[:：]?\\s*[*•xX]*([0-9]{4})(?![0-9])")
-                regex.findAll(text).map { m -> record(field, rule, label, m.groups[1]!!, m.groupValues[1]);m.groupValues[1] }.toList()
+                val regex = Regex(Regex.escape(ArabicTextFolding.foldForComparison(label)) + "\\s*[:：]?\\s*[*•xX]*([0-9]+)")
+                regex.findAll(text).mapNotNull { m ->
+                    if (m.groupValues[1].length != 4) {
+                        errors += "حقل $field يجب أن يكون آخر أربعة أرقام";null
+                    } else {
+                        record(field, rule, label, m.groups[1]!!, m.groupValues[1]);m.groupValues[1]
+                    }
+                }.toList()
             }.distinct()
+            if (values.isEmpty() && labels.any(::contains)) errors += "وسم $field موجود دون معرف صالح"
             if (values.size > 1) errors += "تعارض حقل $field"
             return values.singleOrNull()
         }
