@@ -87,7 +87,7 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
             state.notice?.let { Text(it, color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
-            if (tab != "play" && state.snapshot?.banks?.isNotEmpty() == true) {
+            if (tab != "play" && tab != "rules" && state.snapshot?.banks?.isNotEmpty() == true) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                     state.snapshot.banks.forEach { bank -> FilterChip(selected = bank.bank.id == state.bankId,
                         onClick = { vm.selectBank(bank.bank.id) }, enabled = !state.busy,
@@ -99,9 +99,9 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                     Text("البنوك التجريبية", style = MaterialTheme.typography.titleLarge)
                     if (pack != null) LabCard {
                         Text(pack.bank.name, style = MaterialTheme.typography.titleMedium)
-                        Text("الإصدار v${pack.version} · ${pack.rules.size} قواعد · ${state.snapshot?.samples?.size ?: 0} عينات")
+                        Text("${state.snapshot?.samples?.size ?: 0} رسائل · يستخدم المكتبة المشتركة")
                         Text("مرسلون: ${pack.bank.senders.joinToString()}")
-                        Text("معرفة المرسل تحدد البنك. فهم الرسائل يحتاج قواعد وعينات.", style = MaterialTheme.typography.bodySmall)
+                        Text("أضف الاسم والمرسل؛ جميع البنوك تستخدم طرق الفهم المشتركة نفسها.", style = MaterialTheme.typography.bodySmall)
                     }
                     BankEditor(pack, state.busy, vm::savePack)
                     if (state.snapshot?.banks?.isEmpty() == true) {
@@ -111,7 +111,7 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                     OutlinedButton(onClick = { confirmReset = true }, enabled = !state.busy) { Text("مسح بيانات المختبر") }
                 }
                 "play" -> if (pack == null) Text("أضف بنكًا أولًا") else SamplePanel(pack, state, vm)
-                "rules" -> if (pack == null) Text("أضف بنكًا أولًا") else RuleEditor(pack, state.busy, vm::savePack)
+                "rules" -> state.snapshot?.library?.let { RuleEditor(it, state.busy, vm::saveLibrary) }
                 "results" -> if (pack == null) Text("أضف بنكًا أولًا") else ResultsPanel(pack, state, vm)
             }
         }
@@ -150,7 +150,9 @@ private fun BankEditor(pack: RulePack?, busy: Boolean, save: (RulePack) -> Unit)
         Text(if (create || pack == null) "إضافة بنك" else "تعريف البنك", style = MaterialTheme.typography.titleMedium)
         LabField("اسم البنك", name, { name = it }, !busy)
         LabField("مرسل SMS — كل مرسل في سطر", senders, { senders = it }, !busy, true)
-        LabField("المنطقة الزمنية", zone, { zone = it }, !busy)
+        var advanced by rememberSaveable { mutableStateOf(false) }
+        TextButton(onClick = { advanced = !advanced }) { Text("إعدادات التوقيت") }
+        if (advanced) LabField("المنطقة الزمنية", zone, { zone = it }, !busy)
         Button(enabled = !busy && name.isNotBlank() && senders.isNotBlank(), onClick = {
             val profile = BankProfile(if (create || pack == null) UUID.randomUUID().toString() else pack.bank.id,
                 name.trim(), lines(senders), zone.trim())
@@ -163,23 +165,25 @@ private fun BankEditor(pack: RulePack?, busy: Boolean, save: (RulePack) -> Unit)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) {
-    var ruleId by rememberSaveable(pack.bank.id) { mutableStateOf(pack.rules.firstOrNull()?.id) }
-    val current = pack.rules.firstOrNull { it.id == ruleId }
-    var family by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.family ?: "PURCHASE") }
-    var phrases by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.phrases?.joinToString("\n").orEmpty()) }
-    var excludes by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.excludes?.joinToString("\n").orEmpty()) }
-    var amount by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.amountLabels?.joinToString("\n") ?: "بمبلغ") }
-    var card by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.cardLabels?.joinToString("\n") ?: "بطاقة") }
-    var source by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.sourceLabels?.joinToString("\n").orEmpty()) }
-    var destination by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.destinationLabels?.joinToString("\n").orEmpty()) }
-    var merchant by rememberSaveable(pack.bank.id, ruleId) { mutableStateOf(current?.merchantLabels?.joinToString("\n") ?: "لدى") }
-    var direction by rememberSaveable(pack.bank.id, ruleId, family) {
+private fun RuleEditor(library: SharedRuleLibrary, busy: Boolean, save: (SharedRuleLibrary) -> Unit) {
+    var ruleId by rememberSaveable { mutableStateOf(library.rules.firstOrNull()?.id) }
+    val current = library.rules.firstOrNull { it.id == ruleId }
+    var family by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.family ?: "PURCHASE") }
+    var phrases by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.phrases?.joinToString("\n").orEmpty()) }
+    var excludes by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.excludes?.joinToString("\n").orEmpty()) }
+    var amount by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.amountLabels?.joinToString("\n") ?: "بمبلغ") }
+    var card by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.cardLabels?.joinToString("\n") ?: "بطاقة") }
+    var source by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.sourceLabels?.joinToString("\n").orEmpty()) }
+    var destination by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.destinationLabels?.joinToString("\n").orEmpty()) }
+    var merchant by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.merchantLabels?.joinToString("\n") ?: "لدى") }
+    var balance by rememberSaveable(library.version, ruleId) { mutableStateOf(current?.balanceLabels?.joinToString("\n") ?: "الرصيد المتاح") }
+    var direction by rememberSaveable(library.version, ruleId, family) {
         mutableStateOf(current?.takeIf { it.family == family }?.direction ?: LabFamilies.direction(family))
     }
-    Text("قواعد v${pack.version}", style = MaterialTheme.typography.titleLarge)
+    Text("مكتبة الفهم المشتركة v${library.version}", style = MaterialTheme.typography.titleLarge)
+    Text("التعديلات هنا تسري على جميع البنوك. أضف العبارات والوسوم دون برمجة؛ تنسيقات استخراج جديدة قد تحتاج تطوير المحرك.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-        pack.rules.forEach { r -> FilterChip(ruleId == r.id, { ruleId = r.id },
+        library.rules.forEach { r -> FilterChip(ruleId == r.id, { ruleId = r.id },
             label = { Text("${familyLabel(r.family)} · ${r.phrases.firstOrNull().orEmpty()}") }, enabled = !busy) }
         FilterChip(ruleId == null, { ruleId = null }, label = { Text("قاعدة جديدة") }, enabled = !busy)
     }
@@ -196,19 +200,20 @@ private fun RuleEditor(pack: RulePack, busy: Boolean, save: (RulePack) -> Unit) 
                 FilterChip(direction == "INCOMING", { direction = "INCOMING" }, label = { Text("إضافة") }, enabled = !busy)
             }
             LabField("وسم مبلغ العملية — كل وسم في سطر", amount, { amount = it }, !busy, true)
-            LabField("وسم البطاقة", card, { card = it }, !busy)
-            LabField("وسم حساب المصدر", source, { source = it }, !busy)
-            LabField("وسم حساب الوجهة", destination, { destination = it }, !busy)
-            LabField("وسم التاجر — اسم في سطر منفصل", merchant, { merchant = it }, !busy)
+            LabField("وسم البطاقة — كل وسم في سطر", card, { card = it }, !busy, true)
+            LabField("وسم حساب المصدر — كل وسم في سطر", source, { source = it }, !busy, true)
+            LabField("وسم حساب الوجهة — كل وسم في سطر", destination, { destination = it }, !busy, true)
+            LabField("وسم التاجر — يدعم الفصل عن تاريخ بصيغة ISO", merchant, { merchant = it }, !busy, true)
+            LabField("وسم الرصيد — كل وسم في سطر", balance, { balance = it }, !busy, true)
         }
         Text("العملات الحالية: SAR · USD · EUR · GBP. المبلغ يحتاج عملة صريحة. رموز التحقق لها أولوية ثابتة.", style = MaterialTheme.typography.bodySmall)
         Button(onClick = {
             val rule = RuleSpec(current?.id ?: "rule.${UUID.randomUUID()}", family, lines(phrases), lines(excludes),
                 lines(amount), lines(card), lines(source), lines(destination), lines(merchant),
-                balanceLabels = current?.balanceLabels ?: listOf("الرصيد المتاح"), direction = direction)
-            save(pack.copy(rules = pack.rules.filterNot { it.id == rule.id } + rule))
+                balanceLabels = lines(balance), direction = direction)
+            save(library.copy(rules = library.rules.filterNot { it.id == rule.id } + rule))
         }, enabled = !busy && phrases.isNotBlank()) { Text("حفظ كإصدار جديد") }
-        if (current != null) TextButton(onClick = { save(pack.copy(rules = pack.rules.filterNot { it.id == current.id }));ruleId = null }, enabled = !busy) { Text("حذف القاعدة في إصدار جديد") }
+        if (current != null) TextButton(onClick = { save(library.copy(rules = library.rules.filterNot { it.id == current.id }));ruleId = null }, enabled = !busy) { Text("حذف القاعدة في إصدار جديد") }
     }
 }
 
@@ -278,7 +283,7 @@ private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
 private fun ResultsPanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
     var from by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).minusDays(30).toString()) }
     var to by rememberSaveable(pack.bank.id) { mutableStateOf(LocalDate.now(ZoneId.of(pack.bank.zoneId)).toString()) }
-    Text("اختبار العينات", style = MaterialTheme.typography.titleLarge)
+    Text("اختبار الرسائل بالمحرك المشترك", style = MaterialTheme.typography.titleLarge)
     LabCard {
         LabDateField("من تاريخ", from, !state.busy) { from = it }
         LabDateField("إلى تاريخ", to, !state.busy) { to = it }
@@ -287,14 +292,24 @@ private fun ResultsPanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
     }
     state.snapshot?.runs.orEmpty().forEach { run ->
         FilterChip(state.selectedRun == run.id, { vm.selectRun(run.id) }, enabled = !state.busy,
-            label = { Text("v${run.version} · ${run.sampleCount} عينات · ${run.fromDate} إلى ${run.toDate}") })
+            label = { Text("${if (run.shared) "المكتبة المشتركة" else "قواعد البنك السابقة"} v${run.version} · ${run.sampleCount} عينات · ${run.fromDate} إلى ${run.toDate}") })
     }
-    if (state.results.rows.isNotEmpty()) Text("مطابقة كاملة: ${state.results.matched} / ${state.results.labeled} عينة موسومة · ${state.results.unlabeled} غير موسومة")
-    state.results.rows.forEach { row -> ResultCard(row) }
+    if (state.results.rows.isNotEmpty()) Text("مطابقة الحقول الموسومة: ${state.results.matched} / ${state.results.labeled} عينة موسومة · ${state.results.unlabeled} غير موسومة")
+    var reviewOnly by rememberSaveable { mutableStateOf(false) }
+    FilterChip(reviewOnly, { reviewOnly = !reviewOnly }, label = { Text("تحتاج مراجعة فقط") })
+    val shown = state.results.rows.filter { !reviewOnly || it.outcome.status == "REVIEW_REQUIRED" }
+    var visible by remember(state.selectedRun, reviewOnly) { mutableIntStateOf(20) }
+    if (reviewOnly) {
+        shown.groupBy { it.outcome.facts.family ?: "UNKNOWN" }.forEach { (family, rows) ->
+            Text("${familyLabel(family)} · ${rows.size} رسائل", style = MaterialTheme.typography.labelLarge)
+        }
+    }
+    shown.take(visible).forEach { row -> ResultCard(row, state.busy) { vm.annotate(row.sampleId, it) } }
+    if (visible < shown.size) TextButton(onClick = { visible += 20 }) { Text("عرض المزيد") }
 }
 
 @Composable
-private fun ResultCard(row: LabRunResultView) {
+private fun ResultCard(row: LabRunResultView, busy: Boolean, annotate: (ExpectedResult) -> Unit) {
     var expand by rememberSaveable(row.runId, row.sampleId) { mutableStateOf(false) }
     val outcome = row.outcome
     LabCard {
@@ -305,6 +320,8 @@ private fun ResultCard(row: LabRunResultView) {
         TextButton(onClick = { expand = !expand }) { Text(if (expand) "إخفاء التفاصيل" else "عرض الحقائق والأدلة والمقارنة") }
         if (expand) {
             FactsText(outcome.facts)
+            outcome.evidence.forEach { Text("${it.field}: ${it.value} ← ${it.label}", style = MaterialTheme.typography.bodySmall) }
+            ExpectedEditor(row, busy, annotate)
             Text(outcome.trace.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
             row.baseline?.let { baseline ->
                 Text("محلل الجزيرة المنسوخ: ${statusLabel(baseline.status)}", style = MaterialTheme.typography.titleSmall)
@@ -325,24 +342,78 @@ private fun OutcomeCard(outcome: LabOutcome) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExpectedEditor(row: LabRunResultView, busy: Boolean, save: (ExpectedResult) -> Unit) {
+    var editing by rememberSaveable(row.runId, row.sampleId) { mutableStateOf(false) }
+    TextButton(onClick = { editing = !editing }, enabled = !busy) { Text(if (editing) "إلغاء التصحيح" else "تحديد الإجابة الصحيحة") }
+    if (!editing) return
+    key(row.runId, row.sampleId) {
+        val initial = row.expected ?: ExpectedResult(row.outcome.status, row.outcome.facts)
+        var family by remember { mutableStateOf(initial.facts.family ?: "UNKNOWN") }
+        var status by remember { mutableStateOf(initial.status) }
+        var amount by remember { mutableStateOf(initial.facts.amount.orEmpty()) }
+        var currency by remember { mutableStateOf(initial.facts.currency ?: "SAR") }
+        var card by remember { mutableStateOf(initial.facts.card.orEmpty()) }
+        var source by remember { mutableStateOf(initial.facts.source.orEmpty()) }
+        var destination by remember { mutableStateOf(initial.facts.destination.orEmpty()) }
+        var merchant by remember { mutableStateOf(initial.facts.merchant.orEmpty()) }
+        var balance by remember { mutableStateOf(initial.facts.balance.orEmpty()) }
+        var due by remember { mutableStateOf(initial.facts.dueAmount.orEmpty()) }
+        var iban by remember { mutableStateOf(initial.facts.ibanSuffix.orEmpty()) }
+        var date by remember { mutableStateOf(initial.facts.occurredAtLocal.orEmpty()) }
+        Text("حدد الحقول التي تريد اختبارها. الحقول الاختيارية الفارغة لا تدخل المقارنة. التصحيح لا يغيّر المحرك تلقائيًا.", style = MaterialTheme.typography.bodySmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+            (LabFamilies.editable + "UNKNOWN").sorted().forEach { f ->
+                FilterChip(family == f, { family = f }, label = { Text(familyLabel(f)) }, enabled = !busy)
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+            listOf("SUCCESS", "REVIEW_REQUIRED", "NON_FINANCIAL").forEach { s ->
+                FilterChip(status == s, { status = s }, label = { Text(statusLabel(s)) }, enabled = !busy)
+            }
+        }
+        LabField("مبلغ العملية الصحيح", amount, { amount = it }, !busy)
+        FlowRow { listOf("SAR", "USD", "EUR", "GBP").forEach { c ->
+            FilterChip(currency == c, { currency = c }, label = { Text(c) }, enabled = !busy)
+        } }
+        LabField("آخر أربعة أرقام للبطاقة", card, { card = it }, !busy)
+        LabField("آخر أربعة أرقام لحساب المصدر", source, { source = it }, !busy)
+        LabField("آخر أربعة أرقام لحساب الوجهة", destination, { destination = it }, !busy)
+        LabField("التاجر", merchant, { merchant = it }, !busy)
+        LabField("الرصيد", balance, { balance = it }, !busy)
+        LabField("المبلغ المستحق", due, { due = it }, !busy)
+        LabField("آخر أربعة أرقام للآيبان", iban, { iban = it }, !busy)
+        LabField("تاريخ العملية — مثال 2026-10-01T12:30", date, { date = it }, !busy)
+        Button(onClick = {
+            fun optional(s: String) = s.trim().takeIf(String::isNotEmpty)
+            save(ExpectedResult(status, LabFacts(family, if (family in LabFamilies.financial) LabFamilies.direction(family) else null,
+                optional(amount), if (amount.isNotBlank()) currency else null, optional(card), optional(source), optional(destination),
+                optional(merchant), optional(balance), optional(due), optional(iban), optional(date))))
+        }, enabled = !busy) { Text("حفظ الإجابة للاختبار القادم") }
+    }
+}
+
 @Composable
 private fun FactsText(facts: LabFacts) {
     Text(listOfNotNull(facts.family?.let(::familyLabel), facts.direction?.let { "الاتجاه: $it" },
         facts.amount?.let { "المبلغ: $it ${facts.currency.orEmpty()}" }, facts.card?.let { "البطاقة: •••• $it" },
         facts.source?.let { "المصدر: •••• $it" }, facts.destination?.let { "الوجهة: •••• $it" },
-        facts.merchant?.let { "التاجر: $it" }, facts.balance?.let { "الرصيد: $it" }).joinToString("\n"))
+        facts.merchant?.let { "التاجر: $it" }, facts.balance?.let { "الرصيد: $it" },
+        facts.dueAmount?.let { "المستحق: $it" }, facts.ibanSuffix?.let { "آخر أرقام الآيبان: $it" },
+        facts.occurredAtLocal?.let { "تاريخ العملية: $it" }).joinToString("\n"))
 }
 
 @Composable
 private fun PackTransfer(pack: RulePack?, busy: Boolean, importPack: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var text by rememberSaveable { mutableStateOf("") }
-    TextButton(onClick = { expanded = !expanded }) { Text("استيراد / تصدير حزمة قواعد JSON") }
+    TextButton(onClick = { expanded = !expanded }) { Text("استيراد / تصدير تعريف بنك قديم") }
     if (expanded) LabCard {
         LabField("حزمة القواعد", text, { text = it }, !busy, true)
         Button(onClick = { importPack(text) }, enabled = !busy && text.isNotBlank()) { Text("استيراد كإصدار جديد") }
         if (pack != null) OutlinedButton(onClick = { text = LabJson.format.encodeToString(pack) }, enabled = !busy) { Text("عرض الحزمة الحالية للنسخ") }
-        Text("القواعد عبارات ووسوم؛ الحزمة لا تشغّل كودًا أو Regex من الملف.", style = MaterialTheme.typography.bodySmall)
+        Text("يُستورد تعريف البنك. تبقى قواعد الحزمة القديمة محفوظة للأرشيف؛ التحليل الجديد يستخدم المكتبة المشتركة.", style = MaterialTheme.typography.bodySmall)
     }
 }
 
