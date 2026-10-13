@@ -2,6 +2,7 @@ package com.baraa.masroof.instrumentation
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.espresso.Espresso
@@ -53,17 +54,27 @@ class FoldModalWindowJourneyTest {
     private fun awaitShell() {
         compose.waitUntil(30_000) { runCatching { compose.onAllNodesWithContentDescription(text(R.string.dashboard_open_settings)).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false) }
     }
-    private fun clickText(value: String) {
-        compose.waitUntil(20_000) {
-            if (compose.onAllNodesWithText(value).fetchSemanticsNodes().isEmpty()) {
+    private fun clickText(value: String, withinList: Boolean = false) {
+        val target = hasText(value) and hasClickAction() and
+            if (withinList) hasAnyAncestor(hasScrollToIndexAction()) else SemanticsMatcher("any container") { true }
+        try { compose.waitUntil(20_000) {
+            if (compose.onAllNodes(target).fetchSemanticsNodes().isEmpty()) {
                 // English labels can move the action beyond the lazy viewport on a folded screen.
                 runCatching { compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(value)) }
             }
-            compose.onAllNodesWithText(value).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(target).fetchSemanticsNodes().isNotEmpty()
+        } } catch (failure: Throwable) {
+            compose.onAllNodes(isRoot()).fetchSemanticsNodes().indices.forEach { index ->
+                println("CLICK '$value' root=$index ${compose.onAllNodes(isRoot())[index].printToString()}")
+            }
+            throw failure
         }
-        val node = compose.onAllNodesWithText(value).onFirst()
+        val node = compose.onAllNodes(target).onFirst()
         runCatching { node.performScrollTo() }
-        node.performClick()
+        // Navigation is setup for the fold assertions. Invoke the identified action,
+        // not a coordinate that can move while the destination finishes loading.
+        // The sheet footer below still exercises actual touch after every resize.
+        node.assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick) { it() }
     }
     private fun openSheet(kind: String) {
         if (kind == "chart" || kind == "layout") {
@@ -156,8 +167,20 @@ class FoldModalWindowJourneyTest {
     }
     private fun journey(kind: String) {
         awaitShell()
-        if (kind == "filter" || kind == "reclassify") clickText(text(R.string.approved_nav_transactions))
-        if (kind == "reclassify") clickText(JourneyFixtures.DASHBOARD_MERCHANT)
+        if (kind == "filter" || kind == "reclassify") {
+            clickText(text(R.string.approved_nav_transactions))
+            compose.waitUntil(20_000) {
+                compose.onAllNodesWithText(text(R.string.transaction_list_title)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        if (kind == "reclassify") {
+            // The dashboard also contains this merchant. Wait for the destination,
+            // then select the clickable transaction row inside its lazy list.
+            clickText(JourneyFixtures.DASHBOARD_MERCHANT, withinList = true)
+            compose.waitUntil(20_000) {
+                compose.onAllNodesWithText(text(R.string.transaction_detail_title)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
         openSheet(kind)
         verify(kind, "folded")
         resize("1600x2000"); verify(kind, "unfolded")
