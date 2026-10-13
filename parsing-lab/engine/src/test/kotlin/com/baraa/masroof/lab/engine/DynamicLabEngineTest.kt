@@ -39,6 +39,8 @@ class DynamicLabEngineTest {
     @Test fun conflictingCardSuffixesAndWrongDirectionBlockAcceptance() {
         assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 1234\nبطاقة: 5678").status)
         assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR", listOf(purchase.copy(direction = "INCOMING"))).status)
+        assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: 12345").status)
+        assertEquals("REVIEW_REQUIRED", parse("شراء عبر نقاط البيع بمبلغ 100 SAR\nبطاقة: غير واضح").status)
     }
     @Test fun classificationTiesAndNoticeMovementCollisionStayReviewable() {
         val transfer = RuleSpec("transfer", "TRANSFER_OUT", listOf("حوالة صادرة"))
