@@ -12,7 +12,8 @@ object EvidenceDefaults {
         val rules = shared.rules.map { ConceptRule(it.id, "family.${it.family}", it.phrases, it.excludes) }.toMutableList()
         fun add(id: String, concept: String, vararg phrases: String) { rules += ConceptRule(id, concept, phrases.toList()) }
         add("event.deposit", "family.TRANSFER_IN", "أودعت", "تم إيداع", "قيدت لحساب", "credited to your account")
-        add("event.settlement", "family.CARD_PAYMENT", "تسديد", "سداد مستحقات البطاقة")
+        rules += ConceptRule("event.settlement", "family.CARD_PAYMENT", listOf("تسديد", "سداد مستحقات البطاقة"),
+            excludes = listOf("فاتورة", "قسط", "bill", "installment"), requiredRoles = setOf("card"))
         add("event.compact.purchase", "family.PURCHASE", "online credit card purchase")
         val base = shared.rules.first()
         val fields = mapOf("amount" to base.amountLabels + listOf("مبلغ الحوالة", "قيمة العملية"),
