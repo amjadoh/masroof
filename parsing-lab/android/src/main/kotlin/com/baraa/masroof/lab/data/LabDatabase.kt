@@ -2,6 +2,11 @@ package com.baraa.masroof.lab.data
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+@Entity(tableName = "lab_shared_rule_versions")
+data class LabSharedRuleRow(@PrimaryKey val version: Int, val libraryJson: String, val createdAt: Long)
 
 @Entity(tableName = "lab_banks")
 data class LabBankRow(@PrimaryKey val id: String, val name: String, val version: Int, val packJson: String)
@@ -20,6 +25,10 @@ data class LabRunResultRow(val runId: String, val sampleId: String, val sender: 
 
 @Dao
 interface LabDao {
+    @Query("SELECT * FROM lab_shared_rule_versions ORDER BY version DESC LIMIT 1") suspend fun sharedRules(): LabSharedRuleRow?
+    @Insert suspend fun sharedRules(row: LabSharedRuleRow)
+    @Query("DELETE FROM lab_shared_rule_versions") suspend fun clearSharedRules()
+    @Query("UPDATE lab_samples SET expectedJson = :expected WHERE bankId = :bankId AND id = :id") suspend fun annotate(bankId: String, id: String, expected: String?): Int
     @Query("SELECT * FROM lab_samples WHERE bankId = :bankId AND id = :id") suspend fun savedSample(bankId: String, id: String): LabSampleRow?
     @Query("SELECT * FROM lab_banks ORDER BY name") suspend fun banks(): List<LabBankRow>
     @Query("SELECT * FROM lab_samples WHERE bankId = :bankId ORDER BY receivedAt, id") suspend fun samples(bankId: String): List<LabSampleRow>
@@ -40,12 +49,17 @@ interface LabDao {
 }
 
 @Database(entities = [LabBankRow::class, LabRuleVersionRow::class, LabSampleRow::class,
-    LabRunRow::class, LabRunResultRow::class], version = 1, exportSchema = true)
+    LabRunRow::class, LabRunResultRow::class, LabSharedRuleRow::class], version = 2, exportSchema = true)
 abstract class LabDatabase : RoomDatabase() {
     abstract fun dao(): LabDao
     companion object {
         const val FILE_NAME = "masroof_parsing_lab.db"
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS lab_shared_rule_versions (version INTEGER NOT NULL, libraryJson TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(version))")
+            }
+        }
         fun open(context: Context): LabDatabase = Room.databaseBuilder(context.applicationContext,
-            LabDatabase::class.java, FILE_NAME).build()
+            LabDatabase::class.java, FILE_NAME).addMigrations(MIGRATION_1_2).build()
     }
 }

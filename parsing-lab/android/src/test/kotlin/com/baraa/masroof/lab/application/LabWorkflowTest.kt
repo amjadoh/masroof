@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class LabWorkflowTest {
-    @Test fun upgradingExampleTemplateKeepsOldVersionsAndSavedResults() = runBlocking {
+    @Test fun legacyTemplateEditsPreserveSharedParsingAndSavedResults() = runBlocking {
         workflow.seedExamples()
         val bank = "BANK_ALJAZIRA"
         val original = workflow.load(bank).banks.single()
@@ -25,15 +25,19 @@ class LabWorkflowTest {
         workflow.savePack(legacy)
         workflow.addSample(bank, "AlJazira", "POS Purchase Contactless\nCredit card 1234\nof :42.00 SAR\nAt: TEST_MERCHANT\nAvailable Balance : 9000.00 SAR", "2026-10-01", null)
         val old = workflow.run(bank, "2026-10-01", "2026-10-01")
-        assertEquals("REVIEW_REQUIRED", workflow.viewResults(old).rows.single().outcome.status)
-        workflow.upgradeExamplePurchase(bank)
+        val oldResults = workflow.viewResults(old)
+        val library = workflow.load(bank).library
+        assertEquals("SUCCESS", oldResults.rows.single().outcome.status)
+        assertEquals("1234", oldResults.rows.single().outcome.facts.card)
+        workflow.savePack(LabExampleRules.withEnglishCreditPurchase(workflow.load(bank).banks.single()))
         val upgraded = workflow.load(bank).banks.single()
         assertEquals(3, upgraded.version)
         assertEquals(legacy.rules.filterNot { it.id == "purchase.pos" }, upgraded.rules.filterNot { it.id == "purchase.pos" })
         val fresh = workflow.run(bank, "2026-10-01", "2026-10-01")
         assertEquals("1234", workflow.viewResults(fresh).rows.single().outcome.facts.card)
         assertEquals("SUCCESS", workflow.viewResults(fresh).rows.single().outcome.status)
-        assertEquals("REVIEW_REQUIRED", workflow.viewResults(old).rows.single().outcome.status)
+        assertEquals(oldResults, workflow.viewResults(old))
+        assertEquals(library, workflow.load(bank).library)
         assertEquals(3, workflow.versions(bank).size)
     }
     private lateinit var context: Context
@@ -59,7 +63,8 @@ class LabWorkflowTest {
         val expected = LabJson.format.encodeToString(ExpectedResult("SUCCESS", LabFacts("PURCHASE", "OUTGOING", "100", "SAR")))
         workflow.addSample("demo", "DEMO", "شراء بمبلغ 100 SAR", "2026-10-01", expected)
         val first = workflow.run("demo", "2026-10-01", "2026-10-01")
-        workflow.savePack(pack.copy(rules = listOf(pack.rules.single().copy(amountLabels = listOf("القيمة")))))
+        val library = workflow.sharedLibrary()
+        workflow.saveLibrary(library.copy(rules = library.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = listOf("القيمة")) else it }))
         val second = workflow.run("demo", "2026-10-01", "2026-10-01")
         assertEquals("SUCCESS", LabJson.format.decodeFromString<LabOutcome>(workflow.results(first).single().outcomeJson).status)
         assertEquals("REVIEW_REQUIRED", LabJson.format.decodeFromString<LabOutcome>(workflow.results(second).single().outcomeJson).status)
@@ -68,8 +73,31 @@ class LabWorkflowTest {
         assertEquals(1, workflow.viewResults(second).labeled)
         workflow.close();db = LabDatabase.open(context);workflow = LabWorkflow(db)
         val state = workflow.load("demo")
-        assertEquals(2, state.runs.size);assertEquals(setOf(1, 2), workflow.versions("demo").map { it.version }.toSet())
+        assertEquals(2, state.runs.size);assertEquals(2, state.library.version)
+        assertEquals(1, workflow.versions("demo").size)
         assertEquals(expected, workflow.results(first).single().expectedJson)
+    }
+    @Test fun newBankNeedsOnlySenderAndAnnotationsDoNotRewriteHistoricalRuns() = runBlocking {
+        workflow.savePack(pack.copy(rules = emptyList()))
+        workflow.addSample("demo", "DEMO", "شراء بمبلغ 100 SAR", "2026-10-01", null)
+        val first = workflow.run("demo", "2026-10-01", "2026-10-01")
+        val sampleId = workflow.load("demo").samples.single().id
+        assertEquals("SUCCESS", workflow.viewResults(first).rows.single().outcome.status)
+        workflow.annotate("demo", sampleId, ExpectedResult("SUCCESS", LabFacts("PURCHASE", "OUTGOING", "100", "SAR")))
+        assertNull(workflow.results(first).single().expectedJson)
+        val second = workflow.run("demo", "2026-10-01", "2026-10-01")
+        assertEquals(1, workflow.viewResults(second).matched)
+        assertEquals(1, workflow.viewResults(first).unlabeled)
+    }
+    @Test fun sharedLibraryEditsPersistForEveryBankAndRejectStaleDrafts() = runBlocking {
+        workflow.savePack(pack.copy(rules = emptyList()))
+        workflow.savePack(pack.copy(bank = BankProfile("other", "Other", listOf("OTHER")), rules = emptyList()))
+        val initial = workflow.sharedLibrary()
+        workflow.saveLibrary(initial.copy(rules = initial.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = it.amountLabels + "قيمة العملية") else it }))
+        assertEquals("SUCCESS", workflow.preview("demo", "DEMO", "شراء\nقيمة العملية 100 SAR").status)
+        assertEquals("SUCCESS", workflow.preview("other", "OTHER", "شراء\nقيمة العملية 100 SAR").status)
+        try { workflow.saveLibrary(initial);fail("stale draft accepted") } catch (_: IllegalArgumentException) { }
+        assertEquals(2, workflow.sharedLibrary().version)
     }
     @Test fun dateBoundsAreInclusiveAndIndependentOfProductionImportSetting() = runBlocking {
         workflow.savePack(pack)

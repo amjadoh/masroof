@@ -35,6 +35,7 @@ data class LabFacts(
     val family: String? = null, val direction: String? = null, val amount: String? = null,
     val currency: String? = null, val card: String? = null, val source: String? = null,
     val destination: String? = null, val merchant: String? = null, val balance: String? = null,
+    val dueAmount: String? = null, val ibanSuffix: String? = null, val occurredAtLocal: String? = null,
 )
 
 @Serializable
@@ -103,6 +104,9 @@ object LabComparison {
             if (pair.first != null && pair.first != pair.second) add(key)
         }
         if (e.balance != null && !sameAmount(e.balance, a.balance)) add("balance")
+        if (e.dueAmount != null && !sameAmount(e.dueAmount, a.dueAmount)) add("dueAmount")
+        if (e.ibanSuffix != null && e.ibanSuffix != a.ibanSuffix) add("ibanSuffix")
+        if (e.occurredAtLocal != null && e.occurredAtLocal != a.occurredAtLocal) add("occurredAtLocal")
     }
     private fun sameAmount(a: String?, b: String?): Boolean = when {
         a == null || b == null -> a == b
