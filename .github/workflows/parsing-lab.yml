@@ -24,6 +24,8 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Configure SDK
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
+      - name: Verify experiment scoring and review guards (no model download)
+        run: python3 -m unittest discover -s parsing-lab/experiments -p 'test_*.py'
       - name: Test cloned baseline, dynamic engine, database isolation and host
         run: ./gradlew :parsing-lab:engine:test :parsing-lab:android:testDebugUnitTest :app:testDebugUnitTest --stacktrace
       - name: Build Masroof with integrated parsing lab
