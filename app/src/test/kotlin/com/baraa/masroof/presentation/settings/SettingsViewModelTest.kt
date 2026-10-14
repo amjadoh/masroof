@@ -53,6 +53,53 @@ import org.robolectric.RobolectricTestRunner
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class SettingsViewModelTest {
+    @Test fun confirmingNewCardOpensSetupAfterOwnershipReconciliation() = runTest {
+        val cards = FakeCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234", ownership = OwnershipStatus.UNKNOWN))
+        var reconciles = 0
+        val vm = viewModel(cards = cards, onReconcileOwnership = { reconciles++ })
+        vm.refresh(); advanceUntilIdle()
+        vm.confirmCardOwned(vm.uiState.value.unregisteredCards.single()); advanceUntilIdle()
+        assertEquals(1, reconciles)
+        assertEquals(OwnershipStatus.OWNED, vm.uiState.value.cardNetworkTarget?.ownership)
+        assertEquals("1234", vm.uiState.value.cardNetworkTarget?.last4)
+        assertNull(vm.uiState.value.cardNetworkTarget?.cardType)
+    }
+
+    @Test fun confirmedSetupUpdatesOnlyCardMetadataWithoutReconciliationOrReparse() = runTest {
+        val cards = FakeCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234",
+            cardType = com.baraa.masroof.domain.model.CardType.DEBIT,
+            cardNetwork = com.baraa.masroof.domain.model.CardNetwork.MADA,
+            linkedAccountBankId = Bank.BANK_ALJAZIRA.id, linkedAccountMaskedNumber = "3001"))
+        var reconciles = 0
+        var refreshes = 0
+        val vm = viewModel(cards = cards, onRefreshReviewQueue = { refreshes++ }, onReconcileOwnership = { reconciles++ })
+        vm.refresh(); advanceUntilIdle()
+        vm.openCardNetworkPicker(vm.uiState.value.followedCards.single()); advanceUntilIdle()
+        val baseline = refreshes to reconciles
+        vm.saveCardSetup(com.baraa.masroof.domain.model.CardConfiguration(com.baraa.masroof.domain.model.CardNetwork.VISA,
+            com.baraa.masroof.domain.model.CardType.CREDIT, com.baraa.masroof.domain.model.CardRole.PRIMARY))
+        advanceUntilIdle()
+        assertEquals(baseline, refreshes to reconciles)
+        assertNull(vm.uiState.value.cardNetworkTarget)
+        assertEquals(com.baraa.masroof.domain.model.CardType.CREDIT, vm.uiState.value.followedCards.single().cardType)
+        assertNull(vm.uiState.value.followedCards.single().linkedAccountMaskedNumber)
+    }
+
+    @Test fun failedSetupKeepsEditorOpenAndDoesNotReconcile() = runTest {
+        val cards = TrackingCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234"))
+        var reconciles = 0
+        val vm = viewModel(cards = cards, onReconcileOwnership = { reconciles++ })
+        vm.refresh(); advanceUntilIdle()
+        vm.openCardNetworkPicker(vm.uiState.value.followedCards.single()); advanceUntilIdle()
+        vm.saveCardSetup(com.baraa.masroof.domain.model.CardConfiguration(com.baraa.masroof.domain.model.CardNetwork.VISA,
+            com.baraa.masroof.domain.model.CardType.CREDIT, com.baraa.masroof.domain.model.CardRole.PRIMARY))
+        advanceUntilIdle()
+        assertEquals(SettingsError.UPDATE_FAILED, vm.uiState.value.error)
+        assertEquals("1234", vm.uiState.value.cardNetworkTarget?.last4)
+        assertFalse(vm.uiState.value.updating)
+        assertEquals(0, reconciles)
+    }
+
     private val dispatcher = StandardTestDispatcher()
 
     @Before
@@ -716,6 +763,15 @@ class SettingsViewModelTest {
     private class FakeCardRegistry(
         vararg initial: CardRegistryEntry,
     ) : CardRegistryRepository {
+        override suspend fun configure(reference: CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) {
+            val index = entries.indexOfFirst { it.bank == reference.bank && it.last4 == reference.last4 }
+            require(index >= 0)
+            entries[index] = entries[index].copy(cardNetwork = configuration.network, cardType = configuration.type,
+                cardRole = configuration.role, parentCardLast4 = configuration.primaryLast4,
+                linkedAccountBankId = configuration.linkedAccount?.bank?.id,
+                linkedAccountMaskedNumber = configuration.linkedAccount?.maskedNumber)
+        }
+
         val entries = initial.toMutableList()
 
         override suspend fun observe(reference: CardReference, rawSmsId: String) = Unit
@@ -756,6 +812,8 @@ class SettingsViewModelTest {
     private class TrackingCardRegistry(
         vararg initial: CardRegistryEntry,
     ) : CardRegistryRepository {
+    override suspend fun configure(reference: com.baraa.masroof.domain.model.CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) { error("configure not used by this test double") }
+
         val entries = initial.toMutableList()
         var markedAsDebit: Boolean = false
 
