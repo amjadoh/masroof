@@ -11,8 +11,13 @@ installation is not automatically transferred into the normal app.
 
 - Independent JVM engine and Android library; neither depends on `:app` or imports
   production Masroof packages. The host passes only a back callback.
-- A frozen copy of the AlJazira parser, normalization, validation, model dependencies,
+- An independent copy of the AlJazira parser, normalization, validation, model dependencies,
   fixture corpus and regression tests. Origin hashes are in `copied-sources.json`.
+  Documented local patches support standalone `Credit card 1234` lines without a colon.
+  The initial POS template includes English amount/card/merchant/balance labels. Existing
+  lab users can select Update English purchase template on the Banks tab; it saves a new
+  rule version and preserves custom rules and past run snapshots. Re-run saved messages
+  to see new lab results; production messages use the normal reparse-stored-messages tool.
 - Copied theme, Arabic fonts and locale helpers, with library-owned resources.
 - Literal, declarative bank rules: positive phrases, exclusions, amount/card/account/
   merchant labels, direction and family. No executable scripts or user-supplied regex.

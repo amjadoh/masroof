@@ -50,6 +50,10 @@ class LabViewModel(private val workflow: LabWorkflow, initialBankId: String? = n
         mutable.value = mutable.value.copy(preview = outcome)
     }
     fun clearPreview() { mutable.value = mutable.value.copy(preview = null) }
+    fun upgradeExamplePurchase() = action {
+        workflow.upgradeExamplePurchase(requireNotNull(mutable.value.bankId)); refresh()
+        mutable.value = mutable.value.copy(notice = "حُفظ إصدار جديد يدعم صيغة Credit card بدون نقطتين")
+    }
     fun previewSaved(id: String) = action {
         mutable.value = mutable.value.copy(preview = workflow.previewSaved(requireNotNull(mutable.value.bankId), id))
     }

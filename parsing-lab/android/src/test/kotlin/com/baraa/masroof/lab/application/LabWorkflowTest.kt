@@ -15,6 +15,27 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class LabWorkflowTest {
+    @Test fun upgradingExampleTemplateKeepsOldVersionsAndSavedResults() = runBlocking {
+        workflow.seedExamples()
+        val bank = "BANK_ALJAZIRA"
+        val original = workflow.load(bank).banks.single()
+        val legacy = original.copy(rules = original.rules.map { if (it.id == "purchase.pos") it.copy(
+            amountLabels = listOf("بمبلغ"), cardLabels = listOf("بطاقة ائتمانية", "بطاقة"),
+            merchantLabels = listOf("لدى"), balanceLabels = listOf("الرصيد المتاح")) else it })
+        workflow.savePack(legacy)
+        workflow.addSample(bank, "AlJazira", "POS Purchase Contactless\nCredit card 1234\nof :42.00 SAR\nAt: TEST_MERCHANT\nAvailable Balance : 9000.00 SAR", "2026-10-01", null)
+        val old = workflow.run(bank, "2026-10-01", "2026-10-01")
+        assertEquals("REVIEW_REQUIRED", workflow.viewResults(old).rows.single().outcome.status)
+        workflow.upgradeExamplePurchase(bank)
+        val upgraded = workflow.load(bank).banks.single()
+        assertEquals(3, upgraded.version)
+        assertEquals(legacy.rules.filterNot { it.id == "purchase.pos" }, upgraded.rules.filterNot { it.id == "purchase.pos" })
+        val fresh = workflow.run(bank, "2026-10-01", "2026-10-01")
+        assertEquals("1234", workflow.viewResults(fresh).rows.single().outcome.facts.card)
+        assertEquals("SUCCESS", workflow.viewResults(fresh).rows.single().outcome.status)
+        assertEquals("REVIEW_REQUIRED", workflow.viewResults(old).rows.single().outcome.status)
+        assertEquals(3, workflow.versions(bank).size)
+    }
     private lateinit var context: Context
     private lateinit var db: LabDatabase
     private lateinit var workflow: LabWorkflow
