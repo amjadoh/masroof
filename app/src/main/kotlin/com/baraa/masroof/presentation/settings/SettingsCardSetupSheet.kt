@@ -37,7 +37,8 @@ fun SettingsCardSetupSheet(
             (type != CardType.CREDIT || role != CardRole.SUPPLEMENTARY || parents.any { it.last4 == primary }) &&
             (type != CardType.DEBIT || account == null || availableAccounts.any { it.maskedNumber == account })
         MasroofBottomSheet(title = stringResource(R.string.settings_card_setup),
-            subtitle = registryLabel(target), busy = busy, canApply = valid,
+            subtitle = stringResource(R.string.dashboard_credit_card_last4, com.baraa.masroof.application.locale.AppDigits.display(target.last4)),
+            busy = busy, canApply = valid,
             applyLabel = stringResource(R.string.settings_save), onDismiss = onDismiss,
             onApply = {
                 type?.let { chosen -> onSave(CardConfiguration(

@@ -15,8 +15,10 @@ class CardSetupInteractionTest {
     private val language get() = androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("language") ?: "ar"
     @Composable private fun TestTheme(content: @Composable () -> Unit) {
         val context = androidx.compose.ui.platform.LocalContext.current
+        val localized = com.baraa.masroof.presentation.locale.AppLocaleContext.wrap(context, language)
         CompositionLocalProvider(
-            androidx.compose.ui.platform.LocalContext provides com.baraa.masroof.presentation.locale.AppLocaleContext.wrap(context, language),
+            androidx.compose.ui.platform.LocalContext provides localized,
+            androidx.compose.ui.platform.LocalConfiguration provides localized.resources.configuration,
             androidx.compose.ui.platform.LocalLayoutDirection provides if (language == "ar") androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr,
         ) { MasroofTheme { content() } }
     }
