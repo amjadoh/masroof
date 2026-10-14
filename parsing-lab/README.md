@@ -11,8 +11,13 @@ installation is not automatically transferred into the normal app.
 
 - Independent JVM engine and Android library; neither depends on `:app` or imports
   production Masroof packages. The host passes only a back callback.
-- A frozen copy of the AlJazira parser, normalization, validation, model dependencies,
+- An independent copy of the AlJazira parser, normalization, validation, model dependencies,
   fixture corpus and regression tests. Origin hashes are in `copied-sources.json`.
+  Documented local patches support standalone `Credit card 1234` lines without a colon.
+  Legacy POS templates retain English amount/card/merchant/balance labels as archived
+  bank rules. New parsing uses the shared library, which already supports these formats;
+  no bank-template upgrade is needed. Re-run saved messages to see new lab results;
+  production messages use the normal reparse-stored-messages tool.
 - Copied theme, Arabic fonts and locale helpers, with library-owned resources.
 - A bank-independent `SharedLabEngine` and versioned `SharedRuleLibrary`. Adding a bank
   requires its name and exact SMS sender(s), not a parser or a bank-specific rule pack.

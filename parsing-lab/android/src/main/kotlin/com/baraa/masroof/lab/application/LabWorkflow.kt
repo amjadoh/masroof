@@ -205,7 +205,7 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
             RuleSpec("bill.payment", "BILL_PAYMENT", listOf("سداد فاتورة")),
             RuleSpec("card.payment", "CARD_PAYMENT", listOf("سداد بطاقة")),
         )
-        val pack = RulePack(bank = profile, version = 1, rules = rules)
+        val pack = LabExampleRules.withEnglishCreditPurchase(RulePack(bank = profile, version = 1, rules = rules))
         RulePackValidation.check(pack)
         val text = json.encodeToString(pack)
         dao.bank(LabBankRow(profile.id, profile.name, 1, text)); dao.version(LabRuleVersionRow(profile.id, 1, text, System.currentTimeMillis()))
