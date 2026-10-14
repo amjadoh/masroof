@@ -279,16 +279,7 @@ fun SettingsRoute(
             onSaveCardName = viewModel::saveCardDisplayName,
             onPickCardNetwork = viewModel::openCardNetworkPicker,
             onDismissCardNetwork = viewModel::dismissCardNetworkPicker,
-            onSelectCardNetwork = viewModel::setCardNetwork,
-            onPickCardRole = viewModel::openCardRolePicker,
-            onDismissCardRole = viewModel::dismissCardRolePicker,
-            onSetPrimaryCard = viewModel::setPrimaryCard,
-            onSetSupplementaryCard = viewModel::setSupplementaryCard,
-            onClearCardRole = viewModel::clearCardRole,
-            onLinkDebitCard = viewModel::openLinkDebitCard,
-            onDismissLinkDebit = viewModel::dismissLinkDebitCard,
-            onConfirmLinkDebit = viewModel::linkDebitToAccount,
-            onMarkDebit = viewModel::markCardAsDebit,
+            onSaveCardSetup = viewModel::saveCardSetup,
         )
 
         is SettingsDestination.BankLoans -> SettingsBankLoansScreen(

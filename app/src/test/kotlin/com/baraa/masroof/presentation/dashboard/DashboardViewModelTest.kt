@@ -522,6 +522,8 @@ class DashboardViewModelTest {
     private class FakeCardRegistry(
         vararg initial: CardRegistryEntry,
     ) : com.baraa.masroof.domain.repository.CardRegistryRepository {
+    override suspend fun configure(reference: com.baraa.masroof.domain.model.CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) { error("configure not used by this test double") }
+
         val entries = initial.toMutableList()
 
         override suspend fun observe(reference: CardReference, rawSmsId: String) = Unit

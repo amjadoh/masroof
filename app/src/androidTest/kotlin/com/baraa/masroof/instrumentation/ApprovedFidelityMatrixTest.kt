@@ -466,16 +466,6 @@ class ApprovedFidelityMatrixTest {
                 onSaveCardName = {},
                 onPickCardNetwork = {},
                 onDismissCardNetwork = {},
-                onSelectCardNetwork = {},
-                onPickCardRole = {},
-                onDismissCardRole = {},
-                onSetPrimaryCard = {},
-                onSetSupplementaryCard = { _, _ -> },
-                onClearCardRole = {},
-                onLinkDebitCard = {},
-                onDismissLinkDebit = {},
-                onConfirmLinkDebit = { _, _ -> },
-                onMarkDebit = {}
             )
             "myLoans" -> SettingsBankLoansScreen(
                 bank = Bank.BANK_ALJAZIRA,

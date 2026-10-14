@@ -21,6 +21,11 @@ class RoomCardRegistryRepository(
     private val bankRegistryDao: com.baraa.masroof.data.room.dao.BankRegistryDao,
     private val accessGate: DatabaseAccessGate = DatabaseAccessGate(),
 ) : CardRegistryRepository {
+    override suspend fun configure(reference: CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration): Unit = accessGate.withAccess {
+        val last4 = requireLast4(reference)
+        dao.configureAtomic(reference.bank.id, last4, configuration)
+    }
+
     override suspend fun observe(reference: CardReference, rawSmsId: String): Unit = accessGate.withAccess<Unit> {
         if (!RegistryIdentity.isKnownBank(reference.bank)) return@withAccess
         val last4 = reference.last4?.trim().orEmpty()

@@ -40,16 +40,7 @@ fun SettingsBankCardsScreen(
     onSaveCardName: (String) -> Unit,
     onPickCardNetwork: (ManagedCardUi) -> Unit,
     onDismissCardNetwork: () -> Unit,
-    onSelectCardNetwork: (com.baraa.masroof.domain.model.CardNetwork?) -> Unit,
-    onPickCardRole: (ManagedCardUi) -> Unit,
-    onDismissCardRole: () -> Unit,
-    onSetPrimaryCard: (ManagedCardUi) -> Unit,
-    onSetSupplementaryCard: (ManagedCardUi, String) -> Unit,
-    onClearCardRole: (ManagedCardUi) -> Unit,
-    onLinkDebitCard: (ManagedCardUi) -> Unit,
-    onDismissLinkDebit: () -> Unit,
-    onConfirmLinkDebit: (ManagedCardUi, ManagedAccountUi) -> Unit,
-    onMarkDebit: (ManagedCardUi) -> Unit,
+    onSaveCardSetup: (com.baraa.masroof.domain.model.CardConfiguration) -> Unit = {},
     onOpenBank: (() -> Unit)? = null,
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
@@ -71,38 +62,16 @@ fun SettingsBankCardsScreen(
         onDismiss = onDismissRenameCard,
         onSave = onSaveCardName,
     )
-    SettingsCardNetworkDialog(
+    SettingsCardSetupSheet(
         target = state.cardNetworkTarget,
-        updating = state.updating,
+        suggestion = state.cardTypeSuggestion,
+        cards = state.followedCards + state.unregisteredCards + state.stoppedCards,
+        accounts = state.followedAccounts,
+        busy = state.updating,
+        failed = state.error != null,
         onDismiss = onDismissCardNetwork,
-        onSelect = onSelectCardNetwork,
+        onSave = onSaveCardSetup,
     )
-    SettingsCardRoleDialog(
-        target = state.cardRoleTarget,
-        primaryCards = state.followedCards.filter {
-            it.cardRole == com.baraa.masroof.domain.model.CardRole.PRIMARY &&
-                it.bank == state.cardRoleTarget?.bank
-        },
-        updating = state.updating,
-        onDismiss = onDismissCardRole,
-        onSetPrimary = { state.cardRoleTarget?.let(onSetPrimaryCard) },
-        onSetSupplementary = { primaryLast4 ->
-            state.cardRoleTarget?.let { onSetSupplementaryCard(it, primaryLast4) }
-        },
-        onClearRole = { state.cardRoleTarget?.let(onClearCardRole) },
-    )
-    SettingsLinkDebitDialog(
-        target = state.linkDebitTarget,
-        accounts = state.followedAccounts.filter {
-            it.bank == state.linkDebitTarget?.bank
-        },
-        updating = state.updating,
-        onDismiss = onDismissLinkDebit,
-        onLink = { account ->
-            state.linkDebitTarget?.let { onConfirmLinkDebit(it, account) }
-        },
-    )
-
     MasroofSecondaryScaffold(
         title = stringResource(R.string.reference_manage_cards),
         onBack = onBack,
@@ -164,9 +133,6 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
-                            onPickCardRole = onPickCardRole,
-                            onLinkDebitCard = onLinkDebitCard,
-                            onMarkDebit = onMarkDebit,
                         )
                     }
                     bankTree.allDebitCards.forEach { card ->
@@ -176,9 +142,6 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
-                            onPickCardRole = onPickCardRole,
-                            onLinkDebitCard = onLinkDebitCard,
-                            onMarkDebit = onMarkDebit,
                         )
                     }
                 } else {
@@ -189,9 +152,6 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
-                            onPickCardRole = onPickCardRole,
-                            onLinkDebitCard = onLinkDebitCard,
-                            onMarkDebit = onMarkDebit,
                         )
                     }
                 }
@@ -233,9 +193,6 @@ internal fun SettingsRegistryCardRow(
     onRequestStopTracking: (ManagedCardUi) -> Unit,
     onRenameCard: (ManagedCardUi) -> Unit,
     onPickCardNetwork: (ManagedCardUi) -> Unit,
-    onPickCardRole: (ManagedCardUi) -> Unit,
-    onLinkDebitCard: (ManagedCardUi) -> Unit,
-    onMarkDebit: (ManagedCardUi) -> Unit,
 ) {
     SettingsRegistryItemCard(
         icon = MasroofIcons.cardPayment,
@@ -257,9 +214,6 @@ internal fun SettingsRegistryCardRow(
                 enabled = !updating,
                 onRename = { onRenameCard(card) },
                 onPickNetwork = { onPickCardNetwork(card) },
-                onPickRole = { onPickCardRole(card) },
-                onLinkDebit = { onLinkDebitCard(card) },
-                onMarkDebit = { onMarkDebit(card) },
                 includeRename = false,
                 onStop = { onRequestStopTracking(card) },
             )

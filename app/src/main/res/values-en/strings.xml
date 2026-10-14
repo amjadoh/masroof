@@ -700,4 +700,15 @@
     <string name="dashboard_all_trend_basis">Includes purchases, bills, fees, loan repayments, cash withdrawals and outgoing external transfers, less refunds. Card settlements and transfers between your own accounts are excluded to avoid duplicates. The average uses elapsed period days, including zero-spend days.</string>
     <string name="dashboard_mada_trend_basis">Includes Mada purchases and cash withdrawals confirmed to belong to this card, less refunds. A withdrawal is not assigned to a specific card without confirmed attribution.</string>
     <string name="dashboard_expenses_before_refunds">Expenses before refunds</string>
+    <string name="settings_card_setup">Card setup</string>
+    <string name="settings_card_type_title">Card type</string>
+    <string name="settings_card_type_credit">Credit</string>
+    <string name="settings_card_type_debit">Debit</string>
+    <string name="settings_card_type_unknown">Card type not specified</string>
+    <string name="settings_card_credit_evidence">Messages suggest a credit card. Review the type before saving.</string>
+    <string name="settings_card_debit_evidence">Messages suggest a debit card. Review the type before saving.</string>
+    <string name="settings_card_primary_title">Parent primary card</string>
+    <string name="settings_card_no_primary">No confirmed primary card in this bank.</string>
+    <string name="settings_card_no_account">No linked account yet</string>
+    <string name="settings_card_dependents_block">This card has supplementary cards. Reassign them explicitly before changing the primary card type or role.</string>
 </resources>
