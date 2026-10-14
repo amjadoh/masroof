@@ -66,6 +66,8 @@ fun ParsingLabEntry(onBack: () -> Unit) {
 @Composable
 private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
     var tab by rememberSaveable { mutableStateOf("banks") }
+    val scroll = rememberScrollState()
+    LaunchedEffect(tab) { scroll.scrollTo(0) }
     val pack = state.snapshot?.banks?.firstOrNull { it.bank.id == state.bankId }
     var confirmReset by remember { mutableStateOf(false) }
     Scaffold(
@@ -80,7 +82,7 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
             }
         } },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(scroll)
             .padding(MasroofSpacing.screenHorizontal), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error,
@@ -111,8 +113,18 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
                     OutlinedButton(onClick = { confirmReset = true }, enabled = !state.busy) { Text("مسح بيانات المختبر") }
                 }
                 "play" -> if (pack == null) Text("أضف بنكًا أولًا") else SamplePanel(pack, state, vm)
-                "rules" -> state.snapshot?.library?.let { RuleEditor(it, state.busy, vm::saveLibrary) }
-                "results" -> if (pack == null) Text("أضف بنكًا أولًا") else ResultsPanel(pack, state, vm)
+                "rules" -> {
+                    var evidenceRules by rememberSaveable { mutableStateOf(false) }
+                    Row { FilterChip(!evidenceRules, { evidenceRules = false }, label = { Text("القواعد الحالية") })
+                        FilterChip(evidenceRules, { evidenceRules = true }, label = { Text("معرفة الأدلة") }) }
+                    if (evidenceRules) EvidenceKnowledgeEditor(state, vm) else state.snapshot?.library?.let { RuleEditor(it, state.busy, vm::saveLibrary) }
+                }
+                "results" -> if (pack == null) Text("أضف بنكًا أولًا") else {
+                    var evidenceResults by rememberSaveable { mutableStateOf(true) }
+                    Row { FilterChip(evidenceResults, { evidenceResults = true }, label = { Text("مقارنة الأدلة") })
+                        FilterChip(!evidenceResults, { evidenceResults = false }, label = { Text("الاختبارات السابقة") }) }
+                    if (evidenceResults) EvidenceComparisonPanel(pack, state, vm) else ResultsPanel(pack, state, vm)
+                }
             }
         }
     }
@@ -124,7 +136,7 @@ private fun LabScreen(state: LabUiState, vm: LabViewModel, onBack: () -> Unit) {
 
 /** Copied MasroofCard geometry and surface tokens, scoped to the lab theme. */
 @Composable
-private fun LabCard(content: @Composable ColumnScope.() -> Unit) {
+internal fun LabCard(content: @Composable ColumnScope.() -> Unit) {
     val colors = MasroofThemeExtras.extendedColors
     Card(Modifier.fillMaxWidth(), shape = MasroofCardShape,
         colors = CardDefaults.cardColors(containerColor = colors.cardSurface),
@@ -135,7 +147,7 @@ private fun LabCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun LabField(label: String, value: String, onChange: (String) -> Unit, enabled: Boolean = true, multi: Boolean = false) {
+internal fun LabField(label: String, value: String, onChange: (String) -> Unit, enabled: Boolean = true, multi: Boolean = false) {
     OutlinedTextField(value, onValueChange = onChange, label = { Text(label) }, enabled = enabled,
         modifier = Modifier.fillMaxWidth(), singleLine = !multi, minLines = if (multi) 3 else 1)
 }
@@ -262,6 +274,7 @@ private fun SamplePanel(pack: RulePack, state: LabUiState, vm: LabViewModel) {
         }, enabled = !state.busy && validRange && pendingBank == null, modifier = Modifier.fillMaxWidth()) { Text("استيراد الرسائل") }
         if (permissionError) Text("لم يُمنح إذن قراءة الرسائل. يمكنك تفعيله من إعدادات أذونات التطبيق ثم إعادة الاستيراد.", color = MaterialTheme.colorScheme.error)
         Text("تُحفظ الرسائل في قاعدة المختبر فقط. إعادة الاستيراد لا تكرر الرسائل، ولا تُنشئ عمليات في مصروف.", style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick = { vm.compare(from, to) }, enabled = !state.busy && validRange && samplesAvailable(state)) { Text("مقارنة المحركين على الرسائل المحفوظة") }
     }
     state.preview?.let { OutcomeCard(it) }
     val samples = state.snapshot?.samples.orEmpty()
@@ -342,66 +355,22 @@ private fun OutcomeCard(outcome: LabOutcome) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ExpectedEditor(row: LabRunResultView, busy: Boolean, save: (ExpectedResult) -> Unit) {
-    var editing by rememberSaveable(row.runId, row.sampleId) { mutableStateOf(false) }
-    TextButton(onClick = { editing = !editing }, enabled = !busy) { Text(if (editing) "إلغاء التصحيح" else "تحديد الإجابة الصحيحة") }
-    if (!editing) return
-    key(row.runId, row.sampleId) {
-        val initial = row.expected ?: ExpectedResult(row.outcome.status, row.outcome.facts)
-        var family by remember { mutableStateOf(initial.facts.family ?: "UNKNOWN") }
-        var status by remember { mutableStateOf(initial.status) }
-        var amount by remember { mutableStateOf(initial.facts.amount.orEmpty()) }
-        var currency by remember { mutableStateOf(initial.facts.currency ?: "SAR") }
-        var card by remember { mutableStateOf(initial.facts.card.orEmpty()) }
-        var source by remember { mutableStateOf(initial.facts.source.orEmpty()) }
-        var destination by remember { mutableStateOf(initial.facts.destination.orEmpty()) }
-        var merchant by remember { mutableStateOf(initial.facts.merchant.orEmpty()) }
-        var balance by remember { mutableStateOf(initial.facts.balance.orEmpty()) }
-        var due by remember { mutableStateOf(initial.facts.dueAmount.orEmpty()) }
-        var iban by remember { mutableStateOf(initial.facts.ibanSuffix.orEmpty()) }
-        var date by remember { mutableStateOf(initial.facts.occurredAtLocal.orEmpty()) }
-        Text("حدد الحقول التي تريد اختبارها. الحقول الاختيارية الفارغة لا تدخل المقارنة. التصحيح لا يغيّر المحرك تلقائيًا.", style = MaterialTheme.typography.bodySmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-            (LabFamilies.editable + "UNKNOWN").sorted().forEach { f ->
-                FilterChip(family == f, { family = f }, label = { Text(familyLabel(f)) }, enabled = !busy)
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-            listOf("SUCCESS", "REVIEW_REQUIRED", "NON_FINANCIAL").forEach { s ->
-                FilterChip(status == s, { status = s }, label = { Text(statusLabel(s)) }, enabled = !busy)
-            }
-        }
-        LabField("مبلغ العملية الصحيح", amount, { amount = it }, !busy)
-        FlowRow { listOf("SAR", "USD", "EUR", "GBP").forEach { c ->
-            FilterChip(currency == c, { currency = c }, label = { Text(c) }, enabled = !busy)
-        } }
-        LabField("آخر أربعة أرقام للبطاقة", card, { card = it }, !busy)
-        LabField("آخر أربعة أرقام لحساب المصدر", source, { source = it }, !busy)
-        LabField("آخر أربعة أرقام لحساب الوجهة", destination, { destination = it }, !busy)
-        LabField("التاجر", merchant, { merchant = it }, !busy)
-        LabField("الرصيد", balance, { balance = it }, !busy)
-        LabField("المبلغ المستحق", due, { due = it }, !busy)
-        LabField("آخر أربعة أرقام للآيبان", iban, { iban = it }, !busy)
-        LabField("تاريخ العملية — مثال 2026-10-01T12:30", date, { date = it }, !busy)
-        Button(onClick = {
-            fun optional(s: String) = s.trim().takeIf(String::isNotEmpty)
-            save(ExpectedResult(status, LabFacts(family, if (family in LabFamilies.financial) LabFamilies.direction(family) else null,
-                optional(amount), if (amount.isNotBlank()) currency else null, optional(card), optional(source), optional(destination),
-                optional(merchant), optional(balance), optional(due), optional(iban), optional(date))))
-        }, enabled = !busy) { Text("حفظ الإجابة للاختبار القادم") }
-    }
+    EvidenceReferenceEditor(com.baraa.masroof.lab.application.LabComparisonItem(row.sampleId, row.body, row.expected,
+        row.outcome, com.baraa.masroof.lab.engine.evidence.EvidenceAnalysis(outcome = row.outcome), 0.0, 0.0), busy, save)
 }
 
 @Composable
-private fun FactsText(facts: LabFacts) {
+internal fun FactsText(facts: LabFacts) {
     Text(listOfNotNull(facts.family?.let(::familyLabel), facts.direction?.let { "الاتجاه: $it" },
         facts.amount?.let { "المبلغ: $it ${facts.currency.orEmpty()}" }, facts.card?.let { "البطاقة: •••• $it" },
         facts.source?.let { "المصدر: •••• $it" }, facts.destination?.let { "الوجهة: •••• $it" },
         facts.merchant?.let { "التاجر: $it" }, facts.balance?.let { "الرصيد: $it" },
         facts.dueAmount?.let { "المستحق: $it" }, facts.ibanSuffix?.let { "آخر أرقام الآيبان: $it" },
-        facts.occurredAtLocal?.let { "تاريخ العملية: $it" }).joinToString("\n"))
+        facts.occurredAtLocal?.let { "تاريخ العملية: $it" }, facts.executionState?.let { "حالة التنفيذ: ${executionLabel(it)}" },
+        facts.cardKind?.let { "نوع البطاقة: $it" }, facts.network?.let { "الشبكة: $it" },
+        facts.feeAmount?.let { "الرسوم: $it" }, facts.exchangeRate?.let { "سعر الصرف: $it" }).joinToString("\n"))
 }
 
 @Composable
@@ -418,7 +387,7 @@ private fun PackTransfer(pack: RulePack?, busy: Boolean, importPack: (String) ->
 }
 
 private fun lines(text: String) = text.lineSequence().map(String::trim).filter(String::isNotBlank).distinct().toList()
-private fun statusLabel(status: String) = when (status) {
+internal fun statusLabel(status: String) = when (status) {
     "SUCCESS" -> "نجاح التحليل التجريبي"
     "NON_FINANCIAL" -> "رسالة غير مالية"
     "REVIEW_REQUIRED" -> "تحتاج مراجعة"
@@ -427,7 +396,7 @@ private fun statusLabel(status: String) = when (status) {
     "PARTIAL" -> "تحليل جزئي"
     else -> status
 }
-private fun familyLabel(family: String) = when (family) {
+internal fun familyLabel(family: String) = when (family) {
     "PURCHASE" -> "مشتريات"; "TRANSFER_IN" -> "حوالة واردة"; "TRANSFER_OUT" -> "حوالة صادرة"
     "CARD_PAYMENT" -> "سداد بطاقة"; "BILL_PAYMENT" -> "سداد فاتورة"; "FINANCING_INSTALLMENT" -> "قسط تمويل"
     "WITHDRAWAL" -> "سحب نقدي"; "REFUND" -> "استرداد"; "FEE" -> "رسوم"; "BALANCE_NOTICE" -> "إشعار رصيد"

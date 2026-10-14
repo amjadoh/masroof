@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.withTransaction
 import com.baraa.masroof.lab.data.*
 import com.baraa.masroof.lab.engine.*
+import com.baraa.masroof.lab.engine.evidence.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -29,6 +30,13 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
     private val dao = db.dao()
     private val json = LabJson.format
     private val engine = SharedLabEngine()
+    private val evidence = LabEvidenceWorkflow(db)
+    suspend fun evidenceKnowledge() = evidence.knowledge()
+    suspend fun saveKnowledge(draft: EvidenceKnowledge) = evidence.save(draft)
+    suspend fun previewKnowledge(bankId: String, draft: EvidenceKnowledge) = evidence.preview(bankId, draft)
+    suspend fun compare(bankId: String, from: String, to: String) = evidence.run(bankId, from, to)
+    suspend fun comparisons(bankId: String) = evidence.comparisons(bankId)
+    suspend fun comparisonResults(id: String) = evidence.results(id)
 
     suspend fun sharedLibrary(): SharedRuleLibrary = db.withTransaction {
         dao.sharedRules()?.let { return@withTransaction json.decodeFromString<SharedRuleLibrary>(it.libraryJson) }
@@ -86,6 +94,12 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
     }
 
     private fun validateExpected(expected: ExpectedResult) {
+        ReferenceFields.validate(expected)
+        require(expected.facts.executionState == null || expected.facts.executionState in EvidenceDefaults.states + "UNPROVEN")
+        require(expected.facts.cardKind == null || expected.facts.cardKind in setOf("CREDIT", "DEBIT"))
+        require(expected.facts.network == null || expected.facts.network in setOf("VISA", "MADA", "MASTERCARD"))
+        expected.facts.feeAmount?.let { require(it.toBigDecimalOrNull()?.let { v -> v.signum() >= 0 && v.scale() <= 2 && v.precision() <= 18 } == true) }
+        expected.facts.exchangeRate?.let { require(it.toBigDecimalOrNull()?.let { v -> v.signum() > 0 && v.scale() <= 6 && v.precision() <= 18 } == true) }
         listOf(expected.facts.card, expected.facts.source, expected.facts.destination, expected.facts.ibanSuffix).filterNotNull().forEach {
             require(it.matches(Regex("[0-9]{4}"))) { "معرف البطاقة أو الحساب يحتاج أربعة أرقام إنجليزية" }
         }
@@ -191,6 +205,7 @@ class LabWorkflow(private val db: LabDatabase, private val inbox: LabInboxSource
         return savePack(json.decodeFromString<RulePack>(text))
     }
     suspend fun reset() = db.withTransaction {
+        dao.clearComparisonResults();dao.clearComparisons();dao.clearEvidenceKnowledge()
         dao.clearResults(); dao.clearRuns(); dao.clearSamples(); dao.clearVersions(); dao.clearBanks(); dao.clearSharedRules()
     }
     fun close() = db.close()

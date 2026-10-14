@@ -39,4 +39,15 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Both modules share the CI emulator; never drive two foreground activities concurrently.
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    mustRunAfter(":app:connectedDebugAndroidTest")
 }

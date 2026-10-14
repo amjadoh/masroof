@@ -131,6 +131,8 @@ jobs:
           path: |
             app/build/reports/androidTests/connected/debug/
             app/build/outputs/androidTest-results/connected/debug/
+            parsing-lab/android/build/reports/androidTests/connected/debug/
+            parsing-lab/android/build/outputs/androidTest-results/connected/debug/
           if-no-files-found: warn
 
   # API 30 process death. Separate from emulator-smoke so clearPackageData=true
