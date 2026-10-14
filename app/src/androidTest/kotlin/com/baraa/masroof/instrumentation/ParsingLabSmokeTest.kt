@@ -8,6 +8,7 @@ import androidx.test.uiautomator.UiDevice
 import com.baraa.masroof.lab.presentation.ParsingLabEntry
 import com.baraa.masroof.BuildConfig
 import com.baraa.masroof.R
+import com.baraa.masroof.presentation.settings.SettingsAboutScreen
 import com.baraa.masroof.presentation.settings.SettingsHubScreen
 import com.baraa.masroof.presentation.settings.SettingsUiState
 import com.baraa.masroof.presentation.settings.SettingsDeveloperScreen
@@ -21,7 +22,7 @@ import java.io.File
 class ParsingLabSmokeTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun normalAppSettingsOpensDeveloperMenuAndLab() {
+    @Test fun normalAppSettingsOpensDeveloperMenuAndLabOnlyThroughAbout() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("com.baraa.masroof", context.packageName)
         assertTrue(BuildConfig.ENABLE_PARSING_LAB)
@@ -32,12 +33,23 @@ class ParsingLabSmokeTest {
                     "settings" -> SettingsHubScreen(state = SettingsUiState(loading = false), reviewRequiredCount = 0,
                         onBack = {}, onOpenAccounts = {}, onOpenCards = {}, onOpenLoans = {}, onOpenCommitments = {},
                         onOpenReview = {}, onOpenApp = {}, onOpenDataBackup = {}, onOpenStatementReconciliation = {},
-                        onOpenAbout = {}, onOpenDeveloperSettings = { screen = "developer" })
-                    "developer" -> SettingsDeveloperScreen(onBack = { screen = "settings" }, onOpenLab = { screen = "lab" })
+                        onOpenAbout = { screen = "about" })
+                    "about" -> SettingsAboutScreen(
+                        appVersion = "test", isNightlyBuild = false,
+                        updateChannel = com.baraa.masroof.application.update.UpdateChannel.STABLE,
+                        githubTokenConfigured = false, updateState = SettingsUiState().updateState, updateMessage = null,
+                        onBack = { screen = "settings" }, onOpenLogs = {},
+                        onOpenDeveloperSettings = { screen = "developer" },
+                        onSaveGithubToken = {}, onClearGithubToken = {}, onSelectUpdateChannel = {},
+                        onCheckForUpdates = {}, onDownloadUpdate = {}, onInstallUpdate = {}, onClearUpdateMessage = {},
+                    )
+                    "developer" -> SettingsDeveloperScreen(onBack = { screen = "about" }, onOpenLab = { screen = "lab" })
                     else -> ParsingLabEntry(onBack = { screen = "developer" })
                 }
             }
         }
+        compose.onNodeWithText(context.getString(R.string.settings_developer_title)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.settings_about_section)).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.settings_developer_title)).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.settings_parsing_lab_title)).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("مصروف · مختبر التحليل").fetchSemanticsNodes().isNotEmpty() }
