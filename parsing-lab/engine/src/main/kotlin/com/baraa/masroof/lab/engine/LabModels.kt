@@ -36,6 +36,8 @@ data class LabFacts(
     val currency: String? = null, val card: String? = null, val source: String? = null,
     val destination: String? = null, val merchant: String? = null, val balance: String? = null,
     val dueAmount: String? = null, val ibanSuffix: String? = null, val occurredAtLocal: String? = null,
+    val executionState: String? = null, val cardKind: String? = null, val network: String? = null,
+    val feeAmount: String? = null, val exchangeRate: String? = null,
 )
 
 @Serializable
@@ -43,7 +45,7 @@ data class LabOutcome(val status: String, val facts: LabFacts = LabFacts(), val 
                       val evidence: List<FieldEvidence> = emptyList(), val normalizedText: String = "")
 
 @Serializable
-data class ExpectedResult(val status: String, val facts: LabFacts)
+data class ExpectedResult(val status: String, val facts: LabFacts, val absentFields: Set<String> = emptySet())
 
 object LabJson {
     val format = Json { encodeDefaults = true; prettyPrint = true }
@@ -91,6 +93,7 @@ object RulePackValidation {
 object LabComparison {
     /** Exact required financial facts; optional labels are checked when explicitly annotated. */
     fun differences(expected: ExpectedResult, actual: LabOutcome): List<String> = buildList {
+        com.baraa.masroof.lab.engine.evidence.ReferenceFields.validate(expected)
         if (expected.status != actual.status) add("status")
         val e = expected.facts; val a = actual.facts
         if (e.family != a.family) add("family")
@@ -106,7 +109,13 @@ object LabComparison {
         if (e.balance != null && !sameAmount(e.balance, a.balance)) add("balance")
         if (e.dueAmount != null && !sameAmount(e.dueAmount, a.dueAmount)) add("dueAmount")
         if (e.ibanSuffix != null && e.ibanSuffix != a.ibanSuffix) add("ibanSuffix")
-        if (e.occurredAtLocal != null && e.occurredAtLocal != a.occurredAtLocal) add("occurredAtLocal")
+        if (e.occurredAtLocal != null && !com.baraa.masroof.lab.engine.evidence.ReferenceFields.equal("occurredAtLocal", e.occurredAtLocal, a.occurredAtLocal)) add("occurredAtLocal")
+        val extra = com.baraa.masroof.lab.engine.evidence.ReferenceFields.values(e)
+        val found = com.baraa.masroof.lab.engine.evidence.ReferenceFields.values(a)
+        setOf("executionState", "cardKind", "network", "feeAmount", "exchangeRate").forEach { field ->
+            if (extra[field] != null && !com.baraa.masroof.lab.engine.evidence.ReferenceFields.equal(field, extra[field], found[field])) add(field)
+        }
+        expected.absentFields.forEach { if (found[it] != null && it !in this) add(it) }
     }
     private fun sameAmount(a: String?, b: String?): Boolean = when {
         a == null || b == null -> a == b

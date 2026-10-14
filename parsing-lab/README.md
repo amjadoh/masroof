@@ -65,6 +65,13 @@ Baseline output is not used to manufacture expected answers.
 
 ## Current boundaries
 
+- Experimental evidence comparison is available alongside the shared engine. Results →
+  Evidence comparison saves paired outputs, original-text evidence, hypotheses, and manual
+  reference snapshots. Rules → Evidence knowledge previews changes across saved banks
+  before saving a new version. The shared engine remains the existing run/preview default.
+  Lab-only migration 2→3 preserves old data and adds paired results/knowledge tables.
+  See [implementation and measurement contract](experiments/EVIDENCE_ENGINE.md).
+
 - Imported messages start unannotated. Results → details → correct answer saves manually
   reviewed expected fields for the next run; it never rewrites prior runs or changes rules
   automatically. Optional blank expected fields are unscored, not assertions of absence.
