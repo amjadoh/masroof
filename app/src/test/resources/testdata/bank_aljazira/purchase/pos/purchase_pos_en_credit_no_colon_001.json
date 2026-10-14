@@ -1,0 +1,21 @@
+{
+  "id": "purchase_pos_en_credit_no_colon_001",
+  "sender": "AlJazira",
+  "body": "POS Purchase Contactless \nCredit card 1234 \nof :42.00 SAR \nAt: TEST_MERCHANT \non : 2026-10-01 15:29 \nAvailable Balance : 9000.00 SAR \nDue Amount: 1000.00 SAR",
+  "expected": {
+    "bank": "BANK_ALJAZIRA",
+    "messageFamily": "PURCHASE",
+    "direction": "OUTGOING",
+    "amount": "42.00",
+    "currency": "SAR",
+    "purchaseChannel": "POS",
+    "cardLast4": "1234",
+    "merchant": "TEST_MERCHANT",
+    "occurredAt": "2026-10-01T15:29:00",
+    "parseStatus": "SUCCESS",
+    "availableBalance": "9000.00",
+    "outstandingBalance": "1000.00",
+    "cardSmsChannel": "CREDIT"
+  },
+  "notes": "Anonymized contactless credit purchase shape. Credit card suffix is on its own line without a colon; balances must not become the purchase amount."
+}

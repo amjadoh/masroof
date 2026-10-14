@@ -5,6 +5,31 @@ import org.junit.Test
 import java.time.Instant
 
 class DynamicLabEngineTest {
+    @Test fun englishContactlessCreditCardWithoutColon_matchesDynamicAndCopiedBaseline() {
+        val original = RulePack(bank = BankProfile("BANK_ALJAZIRA", "بنك الجزيرة", listOf("AlJazira")), version = 1,
+            rules = listOf(RuleSpec("purchase.pos", "PURCHASE", listOf("pos purchase"))))
+        val pack = LabExampleRules.withEnglishCreditPurchase(original)
+        val body = "POS Purchase Contactless\nCredit card 1234 \nof :42.00 SAR\nAt: TEST_MERCHANT\non : 2026-10-01 15:29\nAvailable Balance : 9000.00 SAR\nDue Amount: 1000.00 SAR"
+        val time = Instant.parse("2026-10-01T12:29:00Z")
+        val dynamic = DynamicLabEngine().parse(listOf(pack), "AlJazira", body, "example", time)
+        val baseline = LabResultProjection.baseline("AlJazira", body, "example", time)
+        listOf(dynamic, baseline).forEach {
+            assertEquals("SUCCESS", it.status); assertEquals("1234", it.facts.card)
+            assertEquals("42.00", it.facts.amount); assertEquals("SAR", it.facts.currency)
+            assertEquals("9000.00", it.facts.balance); assertEquals("TEST_MERCHANT", it.facts.merchant)
+        }
+        val card = dynamic.evidence.single { it.field == "card" }
+        assertEquals("1234", dynamic.normalizedText.substring(card.start, card.endExclusive))
+        assertEquals(listOf("بمبلغ"), original.rules.single().amountLabels)
+        assertEquals(pack, LabExampleRules.withEnglishCreditPurchase(pack))
+    }
+    @Test fun noColonCardLabelsRejectLongAndSplitNumbers() {
+        val english = RuleSpec("purchase.pos", "PURCHASE", listOf("pos purchase"), amountLabels = listOf("of"), cardLabels = listOf("credit card"))
+        listOf("12345", "1234 5678", "1234.56 SAR", "****1234", "1234 extra").forEach { digits ->
+            val outcome = parse("POS Purchase Contactless\nCredit card $digits\nof :42.00 SAR", listOf(english))
+            assertEquals("REVIEW_REQUIRED", outcome.status); assertNull(outcome.facts.card)
+        }
+    }
     private val purchase = RuleSpec("purchase", "PURCHASE", listOf("شراء عبر نقاط البيع"))
     private val profile = BankProfile("demo", "بنك تجريبي", listOf("DEMO"))
     private val pack = RulePack(bank = profile, version = 1, rules = listOf(purchase))

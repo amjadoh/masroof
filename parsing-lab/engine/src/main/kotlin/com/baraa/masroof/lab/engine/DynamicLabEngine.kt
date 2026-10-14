@@ -65,12 +65,17 @@ class DynamicLabEngine {
         }
         fun suffix(rule: RuleSpec, labels: List<String>, field: String): String? {
             val values = labels.flatMap { label ->
-                val regex = Regex(Regex.escape(ArabicTextFolding.foldForComparison(label)) + "\\s*[:：]?\\s*[*•xX]*([0-9]+)(?![0-9.*•xX])")
+                val literal = Regex.escape(ArabicTextFolding.foldForComparison(label))
+                // Colon form retains the configured extraction policy. Without a colon,
+                // accept only a standalone label + four-digit suffix, never a PAN fragment.
+                val regex = Regex(literal + "\\s*[:：]\\s*[*•xX]*([0-9]+)(?![0-9.*•xX])" +
+                    "|^[ \\t]*" + literal + "[ \\t]+([0-9]{4})[ \\t]*$", RegexOption.MULTILINE)
                 regex.findAll(text).mapNotNull { m ->
-                    if (m.groupValues[1].length != 4) {
+                    val group = m.groups[1] ?: m.groups[2]!!
+                    if (group.value.length != 4) {
                         errors += "حقل $field يجب أن يكون آخر أربعة أرقام";null
                     } else {
-                        record(field, rule, label, m.groups[1]!!, m.groupValues[1]);m.groupValues[1]
+                        record(field, rule, label, group, group.value);group.value
                     }
                 }.toList()
             }.distinct()

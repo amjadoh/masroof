@@ -14,6 +14,8 @@ class CardExtractor {
 
     companion object {
         val PATTERNS = listOf(
+            // Observed contactless credit SMS: standalone "Credit card 1234" with no colon.
+            comparisonRegex("""^[ \t]*credit[ \t]+card[ \t]+(\d{4})[ \t]*$""", RegexOption.IGNORE_CASE, RegexOption.MULTILINE),
             comparisonRegex("""بطاقة\s*ائتمانية\s*:\s*(\d{4})"""),
             comparisonRegex("""بطاقة\s*إئتمانية\s*:\s*(\d{4})"""),
             comparisonRegex("""بطاقة\s*مدى\s*:\s*(\d{4})"""),
