@@ -100,4 +100,21 @@ class CardSetupInteractionTest {
         compose.onNodeWithTag("card-network-MADA").performScrollTo().performClick()
         compose.onNodeWithTag("sheet-apply").assertIsNotEnabled()
     }
+
+    @Test fun supplementaryRequiresAConfirmedPrimaryInTheSameBank() {
+        var saved: CardConfiguration? = null
+        val card = legacy.copy(cardNetwork = CardNetwork.VISA, cardType = CardType.CREDIT, cardRole = CardRole.STANDALONE)
+        val parent = card.copy(id = "parent", last4 = "5678", cardRole = CardRole.PRIMARY)
+        val foreign = parent.copy(id = "foreign", bank = Bank("OTHER"), last4 = "9999")
+        compose.setContent { TestTheme {
+            SettingsCardSetupSheet(card, null, listOf(card, parent, foreign), emptyList(), false, false, {}, { saved = it })
+        } }
+        compose.onNodeWithTag("card-role-SUPPLEMENTARY").performScrollTo().performClick()
+        compose.onNodeWithTag("sheet-apply").assertIsNotEnabled()
+        compose.onNodeWithTag("card-primary-9999").assertDoesNotExist()
+        compose.onNodeWithTag("card-primary-5678").performScrollTo().performClick()
+        compose.onNodeWithTag("sheet-apply").performClick()
+        compose.runOnIdle { assertEquals(CardConfiguration(CardNetwork.VISA, CardType.CREDIT,
+            CardRole.SUPPLEMENTARY, "5678"), saved) }
+    }
 }

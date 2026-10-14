@@ -23,6 +23,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class RoomCardRegistryRepositoryTest {
+    @Test fun configuringSupplementaryUsesParentFacilityWithoutChangingParentOrSiblings() = runBlocking {
+        val bank = Bank.BANK_ALJAZIRA
+        seedCard("1111", CardRole.PRIMARY)
+        seedCard("2222", CardRole.STANDALONE)
+        repository.setSupplementaryCard(CardReference(bank, "2222"), "1111")
+        seedCard("3333", CardRole.STANDALONE)
+        repository.markAsDebit(CardReference(bank, "3333"))
+        database.cardRegistryDao().updateLinkedAccount(bank.id, "3333", bank.id, "3001")
+        val others = repository.listAll().filter { it.last4 != "3333" }
+        repository.configure(CardReference(bank, "3333"), com.baraa.masroof.domain.model.CardConfiguration(
+            com.baraa.masroof.domain.model.CardNetwork.VISA, CardType.CREDIT, CardRole.SUPPLEMENTARY, "1111"))
+        val corrected = repository.get(CardReference(bank, "3333"))!!
+        assertEquals(CardType.CREDIT, corrected.cardType)
+        assertEquals(CardRole.SUPPLEMENTARY, corrected.cardRole)
+        assertEquals("1111", corrected.parentCardLast4)
+        assertEquals(null, corrected.linkedAccount)
+        assertEquals(repository.get(CardReference(bank, "1111"))?.creditFacilityId, corrected.creditFacilityId)
+        assertEquals(others, repository.listAll().filter { it.last4 != "3333" })
+    }
+
     @Test fun networkCorrectionPreservesExistingFacilityAndAllSupplementaries() = runBlocking {
         val bank = Bank.BANK_ALJAZIRA
         seedCard("1111", CardRole.PRIMARY)
