@@ -180,9 +180,10 @@ not be presented as ARM-phone speed. Instrumentation-process sampled PSS is 121,
 including UI/test infrastructure and both engines, not isolated engine peak memory.
 
 Validation on the final implementation: 386 engine tests, 21 Android lab JVM tests,
-19 Python tests and two device tests pass; integrated debug APK, lint and detekt pass.
+19 Python tests, two library device tests and two host lab smoke tests pass;
+integrated debug APK, lint and detekt pass.
 The separate full application suite on Windows ran 1,762 tests with 21 failures in backup,
-SQLite reconciliation and update installation tests. No app source/build files differ from
+SQLite reconciliation and update installation tests. No production app source/build files differ from
 main. Do not describe this local full-app check as green or assume the failures are proven
 pre-existing; use the final commit's GitHub Linux checks as additional evidence. Previous
 commit 9004daab was green in both CI workflows, which alone does not validate this addition.
@@ -191,6 +192,9 @@ main 7fd64053: the same restore-file, concurrent-WAL and update-install tests al
 too. This confirms those three precede this change; it does not individually classify the
 other 18 failures. Full Linux unit/static/isolated-lab checks passed on 3fa2b5b5; the initial
 API 28 CI class-routing failure was fixed by explicitly scoping the workflow task to app.
+The existing host ParsingLabSmokeTest was updated for the new results sub-tabs and reference
+editor labels. It keeps the old dated-run checks and also verifies a paired comparison and
+reviewed-field agreement inside the normal app. These are host test changes, not app runtime changes.
 
 Decision: retain opt-in comparison. Default v1 still misses source aliases; v2 demonstrates
 knowledge-only correction without changing engine code, but remains a separate experiment
