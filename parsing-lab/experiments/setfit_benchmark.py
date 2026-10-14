@@ -47,6 +47,8 @@ def normalized(text):
 
 def corpus_rows(path):
     corpus = read_json(path)
+    if corpus.get("schema") == "grouped_bank_sms_v1":
+        return {name: corpus["splits"][name] for name in ("train", "validation")}
     splits = {"train": [], "validation": []}
     for label, split in corpus["classes"].items():
         for name in splits:
@@ -135,10 +137,16 @@ def train(args):
     training_ms = (time.perf_counter() - start) * 1000
     assert not torch.equal(before, parameter.detach().cpu()), "SetFit must actually fine-tune the embedding body"
     model.save_pretrained(args.model_dir)
-    texts = [r["text"] for r in splits["validation"]]
-    probabilities = np.asarray(model.predict_proba(texts))
     classes = [str(c) for c in model.model_head.classes_]
-    calibration = choose_threshold(probabilities.tolist(), classes, [r["label"] for r in splits["validation"]])
+    texts = [r["text"] for r in splits["validation"]]
+    probabilities = np.asarray(model.predict_proba(texts)) if texts else np.empty((0, len(classes)))
+    if args.fixed_threshold is not None:
+        calibration = {"correct": None, "total": len(texts), "threshold": args.fixed_threshold,
+                       "selection": "fixed before grouped test; no threshold or hyperparameter search"}
+    else:
+        if not texts:
+            raise ValueError("Empty validation requires an explicit fixed threshold")
+        calibration = choose_threshold(probabilities.tolist(), classes, [r["label"] for r in splits["validation"]])
     metadata = {"model": MODEL, "revision": REVISION, "setfit": setfit.__version__, "torch": torch.__version__,
                 "sentence_transformers": sentence_transformers.__version__, "transformers": transformers.__version__,
                 "corpusSha256": hashlib.sha256(Path(args.corpus).read_bytes()).hexdigest(), "seed": 20261014,
@@ -150,7 +158,8 @@ def train(args):
                 "embeddingBodyChanged": True, "checkedParameter": name,
                 "modelHashes": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(args.model_dir).iterdir() if p.suffix in {".safetensors", ".pkl"}},
                 "cpuThreads": 4, "maxSequenceLength": 128,
-                "training": "contrastive embedding fine-tuning plus logistic regression head; synthetic training data",
+                "training": "contrastive embedding fine-tuning plus logistic regression head; " +
+                    ("grouped bank-shaped source test SMS" if read_json(args.corpus).get("schema") == "grouped_bank_sms_v1" else "synthetic training data"),
                 "validation": [{"id": row["id"], "expected": row["label"], "predicted": classes[int(np.argmax(probabilities[i]))]} for i, row in enumerate(splits["validation"])]}
     write_json(Path(args.model_dir) / "experiment.json", metadata)
     print(json.dumps(metadata, indent=2), flush=True)
@@ -181,7 +190,7 @@ def evaluate(args):
     from setfit import SetFitModel
     torch.set_num_threads(4)
     torch.set_num_interop_threads(1)
-    cases = [c for c in read_json(args.input) if c["dataset"] == "fixtures"]
+    cases = [c for c in read_json(args.input) if c["dataset"] == args.dataset]
     splits = corpus_rows(args.corpus)
     splits["test"] = [{"id": c["id"], "text": c["body"]} for c in cases]
     audit = audit_splits(splits)
@@ -191,10 +200,11 @@ def evaluate(args):
     model = SetFitModel.from_pretrained(args.model_dir, local_files_only=True)
     load_ms = (time.perf_counter() - start) * 1000
     model.model_body.max_seq_length = 128
+    metadata["trainingTruncated"] = sum(len(model.model_body.tokenizer.encode(r["text"], truncation=False)) > 128 for r in splits["train"])
     classes = [str(c) for c in model.model_head.classes_]
     threshold = metadata["calibration"]["threshold"]
     rules = {r["id"]: r for r in read_json(args.rules)}
-    before = {r["id"]: r for r in read_json(args.before_rules)}
+    before = {r["id"]: r for r in read_json(args.before_rules)} if args.before_rules else rules
     rows = []
     for case in cases:
         def predict():
@@ -214,7 +224,8 @@ def evaluate(args):
                   "usedForConflictFix": case["id"] in REGRESSIONS,
                   "rulesBefore": {"family": old["outcome"]["facts"]["family"], "status": old["outcome"]["status"], "elapsedMs": old["elapsedMs"]},
                   "rules": {"family": reference["outcome"]["facts"]["family"], "status": reference["outcome"]["status"], "elapsedMs": reference["elapsedMs"]},
-                  "setfit": {"family": family, "topFamily": top, "confidence": confidence, "elapsedMs": durations},
+                  "setfit": {"family": family, "topFamily": top, "confidence": confidence, "elapsedMs": durations,
+                             "inputTokenCount": len(model.model_body.tokenizer.encode(case["body"], truncation=False))},
                   "hybrid": {"family": hybrid_family, "status": status, "reason": reason,
                              "elapsedMs": [d + reference["elapsedMs"][i] for i, d in enumerate(durations)]}}
         assert result["hybrid"]["status"] == result["rules"]["status"]
@@ -223,9 +234,13 @@ def evaluate(args):
     groups = {"all_40_training_held_out": rows,
               "not_used_for_three_conflict_fixes": [r for r in rows if not r["usedForConflictFix"]],
               "three_conflict_regressions": [r for r in rows if r["usedForConflictFix"]]}
+    modes = ("rulesBefore", "rules", "setfit", "hybrid")
+    if args.dataset != "fixtures":
+        groups = {"heldout_templates": rows}
+        modes = ("rules", "setfit", "hybrid")
     result = {"training": metadata, "splitAudit": audit, "modelLoadMs": load_ms,
               "timing": "desktop CPU; SetFit/PyTorch single-message classification; hybrid estimated sum; rules full JVM parsing",
-              "groups": {name: {mode: score(group, mode) for mode in ("rulesBefore", "rules", "setfit", "hybrid")} for name, group in groups.items()},
+              "groups": {name: {mode: score(group, mode) for mode in modes} for name, group in groups.items()},
               "rows": rows}
     write_json(args.output, result)
     print(json.dumps({name: {m: {k: v for k, v in r.items() if k != 'perClass'} for m, r in group.items()} for name, group in result["groups"].items()}, indent=2))
@@ -288,9 +303,12 @@ def main():
     t = sub.add_parser("train")
     for name in ("corpus", "base-dir", "model-dir"):
         t.add_argument("--" + name, required=True)
+    t.add_argument("--fixed-threshold", type=float)
     e = sub.add_parser("evaluate")
-    for name in ("corpus", "model-dir", "input", "rules", "before-rules", "output"):
+    for name in ("corpus", "model-dir", "input", "rules", "output"):
         e.add_argument("--" + name, required=True)
+    e.add_argument("--before-rules")
+    e.add_argument("--dataset", default="fixtures")
     a = sub.add_parser("audit")
     a.add_argument("--corpus", required=True)
     a.add_argument("--input", required=True)

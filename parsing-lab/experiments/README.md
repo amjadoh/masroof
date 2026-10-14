@@ -187,3 +187,108 @@ cannot be attributed to fine-tuning. Current SetFit load time is 1.71 seconds. H
 latency is the sum of measured component costs, not integrated Android execution.
 
 SetFit training: https://huggingface.co/docs/setfit/quickstart
+
+## Bank-message source experiment with held-out template groups
+
+SetFit is used for **message-family classification only**. It receives the SMS body as
+text; it is not an SMS reader, field extractor, merchant expense categorizer or ownership
+resolver. Amount/card/account/merchant/date extraction stays in SharedLabEngine.
+Direction is currently derived from the family/rules, not independently trained. An
+incoming transfer is not automatically income; financial interpretation needs ownership.
+
+`bank_sms_dataset.py --prepare --output <private-directory>` reads the application test
+files as offline research data (no production-code imports or runtime dependencies):
+
+- 47 static SMS literals in AlJaziraParserRegressionTest, CreditCardMessageHeuristicsTest
+  and ParsedEventDetailsFactsCharacterizationTest;
+- 10 archived reference bodies, and 40 existing JSON fixtures;
+- 97 source entries, collapsed into 70 examples and 19 conservative template groups.
+  48 examples have an inline/reference source and are eligible for training. The 22
+  fixture-only examples are **never trained**, including constructed conflict controls.
+
+These are bank-shaped examples from the repository, including anonymized real-world
+shapes and constructed/modified test cases. Do not claim verified phone capture or
+fresh new-bank generalization for every example. No new prose teaching examples or
+synthetic SMS augmentation is added. Labels come from reviewing the SMS/test assertions
+and existing fixture expectations, never from predictions of the parser being measured.
+Inline assertions that contradict the curated mapping fail preparation.
+
+Normalization masks numbers, placeholder names and selected variable fields; it retains
+context after merchant lines. Value-only duplicates collapse with aliases/provenance.
+Archived source records take priority over equivalent fixtures. Manual semantic/layout
+groups (e.g. wallet variants of Arabic POS purchases) are joined transitively with any
+pair having normalized character similarity >=0.80. All copies/variants in a resulting
+component stay in the same outer fold. This is conservative grouping, not proof of
+perfect semantic independence.
+
+Three deterministic balanced outer folds each test complete groups. For each fold:
+
+1. Start a new model from the original pinned base, never another fold's weights.
+2. Train only eligible sources outside that fold (28/34/34 messages).
+3. Use the previous fixed training settings: seed 20261014, 32 steps, batch 8, max 128
+   tokens, learning rate 2e-5 and logistic head. No hyperparameter search or test-based
+   selection. `--fixed-threshold 0.0` deliberately measures top-1 type classification;
+   it is not a financial acceptance threshold. No inner validation is used/tuned here.
+4. Evaluate the fold's test cases with `--dataset bank_sms`. The optional old-baseline
+   `--before-rules` argument is omitted. Each message's reported prediction comes from
+   a model that did not train on that message or its template component.
+
+The same source can train models in the other folds; aggregated results describe
+cross-validation, not one final deployed model. Five rare types have only one template
+component, so some folds have test classes absent from training. Report those cases in
+the main result, plus a clearly labeled diagnostic restricted to covered classes.
+
+To reproduce, prepare sources, export SharedLabEngine over `<directory>/all-cases.json`
+using the JVM task, then for fold `N` (0, 1, 2) run each command on one line:
+
+```shell
+python setfit_benchmark.py train --corpus <directory>/fold-N-train.json --base-dir <original-base> --model-dir <model-N> --fixed-threshold 0.0
+python setfit_benchmark.py evaluate --corpus <directory>/fold-N-train.json --model-dir <model-N> --input <directory>/fold-N-test.json --rules <directory>/rules.json --dataset bank_sms --output <directory>/fold-N-results.json
+python bank_sms_results.py --directory <directory> --output <local-results.json> --report <local-report.html>
+```
+
+Run heavy training and latency measurement sequentially. `bank_sms_results.py` checks
+each source has exactly one out-of-fold prediction and records row-weighted accuracy,
+macro F1 and equal-template mean accuracy, with source-only and fixture-only results
+separated. SMS text and model weights remain local; public manifests/results contain
+source pointers, hashes, grouping and metrics only. No model is activated in the app.
+
+### Frozen grouped result (2026-10-14)
+
+Recorded in `results/2026-10-14-bank-sms-grouped.json`. No generated prose teaching
+examples were used. Each row is scored with its out-of-template fold model, never
+with a model trained on that group. Three fresh embedding bodies were fine-tuned for
+32 steps each (62.6/59.3/63.7 seconds); original pretrained weights are reused as the
+starting point, never the previous fold's trained weights. All cross-split normalized
+text similarities are below .75; no input was truncated at 128 tokens.
+
+| Method | Source examples correct / 48 | Accuracy | Warm median ms |
+| --- | ---: | ---: | ---: |
+| Shared rules | 41 | 85.42% | 0.69 |
+| SetFit | 27 | 56.25% | 28.41 |
+| Guarded hybrid suggestions | 44 | 91.67% | 29.28 estimated |
+
+Equal-template mean accuracy on the 17 source-covered components is 79.9%, 39.8%,
+93.6% respectively. On all 70 examples the methods score 62/70 (88.6%), 34/70 (48.6%)
+and 64/70 (91.4%). On the 22 fixture-only cases, rules score 21/22 (95.5%) while
+hybrid scores 20/22 (90.9%): the previously unrecognized-format case receives a wrong
+review-only model suggestion. Do not hide this regression behind the overall gain.
+
+The hybrid gains three source classifications: the credit-card settlement wording,
+the newly accepted incoming-transfer wording, and a compact English online purchase.
+The model also labels three external outgoing-transfer examples TRANSFER_IN. Those
+are unsafe direction suggestions if reused automatically: the experiment changes no
+stored direction, ownership, parse eligibility or ledger row. All remain review-only.
+
+Six of 48 source examples have a class absent from that fold's training, due to rare
+single-template types. On the other 42, SetFit scores 27/42 (64.3%); this is diagnostic
+only and never replaces the full 48-example headline. Rules had prior development
+exposure to these examples; this is template-held-out for model training, not a blind
+comparison of equal training exposure. These figures are not directly comparable to
+the earlier 40-example, synthetic-training experiment.
+
+**Decision:** useful evidence for model-assisted review of unrecognized messages, not
+for replacement or automatic financial approval. Preserve rules/guards and collect
+additional independently reviewed templates and banks, especially rare types, before
+calibrating confidence or testing Android performance. All model use remains opt-in
+offline tooling in this draft experiment.
