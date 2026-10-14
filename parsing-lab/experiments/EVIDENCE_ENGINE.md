@@ -140,6 +140,9 @@ record paired Android-runtime timing on four synthetic cases. Their process PSS 
 include instrumentation and UI; they are not the engine's isolated peak memory or phone measurements.
 The lab's connected test task runs after the app's connected task when both are requested,
 so they cannot compete for the emulator foreground. CI publishes both instrumentation reports.
+CI smoke explicitly requests both module tasks with `--no-parallel`; the API 28 backup job
+requests only `:app:connectedDebugAndroidTest` so its app-specific class filter is never sent
+to the new library instrumentation package.
 
 Acceptance remains experimental until independent reviewed templates demonstrate better
 event correctness and accepted precision with coverage reported alongside it. Do not hide
@@ -183,6 +186,11 @@ SQLite reconciliation and update installation tests. No app source/build files d
 main. Do not describe this local full-app check as green or assume the failures are proven
 pre-existing; use the final commit's GitHub Linux checks as additional evidence. Previous
 commit 9004daab was green in both CI workflows, which alone does not validate this addition.
+Three representative Windows failures were separately rerun on an isolated archive of original
+main 7fd64053: the same restore-file, concurrent-WAL and update-install tests all failed there
+too. This confirms those three precede this change; it does not individually classify the
+other 18 failures. Full Linux unit/static/isolated-lab checks passed on 3fa2b5b5; the initial
+API 28 CI class-routing failure was fixed by explicitly scoping the workflow task to app.
 
 Decision: retain opt-in comparison. Default v1 still misses source aliases; v2 demonstrates
 knowledge-only correction without changing engine code, but remains a separate experiment
