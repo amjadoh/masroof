@@ -50,7 +50,9 @@ object ReferenceFields {
         "destination" to f.destination, "merchant" to f.merchant, "balance" to f.balance,
         "dueAmount" to f.dueAmount, "ibanSuffix" to f.ibanSuffix, "occurredAtLocal" to f.occurredAtLocal,
         "executionState" to f.executionState, "cardKind" to f.cardKind, "network" to f.network,
-        "feeAmount" to f.feeAmount, "exchangeRate" to f.exchangeRate)
+        "feeAmount" to f.feeAmount, "exchangeRate" to f.exchangeRate,
+        "senderName" to f.senderName, "recipientName" to f.recipientName,
+        "senderBank" to f.senderBank, "accountIdentifier" to f.accountIdentifier)
     val numeric = setOf("amount", "balance", "dueAmount", "feeAmount", "exchangeRate")
     fun validate(e: ExpectedResult) {
         val values = values(e.facts)

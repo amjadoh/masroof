@@ -24,6 +24,8 @@ internal fun fieldLabel(value: String) = when(value) {
     "occurredAtLocal" -> "تاريخ العملية"; "dueDate" -> "تاريخ الاستحقاق"; "executionState" -> "حالة التنفيذ"
     "cardKind" -> "نوع البطاقة"; "network" -> "الشبكة"; "feeAmount" -> "الرسوم"; "exchangeRate" -> "سعر الصرف"
     "otherAmount" -> "مبلغ آخر مستقل عن الحركة"
+    "senderName" -> "اسم المرسل"; "recipientName" -> "اسم المستفيد"
+    "senderBank" -> "بنك المرسل"; "accountIdentifier" -> "معرف الحساب كما ورد (دون تحديد ملكيته)"
     "dateOnly" -> "تاريخ دون وقت"; "invalidDate" -> "تاريخ غير صالح"
     "status" -> "حالة التحليل"; else -> value
 }
@@ -55,7 +57,8 @@ internal fun EvidenceComparisonPanel(pack: RulePack, state: LabUiState, vm: LabV
     val labeled = rows.filter { it.expected != null }
     LabCard {
         Text("${rows.size} رسالة · ${labeled.size} لها إجابة · ${rows.size - labeled.size} بلا تقييم")
-        Text("مطابقة الحقول المراجعة: الحالي ${labeled.count { it.sharedDifferences!!.isEmpty() }} / ${labeled.size} · الأدلة ${labeled.count { it.evidenceDifferences!!.isEmpty() }} / ${labeled.size}")
+        if (labeled.isEmpty()) Text("الدقة لم تُقيّم بعد: افتح مراجعة الإجابة الصحيحة، احفظ الحقول التي تحققت منها، ثم شغّل مقارنة جديدة.")
+        else Text("مطابقة الحقول المراجعة: الحالي ${labeled.count { it.sharedDifferences!!.isEmpty() }} / ${labeled.size} · الأدلة ${labeled.count { it.evidenceDifferences!!.isEmpty() }} / ${labeled.size}")
         Text("نتائج محسومة: الحالي ${rows.count { it.shared.status == "SUCCESS" }} · الأدلة ${rows.count { it.evidence.outcome.status == "SUCCESS" }}")
         Text("هذه مطابقة للحقول المراجعة فقط؛ الحقول غير المراجعة لا تثبت صحة العملية كاملة.", style = MaterialTheme.typography.bodySmall)
         Text("الزمن لكل رسالة محفوظ للتشخيص؛ يشمل أول تشغيل ولا يمثل اختبار سرعة مضبوطًا.", style = MaterialTheme.typography.bodySmall)
@@ -88,18 +91,22 @@ private fun ComparisonItem(row: LabComparisonItem, busy: Boolean, annotate: (Exp
         } }
         Text(marked)
         Text("الحالي: ${statusLabel(row.shared.status)} · الأدلة: ${statusLabel(row.evidence.outcome.status)}")
+        Text("الحقول المستخرجة · محرك الأدلة", style = MaterialTheme.typography.titleSmall)
+        FactsText(row.evidence.outcome.facts)
+        Text("التظليل يبيّن الأدلة المكتشفة؛ الحقول غير المستخرجة تظهر عند فتح التفاصيل.", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { details = !details }) { Text(if (details) "إخفاء التفاصيل" else "الحقول وأسباب القرار") }
         if (details) {
-            Text("المحرك الحالي", style = MaterialTheme.typography.titleSmall); FactsText(row.shared.facts)
-            Text("محرك الأدلة", style = MaterialTheme.typography.titleSmall); FactsText(row.evidence.outcome.facts)
+            Text("الحقول المستخرجة · المحرك الحالي", style = MaterialTheme.typography.titleSmall); FactsText(row.shared.facts)
+            val found = ReferenceFields.values(row.evidence.outcome.facts)
+            Text("لم يُستخرج: ${found.filterValues { it == null }.keys.joinToString { fieldLabel(it) }}")
             Text("الزمن: الحالي ${"%.2f".format(row.sharedMs)} مللي ثانية · الأدلة ${"%.2f".format(row.evidenceMs)}")
             row.evidence.relations.forEach { Text("${fieldLabel(it.role)}: ${it.value} ← ${row.body.substring(it.start, it.endExclusive)}", style = MaterialTheme.typography.bodySmall) }
             row.evidence.hypotheses.forEach { Text("تفسير: ${familyLabel(it.family)} · ${it.blockers.joinToString().ifBlank { "لا مانع أولي" }}", style = MaterialTheme.typography.bodySmall) }
             row.evidence.outcome.trace.filterNot { it.startsWith("receivedAt:") }.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
             Text("اختلافات الحالي: ${row.sharedDifferences?.joinToString { fieldLabel(it) } ?: "غير مقيم"}")
             Text("اختلافات الأدلة: ${row.evidenceDifferences?.joinToString { fieldLabel(it) } ?: "غير مقيم"}")
-            EvidenceReferenceEditor(row, busy, annotate)
         }
+        EvidenceReferenceEditor(row, busy, annotate)
     }
 }
 
@@ -112,7 +119,7 @@ internal fun EvidenceReferenceEditor(row: LabComparisonItem, busy: Boolean, save
     val values = remember(row.sampleId) { mutableStateMapOf<String, String>().also { map -> ReferenceFields.values(row.expected?.facts ?: LabFacts()).forEach { (k,v) -> map[k] = v.orEmpty() } } }
     val absent = remember(row.sampleId) { mutableStateMapOf<String, Boolean>().also { map -> row.expected?.absentFields?.forEach { map[it] = true } } }
     var status by remember(row.sampleId) { mutableStateOf(row.expected?.status ?: "REVIEW_REQUIRED") }
-    Text("أدخل ما راجعته من النص. القيمة الفارغة غير مراجعة؛ اختر «غير موجود» فقط بعد التأكد. لا تملأ الإجابة من أحد المحركين تلقائيًا.")
+    Text("هذه إجابة مرجعية تراجعها أنت، وليست حقول الاستخراج. القيمة الفارغة غير مراجعة؛ اختر «غير موجود» فقط بعد التأكد. بعد الحفظ شغّل مقارنة جديدة؛ النتائج القديمة محفوظة كما كانت.")
     FlowRow { listOf("SUCCESS", "REVIEW_REQUIRED", "NON_FINANCIAL").forEach { s -> FilterChip(status == s, { status = s }, label = { Text(statusLabel(s)) }, enabled = !busy) } }
     ReferenceFields.values(LabFacts()).keys.forEach { field ->
         val options = when(field) {
@@ -135,7 +142,8 @@ internal fun EvidenceReferenceEditor(row: LabComparisonItem, busy: Boolean, save
     Button(onClick = {
         fun v(key: String) = values[key]?.trim()?.takeIf { it.isNotEmpty() }
         save(ExpectedResult(status, LabFacts(v("family"), v("direction"), v("amount"), v("currency"), v("card"), v("source"), v("destination"),
-            v("merchant"), v("balance"), v("dueAmount"), v("ibanSuffix"), v("occurredAtLocal"), v("executionState"), v("cardKind"), v("network"), v("feeAmount"), v("exchangeRate")),
+            v("merchant"), v("balance"), v("dueAmount"), v("ibanSuffix"), v("occurredAtLocal"), v("executionState"), v("cardKind"), v("network"), v("feeAmount"), v("exchangeRate"),
+            senderName = v("senderName"), recipientName = v("recipientName"), senderBank = v("senderBank"), accountIdentifier = v("accountIdentifier")),
             absent.filterValues { it }.keys.toSet()))
         editing = false
     }, enabled = !busy) { Text("حفظ للاختبارات القادمة") }

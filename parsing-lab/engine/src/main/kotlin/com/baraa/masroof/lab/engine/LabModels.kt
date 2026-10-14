@@ -38,6 +38,8 @@ data class LabFacts(
     val dueAmount: String? = null, val ibanSuffix: String? = null, val occurredAtLocal: String? = null,
     val executionState: String? = null, val cardKind: String? = null, val network: String? = null,
     val feeAmount: String? = null, val exchangeRate: String? = null,
+    val senderName: String? = null, val recipientName: String? = null,
+    val senderBank: String? = null, val accountIdentifier: String? = null,
 )
 
 @Serializable
@@ -112,7 +114,7 @@ object LabComparison {
         if (e.occurredAtLocal != null && !com.baraa.masroof.lab.engine.evidence.ReferenceFields.equal("occurredAtLocal", e.occurredAtLocal, a.occurredAtLocal)) add("occurredAtLocal")
         val extra = com.baraa.masroof.lab.engine.evidence.ReferenceFields.values(e)
         val found = com.baraa.masroof.lab.engine.evidence.ReferenceFields.values(a)
-        setOf("executionState", "cardKind", "network", "feeAmount", "exchangeRate").forEach { field ->
+        setOf("executionState", "cardKind", "network", "feeAmount", "exchangeRate", "senderName", "recipientName", "senderBank", "accountIdentifier").forEach { field ->
             if (extra[field] != null && !com.baraa.masroof.lab.engine.evidence.ReferenceFields.equal(field, extra[field], found[field])) add(field)
         }
         expected.absentFields.forEach { if (found[it] != null && it !in this) add(it) }
