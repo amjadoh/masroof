@@ -130,4 +130,21 @@ class EvidenceLabEngineTest {
         assertEquals("0007", parse(message, tuned).outcome.facts.source)
         assertNull(parse("حوالة واردة\nمبلغ: 10 SAR\nمن: 1000 SAR", tuned).outcome.facts.source)
     }
+    @Test fun merchantNetworkWordsDoNotIdentifyTheCardNetworkOrKind() {
+        val a = parse("POS purchase\nAmount: 10 SAR\nCard: 1234\nAt: Visa Mada Shop").outcome
+        assertEquals("SUCCESS", a.status)
+        assertNull(a.facts.network);assertNull(a.facts.cardKind)
+    }
+    @Test fun refundWordInsideMerchantDoesNotProveAnIncomingRefundAndRejectionStillBlocks() {
+        val a = parse("POS purchase\nAmount: 10 SAR\nCard: 1234\nAt: Refund Shop").outcome
+        assertEquals("REVIEW_REQUIRED", a.status);assertEquals("UNKNOWN", a.facts.family);assertNull(a.facts.direction)
+        val declined = parse("POS purchase\nAmount: 10 SAR\nCard: 1234\nAt: TEST_SHOP declined").outcome
+        assertEquals("REVIEW_REQUIRED", declined.status)
+        assertEquals("REJECTED", declined.facts.executionState)
+    }
+    @Test fun genericSettlementNeedsCardAndCannotOverrideBillOrInstallmentWording() {
+        assertEquals("UNKNOWN", parse("تسديد\nالمبلغ: 10 SAR").outcome.facts.family)
+        assertEquals("CARD_PAYMENT", parse("تسديد\nالمبلغ: 10 SAR\nبطاقة: 1234").outcome.facts.family)
+        assertEquals("UNKNOWN", parse("تسديد فاتورة\nالمبلغ: 10 SAR\nبطاقة: 1234").outcome.facts.family)
+    }
 }

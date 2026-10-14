@@ -68,7 +68,11 @@ class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
         }
         val extracted = EvidenceDefaults.roles.associateWith(::unique)
         val amountRelation = relations.filter { it.role == "amount" }.distinctBy { it.value to it.currency }.singleOrNull()
-        val active = hits.filter { it.rule.requiredRoles.all { role -> extracted[role] != null } }
+        fun insideMerchant(hit: Hit) = relations.any { relation -> relation.role == "merchant" &&
+            relation.start <= text.start(hit.range.first) && relation.endExclusive >= text.end(hit.range.last) }
+        val active = hits.filter { it.rule.requiredRoles.all { role -> extracted[role] != null } }.filterNot {
+            (it.rule.concept.startsWith("card.") || it.rule.concept.startsWith("network.")) && insideMerchant(it)
+        }
         val families = active.filter { it.rule.concept.startsWith("family.") }.groupBy { it.rule.concept.substringAfter('.') }
         val stateHits = active.filter { it.rule.concept.startsWith("state.") }.map { it.rule.concept.substringAfter('.') }.toSet()
         val execution = when {
@@ -85,7 +89,10 @@ class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
         val inactiveBeneficiary = phrase("المستفيد").containsMatchIn(text.comparison) &&
             listOf("غير نشط", "inactive").any { phrase(it).containsMatchIn(text.comparison) }
         val feeTitle = Regex("^\\s*(?:رسوم(?: حوالة| تحويل)?|transfer fee|fee charged)[ :：\\n]").containsMatchIn(text.comparison)
-        val family = EvidenceDecisionPolicy.choose(families.keys, otp, dueContext, inactiveBeneficiary, feeTitle)
+        val ambiguousRefund = families.keys == setOf("PURCHASE", "REFUND") && families.getValue("REFUND").all(::insideMerchant)
+        val family = if (!otp && ambiguousRefund) "UNKNOWN" else
+            EvidenceDecisionPolicy.choose(families.keys, otp, dueContext, inactiveBeneficiary, feeTitle)
+        if (ambiguousRefund && !otp) problems += "لفظ الاسترداد داخل اسم التاجر؛ لم يثبت حدث استرداد مستقل"
         if (family == "UNKNOWN") problems += "التفسيرات متعارضة أو الأدلة غير كافية"
         if (execution in setOf("REJECTED", "REQUESTED", "PENDING")) problems += "حالة التنفيذ: $execution"
         if (family in LabFamilies.financial && amountRelation == null) problems += "لا يوجد مبلغ عملية واحد مرتبط بعملة واضحة"

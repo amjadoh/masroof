@@ -16,6 +16,9 @@ is available through an explicit paired comparison; neither output posts financi
 - Reference suffixes require supported card/account/IBAN wording. A year-shaped number alone
   never becomes a date or card. Explicit credit wording does not identify the card network.
   A transaction date without time stays reviewable instead of inventing midnight.
+- Generic settlement wording requires a card reference and excludes bill/installment terms.
+  Card-kind/network words inside a merchant name do not describe the card. A refund word
+  inside that name plus a purchase cue stays UNKNOWN/review; rejection protection remains active.
 - Field relationships do not depend on the winning family. Required-role conditions expand
   only from independently established relationships; cycles cannot justify themselves.
 - Competing hypotheses retain support and blockers. OTP authority is built in. Conflicting
@@ -171,15 +174,15 @@ and 42/48 (87.5%) for evidence. Across all 70 the total remains 62/70 (88.6%): t
 recognized inactive-beneficiary notices regress to UNKNOWN/review. Improvements in field
 extraction do not establish a general classification improvement.
 
-Desktop per-case warm medians: shared 0.802 ms, evidence v1 0.729 ms, tuned v2 0.750 ms.
-p95 of per-case medians: 1.396 / 1.227 / 1.297 ms. The separate tuned run remeasures the
+Desktop per-case warm medians: shared 0.901 ms, evidence v1 0.760 ms, tuned v2 0.752 ms.
+p95 of per-case medians: 1.407 / 1.370 / 1.263 ms. The separate tuned run remeasures the
 shared baseline too; the headline shared number comes from the default paired run.
-Emulator API 30 x86_64, four synthetic cases: shared median 57.67 / p95 91.48 ms;
-evidence v1 median 40.89 / p95 78.80 ms. These debug/instrumented emulator numbers must
-not be presented as ARM-phone speed. Instrumentation-process sampled PSS is 121,999→154,051 KB,
+Emulator API 30 x86_64, four synthetic cases: shared median 63.84 / p95 108.23 ms;
+evidence v1 median 49.03 / p95 82.62 ms. These debug/instrumented emulator numbers must
+not be presented as ARM-phone speed. Instrumentation-process sampled PSS is 123,437→161,589 KB,
 including UI/test infrastructure and both engines, not isolated engine peak memory.
 
-Validation on the final implementation: 386 engine tests, 21 Android lab JVM tests,
+Validation on the final implementation: 389 engine tests, 21 Android lab JVM tests,
 19 Python tests, two library device tests and two host lab smoke tests pass;
 integrated debug APK, lint and detekt pass.
 The separate full application suite on Windows ran 1,762 tests with 21 failures in backup,
