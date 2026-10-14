@@ -1,0 +1,57 @@
+{
+  "description": "Manually authored synthetic training/validation concepts. No customer SMS. Repository fixtures are reserved for evaluation, not unseen by prior rule developers.",
+  "classes": {
+    "PURCHASE": {
+      "train": ["تم دفع قيمة بضائع ببطاقتك لدى مكتبة بمبلغ 65 ريال", "استخدمت البطاقة لشراء وجبة من مطعم وقيمة المشتريات 24 ريال", "نجحت مشتريات الإنترنت من متجر الملابس بقيمة 180 ريال", "Your card was charged 16 dollars for goods at the supermarket", "Payment completed for an online shopping order at a bookshop", "You paid a restaurant with your bank card; the food cost 29 euros"],
+      "validation": ["اكتمل شراء مستلزمات منزلية باستخدام البطاقة بقيمة 95 ريال", "The merchant received your successful card payment for an order"]
+    },
+    "TRANSFER_IN": {
+      "train": ["استلم حسابك حوالة من شخص آخر قيمتها 450 ريال", "أضيف إلى حسابك مبلغ 800 ريال مرسل من مستفيد", "ورد راتبك إلى الحساب وأصبح متاحا للاستخدام", "An incoming bank transfer has increased your account by 320 dollars", "Money sent by another person was credited to your bank account", "Your employer deposited this month's salary into your account"],
+      "validation": ["وصل تحويل مالي من طرف آخر إلى رصيدك", "Funds have arrived from a different account and are now credited"]
+    },
+    "TRANSFER_OUT": {
+      "train": ["أرسلت 170 ريال من الحساب إلى حساب المستفيد", "اكتمل تحويل مبلغ 600 ريال من رصيدك إلى شخص آخر", "نُفذت حوالتك إلى بنك آخر وخصمت قيمتها من الحساب", "Your outgoing bank transfer of 210 dollars was sent to the recipient", "Funds were moved out of your account to another account", "A beneficiary received the money you transferred from your balance"],
+      "validation": ["تم تنفيذ إرسال الأموال إلى المستفيد خارج حسابك", "The bank completed your outward remittance to the destination account"]
+    },
+    "BILL_PAYMENT": {
+      "train": ["دفعت فاتورة الكهرباء بمبلغ 310 ريال للمفوتر", "اكتمل تسديد فاتورة المياه من حسابك", "سددت رسوم خدمة حكومية عبر نظام سداد للمدفوعات", "Your electricity bill was settled through the biller payment service", "A utility invoice for water has been paid from your account", "Government dues were successfully paid using the bill payment system"],
+      "validation": ["تم تسديد الفاتورة الشهرية لشركة الاتصالات", "The telecommunications biller received your invoice payment"]
+    },
+    "CARD_PAYMENT": {
+      "train": ["تم دفع جزء من مديونية بطاقتك الائتمانية بقيمة 750 ريال", "استلمت جهة إصدار البطاقة مبلغ سداد المستحقات", "سددت الرصيد المدين للبطاقة من حسابك الجاري", "A repayment of 900 dollars reduced your credit card debt", "The credit card issuer received payment towards your outstanding card balance", "Your current account funded a settlement of the credit card statement"],
+      "validation": ["انخفضت مديونية البطاقة بعد تسديد دفعتها الشهرية", "A payment was applied to settle the amount owed on your credit card"]
+    },
+    "FINANCING_INSTALLMENT": {
+      "train": ["استوفي القسط الشهري للتمويل الشخصي من حسابك", "تم اقتطاع دفعة القرض العقاري بقيمة 2200 ريال", "سددت دفعة من عقد التمويل وتبقى أقساط أخرى", "Your monthly personal loan installment has been collected", "A mortgage repayment of 1400 dollars was debited from the account", "The scheduled financing repayment reduced the outstanding loan principal"],
+      "validation": ["خصم البنك دفعة تمويل السيارة المستحقة هذا الشهر", "The lender collected this month's scheduled loan repayment"]
+    },
+    "WITHDRAWAL": {
+      "train": ["استلمت نقدا 200 ريال من الصراف الآلي", "تم صرف أوراق نقدية من جهاز الصراف باستخدام بطاقتك", "نجح سحب 500 ريال كاش من حسابك", "You withdrew 80 dollars in cash at an automated teller machine", "The ATM dispensed cash and deducted it from your account", "Cash was taken from your balance using a bank withdrawal machine"],
+      "validation": ["صرف لك جهاز الصراف مبلغ السحب النقدي المطلوب", "An automated teller successfully dispensed your requested cash"]
+    },
+    "REFUND": {
+      "train": ["أعاد التاجر 90 ريال إلى البطاقة مقابل مشتريات مرتجعة", "استرجعت قيمة طلب الشراء الملغى إلى حسابك", "تم عكس عملية شراء سابقة وإرجاع المبلغ", "The merchant refunded a previous card purchase of 45 dollars", "Money for returned goods was credited back to your card", "An earlier shopping transaction was reversed and its payment returned"],
+      "validation": ["أُرجعت قيمة البضاعة التي أعدتها للمتجر إلى بطاقتك", "A cancelled purchase has been refunded to the original payment card"]
+    },
+    "FEE": {
+      "train": ["اقتطع البنك عمولة الخدمة الشهرية وقدرها 12 ريال", "حُمّل الحساب رسم إصدار شهادة بنكية", "خصمت تكلفة خدمة مصرفية من رصيدك", "The bank charged a monthly account service fee of 6 dollars", "A banking commission was deducted for issuing an account certificate", "Your balance was debited for the bank's annual service charge"],
+      "validation": ["تم تحصيل رسم خدمة إصدار البطاقة بمبلغ 25 ريال", "An administrative banking fee was deducted from your balance"]
+    },
+    "BALANCE_NOTICE": {
+      "train": ["رصيد حسابك الحالي 9100 ريال، هذه معلومة عن الرصيد فقط", "نتيجة الاستعلام: المبلغ المتاح في الحساب 3400 ريال", "تنبيه دوري يعرض قيمة رصيدك دون تنفيذ حركة جديدة", "Your balance enquiry shows 620 dollars currently available", "This is a current account balance update, with no new payment", "Periodic balance notification: available funds are 2700 dollars"],
+      "validation": ["استعلام الرصيد يعرض المبلغ المتاح حاليا في حسابك", "The requested balance enquiry reports your available account funds"]
+    },
+    "NON_FINANCIAL": {
+      "train": ["اكتمل تسجيل الدخول إلى الخدمات المصرفية من جهازك", "أضيف مستفيد جديد إلى قائمة التحويلات دون إرسال أموال", "كشف بطاقتك جاهز ويعرض المستحق وتاريخ دفعه، ولم يتم السداد", "A new login to online banking was detected", "Your beneficiary was activated; no money was transferred", "Your card statement is ready and lists the amount due and its due date, not a completed payment"],
+      "validation": ["تم تغيير إعدادات دخولك للخدمات البنكية", "Your monthly statement is available for viewing; the payment remains due"]
+    },
+    "OTP": {
+      "train": ["استخدم الرمز 639284 للتحقق من هويتك ولا تشاركه", "كلمة المرور المؤقتة لإكمال الشراء هي 719365، لا تعطها لأحد", "رمز التأكيد المطلوب للموافقة على الحوالة 832716", "Your one-time authorization code is 581942; never share it", "Enter verification password 947261 to approve the requested purchase", "Use security token 624857 to confirm the transfer request"],
+      "validation": ["للمتابعة أدخل رمز التحقق المؤقت 193748", "Authorize the operation using this one-time security code: 527194"]
+    },
+    "UNKNOWN": {
+      "train": ["الرسالة تذكر حوالة واردة وصادرة معا ولا توضح أيهما حدث", "عنوان رسوم حوالة صادرة قد يصف العمولة أو أصل التحويل، لم يتحدد النوع", "شراء مع كشف مستحق وتاريخ استحقاق في إشعار واحد متعارض", "The notification reports both an incoming and outgoing transfer without resolving the movement", "A bank message has contradictory transaction and inactive beneficiary status evidence", "An unfamiliar account message has no identifiable transaction type"],
+      "validation": ["لا تكفي معلومات هذا الإشعار لمعرفة نوع الحركة المالية", "Conflicting payment and statement evidence requires manual interpretation"]
+    }
+  }
+}
