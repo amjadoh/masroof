@@ -110,7 +110,7 @@ jobs:
             echo "sdk.dir=${SDK_DIR}" > local.properties
             # notPackage in app/build.gradle.kts keeps M13 process-death phases out of
             # this clearPackageData=true suite.
-            ./gradlew connectedDebugAndroidTest --stacktrace
+            ./gradlew :app:connectedDebugAndroidTest :parsing-lab:android:connectedDebugAndroidTest --no-parallel --stacktrace
             mkdir -p m19-statement-screenshots
             adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
             find m19-statement-screenshots -name 'm19-*.png' | grep -q .
@@ -131,6 +131,8 @@ jobs:
           path: |
             app/build/reports/androidTests/connected/debug/
             app/build/outputs/androidTest-results/connected/debug/
+            parsing-lab/android/build/reports/androidTests/connected/debug/
+            parsing-lab/android/build/outputs/androidTest-results/connected/debug/
           if-no-files-found: warn
 
   # API 30 process death. Separate from emulator-smoke so clearPackageData=true
@@ -259,4 +261,4 @@ jobs:
           script: |
             SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
             echo "sdk.dir=${SDK_DIR}" > local.properties
-            ./gradlew connectedDebugAndroidTest --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.baraa.masroof.instrumentation.PreVacuumBackupSnapshotTest
+            ./gradlew :app:connectedDebugAndroidTest --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=com.baraa.masroof.instrumentation.PreVacuumBackupSnapshotTest
