@@ -26,7 +26,7 @@ object RegistryDisplayLabels {
             CardRole.PRIMARY -> "Primary ••${entry.last4}"
             CardRole.SUPPLEMENTARY -> "Additional ••${entry.last4}"
             CardRole.STANDALONE, null -> when (entry.cardType) {
-                CardType.DEBIT -> "Mada ••${entry.last4}"
+                CardType.DEBIT -> "Debit ••${entry.last4}"
                 CardType.CREDIT -> "Credit ••${entry.last4}"
                 null -> "Card ••${entry.last4}"
             }

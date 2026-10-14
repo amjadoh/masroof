@@ -11,6 +11,8 @@ import com.baraa.masroof.domain.repository.CardRegistryRepository
 open class NoOpCardRegistryRepository(
     private val entries: List<CardRegistryEntry> = emptyList(),
 ) : CardRegistryRepository {
+    override suspend fun configure(reference: com.baraa.masroof.domain.model.CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) { error("configure not used by this test double") }
+
     override suspend fun observe(reference: CardReference, rawSmsId: String) = Unit
 
     override suspend fun setOwnership(reference: CardReference, status: OwnershipStatus) = Unit

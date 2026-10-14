@@ -377,6 +377,7 @@ class AppContainer(
             accountRegistryRepository = accountRegistryRepository,
             loanRegistryRepository = loanRegistryRepository,
             ownershipConfirmationService = ownershipConfirmationService,
+            parsedEvents = parsedEventRepository,
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =

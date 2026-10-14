@@ -24,7 +24,9 @@ internal fun registryLabel(account: ManagedAccountUi): String = maskedName(accou
 @Composable
 internal fun registryLabel(card: ManagedCardUi): String = maskedName(card.displayName,
     stringResource(when {
-        card.cardType == CardType.DEBIT -> R.string.card_network_mada
+        card.cardNetwork == com.baraa.masroof.domain.model.CardNetwork.MADA -> R.string.card_network_mada
+        card.cardType == CardType.DEBIT -> R.string.settings_card_type_debit
+        card.cardType == null -> R.string.settings_card_type_unknown
         card.cardRole == CardRole.SUPPLEMENTARY -> R.string.dashboard_credit_facility_additional
         card.cardRole == CardRole.PRIMARY -> R.string.dashboard_credit_facility_primary
         else -> R.string.dashboard_credit_card_credit_badge

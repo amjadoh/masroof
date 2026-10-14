@@ -95,143 +95,6 @@ fun SettingsRenameAccountDialog(
     )
 }
 
-@Composable
-fun SettingsCardNetworkDialog(
-    target: ManagedCardUi?,
-    updating: Boolean,
-    onDismiss: () -> Unit,
-    onSelect: (CardNetwork?) -> Unit,
-) {
-    target ?: return
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_card_network_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-                CardNetwork.entries.filter { it != CardNetwork.UNKNOWN }.forEach { network ->
-                    Text(
-                        text = cardNetworkLabel(network),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !updating) { onSelect(network) }
-                            .padding(vertical = MasroofSpacing.cardInnerGap),
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.settings_card_network_clear),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = !updating) { onSelect(null) }
-                        .padding(vertical = MasroofSpacing.cardInnerGap),
-                )
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-fun SettingsCardRoleDialog(
-    target: ManagedCardUi?,
-    primaryCards: List<ManagedCardUi>,
-    updating: Boolean,
-    onDismiss: () -> Unit,
-    onSetPrimary: () -> Unit,
-    onSetSupplementary: (String) -> Unit,
-    onClearRole: () -> Unit,
-) {
-    target ?: return
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_card_role_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-                Text(
-                    text = stringResource(R.string.settings_card_role_primary),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = !updating) { onSetPrimary() }
-                        .padding(vertical = MasroofSpacing.cardInnerGap),
-                )
-                primaryCards
-                    .filter { it.last4 != target.last4 }
-                    .forEach { primary ->
-                        Text(
-                            text = stringResource(
-                                R.string.settings_card_role_supplementary_to,
-                                formatCardLast4(primary.last4),
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !updating) { onSetSupplementary(primary.last4) }
-                                .padding(vertical = MasroofSpacing.cardInnerGap),
-                        )
-                    }
-                Text(
-                    text = stringResource(R.string.settings_card_role_clear),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = !updating) { onClearRole() }
-                        .padding(vertical = MasroofSpacing.cardInnerGap),
-                )
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-fun SettingsLinkDebitDialog(
-    target: ManagedCardUi?,
-    accounts: List<ManagedAccountUi>,
-    updating: Boolean,
-    onDismiss: () -> Unit,
-    onLink: (ManagedAccountUi) -> Unit,
-) {
-    target ?: return
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_link_debit_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-                accounts.forEach { account ->
-                    Text(
-                        text = registryLabel(account),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !updating) { onLink(account) }
-                            .padding(vertical = MasroofSpacing.cardInnerGap),
-                    )
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
-            }
-        },
-    )
-}
-
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsCardMetadataActions(
@@ -239,9 +102,6 @@ fun SettingsCardMetadataActions(
     enabled: Boolean,
     onRename: () -> Unit,
     onPickNetwork: () -> Unit,
-    onPickRole: () -> Unit,
-    onLinkDebit: () -> Unit,
-    onMarkDebit: () -> Unit,
     includeRename: Boolean = true,
     onStop: (() -> Unit)? = null,
 ) {
@@ -249,11 +109,10 @@ fun SettingsCardMetadataActions(
         horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         if (includeRename) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), onRename, enabled = enabled)
-        com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_network), onPickNetwork, enabled = enabled)
-        if (card.cardType == CardType.CREDIT) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_role), onPickRole, enabled = enabled)
-        if (card.cardType == CardType.DEBIT || card.cardNetwork == CardNetwork.MADA || card.cardType == null)
-            com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_link_account), onLinkDebit, enabled = enabled)
-        if (card.cardType == null) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_mark_debit), onMarkDebit, enabled = enabled)
+        com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_card_setup), onPickNetwork, enabled = enabled)
+        if (card.cardType == CardType.CREDIT) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_role), onPickNetwork, enabled = enabled)
+        if (card.cardType == CardType.DEBIT)
+            com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_link_account), onPickNetwork, enabled = enabled)
         onStop?.let { com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), it, enabled = enabled, warning = true) }
     }
 }

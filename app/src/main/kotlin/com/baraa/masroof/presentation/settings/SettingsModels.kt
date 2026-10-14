@@ -46,7 +46,7 @@ data class ManagedCardUi(
                 CardRole.PRIMARY -> "Primary ••$last4"
                 CardRole.SUPPLEMENTARY -> "Additional ••$last4"
                 CardRole.STANDALONE, null -> when (cardType) {
-                    CardType.DEBIT -> "Mada ••$last4"
+                    CardType.DEBIT -> "Debit ••$last4"
                     CardType.CREDIT -> "Credit ••$last4"
                     null -> "••$last4"
                 }
@@ -157,6 +157,7 @@ data class SettingsUiState(
     val renameAccountTarget: ManagedAccountUi? = null,
     val accountTypeTarget: ManagedAccountUi? = null,
     val cardNetworkTarget: ManagedCardUi? = null,
+    val cardTypeSuggestion: CardType? = null,
     val cardRoleTarget: ManagedCardUi? = null,
     val linkDebitTarget: ManagedCardUi? = null,
     val reparsingStored: Boolean = false,
