@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 
 /** Local-only extraction. No bank-specific parsing, ownership inference or ledger writes. */
 class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
-    companion object { const val VERSION = "shared-1" }
+    companion object { const val VERSION = "shared-2" }
 
     fun parse(banks: List<BankProfile>, library: SharedRuleLibrary, sender: String, body: String,
               sampleId: String, receivedAt: Instant, selectedBankId: String? = null): LabOutcome {
@@ -46,7 +46,7 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
         val candidates = library.rules.map { r -> AlJaziraClassificationRule.of(r.id, LabFamilies.tier(r.family),
             matches = { matches(r) }, classify = { AlJaziraClassification(MessageFamily.valueOf(r.family),
                 if (r.family in LabFamilies.financial) MoneyDirection.valueOf(r.direction) else null,
-                evidence = listOf("shared-rule:${r.id}")) }) } + AlJaziraClassificationRule.of("shared.security", 100,
+                evidence = listOf("shared-rule:${r.id}")) }) } + SharedContextRules.rules + AlJaziraClassificationRule.of("shared.security", 100,
             matches = OtpMessageHeuristics::isOtpMessage,
             classify = { AlJaziraClassification(MessageFamily.OTP, evidence = listOf("رمز تحقق — لا يمثل عملية منفذة")) })
         var classification = AlJaziraClassificationResolver(candidates).resolve(text)
