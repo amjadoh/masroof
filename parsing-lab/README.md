@@ -34,6 +34,10 @@ installation is not automatically transferred into the normal app.
   arbitration with optional additive shared OTP phrases (built-in protection cannot be disabled),
   and a finalization gate. Supported money currencies: SAR/USD/EUR/GBP,
   maximum two decimal places, explicit currency required.
+- Engine `shared-2` adds bank-independent, paired context candidates: due date plus due
+  amount, inactive beneficiary status, and a transfer-fee title. Conflicting movement
+  candidates remain UNKNOWN/review, including with reordered or edited shared rules.
+  An outstanding amount alone and a beneficiary name alone do not trigger these guards.
 - Separate Room file `masroof_parsing_lab.db`; no production Room migrations or services.
 - Bank configuration, immutable shared rule versions, dated imported SMS, saved-message
   preview and immutable batch runs. New runs snapshot the bank definition, entire shared
@@ -61,6 +65,13 @@ Baseline output is not used to manufacture expected answers.
 
 ## Current boundaries
 
+- Experimental evidence comparison is available alongside the shared engine. Results →
+  Evidence comparison saves paired outputs, original-text evidence, hypotheses, and manual
+  reference snapshots. Rules → Evidence knowledge previews changes across saved banks
+  before saving a new version. The shared engine remains the existing run/preview default.
+  Lab-only migration 2→3 preserves old data and adds paired results/knowledge tables.
+  See [implementation and measurement contract](experiments/EVIDENCE_ENGINE.md).
+
 - Imported messages start unannotated. Results → details → correct answer saves manually
   reviewed expected fields for the next run; it never rewrites prior runs or changes rules
   automatically. Optional blank expected fields are unscored, not assertions of absence.
@@ -80,6 +91,10 @@ Baseline output is not used to manufacture expected answers.
   samples before using outputs outside the laboratory.
 
 ## Verification and cloud CI
+
+Local model experiments, SetFit training separation, measured results and reproduction
+steps are documented in [experiments/README.md](experiments/README.md). Neither the
+embedding classifier nor SetFit is loaded by the app or active lab workflows.
 
 ```shell
 ./gradlew :parsing-lab:engine:test :parsing-lab:android:testDebugUnitTest
