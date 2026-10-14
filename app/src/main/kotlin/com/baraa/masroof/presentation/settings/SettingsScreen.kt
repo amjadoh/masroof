@@ -127,7 +127,6 @@ fun SettingsRoute(
             onOpenDataBackup = { navigateTo(SettingsDestination.DataBackup) },
             onOpenStatementReconciliation = { navigateTo(SettingsDestination.StatementReconciliation) },
             onOpenAbout = { navigateTo(SettingsDestination.About) },
-            onOpenDeveloperSettings = { navigateTo(SettingsDestination.DeveloperSettings) },
         )
 
         SettingsDestination.MyAccounts -> SettingsRegistryCategoryScreen(
@@ -447,7 +446,6 @@ internal fun SettingsHubScreen(
     onOpenDataBackup: () -> Unit,
     onOpenStatementReconciliation: () -> Unit,
     onOpenAbout: () -> Unit,
-    onOpenDeveloperSettings: () -> Unit = {},
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_title),
@@ -481,11 +479,7 @@ internal fun SettingsHubScreen(
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title),
                     stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onOpenStatementReconciliation)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_about_section),
-                    stringResource(R.string.settings_about_subtitle, state.appVersion), MasroofIcons.periodHint, onOpenAbout)
-                if (com.baraa.masroof.BuildConfig.ENABLE_PARSING_LAB) {
-                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_developer_title),
-                        stringResource(R.string.settings_parsing_lab_title), MasroofIcons.periodHint, onOpenDeveloperSettings, divider = false)
-                }
+                    stringResource(R.string.settings_about_subtitle, state.appVersion), MasroofIcons.periodHint, onOpenAbout, divider = false)
             }
             Text(stringResource(R.string.reference_tracking_note), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
