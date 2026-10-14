@@ -21,7 +21,26 @@ class SettingsRegistryWorkflow(
     private val accountRegistryRepository: AccountRegistryRepository,
     private val loanRegistryRepository: LoanRegistryRepository,
     private val ownershipConfirmationService: OwnershipConfirmationService,
+    private val parsedEvents: com.baraa.masroof.parsing.repository.ParsedEventRepository? = null,
 ) {
+    suspend fun configureCard(card: CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) {
+        cardRegistryRepository.configure(card, configuration)
+    }
+
+    /** A suggestion only. Conflicting evidence stays unknown; existing user choices are never overwritten. */
+    suspend fun suggestedCardType(card: CardReference): com.baraa.masroof.domain.model.CardType? {
+        val repository = parsedEvents ?: return null
+        val signals = repository.listByRawSmsIds(repository.listRawSmsIdsReferencingCard(card))
+            .filter { it.event.cardRef == card && it.event.bank == card.bank && it.event.parseStatus == com.baraa.masroof.domain.model.ParseStatus.SUCCESS }
+            .mapNotNull { record -> when (record.details.cardSmsChannel) {
+                com.baraa.masroof.parsing.model.CardSmsChannel.CREDIT,
+                com.baraa.masroof.parsing.model.CardSmsChannel.STATEMENT -> com.baraa.masroof.domain.model.CardType.CREDIT
+                com.baraa.masroof.parsing.model.CardSmsChannel.DEBIT -> com.baraa.masroof.domain.model.CardType.DEBIT
+                null -> null
+            } }.toSet()
+        return signals.singleOrNull()
+    }
+
     data class Snapshot(
         val cards: List<CardRegistryEntry>,
         val accounts: List<AccountRegistryEntry>,

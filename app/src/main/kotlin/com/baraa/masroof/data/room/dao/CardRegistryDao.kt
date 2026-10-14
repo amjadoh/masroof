@@ -10,6 +10,45 @@ import com.baraa.masroof.domain.ids.RegistryEntityIdFactory
 
 @Dao
 interface CardRegistryDao {
+    @Query("SELECT COUNT(*) FROM card_registry WHERE bankId = :bankId AND parentCardLast4 = :last4")
+    suspend fun dependentCount(bankId: String, last4: String): Int
+
+    /** All fields of this card change together; foreign card rows and ledger rows are untouched. */
+    @Transaction
+    suspend fun configureAtomic(bankId: String, last4: String, configuration: com.baraa.masroof.domain.model.CardConfiguration) {
+        val existing = requireNotNull(get(bankId, last4)) { "card_not_found" }
+        configuration.validate(com.baraa.masroof.domain.model.Bank(bankId), last4)
+        require(existing.ownershipStatus == "OWNED") { "card_not_owned" }
+        require(dependentCount(bankId, last4) == 0 ||
+            (configuration.type.name == "CREDIT" && configuration.role?.name == "PRIMARY")) { "card_has_dependents" }
+        configuration.linkedAccount?.let { account ->
+            require(ownedAccountExists(bankId, requireNotNull(account.maskedNumber))) { "account_not_owned" }
+        }
+        val facilityId = if (configuration.type.name == "CREDIT") {
+            val primary = configuration.primaryLast4 ?: last4
+            val parentFacility = if (configuration.role?.name == "SUPPLEMENTARY") {
+                val parent = requireNotNull(get(bankId, primary)) { "primary_not_found" }
+                require(parent.cardRole == "PRIMARY" && parent.cardType == "CREDIT" && parent.ownershipStatus == "OWNED") { "invalid_primary" }
+                parent.creditFacilityId
+            } else null
+            val retainedFacility = existing.creditFacilityId.takeIf {
+                existing.cardType == "CREDIT" && existing.cardRole == configuration.role?.name &&
+                    existing.parentCardLast4 == configuration.primaryLast4
+            }
+            (parentFacility ?: retainedFacility ?: RegistryEntityIdFactory.stableCreditFacilityId(bankId, primary)).also {
+                insertFacilityIfAbsent(it, bankId, primary)
+            }
+        } else null
+        updateCardNetwork(bankId, last4, configuration.network?.takeUnless { it.name == "UNKNOWN" }?.name)
+        updateCardType(bankId, last4, configuration.type.name)
+        updateLinkedAccount(bankId, last4, configuration.linkedAccount?.bank?.id, configuration.linkedAccount?.maskedNumber)
+        updateCardRole(bankId, last4, configuration.role?.name, configuration.primaryLast4)
+        updateCreditFacilityId(bankId, last4, facilityId)
+    }
+
+    @Query("SELECT EXISTS(SELECT 1 FROM account_registry WHERE bankId = :bankId AND maskedNumber = :masked AND ownershipStatus = 'OWNED')")
+    suspend fun ownedAccountExists(bankId: String, masked: String): Boolean
+
     /** Atomic create-if-absent. Returns -1 when the composite key already exists. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(entity: CardRegistryEntity): Long

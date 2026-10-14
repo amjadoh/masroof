@@ -11,6 +11,9 @@ import com.baraa.masroof.domain.model.OwnershipStatus
  * Durable card ownership registry. Discovery observes; confirmation sets status.
  */
 interface CardRegistryRepository {
+    /** Saves a confirmed setup atomically; never changes other cards or financial rows. */
+    suspend fun configure(reference: CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration)
+
     suspend fun observe(reference: CardReference, rawSmsId: String)
 
     suspend fun setOwnership(reference: CardReference, status: OwnershipStatus)

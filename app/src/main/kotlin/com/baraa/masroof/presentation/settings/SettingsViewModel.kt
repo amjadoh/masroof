@@ -198,11 +198,35 @@ class SettingsViewModel(
     }
 
     fun openCardNetworkPicker(card: ManagedCardUi) {
-        _uiState.update { it.copy(cardNetworkTarget = card) }
+        if (_uiState.value.updating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(updating = true, error = null) }
+            val suggestion = try {
+                settingsRegistryWorkflow.suggestedCardType(CardReference(card.bank, card.last4))
+            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }
+            _uiState.update { it.copy(updating = false, cardNetworkTarget = card, cardTypeSuggestion = suggestion) }
+        }
     }
 
     fun dismissCardNetworkPicker() {
-        _uiState.update { it.copy(cardNetworkTarget = null) }
+        if (!_uiState.value.updating) _uiState.update { it.copy(cardNetworkTarget = null, cardTypeSuggestion = null) }
+    }
+
+    fun saveCardSetup(configuration: com.baraa.masroof.domain.model.CardConfiguration) {
+        val target = _uiState.value.cardNetworkTarget ?: return
+        if (_uiState.value.updating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(updating = true, error = null) }
+            try {
+                settingsRegistryWorkflow.configureCard(CardReference(target.bank, target.last4), configuration)
+                // Metadata correction is not a reparse, ownership change or ledger rebuild.
+                val snapshot = settingsRegistryWorkflow.loadSnapshot()
+                applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
+                _uiState.update { it.copy(updating = false, cardNetworkTarget = null, cardTypeSuggestion = null) }
+            } catch (ce: CancellationException) { throw ce } catch (_: Exception) {
+                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
+            }
+        }
     }
 
     fun setCardNetwork(network: CardNetwork?) {
@@ -285,7 +309,7 @@ class SettingsViewModel(
     }
 
     fun confirmCardOwned(card: ManagedCardUi) {
-        updateCardOwnership(card, owned = true)
+        updateCardOwnership(card, owned = true, openSetup = true)
     }
 
     fun markCardExternal(card: ManagedCardUi) {
@@ -1049,7 +1073,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun updateCardOwnership(card: ManagedCardUi, owned: Boolean) {
+    private fun updateCardOwnership(card: ManagedCardUi, owned: Boolean, openSetup: Boolean = false) {
         if (_uiState.value.updating) return
         viewModelScope.launch {
             _uiState.update { it.copy(updating = true, error = null) }
@@ -1068,6 +1092,8 @@ class SettingsViewModel(
                     loans = snapshot.loans,
                 )
                 _uiState.update { it.copy(updating = false) }
+                if (openSetup) _uiState.value.followedCards.firstOrNull { it.bank == card.bank && it.last4 == card.last4 }
+                    ?.let(::openCardNetworkPicker)
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {

@@ -708,4 +708,15 @@
     <string name="dashboard_all_trend_basis">تشمل المشتريات والفواتير والرسوم وأقساط القروض والسحب النقدي والتحويلات الخارجية الصادرة، بعد خصم الاستردادات. تستبعد سداد البطاقات والتحويلات بين حساباتك لتجنب التكرار. المتوسط يحسب على أيام الفترة المنقضية، بما فيها الأيام بلا مصاريف.</string>
     <string name="dashboard_mada_trend_basis">تشمل مشتريات مدى والسحب النقدي المؤكد ارتباطه بهذه البطاقة، بعد خصم الاستردادات. لا ينسب السحب إلى بطاقة محددة دون بيانات تؤكد ارتباطه بها.</string>
     <string name="dashboard_expenses_before_refunds">المصاريف قبل الاستردادات</string>
+    <string name="settings_card_setup">إعداد البطاقة</string>
+    <string name="settings_card_type_title">نوع البطاقة</string>
+    <string name="settings_card_type_credit">ائتمانية</string>
+    <string name="settings_card_type_debit">خصم مباشر</string>
+    <string name="settings_card_type_unknown">بطاقة غير محددة النوع</string>
+    <string name="settings_card_credit_evidence">تشير الرسائل إلى بطاقة ائتمانية. راجع النوع قبل الحفظ.</string>
+    <string name="settings_card_debit_evidence">تشير الرسائل إلى بطاقة خصم مباشر. راجع النوع قبل الحفظ.</string>
+    <string name="settings_card_primary_title">البطاقة الأساسية التابعة لها</string>
+    <string name="settings_card_no_primary">لا توجد بطاقة أساسية مؤكدة في هذا البنك.</string>
+    <string name="settings_card_no_account">بدون ربط بحساب حاليًا</string>
+    <string name="settings_card_dependents_block">لهذه البطاقة بطاقات إضافية مرتبطة. أعد ربطها بنفسك أولًا قبل تغيير نوع أو دور الأساسية.</string>
 </resources>
