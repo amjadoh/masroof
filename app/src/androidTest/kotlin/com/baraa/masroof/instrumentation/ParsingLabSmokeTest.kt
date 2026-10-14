@@ -77,15 +77,23 @@ class ParsingLabSmokeTest {
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
             File(context.getExternalFilesDir(null), "parsing-lab-import.png"))
         compose.onNodeWithText("النتائج").performClick()
+        compose.onNodeWithText("الاختبارات السابقة").performScrollTo().performClick()
         compose.onNodeWithText("تشغيل وحفظ النتائج").performScrollTo().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("مطابقة الحقول الموسومة: 4 / 4 عينة موسومة · 0 غير موسومة").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("مطابقة الحقول الموسومة: 4 / 4 عينة موسومة · 0 غير موسومة").performScrollTo().assertIsDisplayed()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
             File(context.getExternalFilesDir(null), "parsing-lab-results.png"))
         compose.onAllNodesWithText("عرض الحقائق والأدلة والمقارنة").onFirst().performScrollTo().performClick()
-        compose.onNodeWithText("تحديد الإجابة الصحيحة").performScrollTo().performClick()
-        compose.onNodeWithText("حفظ الإجابة للاختبار القادم").performScrollTo().performClick()
+        compose.onNodeWithText("مراجعة الإجابة الصحيحة").performScrollTo().performClick()
+        compose.onNodeWithText("حفظ للاختبارات القادمة").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("حُفظ التصحيح", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("مقارنة الأدلة").performScrollTo().performClick()
+        compose.onNodeWithText("تشغيل المقارنة وحفظها").performScrollTo().performClick()
+        compose.waitUntil(20_000) { compose.onAllNodesWithText("4 رسالة · 4 لها إجابة · 0 بلا تقييم").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("4 رسالة · 4 لها إجابة · 0 بلا تقييم").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("مطابقة الحقول المراجعة: الحالي 4 / 4 · الأدلة 4 / 4").performScrollTo().assertIsDisplayed()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
+            File(context.getExternalFilesDir(null), "parsing-lab-evidence-comparison.png"))
         compose.onNodeWithText("القواعد").performClick()
         compose.onNodeWithText("مكتبة الفهم المشتركة v1").assertExists()
         compose.onNodeWithText("حفظ كإصدار جديد").performScrollTo().performClick()
