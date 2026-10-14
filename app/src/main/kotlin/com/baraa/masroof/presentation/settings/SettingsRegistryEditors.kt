@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.CardNetwork
 import com.baraa.masroof.domain.model.CardRole
-import com.baraa.masroof.domain.model.CardType
 import com.baraa.masroof.presentation.common.formatCardLast4
 
 @Composable
@@ -98,7 +97,6 @@ fun SettingsRenameAccountDialog(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsCardMetadataActions(
-    card: ManagedCardUi,
     enabled: Boolean,
     onRename: () -> Unit,
     onPickNetwork: () -> Unit,
@@ -110,9 +108,6 @@ fun SettingsCardMetadataActions(
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         if (includeRename) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), onRename, enabled = enabled)
         com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_card_setup), onPickNetwork, enabled = enabled)
-        if (card.cardType == CardType.CREDIT) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_role), onPickNetwork, enabled = enabled)
-        if (card.cardType == CardType.DEBIT)
-            com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_link_account), onPickNetwork, enabled = enabled)
         onStop?.let { com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), it, enabled = enabled, warning = true) }
     }
 }

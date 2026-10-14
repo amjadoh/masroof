@@ -210,7 +210,6 @@ internal fun SettingsRegistryCardRow(
                 )
             }
             SettingsCardMetadataActions(
-                card = card,
                 enabled = !updating,
                 onRename = { onRenameCard(card) },
                 onPickNetwork = { onPickCardNetwork(card) },

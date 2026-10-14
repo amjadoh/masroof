@@ -1,7 +1,8 @@
 # Masroof Parsing Lab — shared local message engine
 
 The laboratory ships inside the normal Masroof APK, in debug and release builds. Open
-Settings → Developer settings → Bank SMS parsing lab (the About shortcut also remains).
+Settings → About → Developer settings → Bank SMS parsing lab.
+Developer settings is available only inside About.
 The application ID stays `com.baraa.masroof`; no separate installation or build property
 is required. The lab engine/code and `masroof_parsing_lab.db` remain independent from
 the normal financial database and services. Data from the previous separate experimental
