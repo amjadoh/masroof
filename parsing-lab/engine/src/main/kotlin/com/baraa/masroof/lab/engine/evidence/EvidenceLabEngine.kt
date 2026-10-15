@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 
 /** Experimental interpretation; no ownership resolution, external calls or financial writes. */
 class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
-    companion object { const val VERSION = "evidence-1" }
+    companion object { const val VERSION = "evidence-2" }
     private data class Text(val original: String) {
         val indices = mutableListOf<Int>()
         val comparison = buildString {
@@ -51,7 +51,7 @@ class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
         val tokens = EvidenceExtractor.extract(text.comparison).map { token -> token.copy(start = text.start(token.start), endExclusive = text.end(token.endExclusive - 1)) }
         val rawRelations = RelationResolver.resolve(text.comparison, hits.filter { it.rule.concept.startsWith("field.") }.map {
             RelationResolver.Label(it.rule, it.range)
-        }).map { relation -> relation.copy(value = if (relation.role == "merchant") text.display(relation.start until relation.endExclusive).trim().trimEnd('.') else relation.value,
+        }).map { relation -> relation.copy(value = if (relation.role in setOf("merchant", "senderName", "recipientName")) text.display(relation.start until relation.endExclusive).trim().trimEnd('.') else relation.value,
             start = text.start(relation.start), endExclusive = text.end(relation.endExclusive - 1)) }
         val requirements = knowledge.rules.associate { it.id to it.requiredRoles }
         val relations = rawRelations.filter { requirements[it.ruleId].orEmpty().isEmpty() }.toMutableList()
@@ -137,7 +137,9 @@ class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
             source = extracted["source"], destination = extracted["destination"], merchant = extracted["merchant"],
             balance = extracted["balance"], dueAmount = extracted["dueAmount"], ibanSuffix = extracted["ibanSuffix"],
             occurredAtLocal = extracted["occurredAtLocal"], executionState = if (otp) "UNPROVEN" else execution,
-            cardKind = kind, network = network, feeAmount = extracted["feeAmount"], exchangeRate = extracted["exchangeRate"])
+            cardKind = kind, network = network, feeAmount = extracted["feeAmount"], exchangeRate = extracted["exchangeRate"],
+            senderName = extracted["senderName"], recipientName = extracted["recipientName"],
+            senderBank = extracted["senderBank"], accountIdentifier = extracted["accountIdentifier"])
         val evidence = relations.map { FieldEvidence(it.role, it.ruleId, body.substring(it.start, it.endExclusive), it.value, it.start, it.endExclusive) } +
             active.filter { !it.rule.concept.startsWith("field.") }.map { hit -> FieldEvidence(hit.rule.concept, hit.rule.id, hit.label,
                 text.display(hit.range), text.start(hit.range.first), text.end(hit.range.last)) }
@@ -150,15 +152,30 @@ class EvidenceLabEngine(private val clock: Clock = Clock.systemUTC()) {
 
 object EvidenceExtractor {
     private val number = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,6})?"
-    private val currency = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
+    private val currency = "(?:sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
+    fun currencyCode(value: String) = if (value.startsWith("ر") || value == "sr") "SAR" else value.uppercase()
     val money = Regex("(?<![\\p{L}\\p{N}.,])(?:(?<before>$currency)[ \\t]*(?<n1>$number)|(?<n2>$number)[ \\t]*(?<after>$currency))(?![\\p{L}\\p{N}.,])")
-    val date = Regex("(?<![0-9])(?<date>[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[ t][0-9]{2}:[0-9]{2}(?::[0-9]{2})?)?)(?![0-9:])")
+    private const val time = "[0-9]{2}:[0-9]{2}(?::[0-9]{2})?"
+    private const val dayFirst = "[0-9]{2}[/-][0-9]{2}[/-](?:[0-9]{4}|[0-9]{2})"
+    val date = Regex("(?<![0-9])(?:$time[ ]+$dayFirst|[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[ t]$time)?|$dayFirst(?:[ ]+$time)?)(?![0-9:])")
+    fun localDateTime(value: String): LocalDateTime? = runCatching {
+        if (Regex("^[0-9]{4}-").containsMatchIn(value)) LocalDateTime.parse(value.replace(' ', 'T').replace('t', 'T'))
+        else {
+            val parts = value.split(' ')
+            require(parts.size == 2)
+            val datePart = parts.single { '/' in it || '-' in it }.split('/', '-')
+            require(datePart.size == 3)
+            val year = datePart[2].toInt() + if (datePart[2].length == 2) 2000 else 0
+            LocalDateTime.of(java.time.LocalDate.of(year, datePart[1].toInt(), datePart[0].toInt()),
+                java.time.LocalTime.parse(parts.single { ':' in it }))
+        }
+    }.getOrNull()
     val scalar = Regex("(?<![0-9.,])[0-9]+(?:\\.[0-9]{1,6})?(?![0-9.,])")
     fun extract(text: String): List<EvidenceToken> = buildList {
         money.findAll(text).forEach { m ->
             val n = m.groups["n1"] ?: m.groups["n2"]!!
             val c = (m.groups["before"] ?: m.groups["after"]!!).value
-            add(EvidenceToken("MONEY", n.value.replace(",", ""), m.range.first, m.range.last + 1, if (c.startsWith("ر")) "SAR" else c.uppercase()))
+            add(EvidenceToken("MONEY", n.value.replace(",", ""), m.range.first, m.range.last + 1, currencyCode(c)))
         }
         date.findAll(text).forEach { add(EvidenceToken("DATE", it.value, it.range.first, it.range.last + 1)) }
         scalar.findAll(text).forEach { add(EvidenceToken("NUMBER", it.value, it.range.first, it.range.last + 1)) }
@@ -169,7 +186,18 @@ object RelationResolver {
     data class Label(val rule: ConceptRule, val range: IntRange)
     fun resolve(text: String, raw: List<Label>): List<EvidenceRelation> {
         // A generic "amount"/"date" inside a longer due/fee label must not steal its value.
-        val labels = raw.filter { a -> raw.none { b -> b.range.first <= a.range.first && b.range.last >= a.range.last && b.range.count() > a.range.count() } }
+        val scoped = raw.filter { label ->
+            val role = label.rule.concept.substringAfter('.')
+            val lineStart = text.lastIndexOf('\n', label.range.first - 1) + 1
+            val lineEnd = text.indexOf('\n', label.range.last + 1).takeIf { it >= 0 } ?: text.length
+            val atLineStart = text.substring(lineStart, label.range.first).isBlank()
+            when (role) {
+                "senderBank" -> atLineStart && text.substring(label.range.last + 1, lineEnd).isBlank()
+                "senderName", "recipientName", "accountIdentifier" -> atLineStart
+                else -> true
+            }
+        }
+        val labels = scoped.filter { a -> scoped.none { b -> b.range.first <= a.range.first && b.range.last >= a.range.last && b.range.count() > a.range.count() } }
         val relations = mutableListOf<EvidenceRelation>()
         labels.forEach { label ->
             val role = label.rule.concept.substringAfter('.')
@@ -177,6 +205,14 @@ object RelationResolver {
             val lineEnd = text.indexOf('\n', start).takeIf { it >= 0 } ?: text.length
             val limit = if (label.rule.nextLine && lineEnd < text.length) (text.indexOf('\n', lineEnd + 1).takeIf { it >= 0 } ?: text.length) else lineEnd
             val end = minOf(limit, start + label.rule.maxDistance)
+            if (role == "senderBank") {
+                val bankCode = Regex("[a-z]{4}$").find(text.substring(label.range.first, label.range.last + 1))
+                if (bankCode != null) {
+                    val bankStart = label.range.first + bankCode.range.first
+                    relations += EvidenceRelation(role, bankCode.value.uppercase(), bankStart, bankStart + bankCode.value.length, label.rule.id)
+                }
+                return@forEach
+            }
             if (end <= start) return@forEach
             val tail = text.substring(start, end)
             fun add(value: String, range: IntRange, currency: String? = null, selectedRole: String = role) {
@@ -191,7 +227,7 @@ object RelationResolver {
                     val c = (match.groups["before"] ?: match.groups["after"]!!).value
                     val value = n.value.replace(",", "").toBigDecimalOrNull() ?: return@forEach
                     if (value.scale() > 2 || value.precision() > 18) return@forEach
-                    add(value.toPlainString(), match.range, if (c.startsWith("ر")) "SAR" else c.uppercase())
+                    add(value.toPlainString(), match.range, EvidenceExtractor.currencyCode(c))
                 }
                 "exchangeRate" -> Regex("^[ \\t:：]*(?<n>[0-9]+(?:\\.[0-9]{1,6})?)(?![0-9.])").find(tail)?.groups?.get("n")?.let { add(it.value, it.range) }
                 "card", "source", "destination", "ibanSuffix" -> {
@@ -207,13 +243,12 @@ object RelationResolver {
                 "occurredAtLocal", "dueDate" -> {
                     val match = EvidenceExtractor.date.find(tail) ?: return@forEach
                     if (!tail.substring(0, match.range.first).matches(Regex("[ \\t:：]*"))) return@forEach
-                    if (role == "occurredAtLocal" && match.value.length == 10) {
-                        val valid = runCatching { java.time.LocalDate.parse(match.value) }.isSuccess
+                    if (role == "occurredAtLocal" && ':' !in match.value) {
+                        val valid = EvidenceExtractor.localDateTime(match.value + " 00:00") != null
                         add(match.value, match.range, selectedRole = if (valid) "dateOnly" else "invalidDate")
                         return@forEach
                     }
-                    val value = runCatching { if (match.value.length == 10) java.time.LocalDate.parse(match.value).atStartOfDay()
-                        else LocalDateTime.parse(match.value.replace(' ', 'T').replace('t', 'T')) }.getOrNull()
+                    val value = EvidenceExtractor.localDateTime(match.value + if (':' !in match.value) " 00:00" else "")
                     add(value?.toString() ?: match.value, match.range, selectedRole = if (value == null) "invalidDate" else role)
                 }
                 "merchant" -> {
@@ -221,7 +256,37 @@ object RelationResolver {
                     val group = match?.groups?.get("name")
                     if (group != null && group.value.isNotBlank() && !group.value.first().isDigit()) add(group.value.trim().trimEnd('.'), group.range)
                 }
+                "accountIdentifier" -> Regex("^[ \\t:：]*(?<n>[0-9]{3,4})(?=[ \\t\\r]*$)").find(tail)?.groups?.get("n")?.let { add(it.value, it.range) }
+                "senderName", "recipientName" -> {
+                    val group = Regex("^[ \\t:：]*(?<name>[\\p{L}][\\p{L} .'-]*?)[ \\t\\r]*$").find(tail)?.groups?.get("name")
+                    // A bank code or ambiguous single-word From/To is not a person's name.
+                    if (group != null && (group.value.trim().contains(' ') || label.rule.phrases.any { "اسم" in it })) add(group.value.trim(), group.range)
+                }
             }
+        }
+        // Standalone values are accepted only as complete lines, never from balances or prose.
+        if (Regex("(?m)^credit local transfer[ \\r]*$").containsMatchIn(text) && labels.none { it.rule.concept in setOf("field.amount", "field.balance", "field.dueAmount", "field.feeAmount", "field.otherAmount") }) {
+            Regex("(?m)^([^\\n]+)$").findAll(text).forEach { line ->
+                val m = EvidenceExtractor.money.matchEntire(line.value.trim()) ?: return@forEach
+                val n = (m.groups["n1"] ?: m.groups["n2"]!!).value.replace(",", "").toBigDecimalOrNull() ?: return@forEach
+                if (n.scale() <= 2 && n.precision() <= 18) {
+                    val offset = line.range.first + line.value.indexOf(m.value)
+                    relations += EvidenceRelation("amount", n.toPlainString(), offset, offset + m.value.length, "format.standalone.amount",
+                        EvidenceExtractor.currencyCode((m.groups["before"] ?: m.groups["after"]!!).value))
+                }
+            }
+        }
+        Regex("(?m)^[ \\t]*(?<date>[^\\n]+?)[ \\t\\r]*$").findAll(text).forEach { line ->
+            val group = line.groups["date"]!!
+            if (EvidenceExtractor.date.matches(group.value) && ':' in group.value) {
+                val value = EvidenceExtractor.localDateTime(group.value)
+                relations += EvidenceRelation(if (value == null) "invalidDate" else "occurredAtLocal", value?.toString() ?: group.value,
+                    group.range.first, group.range.last + 1, "format.standalone.date")
+            }
+        }
+        // Preserve short sender references without padding or promoting them to production last4 models.
+        Regex("(?m)^from[ \\t:]+(?<id>[0-9]{3})[ \\t\\r]*$").findAll(text).forEach { m ->
+            val g = m.groups["id"]!!; relations += EvidenceRelation("accountIdentifier", g.value, g.range.first, g.range.last + 1, "format.from.identifier")
         }
         return relations.distinct()
     }

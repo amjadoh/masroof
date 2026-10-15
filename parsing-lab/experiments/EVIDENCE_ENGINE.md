@@ -5,6 +5,34 @@ relationships, competing interpretations, validation, paired persistence and rev
 `SharedLabEngine` remains the default for existing lab runs and previews. `EvidenceLabEngine`
 is available through an explicit paired comparison; neither output posts financial data.
 
+## Compact SMS formats (evidence-2)
+
+The experimental engine now recognizes `SR` as SAR, `Credit Local transfer` as incoming,
+and `Pay qattah` as an outgoing payment. The baseline `shared-2` is unchanged for comparison.
+Dates support ISO, day/month/year followed by time, and time followed by day-month-year.
+Two-digit years explicitly map to 2000–2099; impossible dates stay in review. Date-only
+transaction messages still do not invent a time. Unlabeled dates must occupy a complete line.
+An unlabeled amount is accepted only on a complete money line under the supported compact
+credit-local-transfer title, with no competing monetary labels; conflicting values stay in review.
+
+Sender and recipient names are separate lab facts, not merchant names or account references.
+Repeated `From` lines distinguish a multiword person name, an explicitly recognized bank code
+(currently BJAZ, supplied in editable knowledge), and a three-digit reference. `Acc:232` and
+`From 001` preserve their original identifier without padding or assigning account ownership.
+Card/account/IBAN last4 models are unchanged. Single-word party names without an explicit name
+label remain unproven; additional bank codes need explicit knowledge rather than guessing.
+
+Saved evidence knowledge receives seven missing format rules additively, with a version increment
+and no overwriting of existing edits. At the 200-rule capacity limit, automatic addition is skipped
+to preserve the valid existing library. Old JSON facts remain readable through nullable defaults;
+no Room schema or production data migration is needed. Existing comparisons are immutable.
+
+Extracted evidence facts are visible directly on each result. Empty reference answers show
+“accuracy not evaluated” rather than 0/0. To measure accuracy: open reference review, enter only
+verified values/absences, save, then run a new comparison. The old comparison keeps its original
+reference snapshot. Reference answers are never automatically filled from either engine.
+Earlier published 70-message measurements describe evidence-1; they are not evidence-2 scores.
+
 ## Runtime and isolation
 
 - Engine code is under `engine/.../evidence/`, with no production imports or network/model dependencies.

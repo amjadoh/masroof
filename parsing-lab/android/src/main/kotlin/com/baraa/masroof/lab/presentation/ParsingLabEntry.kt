@@ -371,6 +371,8 @@ internal fun FactsText(facts: LabFacts) {
         facts.occurredAtLocal?.let { "تاريخ العملية: $it" }, facts.executionState?.let { "حالة التنفيذ: ${executionLabel(it)}" },
         facts.cardKind?.let { "نوع البطاقة: $it" }, facts.network?.let { "الشبكة: $it" },
         facts.feeAmount?.let { "الرسوم: $it" }, facts.exchangeRate?.let { "سعر الصرف: $it" }).joinToString("\n"))
+    Text(listOfNotNull(facts.senderName?.let { "اسم المرسل: $it" }, facts.recipientName?.let { "اسم المستفيد: $it" },
+        facts.senderBank?.let { "بنك المرسل: $it" }, facts.accountIdentifier?.let { "معرف الحساب كما ورد: $it (دون تحديد ملكيته)" }).joinToString("\n"))
 }
 
 @Composable
