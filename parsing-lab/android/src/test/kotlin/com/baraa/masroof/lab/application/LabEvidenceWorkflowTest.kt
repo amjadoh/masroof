@@ -18,6 +18,24 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class LabEvidenceWorkflowTest {
+    @Test fun savedKnowledgeUpgradePreservesEditsAndOldComparisonReferences() = runBlocking {
+        workflow.savePack(pack)
+        val old = EvidenceDefaults.create().copy(version = 7, rules = EvidenceDefaults.create().rules.filterNot { it.id.startsWith("formats.v2.") }
+            .map { if (it.id == "field.amount") it.copy(phrases = listOf("custom amount")) else it })
+        db.dao().evidenceKnowledge(com.baraa.masroof.lab.data.LabEvidenceKnowledgeRow(7, LabJson.format.encodeToString(old), 1))
+        val updated = workflow.evidenceKnowledge()
+        assertEquals(8, updated.version)
+        assertEquals(listOf("custom amount"), updated.rules.single { it.id == "field.amount" }.phrases)
+        assertEquals(updated, workflow.evidenceKnowledge())
+        workflow.addSample("demo", "DEMO", "Pay qattah\nAmount: 30 SAR\nTo: TEST PERSON\nAt: 21/09/26 08:21", "2026-10-01", null)
+        val id = workflow.compare("demo", "2026-10-01", "2026-10-01")
+        val row = workflow.comparisonResults(id).single()
+        assertNull(row.expected)
+        workflow.annotate("demo", row.sampleId, ExpectedResult("REVIEW_REQUIRED", LabFacts(recipientName = "TEST PERSON")))
+        assertNull(workflow.comparisonResults(id).single().expected)
+        val next = workflow.compare("demo", "2026-10-01", "2026-10-01")
+        assertEquals("TEST PERSON", workflow.comparisonResults(next).single().expected!!.facts.recipientName)
+    }
     private lateinit var context: Context
     private lateinit var db: LabDatabase
     private lateinit var workflow: LabWorkflow

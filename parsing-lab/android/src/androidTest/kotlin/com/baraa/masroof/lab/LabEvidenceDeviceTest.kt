@@ -34,6 +34,11 @@ class LabEvidenceDeviceTest {
         compose.onNodeWithText("النتائج", useUnmergedTree = true).performClick()
         compose.onNodeWithText("تشغيل المقارنة وحفظها").performScrollTo().performClick()
         compose.waitUntil(20_000) { compose.onAllNodesWithText("1 رسالة · 0 لها إجابة · 1 بلا تقييم").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("الحقول المستخرجة · محرك الأدلة").performScrollTo().assertExists()
+        compose.onNodeWithText("الدقة لم تُقيّم بعد: افتح مراجعة الإجابة الصحيحة، احفظ الحقول التي تحققت منها، ثم شغّل مقارنة جديدة.").assertExists()
+        compose.onNodeWithText("مراجعة الإجابة الصحيحة").performScrollTo().performClick()
+        compose.onNodeWithText("هذه إجابة مرجعية تراجعها أنت، وليست حقول الاستخراج. القيمة الفارغة غير مراجعة؛ اختر «غير موجود» فقط بعد التأكد. بعد الحفظ شغّل مقارنة جديدة؛ النتائج القديمة محفوظة كما كانت.").performScrollTo().assertExists()
+        compose.onNodeWithText("إلغاء التصحيح").performScrollTo().performClick()
         capture("evidence-comparison")
         compose.onNodeWithText("الحقول وأسباب القرار").performScrollTo().performClick()
         compose.onNodeWithText("مراجعة الإجابة الصحيحة").performScrollTo().assertExists()

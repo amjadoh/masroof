@@ -25,7 +25,12 @@ class LabEvidenceWorkflow(private val db: LabDatabase) {
     private val dao = db.dao()
     private val json = LabJson.format
     suspend fun knowledge(): EvidenceKnowledge = db.withTransaction {
-        dao.evidenceKnowledge()?.let { return@withTransaction json.decodeFromString<EvidenceKnowledge>(it.knowledgeJson) }
+        dao.evidenceKnowledge()?.let { stored ->
+            val previous = json.decodeFromString<EvidenceKnowledge>(stored.knowledgeJson)
+            val upgraded = EvidenceDefaults.upgrade(previous)
+            if (upgraded != previous) dao.evidenceKnowledge(LabEvidenceKnowledgeRow(upgraded.version, json.encodeToString(upgraded), System.currentTimeMillis()))
+            return@withTransaction upgraded
+        }
         EvidenceDefaults.create().also { dao.evidenceKnowledge(LabEvidenceKnowledgeRow(it.version, json.encodeToString(it), System.currentTimeMillis())) }
     }
     suspend fun save(draft: EvidenceKnowledge): EvidenceKnowledge = db.withTransaction {

@@ -3,7 +3,7 @@ package com.baraa.masroof.lab.engine.evidence
 import com.baraa.masroof.lab.engine.*
 
 object EvidenceDefaults {
-    val roles = setOf("amount", "balance", "dueAmount", "feeAmount", "otherAmount", "exchangeRate", "card", "source", "destination", "ibanSuffix", "merchant", "occurredAtLocal", "dueDate")
+    val roles = setOf("amount", "balance", "dueAmount", "feeAmount", "otherAmount", "exchangeRate", "card", "source", "destination", "ibanSuffix", "merchant", "occurredAtLocal", "dueDate", "senderName", "recipientName", "senderBank", "accountIdentifier")
     val states = setOf("EXECUTED", "REJECTED", "PENDING", "REQUESTED")
     val concepts = roles.map { "field.$it" }.toSet() + LabFamilies.editable.map { "family.$it" } +
         states.map { "state.$it" } + setOf("card.CREDIT", "card.DEBIT", "network.VISA", "network.MADA", "network.MASTERCARD")
@@ -39,6 +39,23 @@ object EvidenceDefaults {
         add("network.visa", "network.VISA", "visa", "فيزا")
         add("network.mada", "network.MADA", "mada", "مدى")
         add("network.mastercard", "network.MASTERCARD", "mastercard", "ماستركارد")
-        return EvidenceKnowledge(rules = rules).also { it.validate() }
+        return EvidenceKnowledge(rules = rules + extensions()).also { it.validate() }
     }
+
+    /** Additive upgrade of saved lab knowledge; existing edits and comparison snapshots stay intact. */
+    fun upgrade(knowledge: EvidenceKnowledge): EvidenceKnowledge {
+        val missing = extensions().filter { extension -> knowledge.rules.none { it.id == extension.id } }
+        if (knowledge.rules.size + missing.size > 200) return knowledge
+        return if (missing.isEmpty()) knowledge else knowledge.copy(version = knowledge.version + 1, rules = knowledge.rules + missing).also { it.validate() }
+    }
+
+    private fun extensions() = listOf(
+        ConceptRule("formats.v2.credit.local", "family.TRANSFER_IN", listOf("credit local transfer")),
+        ConceptRule("formats.v2.qattah", "family.TRANSFER_OUT", listOf("pay qattah")),
+        ConceptRule("formats.v2.at.date", "field.occurredAtLocal", listOf("at")),
+        ConceptRule("formats.v2.account", "field.accountIdentifier", listOf("acc", "account")),
+        ConceptRule("formats.v2.sender", "field.senderName", listOf("from", "اسم المرسل")),
+        ConceptRule("formats.v2.sender.bank", "field.senderBank", listOf("from bjaz")),
+        ConceptRule("formats.v2.recipient", "field.recipientName", listOf("to", "اسم المستفيد")),
+    )
 }

@@ -7,6 +7,67 @@ import org.junit.Test
 import kotlinx.serialization.json.*
 
 class EvidenceLabEngineTest {
+    @Test fun compactIncomingTransferPreservesShortIdentifierAndParties() {
+        val result = parse("Internal incoming transfer\nAmount:3240.02SR\nFrom:A SAMPLE\nAcc:232\nAt:14/10/26 12:21").outcome
+        assertEquals("TRANSFER_IN", result.facts.family)
+        assertEquals("INCOMING", result.facts.direction)
+        assertEquals("3240.02", result.facts.amount)
+        assertEquals("SAR", result.facts.currency)
+        assertEquals("A SAMPLE", result.facts.senderName)
+        assertEquals("232", result.facts.accountIdentifier)
+        assertNull(result.facts.source)
+        assertNull(result.facts.destination)
+        assertEquals("2026-10-14T12:21", result.facts.occurredAtLocal)
+        assertEquals("SUCCESS", result.status)
+    }
+    @Test fun creditLocalTransferReadsStandaloneMoneyTimeAndRepeatedFromRoles() {
+        val result = parse("Credit Local transfer\n300SR\nFrom TEST SENDER\nFrom BJAZ\nFrom 001\n06:52 30-09-2026").outcome
+        assertEquals("TRANSFER_IN", result.facts.family)
+        assertEquals("300", result.facts.amount)
+        assertEquals("TEST SENDER", result.facts.senderName)
+        assertEquals("BJAZ", result.facts.senderBank)
+        assertEquals("001", result.facts.accountIdentifier)
+        assertEquals("2026-09-30T06:52", result.facts.occurredAtLocal)
+        assertEquals("SUCCESS", result.status)
+    }
+    @Test fun qattahIsOutgoingPaymentNotMerchantOrDestinationAccount() {
+        val result = parse("Pay qattah\nAmount: 30.00 SAR\nTo: TEST RECEIVER\nAt: 21/09/26 08:21").outcome
+        assertEquals("TRANSFER_OUT", result.facts.family)
+        assertEquals("OUTGOING", result.facts.direction)
+        assertEquals("30.00", result.facts.amount)
+        assertEquals("TEST RECEIVER", result.facts.recipientName)
+        assertNull(result.facts.merchant)
+        assertNull(result.facts.destination)
+        assertEquals("2026-09-21T08:21", result.facts.occurredAtLocal)
+        assertEquals("SUCCESS", result.status)
+    }
+    @Test fun compactFormatsRejectConflictsInvalidDatesAndUnexecutedPayments() {
+        listOf("Credit Local transfer\n300SR\n400SR", "Credit Local transfer\nBalance: 300SR",
+            "Pay qattah\nAmount: 30 SAR\nAt: 31/02/26 08:21", "Pay qattah\nAmount: 30 SAR\npending",
+            "Pay qattah\nAmount: 30 SAR\ndeclined", "Credit Local transfer outgoing transfer\nAmount: 30 SAR").forEach {
+            assertEquals(it, "REVIEW_REQUIRED", parse(it).outcome.status)
+        }
+        val shortCard = parse("شراء\nالمبلغ: 30 SR\nCard: 232").outcome
+        assertNull(shortCard.facts.card)
+        assertEquals("REVIEW_REQUIRED", shortCard.status)
+        assertNull(parse("صيغة غير معروفة\n300SR").outcome.facts.amount)
+        assertNull(parse("Pay qattah\nAmount: 30 SAR\nAt: 21/09/26").outcome.facts.occurredAtLocal)
+        val person = parse("حوالة واردة\nAmount: 30 SR\nFrom BJAZ PERSON").outcome.facts
+        assertEquals("BJAZ PERSON", person.senderName)
+        assertNull(person.senderBank)
+        assertNull(parse("شراء\nAmount: 30 SR\nAt: Cafe From Person").outcome.facts.senderName)
+    }
+    @Test fun knowledgeUpgradeAndOldJsonKeepUserEditsAndRemainCompatible() {
+        val old = EvidenceDefaults.create().copy(version = 7, rules = EvidenceDefaults.create().rules.filterNot { it.id.startsWith("formats.v2.") }
+            .map { if (it.id == "field.amount") it.copy(phrases = listOf("custom amount")) else it })
+        val upgraded = EvidenceDefaults.upgrade(old)
+        assertEquals(8, upgraded.version)
+        assertEquals(listOf("custom amount"), upgraded.rules.single { it.id == "field.amount" }.phrases)
+        assertEquals(upgraded, EvidenceDefaults.upgrade(upgraded))
+        assertNull(LabJson.format.decodeFromString<LabFacts>("{\"family\":\"TRANSFER_IN\"}").senderName)
+        assertEquals(listOf("senderName"), ReferenceFields.differences(ExpectedResult("SUCCESS", LabFacts(senderName = "Correct Person")),
+            LabOutcome("SUCCESS", LabFacts(senderName = "Other Person"))))
+    }
     private val now = Instant.parse("2026-10-14T12:00:00Z")
     private val bank = BankProfile("demo", "Demo", listOf("DEMO"))
     private fun parse(body: String, knowledge: EvidenceKnowledge = EvidenceDefaults.create()) =
