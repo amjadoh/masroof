@@ -51,7 +51,17 @@ object LabResultProjection {
         return LabOutcome(status, LabFacts(event?.messageFamily?.name, event?.direction?.name,
             event?.amount?.amount?.toPlainString(), event?.amount?.currency?.name, event?.cardRef?.last4,
             event?.sourceAccountRef?.maskedNumber, event?.destinationAccountRef?.maskedNumber,
-            event?.merchant, details.availableBalance?.amount?.toPlainString(), balanceCurrency = details.availableBalance?.currency?.name), trace + event?.confidence?.reasons.orEmpty(),
+            event?.merchant, details.availableBalance?.amount?.toPlainString(), balanceCurrency = details.availableBalance?.currency?.name,
+            dueAmount = details.outstandingBalance?.amount?.toPlainString(), dueCurrency = details.outstandingBalance?.currency?.name,
+            occurredAtLocal = details.occurredAtLocal?.toString(), cardChannel = details.cardSmsChannel?.name,
+            purchaseChannel = event?.purchaseChannel?.name, bankNetwork = event?.bankNetworkType?.name,
+            transactionReference = details.transactionReference, counterparty = event?.counterparty,
+            biller = details.biller, billerCode = details.billerCode, paymentDueDate = details.paymentDueDate?.toString(),
+            loanType = details.loanType?.name, salaryIncomeWording = details.salaryIncomeWording,
+            debitSourceAccountLast4 = details.debitSourceAccountLast4,
+            feeAmount = details.internationalFee?.amount?.toPlainString(), feeCurrency = details.internationalFee?.currency?.name,
+            exchangeRate = details.exchangeRate?.toPlainString(), foreignAmount = details.labeledForeignAmount?.amount?.toPlainString(),
+            foreignCurrency = details.labeledForeignAmount?.currency?.name), trace + event?.confidence?.reasons.orEmpty(),
             confidenceScore = confidence?.score, confidenceReasons = confidence?.reasons.orEmpty())
     }
 }

@@ -2,6 +2,8 @@
 
 Status: In Progress. This increment is a Beta shadow/comparison API, not completion of M2 or M6 and not a production parser promotion.
 
+The subsequent [M6 shared rule migration increment](M6_SHARED_RULE_PARITY.md) improves the same 40-fixture comparison to 35 exact matches, with four unresolved network observations and one ISO due-date difference. The results below describe the original bridge increment; the linked document records the newer enforced parity gate and validation.
+
 ## Executable path and boundaries
 
 `BetaInterpretationService.sharedRules()` accepts an explicitly supplied `MessageInput` and `BankCatalog`, then compares:
