@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.androidx.material3)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.room.testing)
     testImplementation(libs.junit)
