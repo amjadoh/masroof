@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.baraa.masroof.lab.beta.application.BetaBankChoice
 import com.baraa.masroof.lab.beta.BetaContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,36 +33,48 @@ class BetaActivity : ComponentActivity() {
             MaterialTheme {
                 val shellContainer = remember { container }
                 val scope = rememberCoroutineScope()
-                var generation by remember { mutableIntStateOf(0) }
                 var markerCount by remember { mutableIntStateOf(0) }
                 var restoreMissing by remember { mutableStateOf(false) }
-                LaunchedEffect(generation) {
-                    markerCount = withContext(Dispatchers.IO) { shellContainer.markerCount() }
+                var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
+                var busy by remember { mutableStateOf(true) }
+                var failed by remember { mutableStateOf(false) }
+                suspend fun execute(action: () -> Boolean?) {
+                    failed = false
+                    try {
+                        val snapshot = withContext(Dispatchers.IO) {
+                            val restored = action()
+                            Triple(shellContainer.markerCount(), shellContainer.bankChoices(), restored)
+                        }
+                        markerCount = snapshot.first
+                        banks = snapshot.second
+                        restoreMissing = snapshot.third == false
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        banks = emptyList()
+                        failed = true
+                    } finally { busy = false }
                 }
+                fun perform(action: () -> Boolean?) {
+                    if (busy) return
+                    busy = true
+                    scope.launch { execute(action) }
+                }
+                LaunchedEffect(Unit) { execute { null } }
                 BetaShell(
                     markerCount = markerCount,
+                    banks = banks,
+                    busy = busy,
+                    failed = failed,
+                    onRetry = { perform { null } },
+                    onSetBankEnabled = { bank, enabled ->
+                        perform { shellContainer.setBankEnabled(bank, enabled); null }
+                    },
                     restoreMissing = restoreMissing,
                     onReturn = { finish() },
-                    onReset = {
-                        scope.launch {
-                            withContext(Dispatchers.IO) { shellContainer.reset() }
-                            restoreMissing = false
-                            generation += 1
-                        }
-                    },
-                    onBackup = {
-                        scope.launch {
-                            withContext(Dispatchers.IO) { shellContainer.backup() }
-                            restoreMissing = false
-                        }
-                    },
-                    onRestore = {
-                        scope.launch {
-                            val restored = withContext(Dispatchers.IO) { shellContainer.restore() }
-                            restoreMissing = !restored
-                            generation += 1
-                        }
-                    },
+                    onReset = { perform { shellContainer.reset(); null } },
+                    onBackup = { perform { shellContainer.backup(); null } },
+                    onRestore = { perform { shellContainer.restore() } },
                 )
             }
         }

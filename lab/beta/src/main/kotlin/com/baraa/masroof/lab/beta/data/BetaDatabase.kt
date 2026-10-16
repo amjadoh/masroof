@@ -12,17 +12,18 @@ import com.baraa.masroof.lab.beta.BetaEnvironment
  * [masroof.db] schema and must not be replaced by that type permanently.
  */
 @Database(
-    entities = [BetaShellMarkerEntity::class, BetaAssetEntity::class, BetaAssetAliasEntity::class],
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    entities = [BetaShellMarkerEntity::class, BetaAssetEntity::class, BetaAssetAliasEntity::class, BetaBankSelectionEntity::class],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
     version = BetaDatabase.VERSION,
     exportSchema = true,
 )
 abstract class BetaDatabase : RoomDatabase() {
+    abstract fun bankSelectionDao(): BetaBankSelectionDao
     internal abstract fun assetDao(): BetaAssetDao
     abstract fun shellMarkerDao(): BetaShellMarkerDao
 
     companion object {
         const val NAME: String = BetaEnvironment.DATABASE_NAME
-        const val VERSION: Int = 2
+        const val VERSION: Int = 3
     }
 }

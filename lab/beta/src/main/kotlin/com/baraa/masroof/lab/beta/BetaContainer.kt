@@ -1,5 +1,8 @@
 package com.baraa.masroof.lab.beta
 
+import com.baraa.masroof.lab.beta.application.BetaBankSelectionWorkflow
+import com.baraa.masroof.lab.beta.data.RoomBetaBankSelectionStore
+import com.baraa.masroof.lab.finance.value.BankId
 import android.content.Context
 import androidx.room.Room
 import com.baraa.masroof.lab.beta.data.BetaAssetAlias
@@ -29,6 +32,19 @@ class BetaContainer(
         BetaEnvironment.PREFS_NAME,
         Context.MODE_PRIVATE,
     ).also { BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME) }
+
+    fun bankChoices() = lock.withLock {
+        check(!closed)
+        runBlocking { BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database)).choices() }
+    }
+
+    fun setBankEnabled(bank: BankId, enabled: Boolean) = lock.withLock {
+        check(!closed)
+        runBlocking {
+            val workflow = BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database))
+            if (enabled) workflow.enable(bank) else workflow.disable(bank)
+        }
+    }
 
     /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
     fun registerAsset(asset: OwnedAsset, aliases: List<BetaAssetAlias> = emptyList()) = lock.withLock {
