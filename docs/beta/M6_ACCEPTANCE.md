@@ -18,6 +18,8 @@ Without `M6_REVIEWED_HOLDOUT`, the task **fails intentionally** and writes a saf
 
 For actual local evaluation set `M6_REVIEWED_HOLDOUT` to a private JSON manifest and `M6_ACCEPTANCE_POLICY` to a separately reviewed JSON policy. Keep these files outside the repository and report/artifact directories. Neither is copied into output. Input JSON is strict and bounded to 10 MB, with at most 20,000 cases and 16,000 UTF-16 units per body.
 
+Canonical input paths inside the output directory, including aliases of `summary.txt`, are rejected before any report write. Hard-link aliases of the report are also rejected with `Files.isSameFile`; an actual hard-link test verifies input preservation. An existing report symlink resolving outside its output directory is rejected. This prevents report invalidation from overwriting the private manifest or policy. On such a path error the command preserves the files and fails with a fixed message; a prior report is not evidence of the failed invocation.
+
 Manifest schema 1 requires:
 
 | Field | Meaning |
@@ -57,4 +59,4 @@ No independently reviewed real holdout or corresponding reviewed measurement pol
 
 ## Local verification
 
-JDK 17 / Gradle 8.8: `:lab:engine:test` passed **418 tests**, zero failures/errors, including 15 new evaluator/exporter tests. `:lab:android:assembleDebugAndroidTest` and `:lab:android:lintDebug` passed. The explicit `:lab:engine:assessM6Holdout` command exited nonzero as intended, reporting `MISSING_INDEPENDENT_REVIEWED_REAL_HOLDOUT` without claiming metrics. Candidate source fingerprint remains `b27c88b75d5daaf06d56c2c971b6b4fd1bffcc577c82b6ebefdaa989a5395ec9`; library fingerprint remains `6e6763be92d34b4c342aed74bb53fdbfaac26f5af8002788025f6d4b905a2964`, confirming unchanged runtime/default rules. Android timing execution is still pending PR emulator CI; building its APK is not device execution evidence.
+JDK 17 / Gradle 8.8: `:lab:engine:test` passed **420 tests**, zero failures/errors, including 17 new evaluator/exporter tests. `:lab:android:assembleDebugAndroidTest` and `:lab:android:lintDebug` passed. The explicit `:lab:engine:assessM6Holdout` command exited nonzero as intended, reporting `MISSING_INDEPENDENT_REVIEWED_REAL_HOLDOUT` without claiming metrics. Candidate source fingerprint remains `b27c88b75d5daaf06d56c2c971b6b4fd1bffcc577c82b6ebefdaa989a5395ec9`; library fingerprint remains `6e6763be92d34b4c342aed74bb53fdbfaac26f5af8002788025f6d4b905a2964`, confirming unchanged runtime/default rules. Android timing execution on the final PR head is still pending emulator CI; building its APK is not device execution evidence. Timing output is available in the existing instrumentation artifact's per-test logcat file even when Gradle suppresses the stream in job logs.

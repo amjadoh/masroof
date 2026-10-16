@@ -51,7 +51,8 @@ class SharedEngineDeviceMeasurementTest {
             "5 warmups + 25 measured calls per case; parse+validation timed; assertions outside timer; " +
             "no M0 comparison, budget acceptance or promotion\n" + rows.joinToString("\n")
         // Instrumentation result is preserved in existing connected-test XML, without SMS/facts.
-        InstrumentationRegistry.getInstrumentation().sendStatus(0, Bundle().apply { putString("stream", "$summary\n") })
+        // IN_PROGRESS (2), never a terminal test-result code; the JUnit runner owns completion.
+        InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString("stream", "$summary\n") })
         println(summary)
     }
 }

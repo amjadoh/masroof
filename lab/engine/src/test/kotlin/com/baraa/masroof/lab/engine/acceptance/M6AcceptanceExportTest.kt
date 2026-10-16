@@ -52,4 +52,29 @@ class M6AcceptanceExportTest {
         assertTrue(summary.contains("INVALID_OR_UNREADABLE_INPUT"))
         assertFalse(summary.contains("Measurement gates met: true"))
     }
+
+    @Test fun reportCollisionCannotOverwriteManifestOrPolicyInput() {
+        listOf("summary.txt", "other-private-input.json").forEach { filename ->
+            listOf(true, false).forEach { isManifest ->
+                val output = temporary.newFolder()
+                val input = File(output, filename).apply { writeText("private-original-input") }
+                val failure = assertThrows(IllegalArgumentException::class.java) {
+                    M6AcceptanceExport.main(arrayOf(root().path, output.path,
+                        if (isManifest) input.path else "", if (isManifest) "" else input.path))
+                }
+                assertEquals("private-original-input", input.readText())
+                assertFalse(failure.message!!.contains(input.path))
+            }
+        }
+    }
+
+    @Test fun reportHardLinkCannotOverwritePrivateInputOutsideOutputDirectory() {
+        val output = temporary.newFolder()
+        val input = temporary.newFile().apply { writeText("private-original-input") }
+        java.nio.file.Files.createLink(File(output, "summary.txt").toPath(), input.toPath())
+        assertThrows(IllegalArgumentException::class.java) {
+            M6AcceptanceExport.main(arrayOf(root().path, output.path, input.path, ""))
+        }
+        assertEquals("private-original-input", input.readText())
+    }
 }
