@@ -20,6 +20,10 @@ The application ID stays `com.baraa.masroof`; no separate installation or build 
 is required. Lab databases remain independent from production `masroof.db`.
 The production app keeps only a small bridge into Beta; Beta code lives under `lab/beta/`.
 
+The M2 foundation adds pure JVM contracts in `:lab:finance-core` and
+`:lab:bank-engine`. They are not wired into production processing or the Beta
+database yet. See [contract ownership, boundaries and remaining acceptance](../docs/beta/M2_DOMAIN_CONTRACTS.md).
+
 ## Implemented
 
 - Independent JVM engine and Android library; neither depends on `:app` or imports
