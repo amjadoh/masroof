@@ -65,4 +65,18 @@
     <string name="beta_history_next">الصفحة التالية</string>
     <string name="beta_history_first">الصفحة الأولى</string>
     <string name="beta_history_range">الفترة المحفوظة: %1$s — %2$s</string>
+    <string name="beta_welcome">أهلًا بك في Beta</string>
+    <string name="beta_welcome_steps">اختر بنكك، ثم استورد الرسائل اختياريًا أو أضف حساباتك وبطاقاتك يدويًا. راجع المقترحات وأكّد الملكية والربط. ملخص المعاملات المالي غير متاح بعد.</string>
+    <string name="beta_discovery_title">مقترحات الحسابات والبطاقات</string>
+    <string name="beta_discovery_help">ملاحظات من الأدلة المحفوظة فقط؛ لا تثبت الملكية ولا تسجل معاملات. كل دليل مستقل، وتشابه الأرقام لا يدمج الأصول. أكّد النوع والملكية والربط قبل الحفظ.</string>
+    <string name="beta_discovery_empty">لا توجد مقترحات صالحة في هذه الصفحة. يمكنك الإضافة اليدوية أو متابعة مراجعة الأدلة.</string>
+    <string name="beta_discovery_review">أدلة غير صالحة للاقتراح في هذه الصفحة: %1$d. تبقى محفوظة بحالتها للمراجعة.</string>
+    <string name="beta_discovery_open">مراجعة المقترح وإضافته</string>
+    <string name="beta_discovery_confirmed">تم تأكيد هذا الدليل للأصل المسجل؛ لن نكرر الإضافة منه.</string>
+    <string name="beta_discovery_conflict">تختلف الملاحظة الحالية عن الأصل الذي أكّدته. نحتفظ باختيارك؛ راجع الأصل والأدلة يدويًا.</string>
+    <string name="beta_discovery_collision">يوجد أصل آخر بالأرقام نفسها؛ قد يكون الأصل نفسه أو مختلفًا. لا توجد مطابقة تلقائية. لا تضف نسخة أخرى إن كان مسجلًا بالفعل.</string>
+    <string name="beta_discovery_existing">اختيار الأصل المسجل رقم %1$d — %2$s · %3$s</string>
+    <string name="beta_discovery_link_help">اخترت أصلًا مسجلًا بنفس النوع والأرقام. أكّد أنه الأصل المقصود بهذا الدليل؛ لن يتغير الحساب المرتبط أو نوع البطاقة، ولن ينشأ أصل أو معاملة جديدة.</string>
+    <string name="beta_discovery_link">تأكيد الدليل للأصل المختار</string>
+    <string name="beta_discovery_parent">مرتبط بـ %1$s · %2$s — الأصل رقم %3$d</string>
 </resources>

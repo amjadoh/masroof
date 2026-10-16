@@ -25,8 +25,9 @@ internal fun BetaAssetEditor(
     failed: Boolean,
     onSave: (ManualAssetDraft) -> Unit,
     onCancel: () -> Unit,
+    proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal? = null,
 ) {
-    val localId = rememberSaveable { existing?.id?.localId ?: UUID.randomUUID().toString() }
+    val localId = rememberSaveable { existing?.id?.localId ?: proposal?.id?.localId ?: UUID.randomUUID().toString() }
     val originalKind by rememberSaveable { mutableStateOf(existing?.kind?.name) }
     val originalSuffix by rememberSaveable { mutableStateOf(existing?.last4) }
     val originalParent by rememberSaveable { mutableStateOf(existing?.parentId?.localId) }
@@ -34,8 +35,8 @@ internal fun BetaAssetEditor(
     val stableId = AssetId(Environment.BETA, bank, localId)
     val original = originalKind?.let { OwnedAsset(stableId, AssetKind.valueOf(it), originalSuffix,
         originalParent?.let { parent -> AssetId(Environment.BETA, bank, parent) }, originalRole?.let(CreditCardRole::valueOf)) }
-    var kindName by rememberSaveable { mutableStateOf((existing?.kind ?: AssetKind.ACCOUNT).name) }
-    var suffix by rememberSaveable { mutableStateOf(existing?.last4.orEmpty()) }
+    var kindName by rememberSaveable { mutableStateOf((existing?.kind ?: proposal?.kind ?: AssetKind.ACCOUNT).name) }
+    var suffix by rememberSaveable { mutableStateOf((existing?.last4 ?: proposal?.last4).orEmpty()) }
     var parentLocalId by rememberSaveable { mutableStateOf(existing?.parentId?.localId) }
     var roleName by rememberSaveable { mutableStateOf((existing?.creditCardRole ?: CreditCardRole.PRIMARY).name) }
     // Even an edit needs a fresh affirmative confirmation; opening a form never writes ownership.

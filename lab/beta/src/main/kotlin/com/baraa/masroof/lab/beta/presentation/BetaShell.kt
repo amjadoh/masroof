@@ -36,6 +36,7 @@ fun BetaShell(
     banks: List<BetaBankChoice> = emptyList(),
     assets: List<OwnedAsset> = emptyList(),
     editor: (@Composable () -> Unit)? = null,
+    onOpenDiscovery: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onAddAsset: (BankId) -> Unit = {},
     onEditAsset: (OwnedAsset) -> Unit = {},
@@ -79,6 +80,9 @@ fun BetaShell(
                 editor()
                 return@Column
             }
+            Text(stringResource(R.string.beta_welcome), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.beta_welcome_steps))
+            OutlinedButton(enabled = !busy, onClick = onOpenDiscovery, modifier = Modifier.testTag("beta-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
             Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
                 Text(stringResource(R.string.beta_history_title))
