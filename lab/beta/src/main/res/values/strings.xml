@@ -10,7 +10,7 @@
     <string name="beta_restore">استعادة البيئة التجريبية</string>
     <string name="beta_restore_missing">لا توجد نسخة تجريبية للاستعادة.</string>
     <string name="beta_bank_title">البنوك المختارة</string>
-    <string name="beta_bank_help">اختيار البنك يحدد نطاق المعالجة في Beta. الإيقاف يحفظ الحسابات والبطاقات والتاريخ. استيراد الرسائل سيُتاح في مرحلة لاحقة.</string>
+    <string name="beta_bank_help">اختيار البنك يحدد نطاق المعالجة في Beta. الإيقاف يحفظ الحسابات والبطاقات والتاريخ. يمكنك استيراد الرسائل اختياريًا من الفترة التي تختارها.</string>
     <string name="beta_bank_aljazira">بنك الجزيرة</string>
     <string name="beta_bank_enabled">مفعّل</string>
     <string name="beta_bank_disabled">متوقف مع حفظ التاريخ</string>
@@ -42,4 +42,27 @@
     <string name="beta_asset_cancel">إلغاء</string>
     <string name="beta_asset_summary">%1$s • %2$s — %3$d</string>
     <string name="beta_asset_missing">الأصل لم يعد موجودًا. أغلق التكوين وأعد تحميل القائمة.</string>
+    <string name="beta_history_title">استيراد رسائل إلى Beta</string>
+    <string name="beta_history_help">اختياري. اختر بنوكك أولًا، ثم الفترة والإذن. تُحفظ الأدلة للمقارنة والمراجعة فقط؛ لا تُسجل معاملات مالية ولا تتغير بيانات مصروف الأساسي.</string>
+    <string name="beta_history_scope">تُقرأ رسائل الوارد خلال الفترة المحددة لتحديد البنوك المختارة. يُحفظ المتطابق فقط في Beta. الحد ١٠٬٠٠٠ رسالة لكل استيراد. البدء مجددًا يعيد فحص الفترة دون تكرار الأدلة المحفوظة.</string>
+    <string name="beta_history_days">آخر %1$d أيام</string>
+    <string name="beta_history_days_selected">✓ آخر %1$d أيام</string>
+    <string name="beta_history_denied">يمكنك المتابعة بإضافة الحسابات والبطاقات يدويًا دون إذن الرسائل. لمنح الإذن لاحقًا اضغط بدء الاستيراد أو استخدم إعدادات النظام.</string>
+    <string name="beta_history_start">بدء استيراد الفترة المختارة</string>
+    <string name="beta_history_progress">فُحصت %1$d • محفوظة %2$d • خارج النطاق %3$d • تعارض هوية %4$d</string>
+    <string name="beta_history_done">اكتمل فحص الفترة؛ المحفوظ للمقارنة فقط. قد تبقى أدلة تحتاج إعادة المحاولة أو المراجعة.</string>
+    <string name="beta_history_limited">وصل الفحص إلى الحد المسموح؛ لم تُفحص الفترة كاملة. اختر فترة أقصر.</string>
+    <string name="beta_history_paused">يمكن استئناف الفحص المحفوظ بعد التوقف أو إغلاق Beta.</string>
+    <string name="beta_history_resume">استئناف الفترة والبنوك المحفوظة</string>
+    <string name="beta_history_pause">إيقاف بعد الدفعة الحالية</string>
+    <string name="beta_history_retry">إعادة محاولة الأدلة المعلقة (حتى ١٠٠)</string>
+    <string name="beta_history_saved">أدلة Beta المحفوظة</string>
+    <string name="beta_history_row">الدليل %1$d: %2$s</string>
+    <string name="beta_history_pending">تحتاج إعادة المحاولة</string>
+    <string name="beta_history_review">تحتاج مراجعة</string>
+    <string name="beta_history_compared">مقارنة محفوظة فقط</string>
+    <string name="beta_history_reparse">إعادة مقارنة الدليل</string>
+    <string name="beta_history_next">الصفحة التالية</string>
+    <string name="beta_history_first">الصفحة الأولى</string>
+    <string name="beta_history_range">الفترة المحفوظة: %1$s — %2$s</string>
 </resources>

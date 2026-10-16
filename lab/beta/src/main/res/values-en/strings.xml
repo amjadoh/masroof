@@ -10,7 +10,7 @@
     <string name="beta_restore">Restore the beta environment</string>
     <string name="beta_restore_missing">There is no beta backup to restore.</string>
     <string name="beta_bank_title">Selected banks</string>
-    <string name="beta_bank_help">Your selection sets the processing scope in Beta. Disabling keeps accounts, cards and history. Message import will be available in a later stage.</string>
+    <string name="beta_bank_help">Your selection sets the processing scope in Beta. Disabling keeps accounts, cards and history. You can optionally import messages from a period you choose.</string>
     <string name="beta_bank_aljazira">Bank AlJazira</string>
     <string name="beta_bank_enabled">Enabled</string>
     <string name="beta_bank_disabled">Paused; history kept</string>
@@ -42,4 +42,27 @@
     <string name="beta_asset_cancel">Cancel</string>
     <string name="beta_asset_summary">%1$s • %2$s — %3$d</string>
     <string name="beta_asset_missing">This asset no longer exists. Close setup and reload the list.</string>
+    <string name="beta_history_title">Import messages into Beta</string>
+    <string name="beta_history_help">Optional. Select banks first, then a period and permission. Evidence is saved for comparison and review only; no financial transactions are posted and main Masroof data stays unchanged.</string>
+    <string name="beta_history_scope">Inbox messages within the selected period are read to identify selected banks. Only eligible evidence is saved in Beta. Limit: 10,000 scanned messages per import. Starting again rescans the period without duplicating saved evidence.</string>
+    <string name="beta_history_days">Last %1$d days</string>
+    <string name="beta_history_days_selected">✓ Last %1$d days</string>
+    <string name="beta_history_denied">You can add accounts and cards manually without message access. To grant access later, start import again or use system settings.</string>
+    <string name="beta_history_start">Start selected-period import</string>
+    <string name="beta_history_progress">Scanned %1$d • Saved %2$d • Excluded %3$d • Identity conflicts %4$d</string>
+    <string name="beta_history_done">Period scan complete; saved evidence is comparison only. Some evidence may still need retry or review.</string>
+    <string name="beta_history_limited">Scan limit reached; the entire period was not scanned. Choose a shorter period.</string>
+    <string name="beta_history_paused">The saved scan can be resumed after pausing or closing Beta.</string>
+    <string name="beta_history_resume">Resume saved period and banks</string>
+    <string name="beta_history_pause">Pause after current batch</string>
+    <string name="beta_history_retry">Retry pending evidence (up to 100)</string>
+    <string name="beta_history_saved">Saved Beta evidence</string>
+    <string name="beta_history_row">Evidence %1$d: %2$s</string>
+    <string name="beta_history_pending">Needs retry</string>
+    <string name="beta_history_review">Needs review</string>
+    <string name="beta_history_compared">Comparison saved only</string>
+    <string name="beta_history_reparse">Compare evidence again</string>
+    <string name="beta_history_next">Next page</string>
+    <string name="beta_history_first">First page</string>
+    <string name="beta_history_range">Saved period: %1$s — %2$s</string>
 </resources>

@@ -36,6 +36,7 @@ fun BetaShell(
     banks: List<BetaBankChoice> = emptyList(),
     assets: List<OwnedAsset> = emptyList(),
     editor: (@Composable () -> Unit)? = null,
+    onOpenHistory: () -> Unit = {},
     onAddAsset: (BankId) -> Unit = {},
     onEditAsset: (OwnedAsset) -> Unit = {},
     returnEnabled: Boolean = true,
@@ -48,7 +49,7 @@ fun BetaShell(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
 ) {
-    BackHandler(onBack = onReturn)
+    BackHandler { if (returnEnabled) onReturn() }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,6 +80,9 @@ fun BetaShell(
                 return@Column
             }
             Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
+                Text(stringResource(R.string.beta_history_title))
+            }
             Text(stringResource(R.string.beta_bank_title), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.beta_bank_help), style = MaterialTheme.typography.bodyMedium)
             if (failed) {
