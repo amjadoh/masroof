@@ -31,6 +31,8 @@ ksp {
 dependencies {
     implementation(project(":lab:finance-core"))
     implementation(project(":lab:bank-engine"))
+    // Transitional comparison engine; shares source with Parsing Lab, never :app.
+    implementation(project(":lab:engine"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -51,4 +53,5 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.kotlinx.serialization.json)
 }

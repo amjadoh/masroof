@@ -47,9 +47,11 @@ object LabResultProjection {
             is ParseResult.NonFinancial -> listOf(result.reason)
             else -> emptyList()
         }
+        val confidence = event?.confidence ?: (result as? ParseResult.NonFinancial)?.confidence
         return LabOutcome(status, LabFacts(event?.messageFamily?.name, event?.direction?.name,
             event?.amount?.amount?.toPlainString(), event?.amount?.currency?.name, event?.cardRef?.last4,
             event?.sourceAccountRef?.maskedNumber, event?.destinationAccountRef?.maskedNumber,
-            event?.merchant, details.availableBalance?.amount?.toPlainString()), trace + event?.confidence?.reasons.orEmpty())
+            event?.merchant, details.availableBalance?.amount?.toPlainString(), balanceCurrency = details.availableBalance?.currency?.name), trace + event?.confidence?.reasons.orEmpty(),
+            confidenceScore = confidence?.score, confidenceReasons = confidence?.reasons.orEmpty())
     }
 }
