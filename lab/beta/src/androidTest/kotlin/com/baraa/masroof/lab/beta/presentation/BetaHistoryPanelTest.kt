@@ -75,6 +75,33 @@ class BetaHistoryPanelTest {
         }
         BetaContainer.resetOffline(context)
     }
+    @Test fun firstBatchAccessFailureKeepsSavedScopeAndResumeVisible() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+        fun appOp(mode: String) {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("appops set ${context.packageName} READ_SMS $mode")).use { it.readBytes() }
+        }
+        BetaContainer.resetOffline(context)
+        automation.grantRuntimePermission(context.packageName, Manifest.permission.READ_SMS)
+        appOp("ignore")
+        try {
+            BetaContainer(context).use { beta ->
+                beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
+                compose.setContent {
+                    MaterialTheme { BetaShell(0, false, editor = { BetaHistoryPanel(beta, {}) }, onReturn = {}, onBackup = {}, onRestore = {}, onReset = {}) }
+                }
+                compose.onNodeWithTag("history-start").performScrollTo().performClick()
+                compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("history-resume").assertIsEnabled(); true }.getOrDefault(false) }
+                compose.onNodeWithTag("history-resume").performScrollTo().assertIsEnabled()
+                assertNotNull(beta.historySession())
+                assertEquals(0, beta.historySession()!!.scanned)
+                assertTrue(beta.evidencePage().isEmpty())
+            }
+        } finally {
+            appOp("default")
+            BetaContainer.resetOffline(context)
+        }
+    }
     @Test fun openingAndRestoringScreenNeverStartsReadingAndPreservesSavedScope() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         BetaContainer.resetOffline(context)

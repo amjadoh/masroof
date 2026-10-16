@@ -50,12 +50,18 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         scope.launch {
             try { block(); refresh() }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { failed = true }
+            catch (_: Exception) {
+                failed = true
+                // The durable checkpoint can advance even when a later batch operation fails.
+                try { refresh() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { /* Keep the failure visible; reopening may recover storage. */ }
+            }
             finally { busy = false; running = false }
         }
     }
     fun scan(newDays: Int?) = action {
-        if (newDays != null) withContext(BetaIo.dispatcher) { container.startHistory(newDays) }
+        if (newDays != null) session = withContext(BetaIo.dispatcher) { container.startHistory(newDays) }
         running = true
         do {
             val current = withContext(BetaIo.dispatcher) { container.stepHistory() }
