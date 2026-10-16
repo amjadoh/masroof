@@ -43,7 +43,11 @@ class ParsingLabSmokeTest {
                         onSaveGithubToken = {}, onClearGithubToken = {}, onSelectUpdateChannel = {},
                         onCheckForUpdates = {}, onDownloadUpdate = {}, onInstallUpdate = {}, onClearUpdateMessage = {},
                     )
-                    "developer" -> SettingsDeveloperScreen(onBack = { screen = "about" }, onOpenLab = { screen = "lab" })
+                    "developer" -> SettingsDeveloperScreen(
+                        onBack = { screen = "about" },
+                        onOpenLab = { screen = "lab" },
+                        onOpenBeta = {},
+                    )
                     else -> ParsingLabEntry(onBack = { screen = "developer" })
                 }
             }
@@ -75,14 +79,14 @@ class ParsingLabSmokeTest {
         compose.waitUntil(10_000) { compose.onAllNodes(hasText("استُوردت", substring = true)).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("استيراد رسائل البنك").performScrollTo()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
-            File(context.getExternalFilesDir(null), "parsing-lab-import.png"))
+            File(context.getExternalFilesDir(null), "lab-import.png"))
         compose.onNodeWithText("النتائج").performClick()
         compose.onNodeWithText("الاختبارات السابقة").performScrollTo().performClick()
         compose.onNodeWithText("تشغيل وحفظ النتائج").performScrollTo().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("مطابقة الحقول الموسومة: 4 / 4 عينة موسومة · 0 غير موسومة").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("مطابقة الحقول الموسومة: 4 / 4 عينة موسومة · 0 غير موسومة").performScrollTo().assertIsDisplayed()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
-            File(context.getExternalFilesDir(null), "parsing-lab-results.png"))
+            File(context.getExternalFilesDir(null), "lab-results.png"))
         compose.onAllNodesWithText("عرض الحقائق والأدلة والمقارنة").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("مراجعة الإجابة الصحيحة").performScrollTo().performClick()
         compose.onNodeWithText("حفظ للاختبارات القادمة").performScrollTo().performClick()
@@ -93,17 +97,17 @@ class ParsingLabSmokeTest {
         compose.onNodeWithText("4 رسالة · 4 لها إجابة · 0 بلا تقييم").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("مطابقة الحقول المراجعة: الحالي 4 / 4 · الأدلة 4 / 4").performScrollTo().assertIsDisplayed()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
-            File(context.getExternalFilesDir(null), "parsing-lab-evidence-comparison.png"))
+            File(context.getExternalFilesDir(null), "lab-evidence-comparison.png"))
         compose.onNodeWithText("القواعد").performClick()
         compose.onNodeWithText("مكتبة الفهم المشتركة v1").assertExists()
         compose.onNodeWithText("حفظ كإصدار جديد").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("مكتبة الفهم المشتركة v2").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("مكتبة الفهم المشتركة v2").performScrollTo()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
-            File(context.getExternalFilesDir(null), "parsing-lab-shared-rules.png"))
+            File(context.getExternalFilesDir(null), "lab-shared-rules.png"))
         compose.onNodeWithText("البنوك").performClick()
         compose.onNodeWithText("البنوك التجريبية").performScrollTo().assertIsDisplayed()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
-            File(context.getExternalFilesDir(null), "parsing-lab-banks.png"))
+            File(context.getExternalFilesDir(null), "lab-banks.png"))
     }
 }

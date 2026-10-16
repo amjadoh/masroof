@@ -125,7 +125,8 @@ ksp {
 }
 
 dependencies {
-    implementation(project(":parsing-lab:android"))
+    implementation(project(":lab:android"))
+    implementation(project(":lab:beta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
