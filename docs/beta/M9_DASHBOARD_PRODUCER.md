@@ -60,6 +60,23 @@ Dashboard reads do not enrich FX, select a historical/market rate or persist a r
 The transaction's SAR equivalent excludes the fee while the appropriate spending aggregate includes
 the linked SMS fee. Loan and card balances/statement due never come from sums of transactions.
 
+Period card spending intentionally differs from the monthly summary: the unchanged
+`DebitCardSpendClassifier` counts debit purchases and withdrawals minus refunds, excluding fees,
+bills and settlements. `CreditCardOverviewBuilder.netSpending` counts credit purchases and fees
+minus refunds, excluding bills, withdrawals and settlements. Facility/portfolio credit period
+spending sums that member-card policy rather than the monthly CREDIT_PURCHASES indicator. Direct
+facility purchases/refunds without member-card allocation make the member-card/facility/portfolio period
+indicator unavailable; they still retain their separately defined monthly financial impact.
+`TransactionFacts.cards` preserves broad card involvement; `debitSpendingCards` contains only the
+debit-spend-qualified purchase/withdrawal/refund IDs, so presentation never repeats this policy.
+An account-sourced purchase/withdrawal or account-destination refund may have a Mada association
+in separate persisted card-involvement facts. This beginning has no such exact typed association;
+spending for the related linked card and same-bank unlinked Mada stays null, as does the portfolio
+Mada sum. A card confirmed under a different account retains its independently known result.
+Complete genuinely empty periods still produce zero. No suffix-based card attribution is inferred.
+Transaction involvement sets contain resolved exact IDs only; an empty set is not proof that an
+unattributed account transaction never used a card. The affected spending fields stay unavailable.
+
 Snapshots and nested collections are frozen and ordered by qualified registry/posting identities.
 Optional observations may predate the selected period, but cannot exceed the read freshness or
 query upper bound. Metadata binds exact posting revision and evidence. Chart labels/categories use
@@ -73,9 +90,11 @@ comparison, negative refund-heavy values, unknown versus known-empty coverage, i
 environment/key/evidence conflicts, exact fee/metadata scope, independently selected periods,
 typed parent/current-registry checks, shared facility dues, mixed/missing observations and immutable
 stable results. Run `:lab:finance-core:test :lab:finance-core:verifyPureJvmDependencies`.
-Local verification on 2026-10-17: **142 finance tests passed**, including 20 new producer tests and
+Local verification on 2026-10-17: **145 finance tests passed**, including 23 new producer tests and
 122 existing tests, zero failures/errors/skips. The pure JVM dependency guard passed. Full PR CI
-and the existing stable-Android device checks remain required before merge.
+and existing stable-Android checks remain required before merge. The card policy regressions
+characterize the read-only production sources; they are not a cross-run of the complete debit/credit
+dashboard builders or a full historical-evidence attribution parity claim.
 
 Still required: the real atomic Beta database batch adapter and lifecycle join/query plans; full
 analysis/trends/merchant/hierarchy/commitment builders; explicit orphan-credit representation if
