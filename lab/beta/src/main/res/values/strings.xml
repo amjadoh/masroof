@@ -9,4 +9,15 @@
     <string name="beta_backup">نسخ البيئة التجريبية</string>
     <string name="beta_restore">استعادة البيئة التجريبية</string>
     <string name="beta_restore_missing">لا توجد نسخة تجريبية للاستعادة.</string>
+    <string name="beta_bank_title">البنوك المختارة</string>
+    <string name="beta_bank_help">اختيار البنك يحدد نطاق المعالجة في Beta. الإيقاف يحفظ الحسابات والبطاقات والتاريخ. استيراد الرسائل سيُتاح في مرحلة لاحقة.</string>
+    <string name="beta_bank_aljazira">بنك الجزيرة</string>
+    <string name="beta_bank_enabled">مفعّل</string>
+    <string name="beta_bank_disabled">متوقف مع حفظ التاريخ</string>
+    <string name="beta_bank_not_selected">لم تتم إضافته</string>
+    <string name="beta_bank_add">إضافة البنك</string>
+    <string name="beta_bank_disable">إيقاف البنك</string>
+    <string name="beta_bank_resume">استئناف البنك</string>
+    <string name="beta_action_failed">تعذر حفظ التغيير. حاول مجددًا.</string>
+    <string name="beta_retry">إعادة المحاولة</string>
 </resources>

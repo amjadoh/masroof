@@ -9,4 +9,15 @@
     <string name="beta_backup">Back up the beta environment</string>
     <string name="beta_restore">Restore the beta environment</string>
     <string name="beta_restore_missing">There is no beta backup to restore.</string>
+    <string name="beta_bank_title">Selected banks</string>
+    <string name="beta_bank_help">Your selection sets the processing scope in Beta. Disabling keeps accounts, cards and history. Message import will be available in a later stage.</string>
+    <string name="beta_bank_aljazira">Bank AlJazira</string>
+    <string name="beta_bank_enabled">Enabled</string>
+    <string name="beta_bank_disabled">Paused; history kept</string>
+    <string name="beta_bank_not_selected">Not added</string>
+    <string name="beta_bank_add">Add bank</string>
+    <string name="beta_bank_disable">Pause bank</string>
+    <string name="beta_bank_resume">Resume bank</string>
+    <string name="beta_action_failed">Could not save the change. Try again.</string>
+    <string name="beta_retry">Retry</string>
 </resources>
