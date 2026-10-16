@@ -15,6 +15,8 @@ Start/Resume is required. READ_SMS is declared in the Beta library manifest so i
 self-instrumenting test APK can request it; the host app already declares this
 same permission. No receiver/service or production permission flow is changed.
 
+The reader checks both READ_SMS permission and its app-op before querying; an app-op denial cannot become an empty successful scan.
+
 The screen explains that the provider must expose messages within the selected
 time range to identify the selected banks, and only eligible evidence is saved.
 Sender/body are read transiently for routing; no data is written to the provider.
