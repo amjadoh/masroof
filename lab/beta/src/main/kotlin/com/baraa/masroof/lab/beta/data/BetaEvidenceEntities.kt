@@ -29,6 +29,7 @@ internal data class BetaEvidenceDecisionEntity(@PrimaryKey val rawId: String, va
 
 @Dao
 internal interface BetaEvidenceDao {
+    @Query("SELECT id FROM beta_raw_evidence WHERE id > :afterId ORDER BY id LIMIT :limit") suspend fun idsAfter(afterId: String, limit: Int): List<String>
     @Query("SELECT * FROM beta_raw_evidence WHERE id=:id") suspend fun raw(id: String): BetaRawEvidenceEntity?
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertRaw(raw: BetaRawEvidenceEntity): Long
     @Query("SELECT * FROM beta_evidence_outcome WHERE rawId=:id") suspend fun outcome(id: String): BetaEvidenceOutcomeEntity?

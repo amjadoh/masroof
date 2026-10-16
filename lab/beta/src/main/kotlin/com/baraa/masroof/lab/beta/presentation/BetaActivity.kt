@@ -3,6 +3,8 @@ package com.baraa.masroof.lab.beta.presentation
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import com.baraa.masroof.lab.beta.BetaIo
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,7 +19,6 @@ import com.baraa.masroof.lab.finance.asset.OwnedAsset
 import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.lab.beta.application.BetaBankChoice
 import com.baraa.masroof.lab.beta.BetaContainer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -31,9 +32,12 @@ class BetaActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val container = BetaContainer(applicationContext)
-        betaContainer = container
-        setContent {
+        lifecycleScope.launch {
+            // Destruction queues behind this creation even if the lifecycle cancels its result.
+            val container = withContext(BetaIo.dispatcher) {
+                BetaContainer(applicationContext).also { betaContainer = it }
+            }
+            setContent {
             MaterialTheme {
                 val shellContainer = remember { container }
                 val scope = rememberCoroutineScope()
@@ -42,6 +46,8 @@ class BetaActivity : ComponentActivity() {
                 var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
                 var assets by remember { mutableStateOf<List<OwnedAsset>>(emptyList()) }
                 var loaded by remember { mutableStateOf(false) }
+                var historyBusy by remember { mutableStateOf(false) }
+                var historyOpen by rememberSaveable { mutableStateOf(false) }
                 var editBank by rememberSaveable { mutableStateOf<String?>(null) }
                 var editId by rememberSaveable { mutableStateOf<String?>(null) }
                 var busy by remember { mutableStateOf(true) }
@@ -49,7 +55,7 @@ class BetaActivity : ComponentActivity() {
                 suspend fun execute(action: () -> Boolean?): Boolean {
                     failed = false
                     try {
-                        val snapshot = withContext(Dispatchers.IO) {
+                        val snapshot = withContext(BetaIo.dispatcher) {
                             val restored = action()
                             BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored)
                         }
@@ -74,12 +80,13 @@ class BetaActivity : ComponentActivity() {
                 }
                 LaunchedEffect(Unit) { execute { null } }
                 BetaShell(
+                    onOpenHistory = { if (!busy) historyOpen = true },
                     markerCount = markerCount,
                     assets = assets,
-                    returnEnabled = editBank == null || !busy,
+                    returnEnabled = !historyBusy && (editBank == null || !busy),
                     onAddAsset = { bank -> if (!busy) { editBank = bank.value; editId = null; failed = false } },
                     onEditAsset = { asset -> if (!busy) { editBank = asset.id.bank.value; editId = asset.id.localId; failed = false } },
-                    editor = if (editBank != null && loaded) ({
+                    editor = if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = { historyOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (editBank != null && loaded) ({
                         key(editBank, editId) {
                             val existing = editId?.let { id -> assets.singleOrNull { it.id.bank.value == editBank && it.id.localId == id } }
                             if (editId != null && existing == null) {
@@ -110,18 +117,20 @@ class BetaActivity : ComponentActivity() {
                         perform { shellContainer.setBankEnabled(bank, enabled); null }
                     },
                     restoreMissing = restoreMissing,
-                    onReturn = { if (editBank == null || !busy) finish() },
+                    onReturn = { if (!historyBusy && (editBank == null || !busy)) finish() },
                     onReset = { perform { shellContainer.reset(); null } },
                     onBackup = { perform { shellContainer.backup(); null } },
                     onRestore = { perform { shellContainer.restore() } },
                 )
             }
+            }
         }
     }
 
     override fun onDestroy() {
-        betaContainer?.close()
-        betaContainer = null
+        // Never wait for Room/comparison on the main thread. New Activity creation uses
+        // the same FIFO queue, so its database work cannot overtake this close.
+        BetaIo.execute { betaContainer?.close(); betaContainer = null }
         super.onDestroy()
     }
 }

@@ -73,6 +73,41 @@ class BetaContainer(
         com.baraa.masroof.lab.beta.application.evidence.LabEvidenceRouter(),
         com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer())
 
+    fun historySession() = lock.withLock {
+        check(!closed)
+        com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences).load()
+    }
+
+    fun startHistory(days: Int, now: Long = System.currentTimeMillis()) = lock.withLock {
+        check(!closed)
+        require(days in listOf(7, 30, 90))
+        val banks = bankChoices().filter { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }.map { it.bankId }.toSet()
+        require(banks.isNotEmpty())
+        val session = com.baraa.masroof.lab.beta.application.history.HistorySession(
+            maxOf(0, now - days * com.baraa.masroof.lab.beta.application.history.HistorySession.DAY), now, banks)
+        com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences).save(session)
+        session
+    }
+
+    fun stepHistory() = lock.withLock {
+        check(!closed)
+        val workflow = evidenceWorkflow()
+        com.baraa.masroof.lab.beta.application.history.BetaHistoryImport(
+            com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences),
+            com.baraa.masroof.lab.beta.data.AndroidHistorySource(appContext),
+            { request, messages -> runBlocking { workflow.importBatch(request, messages) } }).step()
+    }
+
+    /** Safe bounded metadata page; no raw text enters presentation. */
+    fun evidencePage(afterId: String = "", limit: Int = 25) = lock.withLock {
+        check(!closed)
+        require(limit in 1..100)
+        runBlocking {
+            val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
+            database.evidenceDao().idsAfter(afterId, limit).map { store.summary(it) }
+        }
+    }
+
     fun setBankEnabled(bank: BankId, enabled: Boolean) = lock.withLock {
         check(!closed)
         runBlocking {
