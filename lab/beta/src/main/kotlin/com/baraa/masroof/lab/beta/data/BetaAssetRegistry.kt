@@ -1,6 +1,8 @@
 package com.baraa.masroof.lab.beta.data
 
 import androidx.room.withTransaction
+import com.baraa.masroof.lab.beta.application.ManualAssetStore
+import com.baraa.masroof.lab.beta.application.BankSelectionState
 import com.baraa.masroof.lab.finance.asset.AssetId
 import com.baraa.masroof.lab.finance.asset.AssetKind
 import com.baraa.masroof.lab.finance.asset.CreditCardRole
@@ -18,7 +20,7 @@ data class BetaAssetAlias(val kind: BetaAliasKind, val value: String, val eviden
 }
 
 /** Explicit registration only. Discovery never merges assets or chooses among colliding aliases. */
-class BetaAssetRegistry(private val database: BetaDatabase) {
+class BetaAssetRegistry(private val database: BetaDatabase) : ManualAssetStore {
     suspend fun register(asset: OwnedAsset, aliases: List<BetaAssetAlias> = emptyList()) {
         require(asset.id.environment == Environment.BETA) { "Beta registry cannot store rehearsal data" }
         database.withTransaction {
@@ -39,6 +41,63 @@ class BetaAssetRegistry(private val database: BetaDatabase) {
                 ))
             }
         }
+    }
+
+    override suspend fun save(asset: OwnedAsset, editing: Boolean, expectedOriginal: OwnedAsset?): OwnedAsset = database.withTransaction {
+        require(asset.id.environment == Environment.BETA)
+        val dao = database.assetDao()
+        val all = all()
+        val existing = all.singleOrNull { it.id == asset.id }
+        if (editing) {
+            require(existing != null) { "The asset no longer exists" }
+            require(expectedOriginal?.id == asset.id) { "Editing requires the original stable identity" }
+            if (existing == asset) return@withTransaction existing
+            require(existing == expectedOriginal) { "Asset changed; reopen its configuration" }
+        }
+        val selected = database.bankSelectionDao().all().singleOrNull { it.bankId == asset.id.bank.value }
+        require(selected != null && (editing || selected.state == BankSelectionState.ENABLED.name)) {
+            "Select and enable the bank before adding an asset"
+        }
+        // A retry of the same draft is idempotent, while a new draft always has a new stable ID.
+        if (!editing && existing != null) {
+            require(existing == asset) { "Stable identity already exists with a different configuration" }
+            return@withTransaction existing
+        }
+        if (existing != null) {
+            val sameFamily = existing.kind == asset.kind ||
+                (existing.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) && asset.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD))
+            require(sameFamily) { "An account or facility cannot change its identity kind" }
+        }
+        val parent = asset.parentId?.let { parentId -> all.singleOrNull { it.id == parentId } ?: error("Parent does not exist") }
+        require(parent == null || when (asset.kind) {
+            AssetKind.DEBIT_CARD -> parent.kind == AssetKind.ACCOUNT
+            AssetKind.CREDIT_CARD -> parent.kind == AssetKind.CREDIT_FACILITY
+            else -> false
+        }) { "Parent kind does not match" }
+        val after = all.filterNot { it.id == asset.id } + asset
+        // Both credit roles belong to one facility; a supplementary does not become a separate debt.
+        val affectedFacilities = listOfNotNull(
+            existing?.takeIf { it.kind == AssetKind.CREDIT_CARD }?.parentId,
+            asset.takeIf { it.kind == AssetKind.CREDIT_CARD }?.parentId).toSet()
+        after.filter { it.kind == AssetKind.CREDIT_CARD && it.parentId in affectedFacilities }.groupBy { it.parentId }.values.forEach { cards ->
+            require(cards.count { it.creditCardRole == CreditCardRole.PRIMARY } <= 1) { "A facility already has a primary card" }
+            require(cards.none { it.creditCardRole == CreditCardRole.SUPPLEMENTARY } || cards.any { it.creditCardRole == CreditCardRole.PRIMARY }) {
+                "A supplementary card needs a primary card in the same facility"
+            }
+        }
+        after.filter { it.id == asset.id || it.parentId == asset.id }.forEach { child ->
+            child.parentId?.let { parentId ->
+                val linked = after.single { it.id == parentId }
+                require((child.kind == AssetKind.DEBIT_CARD && linked.kind == AssetKind.ACCOUNT) ||
+                    (child.kind == AssetKind.CREDIT_CARD && linked.kind == AssetKind.CREDIT_FACILITY))
+            }
+        }
+        if (existing == null) dao.insert(asset.toEntity()) else check(dao.update(asset.toEntity()) == 1)
+        dao.clearManualSuffix(asset.id.environment.name, asset.id.bank.value, asset.id.localId)
+        asset.last4?.let { suffix -> dao.insertAlias(BetaAssetAliasEntity(
+            asset.id.environment.name, asset.id.bank.value, asset.id.localId,
+            BetaAliasKind.LAST4.name, suffix, "manual-owned-confirmation")) }
+        asset
     }
 
     /** Even a single suffix match remains discovery evidence for a later explicit decision. */

@@ -3,11 +3,18 @@ package com.baraa.masroof.lab.beta.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 
 @Dao
 internal interface BetaAssetDao {
     @Insert
     suspend fun insert(asset: BetaAssetEntity)
+
+    @Update
+    suspend fun update(asset: BetaAssetEntity): Int
+
+    @Query("DELETE FROM beta_asset_alias WHERE environment = :environment AND bankId = :bank AND assetLocalId = :id AND kind = 'LAST4' AND evidenceId = 'manual-owned-confirmation'")
+    suspend fun clearManualSuffix(environment: String, bank: String, id: String)
 
     @Insert
     suspend fun insertAlias(alias: BetaAssetAliasEntity)
