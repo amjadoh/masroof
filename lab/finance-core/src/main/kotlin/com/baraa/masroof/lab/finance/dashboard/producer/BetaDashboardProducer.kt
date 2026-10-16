@@ -111,7 +111,7 @@ object BetaDashboardBuilder {
                 fact?.balance?.asOf, queryProjection?.let { flow(it, asset.id) })
         }
         val debitRows = assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { asset ->
-            DebitSpending(asset.id, salary?.let { cardNet(it, asset.id) }, asset.parentId,
+            DebitSpending(asset.id, salary?.let { debitNet(it, asset) }, asset.parentId,
                 facts[asset.id]?.label, asset.last4, facts[asset.id]?.network, batch.periods.salary)
         }
         val facilities = assets.filter { it.kind == AssetKind.CREDIT_FACILITY }.map { facility ->
@@ -119,9 +119,9 @@ object BetaDashboardBuilder {
             val members = assets.filter { it.kind == AssetKind.CREDIT_CARD && it.parentId == facility.id }.map { card ->
                 val fact = facts[card.id]
                 CreditCardSummary(card.id, card.creditCardRole, fact?.label, card.last4,
-                    batch.periods.calendar?.let { PeriodSpending(it, calendar?.let { projection -> cardNet(projection, card.id) }) },
-                    batch.periods.salary?.let { PeriodSpending(it, salary?.let { projection -> cardNet(projection, card.id) }) },
-                    statements[facility.id]?.let { PeriodSpending(it, statementProjections[facility.id]?.let { projection -> cardNet(projection, card.id) }) },
+                    batch.periods.calendar?.let { PeriodSpending(it, calendar?.let { projection -> creditNet(projection, card) }) },
+                    batch.periods.salary?.let { PeriodSpending(it, salary?.let { projection -> creditNet(projection, card) }) },
+                    statements[facility.id]?.let { PeriodSpending(it, statementProjections[facility.id]?.let { projection -> creditNet(projection, card) }) },
                     fact?.balance?.amount, fact?.balance?.asOf)
             }
             FacilitySummary(facility.id, statement?.due, statement?.dueDate, statement?.issuedAt,
@@ -134,7 +134,7 @@ object BetaDashboardBuilder {
                 salary?.let { loanPayment(it, loan.id) }, batch.periods.salary)
         }
         val inPeriod = rows.filter { contains(selected, it.command.time.instant) }
-        val analysis = if (batch.coverage.completeLedger && batch.coverage.completeRegistry && batch.coverage.reviewRequiredCount != null) {
+        val financialSummary = if (batch.coverage.completeLedger && batch.coverage.completeRegistry && batch.coverage.reviewRequiredCount != null) {
             DashboardFinancialSummary(freezeMap(SummaryMetric.entries.associateWith { metric ->
                 queryProjection?.let { signed(it.sumOfMetric(metric)) }
             }), inPeriod.size, batch.coverage.reviewRequiredCount,
@@ -145,8 +145,8 @@ object BetaDashboardBuilder {
         val completeRegistry = batch.coverage.completeRegistry
         val totals = PortfolioTotals(Currency.SAR, fleet?.externalIn, fleet?.externalOut, fleet?.cashPosition, fleet?.remaining,
             if (completeRegistry && assets.none { it.kind == AssetKind.CREDIT_CARD && it.parentId == null }) sumKnownMoney(facilities.map { it.statementDue }) else null,
-            salary?.let { signed(it.sumOfMetric(SummaryMetric.CREDIT_PURCHASES)) },
-            salary?.let { projection -> signed(debitRows.fold(BigDecimal.ZERO) { sum, card -> sum + cardNet(projection, card.cardId).amount }) },
+            salary?.let { sumKnownSigned(facilities.map { it.salarySpending }) },
+            salary?.let { sumKnownSigned(debitRows.map { it.spending }) },
             if (completeRegistry) sumKnownMoney(loans.map { it.remaining }) else null,
             salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
         val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key]) }
@@ -156,7 +156,7 @@ object BetaDashboardBuilder {
             DashboardSection.COMMITMENTS, DashboardSection.RUNTIME_SOURCE) +
             (if (!batch.coverage.completeLedger) setOf(DashboardSection.CURRENT_LEDGER) else emptySet()) +
             (if (!batch.coverage.completeRegistry) setOf(DashboardSection.CONFIRMED_REGISTRY) else emptySet())
-        return DashboardProduction(snapshot, freezeSet(unavailable), analysis)
+        return DashboardProduction(snapshot, freezeSet(unavailable), financialSummary)
     }
 
     private fun validateCurrent(stored: StoredFinancialPosting, registry: Map<AssetId, OwnedAsset>): StoredFinancialPosting {
@@ -192,7 +192,9 @@ object BetaDashboardBuilder {
         val accounts = assets.filter { it.kind == AssetKind.ACCOUNT }.map { it.id } +
             assets.filter { it.kind == AssetKind.DEBIT_CARD }.mapNotNull { it.parentId }
         val cards = assets.filter { it.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) }.map { it.id }
-        val debit = assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { it.id }
+        val debit = if (row.classification.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) {
+            assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { it.id }
+        } else emptyList()
         val loan = if (row.classification.effectiveType == FinancialType.LOAN_REPAYMENT) input.financingLoan else null
         val loans = assets.filter { it.kind == AssetKind.LOAN }.map { it.id } + listOfNotNull(loan)
         val sar = if (input.amount.currency == Currency.SAR) null else (PersistedSarProjection.project(input) as? SarRowProjection.Available)?.sarAmount
@@ -251,17 +253,64 @@ private fun flow(rows: List<SarRowProjection.Available>, account: AssetId?): Acc
     return AccountFlow(Currency.SAR, freezeMap(buckets), Money.of(totalIn, Currency.SAR), Money.of(totalOut, Currency.SAR),
         Money.of(externalIn, Currency.SAR), Money.of(externalOut, Currency.SAR), signed(externalIn - externalOut), signed(totalIn - totalOut))
 }
-private fun cardNet(rows: List<SarRowProjection.Available>, id: AssetId) = signed(rows.filter { row ->
+private fun cardNet(rows: List<SarRowProjection.Available>, id: AssetId) = signed(rows.fold(BigDecimal.ZERO) { sum, row ->
     val input = row.native.input
-    val endpoint = if (row.native.effectiveType == FinancialType.REFUND) input.destination else input.source
-    (endpoint as? FinancialEndpoint.Owned)?.id == id
-}.fold(BigDecimal.ZERO) { sum, row -> sum + row.metrics.getValue(SummaryMetric.SPENDING_NET).amount })
-private fun facilityNet(rows: List<SarRowProjection.Available>, id: AssetId) = signed(rows.filter { it.creditFacility == id }
-    .fold(BigDecimal.ZERO) { sum, row -> sum + row.metrics.getValue(SummaryMetric.CREDIT_PURCHASES).amount })
+    val refund = row.native.effectiveType == FinancialType.REFUND
+    val endpoint = (if (refund) input.destination else input.source) as? FinancialEndpoint.Owned
+    val kind = input.assets[id]?.kind
+    val accepted = when (kind) {
+        AssetKind.DEBIT_CARD -> row.native.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)
+        AssetKind.CREDIT_CARD -> row.native.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.FEE, FinancialType.REFUND)
+        else -> false
+    }
+    if (endpoint?.id == id && accepted) sum + (if (refund) row.sarAmount.amount.negate() else row.sarAmount.amount) else sum
+})
+private fun debitNet(rows: List<SarRowProjection.Available>, card: OwnedAsset): SignedAmount? {
+    val unresolved = rows.any { row ->
+        if (row.native.effectiveType !in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) false
+        else {
+            val input = row.native.input
+            val endpoint = (if (row.native.effectiveType == FinancialType.REFUND) input.destination else input.source) as? FinancialEndpoint.Owned
+            val account = endpoint?.id?.let(input.assets::get)?.takeIf { it.kind == AssetKind.ACCOUNT }
+            account != null && (card.parentId == account.id || (card.parentId == null && card.id.bank == account.id.bank))
+        }
+    }
+    // An account-backed POS/ATM/refund may mention a Mada card in persisted involvement facts.
+    // That exact role-bound card attribution is not part of this beginning's source contract.
+    return if (unresolved) null else cardNet(rows, card.id)
+}
+private fun creditNet(rows: List<SarRowProjection.Available>, card: OwnedAsset): SignedAmount? {
+    val unresolved = rows.any { row ->
+        if (row.creditFacility != card.parentId || row.native.effectiveType !in setOf(FinancialType.EXPENSE, FinancialType.FEE, FinancialType.REFUND)) false
+        else {
+            val input = row.native.input
+            val endpoint = (if (row.native.effectiveType == FinancialType.REFUND) input.destination else input.source) as? FinancialEndpoint.Owned
+            endpoint?.id?.let(input.assets::get)?.kind == AssetKind.CREDIT_FACILITY
+        }
+    }
+    return if (unresolved) null else cardNet(rows, card.id)
+}
+private fun facilityNet(rows: List<SarRowProjection.Available>, id: AssetId): SignedAmount? {
+    val included = rows.filter { it.creditFacility == id }
+    val cardIds = linkedSetOf<AssetId>()
+    for (row in included) {
+        if (row.native.effectiveType !in setOf(FinancialType.EXPENSE, FinancialType.FEE, FinancialType.REFUND)) continue
+        val input = row.native.input
+        val endpoint = (if (row.native.effectiveType == FinancialType.REFUND) input.destination else input.source) as? FinancialEndpoint.Owned
+        val asset = endpoint?.id?.let(input.assets::get)
+        // The legacy facility period indicator sums member-card spending. A direct facility
+        // posting has no proved member allocation and cannot silently become an observed zero.
+        if (asset?.kind != AssetKind.CREDIT_CARD) return null
+        cardIds += asset.id
+    }
+    return signed(cardIds.fold(BigDecimal.ZERO) { sum, card -> sum + cardNet(included, card).amount })
+}
 private fun loanPayment(rows: List<SarRowProjection.Available>, id: AssetId) = signed(rows.filter { it.loan == id }
     .fold(BigDecimal.ZERO) { sum, row -> sum + row.sarAmount.amount })
 private fun sumKnownMoney(values: List<Money?>): Money? = if (values.any { it == null || it.currency != Currency.SAR }) null
     else Money.of(values.fold(BigDecimal.ZERO) { sum, money -> sum + requireNotNull(money).amount }, Currency.SAR)
+private fun sumKnownSigned(values: List<SignedAmount?>): SignedAmount? = if (values.any { it == null || it.currency != Currency.SAR }) null
+    else signed(values.fold(BigDecimal.ZERO) { sum, value -> sum + requireNotNull(value).amount })
 private fun signed(value: BigDecimal) = SignedAmount(value, Currency.SAR)
 private fun contains(period: DisplayPeriod, instant: java.time.Instant) = instant >= period.from && instant < period.until
 private fun <T, K> List<T>.associateUnique(key: (T) -> K): Map<K, T> {

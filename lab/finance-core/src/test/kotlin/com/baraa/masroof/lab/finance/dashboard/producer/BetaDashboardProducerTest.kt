@@ -180,6 +180,64 @@ class BetaDashboardProducerTest {
         assertEquals(query.zone, result.snapshot.query.zone)
     }
 
+    @Test fun debitAndCreditPeriodIndicatorsPreserveTheirDifferentLegacyActivityPolicies() {
+        // Read-only semantics: DebitCardSpendClassifier and CreditCardOverviewBuilder.netSpending.
+        // This is a source-derived characterization, not a cross-run of those Android-facing builders.
+        val assets = listOf(account, debit, facility, credit)
+        val rows = listOf(debit, credit).flatMap { card -> listOf(
+            input("${card.id.localId}-purchase", FinancialType.EXPENSE, "100", card, registry = assets),
+            input("${card.id.localId}-withdrawal", FinancialType.CASH_WITHDRAWAL, "50", card, registry = assets),
+            input("${card.id.localId}-fee", FinancialType.FEE, "5", card, registry = assets),
+            input("${card.id.localId}-bill", FinancialType.BILL_PAYMENT, "10", card, registry = assets),
+            input("${card.id.localId}-refund", FinancialType.REFUND, "20", null, card, assets)) }
+            .map(::posting) + posting(input("credit-payment", FinancialType.CREDIT_CARD_PAYMENT, "100", account, credit, assets))
+        val result = build(batch(rows, assets).copy(periods = DashboardPeriods(salary = period(PeriodKind.SALARY))))
+        equal("130", result.snapshot.debitCards.single().spending!!.amount) // purchase + withdrawal - refund
+        equal("85", result.snapshot.creditFacilities.single().cards.single().salarySpending!!.net!!.amount) // purchase + fee - refund
+        equal("85", result.snapshot.creditFacilities.single().salarySpending!!.amount)
+        equal("85", result.snapshot.totals!!.creditSalarySpending!!.amount)
+        equal("130", result.snapshot.totals.debitSalarySpending!!.amount)
+        equal("95", metric(result, SummaryMetric.CREDIT_PURCHASES)) // monthly definition still includes bill
+        equal("230", metric(result, SummaryMetric.SPENDING_GROSS))
+        equal("100", metric(result, SummaryMetric.CASH_WITHDRAWALS))
+        result.snapshot.transactions.filter { it.key.transactionId.startsWith("debit-") }.forEach { fact ->
+            assertEquals(setOf(debit.id), fact.cards)
+            val expected = if (fact.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) setOf(debit.id) else emptySet()
+            assertEquals(expected, fact.debitSpendingCards)
+        }
+    }
+
+    @Test fun directFacilityPurchaseCannotInventMemberCardPeriodAllocation() {
+        val assets = listOf(facility, credit)
+        val result = build(batch(listOf(posting(input(source = facility, registry = assets))), assets)
+            .copy(periods = DashboardPeriods(salary = period(PeriodKind.SALARY),
+                statements = mapOf(facility.id to period(PeriodKind.STATEMENT)))))
+        equal("10", metric(result, SummaryMetric.CREDIT_PURCHASES))
+        assertNull(result.snapshot.creditFacilities.single().salarySpending)
+        assertNull(result.snapshot.creditFacilities.single().statementSpending)
+        assertNull(result.snapshot.creditFacilities.single().cards.single().salarySpending!!.net)
+        assertNull(result.snapshot.creditFacilities.single().cards.single().statementSpending!!.net)
+        assertNull(result.snapshot.totals!!.creditSalarySpending)
+    }
+
+    @Test fun accountBackedMadaActivityWithoutCardAttributionIsUnknownRatherThanZero() {
+        val unrelated = asset("unrelated-mada", AssetKind.DEBIT_CARD, other)
+        val unlinked = asset("unlinked-mada", AssetKind.DEBIT_CARD)
+        val assets = listOf(account, other, debit, unrelated, unlinked)
+        for (type in listOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) {
+            val input = if (type == FinancialType.REFUND) input("account-refund", type, "20", null, account, assets)
+                else input("account-spend", type, "20", account, registry = assets)
+            val result = build(batch(listOf(posting(input)), assets).copy(periods = DashboardPeriods(salary = period(PeriodKind.SALARY))))
+            assertNull(result.snapshot.debitCards.single { it.cardId == debit.id }.spending)
+            assertNull(result.snapshot.debitCards.single { it.cardId == unlinked.id }.spending)
+            equal("0", result.snapshot.debitCards.single { it.cardId == unrelated.id }.spending!!.amount)
+            assertNull(result.snapshot.totals!!.debitSalarySpending)
+        }
+        val empty = build(batch(emptyList(), assets).copy(periods = DashboardPeriods(salary = period(PeriodKind.SALARY))))
+        assertTrue(empty.snapshot.debitCards.all { it.spending != null && it.spending.amount.signum() == 0 })
+        equal("0", empty.snapshot.totals!!.debitSalarySpending!!.amount)
+    }
+
     @Test fun forexFeesUsePersistedProvenanceWhileTransactionEquivalentExcludesFee() {
         val foreign = posting(input(currency = Currency.USD).copy(appliedFx = AppliedFx(BigDecimal("3.756957"), "SMS")))
         val fee = LinkedInternationalFee(foreign.command.key, foreign.command.revision, foreign.command.evidenceIds.single(), money("1.99"))
