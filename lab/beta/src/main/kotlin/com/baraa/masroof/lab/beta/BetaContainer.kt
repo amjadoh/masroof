@@ -1,5 +1,7 @@
 package com.baraa.masroof.lab.beta
 
+import com.baraa.masroof.lab.beta.application.BetaManualAssetWorkflow
+import com.baraa.masroof.lab.beta.application.ManualAssetDraft
 import com.baraa.masroof.lab.beta.application.BetaBankSelectionWorkflow
 import com.baraa.masroof.lab.beta.data.RoomBetaBankSelectionStore
 import com.baraa.masroof.lab.finance.value.BankId
@@ -44,6 +46,11 @@ class BetaContainer(
             val workflow = BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database))
             if (enabled) workflow.enable(bank) else workflow.disable(bank)
         }
+    }
+
+    fun saveManualAsset(draft: ManualAssetDraft): OwnedAsset = lock.withLock {
+        check(!closed)
+        runBlocking { BetaManualAssetWorkflow(BetaAssetRegistry(database)).save(draft) }
     }
 
     /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
