@@ -64,7 +64,7 @@ class LabWorkflowTest {
         workflow.addSample("demo", "DEMO", "شراء بمبلغ 100 SAR", "2026-10-01", expected)
         val first = workflow.run("demo", "2026-10-01", "2026-10-01")
         val library = workflow.sharedLibrary()
-        workflow.saveLibrary(library.copy(rules = library.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = listOf("القيمة")) else it }))
+        val editedLibrary = workflow.saveLibrary(library.copy(rules = library.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = listOf("القيمة")) else it }))
         val second = workflow.run("demo", "2026-10-01", "2026-10-01")
         assertEquals("SUCCESS", LabJson.format.decodeFromString<LabOutcome>(workflow.results(first).single().outcomeJson).status)
         assertEquals("REVIEW_REQUIRED", LabJson.format.decodeFromString<LabOutcome>(workflow.results(second).single().outcomeJson).status)
@@ -73,7 +73,11 @@ class LabWorkflowTest {
         assertEquals(1, workflow.viewResults(second).labeled)
         workflow.close();db = LabDatabase.open(context);workflow = LabWorkflow(db)
         val state = workflow.load("demo")
-        assertEquals(2, state.runs.size);assertEquals(2, state.library.version)
+        assertEquals(2, state.runs.size)
+        assertEquals(library.version + 1, state.library.version)
+        assertEquals(editedLibrary, state.library)
+        assertEquals(library.version, state.runs.single { it.id == first }.version)
+        assertEquals(editedLibrary.version, state.runs.single { it.id == second }.version)
         assertEquals(1, workflow.versions("demo").size)
         assertEquals(expected, workflow.results(first).single().expectedJson)
     }
@@ -93,11 +97,12 @@ class LabWorkflowTest {
         workflow.savePack(pack.copy(rules = emptyList()))
         workflow.savePack(pack.copy(bank = BankProfile("other", "Other", listOf("OTHER")), rules = emptyList()))
         val initial = workflow.sharedLibrary()
-        workflow.saveLibrary(initial.copy(rules = initial.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = it.amountLabels + "قيمة العملية") else it }))
+        val saved = workflow.saveLibrary(initial.copy(rules = initial.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = it.amountLabels + "قيمة العملية") else it }))
         assertEquals("SUCCESS", workflow.preview("demo", "DEMO", "شراء\nقيمة العملية 100 SAR").status)
         assertEquals("SUCCESS", workflow.preview("other", "OTHER", "شراء\nقيمة العملية 100 SAR").status)
         try { workflow.saveLibrary(initial);fail("stale draft accepted") } catch (_: IllegalArgumentException) { }
-        assertEquals(2, workflow.sharedLibrary().version)
+        assertEquals(initial.version + 1, saved.version)
+        assertEquals(saved, workflow.sharedLibrary())
     }
     @Test fun dateBoundsAreInclusiveAndIndependentOfProductionImportSetting() = runBlocking {
         workflow.savePack(pack)
