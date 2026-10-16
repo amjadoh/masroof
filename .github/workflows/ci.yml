@@ -136,7 +136,7 @@ jobs:
             echo "sdk.dir=${SDK_DIR}" > local.properties
             # notPackage in app/build.gradle.kts keeps M13 process-death phases out of
             # this clearPackageData=true suite.
-            ./gradlew :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest :lab:beta:connectedDebugAndroidTest --no-parallel --stacktrace
+            ./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace
             mkdir -p m19-statement-screenshots
             adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
             find m19-statement-screenshots -name 'm19-*.png' | grep -q .
@@ -205,5 +205,9 @@ jobs:
             ./gradlew :app:installDebug :app:installDebugAndroidTest --stacktrace
             # Each journey runs once; RestoreConcurrencyTest already runs in emulator-smoke.
             bash scripts/m13-process-death.sh
+            # Beta has its own self-instrumenting test APK and database. No duplicate smoke suite.
+            ./gradlew :lab:beta:assembleDebugAndroidTest --stacktrace
+            adb install -r -t lab/beta/build/outputs/apk/androidTest/debug/beta-debug-androidTest.apk
+            bash scripts/beta-process-death.sh
   # The API 26-28 pre-VACUUM backup device job is intentionally retired from CI.
   # Its test and production fallback remain in the repository for later cleanup.

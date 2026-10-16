@@ -11,6 +11,7 @@ android {
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["notPackage"] = "com.baraa.masroof.lab.beta.processdeath"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
