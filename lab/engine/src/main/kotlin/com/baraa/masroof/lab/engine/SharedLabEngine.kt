@@ -153,7 +153,7 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
                 errors.distinct().map { ValidationFinding("LAB-SHARED", it, ValidationSeverity.ERROR) })
         }
         val result = LabResultProjection.project(ParseFinalizer(validator).finalize(draft, "lab-$sampleId-${library.version}"))
-        return result.copy(facts = result.facts.copy(dueAmount = due?.value?.amount?.toPlainString(), ibanSuffix = ibanSuffix, occurredAtLocal = date?.toString()),
+        return result.copy(facts = result.facts.copy(balanceCurrency = balance?.value?.currency?.name, dueCurrency = due?.value?.currency?.name, dueAmount = due?.value?.amount?.toPlainString(), ibanSuffix = ibanSuffix, occurredAtLocal = date?.toString()),
             trace = listOf("engine:$VERSION", "library:v${library.version}", "bank:${bank.id}", "receivedAt:$receivedAt") +
                 result.trace.map { if (it == "unrecognized_aljazira_format") "المكتبة المشتركة لم تتعرف على صيغة الرسالة" else it } + errors.distinct(),
             evidence = evidence.distinct(), normalizedText = sms.normalizedBody)

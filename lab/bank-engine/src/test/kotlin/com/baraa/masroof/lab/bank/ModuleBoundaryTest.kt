@@ -40,7 +40,7 @@ class ModuleBoundaryTest {
         }
         assertEquals(emptySet<String>(), graph[":lab:finance-core"])
         assertEquals(setOf(":lab:finance-core"), graph[":lab:bank-engine"])
-        assertEquals(setOf(":lab:finance-core", ":lab:bank-engine"), graph[":lab:beta"])
+        assertEquals(setOf(":lab:finance-core", ":lab:bank-engine", ":lab:engine"), graph[":lab:beta"])
         fun visit(module: String, ancestors: Set<String>) {
             assertFalse("Dependency cycle: $ancestors -> $module", module in ancestors)
             graph[module].orEmpty().forEach { visit(it, ancestors + module) }
