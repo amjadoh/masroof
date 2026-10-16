@@ -55,6 +55,14 @@ data class Facts(
     val billerCode: String? = null,
     val loanType: LoanType? = null,
     val salaryIncomeWording: Boolean? = null,
+    val ibanSuffix: String? = null,
+    val executionState: String? = null,
+    val cardKind: String? = null,
+    val network: String? = null,
+    val senderName: String? = null,
+    val recipientName: String? = null,
+    val senderBank: String? = null,
+    val accountIdentifier: String? = null,
 )
 
 /** Half-open offsets into the ORIGINAL input body, never folded comparison text. */
@@ -63,7 +71,10 @@ data class Evidence(val ruleId: String, val field: String, val start: Int, val e
     fun slice(input: MessageInput): String = input.body.substring(start, end)
 }
 
-enum class Blocker { UNKNOWN_BANK, AMBIGUOUS_BANK, UNKNOWN_FAMILY, CONFLICTING_FACTS, VALIDATION_ERROR }
+enum class Blocker { UNKNOWN_BANK, AMBIGUOUS_BANK, UNKNOWN_FAMILY, CONFLICTING_FACTS, VALIDATION_ERROR, UNSUPPORTED_RULE_SCHEMA, EVIDENCE_MAPPING_ERROR }
+
+enum class DiagnosticSeverity { INFO, WARNING, ERROR }
+data class InterpretationDiagnostic(val code: String, val message: String, val severity: DiagnosticSeverity)
 
 data class InterpretationVersion(val contract: Int, val engine: String, val rules: String) {
     init { require(contract > 0 && engine.isNotBlank() && rules.isNotBlank()) }
@@ -81,6 +92,7 @@ data class Interpretation(
     val confidence: Confidence?,
     val evidence: List<Evidence>,
     val blockers: Set<Blocker>,
+    val diagnostics: List<InterpretationDiagnostic> = emptyList(),
 ) {
     init {
         require(evidenceId.isNotBlank())

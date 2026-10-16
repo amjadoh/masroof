@@ -40,11 +40,13 @@ data class LabFacts(
     val feeAmount: String? = null, val exchangeRate: String? = null,
     val senderName: String? = null, val recipientName: String? = null,
     val senderBank: String? = null, val accountIdentifier: String? = null,
+    val balanceCurrency: String? = null, val dueCurrency: String? = null, val feeCurrency: String? = null,
 )
 
 @Serializable
 data class LabOutcome(val status: String, val facts: LabFacts = LabFacts(), val trace: List<String> = emptyList(),
-                      val evidence: List<FieldEvidence> = emptyList(), val normalizedText: String = "")
+                      val evidence: List<FieldEvidence> = emptyList(), val normalizedText: String = "",
+                      val confidenceScore: Double? = null, val confidenceReasons: List<String> = emptyList())
 
 @Serializable
 data class ExpectedResult(val status: String, val facts: LabFacts, val absentFields: Set<String> = emptySet())
