@@ -26,8 +26,8 @@ class BetaInboxHistoryTest {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
         }
         // Telephony checks WRITE_SMS app-op independently of permission identity.
-        shell("appops set ${context.packageName} READ_SMS allow")
-        shell("appops set ${context.packageName} WRITE_SMS allow")
+        shell("appops set --uid ${context.packageName} READ_SMS allow")
+        shell("appops set --uid ${context.packageName} WRITE_SMS allow")
         automation.adoptShellPermissionIdentity("android.permission.WRITE_SMS")
         try {
             repeat(28) { index ->
@@ -36,11 +36,20 @@ class BetaInboxHistoryTest {
                     put("body", "Synthetic provider fixture $index")
                     put("date", date)
                     put("read", 1)
+                    put(Telephony.Sms.SUBSCRIPTION_ID, android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID)
                 }))
             }
+            assertEquals(28, inserted.distinct().size)
+            assertTrue("Provider insert must return real IDs, not denied-app-op placeholder /0", inserted.all { android.content.ContentUris.parseId(it) > 0 })
             automation.dropShellPermissionIdentity()
             assertEquals(androidx.core.content.PermissionChecker.PERMISSION_GRANTED,
                 androidx.core.content.PermissionChecker.checkSelfPermission(context, Manifest.permission.READ_SMS))
+            context.contentResolver.query(inserted.first(), arrayOf("_id", "date", "type", "sub_id"), null, null, null)!!.use { cursor ->
+                assertTrue("Synthetic restored-SMS fixture must be visible to a normal READ_SMS caller", cursor.moveToFirst())
+                assertEquals(date, cursor.getLong(1))
+                assertEquals(Telephony.Sms.MESSAGE_TYPE_INBOX, cursor.getInt(2))
+                assertEquals(android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID, cursor.getInt(3))
+            }
             val source = AndroidHistorySource(context)
             var session = HistorySession(date, date, setOf(BankId("BANK_ALJAZIRA")))
             val first = source.read(session, 25)
@@ -50,15 +59,15 @@ class BetaInboxHistoryTest {
             assertEquals(3, second.size)
             assertEquals(28, (first + second).map { it.id }.distinct().size)
             assertTrue((first + second).all { it.body.startsWith("Synthetic provider fixture") })
-            shell("appops set ${context.packageName} READ_SMS ignore")
+            shell("appops set --uid ${context.packageName} READ_SMS ignore")
             assertThrows(IllegalStateException::class.java) { source.read(session, 25) }
         } finally {
             automation.adoptShellPermissionIdentity("android.permission.WRITE_SMS")
             try { inserted.forEach { context.contentResolver.delete(it, null, null) } }
             finally {
                 automation.dropShellPermissionIdentity()
-                shell("appops set ${context.packageName} WRITE_SMS default")
-                shell("appops set ${context.packageName} READ_SMS default")
+                shell("appops set --uid ${context.packageName} WRITE_SMS default")
+                shell("appops set --uid ${context.packageName} READ_SMS default")
             }
         }
     }

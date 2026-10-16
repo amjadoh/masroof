@@ -79,12 +79,14 @@ class BetaHistoryPanelTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
         fun appOp(mode: String) {
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("appops set ${context.packageName} READ_SMS $mode")).use { it.readBytes() }
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("appops set --uid ${context.packageName} READ_SMS $mode")).use { it.readBytes() }
         }
         BetaContainer.resetOffline(context)
         automation.grantRuntimePermission(context.packageName, Manifest.permission.READ_SMS)
         appOp("ignore")
         try {
+            assertEquals(androidx.core.content.PermissionChecker.PERMISSION_DENIED_APP_OP,
+                androidx.core.content.PermissionChecker.checkSelfPermission(context, Manifest.permission.READ_SMS))
             BetaContainer(context).use { beta ->
                 beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
                 compose.setContent {
