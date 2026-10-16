@@ -209,5 +209,13 @@ jobs:
             ./gradlew :app:installDebug :app:installDebugAndroidTest --stacktrace
             # RestoreConcurrencyTest already runs in emulator-smoke.
             bash scripts/m13-process-death.sh
+      - name: Upload isolated Beta permission dialog diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-permission-dialog-diagnostics
+          path: beta-permission-diagnostics/
+          if-no-files-found: warn
+
   # The API 26-28 pre-VACUUM backup device job is intentionally retired from CI.
   # Its test and production fallback remain in the repository for later cleanup.

@@ -19,7 +19,11 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
-    testOptions { unitTests.isIncludeAndroidResources = true }
+    testOptions {
+        // Exercise the host app's runtime-permission behavior, not the library minSdk default.
+        targetSdk = 34
+        unitTests.isIncludeAndroidResources = true
+    }
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
     }
