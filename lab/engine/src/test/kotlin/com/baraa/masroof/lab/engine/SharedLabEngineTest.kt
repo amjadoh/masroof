@@ -130,4 +130,23 @@ class SharedLabEngineTest {
         assertEquals("SUCCESS", parse("شراء بمبلغ 42 SAR", library = library.copy(rules = library.rules + extra)).status)
         assertEquals("REVIEW_REQUIRED", parse("شراء بمبلغ 42 SAR", library = library.copy(rules = library.rules + extra.copy(direction = "INCOMING"))).status)
     }
+
+    @Test fun storedLibraryWithoutNewMetadataRetainsSecondaryMoneyFirewall() {
+        val oldJson = """{"version":1,"rules":[{"id":"saved.purchase","family":"PURCHASE","phrases":["POS Purchase"],"amountLabels":["amount"],"cardLabels":["card"],"balanceLabels":["available balance"],"direction":"OUTGOING"}]}"""
+        val saved = LabJson.format.decodeFromString<SharedRuleLibrary>(oldJson)
+        assertTrue(saved.rules.single().detailLabels.isEmpty())
+        assertEquals(1, saved.version)
+        listOf("SAR" to "USD", "USD" to "SAR").forEach { (principal, secondary) ->
+            val result = parse("POS Purchase\nCard: 1234\nAmount: 42 $principal\nDue amount: 100 $secondary", library = saved)
+            assertEquals(result.trace.toString(), "SUCCESS", result.status)
+            assertEquals("42.00", result.facts.amount)
+            assertEquals(principal, result.facts.currency)
+            assertEquals("100.00", result.facts.dueAmount)
+            assertEquals(secondary, result.facts.dueCurrency)
+            val missing = parse("POS Purchase\nCard: 1234\nDue amount: 100 $secondary", library = saved)
+            assertEquals("REVIEW_REQUIRED", missing.status)
+            assertNull(missing.facts.amount)
+        }
+        assertEquals(2, SharedRuleDefaults.create().version)
+    }
 }

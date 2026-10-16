@@ -21,6 +21,8 @@ data class RuleSpec(
     val merchantLabels: List<String> = listOf("لدى"),
     val balanceLabels: List<String> = listOf("الرصيد المتاح"),
     val direction: String = "OUTGOING",
+    val detailLabels: Map<String, List<String>> = emptyMap(),
+    val observations: Map<String, List<String>> = emptyMap(),
 )
 
 @Serializable
@@ -41,6 +43,11 @@ data class LabFacts(
     val senderName: String? = null, val recipientName: String? = null,
     val senderBank: String? = null, val accountIdentifier: String? = null,
     val balanceCurrency: String? = null, val dueCurrency: String? = null, val feeCurrency: String? = null,
+    val purchaseChannel: String? = null, val cardChannel: String? = null, val bankNetwork: String? = null,
+    val transactionReference: String? = null, val counterparty: String? = null,
+    val biller: String? = null, val billerCode: String? = null, val paymentDueDate: String? = null,
+    val loanType: String? = null, val debitSourceAccountLast4: String? = null,
+    val salaryIncomeWording: Boolean? = null, val foreignAmount: String? = null, val foreignCurrency: String? = null,
 )
 
 @Serializable
@@ -82,8 +89,10 @@ object RulePackValidation {
             require(r.id.matches(Regex("[A-Za-z0-9_.-]{1,64}")) && r.family in LabFamilies.editable) { "نوع القاعدة أو معرفها غير مدعوم" }
             require(r.direction in setOf("INCOMING", "OUTGOING")) { "اتجاه غير صالح" }
             require(r.phrases.isNotEmpty()) { "عبارة التعرف مطلوبة" }
+            require(r.detailLabels.keys.all { it in SharedVocabulary.detailFields })
+            require(r.observations.keys.all { it in SharedVocabulary.observationFields })
             listOf(r.phrases, r.excludes, r.amountLabels, r.cardLabels, r.sourceLabels, r.destinationLabels,
-                r.merchantLabels, r.balanceLabels).forEach { terms ->
+                r.merchantLabels, r.balanceLabels).plus(r.detailLabels.values).plus(r.observations.values).forEach { terms ->
                 require(terms.size <= 20 && terms.all {
                     it.length <= 100 && '\n' !in it && '\r' !in it &&
                         ArabicTextFolding.foldForComparison(it).isNotBlank()

@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 
 /** Local-only extraction. No bank-specific parsing, ownership inference or ledger writes. */
 class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
-    companion object { const val VERSION = "shared-2" }
+    companion object { const val VERSION = "shared-3" }
 
     fun parse(banks: List<BankProfile>, library: SharedRuleLibrary, sender: String, body: String,
               sampleId: String, receivedAt: Instant, selectedBankId: String? = null): LabOutcome {
@@ -35,9 +35,9 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
         val index = ArabicTextFolding.comparisonIndexMap(sms.normalizedBody)
         val evidence = mutableListOf<FieldEvidence>()
         val errors = mutableListOf<String>()
-        fun phrase(value: String) = Regex("(?<![\\p{L}\\p{N}])" +
+        fun phrase(value: String) = Regex("(?<![\\p{L}\\p{N}_])" +
             (if (value.firstOrNull()?.let { it in '\u0600'..'\u06ff' } == true) "(?:و)?" else "") +
-            Regex.escape(ArabicTextFolding.foldForComparison(value)) + "(?![\\p{L}\\p{N}])")
+            Regex.escape(ArabicTextFolding.foldForComparison(value)) + "(?![\\p{L}\\p{N}_])")
         fun record(field: String, id: String, label: String, range: IntRange, value: String) {
             evidence += FieldEvidence(field, id, label, value, index[range.first], index[range.last] + 1)
         }
@@ -62,8 +62,18 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
         matching.forEach { rule -> rule.phrases.forEach { label -> phrase(label).findAll(text).forEach {
             record("family", rule.id, label, it.range, rule.family)
         } } }
-        fun labels(select: (RuleSpec) -> List<String>) = winning.flatMap(select).distinct()
-        val financial = classification.family.name in LabFamilies.financial
+        val extractionRules = winning.ifEmpty { matching }
+        fun labels(select: (RuleSpec) -> List<String>) = extractionRules.flatMap(select).distinct()
+        fun detail(field: String) = labels { it.detailLabels[field].orEmpty() }
+        fun observed(key: String): Boolean {
+            val matches = labels { it.observations[key].orEmpty() }.flatMap { label ->
+                phrase(label).findAll(text).map { label to it }.toList()
+            }
+            matches.forEach { (label, match) -> record(key, "shared.observation", label, match.range, key) }
+            return matches.isNotEmpty()
+        }
+        val financial = classification.family.name in LabFamilies.financial || classification.family == MessageFamily.UNKNOWN
+        val security = classification.family == MessageFamily.OTP
         val numeric = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
         val currency = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
         val moneyPattern = "(?:(?<before>$currency)[ \\t]+(?<n1>$numeric)|(?<n2>$numeric)[ \\t]*(?<after>$currency))(?![\\p{L}\\p{N}.,])"
@@ -85,14 +95,22 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
                 AmountCandidate(value, label, kind)
             }.toList()
         }
-        val dues = if (financial) money("dueAmount", listOf("due amount", "outstanding balance", "المبلغ المستحق", "إجمالي المستحق"), AmountSourceKind.OUTSTANDING_BALANCE, true) else emptyList()
-        val balances = if (financial) money("balance", labels { it.balanceLabels }, AmountSourceKind.AVAILABLE_BALANCE, true) else emptyList()
+        // Persisted v1 libraries predate detailLabels. Preserve their secondary-money
+        // reservation: an unconfigured 'due amount' can never become the principal.
+        val legacyDueLabels = listOf("due amount", "outstanding balance", "المبلغ المستحق", "إجمالي المستحق")
+        val dueLabels = detail("dueAmount")
+        val dues = if (!security && (financial || dueLabels.isNotEmpty())) money("dueAmount", dueLabels.ifEmpty { legacyDueLabels }, AmountSourceKind.OUTSTANDING_BALANCE, true) else emptyList()
+        if (!security) money("reservedDue", legacyDueLabels, AmountSourceKind.OTHER, true)
+        val balances = if (!security) money("balance", labels { it.balanceLabels }, AmountSourceKind.AVAILABLE_BALANCE, true) else emptyList()
         // Amount is also a suffix of other financial labels; those values must never
         // become the principal purchase/transfer amount just because it is absent.
         if (financial && classification.family != MessageFamily.FEE) money("otherAmount",
             listOf("fee amount", "tax amount", "minimum amount", "minimum payment", "مبلغ الرسوم", "مبلغ الضريبة", "الحد الأدنى للسداد"),
             AmountSourceKind.OTHER, true)
-        val amounts = if (financial) money("amount", labels { it.amountLabels }, AmountSourceKind.TRANSACTION_AMOUNT) else emptyList()
+        val principalLabels = labels { it.amountLabels }
+        val foreignLabels = detail("foreignAmount")
+        val separateForeign = if (financial) money("foreignAmount", foreignLabels.filterNot { it in principalLabels }, AmountSourceKind.OTHER, true) else emptyList()
+        val amounts = if (financial) money("amount", principalLabels, AmountSourceKind.TRANSACTION_AMOUNT) else emptyList()
         fun singleMoney(values: List<AmountCandidate>, field: String): AmountCandidate? {
             if (values.map { it.value }.distinct().size > 1) errors += "تعارض $field"
             return values.firstOrNull().takeIf { values.map { it.value }.distinct().size == 1 }
@@ -100,15 +118,17 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
         val amount = singleMoney(amounts, "مبلغ العملية")
         val balance = singleMoney(balances, "الرصيد")
         val due = singleMoney(dues, "المستحقات")
+        val foreign = singleMoney((separateForeign + if (financial) money("foreignAmount", foreignLabels.filter { it in principalLabels }, AmountSourceKind.OTHER) else emptyList())
+            .filter { it.value.currency != Currency.SAR }, "المبلغ الأجنبي")
         fun unique(values: List<String>, field: String): String? {
             val distinct = values.distinct()
             if (distinct.size > 1) errors += "تعارض $field"
             return distinct.singleOrNull()
         }
         fun suffix(field: String, terms: List<String>, card: Boolean = false): String? {
-            if (!financial) return null
+            if (security || classification.family == MessageFamily.NON_FINANCIAL) return null
             val values = terms.flatMap { label ->
-                val direct = Regex(phrase(label).pattern + "[ \\t]*[:：]?[ \\t]*(?:[x*•]+)?(?<digits>[0-9]{4})(?=[ \\t]*(?:$|\\n|[;,،]|بمبلغ|of\\b|amount\\b))")
+                val direct = Regex(phrase(label).pattern + "[ \\t]*[:：]?[ \\t]*(?:[x*•]+)?(?<digits>[0-9]{4})(?=[ \\t]*(?:$|\\n|[;,،]|بمبلغ|at\\b|of\\b|amount\\b))")
                 val parenthesized = Regex(phrase(label).pattern + (if (card) "[^\\d\\n():：]{0,45}" else "[ \\t]*[:：]?[ \\t]*") + "\\((?<digits>[0-9]{4})\\)")
                 (direct.findAll(text) + parenthesized.findAll(text)).map { m ->
                     val digits = m.groups["digits"]!!
@@ -125,7 +145,7 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
             errors += "ذُكرت بطاقة دون آخر أربعة أرقام واضحة"
         }
         val merchants = if (financial && classification.family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) labels { it.merchantLabels }.flatMap { label ->
-            val re = Regex(phrase(label).pattern + "[ \\t]*[:：]?[ \\t]*(?<name>[^\\n]+?)(?=[ \\t]+(?:في|on)[ \\t]*[:：]?[ \\t]*[0-9]{4}-|\\n|$)")
+            val re = Regex(phrase(label).pattern + "[ \\t]*[:：]?[ \\t]*(?<name>[^\\n]+?)(?=[ \\t]+(?:في|on|of|amount|available balance)[ \\t]*[:：]?[ \\t]*(?:[0-9]|sar|usd|eur|gbp)|\\n|$)")
             re.findAll(text).mapNotNull { m ->
                 val group = m.groups["name"]!!
                 val value = sms.normalizedSlice(group.range).trim().trimEnd('.')
@@ -133,27 +153,85 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
             }.toList()
         } else emptyList()
         val merchant = unique(merchants, "التاجر")
-        val dates = if (financial) Regex("(?:^|\\n|[ \\t])(?:on|في|بتاريخ|date)[ \\t]*[:：]?[ \\t]*(?<date>[0-9]{4}-[0-9]{2}-[0-9]{2}[ t][0-9]{2}:[0-9]{2}(?::[0-9]{2})?)(?![0-9:])").findAll(text).mapNotNull { m ->
+        val dates = if (!security) Regex("(?:^|\\n|[ \\t])(?:on|في|بتاريخ|date)[ \\t]*[:：]?[ \\t]*(?<date>(?:[0-9]{4}-[0-9]{2}-[0-9]{2}[ t][0-9]{2}:[0-9]{2}(?::[0-9]{2})?|[0-9]{2}:[0-9]{2}(?::[0-9]{2})? [0-9]{2}-[0-9]{2}-[0-9]{4}))(?![0-9:])").findAll(text).mapNotNull { m ->
             val group = m.groups["date"]!!
-            val value = runCatching { LocalDateTime.parse(group.value.replace(' ', 'T').replace('t', 'T')) }.getOrNull()
+            val value = runCatching { if (group.value[2] == ':') LocalDateTime.parse(group.value,
+                java.time.format.DateTimeFormatter.ofPattern(if (group.value.length == 16) "HH:mm dd-MM-uuuu" else "HH:mm:ss dd-MM-uuuu").withResolverStyle(java.time.format.ResolverStyle.STRICT))
+                else LocalDateTime.parse(group.value.replace(' ', 'T').replace('t', 'T')) }.getOrNull()
             if (value == null) errors += "تاريخ العملية غير صالح" else record("occurredAtLocal", "shared.date", "date", group.range, value.toString())
             value?.toString()
         }.toList() else emptyList()
         val date = unique(dates, "التاريخ")?.let(LocalDateTime::parse)
+        fun lineValue(field: String): String? {
+            if (security) return null
+            val values = detail(field).flatMap { label ->
+                Regex(phrase(label).pattern + "[ \\t]*[:：][ \\t]*(?<value>[^\\n]+)").findAll(text).mapNotNull { m ->
+                    val group = m.groups["value"]!!
+                    val value = sms.normalizedSlice(group.range).trim()
+                    if (value.isEmpty()) null else { record(field, "shared.label", label, group.range, value); value }
+                }.toList()
+            }
+            return unique(values, field)
+        }
+        val reference = lineValue("transactionReference")
+        val biller = lineValue("biller")
+        val billerCode = lineValue("billerCode")
+        val counterparty = lineValue("counterparty")?.takeUnless { it.matches(Regex("[0-9]{4}")) }
+        val dueDateText = lineValue("paymentDueDate")
+        val dueDate = dueDateText?.let { value -> runCatching {
+            if (value.contains('/')) java.time.LocalDate.parse(value, java.time.format.DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(java.time.format.ResolverStyle.STRICT))
+            else java.time.LocalDate.parse(value)
+        }.onFailure { errors += "تاريخ الاستحقاق غير صالح" }.getOrNull() }
+        val isTransfer = classification.family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
+        val network = if (isTransfer) {
+            val intra = observed("network.intra"); val inter = observed("network.inter")
+            if (intra && inter) errors += "تعارض شبكة التحويل"
+            when { intra && !inter -> "INTRA_BANK"; inter && !intra -> "INTER_BANK"; else -> "UNKNOWN" }
+        } else null
+        val purchaseChannel = if (classification.family == MessageFamily.PURCHASE) {
+            val pos = observed("purchase.pos"); val online = observed("purchase.online")
+            if (pos && online) errors += "تعارض قناة الشراء"
+            when { pos && !online -> "POS"; online && !pos -> "ONLINE"; else -> null }
+        } else null
+        // Debit markers win; a bare card line alone is deliberately insufficient for credit.
+        val cardChannel = when {
+            security -> null
+            observed("card.debit") -> "DEBIT"
+            observed("card.statement") -> "STATEMENT"
+            observed("card.credit") || (card != null && balance != null && labels { it.observations["card.available_balance"].orEmpty() }.any {
+                ArabicTextFolding.foldForComparison(balance.evidenceLabel).startsWith(ArabicTextFolding.foldForComparison(it))
+            }) -> "CREDIT"
+            else -> null
+        }
+        val loan = if (classification.family == MessageFamily.FINANCING_INSTALLMENT) {
+            val kinds = listOf("personal", "auto", "mortgage").filter { observed("loan.$it") }
+            if (kinds.size > 1) errors += "تعارض نوع التمويل"
+            kinds.singleOrNull()?.uppercase()
+        } else null
+        val salary = if (classification.family == MessageFamily.TRANSFER_IN) observed("income.salary") else null
         val draft = ParsedEventDraft(rawSmsId = sampleId, bank = bank, messageFamily = classification.family,
             direction = classification.direction, amount = amount?.value,
             cardRef = card?.let { CardReference(bank, it) },
-            sourceAccountRef = source?.let { AccountReference(if (classification.family == MessageFamily.TRANSFER_IN) Bank.UNKNOWN else bank, it) },
-            destinationAccountRef = destination?.let { AccountReference(if (classification.family == MessageFamily.TRANSFER_OUT) Bank.UNKNOWN else bank, it) },
+            sourceAccountRef = source?.let { AccountReference(if (classification.family == MessageFamily.TRANSFER_IN && network != "INTRA_BANK") Bank.UNKNOWN else bank, it) },
+            destinationAccountRef = destination?.let { AccountReference(if (classification.family == MessageFamily.TRANSFER_OUT && network != "INTRA_BANK") Bank.UNKNOWN else bank, it) },
+            purchaseChannel = purchaseChannel?.let(PurchaseChannel::valueOf), bankNetworkType = network?.let(BankNetworkType::valueOf), counterparty = counterparty,
             merchant = merchant, confidence = Confidence(classification.confidence, classification.evidence), parseStatus = ParseStatus.PARTIAL,
             amountCandidates = amounts + balances + dues, selectedAmount = amount,
-            details = ParsedEventDetails(availableBalance = balance?.value, outstandingBalance = due?.value, occurredAtLocal = date))
+            details = ParsedEventDetails(availableBalance = balance?.value, outstandingBalance = due?.value, occurredAtLocal = date,
+                transactionReference = reference, biller = biller, billerCode = billerCode, cardSmsChannel = cardChannel?.let(CardSmsChannel::valueOf),
+                paymentDueDate = dueDate, loanType = loan?.let(LoanType::valueOf), salaryIncomeWording = salary,
+                labeledForeignAmount = foreign?.value,
+                debitSourceAccountLast4 = source?.takeIf { classification.family == MessageFamily.PURCHASE && card != null }))
         val validator = object : ParsedEventValidator {
             override fun validate(draft: ParsedEventDraft) = ValidationResult(DefaultParsedEventValidator(clock = clock).validate(draft).findings +
                 errors.distinct().map { ValidationFinding("LAB-SHARED", it, ValidationSeverity.ERROR) })
         }
         val result = LabResultProjection.project(ParseFinalizer(validator).finalize(draft, "lab-$sampleId-${library.version}"))
-        return result.copy(facts = result.facts.copy(balanceCurrency = balance?.value?.currency?.name, dueCurrency = due?.value?.currency?.name, dueAmount = due?.value?.amount?.toPlainString(), ibanSuffix = ibanSuffix, occurredAtLocal = date?.toString()),
+        return result.copy(facts = result.facts.copy(balanceCurrency = balance?.value?.currency?.name, dueCurrency = due?.value?.currency?.name, dueAmount = due?.value?.amount?.toPlainString(), ibanSuffix = ibanSuffix, occurredAtLocal = date?.toString(),
+                purchaseChannel = purchaseChannel, cardChannel = cardChannel, bankNetwork = network, counterparty = counterparty,
+                transactionReference = reference, biller = biller, billerCode = billerCode, paymentDueDate = dueDate?.toString(), loanType = loan,
+                debitSourceAccountLast4 = source?.takeIf { classification.family == MessageFamily.PURCHASE && card != null }, salaryIncomeWording = salary,
+                foreignAmount = foreign?.value?.amount?.toPlainString(), foreignCurrency = foreign?.value?.currency?.name),
             trace = listOf("engine:$VERSION", "library:v${library.version}", "bank:${bank.id}", "receivedAt:$receivedAt") +
                 result.trace.map { if (it == "unrecognized_aljazira_format") "المكتبة المشتركة لم تتعرف على صيغة الرسالة" else it } + errors.distinct(),
             evidence = evidence.distinct(), normalizedText = sms.normalizedBody)

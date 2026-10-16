@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import com.baraa.masroof.lab.presentation.ParsingLabEntry
+import com.baraa.masroof.lab.engine.SharedRuleDefaults
 import com.baraa.masroof.BuildConfig
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.settings.SettingsAboutScreen
@@ -62,6 +63,7 @@ class ParsingLabSmokeTest {
 
     @Test fun seedsSamples_runsDatedBatch_andShowsExpectedComparison() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val initialLibraryVersion = SharedRuleDefaults.create().version
         context.deleteDatabase("masroof_parsing_lab.db")
         compose.setContent { ParsingLabEntry {} }
         compose.waitUntil(10_000) { compose.onAllNodesWithText("إضافة الجزيرة وعينات توضيحية").fetchSemanticsNodes().isNotEmpty() }
@@ -99,10 +101,10 @@ class ParsingLabSmokeTest {
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
             File(context.getExternalFilesDir(null), "lab-evidence-comparison.png"))
         compose.onNodeWithText("القواعد").performClick()
-        compose.onNodeWithText("مكتبة الفهم المشتركة v1").assertExists()
+        compose.onNodeWithText("مكتبة الفهم المشتركة v$initialLibraryVersion").assertExists()
         compose.onNodeWithText("حفظ كإصدار جديد").performScrollTo().performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("مكتبة الفهم المشتركة v2").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("مكتبة الفهم المشتركة v2").performScrollTo()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("مكتبة الفهم المشتركة v${initialLibraryVersion + 1}").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("مكتبة الفهم المشتركة v${initialLibraryVersion + 1}").performScrollTo().assertIsDisplayed()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(
             File(context.getExternalFilesDir(null), "lab-shared-rules.png"))
         compose.onNodeWithText("البنوك").performClick()
