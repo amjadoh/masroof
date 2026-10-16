@@ -15,7 +15,8 @@ import java.time.LocalDateTime
 /** M6 transition: calls the exact configurable engine used by Parsing Lab; never copies its rules. */
 class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clock.systemUTC()) : BankInterpreter {
     private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
-        phrases = it.phrases.toList(), excludes = it.excludes.toList(), labels = it.labels.mapValues { entry -> entry.value.toList() }) })
+        phrases = it.phrases.toList(), excludes = it.excludes.toList(), labels = it.labels.mapValues { entry -> entry.value.toList() },
+        detailLabels = it.detailLabels.mapValues { entry -> entry.value.toList() }, observations = it.observations.mapValues { entry -> entry.value.toList() }) })
     private val engine = SharedLabEngine(clock)
 
     override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation {
@@ -34,8 +35,8 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
         fun money(amount: String?) = amount?.let { Money.of(it, Currency.valueOf(requireNotNull(old.currency))) }
         val family = old.family?.let(MessageFamily::valueOf) ?: MessageFamily.UNKNOWN
         val facts = Facts(family = family, amount = money(old.amount), direction = old.direction?.let(MoneyDirection::valueOf),
-            sourceAccount = old.source?.let { AccountReference(if (family == MessageFamily.TRANSFER_IN) null else bank, it) },
-            destinationAccount = old.destination?.let { AccountReference(if (family == MessageFamily.TRANSFER_OUT) null else bank, it) },
+            sourceAccount = old.source?.let { AccountReference(if (family == MessageFamily.TRANSFER_IN && old.bankNetwork != "INTRA_BANK") null else bank, it) },
+            destinationAccount = old.destination?.let { AccountReference(if (family == MessageFamily.TRANSFER_OUT && old.bankNetwork != "INTRA_BANK") null else bank, it) },
             card = old.card?.let { CardReference(bank, it) }, merchant = old.merchant,
             // Secondary amounts carry their own currency, never the principal amount currency.
             availableBalance = currencyMoney(old.balance, old.balanceCurrency),
@@ -44,12 +45,19 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
             executionState = old.executionState, cardKind = old.cardKind, network = old.network,
             internationalFee = currencyMoney(old.feeAmount, old.feeCurrency),
             exchangeRate = old.exchangeRate?.toBigDecimal(), senderName = old.senderName,
-            recipientName = old.recipientName, senderBank = old.senderBank, accountIdentifier = old.accountIdentifier)
+            recipientName = old.recipientName, senderBank = old.senderBank, accountIdentifier = old.accountIdentifier,
+            purchaseChannel = old.purchaseChannel?.let(PurchaseChannel::valueOf), cardChannel = old.cardChannel?.let(CardChannel::valueOf),
+            bankNetwork = old.bankNetwork?.let(BankNetwork::valueOf), transactionReference = old.transactionReference,
+            counterparty = old.counterparty, biller = old.biller, billerCode = old.billerCode,
+            paymentDueDate = old.paymentDueDate?.let(java.time.LocalDate::parse), loanType = old.loanType?.let(LoanType::valueOf),
+            debitSourceAccountLast4 = old.debitSourceAccountLast4, salaryIncomeWording = old.salaryIncomeWording,
+            labeledForeignAmount = currencyMoney(old.foreignAmount, old.foreignCurrency))
         val map = OriginalEvidence(input.body)
         val validMapping = map.normalized == result.normalizedText
         val evidence = if (validMapping) result.evidence.map(map::map) else emptyList()
         val lostCurrency = (old.balance != null && facts.availableBalance == null) ||
-            (old.dueAmount != null && facts.outstandingBalance == null) || (old.feeAmount != null && facts.internationalFee == null)
+            (old.dueAmount != null && facts.outstandingBalance == null) || (old.feeAmount != null && facts.internationalFee == null) ||
+            (old.foreignAmount != null && facts.labeledForeignAmount == null)
         val status = ParseStatus.valueOf(result.status)
         val blockers = buildSet {
             if (family == MessageFamily.UNKNOWN) add(Blocker.UNKNOWN_FAMILY)
@@ -70,7 +78,8 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
         fun labels(field: ExtractionField) = rule.labels[field].orEmpty()
         RuleSpec(rule.id, rule.family.name, rule.phrases, rule.excludes,
             labels(ExtractionField.AMOUNT), labels(ExtractionField.CARD), labels(ExtractionField.SOURCE_ACCOUNT),
-            labels(ExtractionField.DESTINATION_ACCOUNT), labels(ExtractionField.MERCHANT), labels(ExtractionField.AVAILABLE_BALANCE), rule.direction.name)
+            labels(ExtractionField.DESTINATION_ACCOUNT), labels(ExtractionField.MERCHANT), labels(ExtractionField.AVAILABLE_BALANCE), rule.direction.name,
+            rule.detailLabels, rule.observations)
     })
     private fun version() = InterpretationVersion(1, SharedLabEngine.VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}")
     private fun failure(input: MessageInput, bank: BankId, blocker: Blocker) = Interpretation(input.evidenceId,
@@ -83,7 +92,8 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
                     MoneyDirection.valueOf(r.direction), mapOf(
                         ExtractionField.AMOUNT to r.amountLabels, ExtractionField.CARD to r.cardLabels,
                         ExtractionField.SOURCE_ACCOUNT to r.sourceLabels, ExtractionField.DESTINATION_ACCOUNT to r.destinationLabels,
-                        ExtractionField.MERCHANT to r.merchantLabels, ExtractionField.AVAILABLE_BALANCE to r.balanceLabels))
+                        ExtractionField.MERCHANT to r.merchantLabels, ExtractionField.AVAILABLE_BALANCE to r.balanceLabels),
+                    detailLabels = r.detailLabels, observations = r.observations)
             })
         }
     }
