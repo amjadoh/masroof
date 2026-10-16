@@ -41,3 +41,16 @@ tasks.register<JavaExec>("exportSharedNetworkBenchmark") {
             layout.buildDirectory.dir("reports/shared-network-benchmark").get().asFile.absolutePath)
     }
 }
+
+// Explicit fail-closed local measurement. Private input is never copied into build artifacts.
+tasks.register<JavaExec>("assessM6Holdout") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.baraa.masroof.lab.engine.acceptance.M6AcceptanceExport")
+    doFirst {
+        args = listOf(layout.projectDirectory.asFile.absolutePath,
+            layout.buildDirectory.dir("reports/m6-acceptance").get().asFile.absolutePath,
+            providers.environmentVariable("M6_REVIEWED_HOLDOUT").orNull.orEmpty(),
+            providers.environmentVariable("M6_ACCEPTANCE_POLICY").orNull.orEmpty())
+    }
+}
