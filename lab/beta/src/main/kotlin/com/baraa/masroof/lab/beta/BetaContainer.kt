@@ -38,6 +38,39 @@ class BetaContainer(
         runBlocking { BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database)).choices() }
     }
 
+    /** Explicit caller-supplied batch, comparison only; no inbox access or live scheduling. */
+    fun importEvidence(request: com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest,
+        messages: List<com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage>) = lock.withLock {
+        check(!closed)
+        runBlocking { evidenceWorkflow().importBatch(request, messages) }
+    }
+
+    fun reprocessEvidence(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { evidenceWorkflow().reprocess(id) }
+    }
+
+    fun retryEvidence(limit: Int = 100) = lock.withLock {
+        check(!closed)
+        runBlocking { evidenceWorkflow().retryPending(limit) }
+    }
+
+    fun evidenceSummary(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database).summary(id) }
+    }
+
+    fun decideEvidence(id: String, expectedRevision: Long,
+        decision: com.baraa.masroof.lab.beta.application.evidence.EvidenceReviewDecision) = lock.withLock {
+        check(!closed)
+        runBlocking { evidenceWorkflow().decide(id, expectedRevision, decision) }
+    }
+
+    private fun evidenceWorkflow() = com.baraa.masroof.lab.beta.application.evidence.ProcessBetaEvidence(
+        com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database), RoomBetaBankSelectionStore(database),
+        com.baraa.masroof.lab.beta.application.evidence.LabEvidenceRouter(),
+        com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer())
+
     fun setBankEnabled(bank: BankId, enabled: Boolean) = lock.withLock {
         check(!closed)
         runBlocking {
