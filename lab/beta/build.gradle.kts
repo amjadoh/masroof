@@ -29,6 +29,8 @@ ksp {
 }
 
 dependencies {
+    implementation(project(":lab:finance-core"))
+    implementation(project(":lab:bank-engine"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
