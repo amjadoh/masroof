@@ -2,6 +2,8 @@
 
 Status: In Progress. Beta shadow comparison only; no production parser, inbox, database, ledger or promotion change. Legacy engine, fixtures and stored Lab samples remain intact.
 
+The next [configured network observation increment](M6_NETWORK_IDENTITY.md) addresses the four network gaps below with shared literal bank-identity data. This document retains the original revision-2 results; the linked document records the subsequent runtime/configuration and remaining ISO-date observation.
+
 ## Shared execution and configuration
 
 Both Parsing Lab and Beta call `SharedLabEngine` (`shared-3`) with `SharedRuleDefaults` revision 2. There is no candidate call to the reference parser and no duplicate engine implementation. The existing temporary location in `lab/engine` remains; moving the generic runtime into `bank-engine` belongs to a later architecture increment.
