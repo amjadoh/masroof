@@ -19,4 +19,13 @@ class RuleSchemaTest {
             .forEach { invalid -> assertThrows(IllegalArgumentException::class.java) { invalid.validate() } }
         assertEquals(listOf("CONTAINS_TOKEN_PHRASE"), RuleOperator.entries.map { it.name })
     }
+
+    @Test fun networkDataCannotAddUnboundedOrExecutableRoutingOperators() {
+        val invalid = listOf(NetworkRules(bankAliases = mapOf("bad id" to listOf("Bank"))),
+            NetworkRules(bankAliases = mapOf("LOCAL" to emptyList())),
+            NetworkRules(sourceBankLabels = listOf("sender\nbank")),
+            NetworkRules(bankAliases = mapOf("LOCAL" to listOf("x".repeat(101)))))
+        invalid.forEach { assertThrows(IllegalArgumentException::class.java) { BankRuleSchema(revision = 1, rules = listOf(rule), network = it).validate() } }
+        BankRuleSchema(revision = 1, rules = listOf(rule), network = NetworkRules(bankAliases = mapOf("LOCAL" to listOf("(a+)+$")))).validate()
+    }
 }

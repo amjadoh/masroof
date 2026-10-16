@@ -30,3 +30,14 @@ tasks.register<JavaExec>("exportEvidenceBenchmark") {
             providers.environmentVariable("LAB_BENCHMARK_OUTPUT").get())
     }
 }
+
+// Explicit M6 candidate timing on immutable regression input, separate from unit-test timing.
+tasks.register<JavaExec>("exportSharedNetworkBenchmark") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.baraa.masroof.lab.engine.SharedNetworkBenchmarkExport")
+    doFirst {
+        args = listOf(layout.projectDirectory.dir("src/test/resources/testdata/bank_aljazira").asFile.absolutePath,
+            layout.buildDirectory.dir("reports/shared-network-benchmark").get().asFile.absolutePath)
+    }
+}

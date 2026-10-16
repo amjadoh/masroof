@@ -9,12 +9,15 @@ import com.baraa.masroof.lab.engine.RuleSpec
 import com.baraa.masroof.lab.engine.SharedLabEngine
 import com.baraa.masroof.lab.engine.SharedRuleLibrary
 import com.baraa.masroof.lab.engine.SharedRuleDefaults
+import com.baraa.masroof.lab.engine.NetworkRuleConfig
 import java.time.Clock
 import java.time.LocalDateTime
 
 /** M6 transition: calls the exact configurable engine used by Parsing Lab; never copies its rules. */
 class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clock.systemUTC()) : BankInterpreter {
-    private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
+    private val snapshot = schema.copy(network = schema.network.copy(bankAliases = schema.network.bankAliases.mapValues { it.value.toList() },
+        sourceBankLabels = schema.network.sourceBankLabels.toList(), destinationBankLabels = schema.network.destinationBankLabels.toList(),
+        networkLabels = schema.network.networkLabels.toList()), rules = schema.rules.map { it.copy(
         phrases = it.phrases.toList(), excludes = it.excludes.toList(), labels = it.labels.mapValues { entry -> entry.value.toList() },
         detailLabels = it.detailLabels.mapValues { entry -> entry.value.toList() }, observations = it.observations.mapValues { entry -> entry.value.toList() }) })
     private val engine = SharedLabEngine(clock)
@@ -80,7 +83,7 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
             labels(ExtractionField.AMOUNT), labels(ExtractionField.CARD), labels(ExtractionField.SOURCE_ACCOUNT),
             labels(ExtractionField.DESTINATION_ACCOUNT), labels(ExtractionField.MERCHANT), labels(ExtractionField.AVAILABLE_BALANCE), rule.direction.name,
             rule.detailLabels, rule.observations)
-    })
+    }, NetworkRuleConfig(snapshot.network.bankAliases, snapshot.network.sourceBankLabels, snapshot.network.destinationBankLabels, snapshot.network.standaloneDestinationBrackets, snapshot.network.networkLabels))
     private fun version() = InterpretationVersion(1, SharedLabEngine.VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}")
     private fun failure(input: MessageInput, bank: BankId, blocker: Blocker) = Interpretation(input.evidenceId,
         version(), bank, Facts(MessageFamily.UNKNOWN), ParseStatus.REVIEW_REQUIRED, null, emptyList(), setOf(blocker, Blocker.UNKNOWN_FAMILY))
@@ -94,7 +97,7 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
                         ExtractionField.SOURCE_ACCOUNT to r.sourceLabels, ExtractionField.DESTINATION_ACCOUNT to r.destinationLabels,
                         ExtractionField.MERCHANT to r.merchantLabels, ExtractionField.AVAILABLE_BALANCE to r.balanceLabels),
                     detailLabels = r.detailLabels, observations = r.observations)
-            })
+            }, network = NetworkRules(library.network.bankAliases, library.network.sourceBankLabels, library.network.destinationBankLabels, library.network.standaloneDestinationBrackets, library.network.networkLabels))
         }
     }
 

@@ -17,9 +17,10 @@ data class BankRule(
 )
 
 /** M6.1 first schema. Validation runs before handing literal rules to the shared lab engine. */
-data class BankRuleSchema(val schema: Int = 1, val revision: Int, val rules: List<BankRule>) {
+data class BankRuleSchema(val schema: Int = 1, val revision: Int, val rules: List<BankRule>, val network: NetworkRules = NetworkRules()) {
     fun validate() {
         require(schema == 1) { "Unsupported rule schema" }
+        network.validate()
         require(revision > 0 && rules.size in 1..100)
         require(rules.map { it.id }.distinct().size == rules.size)
         rules.forEach { rule ->
