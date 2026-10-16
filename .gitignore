@@ -12,6 +12,7 @@ captures/
 *.aab
 
 # Kotlin
+.kotlin/
 *.hprof
 
 # Keystore files
