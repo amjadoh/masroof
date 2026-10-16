@@ -91,6 +91,24 @@ class BetaAssetRegistryTest {
         assertEquals(AssetKind.ACCOUNT, r.all().single().kind)
     }
 
+    @Test fun manualSuffixCorrectionPreservesMessageEvidenceAndReplacesOnlyManualAlias() = runBlocking {
+        val selectedBank = BankId("BANK_ALJAZIRA")
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(selectedBank.value, "ENABLED"))
+        val identity = AssetId(Environment.BETA, selectedBank, "manual")
+        val original = OwnedAsset(identity, AssetKind.ACCOUNT, "1234")
+        val registry = BetaAssetRegistry(db)
+        registry.register(original, listOf(BetaAssetAlias(BetaAliasKind.LAST4, "1234", "imported-evidence")))
+        val workflow = com.baraa.masroof.lab.beta.application.BetaManualAssetWorkflow(registry)
+        val first = workflow.save(com.baraa.masroof.lab.beta.application.ManualAssetDraft(identity, AssetKind.ACCOUNT,
+            "5678", ownedConfirmed = true, editing = true, expectedOriginal = original))
+        val second = workflow.save(com.baraa.masroof.lab.beta.application.ManualAssetDraft(identity, AssetKind.ACCOUNT,
+            "9999", ownedConfirmed = true, editing = true, expectedOriginal = first))
+        assertEquals(listOf(second), registry.candidates(selectedBank, BetaAliasKind.LAST4, "1234"))
+        assertTrue(registry.candidates(selectedBank, BetaAliasKind.LAST4, "5678").isEmpty())
+        assertEquals(listOf(second), registry.candidates(selectedBank, BetaAliasKind.LAST4, "9999"))
+        assertEquals(1, registry.all().size)
+    }
+
     private suspend fun expectFailure(block: suspend () -> Unit) {
         try { block() } catch (_: Exception) { return }
         fail("Expected invalid write to fail")
