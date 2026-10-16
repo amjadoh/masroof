@@ -54,12 +54,14 @@ class DecisionOverlay private constructor(
     val history: List<CorrectionRequest>,
     internal val financial: FinancialClassificationInput?,
     internal val suppressed: Boolean,
+    internal val seedPosting: StoredFinancialPosting?,
 ) {
     companion object {
         internal fun create(key: PostingKey, correction: Long, interpretation: Long,
             original: FinancialClassificationInput, metadata: Map<String, String>, history: List<CorrectionRequest>,
-            financial: FinancialClassificationInput?, suppressed: Boolean, latest: CorrectionObservation, safetyHold: Boolean) = DecisionOverlay(key, correction,
-            interpretation, original.freeze(), latest.copy(input = latest.input.freeze()), safetyHold, immutableMap(metadata), immutableList(history), financial?.freeze(), suppressed)
+            financial: FinancialClassificationInput?, suppressed: Boolean, latest: CorrectionObservation, safetyHold: Boolean,
+            seedPosting: StoredFinancialPosting? = null) = DecisionOverlay(key, correction,
+            interpretation, original.freeze(), latest.copy(input = latest.input.freeze()), safetyHold, immutableMap(metadata), immutableList(history), financial?.freeze(), suppressed, seedPosting)
     }
 }
 
@@ -111,7 +113,7 @@ object CorrectionOverlays {
         val overlay = DecisionOverlay.create(input.key, command.correctionRevision, input.revision.interpretation,
             previous?.original ?: input, (previous?.metadata ?: emptyMap()) + command.metadata,
             (previous?.history ?: emptyList()) + command, financial, suppressed, observation.copy(input = input),
-            previous?.safetyHold == true || observation.safety != ObservationSafety.ORDINARY)
+            previous?.safetyHold == true || observation.safety != ObservationSafety.ORDINARY, previous?.seedPosting)
         return evaluate(observation.copy(input = input), overlay)
     }
 
@@ -138,7 +140,7 @@ object CorrectionOverlays {
         val base = observation.input
         val next = DecisionOverlay.create(overlay.key, overlay.correctionRevision, base.revision.interpretation,
             overlay.original, overlay.metadata, overlay.history, overlay.financial, overlay.suppressed,
-            observation, overlay.safetyHold || observation.safety != ObservationSafety.ORDINARY)
+            observation, overlay.safetyHold || observation.safety != ObservationSafety.ORDINARY, overlay.seedPosting)
         if (next.suppressed) return if (next.safetyHold) CorrectionResult.Applied(next,
             CorrectionDisposition.FINANCIAL_REVIEW, FinancialClassification.Review(immutableSet(
                 base.unresolved + (next.financial?.unresolved ?: emptySet()) + ReviewReason.VALIDATION)), null)
