@@ -52,6 +52,10 @@ class BetaContainerIsolationTest {
             val asset = OwnedAsset(AssetId(Environment.BETA, BankId("ALJAZIRA"), "stable"), AssetKind.ACCOUNT)
             assertTrue(beta.assets().isEmpty())
             beta.registerAsset(asset)
+            val selectedBank = BankId("BANK_ALJAZIRA")
+            beta.setBankEnabled(selectedBank, true)
+            beta.setBankEnabled(selectedBank, false)
+            assertEquals(listOf(asset), beta.assets())
             beta.putMarker("shell-1", "probe")
             assertEquals(1, beta.markerCount())
             beta.putPreferenceProbe("A")
@@ -71,10 +75,14 @@ class BetaContainerIsolationTest {
             BetaContainer(context).use { restored ->
                 assertEquals("A", restored.preferenceProbe())
                 assertEquals(listOf(asset), restored.assets())
+                assertEquals(com.baraa.masroof.lab.beta.application.BankSelectionState.DISABLED, restored.bankChoices().single().state)
+                restored.setBankEnabled(selectedBank, true)
+                assertEquals(com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED, restored.bankChoices().single().state)
                 assertEquals(1, restored.markerCount())
                 restored.reset()
                 assertEquals(null, restored.preferenceProbe())
                 assertTrue(restored.assets().isEmpty())
+                assertEquals(null, restored.bankChoices().single().state)
                 assertEquals(0, restored.markerCount())
             }
         }

@@ -18,7 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import com.baraa.masroof.lab.beta.presentation.theme.BetaSpacing
+import com.baraa.masroof.lab.beta.application.BetaBankChoice
+import com.baraa.masroof.lab.beta.application.BankSelectionState
+import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.lab.beta.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +32,11 @@ import com.baraa.masroof.lab.beta.R
 fun BetaShell(
     markerCount: Int,
     restoreMissing: Boolean,
+    banks: List<BetaBankChoice> = emptyList(),
+    busy: Boolean = false,
+    failed: Boolean = false,
+    onSetBankEnabled: (BankId, Boolean) -> Unit = { _, _ -> },
+    onRetry: () -> Unit = {},
     onReturn: () -> Unit,
     onReset: () -> Unit,
     onBackup: () -> Unit,
@@ -37,68 +48,60 @@ fun BetaShell(
             TopAppBar(
                 title = { Text(stringResource(R.string.beta_title)) },
                 actions = {
-                    Surface(
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .testTag("beta-badge"),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                    ) {
-                        Text(
-                            stringResource(R.string.beta_badge),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    Surface(Modifier.padding(end = BetaSpacing.section).testTag("beta-badge"),
+                        color = MaterialTheme.colorScheme.errorContainer) {
+                        Text(stringResource(R.string.beta_badge),
+                            Modifier.padding(horizontal = BetaSpacing.badgeHorizontal, vertical = BetaSpacing.badgeVertical),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
+                            color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 },
             )
         },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("beta-badge"),
-                color = MaterialTheme.colorScheme.errorContainer,
-            ) {
-                Text(
-                    stringResource(R.string.beta_badge),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-            Text(
-                stringResource(R.string.beta_empty_body),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                stringResource(R.string.beta_marker_count, markerCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (restoreMissing) {
-                Text(
-                    stringResource(R.string.beta_restore_missing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            Button(
-                onClick = onReturn,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("beta-return"),
-            ) {
+        bottomBar = {
+            Button(onClick = onReturn, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
                 Text(stringResource(R.string.beta_return))
             }
+        },
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(BetaSpacing.screen),
+            verticalArrangement = Arrangement.spacedBy(BetaSpacing.section),
+        ) {
+            Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.beta_bank_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.beta_bank_help), style = MaterialTheme.typography.bodyMedium)
+            if (failed) {
+                Text(stringResource(R.string.beta_action_failed), color = MaterialTheme.colorScheme.error)
+                OutlinedButton(onClick = onRetry, enabled = !busy, modifier = Modifier.testTag("beta-retry")) {
+                    Text(stringResource(R.string.beta_retry))
+                }
+            }
+            banks.forEach { choice ->
+                Card(modifier = Modifier.fillMaxWidth().testTag("beta-bank-${choice.bankId.value}")) {
+                    Column(Modifier.padding(BetaSpacing.screen), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
+                        Text(stringResource(bankName(choice.bankId)), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(when (choice.state) {
+                            BankSelectionState.ENABLED -> R.string.beta_bank_enabled
+                            BankSelectionState.DISABLED -> R.string.beta_bank_disabled
+                            null -> R.string.beta_bank_not_selected
+                        }))
+                        OutlinedButton(
+                            enabled = !busy,
+                            onClick = { onSetBankEnabled(choice.bankId, choice.state != BankSelectionState.ENABLED) },
+                            modifier = Modifier.testTag("beta-bank-action-${choice.bankId.value}"),
+                        ) {
+                            Text(stringResource(when (choice.state) {
+                                BankSelectionState.ENABLED -> R.string.beta_bank_disable
+                                BankSelectionState.DISABLED -> R.string.beta_bank_resume
+                                null -> R.string.beta_bank_add
+                            }))
+                        }
+                    }
+                }
+            }
             OutlinedButton(
+                enabled = !busy,
                 onClick = onBackup,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -107,6 +110,7 @@ fun BetaShell(
                 Text(stringResource(R.string.beta_backup))
             }
             OutlinedButton(
+                enabled = !busy,
                 onClick = onRestore,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -115,6 +119,7 @@ fun BetaShell(
                 Text(stringResource(R.string.beta_restore))
             }
             OutlinedButton(
+                enabled = !busy,
                 onClick = onReset,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -122,6 +127,14 @@ fun BetaShell(
             ) {
                 Text(stringResource(R.string.beta_reset))
             }
+            Text(stringResource(R.string.beta_marker_count, markerCount), style = MaterialTheme.typography.bodySmall)
+            if (restoreMissing) Text(stringResource(R.string.beta_restore_missing), color = MaterialTheme.colorScheme.error)
         }
     }
+}
+
+/** Every real supported bank must have a localized name before joining the picker. */
+private fun bankName(bankId: BankId): Int = when (bankId.value) {
+    "BANK_ALJAZIRA" -> R.string.beta_bank_aljazira
+    else -> error("Supported bank has no localized picker label")
 }
