@@ -7,6 +7,7 @@ import com.baraa.masroof.lab.beta.data.RoomBetaBankSelectionStore
 import com.baraa.masroof.lab.finance.value.BankId
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import com.baraa.masroof.lab.beta.data.BetaAssetAlias
 import com.baraa.masroof.lab.beta.data.BetaAssetRegistry
 import com.baraa.masroof.lab.finance.asset.OwnedAsset
@@ -106,6 +107,42 @@ class BetaContainer(
             val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
             database.evidenceDao().idsAfter(afterId, limit).map { store.summary(it) }
         }
+    }
+
+    fun confirmProposal(proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal, draft: ManualAssetDraft): OwnedAsset = lock.withLock {
+        check(!closed)
+        require(draft.id == proposal.id && !draft.editing)
+        require(bankChoices().any { it.bankId == proposal.id.bank && it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED })
+        runBlocking { database.withTransaction {
+            val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
+            require(proposal.copy(confirmedAssetId = null) in store.discoveryProposals(proposal.evidenceId)) { "Stale proposal" }
+            require(store.proposalBinding(proposal).let { it == null || it == draft.id }) { "Already bound to another asset" }
+            BetaManualAssetWorkflow(BetaAssetRegistry(database)).save(draft).also { store.recordProposalConfirmation(proposal) }
+        } }
+    }
+
+    fun linkExistingProposal(proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal, expectedAsset: OwnedAsset, ownedConfirmed: Boolean): OwnedAsset = lock.withLock {
+        check(!closed)
+        require(ownedConfirmed)
+        require(expectedAsset.id.environment == com.baraa.masroof.lab.finance.value.Environment.BETA && expectedAsset.id.bank == proposal.id.bank)
+        runBlocking { database.withTransaction {
+            require(database.bankSelectionDao().all().any { it.bankId == proposal.id.bank.value && it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED.name })
+            val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
+            require(proposal.copy(confirmedAssetId = null) in store.discoveryProposals(proposal.evidenceId)) { "Stale proposal" }
+            val asset = BetaAssetRegistry(database).all().singleOrNull { it.id == expectedAsset.id }
+            require(asset != null && asset == expectedAsset && asset.kind == proposal.kind && asset.last4 == proposal.last4) { "Asset changed or incompatible" }
+            store.recordProposalConfirmation(proposal, expectedAsset.id)
+            expectedAsset
+        } }
+    }
+
+    fun discoveryPage(afterId: String = "", limit: Int = 25) = lock.withLock {
+        check(!closed)
+        require(limit in 1..25)
+        val enabled = bankChoices().filter { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }.map { it.bankId }.toSet()
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database).discoveryPage(afterId, limit).let {
+            it.copy(proposals = it.proposals.filter { proposal -> proposal.id.bank in enabled })
+        } }
     }
 
     fun setBankEnabled(bank: BankId, enabled: Boolean) = lock.withLock {

@@ -11,6 +11,45 @@ import org.json.JSONObject
 /** Created for the current database per operation; never retained across restore/reset. */
 internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaEvidenceStore {
     private val dao get() = database.evidenceDao()
+    /** Stable per-evidence role binding, independent of later archive revisions. */
+    suspend fun proposalBinding(proposal: BetaAssetProposal): com.baraa.masroof.lab.finance.asset.AssetId? {
+        val rows = database.assetDao().proposalBindings(proposal.id.environment.name, proposal.id.bank.value, "proposal-confirmed-v1|${proposal.id.localId}|")
+        require(rows.size <= 1) { "Conflicting explicit proposal bindings" }
+        return rows.singleOrNull()?.let { com.baraa.masroof.lab.finance.asset.AssetId(proposal.id.environment, proposal.id.bank, it.localId) }
+    }
+
+    /** Called only after explicit ownership confirmation in its surrounding Room transaction. */
+    suspend fun recordProposalConfirmation(proposal: BetaAssetProposal, assetId: com.baraa.masroof.lab.finance.asset.AssetId = proposal.id) {
+        require(assetId.environment == proposal.id.environment && assetId.bank == proposal.id.bank)
+        require(proposalBinding(proposal).let { it == null || it == assetId }) { "Proposal already confirmed against another asset" }
+        val encodedId = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(proposal.evidenceId.toByteArray(Charsets.UTF_8))
+        val reference = "proposal-confirmed-v1|${proposal.id.localId}|$encodedId|${proposal.revision}"
+        val assetDao = database.assetDao()
+        if (!assetDao.hasProposalAlias(assetId.environment.name, assetId.bank.value, assetId.localId, proposal.last4, reference)) {
+            assetDao.insertAlias(BetaAssetAliasEntity(assetId.environment.name, assetId.bank.value,
+                assetId.localId, BetaAliasKind.LAST4.name, proposal.last4, reference))
+        }
+    }
+
+    suspend fun discoveryProposals(id: String): List<BetaAssetProposal> {
+        val outcome = dao.outcome(id) ?: return emptyList()
+        if (dao.retry(id) != null) return emptyList()
+        val route = try { decodeRoute(outcome.route) } catch (_: IllegalArgumentException) { return emptyList() } catch (_: org.json.JSONException) { return emptyList() }
+        val body = dao.raw(id)?.body ?: return emptyList()
+        val candidate = BetaAssetDiscovery.proposals(id, route, outcome.candidateJson, body = body)
+        val baseline = BetaAssetDiscovery.proposals(id, route, outcome.baselineJson, requireFieldProof = false)
+        return candidate.filter { p -> baseline.any { it.id == p.id && it.kind == p.kind && it.last4 == p.last4 } }
+            .map { it.copy(revision = java.security.MessageDigest.getInstance("SHA-256").digest(
+                (outcome.baselineJson + "|" + outcome.candidateJson).toByteArray(Charsets.UTF_8)).joinToString("") { byte -> "%02x".format(byte) }) }
+    }
+
+    suspend fun discoveryPage(afterId: String, limit: Int): BetaDiscoveryPage = database.withTransaction {
+        val ids = dao.idsAfter(afterId, limit)
+        var review = 0
+        val proposals = ids.flatMap { id -> discoveryProposals(id).map { it.copy(confirmedAssetId = proposalBinding(it)) }.also { if (it.isEmpty()) review++ } }
+        BetaDiscoveryPage(proposals, ids.lastOrNull(), review)
+    }
+
     override suspend fun find(id: String) = dao.raw(id)?.toEvidence()
 
     override suspend fun capture(evidence: CapturedEvidence): CaptureState = database.withTransaction {
