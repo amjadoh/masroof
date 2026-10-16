@@ -66,8 +66,12 @@ class ParsingLabSmokeTest {
         val initialLibraryVersion = SharedRuleDefaults.create().version
         context.deleteDatabase("masroof_parsing_lab.db")
         compose.setContent { ParsingLabEntry {} }
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("إضافة الجزيرة وعينات توضيحية").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("إضافة الجزيرة وعينات توضيحية").performScrollTo().performClick()
+        // The empty-bank snapshot arrives before the remaining initial refresh finishes. Text can
+        // therefore exist while seed is disabled; clicking it then does not enqueue the seed action.
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(hasText("إضافة الجزيرة وعينات توضيحية") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("إضافة الجزيرة وعينات توضيحية").performScrollTo().assertIsEnabled().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("4 رسائل · يستخدم المكتبة المشتركة").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("التجربة").performClick()
         compose.onNodeWithText("استيراد رسائل البنك").assertExists()
