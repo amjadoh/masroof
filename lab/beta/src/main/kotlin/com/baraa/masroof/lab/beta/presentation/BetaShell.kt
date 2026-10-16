@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import com.baraa.masroof.lab.beta.presentation.theme.BetaSpacing
 import com.baraa.masroof.lab.beta.application.BetaBankChoice
 import com.baraa.masroof.lab.beta.application.BankSelectionState
+import com.baraa.masroof.lab.finance.asset.OwnedAsset
 import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.lab.beta.R
 
@@ -33,6 +34,11 @@ fun BetaShell(
     markerCount: Int,
     restoreMissing: Boolean,
     banks: List<BetaBankChoice> = emptyList(),
+    assets: List<OwnedAsset> = emptyList(),
+    editor: (@Composable () -> Unit)? = null,
+    onAddAsset: (BankId) -> Unit = {},
+    onEditAsset: (OwnedAsset) -> Unit = {},
+    returnEnabled: Boolean = true,
     busy: Boolean = false,
     failed: Boolean = false,
     onSetBankEnabled: (BankId, Boolean) -> Unit = { _, _ -> },
@@ -59,7 +65,7 @@ fun BetaShell(
             )
         },
         bottomBar = {
-            Button(onClick = onReturn, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
+            Button(onClick = onReturn, enabled = returnEnabled, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
                 Text(stringResource(R.string.beta_return))
             }
         },
@@ -68,6 +74,10 @@ fun BetaShell(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(BetaSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(BetaSpacing.section),
         ) {
+            if (editor != null) {
+                editor()
+                return@Column
+            }
             Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.beta_bank_title), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.beta_bank_help), style = MaterialTheme.typography.bodyMedium)
@@ -96,6 +106,22 @@ fun BetaShell(
                                 BankSelectionState.DISABLED -> R.string.beta_bank_resume
                                 null -> R.string.beta_bank_add
                             }))
+                        }
+                        if (choice.state == BankSelectionState.ENABLED) {
+                            OutlinedButton(enabled = !busy, onClick = { onAddAsset(choice.bankId) }, modifier = Modifier.testTag("asset-add-${choice.bankId.value}")) {
+                                Text(stringResource(R.string.beta_asset_add))
+                            }
+                        }
+                    }
+                }
+            }
+            if (assets.isNotEmpty()) Text(stringResource(R.string.beta_asset_list), style = MaterialTheme.typography.titleLarge)
+            assets.forEachIndexed { index, asset ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(BetaSpacing.screen)) {
+                        Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1))
+                        OutlinedButton(enabled = !busy, onClick = { onEditAsset(asset) }, modifier = Modifier.testTag("asset-edit-${asset.id.localId}")) {
+                            Text(stringResource(R.string.beta_asset_edit))
                         }
                     }
                 }
@@ -134,7 +160,7 @@ fun BetaShell(
 }
 
 /** Every real supported bank must have a localized name before joining the picker. */
-private fun bankName(bankId: BankId): Int = when (bankId.value) {
+internal fun bankName(bankId: BankId): Int = when (bankId.value) {
     "BANK_ALJAZIRA" -> R.string.beta_bank_aljazira
     else -> error("Supported bank has no localized picker label")
 }
