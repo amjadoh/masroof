@@ -31,6 +31,8 @@ The fixture report remains `lab/beta/build/reports/beta-interpretation/shared-sh
 
 Local JDK 17 / Gradle 8.8: **453 tests passed** (395 engine, 11 bank contracts/schema/boundaries, 25 Beta, 22 Parsing Lab Android). Beta debug assembly and lint passed. Two Lab workflow assertions initially assumed the default library always started at revision 1; they now verify increment-from-captured-revision, full persisted rule equality, immutable historical run revisions and stale-draft rejection. No runtime persistence or financial expectation changed. The reference adapter still retains all **40/40** golden and typed-field expectations (27 Success, 8 NonFinancial, 5 ReviewRequired).
 
+The device smoke test likewise reads `SharedRuleDefaults.create().version` for the fresh Lab database and requires the next revision after Save. Its existing batch/evidence comparison guards remain. The changed file under `app/src/androidTest` and explicit `androidTestImplementation(:lab:engine)` are instrumentation-test-only changes; they do not change production runtime dependencies, financial code or database access. Local `:app:assembleDebugAndroidTest` passed; device execution must pass in CI on the final commit.
+
 | Comparison | Before | This increment |
 |---|---:|---:|
 | Exact status and every typed fact | 9/40 | 35/40 |
