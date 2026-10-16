@@ -105,7 +105,8 @@ class FinanceContractTest {
     }
 
     @Test fun dashboardReadContractKeepsMissingBalanceAndEnvironmentExplicit() = runTest {
-        val query = DashboardQuery(Environment.BETA, Instant.EPOCH, Instant.EPOCH.plusSeconds(60))
+        val query = DashboardQuery(Environment.BETA, Instant.EPOCH, Instant.EPOCH.plusSeconds(60),
+            ZoneId.of("Asia/Riyadh"), Currency.SAR)
         val reader = DashboardReader { request ->
             DashboardSnapshot(request, listOf(AccountSummary(id("account"), null)), emptyList(), emptyList())
         }
