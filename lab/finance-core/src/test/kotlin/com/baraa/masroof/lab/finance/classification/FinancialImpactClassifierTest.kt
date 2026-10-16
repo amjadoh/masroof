@@ -195,16 +195,18 @@ class FinancialImpactClassifierTest {
         assertEquals(account.id, result.accountMovements.single().account)
     }
 
-    @Test fun explicitSalaryAttributionChangesAccountBucketWithoutRewritingMonthlyFinancialType() {
+    @Test fun storedIncomePrecedenceAndTransferAttributionPreserveFactsAndMonthlyFinancialType() {
         listOf(FinancialType.INCOME, FinancialType.EXTERNAL_TRANSFER_IN).forEach { type ->
             val candidate = input(type, external, owned(account))
             val ordinary = classified(candidate)
             val salary = classified(candidate.copy(incomeAttribution = IncomeAttribution.SALARY))
-            assertEquals(if (type == FinancialType.INCOME) FlowBucket.OTHER_INCOME else FlowBucket.EXTERNAL_IN,
+            assertEquals(if (type == FinancialType.INCOME) FlowBucket.SALARY else FlowBucket.EXTERNAL_IN,
                 ordinary.accountMovements.single().bucket)
             assertEquals(FlowBucket.SALARY, salary.accountMovements.single().bucket)
             assertEquals(ordinary.metrics, salary.metrics)
             assertEquals(type, salary.effectiveType)
+            assertEquals(IncomeAttribution.OTHER, ordinary.input.incomeAttribution)
+            assertEquals(IncomeAttribution.SALARY, salary.input.incomeAttribution)
             assertReview(candidate.copy(incomeAttribution = null), ReviewReason.VALIDATION)
         }
     }
