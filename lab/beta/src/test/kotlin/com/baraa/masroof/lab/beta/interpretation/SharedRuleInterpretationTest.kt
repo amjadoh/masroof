@@ -137,14 +137,10 @@ class SharedRuleInterpretationTest {
         val fixtures = File("../engine/src/test/resources/testdata/bank_aljazira").walkTopDown()
             .filter { it.extension == "json" && it.parentFile.name != "reference" }.sortedBy { it.path }.toList()
         val counts = sortedMapOf<String, Int>()
-        // Explicit unfinished migrations, not approved financial equivalence. Every
-        // other fixture must match status and *all* reflected Facts fields exactly.
+        // Preserve the correctly observed ISO date as an explicit additive
+        // difference, not approval of financial equivalence or a discarded fact.
         val unported = mapOf(
             "collision_statement_amount_ar_001" to setOf("paymentDueDate"),
-            "transfer_in_salary_ar_001" to setOf("bankNetwork"),
-            "collision_transfer_fee_line_ar_001" to setOf("bankNetwork"),
-            "transfer_out_inter_ar_001" to setOf("bankNetwork"),
-            "transfer_out_inter_ar_002" to setOf("bankNetwork"),
         )
         val violations = mutableListOf<String>()
         var exact = 0; var accepted = 0; var acceptanceDifferences = 0
@@ -169,7 +165,7 @@ class SharedRuleInterpretationTest {
         assertTrue(fixtures.size >= 40)
         val report = File("build/reports/beta-interpretation/shared-shadow-diff.txt")
         report.parentFile.mkdirs()
-        report.writeText("Reference: checked-in lab parser; not production or independent holdout\nFixtures: ${fixtures.size}\nExact status+all-facts matches: $exact\nCandidate successes: $accepted\nCandidate successes with reference differences: $acceptanceDifferences\nField differences: $counts\nEnforced gate: all Facts/status exact outside the five named unfinished migrations\nNot a cutover acceptance gate: network aliases/ISO due-date review, independent holdout and timing gates pending\n" + rows.joinToString("\n"))
+        report.writeText("Reference: checked-in lab parser; not production or independent holdout\nFixtures: ${fixtures.size}\nExact status+all-facts matches: $exact\nCandidate successes: $accepted\nCandidate successes with reference differences: $acceptanceDifferences\nField differences: $counts\nEnforced gate: all Facts/status exact outside one named additive ISO due-date observation\nISO extension is not approved financial equivalence; independent reviewed real holdout and promotion gates pending\n" + rows.joinToString("\n"))
         println(report.readLines().take(7).joinToString("\n"))
         assertTrue("Unexpected field/status regression: $violations", violations.isEmpty())
     }
