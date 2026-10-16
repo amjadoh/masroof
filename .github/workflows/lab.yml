@@ -1,0 +1,44 @@
+name: Lab
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feat/masroof-lab]
+permissions:
+  contents: read
+concurrency:
+  group: lab-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  isolated-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: android-actions/setup-android@v4
+      - name: Configure SDK
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
+      - name: Verify experiment scoring and review guards (no model download)
+        run: python3 -m unittest discover -s lab/experiments -p 'test_*.py'
+      - name: Test lab engine, android host, beta shell, and app units
+        run: ./gradlew :lab:engine:test :lab:android:testDebugUnitTest :lab:beta:testDebugUnitTest :app:testDebugUnitTest --stacktrace
+      - name: Build Masroof with integrated lab
+        run: ./gradlew :app:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: masroof-lab-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab-test-reports
+          path: |
+            lab/engine/build/reports/tests/
+            lab/android/build/reports/tests/
+            lab/beta/build/reports/tests/
