@@ -13,7 +13,7 @@ import kotlin.concurrent.withLock
 import kotlinx.coroutines.runBlocking
 
 /**
- * Empty Beta composition root.
+ * Beta composition root with an isolated explicit asset registry.
  *
  * Opens [BetaEnvironment.DATABASE_NAME] only. It does not import the production
  * composition root and it does not expose production repositories.

@@ -337,4 +337,3 @@ Target: Deferred staging mapping; preserve every field.
 | `mode` | TEXT | True | False |
 
 Foreign references: `rawSmsId` -> `raw_sms` (`id`), delete=RESTRICT, update=CASCADE.
-
