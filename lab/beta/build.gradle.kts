@@ -1,12 +1,13 @@
 plugins {
     id("com.android.library")
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.baraa.masroof.lab.beta"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -17,7 +18,6 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
-    composeOptions { kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get() }
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
