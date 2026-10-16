@@ -38,6 +38,10 @@ val prepareFinancialOracle by tasks.registering {
 }
 kotlin.sourceSets.getByName("test").kotlin.srcDir(oracleSources)
 tasks.named("compileTestKotlin") { dependsOn(prepareFinancialOracle) }
+val financialParityReport = layout.buildDirectory.file("reports/m8-parity/summary.txt")
 tasks.test {
-    systemProperty("m8.parity.report", layout.buildDirectory.file("reports/m8-parity/summary.txt").get().asFile.absolutePath)
+    outputs.file(financialParityReport)
+    systemProperty("m8.parity.report", financialParityReport.get().asFile.absolutePath)
+    // Cache hits restore this declared report; real execution cannot retain a stale earlier report.
+    doFirst { financialParityReport.get().asFile.delete() }
 }

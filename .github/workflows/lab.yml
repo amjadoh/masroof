@@ -43,4 +43,5 @@ jobs:
           path: |
             lab/engine/build/reports/tests/
             lab/finance-core/build/reports/tests/
+            lab/finance-core/build/reports/m8-parity/
             lab/bank-engine/build/reports/tests/

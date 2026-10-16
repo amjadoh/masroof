@@ -57,6 +57,9 @@ Six new cross-run tests check:
 Run `:lab:finance-core:test :lab:finance-core:verifyPureJvmDependencies`. The safe synthetic summary
 is `lab/finance-core/build/reports/m8-parity/summary.txt`. Assertion failures fail ordinary CI.
 The report identifies remaining gaps rather than assigning a misleading full-ledger pass.
+The report is a declared test output, so cache hits restore it and actual execution first removes
+any stale report. The existing `lab-test-reports` artifact includes it alongside JUnit HTML reports;
+the inventory is not a substitute for those completed assertion results.
 
 ## M6 device timing
 

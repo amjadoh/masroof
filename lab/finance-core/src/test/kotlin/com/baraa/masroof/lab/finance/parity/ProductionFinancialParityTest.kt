@@ -223,6 +223,7 @@ class ProductionFinancialParityTest {
             FxCase("eur-purchase", "20", Currency.EUR, "4.3466", null),
             FxCase("gbp-purchase", "10", Currency.GBP, "5.0797", null))
         val report = mutableListOf("M8.4 BEGINNING ONLY; offline synthetic resolved fixtures; no posting authority",
+            "Coverage inventory only; completed JUnit results determine assertion status",
             "Oracle provenance: parity/oracle-sha256.properties; original code, test-only",
             "20 cases: 11 monthly metrics per-case and aggregate; account flow buckets; stored-INCOME precedence; loan precedence; zero and negative totals",
             "FX_AGGREGATE_PARITY: BLOCKED_NATIVE_ONLY_CANDIDATE")
