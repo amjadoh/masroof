@@ -7,6 +7,10 @@ kotlin { jvmToolchain(17) }
 dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Compile the actual unchanged resolver's provider file in TEST only. The HTTP implementation
+    // is never instantiated; cross-runs inject a deterministic recording provider.
+    testImplementation(libs.okhttp)
+    testImplementation("org.json:json:20240303")
 }
 
 // M8.4 offline oracle: original production sources compile in TEST only, never ship with Beta.
@@ -39,9 +43,15 @@ val prepareFinancialOracle by tasks.registering {
 kotlin.sourceSets.getByName("test").kotlin.srcDir(oracleSources)
 tasks.named("compileTestKotlin") { dependsOn(prepareFinancialOracle) }
 val financialParityReport = layout.buildDirectory.file("reports/m8-parity/summary.txt")
+val financialFxReport = layout.buildDirectory.file("reports/m8-parity/fx-enrichment.txt")
 tasks.test {
     outputs.file(financialParityReport)
+    outputs.file(financialFxReport)
     systemProperty("m8.parity.report", financialParityReport.get().asFile.absolutePath)
+    systemProperty("m8.fx.report", financialFxReport.get().asFile.absolutePath)
     // Cache hits restore this declared report; real execution cannot retain a stale earlier report.
-    doFirst { financialParityReport.get().asFile.delete() }
+    doFirst {
+        financialParityReport.get().asFile.delete()
+        financialFxReport.get().asFile.delete()
+    }
 }
