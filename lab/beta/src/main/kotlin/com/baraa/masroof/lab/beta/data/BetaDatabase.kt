@@ -1,5 +1,6 @@
 package com.baraa.masroof.lab.beta.data
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.baraa.masroof.lab.beta.BetaEnvironment
@@ -11,15 +12,17 @@ import com.baraa.masroof.lab.beta.BetaEnvironment
  * [masroof.db] schema and must not be replaced by that type permanently.
  */
 @Database(
-    entities = [BetaShellMarkerEntity::class],
+    entities = [BetaShellMarkerEntity::class, BetaAssetEntity::class, BetaAssetAliasEntity::class],
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
     version = BetaDatabase.VERSION,
     exportSchema = true,
 )
 abstract class BetaDatabase : RoomDatabase() {
+    internal abstract fun assetDao(): BetaAssetDao
     abstract fun shellMarkerDao(): BetaShellMarkerDao
 
     companion object {
         const val NAME: String = BetaEnvironment.DATABASE_NAME
-        const val VERSION: Int = 1
+        const val VERSION: Int = 2
     }
 }

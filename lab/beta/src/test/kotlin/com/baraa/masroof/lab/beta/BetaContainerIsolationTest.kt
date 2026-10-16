@@ -4,6 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.lab.finance.asset.AssetId
+import com.baraa.masroof.lab.finance.asset.AssetKind
+import com.baraa.masroof.lab.finance.asset.OwnedAsset
+import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.lab.finance.value.Environment
 import com.baraa.masroof.lab.beta.presentation.BetaActivity
 import com.baraa.masroof.lab.beta.presentation.BetaEntry
 import java.security.MessageDigest
@@ -44,6 +49,9 @@ class BetaContainerIsolationTest {
 
         BetaContainer(context).use { beta ->
             assertEquals(0, beta.markerCount())
+            val asset = OwnedAsset(AssetId(Environment.BETA, BankId("ALJAZIRA"), "stable"), AssetKind.ACCOUNT)
+            assertTrue(beta.assets().isEmpty())
+            beta.registerAsset(asset)
             beta.putMarker("shell-1", "probe")
             assertEquals(1, beta.markerCount())
             beta.putPreferenceProbe("A")
@@ -62,9 +70,11 @@ class BetaContainerIsolationTest {
             assertEquals(backupHash, sha256(context.getDatabasePath(BetaEnvironment.DATABASE_NAME)))
             BetaContainer(context).use { restored ->
                 assertEquals("A", restored.preferenceProbe())
+                assertEquals(listOf(asset), restored.assets())
                 assertEquals(1, restored.markerCount())
                 restored.reset()
                 assertEquals(null, restored.preferenceProbe())
+                assertTrue(restored.assets().isEmpty())
                 assertEquals(0, restored.markerCount())
             }
         }

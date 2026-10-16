@@ -1,0 +1,26 @@
+package com.baraa.masroof.lab.beta.data
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.Query
+
+@Dao
+internal interface BetaAssetDao {
+    @Insert
+    suspend fun insert(asset: BetaAssetEntity)
+
+    @Insert
+    suspend fun insertAlias(alias: BetaAssetAliasEntity)
+
+    @Query("SELECT * FROM beta_asset WHERE environment = :environment AND bankId = :bank AND localId = :id")
+    suspend fun get(environment: String, bank: String, id: String): BetaAssetEntity?
+
+    @Query("SELECT * FROM beta_asset ORDER BY environment, bankId, localId")
+    suspend fun all(): List<BetaAssetEntity>
+
+    @Query("""SELECT DISTINCT a.* FROM beta_asset a INNER JOIN beta_asset_alias x
+        ON a.environment = x.environment AND a.bankId = x.bankId AND a.localId = x.assetLocalId
+        WHERE x.environment = :environment AND x.bankId = :bank AND x.kind = :kind AND x.value = :value
+        ORDER BY a.localId""")
+    suspend fun candidates(environment: String, bank: String, kind: String, value: String): List<BetaAssetEntity>
+}

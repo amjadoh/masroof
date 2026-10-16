@@ -2,6 +2,9 @@ package com.baraa.masroof.lab.beta
 
 import android.content.Context
 import androidx.room.Room
+import com.baraa.masroof.lab.beta.data.BetaAssetAlias
+import com.baraa.masroof.lab.beta.data.BetaAssetRegistry
+import com.baraa.masroof.lab.finance.asset.OwnedAsset
 import com.baraa.masroof.lab.beta.data.BetaDatabase
 import com.baraa.masroof.lab.beta.data.BetaShellMarkerEntity
 import java.io.File
@@ -10,7 +13,7 @@ import kotlin.concurrent.withLock
 import kotlinx.coroutines.runBlocking
 
 /**
- * Empty Beta composition root.
+ * Beta composition root with an isolated explicit asset registry.
  *
  * Opens [BetaEnvironment.DATABASE_NAME] only. It does not import the production
  * composition root and it does not expose production repositories.
@@ -26,6 +29,17 @@ class BetaContainer(
         BetaEnvironment.PREFS_NAME,
         Context.MODE_PRIVATE,
     ).also { BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME) }
+
+    /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
+    fun registerAsset(asset: OwnedAsset, aliases: List<BetaAssetAlias> = emptyList()) = lock.withLock {
+        check(!closed)
+        runBlocking { BetaAssetRegistry(database).register(asset, aliases) }
+    }
+
+    fun assets(): List<OwnedAsset> = lock.withLock {
+        check(!closed)
+        runBlocking { BetaAssetRegistry(database).all() }
+    }
 
     fun markerCount(): Int = lock.withLock {
         check(!closed)
