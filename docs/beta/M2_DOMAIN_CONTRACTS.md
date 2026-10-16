@@ -66,10 +66,11 @@ and dependency cycles; import tests protect pure cores and Beta isolation.
 
 ## Scope and acceptance evidence
 
-The dashboard boundary is an **initial read-only subset** (accounts, debit
-spending and facility dues), with explicit environment/period and unavailable
-values. Loans, commitments, full period metrics, category projections and actual
-builders are still outstanding. It is not a replacement for DashboardOverview.
+The dashboard boundary now covers accounts/flows, debit and facility/card windows,
+loans, commitments, full-period summary metrics, transaction facts/FX/provenance
+and scoped trend/merchant outputs. See [M2.4 coverage and limits](M2_DASHBOARD_READ_CONTRACT.md).
+Actual builders, persistence reads and runtime parity are still outstanding;
+this contract is not a replacement for DashboardOverview.
 
 Pure JVM tests cover monetary semantics, bank/same-bank suffix collisions,
 supplementary facilities, correction authority, review gating, revision ordering,
@@ -88,7 +89,7 @@ tests remain in the main CI suite.
    invalid interpretations and manual correction precedence. The synthetic test
    proves only the API compiles and carries representative facts.
 2. Beta mapping from versioned interpretation to ownership/classification with
-   exhaustive status/blocker handling, and the complete dashboard read shape.
+   exhaustive status/blocker handling, plus runtime adoption of the dashboard read shape.
 3. Durable asset/selection/posting adapters, atomic revision/payload conflict
    tests and retry acceptance (storage belongs to M3/M8).
 4. Integration acceptance demonstrating return to production leaves its state
