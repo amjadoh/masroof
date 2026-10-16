@@ -26,8 +26,10 @@ jobs:
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
       - name: Verify experiment scoring and review guards (no model download)
         run: python3 -m unittest discover -s lab/experiments -p 'test_*.py'
-      - name: Test lab engine, android host, beta shell, and app units
-        run: ./gradlew :lab:engine:test :lab:android:testDebugUnitTest :lab:beta:testDebugUnitTest :app:testDebugUnitTest --stacktrace
+      # CI's root testDebugUnitTest task covers app, lab/android and lab/beta.
+      # This pure JVM module has a separate test task and runs only here.
+      - name: Test lab JVM engine
+        run: ./gradlew :lab:engine:test --stacktrace
       - name: Build Masroof with integrated lab
         run: ./gradlew :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
@@ -40,5 +42,3 @@ jobs:
           name: lab-test-reports
           path: |
             lab/engine/build/reports/tests/
-            lab/android/build/reports/tests/
-            lab/beta/build/reports/tests/
