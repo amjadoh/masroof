@@ -71,7 +71,7 @@ A single real system-dialog test runs in the existing latest-stable lifecycle jo
 excluded from normal smoke with the other external lifecycle phases. The script
 clears only the self-instrumenting Beta test package and resets READ_SMS before
 instrumentation starts. It clicks actual Android permission buttons by controller
-resource ID, checks denial creates no scan/evidence, recreates the actual Beta
+resource ID across interactive windows, saves permission-dialog screenshots and bounded resource-ID-only diagnostics (never node text), checks denial creates no scan/evidence, recreates the actual Beta
 Activity, verifies manual setup remains available, then clicks a second explicit
 Start and grants permission. The empty CI emulator is the only provider read;
 there is no real phone/inbox. It waits for import completion before inspecting
@@ -88,3 +88,11 @@ are untouched; no receiver, live worker or automatic financial posting is added.
 Local validation: 88 Beta unit tests passed with zero failures/errors/skips
 (12 new). Android instrumentation sources compiled and the device test APK
 assembled. Lint passed. Actual CI/device journey results are recorded in the PR.
+
+The Beta library test APK explicitly targets SDK34 via testOptions.targetSdk,
+matching the existing host app. AGP otherwise defaults library tests to minSdk26;
+this test-only setting leaves the library/host production target and source unchanged.
+The permission test asserts the effective test target, uses actual controller IDs,
+and records the READ_SMS permission flags before execution. The first API36 run
+failed to find the dialog under the old library test target; its exact active-window
+cause was not recorded, so no unsupported root-cause claim is made.

@@ -20,8 +20,13 @@ journey() {
 adb shell pm clear "$APP_ID"
 adb shell pm revoke "$APP_ID" android.permission.READ_SMS || true
 adb shell pm clear-permission-flags "$APP_ID" android.permission.READ_SMS user-set user-fixed
-permission_output=$(adb shell am instrument -w -r -e class "com.baraa.masroof.lab.beta.processdeath.BetaOnboardingPermissionTest" "$RUNNER")
+mkdir -p beta-permission-diagnostics
+adb shell dumpsys package "$APP_ID" | grep 'android.permission.READ_SMS' > beta-permission-diagnostics/permission-state-before.txt || true
+permission_status=0
+permission_output=$(adb shell am instrument -w -r -e class "com.baraa.masroof.lab.beta.processdeath.BetaOnboardingPermissionTest" "$RUNNER") || permission_status=$?
 printf '%s\n' "$permission_output"
+adb pull "/sdcard/Android/data/$APP_ID/files/beta-permission-diagnostics/." beta-permission-diagnostics || true
+if [ "$permission_status" -ne 0 ]; then exit "$permission_status"; fi
 case "$permission_output" in *"OK (1 test)"*) ;; *) exit 1 ;; esac
 
 journey armDuringComparison resumeDuringComparison

@@ -25,15 +25,41 @@ class BetaOnboardingPermissionTest {
         assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(Manifest.permission.READ_SMS))
         BetaContainer.resetOffline(context)
         BetaContainer(context).use { it.setBankEnabled(BankId("BANK_ALJAZIRA"), true) }
+        assertEquals(34, context.applicationInfo.targetSdkVersion)
         fun systemClick(id: String) {
+            val info = automation.serviceInfo
+            info.flags = info.flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            automation.serviceInfo = info
+            fun roots() = (listOfNotNull(automation.rootInActiveWindow) + automation.windows.mapNotNull { it.root })
             val until = android.os.SystemClock.uptimeMillis() + 10_000
             var button: AccessibilityNodeInfo? = null
             while (button == null && android.os.SystemClock.uptimeMillis() < until) {
-                button = automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId("com.google.android.permissioncontroller:id/$id")?.firstOrNull()
-                    ?: automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId("com.android.permissioncontroller:id/$id")?.firstOrNull()
+                button = roots().firstNotNullOfOrNull { root ->
+                    root.findAccessibilityNodeInfosByViewId("com.google.android.permissioncontroller:id/$id").firstOrNull()
+                        ?: root.findAccessibilityNodeInfosByViewId("com.android.permissioncontroller:id/$id").firstOrNull()
+                }
                 if (button == null) android.os.SystemClock.sleep(100)
             }
-            assertNotNull("Actual Android permission dialog button $id", button)
+            // Empty isolated CI emulator only; diagnostics never read node text or content descriptions.
+            val directory = java.io.File(context.getExternalFilesDir(null), "beta-permission-diagnostics").apply { mkdirs() }
+            val safeIds = linkedSetOf<String>()
+            val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
+            roots().forEach(queue::add)
+            var visited = 0
+            while (queue.isNotEmpty() && visited++ < 128) {
+                val node = queue.removeFirst()
+                node.packageName?.toString()?.let { safeIds.add("package=$it") }
+                node.viewIdResourceName?.let { safeIds.add("id=$it") }
+                (0 until node.childCount).mapNotNull { node.getChild(it) }.forEach(queue::add)
+            }
+            java.io.File(directory, "$id.txt").writeText(
+                "targetSdk=${context.applicationInfo.targetSdkVersion}\nflags=${automation.serviceInfo.flags}\npermission=${context.checkSelfPermission(Manifest.permission.READ_SMS)}\n" + safeIds.joinToString("\n"))
+            automation.takeScreenshot()?.let { bitmap ->
+                try { java.io.File(directory, "$id.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
+                finally { bitmap.recycle() }
+            }
+            assertNotNull("Actual Android permission dialog button $id; resource-only diagnostics saved", button)
             assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
