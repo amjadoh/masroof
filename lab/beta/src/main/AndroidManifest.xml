@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        Masroof Beta is an in-app shell. No launcher, view action, or deep link.
+        Developer settings in :app starts it with an explicit intent.
+    -->
+    <application>
+        <activity
+            android:name=".presentation.BetaActivity"
+            android:exported="false" />
+    </application>
+</manifest>
