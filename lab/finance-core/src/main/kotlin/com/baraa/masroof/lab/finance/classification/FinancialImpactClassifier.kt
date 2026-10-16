@@ -155,7 +155,9 @@ object FinancialImpactClassifier {
             }
             FinancialType.INCOME -> {
                 metric(SummaryMetric.INCOME)
-                incoming(if (input.incomeAttribution == IncomeAttribution.SALARY) FlowBucket.SALARY else FlowBucket.OTHER_INCOME)
+                // Preserved SalaryIncomeHeuristics: an explicit stored INCOME is always salary.
+                // Attribution only selects the salary/ordinary bucket for inbound transfers.
+                incoming(FlowBucket.SALARY)
                 Settlement.NONE
             }
             FinancialType.EXTERNAL_TRANSFER_IN -> {
