@@ -3,9 +3,8 @@ package com.baraa.masroof.lab.beta.data
 import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.core.content.ContextCompat
+import androidx.core.content.PermissionChecker
 import com.baraa.masroof.lab.beta.application.history.*
 import com.baraa.masroof.lab.finance.value.BankId
 import org.json.JSONArray
@@ -35,7 +34,7 @@ internal class PreferenceHistorySessionStore(private val preferences: SharedPref
 /** Read-only inbox access happens only after the explicit user action and permission grant. */
 internal class AndroidHistorySource(private val context: Context) : HistorySource {
     override fun read(session: HistorySession, limit: Int): List<HistoryRow> {
-        check(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED)
+        check(PermissionChecker.checkSelfPermission(context, Manifest.permission.READ_SMS) == PermissionChecker.PERMISSION_GRANTED)
         // Keyset predicate once per batch; consume at most limit rows and close the cursor.
         val cursor = context.contentResolver.query(Uri.parse("content://sms/inbox"), arrayOf("_id", "date", "address", "body"),
             "date >= ? AND date <= ? AND (date > ? OR (date = ? AND _id > ?))",

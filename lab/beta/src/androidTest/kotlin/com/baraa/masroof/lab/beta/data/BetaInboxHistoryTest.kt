@@ -26,6 +26,7 @@ class BetaInboxHistoryTest {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use { it.readBytes() }
         }
         // Telephony checks WRITE_SMS app-op independently of permission identity.
+        shell("appops set ${context.packageName} READ_SMS allow")
         shell("appops set ${context.packageName} WRITE_SMS allow")
         automation.adoptShellPermissionIdentity("android.permission.WRITE_SMS")
         try {
@@ -37,6 +38,9 @@ class BetaInboxHistoryTest {
                     put("read", 1)
                 }))
             }
+            automation.dropShellPermissionIdentity()
+            assertEquals(androidx.core.content.PermissionChecker.PERMISSION_GRANTED,
+                androidx.core.content.PermissionChecker.checkSelfPermission(context, Manifest.permission.READ_SMS))
             val source = AndroidHistorySource(context)
             var session = HistorySession(date, date, setOf(BankId("BANK_ALJAZIRA")))
             val first = source.read(session, 25)
@@ -46,11 +50,15 @@ class BetaInboxHistoryTest {
             assertEquals(3, second.size)
             assertEquals(28, (first + second).map { it.id }.distinct().size)
             assertTrue((first + second).all { it.body.startsWith("Synthetic provider fixture") })
+            shell("appops set ${context.packageName} READ_SMS ignore")
+            assertThrows(IllegalStateException::class.java) { source.read(session, 25) }
         } finally {
+            automation.adoptShellPermissionIdentity("android.permission.WRITE_SMS")
             try { inserted.forEach { context.contentResolver.delete(it, null, null) } }
             finally {
                 automation.dropShellPermissionIdentity()
                 shell("appops set ${context.packageName} WRITE_SMS default")
+                shell("appops set ${context.packageName} READ_SMS default")
             }
         }
     }
