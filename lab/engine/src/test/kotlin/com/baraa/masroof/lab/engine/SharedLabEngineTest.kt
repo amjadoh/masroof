@@ -106,7 +106,7 @@ class SharedLabEngineTest {
 
     @Test fun sharedEditsApplyToBothBanksAndDoNotMutatePreviousLibrary() {
         val initial = SharedRuleDefaults.create()
-        val edited = initial.copy(version = 2, rules = initial.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = it.amountLabels + "قيمة العملية") else it })
+        val edited = initial.copy(version = initial.version + 1, rules = initial.rules.map { if (it.family == "PURCHASE") it.copy(amountLabels = it.amountLabels + "قيمة العملية") else it })
         banks.forEach {
             assertEquals("REVIEW_REQUIRED", parse("شراء\nقيمة العملية: 50 SAR", it.senders.single(), initial).status)
             assertEquals("SUCCESS", parse("شراء\nقيمة العملية: 50 SAR", it.senders.single(), edited).status)
@@ -147,6 +147,20 @@ class SharedLabEngineTest {
             assertEquals("REVIEW_REQUIRED", missing.status)
             assertNull(missing.facts.amount)
         }
-        assertEquals(2, SharedRuleDefaults.create().version)
+        assertEquals(3, SharedRuleDefaults.create().version)
+        assertTrue(saved.network.bankAliases.isEmpty())
+    }
+
+    @Test fun savedJsonWithoutNetworkConfigurationCannotInheritNewDefaultAliases() {
+        val oldJson = """{"version":2,"rules":[{"id":"saved.incoming","family":"TRANSFER_IN","phrases":["Incoming transfer"],"amountLabels":["amount"],"sourceLabels":["from account"],"destinationLabels":["to account"],"direction":"INCOMING","observations":{"network.intra":["داخلية"]}}]}"""
+        val saved = LabJson.format.decodeFromString<SharedRuleLibrary>(oldJson)
+        assertTrue(saved.network.bankAliases.isEmpty())
+        assertEquals(2, saved.version)
+        val body = "Incoming transfer\nFrom account: 1111\nTo account: 2222\nAmount: 67 SAR\nSender bank: بنك الجزيرة\nRecipient: شركة داخلية للتجارة"
+        val result = parse(body, library = saved)
+        assertEquals("SUCCESS", result.status)
+        assertEquals("UNKNOWN", result.facts.bankNetwork)
+        assertEquals("67.00", result.facts.amount)
+        assertTrue(result.evidence.none { it.field == "bankNetwork" })
     }
 }

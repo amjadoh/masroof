@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 
 /** Local-only extraction. No bank-specific parsing, ownership inference or ledger writes. */
 class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
-    companion object { const val VERSION = "shared-3" }
+    companion object { const val VERSION = "shared-4" }
 
     fun parse(banks: List<BankProfile>, library: SharedRuleLibrary, sender: String, body: String,
               sampleId: String, receivedAt: Instant, selectedBankId: String? = null): LabOutcome {
@@ -184,9 +184,12 @@ class SharedLabEngine(private val clock: Clock = Clock.systemUTC()) {
         }.onFailure { errors += "تاريخ الاستحقاق غير صالح" }.getOrNull() }
         val isTransfer = classification.family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
         val network = if (isTransfer) {
-            val intra = observed("network.intra"); val inter = observed("network.inter")
-            if (intra && inter) errors += "تعارض شبكة التحويل"
-            when { intra && !inter -> "INTRA_BANK"; inter && !intra -> "INTER_BANK"; else -> "UNKNOWN" }
+            SharedNetworkResolver.resolve(text, bank.id, classification.family == MessageFamily.TRANSFER_IN, library.network,
+                labels { it.observations["network.intra"].orEmpty() }, labels { it.observations["network.inter"].orEmpty() }, labels { it.phrases }).let { result ->
+                errors += result.errors
+                result.evidence.forEach { record("bankNetwork", "shared.network", it.label, it.range, it.identity) }
+                result.network
+            }
         } else null
         val purchaseChannel = if (classification.family == MessageFamily.PURCHASE) {
             val pos = observed("purchase.pos"); val online = observed("purchase.online")
