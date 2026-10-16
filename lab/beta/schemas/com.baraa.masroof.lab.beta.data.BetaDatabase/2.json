@@ -1,0 +1,221 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "072846eabeb2fe1629d9b5740fce50e8",
+    "entities": [
+      {
+        "tableName": "beta_shell_marker",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `note` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "beta_asset",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`environment` TEXT NOT NULL, `bankId` TEXT NOT NULL, `localId` TEXT NOT NULL, `kind` TEXT NOT NULL, `last4` TEXT, `parentLocalId` TEXT, `creditCardRole` TEXT, PRIMARY KEY(`environment`, `bankId`, `localId`), FOREIGN KEY(`environment`, `bankId`, `parentLocalId`) REFERENCES `beta_asset`(`environment`, `bankId`, `localId`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "environment",
+            "columnName": "environment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bankId",
+            "columnName": "bankId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localId",
+            "columnName": "localId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "last4",
+            "columnName": "last4",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "parentLocalId",
+            "columnName": "parentLocalId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "creditCardRole",
+            "columnName": "creditCardRole",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "environment",
+            "bankId",
+            "localId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_beta_asset_environment_bankId_parentLocalId",
+            "unique": false,
+            "columnNames": [
+              "environment",
+              "bankId",
+              "parentLocalId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_beta_asset_environment_bankId_parentLocalId` ON `${TABLE_NAME}` (`environment`, `bankId`, `parentLocalId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "beta_asset",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "environment",
+              "bankId",
+              "parentLocalId"
+            ],
+            "referencedColumns": [
+              "environment",
+              "bankId",
+              "localId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "beta_asset_alias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`environment` TEXT NOT NULL, `bankId` TEXT NOT NULL, `assetLocalId` TEXT NOT NULL, `kind` TEXT NOT NULL, `value` TEXT NOT NULL, `evidenceId` TEXT NOT NULL, PRIMARY KEY(`environment`, `bankId`, `assetLocalId`, `kind`, `value`, `evidenceId`), FOREIGN KEY(`environment`, `bankId`, `assetLocalId`) REFERENCES `beta_asset`(`environment`, `bankId`, `localId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "environment",
+            "columnName": "environment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bankId",
+            "columnName": "bankId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assetLocalId",
+            "columnName": "assetLocalId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceId",
+            "columnName": "evidenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "environment",
+            "bankId",
+            "assetLocalId",
+            "kind",
+            "value",
+            "evidenceId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_beta_asset_alias_environment_bankId_assetLocalId",
+            "unique": false,
+            "columnNames": [
+              "environment",
+              "bankId",
+              "assetLocalId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_beta_asset_alias_environment_bankId_assetLocalId` ON `${TABLE_NAME}` (`environment`, `bankId`, `assetLocalId`)"
+          },
+          {
+            "name": "index_beta_asset_alias_environment_bankId_kind_value",
+            "unique": false,
+            "columnNames": [
+              "environment",
+              "bankId",
+              "kind",
+              "value"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_beta_asset_alias_environment_bankId_kind_value` ON `${TABLE_NAME}` (`environment`, `bankId`, `kind`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "beta_asset",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "environment",
+              "bankId",
+              "assetLocalId"
+            ],
+            "referencedColumns": [
+              "environment",
+              "bankId",
+              "localId"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '072846eabeb2fe1629d9b5740fce50e8')"
+    ]
+  }
+}
