@@ -37,7 +37,7 @@ class BetaOnboardingPermissionTest {
             assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
-            compose.waitUntil(10_000) { runCatching { compose.onAllNodesWithTag("beta-history").fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false) }
+            compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
             compose.onNodeWithTag("beta-history").performScrollTo().performClick()
             compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
@@ -46,7 +46,7 @@ class BetaOnboardingPermissionTest {
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
             BetaContainer(context).use { assertNull(it.historySession()); assertTrue(it.evidencePage().isEmpty()) }
             scenario.recreate()
-            compose.waitUntil(10_000) { runCatching { compose.onAllNodesWithTag("history-start").fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false) }
+            compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("history-start").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
             compose.onNodeWithTag("history-close").performScrollTo().performClick()
             compose.onNodeWithTag("asset-add-BANK_ALJAZIRA").performScrollTo().performClick()
