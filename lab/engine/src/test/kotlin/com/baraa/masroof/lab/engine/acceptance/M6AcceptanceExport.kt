@@ -13,10 +13,20 @@ object M6AcceptanceExport {
     @JvmStatic fun main(args: Array<String>) {
         require(args.size == 4)
         val root = File(args[0])
-        val output = File(args[1]).apply { mkdirs() }
+        val output = File(args[1])
         val manifestFile = args[2].takeIf(String::isNotBlank)?.let(::File)
         val policyFile = args[3].takeIf(String::isNotBlank)?.let(::File)
         val report = File(output, "summary.txt")
+        // Reject artifact/input aliases before creating directories or invalidating an old report.
+        val pathsSafe = runCatching {
+            val outputPath = output.canonicalFile.toPath()
+            report.canonicalFile.toPath().startsWith(outputPath) && listOfNotNull(manifestFile, policyFile).none {
+                it.canonicalFile.toPath().startsWith(outputPath) || it.canonicalFile == report.canonicalFile ||
+                    (it.exists() && report.exists() && java.nio.file.Files.isSameFile(it.toPath(), report.toPath()))
+            }
+        }.getOrDefault(false)
+        require(pathsSafe) { "M6 private input/report paths overlap or are unavailable" }
+        require(output.mkdirs() || output.isDirectory) { "M6 report directory unavailable" }
         // Invalidate stale success before even reading source/configuration fingerprints.
         report.writeText("M6 measurement BLOCKED: INCOMPLETE_EVALUATION\n")
         var fingerprints = ""
