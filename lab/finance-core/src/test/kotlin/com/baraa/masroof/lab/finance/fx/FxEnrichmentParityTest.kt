@@ -123,6 +123,8 @@ class FxEnrichmentParityTest {
             StoredFxColumns(Currency.USD, null, "MARKET"))) {
             val result = cross(request(listOf(fact(rate = "3.756957", fee = "1.99")), stored = columns)) as FxEnrichmentResult.Ready
             assertEquals(AppliedFx(BigDecimal("3.756957"), "SMS"), result.proposal!!.appliedFx)
+            cross(request(listOf(fact(), fact("history", "3.7500123456789", "SHOP")), stored = columns))
+            cross(request(stored = columns), marketRate = "3.7500123456789")
         }
     }
 
@@ -209,6 +211,7 @@ class FxEnrichmentParityTest {
             cross(request(listOf(fact(rate = "3.756957", fee = "1.99", currency = currency)), input = input(currency, type)))
         }
         cross(request(), marketRate = null)
+        cross(request(), marketRate = "3.7500123456789")
         val output = Path.of(System.getProperty("m8.fx.report"))
         Files.createDirectories(output.parent)
         Files.writeString(output, "ACTUAL_FX_RESOLVER_CROSS_RUN: unchanged hash-pinned TransactionSarEquivalentResolver + HistoricalExchangeRateIndex\n" +
@@ -240,6 +243,23 @@ class FxEnrichmentParityTest {
             FxEnrichmentPolicy(FxMarketRateProvider { _, _ -> throw CancellationException("synthetic cancellation") }).resolve(request())
             fail("Cancellation must propagate")
         } catch (expected: CancellationException) { assertEquals("synthetic cancellation", expected.message) }
+    }
+
+    @Test fun ownSmsRateNeedsMatchingForeignCurrencyButCannotOverrideCompleteStoredPair() = runBlocking<Unit> {
+        var calls = 0
+        val policy = FxEnrichmentPolicy(FxMarketRateProvider { _, _ -> calls++; BigDecimal.ONE })
+        val corrected = input().copy(authority = CorrectionAuthority.USER_FINANCIAL_TYPE,
+            validatedParse = false, revision = PostingRevision(1, 2))
+        for (row in listOf(fact(rate = "4.3", currency = Currency.EUR),
+            fact(rate = "4.3", currency = null), fact(rate = "4.3", currency = Currency.SAR),
+            fact(rate = "4.3", currency = Currency.EUR, labeled = Currency.USD))) {
+            val result = policy.resolve(request(listOf(row), input = corrected)) as FxEnrichmentResult.Unavailable
+            assertEquals(FxEnrichmentBlocker.CURRENCY_CONFLICT, result.reason)
+        }
+        assertEquals(0, calls)
+        cross(request(listOf(fact(rate = "3.756957", currency = Currency.SAR, labeled = Currency.USD))))
+        cross(request(listOf(fact(rate = "9.5", currency = Currency.EUR, fee = "1.99")),
+            input = input(fx = AppliedFx(BigDecimal("3.756957"), "SMS"))))
     }
 
     @Test fun applicableForeignFeeIsUnavailableButRefundAndMarketIgnoreIt() = runBlocking<Unit> {

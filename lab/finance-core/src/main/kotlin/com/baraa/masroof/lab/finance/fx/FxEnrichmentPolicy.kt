@@ -102,6 +102,9 @@ class FxEnrichmentPolicy(private val market: FxMarketRateProvider) {
             if (rate.signum() <= 0) return unavailable(FxEnrichmentBlocker.INVALID_RATE)
             pair = AppliedFx(rate, source)
         } else if (linked?.exchangeRate != null) {
+            // A manual currency correction with no stored pair must not inherit the old currency's
+            // parsed rate. SAR labels require an explicit foreign label; unknown never guesses.
+            if (foreignCurrency(linked) != input.amount.currency) return unavailable(FxEnrichmentBlocker.CURRENCY_CONFLICT)
             if (linked.exchangeRate.signum() <= 0) return unavailable(FxEnrichmentBlocker.INVALID_RATE)
             pair = AppliedFx(linked.exchangeRate, "SMS")
         } else {
@@ -139,8 +142,7 @@ class FxEnrichmentPolicy(private val market: FxMarketRateProvider) {
         val key = merchant?.let(::merchantKey)?.takeIf { it.isNotBlank() } ?: return null
         val rows = facts.mapNotNull { fact ->
             val merchantKey = fact.merchant?.let(::merchantKey)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val foreign = fact.amountCurrency?.takeIf { it != Currency.SAR }
-                ?: fact.labeledForeignCurrency?.takeIf { it != Currency.SAR } ?: return@mapNotNull null
+            val foreign = foreignCurrency(fact) ?: return@mapNotNull null
             val rate = fact.exchangeRate ?: return@mapNotNull null
             val instant = if (fact.occurredAtLocal != null) {
                 val zone = fact.fixedBankZone ?: fact.persistedTransactionZone ?: return@mapNotNull null
@@ -154,6 +156,9 @@ class FxEnrichmentPolicy(private val market: FxMarketRateProvider) {
 
     private fun merchantKey(name: String) = Normalizer.normalize(name, Normalizer.Form.NFC).trim()
         .replace(Regex("\\s+"), " ").replace(Regex("\\s*([,،._-])\\s*"), "$1").lowercase(Locale.ROOT)
+
+    private fun foreignCurrency(fact: FxEvidenceFact) = fact.amountCurrency?.takeIf { it != Currency.SAR }
+        ?: fact.labeledForeignCurrency?.takeIf { it != Currency.SAR }
 
     private fun freeze(input: FinancialClassificationInput) = input.copy(
         assets = Collections.unmodifiableMap(LinkedHashMap(input.assets)),

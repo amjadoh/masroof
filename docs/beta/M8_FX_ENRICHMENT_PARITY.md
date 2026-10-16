@@ -19,6 +19,10 @@ Resolution follows the original `TransactionSarEquivalentResolver`:
 1. A complete stored rate/source pair wins and is never replaced. Native SAR skips conversion.
 2. The first existing record in original linked-event order supplies its SMS rate/fee. A later
    rate-bearing record does not silently become the transaction's own linked record.
+   For a new SMS rate, its known foreign event currency, else its labeled foreign currency, must
+   match the financial input's native currency. A missing/mismatched currency stays unavailable;
+   a manual currency edit without stored FX cannot inherit the old currency's parsed rate.
+   A complete stored pair still wins over a later contradictory parsed currency/rate.
 3. Otherwise, exact normalized merchant + currency history at or before the transaction instant
    and no older than 30 days supplies the newest instant, then greatest event ID. Merchant keys
    use NFC, trim, whitespace/punctuation spacing normalization and root-locale lowercase only.
@@ -69,7 +73,7 @@ Thirteen new tests cross-run all four currencies, stored/SMS/historical/market p
 pairs, fees/refunds, linked-record ordering, identical duplicates, merchant/currency exclusions,
 inclusive 30-day limits, instant/ID ties, local/event/inbox clocks, fixed/persisted/unknown zones,
 handset timezone independence and missing rates against the actual unchanged resolver/index.
-Four separate regressions verify the deliberate corruption guards, cancellation/failure handling and
+Five additional regressions verify the deliberate corruption/currency guards, cancellation/failure handling and
 caller/output immutability. The existing converter/monthly financial cross-runs remain green.
 
 `build/reports/m8-parity/fx-enrichment.txt` is a declared cache output included by the existing Lab
