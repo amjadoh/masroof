@@ -56,9 +56,12 @@ indicator; they appear as account inflow. Internal transfer legs are separate an
 
 `AccountMovement` provides typed native-currency account legs, separate from the monthly metrics.
 Income and external inbound transfers require explicit resolved `IncomeAttribution` from persisted
-facts: salary maps to the account salary bucket, while other income and external inbound transfers
-retain their separate account buckets. Missing attribution stays in review. Salary does not rewrite
-the stored financial type or its monthly income/external-transfer metric.
+facts. The stored `INCOME` type always maps to the salary account bucket, preserving the existing
+`SalaryIncomeHeuristics` precedence even when attribution says `OTHER`. External inbound transfers
+use the resolved attribution to select salary or external-transfer inflow. Missing attribution stays
+in review. The original M8.1 implementation incorrectly allowed `INCOME` + `OTHER` into the ordinary
+income bucket; the executable M8.4 oracle exposed this and the Beta-only classifier is corrected.
+The input attribution facts, stored type and monthly income/external-transfer metric are preserved.
 Self transfer preserves one caller transaction identity with one inbound and one outbound account
 leg. It never pairs similar messages, infers a second owner, or deduplicates transactions. Those
 guarantees still require M8.2's matcher/posting implementation and ledger parity tests.
