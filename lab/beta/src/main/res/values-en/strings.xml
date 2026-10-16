@@ -65,4 +65,18 @@
     <string name="beta_history_next">Next page</string>
     <string name="beta_history_first">First page</string>
     <string name="beta_history_range">Saved period: %1$s — %2$s</string>
+    <string name="beta_welcome">Welcome to Beta</string>
+    <string name="beta_welcome_steps">Choose your bank, then optionally import messages or add accounts and cards manually. Review suggestions and confirm ownership and links. The financial transaction summary is not available yet.</string>
+    <string name="beta_discovery_title">Account and card suggestions</string>
+    <string name="beta_discovery_help">Observations from saved evidence only; they do not establish ownership or post transactions. Each evidence item is independent and matching digits never merge assets. Confirm the kind, ownership and parent before saving.</string>
+    <string name="beta_discovery_empty">No eligible suggestions on this page. You can add assets manually or continue reviewing evidence.</string>
+    <string name="beta_discovery_review">Evidence not eligible for suggestions on this page: %1$d. It remains saved with its existing status for review.</string>
+    <string name="beta_discovery_open">Review suggestion and add asset</string>
+    <string name="beta_discovery_confirmed">You confirmed this evidence for the registered asset; it will not add another copy.</string>
+    <string name="beta_discovery_conflict">The current observation differs from your confirmed asset. Your choice is preserved; review the asset and evidence manually.</string>
+    <string name="beta_discovery_collision">Another asset has the same digits; it may be the same asset or a different one. There is no automatic match. Avoid adding another copy if it is already registered.</string>
+    <string name="beta_discovery_existing">Choose registered asset %1$d — %2$s · %3$s</string>
+    <string name="beta_discovery_link_help">You selected an existing asset with the same kind and digits. Confirm this evidence refers to that asset. Its parent and card role stay unchanged; no asset or transaction is created.</string>
+    <string name="beta_discovery_link">Confirm evidence for selected asset</string>
+    <string name="beta_discovery_parent">Linked to %1$s · %2$s — asset %3$d</string>
 </resources>
