@@ -92,14 +92,15 @@ class M0ProductionBaselineTest {
     @Test
     fun toolchainAndSideloadUpdate_matchTheReviewedBuild() {
         val versions = File("../gradle/libs.versions.toml").readText()
-        assertEquals("1.9.24", version(versions, "kotlin"))
-        assertEquals("8.5.2", version(versions, "agp"))
+        // M1 updates the reviewed toolchain; financial and storage baseline locks stay unchanged.
+        assertEquals("2.0.21", version(versions, "kotlin"))
+        assertEquals("8.6.1", version(versions, "agp"))
         assertEquals("2.6.1", version(versions, "room"))
         assertEquals("2.9.0", version(versions, "workmanager"))
         assertEquals("2024.06.00", version(versions, "composeBom"))
         val gradle = File("build.gradle.kts").readText()
         assertTrue(gradle.contains("applicationId = \"com.baraa.masroof\""))
-        assertTrue(gradle.contains("compileSdk = 34"))
+        assertTrue(gradle.contains("compileSdk = 35"))
         assertTrue(gradle.contains("targetSdk = 34"))
         assertTrue(gradle.contains("minSdk = 26"))
         assertTrue(gradle.contains("project(\":lab:beta\")"))
