@@ -5,6 +5,7 @@ import com.baraa.masroof.lab.finance.classification.FinancialClassificationInput
 import com.baraa.masroof.lab.finance.matching.MatchedSelfTransfer
 import com.baraa.masroof.lab.finance.posting.*
 import com.baraa.masroof.lab.finance.value.Environment
+import com.baraa.masroof.lab.beta.application.corrections.BetaLedgerActivity
 import java.util.Collections
 
 /** Beta-only durable financial boundary. No intake, parser, dashboard or live posting adoption.
@@ -28,12 +29,34 @@ class RoomBetaFinancialLedger internal constructor(
         return commit(FinancialPostingRules.prepare(transfer))
     }
 
-    private suspend fun commit(prepared: PostingPreparation): FinancialPostingResult {
+    internal suspend fun postCorrection(input: FinancialClassificationInput): FinancialPostingResult {
+        require(input.key.environment == Environment.BETA)
+        requireStagedCorrection(input.key, input.revision)
+        return commit(FinancialPostingRules.prepare(input), true)
+    }
+    internal suspend fun postCorrection(transfer: MatchedSelfTransfer): FinancialPostingResult {
+        require(transfer.input.key.environment == Environment.BETA)
+        requireStagedCorrection(transfer.input.key, transfer.input.revision)
+        return commit(FinancialPostingRules.prepare(transfer), true)
+    }
+    private suspend fun requireStagedCorrection(key: PostingKey, revision: PostingRevision) {
+        check(database.inTransaction()) { "Correction posting requires its outer atomic transaction" }
+        val staged = readBetaCorrectionState(database, key)
+        check(staged != null && staged.activity == BetaLedgerActivity.REVIEW && staged.reasons == setOf(ReviewReason.INCOMPLETE_WRITE) &&
+            staged.overlay.correctionRevision == revision.correction && staged.overlay.interpretationRevision == revision.interpretation) {
+            "Correction posting requires the matching provisional lifecycle transition"
+        }
+    }
+
+    private suspend fun commit(prepared: PostingPreparation, correctionOwned: Boolean = false): FinancialPostingResult {
         if (prepared is PostingPreparation.Rejected) return prepared.result
         val candidate = (prepared as PostingPreparation.Ready).posting
         val input = candidate.classification.input
         return database.withTransaction {
             val dao = database.ledgerDao()
+            if (!correctionOwned && database.correctionDao().current(input.key.environment.name, input.key.transactionId) != null) {
+                return@withTransaction FinancialPostingResult.Review(setOf(ReviewReason.VALIDATION))
+            }
             val existing = readCurrent(input.key)
             when (PostingRevisionPolicy.action(existing?.command?.revision, input.revision)) {
                 RevisionAction.STALE -> return@withTransaction FinancialPostingResult.Stale(requireNotNull(existing))
@@ -60,12 +83,15 @@ class RoomBetaFinancialLedger internal constructor(
             val environment = input.key.environment.name
             val transactionId = input.key.transactionId
             val owners = input.evidenceIds.associateWith { dao.evidenceOwner(environment, it) }
-            if (owners.values.any { it != null && it != transactionId }) {
+            if (owners.values.any { it != null && it != transactionId } || input.evidenceIds.any {
+                    database.correctionDao().evidenceOwner(environment, it)?.let { owner -> owner != transactionId } == true
+                }) {
                 return@withTransaction FinancialPostingResult.Conflict(PostingConflict.EVIDENCE_ALREADY_CLAIMED)
             }
             val identity = candidate.matchIdentity
             val proofOwner = identity?.let { dao.proofOwner(environment, it.kind, it.issuer?.value.orEmpty(), it.reference) }
-            if (proofOwner != null && proofOwner != transactionId) {
+            val correctionProofOwner = identity?.let { database.correctionDao().proofOwner(environment, it.kind, it.issuer?.value.orEmpty(), it.reference) }
+            if ((proofOwner != null && proofOwner != transactionId) || (correctionProofOwner != null && correctionProofOwner != transactionId)) {
                 return@withTransaction FinancialPostingResult.Conflict(PostingConflict.MATCH_ALREADY_CLAIMED)
             }
             val payload = BetaLedgerCodec.encode(candidate)
@@ -83,6 +109,15 @@ class RoomBetaFinancialLedger internal constructor(
     }
 
     suspend fun read(key: PostingKey): StoredFinancialPosting? {
+        require(key.environment == Environment.BETA)
+        return database.withTransaction {
+            val correction = readBetaCorrectionState(database, key)
+            if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) null else readCurrent(key)
+        }
+    }
+
+    /** Audit only: this snapshot can be inactive and must not enter financial projections. */
+    suspend fun readAudit(key: PostingKey): StoredFinancialPosting? {
         require(key.environment == Environment.BETA)
         return readCurrent(key)
     }
