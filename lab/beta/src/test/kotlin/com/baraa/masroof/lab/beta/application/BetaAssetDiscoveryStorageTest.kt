@@ -104,7 +104,7 @@ class BetaAssetDiscoveryStorageTest {
         }
         BetaContainer.resetOffline(context)
     }
-    @Test fun differentEvidenceExplicitlyLinksExistingAssetAndStableBindingSurvivesRecompare() {
+    @Test fun existingAssetBinding() {
         BetaContainer.resetOffline(context)
         save("message-one", "1234"); save("message-two", "1234")
         BetaContainer(context).use { beta ->
