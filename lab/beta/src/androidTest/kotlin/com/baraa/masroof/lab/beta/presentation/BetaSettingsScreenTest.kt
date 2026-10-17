@@ -61,4 +61,29 @@ class BetaSettingsScreenTest {
             compose.onNodeWithTag("beta-settings-close").assertIsEnabled()
         }
     }
+    @Test fun archiveSecretsAreNotSavedAndCancelNeverRestores() {
+        BetaContainer.resetOffline(context)
+        BetaContainer(context).use { beta ->
+            beta.putMarker("keep", "synthetic")
+            val state = StateRestorationTester(compose)
+            state.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaSettingsPanel(beta, {}) } } }
+            compose.onNodeWithTag("beta-archive-export").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-archive-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("beta-archive-password").performTextInput("Synthetic password 42")
+            compose.onNodeWithTag("beta-archive-password-repeat").performTextInput("Different password 42")
+            compose.onNodeWithTag("beta-archive-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("beta-archive-password-repeat").performTextClearance()
+            compose.onNodeWithTag("beta-archive-password-repeat").performTextInput("Synthetic password 42")
+            compose.onNodeWithTag("beta-archive-confirm").assertIsEnabled()
+            state.emulateSavedInstanceStateRestore()
+            compose.onNodeWithTag("beta-archive-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("beta-archive-cancel").performClick()
+            compose.onNodeWithTag("beta-archive-import").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-archive-password").performTextInput("Synthetic password 42")
+            compose.onNodeWithTag("beta-archive-confirm").assertIsEnabled()
+            compose.onNodeWithTag("beta-archive-cancel").performClick()
+            assertEquals(1, beta.markerCount())
+        }
+    }
+
 }
