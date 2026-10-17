@@ -163,8 +163,8 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         private const val CURRENCY = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
         private const val MONEY = "(?:(?<c1>$CURRENCY)[ \\t]+(?<n1>$NUMBER)|(?<n2>$NUMBER)[ \\t]+(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,])"
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
-        private val SECURITY = listOf("otp", "one time password", "verification code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "كلمة المرور", "رمز سري")
-        private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not approved", "not processed", "not completed", "not executed", "لم تتم", "لم تنفذ", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
+        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "رمز سري")
+        private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
         private val UNSUPPORTED_MOVEMENTS = listOf("incoming transfer", "outgoing transfer", "fund transfer", "حوالة", "تحويل", "bill payment", "سداد فاتورة", "card payment", "سداد بطاقة", "loan repayment", "قسط تمويل")
         private val SECONDARY = listOf("available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد")
