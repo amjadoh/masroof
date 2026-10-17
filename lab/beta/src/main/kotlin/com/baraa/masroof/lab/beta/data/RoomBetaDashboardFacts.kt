@@ -30,7 +30,8 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
      * visible in a read until its separate exact durable acknowledgement succeeds. */
     internal suspend fun refresh(id: String): Boolean {
         check(database.inTransaction())
-        val adopted = database.financialAdoptionDao().evidence(id) ?: return false
+        val auxiliary = RoomBetaDashboardAuxFacts(database).refresh(id)
+        val adopted = database.financialAdoptionDao().evidence(id) ?: return auxiliary
         if (adopted.status != "ACTIVE" || database.evidenceDao().retry(id) != null) return false
         val outcome = database.evidenceDao().outcome(id) ?: return false
         if (adopted.archiveFingerprint != RoomBetaFinancialAdoption.fingerprint(outcome)) return false
@@ -90,14 +91,16 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         val previousFacts = database.dashboardFactsDao().evidence(id)
         val fee = if (sameMoneyTime) money("internationalFee") else null
         val balance = balanceAsset?.let { money("availableBalance") }
-        val due = facility?.let { money("outstandingBalance") }
+        // A financial purchase/refund outstanding balance is not a statement. Historical v8
+        // columns remain intact, but new financial writes cannot manufacture statement authority.
+        val due: Money? = null
         database.dashboardFactsDao().put(BetaDashboardFactsEntity(id, key.transactionId, adopted.bankId,
             adopted.archiveFingerprint, adopted.observationRevision, input.revision.correction, input.revision.interpretation,
             BetaLedgerCodec.encodeInput(input), baseline.time.instant.toString(),
             sameMoneyTime && facts.has("internationalFee"), fee?.amount?.toPlainString(), fee?.currency?.name,
             (balanceAsset?.id?.localId ?: previousFacts?.balanceAsset), balance?.amount?.toPlainString(), balance?.currency?.name,
             (facility?.id?.localId ?: previousFacts?.facilityAsset), due?.amount?.toPlainString(), due?.currency?.name, text("paymentDueDate"),
-            text("merchant"), text("counterparty"), debitCard?.id?.localId, debitCard?.last4, debitCard?.parentId?.localId))
+            text("merchant"), text("counterparty"), debitCard?.id?.localId, debitCard?.last4, debitCard?.parentId?.localId, text("family")))
         return true
     }
 }

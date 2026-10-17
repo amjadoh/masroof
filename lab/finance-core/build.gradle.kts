@@ -36,7 +36,16 @@ val prepareFinancialOracle by tasks.registering {
         // Existing production test files pin fixture provenance only; CI already runs those tests.
         // Compile only original calculator/model code and our cross-run test, never duplicate old tests.
         sources.filterKeys { it.startsWith("app/src/main/kotlin/") }.forEach { (path, source) ->
-            output.resolve(path).apply { parentFile.mkdirs(); writeText(source, Charsets.UTF_8) }
+            // The unchanged SpendingAmounts object is the trend's only dependency here. Its
+            // unrelated facility extensions would pull presentation registry builders into TEST.
+            // Pin the entire original file above, then retain its exact object and imports.
+            val calculator = when {
+                path.endsWith("/SpendingAmounts.kt") -> source.substringBefore("\nfun CreditFacilitiesOverview.")
+                path.endsWith("/ChartDataWorkflow.kt") -> "package com.baraa.masroof.application.dashboard\n\n" +
+                    source.substringAfter("@Serializable\n").substringBefore("\n\n@Serializable")
+                else -> source
+            }
+            output.resolve(path).apply { parentFile.mkdirs(); writeText(calculator, Charsets.UTF_8) }
         }
     }
 }
