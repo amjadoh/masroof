@@ -29,6 +29,15 @@ adb pull "/sdcard/Android/data/$APP_ID/files/beta-permission-diagnostics/." beta
 if [ "$permission_status" -ne 0 ]; then exit "$permission_status"; fi
 case "$permission_output" in *"OK (1 test)"*) ;; *) exit 1 ;; esac
 
+# M0 entry state is durable; metadata for the PID probe stays outside Beta preferences.
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaStartProcessDeathTest"
+adb shell pm clear "$APP_ID"
+instrument armUnacknowledged false
+adb shell am force-stop "$APP_ID"
+instrument resumeAndAcknowledge true
+adb shell am force-stop "$APP_ID"
+instrument resumeAcknowledged true
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaHistoryProcessDeathTest"
 journey armDuringComparison resumeDuringComparison
 journey armAfterComparisonBeforeCheckpoint resumeAfterComparisonBeforeCheckpoint
 

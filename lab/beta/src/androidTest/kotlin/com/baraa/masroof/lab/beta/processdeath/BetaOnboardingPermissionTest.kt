@@ -68,6 +68,8 @@ class BetaOnboardingPermissionTest {
             }
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-start-continue").performClick()
             fun clickWhenReady(tag: String) {
                 try {
                     awaitEnabled(tag)

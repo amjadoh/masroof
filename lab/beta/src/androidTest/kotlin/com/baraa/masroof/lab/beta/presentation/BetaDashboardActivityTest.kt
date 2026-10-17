@@ -26,6 +26,8 @@ class BetaDashboardActivityTest {
             beta.saveManualAsset(com.baraa.masroof.lab.beta.application.ManualAssetDraft(AssetId(Environment.BETA, bank, "synthetic-activity"), AssetKind.ACCOUNT, "1234", ownedConfirmed = true))
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-start-continue").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-badge").assertIsDisplayed()
             compose.onNodeWithTag("beta-return").assertIsDisplayed()
