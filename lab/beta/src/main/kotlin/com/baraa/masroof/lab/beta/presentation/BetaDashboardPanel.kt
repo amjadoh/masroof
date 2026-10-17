@@ -177,7 +177,8 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                             DashMore(analysis.merchants.size > visibleRows) { visibleRows += 20 }
                             Text(stringResource(R.string.beta_dash_trends), style = MaterialTheme.typography.titleLarge)
                             val trends = analysis.trends.filter { it.scope == TrendScope.OVERALL && it.category == null }
-                            if (trends.isEmpty() || DashboardSection.TRENDS in read.unavailableSections) DashUnavailable()
+                            // Other offered scopes may be incomplete while ordinary spending is known.
+                            if (trends.isEmpty()) DashUnavailable()
                             trends.forEach { trend -> DashCard(trend.period.label ?: stringResource(R.string.beta_dash_trends)) {
                                 DashPeriod(trend.period); DashValue(R.string.beta_dash_average, amount(trend.averageDailySpending))
                                 trend.points.forEach { day -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(day.date.toString()); Text(amount(day.net)) } }

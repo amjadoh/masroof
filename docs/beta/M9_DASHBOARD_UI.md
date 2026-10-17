@@ -40,6 +40,22 @@ unknown balances, RTL saved selection/month and failed-period retry without stal
 money. An actual Activity journey crosses settings and recreation while preserving
 dashboard selection and the BETA/return chrome. All fixtures are synthetic.
 
+The financial device journey imports a synthetic Arabic purchase through the
+preserved real parser, then explicitly approves it through `BetaContainer` before
+loading the actual dashboard. USD 23 with full SMS FX 3.756957 and a SAR 1.99 fee
+displays SAR 88.40 spending; the transaction's fee-free SAR 86.41 remains distinct.
+The same journey verifies one SAR 2694.32 facility due, SAR 16958.89 available card
+balance, and unchanged posting/FX/history across month and detail navigation.
+Arabic RTL overview, account-unknown, approved facility/card and failed-period
+screenshots are collected by the existing emulator job and instrumentation artifact.
+No new emulator job or repeated workflow test command is introduced.
+
+Incomplete registry and commitment coverage never becomes a known-empty list.
+Merchant and trend coverage is distinct: an unavailable unselected trend scope
+does not invalidate a complete selected ordinary-spending series; its nullable
+points and average remain unavailable individually. Full-scope financial metrics
+are never recalculated from chart or list selections.
+
 ## Remaining acceptance
 
 This increment is an operational dashboard starting point, not completed visual

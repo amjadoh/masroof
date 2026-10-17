@@ -124,7 +124,12 @@ class BetaDashboardScreenTest {
     @Test fun failedNewPeriodClearsOldMoneyAndExplicitRetryRecovers() {
         val fail = AtomicBoolean(false)
         val workflow = workflow(fail)
-        compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
+        val arabic = Configuration(context.resources.configuration).apply { setLocale(Locale("ar")); setLayoutDirection(Locale("ar")) }
+        val arabicContext = context.createConfigurationContext(arabic)
+        compose.setContent { MaterialTheme { CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl,
+            LocalContext provides arabicContext, LocalConfiguration provides arabic) {
+            Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) }
+        } } }
         waitLoaded(); compose.onAllNodesWithText("42.35 SAR").assertCountEquals(1)
         fail.set(true)
         compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick()
@@ -216,9 +221,15 @@ class BetaDashboardScreenTest {
     }
 
     @Test fun partialCoverageNeverClaimsKnownEmptyRegistryOrCommitments() {
-        val workflow = BetaDashboardWorkflow({ query, _ -> DashboardProduction(
-            DashboardSnapshot(query, emptyList(), emptyList(), emptyList(), commitments = CommitmentsSummary(Currency.SAR, emptyList(), null, null, null)),
-            setOf(DashboardSection.CONFIRMED_REGISTRY, DashboardSection.COMMITMENTS), null)
+        val workflow = BetaDashboardWorkflow({ query, _ ->
+            val period = DisplayPeriod(query.from, query.until, query.zone, PeriodKind.CALENDAR_MONTH, null)
+            val amount = SignedAmount(BigDecimal("42.35"), Currency.SAR)
+            val trend = SpendingTrend(null, null, period, Currency.SAR,
+                listOf(DailySpending(at.atZone(query.zone).toLocalDate(), amount, amount, SignedAmount(BigDecimal.ZERO, Currency.SAR), emptySet())), amount)
+            DashboardProduction(
+                DashboardSnapshot(query, emptyList(), emptyList(), emptyList(), commitments = CommitmentsSummary(Currency.SAR, emptyList(), null, null, null),
+                    analysis = AnalysisSummary(Currency.SAR, SummaryMetric.entries.associateWith { null }, 0, 0, 0, listOf(trend), emptyList())),
+                setOf(DashboardSection.CONFIRMED_REGISTRY, DashboardSection.COMMITMENTS, DashboardSection.TRENDS, DashboardSection.MERCHANT_TOTALS), null)
         }, clock)
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded()
@@ -226,5 +237,8 @@ class BetaDashboardScreenTest {
             route(section); compose.onNodeWithTag("dash-empty").assertDoesNotExist()
             compose.onNodeWithTag("dash-unavailable").assertExists()
         }
+        route("ANALYSIS")
+        compose.onAllNodesWithTag("dash-unavailable").assertCountEquals(1) // Merchant coverage only; this ordinary series is complete.
+        compose.onAllNodesWithText("42.35 SAR").assertCountEquals(2) // Precomputed average and point; no UI-derived money.
     }
 }
