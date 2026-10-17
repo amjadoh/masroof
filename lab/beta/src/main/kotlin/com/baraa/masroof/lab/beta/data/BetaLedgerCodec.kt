@@ -20,6 +20,19 @@ import java.util.Collections
 internal object BetaLedgerCodec {
     private const val VERSION = "BETA_LEDGER_1"
 
+    /** Typed uncorrected/selected facts for the separately versioned correction store. */
+    fun encodeInput(input: FinancialClassificationInput): String {
+        val bytes = ByteArrayOutputStream().also { bytes -> DataOutputStream(bytes).use { it.input(input) } }.toByteArray()
+        return "BETA_FINANCIAL_INPUT_1:${Base64.getEncoder().encodeToString(bytes)}:${checksum(bytes)}"
+    }
+
+    fun decodeInput(payload: String): FinancialClassificationInput {
+        val parts = payload.split(':')
+        check(parts.size == 3 && parts[0] == "BETA_FINANCIAL_INPUT_1")
+        val bytes = Base64.getDecoder().decode(parts[1]); check(checksum(bytes) == parts[2])
+        return DataInputStream(ByteArrayInputStream(bytes)).use { source -> source.input().also { check(source.available() == 0) } }
+    }
+
     fun encode(posting: StoredFinancialPosting): String {
         val bytes = ByteArrayOutputStream().also { bytes -> DataOutputStream(bytes).use { out ->
             out.input(posting.classification.input)

@@ -190,6 +190,33 @@ class BetaContainer(
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialLedger(database).history(key) }
     }
 
+    fun submitCorrection(observation: com.baraa.masroof.lab.finance.corrections.CorrectionObservation,
+        request: com.baraa.masroof.lab.finance.corrections.CorrectionRequest) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).submit(observation, request) }
+    }
+
+    fun rebaseCorrection(observation: com.baraa.masroof.lab.finance.corrections.CorrectionObservation, expectedCorrectionRevision: Long) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).rebase(observation, expectedCorrectionRevision) }
+    }
+
+    fun correction(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).read(key) }
+    }
+
+    fun correctionHistory(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).history(key) }
+    }
+
+    /** Prior result for audit; never a financial projection input. */
+    fun financialAuditPosting(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialLedger(database).readAudit(key) }
+    }
+
     fun markerCount(): Int = lock.withLock {
         check(!closed)
         runBlocking { database.shellMarkerDao().count() }

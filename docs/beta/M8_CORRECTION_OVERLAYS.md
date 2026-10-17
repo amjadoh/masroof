@@ -1,5 +1,9 @@
 # M8.3 — Evidence-bound correction overlays
 
+This document records the initial pure contract. The subsequent explicit Beta transaction coordinator,
+schema 5→6, inactive financial lifecycle and recovery coverage are described in
+[M8_DURABLE_CORRECTIONS.md](M8_DURABLE_CORRECTIONS.md). Production/runtime/UI adoption remains separate.
+
 This increment implements executable, pure decision submission and interpretation rebase in
 `lab/finance-core/corrections`. It changes neither parser observations nor raw SMS. It has no Android,
 Room, production runtime or production-data access. Existing classification DTOs and PostingGate are
