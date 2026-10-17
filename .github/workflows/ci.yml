@@ -136,11 +136,13 @@ jobs:
             echo "sdk.dir=${SDK_DIR}" > local.properties
             # notPackage in app/build.gradle.kts keeps M13 process-death phases out of
             # this clearPackageData=true suite.
-            ./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace
+            smoke_status=0
+            ./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace || smoke_status=$?
             mkdir -p m19-statement-screenshots
             adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
             mkdir -p beta-dashboard-screenshots
             adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
+            if [ "$smoke_status" -ne 0 ]; then exit "$smoke_status"; fi
             find m19-statement-screenshots -name 'm19-*.png' | grep -q .
 
       - name: Upload statement reconciliation screenshots

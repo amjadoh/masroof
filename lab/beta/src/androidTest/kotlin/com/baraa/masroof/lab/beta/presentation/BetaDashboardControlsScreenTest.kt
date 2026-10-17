@@ -9,6 +9,10 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import com.baraa.masroof.lab.beta.application.*
+import com.baraa.masroof.lab.finance.asset.AssetId
+import com.baraa.masroof.lab.finance.dashboard.FacilitySummary
+import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.lab.finance.value.Environment
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.*
 import org.junit.Rule
@@ -32,13 +36,26 @@ class BetaDashboardControlsScreenTest {
             return BetaDashboardConfigurationWrite.Saved(state)
         }
     }
-    private fun show(controls: BetaDashboardControls) {
+    private fun show(controls: BetaDashboardControls, facilities: List<FacilitySummary> = emptyList()) {
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) {
-            BetaDashboardConfigurationPanel(controls, emptyList(), month, true, {}, {})
+            BetaDashboardConfigurationPanel(controls, facilities, month, true, {}, {})
         } } }
         compose.waitUntil(10000) { compose.onAllNodesWithTag("controls-salary").fetchSemanticsNodes().isNotEmpty() }
     }
     private fun node(tag: String) = compose.onNodeWithTag(tag)
+    @Test fun statementEditorKeepsSameLocalIdAtDifferentBanksSeparate() {
+        val a = AssetId(Environment.BETA, BankId("A"), "same")
+        val b = AssetId(Environment.BETA, BankId("B"), "same")
+        val controls = Controls()
+        controls.state = controls.state.copy(draft = BetaDashboardConfigurationDraft(statements = listOf(BetaFacilityCycle(a, 20))))
+        show(controls, listOf(FacilitySummary(a, null), FacilitySummary(b, null)))
+        node("controls-statement-B-same").performScrollTo().performClick()
+        node("controls-day").performTextInput("14")
+        node("dash-sheet-apply").performClick(); node("controls-confirm").performClick()
+        compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
+        assertEquals(listOf(BetaFacilityCycle(a, 20), BetaFacilityCycle(b, 14)), controls.state.draft.statements)
+        assertEquals(1, controls.saves.get())
+    }
     @Test fun cancelNeverWritesAndConfirmedBusySaveBlocksDismissalAndDuplicateSubmission() {
         val controls = Controls(); show(controls)
         node("controls-salary").performScrollTo().performClick()
