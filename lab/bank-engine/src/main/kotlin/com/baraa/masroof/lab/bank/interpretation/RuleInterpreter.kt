@@ -166,7 +166,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         private const val MAX_BODY = 16000
         private const val NUMBER = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
         private const val CURRENCY = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
-        private const val MONEY = "(?:(?<c1>$CURRENCY)[ \\t]+(?<n1>$NUMBER)|(?<n2>$NUMBER)[ \\t]+(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,])"
+        private const val MONEY = "(?:(?<c1>$CURRENCY)[ \\t]+(?<n1>$NUMBER)|(?<n2>$NUMBER)[ \\t]+(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,+\\-−])"
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "رمز سري")
