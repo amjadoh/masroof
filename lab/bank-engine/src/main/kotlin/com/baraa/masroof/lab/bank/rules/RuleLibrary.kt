@@ -13,6 +13,23 @@ object RuleLibrary {
         rule("notice", MessageFamily.NON_FINANCIAL, listOf("تم تسجيل الدخول", "login notification")),
     ))
 
+    /** Revision two adds role-bound payment facts; revision one remains a compatibility profile. */
+    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 2,
+        rules = (previous.rules + listOf(
+            rule("card.payment", MessageFamily.CARD_PAYMENT, listOf("سداد بطاقة", "card payment")),
+            rule("bill.payment", MessageFamily.BILL_PAYMENT, listOf("سداد فاتورة", "bill payment")),
+            rule("installment", MessageFamily.FINANCING_INSTALLMENT, listOf("قسط تمويل", "loan repayment")),
+        )).map { rule -> rule.copy(detailLabels = mapOf(
+            "dueAmount" to listOf("المبلغ المستحق", "outstanding balance", "due amount"),
+            "foreignAmount" to listOf("المبلغ الاجنبي", "foreign amount"),
+            "counterparty" to listOf("جهة التمويل", "counterparty"),
+            "transactionReference" to listOf("رقم المعاملة", "transaction reference"),
+            "biller" to listOf("المفوتر", "biller"),
+            "billerCode" to listOf("رمز المفوتر", "biller code"),
+            "paymentDueDate" to listOf("تاريخ الاستحقاق", "payment due date"),
+        )) })
+    }
+
     private fun rule(id: String, family: MessageFamily, phrases: List<String>,
         direction: MoneyDirection = MoneyDirection.OUTGOING) = BankRule("bank.$id", family, phrases,
         direction = direction, labels = mapOf(
