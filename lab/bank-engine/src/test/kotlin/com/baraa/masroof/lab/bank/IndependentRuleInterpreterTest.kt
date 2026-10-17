@@ -46,13 +46,13 @@ class IndependentRuleInterpreterTest {
     }
 
     @Test fun securityAndUnexecutedWordingCannotBecomeSuccessfulMoney() {
-        listOf("OTP", "verification code", "رمز التحقق", "رمز التوثيق").forEach { term ->
+        listOf("OTP", "verification code", "one-time password", "PIN", "رمز التحقق", "رمز التوثيق", "رمز تأكيد").forEach { term ->
             val r = parse("$term: 567890\n$purchase")
             assertEquals(term, ParseStatus.NON_FINANCIAL, r.status)
             assertEquals(MessageFamily.OTP, r.facts.family)
             assertNull(r.facts.amount); assertNull(r.facts.card)
         }
-        listOf("declined", "rejected", "pending", "request", "cancelled", "not completed", "not executed", "لم تتم", "مرفوضة", "قيد التنفيذ").forEach { term ->
+        listOf("declined", "rejected", "pending", "request", "cancelled", "not completed", "not executed", "not yet debited", "never executed", "لم تتم", "مرفوضة", "قيد التنفيذ", "غير منفذة", "لم يخصم").forEach { term ->
             val r = parse("$term\n$purchase")
             assertEquals(term, ParseStatus.REVIEW_REQUIRED, r.status)
             assertNull(r.facts.executionState)
