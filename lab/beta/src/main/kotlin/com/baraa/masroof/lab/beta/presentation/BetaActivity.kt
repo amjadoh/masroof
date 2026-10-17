@@ -38,7 +38,11 @@ class BetaActivity : ComponentActivity() {
                 BetaContainer(applicationContext).also { betaContainer = it }
             } } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (_: Exception) {
-                setContent { MaterialTheme { BetaStartupFailure(onRetry = { recreate() }, onReturn = { finish() }) } }
+                setContent { MaterialTheme {
+                    BetaShell(markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
+                        editor = { BetaStartupFailure(onRetry = { recreate() }, onReturn = { finish() }) },
+                        onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {})
+                } }
                 return@launch
             }
             setContent {
@@ -59,6 +63,7 @@ class BetaActivity : ComponentActivity() {
                 var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
                 var assets by remember { mutableStateOf<List<OwnedAsset>>(emptyList()) }
                 var loaded by remember { mutableStateOf(false) }
+                var startState by remember { mutableStateOf<com.baraa.masroof.lab.beta.application.BetaStartState?>(null) }
                 var historyBusy by remember { mutableStateOf(false) }
                 var discoveryOpen by rememberSaveable { mutableStateOf(false) }
                 var proposalId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -79,12 +84,13 @@ class BetaActivity : ComponentActivity() {
                     try {
                         val snapshot = withContext(BetaIo.dispatcher) {
                             val restored = action()
-                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme)
+                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme, shellContainer.startState())
                         }
                         markerCount = snapshot.markers
                         banks = snapshot.banks
                         assets = snapshot.assets
                         betaTheme = snapshot.theme
+                        startState = snapshot.startState
                         loaded = true
                         restoreMissing = snapshot.restored == false
                         return true
@@ -102,7 +108,19 @@ class BetaActivity : ComponentActivity() {
                     scope.launch { execute(action) }
                 }
                 LaunchedEffect(Unit) { execute { null } }
-                BetaShell(
+                if (!loaded || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
+                    BetaShell(
+                        markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
+                        returnEnabled = !busy, onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {},
+                        editor = {
+                            if (!loaded) {
+                                if (failed) BetaStartupFailure(onRetry = { perform { null } }, onReturn = { finish() })
+                                else androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_start_loading))
+                            } else BetaStartPanel(checkNotNull(startState), busy, failed,
+                                onContinue = { perform { shellContainer.acknowledgeStart(); null } })
+                        },
+                    )
+                } else BetaShell(
                     showMaintenanceActions = false,
                     dashboard = { BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, onBusyChanged = { historyBusy = it }) },
                     onOpenDiscovery = { if (!busy) { discoveryOpen = true; historyOpen = false; reviewOpen = false; approvalOpen = false; settingsOpen = false; editBank = null } },
@@ -179,4 +197,5 @@ private data class BetaScreenSnapshot(
     val assets: List<OwnedAsset>,
     val restored: Boolean?,
     val theme: String,
+    val startState: com.baraa.masroof.lab.beta.application.BetaStartState,
 )
