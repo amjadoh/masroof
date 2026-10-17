@@ -242,6 +242,17 @@ class BetaContainer(
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).read(key) }
     }
 
+    fun reviewPage(afterId: String = "", limit: Int = 25) = lock.withLock {
+        check(!closed); runBlocking { com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow(database).page(afterId, limit) }
+    }
+    fun reviewDetail(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
+        check(!closed); runBlocking { com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow(database).detail(key) }
+    }
+    fun saveReview(token: com.baraa.masroof.lab.beta.application.corrections.BetaReviewToken, decisionId: String,
+        decision: com.baraa.masroof.lab.finance.corrections.FinancialDecision, metadata: Map<String, String> = emptyMap()) = lock.withLock {
+        check(!closed); runBlocking { com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow(database).save(token, decisionId, decision, metadata) }
+    }
+
     fun correctionHistory(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
         check(!closed)
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaCorrectionLifecycle(database).history(key) }
