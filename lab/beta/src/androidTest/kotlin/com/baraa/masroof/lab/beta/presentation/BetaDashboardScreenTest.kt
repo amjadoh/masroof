@@ -77,7 +77,10 @@ class BetaDashboardScreenTest {
         fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).bufferedReader().use { it.readText() }
         shell("mkdir -p /sdcard/beta-dashboard-screenshots")
         shell("screencap -p /sdcard/beta-dashboard-screenshots/$name.png")
-        assertEquals("OK", shell("test -s /sdcard/beta-dashboard-screenshots/$name.png && echo OK").trim())
+        // UiAutomation executes a process directly; shell operators/quoting are not interpreted.
+        val png = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("cat /sdcard/beta-dashboard-screenshots/$name.png")).use { it.readBytes() }
+        assertTrue("A captured PNG must contain image data", png.size > 8)
+        assertArrayEquals(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a), png.copyOfRange(0, 8))
     }
 
     @Test fun realRoomReadShowsUnavailableBalanceAndNeverWritesWhenNavigating() {
