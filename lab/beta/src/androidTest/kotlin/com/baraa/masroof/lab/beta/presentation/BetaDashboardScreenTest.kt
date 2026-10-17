@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.LayoutDirection
@@ -40,8 +42,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.util.Locale
 import java.math.BigDecimal
 
+@OptIn(ExperimentalTestApi::class)
 class BetaDashboardScreenTest {
-    @get:Rule val compose = createComposeRule()
+    // Real Room IO must return to the Android UI dispatcher before applying a test frame.
+    @get:Rule val compose = createComposeRule(effectContext = Dispatchers.Main.immediate)
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val at = Instant.parse("2026-10-17T10:00:00Z")
     private val clock = Clock.fixed(at, ZoneOffset.UTC)
@@ -69,7 +73,14 @@ class BetaDashboardScreenTest {
             BetaDashboardProducer(RoomBetaDashboardSource(db, periods, clock = clock)).readWithCoverage(query)
         }
     }, clock)
-    private fun waitLoaded() { compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }
+    private fun waitLoaded(expectedMonth: String? = null) {
+        compose.waitUntil(15000) {
+            compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty() &&
+                (expectedMonth == null || compose.onAllNodesWithTag("dash-month").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.any { it.text == expectedMonth } == true)
+        }
+        compose.waitForIdle()
+    }
     private fun route(value: String) { compose.onNodeWithTag("dash-route-$value").performScrollTo().performClick() }
     private fun screenshot(name: String) {
         compose.waitForIdle()
@@ -113,13 +124,13 @@ class BetaDashboardScreenTest {
         route("ACCOUNTS")
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-account").performScrollTo().performClick()
         compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-account-unknown")
-        state.emulateSavedInstanceStateRestore(); waitLoaded()
+        state.emulateSavedInstanceStateRestore(); waitLoaded("2026-10")
         compose.onNodeWithTag("dash-detail-back").assertExists()
         compose.onNodeWithTag("dash-month").assertTextEquals("2026-10")
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
-        compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
-        state.emulateSavedInstanceStateRestore(); waitLoaded()
+        compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded("2026-09")
+        state.emulateSavedInstanceStateRestore(); waitLoaded("2026-09")
         compose.onNodeWithTag("dash-month").assertTextEquals("2026-09")
         compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
     }
