@@ -113,4 +113,5 @@
     <string name="beta_review_self_transfer">Transfer between own assets</string>
     <string name="beta_review_adjustment">Adjustment</string>
     <string name="beta_review_unknown_endpoint">Unresolved endpoint</string>
+    <string name="beta_review_unavailable">Review the evidence first. Its interpretation may have changed or a retry may be pending; this screen cannot edit the old financial effect.</string>
 </resources>
