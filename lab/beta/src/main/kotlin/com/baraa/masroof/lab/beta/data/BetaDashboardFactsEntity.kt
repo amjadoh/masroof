@@ -16,6 +16,7 @@ internal data class BetaDashboardFactsEntity(
     val facilityAsset: String?, val dueAmount: String?, val dueCurrency: String?, val dueDate: String?,
     val merchant: String?, val counterparty: String?,
     val debitCardAsset: String?, val debitCardLast4: String?, val debitCardParent: String?,
+    val messageFamily: String? = null,
 ) { override fun toString() = "BetaDashboardFactsEntity(redacted)" }
 
 @Dao internal interface BetaDashboardFactsDao {

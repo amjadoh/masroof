@@ -89,7 +89,7 @@ class RoomBetaPersistedFactsTest {
         assertEquals(BigDecimal("16958.89"), result.snapshot.creditFacilities.single().cards.single().availableBalance!!.amount)
         assertEquals(Money.of("2694.32", Currency.SAR), result.snapshot.creditFacilities.single().statementDue)
         assertNull(result.snapshot.accounts.single().balance)
-        assertNull(result.snapshot.analysis)
+        assertNotNull(result.snapshot.analysis)
         db.close(); db = openDb()
         assertEquals(batch, source().load(query))
         assertEquals(1, RoomBetaFinancialLedger(db).history(RoomBetaFinancialAdoption.key(stored.summary.id)).size)

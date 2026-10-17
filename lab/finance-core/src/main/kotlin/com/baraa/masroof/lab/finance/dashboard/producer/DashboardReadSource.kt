@@ -26,6 +26,10 @@ data class DashboardCoverage(
     val reviewRequiredCount: Int?,
     /** True only for a runtime source reading all collections in one database snapshot. */
     val atomicRuntimeSource: Boolean = false,
+    /** Includes proved absence of merchant labels; missing projections are not an empty ranking. */
+    val completeMerchantFacts: Boolean = false,
+    /** True only when user commitment occurrences are supplied completely for the salary window. */
+    val completeUserCommitments: Boolean = false,
 ) {
     init { require(reviewRequiredCount == null || reviewRequiredCount >= 0) }
 }
@@ -63,7 +67,14 @@ data class DashboardPostingFacts(
     val categoryId: String? = null,
     /** Proved account-backed Mada involvement; never an inferred financial endpoint. */
     val debitCard: AssetId? = null,
+    val messageFamily: DashboardEvidenceFamily? = null,
 )
+
+/** Persisted parse-time family only; chart projections never inspect bank wording. */
+enum class DashboardEvidenceFamily {
+    PURCHASE, TRANSFER_IN, TRANSFER_OUT, CARD_PAYMENT, BILL_PAYMENT, FINANCING_INSTALLMENT,
+    WITHDRAWAL, REFUND, FEE, BALANCE_NOTICE, OTP, NON_FINANCIAL, UNKNOWN,
+}
 
 /** A source consistency token covers every collection and coverage flag in this batch together.
  * Runtime SQL/Room integration is deliberately separate from this executable pure producer.
@@ -78,4 +89,5 @@ data class DashboardReadBatch(
     val assetFacts: List<DashboardAssetFacts> = emptyList(),
     val postingFacts: List<DashboardPostingFacts> = emptyList(),
     val fees: List<LinkedInternationalFee> = emptyList(),
+    val commitmentOccurrences: List<CommitmentRow> = emptyList(),
 )
