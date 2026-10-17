@@ -13,7 +13,7 @@ import com.baraa.masroof.presentation.settings.SettingsAboutScreen
 import com.baraa.masroof.presentation.settings.SettingsHubScreen
 import com.baraa.masroof.presentation.settings.SettingsUiState
 import com.baraa.masroof.presentation.settings.SettingsDeveloperScreen
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

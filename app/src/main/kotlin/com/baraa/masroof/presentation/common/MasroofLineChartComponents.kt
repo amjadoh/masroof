@@ -38,14 +38,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.theme.MasroofBadgeShape
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofBadgeShape
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.math.BigDecimal
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.drawText
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofHeroRole
 import kotlin.math.roundToInt
 
 object MasroofLineChart {
@@ -251,7 +251,7 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
         values.indices.forEach { drawCircle(line, radius, point(it)) }
         selected?.let { index ->
             val p = point(index)
-            drawLine(muted.copy(alpha = com.baraa.masroof.presentation.theme.MasroofOpacity.muted),
+            drawLine(muted.copy(alpha = com.baraa.masroof.ui.theme.MasroofOpacity.muted),
                 Offset(p.x, top), Offset(p.x, top + plotHeight), gridStroke,
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashStroke, dash)))
             drawCircle(surface, selectedRadius, p)

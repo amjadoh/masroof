@@ -4,7 +4,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +22,7 @@ import com.baraa.masroof.application.dashboard.cashPosition
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun AccountsSummaryRoute(
@@ -96,7 +96,7 @@ fun AccountsSummaryScreen(
             )
 
             SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
-                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account, chartKey = "accounts")
+                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account, chartKey = "accounts")
             AccountsSummaryHeader(
                 accountCount = state.ownedAccounts.size,
                 onManageAccounts = onManageAccounts,

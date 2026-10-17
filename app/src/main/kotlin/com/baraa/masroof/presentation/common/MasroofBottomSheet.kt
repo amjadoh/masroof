@@ -36,7 +36,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 

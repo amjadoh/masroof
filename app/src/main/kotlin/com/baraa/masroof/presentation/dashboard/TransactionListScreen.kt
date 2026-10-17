@@ -2,7 +2,7 @@ package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -197,8 +197,8 @@ fun TransactionListScreen(
             Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
 
             androidx.compose.material3.Surface(modifier = Modifier.weight(1f),
-                shape = com.baraa.masroof.presentation.theme.MasroofCardShape,
-                border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
+                shape = com.baraa.masroof.ui.theme.MasroofCardShape,
+                border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.padding(horizontal = MasroofSpacing.cardInnerPadding),

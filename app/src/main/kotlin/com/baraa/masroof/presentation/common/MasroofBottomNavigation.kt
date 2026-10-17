@@ -21,9 +21,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofShapes
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofShapes
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 data class MasroofNavigationItem(val label: String, val icon: ImageVector,
     val selected: Boolean, val description: String = label)
@@ -47,7 +47,7 @@ fun MasroofBottomNavigation(items: List<MasroofNavigationItem>, onSelect: (Int) 
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(MasroofReference.navigationGap)) {
                             Icon(item.icon, null, Modifier.size(MasroofReference.icon), tint = color)
-                            MasroofText(item.label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = if (item.selected) com.baraa.masroof.presentation.theme.MasroofFontWeights.semiBold else com.baraa.masroof.presentation.theme.MasroofFontWeights.normal), color = color)
+                            MasroofText(item.label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = if (item.selected) com.baraa.masroof.ui.theme.MasroofFontWeights.semiBold else com.baraa.masroof.ui.theme.MasroofFontWeights.normal), color = color)
                         }
                     }
                 }

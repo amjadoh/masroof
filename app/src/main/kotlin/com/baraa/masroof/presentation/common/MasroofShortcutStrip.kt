@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 data class MasroofShortcutItem(val label: String, val icon: ImageVector,
     val accent: MasroofCardAccent, val onClick: () -> Unit)

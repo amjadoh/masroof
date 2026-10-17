@@ -25,7 +25,7 @@ import com.baraa.masroof.application.dashboard.DailySpendingTrend
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.dashboard.*
 import com.baraa.masroof.presentation.locale.AppLocaleContext
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 import java.io.File
 import java.io.FileOutputStream
 import org.junit.Assert.*

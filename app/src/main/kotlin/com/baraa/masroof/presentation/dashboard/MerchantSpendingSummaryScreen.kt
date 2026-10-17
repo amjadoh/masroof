@@ -2,7 +2,7 @@ package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,8 +24,8 @@ import com.baraa.masroof.application.dashboard.MerchantSpendingRow
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofSectionTitle
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun MerchantSpendingSummaryRoute(
@@ -81,7 +81,7 @@ fun MerchantSpendingSummaryScreen(
             modifier = contentModifier,
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_period_view), true, {})
                 com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_day_view), false, onOpenDaily)
             }

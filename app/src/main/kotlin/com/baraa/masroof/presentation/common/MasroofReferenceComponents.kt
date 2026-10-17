@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 @Composable
 fun MasroofMetric(label: String, value: String, color: Color,

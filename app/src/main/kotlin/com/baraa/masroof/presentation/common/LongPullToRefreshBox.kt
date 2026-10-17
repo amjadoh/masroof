@@ -2,8 +2,8 @@ package com.baraa.masroof.presentation.common
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box

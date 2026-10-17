@@ -22,8 +22,8 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.presentation.common.*
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofReference
 
 @Composable
 fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> Unit,
@@ -54,12 +54,12 @@ fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> U
                         else MasroofText(stringResource(R.string.reference_available_language), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    HorizontalDivider(color = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)
+                    HorizontalDivider(color = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.cardBorder)
                 }
             }
             MasroofCard {
                 MasroofText(stringResource(R.string.reference_colour_meanings), style = MaterialTheme.typography.titleMedium)
-                val colors = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors
+                val colors = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors
                 val legends = listOf(Triple(R.string.dashboard_total_inflow, MasroofIcons.externalIn, colors.inflow to colors.inflowSoft),
                     Triple(R.string.approved_total_expenses, MasroofIcons.externalOut, colors.outflow to colors.outflowSoft),
                     Triple(R.string.reference_credit_tab, MasroofIcons.cardPayment, colors.card to colors.cardSoft),
@@ -67,7 +67,7 @@ fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> U
                 legends.forEach { (label, icon, palette) ->
                     Row(Modifier.padding(top = MasroofSpacing.sectionGap), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
-                        Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small, color = palette.second) {
+                        Surface(shape = com.baraa.masroof.ui.theme.MasroofShapes.small, color = palette.second) {
                             androidx.compose.foundation.layout.Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
                                 Icon(icon, null, Modifier.size(MasroofReference.icon), tint = palette.first)
                             }

@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -70,7 +70,7 @@ fun DashboardFlowDetailScreen(
             com.baraa.masroof.presentation.common.MasroofHeroCard(
                 stringResource(presentation.totalTitleRes), formattedTotal,
                 guidance = stringResource(presentation.totalHintRes),
-                role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.presentation.theme.MasroofHeroRole.Inflow else com.baraa.masroof.presentation.theme.MasroofHeroRole.Outflow)
+                role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.ui.theme.MasroofHeroRole.Inflow else com.baraa.masroof.ui.theme.MasroofHeroRole.Outflow)
             MasroofCard {
                 when (mode) {
                     DashboardFlowDetailMode.Expense -> FlowDetailExpenseSummarySection(summary = summary)

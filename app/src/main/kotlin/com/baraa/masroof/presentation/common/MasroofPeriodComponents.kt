@@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 @Composable
 fun MasroofPeriodPill(label: String, onPrevious: () -> Unit, onNext: () -> Unit,

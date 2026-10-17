@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 fun BackNavigationIcon(
@@ -33,14 +33,14 @@ fun BackNavigationIcon(
 ) {
     val isLtr = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Ltr
     androidx.compose.material3.Surface(onClick = onClick,
-        modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconButton),
-        shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
-        border = BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
+        modifier = Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.iconButton),
+        shape = com.baraa.masroof.ui.theme.MasroofShapes.small,
+        border = BorderStroke(MasroofSpacing.borderWidth, com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.cardBorder)) {
         androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
         Icon(
             imageVector = MasroofOutlineIcons.ArrowRight,
             contentDescription = contentDescription,
-            modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon)
+            modifier = Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon)
                 .graphicsLayer { scaleX = if (isLtr) -1f else 1f },
         )
         }

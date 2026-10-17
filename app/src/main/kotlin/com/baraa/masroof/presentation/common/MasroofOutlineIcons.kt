@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofIconSizes
 
 /** Lucide outline geometry used by the approved reference. See docs/licenses/lucide.txt. */
 internal object MasroofOutlineIcons {

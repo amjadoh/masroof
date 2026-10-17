@@ -15,7 +15,7 @@ import com.baraa.masroof.application.dashboard.cashPosition
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 @Composable
 fun AccountPeriodSummaryCard(summary: CurrentAccountSummary, modifier: Modifier = Modifier,

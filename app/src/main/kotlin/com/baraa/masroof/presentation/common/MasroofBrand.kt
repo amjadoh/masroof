@@ -1,13 +1,13 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofSizes
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofIconSizes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import com.baraa.masroof.presentation.theme.MasroofLogoShape
+import com.baraa.masroof.ui.theme.MasroofLogoShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import com.baraa.masroof.R

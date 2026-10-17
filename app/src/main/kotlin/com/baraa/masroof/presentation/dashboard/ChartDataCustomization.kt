@@ -9,7 +9,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.*
 import com.baraa.masroof.presentation.common.MasroofBottomSheet
 import com.baraa.masroof.presentation.common.MasroofText
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 val LocalChartDataWorkflow = staticCompositionLocalOf {
     ChartDataWorkflow(InMemoryChartDataPreferencesRepository())

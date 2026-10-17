@@ -12,7 +12,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.baraa.masroof.presentation.common.MasroofFormField
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

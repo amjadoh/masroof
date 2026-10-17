@@ -1,10 +1,10 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofNetworkColors
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
-import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import com.baraa.masroof.ui.theme.MasroofNetworkColors
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofComponentShapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size

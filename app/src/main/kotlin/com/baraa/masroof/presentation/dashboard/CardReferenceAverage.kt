@@ -3,7 +3,7 @@ package com.baraa.masroof.presentation.dashboard
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
-import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofReference
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R

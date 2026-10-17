@@ -28,7 +28,7 @@ import com.baraa.masroof.domain.model.LoanType
 import com.baraa.masroof.domain.period.FinancialPeriod
 import com.baraa.masroof.presentation.dashboard.*
 import com.baraa.masroof.presentation.locale.AppLocaleContext
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertNotEquals
@@ -79,8 +79,8 @@ class ApprovedDesignScreenTest {
         val chartBounds = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("daily-expenses-chart").performTouchInput {
             val density = compose.activity.resources.displayMetrics.density
-            val left = com.baraa.masroof.presentation.theme.MasroofReference.chartLeft.value * density
-            val right = com.baraa.masroof.presentation.theme.MasroofReference.chartRight.value * density
+            val left = com.baraa.masroof.ui.theme.MasroofReference.chartLeft.value * density
+            val right = com.baraa.masroof.ui.theme.MasroofReference.chartRight.value * density
             click(Offset(left + (chartBounds.width-left-right) * (1f - 6f / 14f), chartBounds.height * 0.12f))
         }
         val tapped = compose.onNodeWithTag("daily-expenses-chart").fetchSemanticsNode().config[SemanticsProperties.ContentDescription]

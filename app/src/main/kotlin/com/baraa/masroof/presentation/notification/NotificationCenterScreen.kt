@@ -2,7 +2,7 @@ package com.baraa.masroof.presentation.notification
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
