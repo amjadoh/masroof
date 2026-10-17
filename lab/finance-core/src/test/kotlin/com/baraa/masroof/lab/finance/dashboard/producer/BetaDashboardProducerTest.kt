@@ -53,17 +53,19 @@ class BetaDashboardProducerTest {
         val result = producer.read(query)
         assertEquals(1, calls)
         assertEquals(ReadRevision("atomic-beta-revision-42", query.until), result.revision)
-        assertNull(result.analysis)
+        assertNotNull(result.analysis)
         assertNull(result.commitments)
         assertEquals(1, result.transactions.size)
         equal("10", result.fleetFlow!!.externalOut.amount)
     }
 
-    @Test fun fullAnalysisIsUnavailableWhileTypedMoneySummaryIsComputed() {
+    @Test fun analysisIsComputedWhileMissingMerchantAndCommitmentCoverageStayUnavailable() {
         val result = build()
-        assertNull(result.snapshot.analysis)
-        assertTrue(result.unavailableSections.containsAll(setOf(DashboardSection.ANALYSIS, DashboardSection.TRENDS,
-            DashboardSection.MERCHANT_TOTALS, DashboardSection.COMMITMENTS, DashboardSection.RUNTIME_SOURCE)))
+        assertNotNull(result.snapshot.analysis)
+        assertFalse(DashboardSection.ANALYSIS in result.unavailableSections)
+        assertTrue(DashboardSection.TRENDS in result.unavailableSections) // PURCHASES lacks typed family proof.
+        assertNotNull(result.snapshot.analysis!!.trends.single { it.scope == TrendScope.OVERALL }.averageDailySpending)
+        assertTrue(result.unavailableSections.containsAll(setOf(DashboardSection.MERCHANT_TOTALS, DashboardSection.COMMITMENTS, DashboardSection.RUNTIME_SOURCE)))
         equal("10", metric(result, SummaryMetric.SPENDING_GROSS))
         equal("-10", metric(result, SummaryMetric.NET_CASH_FLOW))
         assertEquals(SummaryMetric.entries.toSet(), result.financialSummary!!.metrics.keys)
@@ -305,6 +307,12 @@ class BetaDashboardProducerTest {
             TransferObservation(incoming, TransferDirection.INBOUND, reference)), TransferMatchProof.BankReference(reference)) as TransferMatchResult.Matched).transfer
         val stored = (FinancialPostingRules.prepare(pair) as PostingPreparation.Ready).posting
         val result = build(batch(listOf(stored), registry))
+        val trends = result.snapshot.analysis!!.trends
+        fun trendTotal(scope: TrendScope, assetId: AssetId? = null) = trends.single { it.scope == scope && it.assetId == assetId && it.category == null }
+            .points.fold(BigDecimal.ZERO) { sum, point -> sum + point.net!!.amount }
+        equal("0", trendTotal(TrendScope.ACCOUNTS))
+        equal("10", trendTotal(TrendScope.ASSET, account.id))
+        equal("0", trendTotal(TrendScope.ASSET, other.id))
         equal("0", metric(result, SummaryMetric.NET_CASH_FLOW))
         equal("0", result.snapshot.fleetFlow!!.externalIn.amount)
         equal("10", result.snapshot.fleetFlow.buckets.getValue(FlowBucket.INTERNAL_IN).amount)

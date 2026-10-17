@@ -90,7 +90,7 @@ class RoomBetaDashboardSourceTest {
         assertEquals(2, result.snapshot.transactions.size)
         assertEquals(BigDecimal("84.70"), result.snapshot.fleetFlow!!.externalOut.amount)
         assertFalse(DashboardSection.RUNTIME_SOURCE in result.unavailableSections)
-        assertNull(result.snapshot.analysis); assertNull(result.snapshot.commitments)
+        assertNotNull(result.snapshot.analysis); assertNotNull(result.snapshot.commitments)
     }
 
     @Test fun readsAreStableReadOnlyAndDoNotClaimAbsentObservationFeeOrReviewCoverage() = runBlocking {

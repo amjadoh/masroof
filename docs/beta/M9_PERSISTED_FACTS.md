@@ -1,5 +1,8 @@
 # M9.2 / M8.4: persisted observation projection
 
+The schema8 increment below is retained as its original scope record. Schema9 and the executable
+analysis/auxiliary-observation follow-up are documented in [M9 analysis and auxiliary facts](M9_ANALYSIS_AND_AUXILIARY_FACTS.md).
+
 This increment remains entirely inside the isolated Beta database. It does not import production
 repositories, access the production database, delete legacy code or adopt candidate-engine results.
 

@@ -191,6 +191,39 @@ class ProductionFinancialParityTest {
         }
     }
 
+    @Test fun originalFlowAssignmentsAndPurchasesPolicyMatchActualTrendScopes() {
+        val cases = fixtures().filter { it.type != FinancialType.SELF_TRANSFER }
+        val query = com.baraa.masroof.lab.finance.dashboard.DashboardQuery(Environment.BETA, time.minusSeconds(1), time.plusSeconds(1),
+            ZoneId.of("Asia/Riyadh"), Currency.SAR)
+        val rows = cases.map { case -> com.baraa.masroof.lab.finance.dashboard.producer.DashboardLedgerRow(
+            (FinancialPostingRules.prepare(input(case)) as PostingPreparation.Ready).posting, true) }
+        val facts = cases.map { case -> com.baraa.masroof.lab.finance.dashboard.producer.DashboardPostingFacts(input(case).key,
+            input(case).revision, "event-${case.name}", messageFamily =
+                com.baraa.masroof.lab.finance.dashboard.producer.DashboardEvidenceFamily.valueOf(record(case).event.messageFamily.name)) }
+        val batch = com.baraa.masroof.lab.finance.dashboard.producer.DashboardReadBatch(query,
+            com.baraa.masroof.lab.finance.dashboard.ReadRevision("oracle-scopes", time), rows, registry.values.toList(),
+            com.baraa.masroof.lab.finance.dashboard.producer.DashboardCoverage(true, true, true, 0), postingFacts = facts)
+        val actual = com.baraa.masroof.lab.finance.dashboard.producer.BetaDashboardBuilder.build(batch).snapshot.analysis!!
+        val accountTrend = actual.trends.single { it.scope == com.baraa.masroof.lab.finance.dashboard.TrendScope.ACCOUNTS && it.category == null }
+        val expectedAccount = cases.fold(BigDecimal.ZERO) { sum, case -> sum + oldFlows(case).entries.fold(BigDecimal.ZERO) { subtotal, (bucket, amount) ->
+            subtotal + when (bucket) {
+                FlowBucket.EXTERNAL_OUT, FlowBucket.CREDIT_SETTLEMENT, FlowBucket.CASH_WITHDRAWAL, FlowBucket.BILLS,
+                FlowBucket.POS_PURCHASES, FlowBucket.FEES, FlowBucket.LOAN -> amount
+                FlowBucket.ACCOUNT_REFUNDS -> amount.negate()
+                else -> BigDecimal.ZERO
+            }
+        } }
+        assertEquals(0, expectedAccount.compareTo(accountTrend.points.single().net!!.amount))
+        assertTrue(accountTrend.points.single().transactions.any { it.transactionId == "credit-settlement" })
+        val parsed = cases.map(::record).associateBy { it.event.id }
+        val expectedPurchases = cases.filter { case ->
+            DailyPurchasesScope.includes(oldTransaction(case), case.source?.kind in setOf(AssetKind.CREDIT_CARD, AssetKind.DEBIT_CARD) ||
+                case.destination?.kind in setOf(AssetKind.CREDIT_CARD, AssetKind.DEBIT_CARD), parsed)
+        }.mapTo(hashSetOf()) { input(it).key }
+        val purchases = actual.trends.single { it.scope == com.baraa.masroof.lab.finance.dashboard.TrendScope.PURCHASES }
+        assertEquals(expectedPurchases, purchases.points.single().transactions)
+    }
+
     @Test fun originalAccountOutflowTotalsMatchCandidateActualSpendingPerCaseAndAggregate() {
         fun verify(cases: List<Case>) {
             val flows = cases.flatMap { oldFlows(it).entries }.groupBy { it.key }
