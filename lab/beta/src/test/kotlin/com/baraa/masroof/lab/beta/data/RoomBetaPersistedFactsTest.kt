@@ -249,4 +249,32 @@ class RoomBetaPersistedFactsTest {
         assertEquals(1, source().load(query).rows.size)
         assertEquals(0, source().load(query).coverage.reviewRequiredCount)
     }
+
+    @Test fun contradictoryStructuredAccountSuffixKeepsMadaUnknownAndPreservesExplicitEndpoint() = runBlocking {
+        val base = facts().copy(amount = Money.of("10", Currency.SAR), exchangeRate = null, internationalFee = null,
+            sourceAccount = AccountReference(bank, "9999"), card = CardReference(bank, "5678"), cardChannel = CardChannel.DEBIT)
+        val conflicts = listOf(base, base.copy(debitSourceAccountLast4 = "1234"),
+            base.copy(sourceAccount = AccountReference(bank, "unparseable1234")),
+            base.copy(sourceAccount = AccountReference(BankId("OTHER_BANK"), "1234")),
+            base.copy(sourceAccount = AccountReference(bank, "1234"), card = CardReference(BankId("OTHER_BANK"), "5678")))
+        for ((index, conflicting) in conflicts.withIndex()) {
+            val id = "contradiction$index"; capture(id, conflicting); approve(id, account)
+            val key = RoomBetaFinancialAdoption.key(id)
+            val batch = source().load(query)
+            assertNull(batch.postingFacts.single { it.key == key }.debitCard)
+            val result = BetaDashboardBuilder.build(batch)
+            val tx = result.snapshot.transactions.single { it.key == key }
+            assertTrue(tx.debitSpendingCards.isEmpty()); assertNull(result.snapshot.debitCards.single().spending)
+            assertEquals(account.id, tx.source); assertEquals(Money.of("10", Currency.SAR), tx.amount)
+        }
+    }
+
+    @Test fun missingAccountSuffixStillAllowsExactConfirmedGooglePayMadaParentRole() = runBlocking {
+        capture("google-pay", facts().copy(amount = Money.of("10", Currency.SAR), exchangeRate = null, internationalFee = null,
+            sourceAccount = null, debitSourceAccountLast4 = null, card = CardReference(bank, "5678"), cardChannel = CardChannel.DEBIT))
+        approve("google-pay", account)
+        val batch = source().load(query)
+        assertEquals(debit.id, batch.postingFacts.single().debitCard)
+        assertEquals(BigDecimal("10.00"), BetaDashboardBuilder.build(batch).snapshot.debitCards.single().spending!!.amount)
+    }
 }
