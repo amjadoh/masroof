@@ -68,14 +68,27 @@ class BetaOnboardingPermissionTest {
             }
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            fun clickWhenReady(tag: String) {
+                awaitEnabled(tag)
+                val node = compose.onNodeWithTag(tag)
+                node.performScrollTo()
+                compose.waitForIdle()
+                // A dismissed sheet can leave its Android window focused after its node is gone.
+                compose.waitUntil(10_000) {
+                    var focused = false
+                    scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
+                    focused
+                }
+                node.assertIsDisplayed().assertIsEnabled().performClick()
+            }
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
             awaitEnabled("beta-history")
-            compose.onNodeWithTag("beta-history").performScrollTo().performClick()
+            clickWhenReady("beta-history")
             awaitEnabled("history-days-7")
-            compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
+            clickWhenReady("history-days-7")
             awaitEnabled("history-start")
-            compose.onNodeWithTag("history-start").performScrollTo().performClick()
+            clickWhenReady("history-start")
             systemClick("permission_deny_button")
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
             BetaContainer(context).use { assertNull(it.historySession()); assertTrue(it.evidencePage().isEmpty()) }
@@ -83,27 +96,27 @@ class BetaOnboardingPermissionTest {
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("history-start").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
             awaitEnabled("history-close")
-            compose.onNodeWithTag("history-close").performScrollTo().performClick()
+            clickWhenReady("history-close")
             awaitEnabled("asset-add-BANK_ALJAZIRA")
-            compose.onNodeWithTag("asset-add-BANK_ALJAZIRA").performScrollTo().performClick()
+            clickWhenReady("asset-add-BANK_ALJAZIRA")
             awaitEnabled("asset-last4")
             compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
             compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
             awaitEnabled("asset-cancel")
-            compose.onNodeWithTag("asset-cancel").performScrollTo().performClick()
+            clickWhenReady("asset-cancel")
             awaitEnabled("beta-history")
-            compose.onNodeWithTag("beta-history").performScrollTo().performClick()
+            clickWhenReady("beta-history")
             awaitEnabled("history-days-7")
-            compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
+            clickWhenReady("history-days-7")
             awaitEnabled("history-start")
-            compose.onNodeWithTag("history-start").performScrollTo().performClick()
+            clickWhenReady("history-start")
             systemClick("permission_allow_button")
             compose.waitUntil(15_000) { runCatching { compose.onNodeWithTag("history-close").assertIsEnabled(); compose.onNodeWithTag("history-progress").assertExists(); true }.getOrDefault(false) }
             assertEquals(PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_SMS))
             // Grant follows this explicit Start; nothing was read on welcome, denial, or recreation.
             BetaContainer(context).use { assertNotNull(it.historySession()); assertEquals(7L * 86_400_000L, it.historySession()!!.until - it.historySession()!!.from) }
             awaitEnabled("history-close")
-            compose.onNodeWithTag("history-close").performScrollTo().performClick()
+            clickWhenReady("history-close")
             compose.onNodeWithTag("beta-return").assertIsEnabled()
         }
         kotlinx.coroutines.runBlocking { kotlinx.coroutines.withContext(com.baraa.masroof.lab.beta.BetaIo.dispatcher) {} }

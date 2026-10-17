@@ -36,17 +36,26 @@ class BetaDashboardExplorationActivityTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val key = PostingKey(Environment.BETA, "synthetic-full-activity")
     private fun waitLoaded() { compose.waitUntil(20000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }
-    private fun route(name: String) {
+    private fun route(name: String, scenario: ActivityScenario<BetaActivity>) {
         val tag = "dash-route-$name"
-        compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
-        compose.onNodeWithTag(tag).performScrollTo().assertIsEnabled().performClick()
-        compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
-        if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
+        try {
+            compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
+            compose.onNodeWithTag(tag).performScrollTo()
+            compose.waitForIdle()
+            // A dismissed dialog may leave its Android window focused after its nodes disappear.
+            compose.waitUntil(15000) { var focused = false; scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }; focused }
+            compose.onNodeWithTag(tag).assertIsDisplayed().assertIsEnabled().performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
+            if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
+        } catch (failure: Throwable) {
+            runCatching { println(compose.onRoot(useUnmergedTree = true).printToString()); screenshot("activity-route-failed-$name", false) }
+            throw failure
+        }
     }
     private fun closed() { val latch = CountDownLatch(1); BetaIo.execute { latch.countDown() }; assertTrue(latch.await(15, TimeUnit.SECONDS)) }
-    private fun screenshot(name: String) {
+    private fun screenshot(name: String, assertChrome: Boolean = true) {
         compose.waitForIdle()
-        compose.onNodeWithTag("beta-badge").assertIsDisplayed(); compose.onNodeWithTag("beta-return").assertIsDisplayed()
+        if (assertChrome) { compose.onNodeWithTag("beta-badge").assertIsDisplayed(); compose.onNodeWithTag("beta-return").assertIsDisplayed() }
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun command(value: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(value)).use { it.readBytes() }
         command("mkdir -p /sdcard/beta-dashboard-screenshots")
@@ -83,13 +92,13 @@ class BetaDashboardExplorationActivityTest {
                     assertEquals(1f, activity.resources.configuration.fontScale, .001f)
                     println("BetaActivity visual metrics: api=${android.os.Build.VERSION.SDK_INT}, fontScale=${activity.resources.configuration.fontScale}, screenDp=${activity.resources.configuration.screenWidthDp}x${activity.resources.configuration.screenHeightDp}, densityDpi=${activity.resources.configuration.densityDpi}, direction=RTL")
                 }
-                route("TRANSACTIONS")
+                route("TRANSACTIONS", scenario)
                 compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
                 compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText("42.35 SAR").assertExists()
                 screenshot("activity-rtl-transaction-detail")
                 scenario.recreate(); waitLoaded(); compose.onNodeWithTag("transaction-detail").assertExists()
                 compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
-                route("ANALYSIS")
+                route("ANALYSIS", scenario)
                 val day = postedAt.atZone(ZoneId.of("Asia/Riyadh")).toLocalDate()
                 compose.onNodeWithTag("chart-day-$day").performScrollTo()
                 screenshot("activity-rtl-chart")
@@ -112,18 +121,18 @@ class BetaDashboardExplorationActivityTest {
                 compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
                 val chosen = BetaDashboardViewPreferencesWorkflow(context).read()
                 assertEquals(TrendScope.FINANCIAL_OUTFLOWS, chosen.choice.scope); assertFalse(chosen.bars)
-                route("OVERVIEW"); compose.onNodeWithText("42.35 SAR").assertExists()
+                route("OVERVIEW", scenario); compose.onNodeWithText("42.35 SAR").assertExists()
             }
             closed()
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
-                waitLoaded(); route("ANALYSIS"); compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
+                waitLoaded(); route("ANALYSIS", scenario); compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").assertIsSelected()
                 compose.onNodeWithTag("chart-category-FEES").performScrollTo().assertIsSelected()
                 compose.onNodeWithTag("chart-table").performScrollTo().assertIsSelected()
                 compose.onNodeWithTag("dash-sheet-cancel").performClick()
                 compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-                route("CONFIGURATION"); compose.onNodeWithTag("dash-configuration").assertExists()
+                route("CONFIGURATION", scenario); compose.onNodeWithTag("dash-configuration").assertExists()
                 screenshot("activity-rtl-configuration")
                 scenario.recreate(); waitLoaded(); compose.onNodeWithTag("dash-route-CONFIGURATION").assertIsSelected()
             }

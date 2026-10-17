@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Match the existing production host RTL capability in this isolated synthetic test host. -->
-    <application android:supportsRtl="true" />
+    <application android:supportsRtl="true" android:label="@string/beta_title"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar" />
 </manifest>
