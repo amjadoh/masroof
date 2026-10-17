@@ -40,15 +40,22 @@ class BetaDashboardExplorationActivityTest {
         val tag = "dash-route-$name"
         try {
             compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
-            compose.onNodeWithTag(tag).performScrollTo()
+            compose.waitUntil(15000) {
+                compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
+                    compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+            }
             compose.waitForIdle()
             // A dismissed dialog may leave its Android window focused after its nodes disappear.
             compose.waitUntil(15000) { var focused = false; scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }; focused }
-            compose.onNodeWithTag(tag).assertIsDisplayed().assertIsEnabled().performClick()
+            compose.waitUntil(15000) {
+                runCatching { compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
+            }
+            compose.onNodeWithTag(tag).performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
             if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
         } catch (failure: Throwable) {
-            runCatching { println(compose.onRoot(useUnmergedTree = true).printToString()); screenshot("activity-route-failed-$name", false) }
+            runCatching { println(compose.onRoot(useUnmergedTree = true).printToString()) }
+            runCatching { screenshot("activity-route-failed-$name", false) }
             throw failure
         }
     }
