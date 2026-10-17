@@ -39,6 +39,8 @@ fun BetaShell(
     onOpenDiscovery: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenReview: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    showMaintenanceActions: Boolean = true,
     onAddAsset: (BankId) -> Unit = {},
     onEditAsset: (OwnedAsset) -> Unit = {},
     returnEnabled: Boolean = true,
@@ -83,6 +85,7 @@ fun BetaShell(
             }
             Text(stringResource(R.string.beta_welcome), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.beta_welcome_steps))
+            OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_settings_title)) }
             OutlinedButton(enabled = !busy, onClick = onOpenDiscovery, modifier = Modifier.testTag("beta-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
             Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
@@ -136,6 +139,7 @@ fun BetaShell(
                     }
                 }
             }
+            if (showMaintenanceActions) {
             OutlinedButton(
                 enabled = !busy,
                 onClick = onBackup,
@@ -162,6 +166,7 @@ fun BetaShell(
                     .testTag("beta-reset"),
             ) {
                 Text(stringResource(R.string.beta_reset))
+            }
             }
             Text(stringResource(R.string.beta_marker_count, markerCount), style = MaterialTheme.typography.bodySmall)
             if (restoreMissing) Text(stringResource(R.string.beta_restore_missing), color = MaterialTheme.colorScheme.error)

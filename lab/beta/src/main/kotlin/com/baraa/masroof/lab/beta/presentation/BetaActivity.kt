@@ -34,11 +34,17 @@ class BetaActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
             // Destruction queues behind this creation even if the lifecycle cancels its result.
-            val container = withContext(BetaIo.dispatcher) {
+            val container = try { withContext(BetaIo.dispatcher) {
                 BetaContainer(applicationContext).also { betaContainer = it }
+            } } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                setContent { MaterialTheme { BetaStartupFailure(onRetry = { recreate() }, onReturn = { finish() }) } }
+                return@launch
             }
             setContent {
-            MaterialTheme {
+            var betaTheme by remember { mutableStateOf("SYSTEM") }
+            val dark = when (betaTheme) { "DARK" -> true; "LIGHT" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
+            MaterialTheme(colorScheme = if (dark) androidx.compose.material3.darkColorScheme() else androidx.compose.material3.lightColorScheme()) {
                 val shellContainer = remember { container }
                 val scope = rememberCoroutineScope()
                 var markerCount by remember { mutableIntStateOf(0) }
@@ -54,6 +60,7 @@ class BetaActivity : ComponentActivity() {
                 var proposalRevision by rememberSaveable { mutableStateOf<String?>(null) }
                 var proposalKind by rememberSaveable { mutableStateOf<String?>(null) }
                 var reviewOpen by rememberSaveable { mutableStateOf(false) }
+                var settingsOpen by rememberSaveable { mutableStateOf(false) }
                 var historyOpen by rememberSaveable { mutableStateOf(false) }
                 var editBank by rememberSaveable { mutableStateOf<String?>(null) }
                 var editId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,11 +71,12 @@ class BetaActivity : ComponentActivity() {
                     try {
                         val snapshot = withContext(BetaIo.dispatcher) {
                             val restored = action()
-                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored)
+                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme)
                         }
                         markerCount = snapshot.markers
                         banks = snapshot.banks
                         assets = snapshot.assets
+                        betaTheme = snapshot.theme
                         loaded = true
                         restoreMissing = snapshot.restored == false
                         return true
@@ -87,15 +95,17 @@ class BetaActivity : ComponentActivity() {
                 }
                 LaunchedEffect(Unit) { execute { null } }
                 BetaShell(
-                    onOpenDiscovery = { if (!busy) discoveryOpen = true },
-                    onOpenHistory = { if (!busy) historyOpen = true },
-                    onOpenReview = { if (!busy) reviewOpen = true },
+                    showMaintenanceActions = false,
+                    onOpenDiscovery = { if (!busy) { discoveryOpen = true; historyOpen = false; reviewOpen = false; settingsOpen = false; editBank = null } },
+                    onOpenHistory = { if (!busy) { historyOpen = true; discoveryOpen = false; reviewOpen = false; settingsOpen = false; editBank = null } },
+                    onOpenReview = { if (!busy) { reviewOpen = true; historyOpen = false; discoveryOpen = false; settingsOpen = false; editBank = null } },
+                    onOpenSettings = { if (!busy) { settingsOpen = true; historyOpen = false; reviewOpen = false; discoveryOpen = false; editBank = null; editId = null; proposalId = null } },
                     markerCount = markerCount,
                     assets = assets,
                     returnEnabled = !historyBusy && (editBank == null || !busy),
                     onAddAsset = { bank -> if (!busy) { editBank = bank.value; editId = null; proposalId = null; failed = false } },
                     onEditAsset = { asset -> if (!busy) { editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false } },
-                    editor = if (reviewOpen && loaded) ({ BetaReviewPanel(shellContainer, onClose = { reviewOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
+                    editor = if (settingsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { settingsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (reviewOpen && loaded) ({ BetaReviewPanel(shellContainer, onClose = { reviewOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
                         onSelect = { proposal -> editBank = proposal.id.bank.value; editId = null; proposalId = proposal.id.localId; proposalSuffix = proposal.last4; proposalKind = proposal.kind.name; proposalEvidence = proposal.evidenceId; proposalRevision = proposal.revision },
                         onClose = { discoveryOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = { historyOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (editBank != null && loaded) ({
                         key(editBank, editId) {
@@ -158,4 +168,5 @@ private data class BetaScreenSnapshot(
     val banks: List<BetaBankChoice>,
     val assets: List<OwnedAsset>,
     val restored: Boolean?,
+    val theme: String,
 )
