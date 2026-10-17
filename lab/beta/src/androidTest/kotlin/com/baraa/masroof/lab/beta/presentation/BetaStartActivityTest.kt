@@ -23,13 +23,24 @@ import org.junit.Assert.*
 class BetaStartActivityTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
+    private var originalLocales: android.os.LocaleList? = null
     private fun isolatedEmulator() = context.packageName == "com.baraa.masroof.lab.beta.test" &&
         (Build.HARDWARE in setOf("ranchu", "goldfish") || Build.FINGERPRINT.contains("generic"))
     @Before fun setup() {
         Assume.assumeTrue("Synthetic emulator only", isolatedEmulator())
         BetaContainer.resetOffline(context)
     }
-    @After fun cleanup() { if (isolatedEmulator()) { drain(); BetaContainer.resetOffline(context) } }
+    @After fun cleanup() {
+        if (isolatedEmulator()) {
+            if (Build.VERSION.SDK_INT >= 33) originalLocales?.let { original ->
+                InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                    context.getSystemService(android.app.LocaleManager::class.java).applicationLocales = original
+                }
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            }
+            drain(); BetaContainer.resetOffline(context)
+        }
+    }
 
     @Test fun freshWelcomeSurvivesBackAndRecreationUntilExplicitStart() {
         val protected = protectedFiles()
@@ -60,12 +71,23 @@ class BetaStartActivityTest {
     }
 
     @Test fun previousBetaDataRequiresExplicitResumeAndIsNeverReset() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val locales = context.getSystemService(android.app.LocaleManager::class.java)
+            originalLocales = locales.applicationLocales
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                locales.applicationLocales = android.os.LocaleList.forLanguageTags("ar")
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        }
         val protected = protectedFiles(); val before = protected.map(::hash)
         val bank = BankId("BANK_ALJAZIRA")
         val asset = OwnedAsset(AssetId(Environment.BETA, bank, "synthetic-m0-existing"), AssetKind.ACCOUNT, "4321")
         BetaContainer(context).use { beta -> beta.registerAsset(asset); beta.setBankEnabled(bank, true); beta.putMarker("human-note", "synthetic-keep"); beta.putPreferenceProbe("keep") }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             await("beta-start-existing"); compose.onNodeWithTag("dash-refresh").assertDoesNotExist()
+            if (Build.VERSION.SDK_INT >= 33) scenario.onActivity {
+                assertEquals(android.view.View.LAYOUT_DIRECTION_RTL, it.resources.configuration.layoutDirection)
+            }
             capture("m0-existing-preserved")
             compose.onNodeWithTag("beta-return").performClick()
         }
@@ -112,10 +134,10 @@ class BetaStartActivityTest {
         assertTrue(command("cat /sdcard/beta-dashboard-screenshots/$name.png").size > 8)
         val tags = compose.onRoot(useUnmergedTree = true).printToString()
         val metadata = "api=${Build.VERSION.SDK_INT}\nhardware=${Build.HARDWARE}\n" + context.resources.configuration.toString() + "\n" + tags
-        val encoded = android.util.Base64.encodeToString(metadata.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
-        // executeShellCommand does not interpret pipes/redirection unless an explicit shell owns them.
-        command("sh -c 'echo $encoded | base64 -d > /sdcard/beta-dashboard-screenshots/$name.txt'")
-        val saved = command("cat /sdcard/beta-dashboard-screenshots/$name.txt").toString(Charsets.UTF_8)
+        val directory = File(context.getExternalFilesDir(null), "m0-entry").apply { check(isDirectory || mkdirs()) }
+        val file = File(directory, "$name.txt")
+        file.writeText(metadata)
+        val saved = file.readText()
         assertTrue(saved.contains("api=${Build.VERSION.SDK_INT}") && saved.contains("hardware=${Build.HARDWARE}"))
     }
 }
