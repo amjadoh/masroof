@@ -24,6 +24,8 @@ data class DashboardCoverage(
     val completeRegistry: Boolean,
     val completeFeeFacts: Boolean,
     val reviewRequiredCount: Int?,
+    /** True only for a runtime source reading all collections in one database snapshot. */
+    val atomicRuntimeSource: Boolean = false,
 ) {
     init { require(reviewRequiredCount == null || reviewRequiredCount >= 0) }
 }
