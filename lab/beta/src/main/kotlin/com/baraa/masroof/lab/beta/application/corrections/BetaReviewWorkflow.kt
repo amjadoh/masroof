@@ -67,7 +67,21 @@ class BetaReviewWorkflow(private val database: BetaDatabase) {
         val detail = detail(token.key) ?: return@withTransaction BetaCorrectionResult.Rejected(CorrectionRejection.IDENTITY)
         if (detail.token != token) return@withTransaction BetaCorrectionResult.Rejected(CorrectionRejection.STALE)
         val registry = BetaAssetRegistry(database).all().associateBy { it.id }
-        if (detail.observation.input.assets.any { (id, asset) -> registry[id] != asset })
+        val selected = detail.current?.overlay?.let { CorrectionSnapshots.export(it).financial }
+            ?: detail.stored?.classification?.input ?: detail.observation.input
+        val inputs = listOf(selected) + detail.stored?.observations.orEmpty().map { it.input }
+        val expected = detail.observation.input.assets + inputs.flatMap { it.assets.entries }.associate { it.toPair() }
+        val relevant = inputs.flatMap { listOfNotNull((it.source as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id,
+            (it.destination as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id, it.financingLoan) }.toMutableSet()
+        (decision as? FinancialDecision.EditFacts)?.let { edit ->
+            listOfNotNull((edit.source as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id,
+                (edit.destination as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id).forEach(relevant::add)
+        }
+        var frontier = relevant.toList()
+        while (frontier.isNotEmpty()) {
+            frontier = frontier.mapNotNull { expected[it]?.parentId }.filter { relevant.add(it) }
+        }
+        if (relevant.any { expected[it] == null || registry[it] != expected[it] })
             return@withTransaction BetaCorrectionResult.Rejected(CorrectionRejection.STALE)
         val revision = Math.addExact(maxOf(token.correction, token.ledgerRevision?.correction ?: 0), 1)
         RoomBetaCorrectionLifecycle(database).submit(detail.observation, CorrectionRequest(decisionId, token.key, revision,
