@@ -111,8 +111,17 @@ class RoomBetaFinancialLedger internal constructor(
     suspend fun read(key: PostingKey): StoredFinancialPosting? {
         require(key.environment == Environment.BETA)
         return database.withTransaction {
+            database.financialAdoptionDao().transaction(key.transactionId)?.let { adopted ->
+                if (adopted.status != "ACTIVE" || database.financialAdoptionDao().retry(adopted.evidenceId) != null)
+                    return@withTransaction null
+            }
             val correction = readBetaCorrectionState(database, key)
-            if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) null else readCurrent(key)
+            if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) return@withTransaction null
+            val current = readCurrent(key) ?: return@withTransaction null
+            // Manual configuration changes must not expose stale endpoints even for older explicit
+            // ledger/correction rows that predate archive adoption. Audit remains unchanged.
+            val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+            if (current.classification.input.assets.any { (id, asset) -> registry[id] != asset }) null else current
         }
     }
 
