@@ -8,6 +8,13 @@ import com.baraa.masroof.lab.finance.value.Environment
 import com.baraa.masroof.lab.beta.application.corrections.BetaLedgerActivity
 import java.util.Collections
 
+/** Unused registry snapshots in an old payload are historical context, not financial dependencies. */
+internal fun financialRegistryDependencies(input: FinancialClassificationInput): Set<com.baraa.masroof.lab.finance.asset.AssetId> {
+    val endpoints = listOfNotNull((input.source as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id,
+        (input.destination as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id, input.financingLoan).toSet()
+    return endpoints + endpoints.mapNotNull { input.assets[it]?.parentId }
+}
+
 /** Beta-only durable financial boundary. No intake, parser, dashboard or live posting adoption.
  * Targeted current/claim lookups only: financial history is never replayed on a write/read.
  */
@@ -111,8 +118,18 @@ class RoomBetaFinancialLedger internal constructor(
     suspend fun read(key: PostingKey): StoredFinancialPosting? {
         require(key.environment == Environment.BETA)
         return database.withTransaction {
+            database.financialAdoptionDao().transaction(key.transactionId)?.let { adopted ->
+                if (adopted.status != "ACTIVE" || database.financialAdoptionDao().retry(adopted.evidenceId) != null)
+                    return@withTransaction null
+            }
             val correction = readBetaCorrectionState(database, key)
-            if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) null else readCurrent(key)
+            if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) return@withTransaction null
+            val current = readCurrent(key) ?: return@withTransaction null
+            // Manual configuration changes must not expose stale endpoints even for older explicit
+            // ledger/correction rows that predate archive adoption. Audit remains unchanged.
+            val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+            val snapshots = listOf(current.classification.input) + current.observations.map { it.input }
+            if (snapshots.any { input -> financialRegistryDependencies(input).any { id -> input.assets[id] == null || registry[id] != input.assets[id] } }) null else current
         }
     }
 
