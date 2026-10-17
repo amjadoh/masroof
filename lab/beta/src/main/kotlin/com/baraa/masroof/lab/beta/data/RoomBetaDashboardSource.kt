@@ -348,7 +348,8 @@ class RoomBetaDashboardSource(
                     reviewRequiredCount = reviewCount, atomicRuntimeSource = true, completeMerchantFacts = completeMerchantFacts, completeUserCommitments = configuration?.revision?.let { it > 0 } == true),
                 frozenPeriods, assetFacts = Collections.unmodifiableList(assetFacts), postingFacts = Collections.unmodifiableList(postingFacts),
                 fees = Collections.unmodifiableList(fees), commitmentOccurrences = Collections.unmodifiableList(occurrences),
-                settlementPeriods = Collections.unmodifiableMap(settlementPeriods))
+                settlementPeriods = Collections.unmodifiableMap(settlementPeriods),
+                feeProofKeys = Collections.unmodifiableSet(knownFees.filterTo(linkedSetOf()) { it in includedKeys }))
         }
     }
 }

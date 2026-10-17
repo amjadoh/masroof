@@ -92,4 +92,6 @@ data class DashboardReadBatch(
     val commitmentOccurrences: List<CommitmentRow> = emptyList(),
     /** Complete settlement-only windows since each authoritative statement; other outside rows are forbidden. */
     val settlementPeriods: Map<AssetId, DisplayPeriod> = emptyMap(),
+    /** Per-row exact fee amount/absence proof, bound through current posting metadata or fee identity. */
+    val feeProofKeys: Set<PostingKey> = emptySet(),
 )

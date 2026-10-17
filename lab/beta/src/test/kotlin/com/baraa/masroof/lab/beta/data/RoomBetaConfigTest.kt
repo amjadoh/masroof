@@ -15,6 +15,7 @@ import com.baraa.masroof.lab.finance.dashboard.producer.*
 import com.baraa.masroof.lab.finance.posting.*
 import com.baraa.masroof.lab.finance.value.*
 import java.time.*
+import java.math.BigDecimal
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executor
 import kotlinx.coroutines.*
@@ -104,10 +105,10 @@ class RoomBetaConfigTest {
         assertTrue(db.dashboardAuxFactsDao().evidence("statement")!!.statementProved)
         assertTrue(controls().save(0, BetaDashboardConfigurationDraft(BetaSalaryCycle(27), listOf(BetaFacilityCycle(facility.id, 10)))) is BetaDashboardConfigurationWrite.Saved)
     }
-    private suspend fun payment(id: String, amount: String, at: String, currency: Currency = Currency.SAR) {
+    private suspend fun payment(id: String, amount: String, at: String, currency: Currency = Currency.SAR, fx: AppliedFx? = null) {
         val input = FinancialClassificationInput(PostingKey(Environment.BETA, id), PostingRevision(0, 1), FinancialType.CREDIT_CARD_PAYMENT,
             Money.of(amount, currency), TransactionTime(Instant.parse(at), zone), FinancialEndpoint.Owned(account.id),
-            FinancialEndpoint.Owned(card.id), listOf(account, facility, card).associateBy { it.id }, setOf("evidence-$id"), true)
+            FinancialEndpoint.Owned(card.id), listOf(account, facility, card).associateBy { it.id }, setOf("evidence-$id"), true, appliedFx = fx)
         assertTrue(RoomBetaFinancialLedger(db).post(input) is FinancialPostingResult.Applied)
     }
 
@@ -149,6 +150,46 @@ class RoomBetaConfigTest {
         assertTrue(snapshot.transactions.isEmpty())
         assertEquals(PaymentStatus.PAID, snapshot.commitments!!.rows.single().status)
         assertEquals(Money.of("0", Currency.SAR), snapshot.commitments!!.remaining)
+    }
+
+    @Test fun outsideFeeGapDoesNotPoisonSelectedPurchases() = runBlocking {
+        statement()
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
+        val at = Instant.parse("2026-10-10T12:00:00Z")
+        for (id in listOf("purchase1", "purchase2")) {
+            val store = RoomBetaEvidenceStore(db)
+            val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "synthetic")
+            store.capture(CapturedEvidence(id, EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
+                EvidenceMessage(id, "AlJazira", "synthetic purchase", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
+            store.begin(id, at)
+            val facts = Facts(MessageFamily.PURCHASE, Money.of("23", Currency.USD), MoneyDirection.OUTGOING,
+                card = CardReference(bank, "7271"), cardChannel = CardChannel.CREDIT, merchant = "Synthetic Store",
+                occurredAt = at, exchangeRate = BigDecimal("3.756957"), internationalFee = Money.of("1.99", Currency.SAR))
+            val archive = InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
+                ParseStatus.SUCCESS, null, emptyList(), emptySet()))
+            store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
+            val service = RoomBetaFinancialAdoption(db)
+            val review = service.reviewPage().single { it.evidenceId == id }
+            assertTrue(service.approve(BetaFinancialApproval(id, review.archiveRevision, null, FinancialType.EXPENSE, card.id, null)) is BetaFinancialAdoptionResult.Posted)
+        }
+        payment("outside", "10", "2026-09-22T12:00:00Z", Currency.USD, AppliedFx(BigDecimal("3.75"), "SMS"))
+        val keys = setOf(RoomBetaFinancialAdoption.key("purchase1"), RoomBetaFinancialAdoption.key("purchase2"))
+        val before = keys.associateWith { RoomBetaFinancialLedger(db).read(it) }
+        val batch = source().load(query)
+        assertFalse(batch.coverage.completeFeeFacts)
+        assertEquals(keys, batch.feeProofKeys)
+        val result = BetaDashboardBuilder.build(batch)
+        assertEquals(BigDecimal("176.80"), result.financialSummary!!.metrics.getValue(SummaryMetric.CREDIT_PURCHASES)!!.amount)
+        assertEquals(BigDecimal("176.80"), result.snapshot.analysis!!.merchants.single().net.amount)
+        assertFalse(DashboardSection.MERCHANT_TOTALS in result.unavailableSections)
+        assertNull(BetaDashboardBuilder.build(batch.copy(feeProofKeys = emptySet())).financialSummary!!.metrics.getValue(SummaryMetric.CREDIT_PURCHASES))
+        assertNull(result.snapshot.commitments!!.total) // The outside SMS payment has no proved fee amount/absence.
+        assertTrue(result.snapshot.commitments!!.rows.isEmpty())
+        assertEquals(before, keys.associateWith { RoomBetaFinancialLedger(db).read(it) })
+        assertEquals(AppliedFx(BigDecimal("3.756957"), "SMS"), batch.rows.first { it.posting.command.key in keys }.posting.command.appliedFx)
+        assertThrows(IllegalArgumentException::class.java) {
+            BetaDashboardBuilder.build(batch.copy(feeProofKeys = batch.feeProofKeys + PostingKey(Environment.BETA, "outside")))
+        }
     }
 
     @Test fun unknownSettlementFxIsNotKnownZero() = runBlocking {
