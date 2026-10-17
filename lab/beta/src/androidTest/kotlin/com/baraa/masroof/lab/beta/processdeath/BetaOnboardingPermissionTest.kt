@@ -69,17 +69,40 @@ class BetaOnboardingPermissionTest {
         }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             fun clickWhenReady(tag: String) {
-                awaitEnabled(tag)
-                val node = compose.onNodeWithTag(tag)
-                node.performScrollTo()
-                compose.waitForIdle()
-                // A dismissed sheet can leave its Android window focused after its node is gone.
-                compose.waitUntil(10_000) {
-                    var focused = false
-                    scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
-                    focused
+                try {
+                    awaitEnabled(tag)
+                    if (tag == "beta-history" || tag.startsWith("asset-add-")) {
+                        compose.waitUntil(10_000) {
+                            compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
+                                compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+                        }
+                    }
+                    val node = compose.onNodeWithTag(tag)
+                    compose.waitForIdle()
+                    compose.waitUntil(10_000) {
+                        var focused = false
+                        scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
+                        focused
+                    }
+                    // Returning home hydrates the dashboard above these controls. Scroll readiness
+                    // may repeat while its height settles; the actual destination click happens once.
+                    compose.waitUntil(10_000) {
+                        runCatching { node.performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
+                    }
+                    node.performClick()
+                } catch (failure: Throwable) {
+                    runCatching {
+                        println("Navigation failure tag=$tag bounds=${compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot}")
+                    }
+                    runCatching {
+                        val directory = java.io.File(context.getExternalFilesDir(null), "beta-permission-diagnostics").apply { mkdirs() }
+                        automation.takeScreenshot()?.let { bitmap ->
+                            try { java.io.File(directory, "navigation-$tag.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
+                            finally { bitmap.recycle() }
+                        }
+                    }
+                    throw failure
                 }
-                node.assertIsDisplayed().assertIsEnabled().performClick()
             }
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
