@@ -380,13 +380,15 @@ class BetaContainer(
             BetaBackupRecovery(appContext).clear()
             BetaEnvironment.requireBetaDatabaseName(BetaEnvironment.DATABASE_NAME)
             BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME)
-            appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)
-            appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
+            val live = appContext.getDatabasePath(BetaEnvironment.DATABASE_NAME)
+            check(!live.exists() || appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)) { "Could not clear Beta database" }
+            check(appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
-                .commit()
-            backupDatabase(appContext).delete()
-            backupPreferences(appContext).delete()
+                .commit()) { "Could not clear Beta preferences" }
+            listOf(backupDatabase(appContext), backupPreferences(appContext)).forEach { file ->
+                check(!file.exists() || file.delete()) { "Could not clear legacy Beta snapshot" }
+            }
         }
 
         private fun importPreferences(context: Context, file: File) {

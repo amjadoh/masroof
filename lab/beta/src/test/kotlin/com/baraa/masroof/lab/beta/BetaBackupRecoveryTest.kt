@@ -109,8 +109,13 @@ class BetaBackupRecoveryTest {
         }
         val root = File(context.filesDir, "beta_recovery_v1")
         assertTrue(root.listFiles()!!.any { it.isDirectory && it.name.startsWith("restore-") })
+        val installation = File(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).parentFile, "masroof_beta_restore_install.tmp")
+        installation.writeText("synthetic interrupted database copy")
+        val legacyDatabase = File(context.filesDir, BetaEnvironment.BACKUP_DATABASE_FILE_NAME).also { it.writeText("synthetic old Beta snapshot") }
+        val legacyPreferences = File(context.filesDir, BetaEnvironment.BACKUP_PREFS_FILE_NAME).also { it.writeText("synthetic old Beta preferences") }
         BetaContainer.resetOffline(context)
         assertTrue(root.listFiles()!!.none { it.isDirectory })
+        assertFalse(installation.exists()); assertFalse(legacyDatabase.exists()); assertFalse(legacyPreferences.exists())
         BetaContainer(context).use { beta -> assertEquals(0, beta.markerCount()); assertFalse(beta.settings().backupAvailable); assertNull(beta.preferenceProbe()) }
     }
 

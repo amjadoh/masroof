@@ -73,6 +73,11 @@ is deferred; explicit confirmed Beta reset erases these validated stage director
 as well as published generations. Metadata deletion is verified before deleting
 recovery originals, so an I/O failure cannot leave a journal pointing to discarded
 rollback material.
+Confirmed reset also checks deletion of the exact Beta installation temporary file,
+the existing flat Beta backups, the live Beta database and Beta preferences; a
+reported deletion/commit failure cannot be shown as successful reset. Reset is an
+explicit destructive operation, not a transaction that promises rollback of an
+already erased database after subsequent preference/storage failure.
 
 The live database is closed before container maintenance. Offline restore callers
 must likewise have no open database handles; the actual Activity serializes all

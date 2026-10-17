@@ -159,6 +159,8 @@ internal class BetaBackupRecovery(
         // abandoned pre-journal stage. Never prune an active recovery original.
         root.listFiles()?.filter { it.isDirectory && it.name.startsWith("restore-") }
             ?.forEach { check(child(it.name, "restore-").deleteRecursively()) }
+        val installation = File(live.parentFile, "masroof_beta_restore_install.tmp")
+        check(!installation.exists() || installation.delete()) { "Could not clear Beta installation stage" }
     }
 
     private fun verify(folder: File) {
