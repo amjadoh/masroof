@@ -139,6 +139,8 @@ jobs:
             ./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace
             mkdir -p m19-statement-screenshots
             adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
+            mkdir -p beta-dashboard-screenshots
+            adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
             find m19-statement-screenshots -name 'm19-*.png' | grep -q .
 
       - name: Upload statement reconciliation screenshots
@@ -161,6 +163,7 @@ jobs:
             lab/android/build/outputs/androidTest-results/connected/debug/
             lab/beta/build/reports/androidTests/connected/debug/
             lab/beta/build/outputs/androidTest-results/connected/debug/
+            beta-dashboard-screenshots/
           if-no-files-found: warn
 
   # Separate from emulator-smoke so clearPackageData=true cannot wipe the database

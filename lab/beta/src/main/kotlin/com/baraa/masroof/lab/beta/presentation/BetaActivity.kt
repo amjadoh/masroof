@@ -47,6 +47,11 @@ class BetaActivity : ComponentActivity() {
             MaterialTheme(colorScheme = if (dark) androidx.compose.material3.darkColorScheme() else androidx.compose.material3.lightColorScheme()) {
                 val shellContainer = remember { container }
                 val scope = rememberCoroutineScope()
+                val dashboardWorkflow = remember(shellContainer) {
+                    com.baraa.masroof.lab.beta.application.BetaDashboardWorkflow({ query, periods ->
+                        withContext(BetaIo.dispatcher) { shellContainer.dashboard(query, periods) }
+                    })
+                }
                 var markerCount by remember { mutableIntStateOf(0) }
                 var restoreMissing by remember { mutableStateOf(false) }
                 var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
@@ -97,6 +102,7 @@ class BetaActivity : ComponentActivity() {
                 LaunchedEffect(Unit) { execute { null } }
                 BetaShell(
                     showMaintenanceActions = false,
+                    dashboard = { BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy) },
                     onOpenDiscovery = { if (!busy) { discoveryOpen = true; historyOpen = false; reviewOpen = false; approvalOpen = false; settingsOpen = false; editBank = null } },
                     onOpenHistory = { if (!busy) { historyOpen = true; discoveryOpen = false; reviewOpen = false; approvalOpen = false; settingsOpen = false; editBank = null } },
                     onOpenApproval = { if (!busy) { approvalOpen = true; historyOpen = false; reviewOpen = false; discoveryOpen = false; settingsOpen = false; editBank = null } },
