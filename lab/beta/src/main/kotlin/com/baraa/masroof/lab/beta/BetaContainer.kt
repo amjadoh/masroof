@@ -77,6 +77,18 @@ class BetaContainer(
             com.baraa.masroof.lab.beta.data.RoomBetaDashboardSource(database, periods)).readWithCoverage(query) }
     }
 
+    /** Controls retain the lifecycle lock on every operation, including callers holding this facade across restore. */
+    fun dashboardControls(): com.baraa.masroof.lab.beta.application.BetaDashboardControls = object : com.baraa.masroof.lab.beta.application.BetaDashboardControls {
+        override suspend fun read() = kotlinx.coroutines.withContext(BetaIo.dispatcher) { lock.withLock {
+            check(!closed)
+            runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaDashboardConfiguration(database).read() }
+        } }
+        override suspend fun save(expectedRevision: Long, draft: com.baraa.masroof.lab.beta.application.BetaDashboardConfigurationDraft) = kotlinx.coroutines.withContext(BetaIo.dispatcher) { lock.withLock {
+            check(!closed)
+            runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaDashboardConfiguration(database).save(expectedRevision, draft) }
+        } }
+    }
+
     fun financialReviewPage(afterId: String = "", limit: Int = 25) = lock.withLock {
         check(!closed)
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).reviewPage(afterId, limit) }

@@ -1,5 +1,7 @@
 package com.baraa.masroof.lab.beta.data
 
+import com.baraa.masroof.lab.beta.application.BetaConfiguredPeriods
+import com.baraa.masroof.lab.beta.application.BetaDashboardConfigurationDraft
 import android.database.Cursor
 import androidx.room.withTransaction
 import androidx.sqlite.db.SimpleSQLiteQuery
@@ -44,10 +46,6 @@ class RoomBetaDashboardSource(
 
     override suspend fun load(query: DashboardQuery): DashboardReadBatch {
         require(query.environment == Environment.BETA && query.currency == Currency.SAR)
-        val frozenPeriods = periods.copy(statements = Collections.unmodifiableMap(LinkedHashMap(periods.statements)))
-        val windows = listOf(DisplayPeriod(query.from, query.until, query.zone, PeriodKind.SELECTED, null)) +
-            listOfNotNull(frozenPeriods.salary, frozenPeriods.calendar) + frozenPeriods.statements.values
-        require(windows.all { it.zone == query.zone })
         return database.withTransaction {
             val readAt = clock.instant()
             val digest = MessageDigest.getInstance("SHA-256")
@@ -58,10 +56,19 @@ class RoomBetaDashboardSource(
                 if (bytes != null) digest.update(bytes)
             }
             fingerprint("BETA_DASHBOARD_CURRENT_1")
-            fingerprint(query.toString()); fingerprint(frozenPeriods.toString())
+            fingerprint(query.toString())
             val schema = database.openHelper.readableDatabase.version
-            check(schema in 6..9) { "Unsupported Beta dashboard schema" }
+            check(schema in 6..10) { "Unsupported Beta dashboard schema" }
             fingerprint(schema.toString())
+            val configuration = if (schema >= 10) RoomBetaDashboardConfiguration(database).current() else null
+            val configured = configuration?.takeIf { it.revision > 0 }?.let { BetaConfiguredPeriods.periods(it.draft, query, readAt) } ?: DashboardPeriods()
+            val frozenPeriods = DashboardPeriods(periods.salary ?: configured.salary, periods.calendar ?: configured.calendar,
+                Collections.unmodifiableMap(LinkedHashMap(configured.statements + periods.statements)))
+            val windows = listOf(DisplayPeriod(query.from, query.until, query.zone, PeriodKind.SELECTED, null)) +
+                listOfNotNull(frozenPeriods.salary, frozenPeriods.calendar) + frozenPeriods.statements.values
+            require(windows.all { it.zone == query.zone })
+            fingerprint(configuration.toString()); fingerprint(frozenPeriods.toString())
+            val paymentCutoff = readAt.plusNanos(1)
             val capabilities = database.query(SimpleSQLiteQuery(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts','beta_dashboard_aux_facts')",
             )).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
@@ -178,6 +185,28 @@ class RoomBetaDashboardSource(
             }
             val registry = assets.associateBy { it.id }
             val registryBinding = dashboardRegistryBinding(assets)
+            val unavailableObligations = linkedSetOf<AssetId>()
+            frozenPeriods.salary?.let { salary ->
+                val tailUntil = minOf(salary.until, readAt.plusNanos(1))
+                if (tailUntil > query.until) {
+                    val facilitiesByBank = assets.filter { it.kind == AssetKind.CREDIT_FACILITY }.groupBy { it.id.bank.value }
+                    // All auxiliary rows are already loaded. Include held/tied/tombstone observations;
+                    // purchases and inert financial outstanding columns never block statement authority.
+                    for (row in auxiliary) {
+                        val at = row.observedAt?.let(Instant::parse) ?: continue
+                        if (at < query.until || at >= tailUntil) continue
+                        if (row.statementProved) {
+                            if (row.facilityAsset == null) facilitiesByBank[row.bankId].orEmpty().forEach { unavailableObligations += it.id }
+                            else AssetId(Environment.BETA, BankId(row.bankId), row.facilityAsset).let {
+                                if (registry[it]?.kind == AssetKind.CREDIT_FACILITY) unavailableObligations += it
+                            }
+                        }
+                        row.loanAsset?.let { AssetId(Environment.BETA, BankId(row.bankId), it) }?.let {
+                            if (registry[it]?.kind == AssetKind.LOAN) unavailableObligations += it
+                        }
+                    }
+                }
+            }
             val rows = mutableListOf<DashboardLedgerRow>()
             val postingFacts = mutableListOf<DashboardPostingFacts>()
             val fees = mutableListOf<LinkedInternationalFee>()
@@ -241,7 +270,9 @@ class RoomBetaDashboardSource(
                         BankId(fact.bankId), local)] }?.takeIf { card ->
                         card.kind == AssetKind.DEBIT_CARD && card.last4 == fact.debitCardLast4 && card.parentId?.localId == fact.debitCardParent
                     }?.id
-                    if (windows.none { posting.command.time.instant >= it.from && posting.command.time.instant < it.until }) continue
+                    val scoped = windows.any { posting.command.time.instant >= it.from && posting.command.time.instant < it.until }
+                    val possibleSettlement = posting.classification.effectiveType == FinancialType.CREDIT_CARD_PAYMENT && posting.command.time.instant < paymentCutoff
+                    if (!scoped && !possibleSettlement) continue
                     rows += DashboardLedgerRow(posting, true)
                     val metadata = correction?.overlay?.metadata.orEmpty()
                     if (posting.classification.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.REFUND) &&
@@ -318,13 +349,30 @@ class RoomBetaDashboardSource(
                     loanInstallment = loan?.takeIf { it.loanInstallment != null && it.loanInstallmentCurrency == Currency.SAR.name }?.let {
                         ObservedMoney(Money.of(it.loanInstallment!!, Currency.SAR), Instant.parse(it.observedAt)) })
             }
+            val settlementPeriods = assetFacts.mapNotNull { fact -> fact.statement?.takeIf { it.issuedAt < paymentCutoff }?.let {
+                fact.id to DisplayPeriod(it.issuedAt, paymentCutoff, query.zone, PeriodKind.SELECTED, null)
+            } }.toMap()
+            rows.removeAll { row ->
+                val at = row.posting.command.time.instant
+                windows.none { at >= it.from && at < it.until } && settlementPeriods.none { (facility, window) ->
+                    val destination = (row.posting.classification.input.destination as? FinancialEndpoint.Owned)?.id
+                    row.posting.classification.effectiveType == FinancialType.CREDIT_CARD_PAYMENT && at >= window.from && at < window.until &&
+                        (destination == facility || registry[destination]?.parentId == facility)
+                }
+            }
+            val includedKeys = rows.mapTo(hashSetOf()) { it.posting.command.key }
+            postingFacts.removeAll { it.key !in includedKeys }; fees.removeAll { it.key !in includedKeys }
+            val occurrences = BetaConfiguredPeriods.occurrences(configuration?.draft ?: BetaDashboardConfigurationDraft(), frozenPeriods.salary)
             val token = digest.digest().joinToString("") { "%02x".format(it) }
             DashboardReadBatch(query, ReadRevision("beta-current-v2:$token", readAt),
                 Collections.unmodifiableList(rows), Collections.unmodifiableList(assets),
                 DashboardCoverage(completeLedger = completeLedger, completeRegistry = true, completeFeeFacts = hasFacts && rows.all { it.posting.command.key in knownFees },
-                    reviewRequiredCount = reviewCount, atomicRuntimeSource = true, completeMerchantFacts = completeMerchantFacts),
+                    reviewRequiredCount = reviewCount, atomicRuntimeSource = true, completeMerchantFacts = completeMerchantFacts, completeUserCommitments = configuration?.revision?.let { it > 0 } == true),
                 frozenPeriods, assetFacts = Collections.unmodifiableList(assetFacts), postingFacts = Collections.unmodifiableList(postingFacts),
-                fees = Collections.unmodifiableList(fees))
+                fees = Collections.unmodifiableList(fees), commitmentOccurrences = Collections.unmodifiableList(occurrences),
+                settlementPeriods = Collections.unmodifiableMap(settlementPeriods),
+                feeProofKeys = Collections.unmodifiableSet(knownFees.filterTo(linkedSetOf()) { it in includedKeys }),
+                unavailableObligationAssets = Collections.unmodifiableSet(unavailableObligations))
         }
     }
 }

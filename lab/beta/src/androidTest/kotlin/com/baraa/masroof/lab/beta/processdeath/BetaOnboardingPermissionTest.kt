@@ -62,32 +62,84 @@ class BetaOnboardingPermissionTest {
             assertNotNull("Actual Android permission dialog button $id; resource-only diagnostics saved", button)
             assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         }
+        fun awaitEnabled(tag: String) {
+            compose.waitUntil(10_000) {
+                runCatching { compose.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false)
+            }
+        }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            fun clickWhenReady(tag: String) {
+                try {
+                    awaitEnabled(tag)
+                    if (tag == "beta-history" || tag.startsWith("asset-add-")) {
+                        compose.waitUntil(10_000) {
+                            compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
+                                compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+                        }
+                    }
+                    val node = compose.onNodeWithTag(tag)
+                    compose.waitForIdle()
+                    compose.waitUntil(10_000) {
+                        var focused = false
+                        scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
+                        focused
+                    }
+                    // Returning home hydrates the dashboard above these controls. Scroll readiness
+                    // may repeat while its height settles; the actual destination click happens once.
+                    compose.waitUntil(10_000) {
+                        runCatching { node.performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
+                    }
+                    node.performClick()
+                } catch (failure: Throwable) {
+                    runCatching {
+                        println("Navigation failure tag=$tag bounds=${compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot}")
+                    }
+                    runCatching {
+                        val directory = java.io.File(context.getExternalFilesDir(null), "beta-permission-diagnostics").apply { mkdirs() }
+                        automation.takeScreenshot()?.let { bitmap ->
+                            try { java.io.File(directory, "navigation-$tag.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
+                            finally { bitmap.recycle() }
+                        }
+                    }
+                    throw failure
+                }
+            }
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
-            compose.onNodeWithTag("beta-history").performScrollTo().performClick()
-            compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
-            compose.onNodeWithTag("history-start").performScrollTo().performClick()
+            awaitEnabled("beta-history")
+            clickWhenReady("beta-history")
+            awaitEnabled("history-days-7")
+            clickWhenReady("history-days-7")
+            awaitEnabled("history-start")
+            clickWhenReady("history-start")
             systemClick("permission_deny_button")
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
             BetaContainer(context).use { assertNull(it.historySession()); assertTrue(it.evidencePage().isEmpty()) }
             scenario.recreate()
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("history-start").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
-            compose.onNodeWithTag("history-close").performScrollTo().performClick()
-            compose.onNodeWithTag("asset-add-BANK_ALJAZIRA").performScrollTo().performClick()
+            awaitEnabled("history-close")
+            clickWhenReady("history-close")
+            awaitEnabled("asset-add-BANK_ALJAZIRA")
+            clickWhenReady("asset-add-BANK_ALJAZIRA")
+            awaitEnabled("asset-last4")
             compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
             compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
-            compose.onNodeWithTag("asset-cancel").performScrollTo().performClick()
-            compose.onNodeWithTag("beta-history").performScrollTo().performClick()
-            compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
-            compose.onNodeWithTag("history-start").performScrollTo().performClick()
+            awaitEnabled("asset-cancel")
+            clickWhenReady("asset-cancel")
+            awaitEnabled("beta-history")
+            clickWhenReady("beta-history")
+            awaitEnabled("history-days-7")
+            clickWhenReady("history-days-7")
+            awaitEnabled("history-start")
+            clickWhenReady("history-start")
             systemClick("permission_allow_button")
             compose.waitUntil(15_000) { runCatching { compose.onNodeWithTag("history-close").assertIsEnabled(); compose.onNodeWithTag("history-progress").assertExists(); true }.getOrDefault(false) }
             assertEquals(PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_SMS))
             // Grant follows this explicit Start; nothing was read on welcome, denial, or recreation.
             BetaContainer(context).use { assertNotNull(it.historySession()); assertEquals(7L * 86_400_000L, it.historySession()!!.until - it.historySession()!!.from) }
-            compose.onNodeWithTag("history-close").performScrollTo().performClick()
+            awaitEnabled("history-close")
+            clickWhenReady("history-close")
             compose.onNodeWithTag("beta-return").assertIsEnabled()
         }
         kotlinx.coroutines.runBlocking { kotlinx.coroutines.withContext(com.baraa.masroof.lab.beta.BetaIo.dispatcher) {} }
