@@ -54,7 +54,10 @@ do not enter selected-period transactions, analysis, merchant totals or calendar
 ledger/FX/fee/window authority remains unknown. A prior statement cannot be labelled UNPAID from an
 incomplete salary-only payment set. Dues still require informational STATEMENT proof: purchase or
 refund outstanding values do not become statement dues. Saved financial FX remains immutable and
-existing fee-inclusive analysis/merchant projection is unchanged.
+existing fee-inclusive analysis/merchant projection is unchanged. Exact per-row fee-proof keys are
+bound to the current posting metadata/fee identity; a missing fee proof on an unrelated outside
+settlement cannot suppress an otherwise proved selected purchase or merchant total. The settlement
+itself remains unavailable. The legacy global completeness flag still works for older callers.
 
 ## Validation and remaining acceptance
 

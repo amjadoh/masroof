@@ -112,7 +112,8 @@ object BetaDashboardBuilder {
             require(input != null && fee.revision == input.revision && fee.evidenceId in input.evidenceIds)
             require(fee.amount.currency == Currency.SAR)
         }
-        val context = ProjectionContext(batch.coverage, rows, fees)
+        require(batch.feeProofKeys.all { it in byKey && (it in details || it in fees) }) { "Unbound fee coverage proof" }
+        val context = ProjectionContext(batch.coverage, rows, fees, batch.feeProofKeys)
         val queryProjection = context.period(selected)
         val salary = batch.periods.salary?.let(context::period)
         val calendar = batch.periods.calendar?.let(context::period)
@@ -168,7 +169,7 @@ object BetaDashboardBuilder {
             destination?.let { id -> if (registry[id]?.kind == AssetKind.CREDIT_CARD) registry[id]?.parentId else id }
         }
         val settlementProjections = batch.settlementPeriods.mapValues { (facility, window) ->
-            ProjectionContext(batch.coverage, settlementsByFacility[facility].orEmpty(), fees).period(window)
+            ProjectionContext(batch.coverage, settlementsByFacility[facility].orEmpty(), fees, batch.feeProofKeys).period(window)
         }
         val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary, settlementProjections)
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
@@ -257,12 +258,12 @@ object BetaDashboardBuilder {
     }
 }
 
-private class ProjectionContext(val coverage: DashboardCoverage, val rows: List<StoredFinancialPosting>, val fees: Map<PostingKey, LinkedInternationalFee>) {
+private class ProjectionContext(val coverage: DashboardCoverage, val rows: List<StoredFinancialPosting>, val fees: Map<PostingKey, LinkedInternationalFee>, val feeProofKeys: Set<PostingKey>) {
     fun period(period: DisplayPeriod): List<SarRowProjection.Available>? {
         if (!coverage.completeLedger || !coverage.completeRegistry) return null
         val selected = rows.filter { contains(period, it.command.time.instant) }
         if (!coverage.completeFeeFacts && selected.any { it.command.amount.currency != Currency.SAR &&
-                it.command.type != FinancialType.REFUND && it.command.appliedFx?.source == "SMS" }) return null
+                it.command.type != FinancialType.REFUND && it.command.appliedFx?.source == "SMS" && it.command.key !in feeProofKeys }) return null
         val projected = selected.map { PersistedSarProjection.project(it.classification.input, fees[it.command.key]) }
         return if (projected.any { it is SarRowProjection.Unavailable }) null else projected.filterIsInstance<SarRowProjection.Available>()
     }
