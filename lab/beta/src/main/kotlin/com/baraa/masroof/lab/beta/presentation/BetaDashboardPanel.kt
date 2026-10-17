@@ -71,7 +71,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
             TextButton(enabled = interactive && !loading, onClick = { monthText = month.plusMonths(1).toString() }, modifier = Modifier.testTag("dash-month-next")) { Text(stringResource(R.string.beta_dash_next)) }
         }
         if (selectedId == null && selectedTransaction == null) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
+            Row(Modifier.testTag("dash-routes").horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
                 dashboardRoutes.forEach { (key, label) ->
                     FilterChip(selected = route == key, enabled = interactive, onClick = { route = key },
                         label = { Text(stringResource(label)) }, modifier = Modifier.testTag("dash-route-$key"))
@@ -141,7 +141,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                             com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_loans), com.baraa.masroof.ui.components.MasroofOutlineIcons.HandCoins, com.baraa.masroof.ui.components.MasroofCardAccent.Liability) { route = "LOANS" },
                             com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_commitments), com.baraa.masroof.ui.components.MasroofOutlineIcons.CalendarCheck, com.baraa.masroof.ui.components.MasroofCardAccent.Liability) { route = "COMMITMENTS" }), enabled = interactive)
                         DashCard(stringResource(R.string.beta_dash_summary)) {
-                            DashValue(R.string.beta_dash_spending, amount(read.financialSummary?.metrics?.get(SummaryMetric.SPENDING_NET)))
+                            DashValue(R.string.beta_dash_spending, amount(read.financialSummary?.metrics?.get(SummaryMetric.SPENDING_NET)), Modifier.testTag("dash-summary-spending"))
                             DashValue(R.string.beta_dash_income, amount(read.financialSummary?.metrics?.get(SummaryMetric.INCOME)))
                             DashValue(R.string.beta_dash_net, amount(read.financialSummary?.metrics?.get(SummaryMetric.NET_CASH_FLOW)))
                         }
@@ -241,9 +241,9 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
         }
     }
 }
-@Composable private fun DashValue(label: Int, value: String) {
+@Composable private fun DashValue(label: Int, value: String, modifier: Modifier = Modifier) {
     // Stacked text also fits split-screen and large font without clipped currency values.
-    Column { Text(stringResource(label), style = MaterialTheme.typography.labelLarge); Text(value, style = MaterialTheme.typography.titleLarge) }
+    Column(modifier) { Text(stringResource(label), style = MaterialTheme.typography.labelLarge); Text(value, style = MaterialTheme.typography.titleLarge) }
 }
 @Composable private fun amount(value: SignedAmount?): String = value?.let { "${it.amount.toPlainString()} ${it.currency.name}" } ?: stringResource(R.string.beta_dash_unavailable)
 @Composable private fun amount(value: Money?): String = value?.let { "${it.amount.toPlainString()} ${it.currency.name}" } ?: stringResource(R.string.beta_dash_unavailable)
