@@ -152,7 +152,7 @@ class BetaConfigDatabaseTest {
         assertEquals(Money.of("0", Currency.SAR), snapshot.commitments!!.remaining)
     }
 
-    @Test fun outsideFeeGapDoesNotPoisonSelectedPurchases() = runBlocking {
+    @Test fun outsideFeeGapDoesNotPoisonSelectedPurchases() = runBlocking<Unit> {
         statement()
         db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
         val at = Instant.parse("2026-10-10T12:00:00Z")
