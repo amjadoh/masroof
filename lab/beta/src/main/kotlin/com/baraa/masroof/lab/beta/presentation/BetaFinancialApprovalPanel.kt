@@ -126,7 +126,7 @@ internal fun BetaFinancialApprovalEditor(preview: BetaFinancialApprovalPreview, 
             if (preview.pending.archiveRevision != preview.item.archiveRevision ||
                 preview.pending.expectedRegistryRevision?.let { it != preview.registryRevision } == true)
                 Text(stringResource(R.string.beta_approval_stale), color = MaterialTheme.colorScheme.error)
-            Button(onClick = onRetry, enabled = !busy, modifier = Modifier.testTag("approval-retry")) { Text(stringResource(R.string.beta_retry)) }
+            Button(onClick = onRetry, enabled = !busy && preview.blockedReason == null, modifier = Modifier.testTag("approval-retry")) { Text(stringResource(R.string.beta_retry)) }
             OutlinedButton(onClick = onCancelPending, enabled = !busy, modifier = Modifier.testTag("approval-cancel-pending")) { Text(stringResource(R.string.beta_approval_cancel_pending)) }
         } else if (preview.correctionOwned) {
             OutlinedButton(onClick = onReconcile, enabled = !busy, modifier = Modifier.testTag("approval-reconcile")) { Text(stringResource(R.string.beta_approval_reconcile)) }

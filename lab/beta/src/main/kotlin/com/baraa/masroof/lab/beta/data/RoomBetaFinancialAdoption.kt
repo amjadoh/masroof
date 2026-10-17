@@ -94,7 +94,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (expected != null && request.request != encodeRequest(expected)) return review("SUPERSEDED_APPROVAL")
         // Never rewrite a newer request while retrying the exact intent the user reviewed.
         val decoded = decodeRequest(request.request)
-        val result = approveAtomic(decoded)
+        val result = approveAtomic(decoded, requireEnabledBank = expected != null)
         if (result is BetaFinancialAdoptionResult.Posted && result.result.let {
                 it is FinancialPostingResult.Applied || it is FinancialPostingResult.AlreadyApplied })
             database.withTransaction { if (dao.retry(id)?.request == request.request) dao.clearRetry(id) }
@@ -108,7 +108,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         else { dao.clearRetry(request.evidenceId); true }
     }
 
-    private suspend fun approveAtomic(request: BetaFinancialApproval): BetaFinancialAdoptionResult = database.withTransaction {
+    private suspend fun approveAtomic(request: BetaFinancialApproval, requireEnabledBank: Boolean = false): BetaFinancialAdoptionResult = database.withTransaction {
         if (dao.retry(request.evidenceId)?.request != encodeRequest(request)) return@withTransaction review("SUPERSEDED_APPROVAL")
         val outcome = database.evidenceDao().outcome(request.evidenceId)
             ?: return@withTransaction review("NO_COMPLETED_ARCHIVE")
@@ -134,7 +134,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (request.expectedRegistryRevision != null && request.expectedRegistryRevision !=
             registryFingerprint(allAssets.values.filter { it.id.bank.value == rawBank(outcome) }))
             return@withTransaction review("STALE_REGISTRY")
-        if (request.expectedRegistryRevision != null && database.bankSelectionDao().all().none {
+        if ((request.expectedRegistryRevision != null || requireEnabledBank) && database.bankSelectionDao().all().none {
                 it.bankId == rawBank(outcome) && it.state == "ENABLED" }) return@withTransaction review("BANK_DISABLED")
         val next = try { baseline(outcome, request.source, request.destination, request.type,
             request.incomeAttribution, allAssets) } catch (_: Exception) { return@withTransaction review("UNSAFE_BASELINE") }

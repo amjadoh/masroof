@@ -152,6 +152,25 @@ class RoomBetaFinancialAdoptionTest {
         assertNull(posting())
     }
 
+    @Test fun reviewedLegacyRetryStillChecksEnabledBankAtomically() = runBlocking {
+        capture()
+        val original = request() // Saved requests predating the UI have no registry fingerprint.
+        val service = RoomBetaFinancialAdoption(db)
+        RoomBetaEvidenceStore(db).begin("one", instant)
+        assertTrue(service.approve(original) is BetaFinancialAdoptionResult.Review)
+        // Keep the completed original archive and durable financial intent, simulating a
+        // restored pending approval without a successful financial commit.
+        db.evidenceDao().clearRetry("one")
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "DISABLED"))
+        val preview = requireNotNull(service.preview("one"))
+        val pending = requireNotNull(preview.pending)
+        assertNull(pending.expectedRegistryRevision)
+        assertEquals("BANK_DISABLED", preview.blockedReason)
+        assertEquals("BANK_DISABLED", (service.retryApproval("one", pending) as BetaFinancialAdoptionResult.Review).reason)
+        assertNull(posting())
+        assertEquals(pending, service.preview("one")?.pending)
+    }
+
     @Test fun durableIntentRecoversCrashAfterCommitBeforeAcknowledgementWithoutDuplicate() = runBlocking {
         capture(); val request = request()
         RoomBetaFinancialAdoption(db).approve(request)
