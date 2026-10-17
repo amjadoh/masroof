@@ -15,7 +15,8 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [28])
 class BetaDashboardViewPreferencesWorkflowTest {
-    @Test fun freshWorkflowAndActualBackupRestoreKeepStringOnlyQualifiedChoices() = runBlocking {
+    // Keep the Robolectric method component short: nested snapshot paths also reach native SQLite.
+    @Test fun preferencesRestore() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         BetaContainer.resetOffline(context)
         val chosen = BetaDashboardViewPreferences(BetaChartChoice(TrendScope.ASSET, asset = AssetId(Environment.BETA, BankId("BANK_ALJAZIRA"), "account-a")), false)

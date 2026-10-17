@@ -4,8 +4,11 @@ import android.app.LocaleManager
 import android.content.Context
 import android.os.LocaleList
 import android.os.ParcelFileDescriptor
+import android.view.View
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.room.Room
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -33,7 +36,13 @@ class BetaDashboardExplorationActivityTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val key = PostingKey(Environment.BETA, "synthetic-full-activity")
     private fun waitLoaded() { compose.waitUntil(20000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }
-    private fun route(name: String) { compose.onNodeWithTag("dash-route-$name").performScrollTo().performClick() }
+    private fun route(name: String) {
+        val tag = "dash-route-$name"
+        compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
+        compose.onNodeWithTag(tag).performScrollTo().assertIsEnabled().performClick()
+        compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
+        if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
+    }
     private fun closed() { val latch = CountDownLatch(1); BetaIo.execute { latch.countDown() }; assertTrue(latch.await(15, TimeUnit.SECONDS)) }
     private fun screenshot(name: String) {
         compose.waitForIdle()
@@ -50,6 +59,7 @@ class BetaDashboardExplorationActivityTest {
         BetaContainer.resetOffline(context)
         val bank = BankId("BANK_ALJAZIRA")
         val account = OwnedAsset(AssetId(Environment.BETA, bank, "synthetic-full-account"), AssetKind.ACCOUNT, "4567")
+        val postedAt = Instant.now().minusSeconds(60)
         BetaContainer(context).use { beta ->
             beta.setBankEnabled(bank, true)
             beta.saveManualAsset(ManualAssetDraft(account.id, account.kind, checkNotNull(account.last4), ownedConfirmed = true))
@@ -57,26 +67,42 @@ class BetaDashboardExplorationActivityTest {
         val seeded = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
         try {
             assertTrue(RoomBetaFinancialLedger(seeded).post(FinancialClassificationInput(key, PostingRevision(0, 0), FinancialType.EXPENSE,
-                Money.of("42.35", Currency.SAR), TransactionTime(Instant.now().minusSeconds(60), ZoneId.of("Asia/Riyadh")),
+                Money.of("42.35", Currency.SAR), TransactionTime(postedAt, ZoneId.of("Asia/Riyadh")),
                 FinancialEndpoint.Owned(account.id), FinancialEndpoint.External, mapOf(account.id to account), setOf("synthetic-full-evidence"), true)) is FinancialPostingResult.Applied)
         } finally { seeded.close() }
         val locales = context.getSystemService(LocaleManager::class.java)
         val original = locales.applicationLocales
         try {
-            locales.applicationLocales = LocaleList.forLanguageTags("ar")
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { locales.applicationLocales = LocaleList.forLanguageTags("ar") }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
                 waitLoaded(); compose.onNodeWithText("نظرة عامة").assertExists(); screenshot("activity-rtl-overview")
+                scenario.onActivity { activity ->
+                    assertEquals(View.LAYOUT_DIRECTION_RTL, activity.window.decorView.layoutDirection)
+                    assertEquals(View.LAYOUT_DIRECTION_RTL, activity.resources.configuration.layoutDirection)
+                    assertEquals(1f, activity.resources.configuration.fontScale, .001f)
+                    println("BetaActivity visual metrics: api=${android.os.Build.VERSION.SDK_INT}, fontScale=${activity.resources.configuration.fontScale}, screenDp=${activity.resources.configuration.screenWidthDp}x${activity.resources.configuration.screenHeightDp}, densityDpi=${activity.resources.configuration.densityDpi}, direction=RTL")
+                }
                 route("TRANSACTIONS")
                 compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
                 compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText("42.35 SAR").assertExists()
                 screenshot("activity-rtl-transaction-detail")
                 scenario.recreate(); waitLoaded(); compose.onNodeWithTag("transaction-detail").assertExists()
                 compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
-                route("ANALYSIS"); compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
+                route("ANALYSIS")
+                val day = postedAt.atZone(ZoneId.of("Asia/Riyadh")).toLocalDate()
+                compose.onNodeWithTag("chart-day-$day").performScrollTo()
+                screenshot("activity-rtl-chart")
+                compose.onNodeWithTag("chart-day-$day").performClick()
+                compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
+                compose.onNodeWithTag("transaction-detail").assertExists()
+                compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+                compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-category-FEES").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-table").performScrollTo().performClick()
                 compose.onNodeWithTag("dash-sheet-cancel").performClick()
+                compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
                 assertEquals(BetaDashboardViewPreferences(), BetaDashboardViewPreferencesWorkflow(context).read())
                 compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").performScrollTo().performClick()
@@ -95,6 +121,8 @@ class BetaDashboardExplorationActivityTest {
                 compose.onNodeWithTag("chart-category-FEES").performScrollTo().assertIsSelected()
                 compose.onNodeWithTag("chart-table").performScrollTo().assertIsSelected()
                 compose.onNodeWithTag("dash-sheet-cancel").performClick()
+                compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 route("CONFIGURATION"); compose.onNodeWithTag("dash-configuration").assertExists()
                 screenshot("activity-rtl-configuration")
                 scenario.recreate(); waitLoaded(); compose.onNodeWithTag("dash-route-CONFIGURATION").assertIsSelected()
@@ -102,6 +130,10 @@ class BetaDashboardExplorationActivityTest {
             closed()
             val verified = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
             try { assertEquals(1, RoomBetaFinancialLedger(verified).history(key).size) } finally { verified.close() }
-        } finally { locales.applicationLocales = original; closed(); BetaContainer.resetOffline(context) }
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { locales.applicationLocales = original }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            closed(); BetaContainer.resetOffline(context)
+        }
     }
 }
