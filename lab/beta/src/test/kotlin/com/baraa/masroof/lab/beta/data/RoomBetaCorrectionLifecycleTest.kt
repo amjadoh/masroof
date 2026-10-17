@@ -305,14 +305,20 @@ class RoomBetaCorrectionLifecycleTest {
     @Test fun optionalAdoptionHoldAndRetryNeverFallBackToOldOrdinaryFinancialSnapshot() = runBlocking {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
-        db.openHelper.writableDatabase.execSQL("CREATE TABLE beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
-        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption VALUES('evidence-transaction','transaction','REVIEW')")
+        db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
+        val columns = mutableListOf<String>()
+        db.openHelper.writableDatabase.query("PRAGMA table_info(beta_financial_adoption)").use { while (it.moveToNext()) columns += it.getString(1) }
+        val values: Map<String, Any> = mapOf("evidenceId" to "evidence-transaction", "transactionId" to "transaction", "status" to "REVIEW",
+            "bankId" to bank.value, "archiveFingerprint" to "fixture", "reason" to "SECURITY", "approvedInput" to "{}",
+            "correction" to 0L, "interpretation" to 0L, "approvalRequest" to "{}")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption (${columns.joinToString()}) VALUES (${columns.joinToString { "?" }})",
+            columns.map { values.getValue(it) }.toTypedArray())
         assertNull(workflow.detail(first.input.key))
         assertEquals(BetaLedgerActivity.REVIEW, workflow.page().single().activity)
         assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "held", FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE)))
         db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='ACTIVE'")
         assertNotNull(workflow.detail(first.input.key))
-        db.openHelper.writableDatabase.execSQL("CREATE TABLE beta_financial_approval_retry(evidenceId TEXT PRIMARY KEY, request TEXT)")
+        db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_approval_retry(evidenceId TEXT PRIMARY KEY, request TEXT)")
         db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_approval_retry VALUES('evidence-transaction','pending')")
         assertNull(workflow.detail(first.input.key))
         assertEquals(1, store().history(first.input.key).size)
@@ -321,12 +327,17 @@ class RoomBetaCorrectionLifecycleTest {
     @Test fun reviewRejectsUnknownSchemaAndMissingV7FinancialHoldCapabilities() = runBlocking {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
+        val hasApprovalRetry = db.openHelper.writableDatabase.query("SELECT 1 FROM sqlite_master WHERE name='beta_financial_approval_retry'").use { it.moveToFirst() }
+        if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("ALTER TABLE beta_financial_approval_retry RENAME TO review_test_hidden_retry")
         try {
             for (version in listOf(7, 999)) {
                 db.openHelper.writableDatabase.execSQL("PRAGMA user_version=$version")
                 assertNull(workflow.detail(first.input.key))
                 assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "unknown-$version", FinancialDecision.Keep))
             }
-        } finally { db.openHelper.writableDatabase.execSQL("PRAGMA user_version=6") }
+        } finally {
+            db.openHelper.writableDatabase.execSQL("PRAGMA user_version=${BetaDatabase.VERSION}")
+            if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("ALTER TABLE review_test_hidden_retry RENAME TO beta_financial_approval_retry")
+        }
     }
 }
