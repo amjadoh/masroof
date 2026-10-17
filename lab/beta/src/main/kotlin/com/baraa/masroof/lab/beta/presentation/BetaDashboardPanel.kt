@@ -102,7 +102,9 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                         facility != null -> DashCard(stringResource(R.string.beta_asset_facility)) {
                             DashValue(R.string.beta_dash_due, amount(facility.statementDue)); facility.dueDate?.let { Text(it.toString()) }
                             DashValue(R.string.beta_dash_salary_spending, amount(facility.salarySpending))
+                            DashPeriod(facility.cards.mapNotNull { it.salarySpending?.period }.distinct().singleOrNull())
                             DashValue(R.string.beta_dash_statement_spending, amount(facility.statementSpending))
+                            DashPeriod(facility.cards.mapNotNull { it.statementSpending?.period }.distinct().singleOrNull())
                             facility.cards.forEachIndexed { index, member -> DashLink(member.cardId, member.label ?: stringResource(R.string.beta_dash_card_number, index + 1), enabled, ::select) }
                         }
                         card != null -> DashCard(card.label ?: stringResource(R.string.beta_asset_credit)) {
@@ -116,7 +118,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                         else -> Text(stringResource(R.string.beta_dash_missing), modifier = Modifier.testTag("dash-missing"))
                     }
                     val selected = (snapshot.accounts.map { it.id } + snapshot.debitCards.map { it.cardId } + snapshot.creditFacilities.flatMap { listOf(it.facilityId) + it.cards.map { card -> card.cardId } } + snapshot.loans.map { it.id }).singleOrNull(::matches)
-                    selected?.let { BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, asset = it), interactive, { key -> selectedTransaction = key.transactionId }) }
+                    selected?.let { BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, asset = it), interactive, { key -> selectedTransaction = key.transactionId }, complete = DashboardSection.CURRENT_LEDGER !in read.unavailableSections && DashboardSection.RUNTIME_SOURCE !in read.unavailableSections) }
                 } else when (route) {
                     "OVERVIEW" -> {
                         DashCard(stringResource(R.string.beta_dash_summary), hero = true) {
@@ -159,6 +161,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                         DashMore(snapshot.loans.size > visibleRows) { visibleRows += 20 }
                     }
                     "COMMITMENTS" -> {
+                        snapshot.revision?.let { Text(stringResource(R.string.beta_controls_status_asof, it.asOf.atZone(snapshot.query.zone).toLocalDateTime().toString())) }
                         val commitments = snapshot.commitments
                         if (commitments == null) DashUnavailable() else {
                             DashCard(stringResource(R.string.beta_dash_commitments)) {
@@ -197,10 +200,10 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                         }
                     }
                 }
-                if (selectedId == null && selectedTransaction == null && route == "TRANSACTIONS") BetaDashboardTransactions(snapshot, enabled = interactive, onTransaction = { selectedTransaction = it.transactionId })
+                if (selectedId == null && selectedTransaction == null && route == "TRANSACTIONS") BetaDashboardTransactions(snapshot, enabled = interactive, onTransaction = { selectedTransaction = it.transactionId }, complete = DashboardSection.CURRENT_LEDGER !in read.unavailableSections && DashboardSection.RUNTIME_SOURCE !in read.unavailableSections)
                 if (selectedId == null && selectedTransaction == null && route == "CONFIGURATION") BetaDashboardConfigurationPanel(controls, snapshot.creditFacilities, month, interactive,
                     onBusyChanged = { controlsBusy = it; onBusyChanged(it) }, onSaved = { retry++ })
-                snapshot.revision?.let { Text(stringResource(R.string.beta_dash_as_of, it.asOf.atZone(snapshot.query.zone).toLocalDate().toString()), style = MaterialTheme.typography.bodySmall) }
+                snapshot.revision?.let { Text(stringResource(R.string.beta_dash_as_of, it.asOf.atZone(snapshot.query.zone).toLocalDateTime().toString()), style = MaterialTheme.typography.bodySmall) }
                 OutlinedButton(onClick = { retry++ }, enabled = interactive, modifier = Modifier.testTag("dash-refresh")) { Text(stringResource(R.string.beta_dash_refresh)) }
             }
         }

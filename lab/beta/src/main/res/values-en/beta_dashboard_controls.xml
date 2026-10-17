@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="beta_controls_status_asof">Payment status uses available evidence through %1$s; it does not reconstruct status at the end of a historical month.</string>
     <string name="beta_controls_cancel">Cancel</string>
     <string name="beta_controls_apply">Apply</string>
     <string name="beta_controls_title">Periods and commitments</string>
