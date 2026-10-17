@@ -117,6 +117,35 @@ class BetaStartActivityTest {
         drain(); assertTrue(file.isFile); assertEquals(original, hash(file)); assertEquals(before, protected.map(::hash)); assertProtectedPreferences()
     }
 
+    @Test fun confirmedCleanupRunsOnceAndKeepsNewDataOnLaterLaunches() {
+        val protected = protectedFiles().filter { it.name != BetaEnvironment.PARSING_LAB_DATABASE_NAME }
+        val hashes = protected.map(::hash)
+        BetaContainer(context).use { it.putMarker("old-experiment", "discard"); it.putPreferenceProbe("old") }
+        ActivityScenario.launch(BetaActivity::class.java).use {
+            await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
+            capture("m0-cleanup-confirmation")
+            compose.onNodeWithTag("beta-start-fresh-cancel").performClick()
+            compose.onNodeWithTag("beta-return").performClick()
+        }
+        drain()
+        BetaContainer(context).use { assertEquals(1, it.markerCount()); assertEquals("old", it.preferenceProbe()); assertTrue(it.hasParsingLabHistory()) }
+        ActivityScenario.launch(BetaActivity::class.java).use {
+            await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
+            compose.onNodeWithTag("beta-start-fresh-confirm").performClick()
+            await("beta-start-new"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist()
+            compose.onNodeWithTag("beta-start-continue").performClick(); await("dash-refresh")
+        }
+        drain()
+        BetaContainer(context).use {
+            assertEquals(0, it.markerCount()); assertNull(it.preferenceProbe()); assertFalse(it.hasParsingLabHistory())
+            it.putMarker("new-experience", "keep"); it.putPreferenceProbe("new")
+        }
+        ActivityScenario.launch(BetaActivity::class.java).use { await("dash-refresh"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").performClick() }
+        drain()
+        BetaContainer(context).use { assertEquals(BetaStartState.READY, it.startState()); assertEquals(1, it.markerCount()); assertEquals("new", it.preferenceProbe()) }
+        assertEquals(hashes, protected.map(::hash)); assertProtectedPreferences()
+    }
+
     private fun await(tag: String) { compose.waitUntil(20000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }; compose.waitForIdle() }
     private fun drain() { val done = CountDownLatch(1); BetaIo.execute { done.countDown() }; assertTrue(done.await(20, TimeUnit.SECONDS)) }
     private fun hash(file: File) = MessageDigest.getInstance("SHA-256").digest(file.readBytes()).toList()
@@ -132,8 +161,9 @@ class BetaStartActivityTest {
         command("mkdir -p /sdcard/beta-dashboard-screenshots")
         command("screencap -p /sdcard/beta-dashboard-screenshots/$name.png")
         assertTrue(command("cat /sdcard/beta-dashboard-screenshots/$name.png").size > 8)
-        val tags = compose.onRoot(useUnmergedTree = true).printToString()
-        val metadata = "api=${Build.VERSION.SDK_INT}\nhardware=${Build.HARDWARE}\n" + context.resources.configuration.toString() + "\n" + tags
+        val tags = compose.onAllNodes(isRoot(), useUnmergedTree = true).fetchSemanticsNodes().joinToString("\n") { "root=${it.id}" }
+        val tree = compose.onAllNodes(isRoot(), useUnmergedTree = true).fetchSemanticsNodes().indices.joinToString("\n") { index -> compose.onAllNodes(isRoot(), useUnmergedTree = true)[index].printToString() }
+        val metadata = "api=${Build.VERSION.SDK_INT}\nhardware=${Build.HARDWARE}\n" + context.resources.configuration.toString() + "\n" + tags + "\n" + tree
         val directory = File(context.getExternalFilesDir(null), "m0-entry").apply { check(isDirectory || mkdirs()) }
         val file = File(directory, "$name.txt")
         file.writeText(metadata)

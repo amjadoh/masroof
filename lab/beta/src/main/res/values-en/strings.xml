@@ -158,4 +158,7 @@
     <string name="beta_start_begin">Start experience</string>
     <string name="beta_start_resume">Continue existing Beta data</string>
     <string name="beta_start_loading">Opening Beta…</string>
+    <string name="beta_start_fresh">Start a clean experience</string>
+    <string name="beta_start_fresh_warning">This deletes old Beta data, preferences and local snapshots, and the Parsing Lab database including its samples and annotations. Main Masroof data and phone messages are untouched. Close Parsing Lab first. Your new experience stays saved on every later launch.</string>
+    <string name="beta_start_fresh_confirm">Delete old experiments</string>
 </resources>
