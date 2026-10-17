@@ -62,6 +62,9 @@ internal object BetaCorrectionCodec {
         val decision = when (val choice = value.decision) {
             FinancialDecision.Keep -> obj("kind" to "KEEP")
             FinancialDecision.SuppressAsNonFinancial -> obj("kind" to "SUPPRESS")
+            is FinancialDecision.EditFacts -> obj("kind" to "FACTS", "time" to choice.time?.instant?.toString(),
+                "zone" to choice.time?.zone?.id, "source" to choice.source?.let(::endpoint),
+                "destination" to choice.destination?.let(::endpoint))
             is FinancialDecision.ResolveFinancialType -> obj("kind" to "TYPE", "type" to choice.type.name)
             is FinancialDecision.ConfirmFamilyOrAmount -> obj("kind" to "CONFIRM", "type" to choice.type?.name,
                 "amount" to choice.amount?.amount?.toString(), "currency" to choice.amount?.currency?.name)
@@ -77,6 +80,14 @@ internal object BetaCorrectionCodec {
             "KEEP" -> { decision.fields("kind"); FinancialDecision.Keep }
             "SUPPRESS" -> { decision.fields("kind"); FinancialDecision.SuppressAsNonFinancial }
             "TYPE" -> { decision.fields("kind", "type"); FinancialDecision.ResolveFinancialType(FinancialType.valueOf(decision.text("type"))) }
+            "FACTS" -> {
+                decision.fields("kind", "time", "zone", "source", "destination")
+                val time = decision.optionalText("time"); val zone = decision.optionalText("zone")
+                check((time == null) == (zone == null))
+                FinancialDecision.EditFacts(time?.let { TransactionTime(java.time.Instant.parse(it), java.time.ZoneId.of(requireNotNull(zone))) },
+                    if (decision.isNull("source")) null else endpoint(decision.objectValue("source")),
+                    if (decision.isNull("destination")) null else endpoint(decision.objectValue("destination")))
+            }
             "CONFIRM" -> {
                 decision.fields("kind", "type", "amount", "currency")
                 val amount = decision.optionalText("amount"); val currency = decision.optionalText("currency")
@@ -89,6 +100,17 @@ internal object BetaCorrectionCodec {
         val evidence = value.array("evidence").strings(); check(evidence.distinct().size == evidence.size)
         return CorrectionRequest(value.text("decisionId"), key(value.objectValue("key")), value.long("correction"), value.long("interpretation"),
             Collections.unmodifiableSet(LinkedHashSet(evidence)), choice, metadata(value.objectValue("metadata")), value.long("expectedCorrection"))
+    }
+    private fun endpoint(value: com.baraa.masroof.lab.finance.classification.FinancialEndpoint): JSONObject = when (value) {
+        com.baraa.masroof.lab.finance.classification.FinancialEndpoint.External -> obj("kind" to "EXTERNAL")
+        com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Unresolved -> obj("kind" to "UNRESOLVED")
+        is com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned -> obj("kind" to "OWNED", "environment" to value.id.environment.name, "bank" to value.id.bank.value, "id" to value.id.localId)
+    }
+    private fun endpoint(value: JSONObject): com.baraa.masroof.lab.finance.classification.FinancialEndpoint = when (value.text("kind")) {
+        "EXTERNAL" -> { value.fields("kind"); com.baraa.masroof.lab.finance.classification.FinancialEndpoint.External }
+        "UNRESOLVED" -> { value.fields("kind"); com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Unresolved }
+        "OWNED" -> { value.fields("kind", "environment", "bank", "id"); com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned(com.baraa.masroof.lab.finance.asset.AssetId(Environment.valueOf(value.text("environment")), BankId(value.text("bank")), value.text("id"))) }
+        else -> error("Unknown endpoint")
     }
     private fun key(value: PostingKey) = obj("environment" to value.environment.name, "id" to value.transactionId)
     private fun key(value: JSONObject): PostingKey {

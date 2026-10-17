@@ -282,4 +282,37 @@ class CorrectionOverlayTest {
         assertThrows(IllegalArgumentException::class.java) { request().copy(metadata = mapOf("financialType" to "EXPENSE")) }
         assertThrows(IllegalArgumentException::class.java) { FinancialDecision.ConfirmFamilyOrAmount() }
     }
+
+    @Test fun typedFactsRequirePriorSelectionAndNeverGrantFinancialAuthority() {
+        val first = observe()
+        val changed = first.input.time.copy(instant = first.input.time.instant.plusSeconds(900))
+        assertRejected(CorrectionRejection.UNSUPPORTED_CHANGE,
+            CorrectionOverlays.submit(first, request(first, FinancialDecision.EditFacts(time = changed))))
+        val confirmed = apply(first, FinancialDecision.ConfirmFamilyOrAmount(amount = first.input.amount))
+        val edited = CorrectionOverlays.submit(first, request(first, FinancialDecision.EditFacts(time = changed), 2), confirmed.overlay) as CorrectionResult.Applied
+        assertEquals(changed, edited.effectiveInput!!.time)
+        assertEquals(CorrectionAuthority.CONFIRMED_FAMILY_OR_AMOUNT, edited.effectiveInput.authority)
+        assertFalse(edited.effectiveInput.validatedParse)
+        assertEquals(edited.overlay.correctionRevision, CorrectionSnapshots.restore(CorrectionSnapshots.export(edited.overlay)).correctionRevision)
+        val reparse = updated(first).copy(input = updated(first).input.copy(time = first.input.time))
+        assertEquals(changed, (CorrectionOverlays.rebase(reparse, edited.overlay) as CorrectionResult.Applied).effectiveInput!!.time)
+    }
+    @Test fun typedEndpointChangesPreserveSuppressionAndSafetyHolds() {
+        val first = observe()
+        val confirmed = apply(first, FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE))
+        val suppressed = CorrectionOverlays.submit(first, request(first, FinancialDecision.SuppressAsNonFinancial, 2), confirmed.overlay) as CorrectionResult.Applied
+        val edited = CorrectionOverlays.submit(first, request(first, FinancialDecision.EditFacts(source = FinancialEndpoint.Unresolved), 3), suppressed.overlay) as CorrectionResult.Applied
+        assertEquals(CorrectionDisposition.SUPPRESSED, edited.disposition)
+        val secured = updated(first).copy(safety = ObservationSafety.SECURITY)
+        val held = CorrectionOverlays.rebase(secured, edited.overlay) as CorrectionResult.Applied
+        assertEquals(CorrectionDisposition.FINANCIAL_REVIEW, held.disposition)
+        assertTrue(held.overlay.safetyHold)
+    }
+    @Test fun endpointEditCannotEraseExistingOwnershipBlockerOrCreateCrossEnvironmentAsset() {
+        val first = observe(input().copy(unresolved = setOf(ReviewReason.OWNERSHIP)))
+        val confirmed = apply(first, FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE))
+        val edited = CorrectionOverlays.submit(first, request(first, FinancialDecision.EditFacts(source = FinancialEndpoint.Owned(account)), 2), confirmed.overlay) as CorrectionResult.Applied
+        assertEquals(CorrectionDisposition.FINANCIAL_REVIEW, edited.disposition)
+        assertTrue((edited.classification as FinancialClassification.Review).reasons.contains(ReviewReason.OWNERSHIP))
+    }
 }
