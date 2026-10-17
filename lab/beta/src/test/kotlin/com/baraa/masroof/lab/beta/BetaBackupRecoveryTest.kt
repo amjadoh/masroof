@@ -17,7 +17,7 @@ class BetaBackupRecoveryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     @Before fun clear() { BetaContainer.resetOffline(context) }
 
-    @Test fun jsonPreferencesRoundTripSeparatorsNewlinesAndTheme() {
+    @Test fun jsonPrefsRoundTrip() {
         BetaContainer(context).use { beta ->
             beta.putMarker("before", "synthetic")
             beta.putPreferenceProbe("a=b\nc=د")
@@ -29,7 +29,7 @@ class BetaBackupRecoveryTest {
         }
     }
 
-    @Test fun corruptDatabaseAndPreferencesAreRejectedWithoutChangingCurrent() {
+    @Test fun corruptionKeepsCurrent() {
         for (entry in listOf("database.db", "preferences.json", "manifest.json")) {
             BetaContainer.resetOffline(context)
             BetaContainer(context).use { beta ->
@@ -42,13 +42,13 @@ class BetaBackupRecoveryTest {
         }
     }
 
-    @Test fun lowStorageDuringNewBackupKeepsPreviousPublishedBackup() {
+    @Test fun failedBackupKeepsOld() {
         BetaContainer(context).use { beta -> beta.putMarker("first", "synthetic"); beta.backup(); beta.putMarker("second", "synthetic") }
         assertThrows(IOException::class.java) { BetaBackupRecovery(context) { if (it == BetaBackupRecovery.Stage.BACKUP_STAGED) throw IOException("ENOSPC synthetic") }.backup() }
         BetaContainer(context).use { beta -> assertTrue(beta.restore()); assertEquals(1, beta.markerCount()) }
     }
 
-    @Test fun exceptionsAtEveryPrecommitBoundaryRollBackDatabaseAndPreferences() {
+    @Test fun exceptionsRollBack() {
         for (stage in listOf(BetaBackupRecovery.Stage.RESTORE_VALIDATED, BetaBackupRecovery.Stage.JOURNALED, BetaBackupRecovery.Stage.DATABASE_INSTALLED, BetaBackupRecovery.Stage.PREFERENCES_INSTALLED)) {
             seedOriginalAndBackup()
             assertThrows(IOException::class.java) { BetaBackupRecovery(context) { if (it == stage) throw IOException("synthetic storage interruption") }.restore() }
@@ -56,7 +56,7 @@ class BetaBackupRecoveryTest {
         }
     }
 
-    @Test fun processDeathAfterDatabaseOrPreferencesInstallationRollsBackOnNextContainerOpen() {
+    @Test fun deathRollsBack() {
         for (stage in listOf(BetaBackupRecovery.Stage.JOURNALED, BetaBackupRecovery.Stage.DATABASE_INSTALLED, BetaBackupRecovery.Stage.PREFERENCES_INSTALLED)) {
             seedOriginalAndBackup()
             assertThrows(SimulatedDeath::class.java) { BetaBackupRecovery(context) { if (it == stage) throw SimulatedDeath() }.restore() }
@@ -65,13 +65,13 @@ class BetaBackupRecoveryTest {
         }
     }
 
-    @Test fun committedRestoreSurvivesDeathBeforeJournalCleanup() {
+    @Test fun commitSurvivesDeath() {
         seedOriginalAndBackup()
         assertThrows(SimulatedDeath::class.java) { BetaBackupRecovery(context) { if (it == BetaBackupRecovery.Stage.COMMITTED) throw SimulatedDeath() }.restore() }
         BetaContainer(context).use { beta -> assertEquals(1, beta.markerCount()); assertEquals("BACKUP", beta.preferenceProbe()) }
     }
 
-    @Test fun legacyUnsealedFilesAreNotAutomaticallyTrustedOrInstalled() {
+    @Test fun legacyPairRejected() {
         BetaContainer(context).use { it.putMarker("keep", "synthetic") }
         File(context.filesDir, BetaEnvironment.BACKUP_DATABASE_FILE_NAME).writeText("untrusted database")
         File(context.filesDir, BetaEnvironment.BACKUP_PREFS_FILE_NAME).writeText("x=y")
@@ -79,7 +79,7 @@ class BetaBackupRecoveryTest {
         BetaContainer(context).use { assertEquals(1, it.markerCount()) }
     }
 
-    @Test fun malformedRecoveryJournalFailsClosedAndPreservesFilesForRetry() {
+    @Test fun badJournalFailsClosed() {
         BetaContainer(context).use { it.putMarker("keep", "synthetic") }
         File(context.filesDir, "beta_recovery_v1/restore_journal").writeText("broken")
         assertThrows(Exception::class.java) { BetaContainer(context) }
@@ -88,7 +88,7 @@ class BetaBackupRecoveryTest {
         BetaContainer(context).use { assertEquals(1, it.markerCount()) }
     }
 
-    @Test fun currentVersionWithUnchangedRoomIdentityAndMissingTableIsRejected() {
+    @Test fun missingTableRejected() {
         seedOriginalAndBackup()
         val file = BetaBackupRecovery(context).backupFile()
         android.database.sqlite.SQLiteDatabase.openDatabase(file.absolutePath, null, 0).use { db ->

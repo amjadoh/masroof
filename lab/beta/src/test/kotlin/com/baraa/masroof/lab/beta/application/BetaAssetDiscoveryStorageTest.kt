@@ -40,7 +40,7 @@ class BetaAssetDiscoveryStorageTest {
             store.complete(id, route, EvidenceComparison(EvidenceDisposition.REVIEW, emptySet(), archive(id, baselineSuffix), archive(id, suffix)), Instant.EPOCH)
         }
     }
-    @Test fun explicitConfirmationIsIdempotentAndStaleDisabledOrUnconfirmedRequestsFailClosed() {
+    @Test fun confirmationIsSafe() {
         BetaContainer.resetOffline(context)
         save("one", "1234")
         BetaContainer(context).use { beta ->
@@ -77,7 +77,7 @@ class BetaAssetDiscoveryStorageTest {
             buildList<Pair<String, String>> { while (cursor.moveToNext()) add(cursor.getString(0) to cursor.getString(1)) }
         }
     }
-    @Test fun explicitCorrectionRetainsObservedAndManualProvenanceAcrossRetryEditBackupRestore() {
+    @Test fun correctionProvenance() {
         BetaContainer.resetOffline(context)
         save("capture|with|delimiter", "1234")
         BetaContainer(context).use { beta ->
