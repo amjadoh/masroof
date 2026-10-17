@@ -74,6 +74,84 @@ class RoomBetaFinancialAdoptionTest {
         assertEquals(1, RoomBetaFinancialLedger(db).history(posted.command.key).size)
     }
 
+    @Test fun firstApprovalPreviewNeverPostsAndStaleRegistryRequiresExactPendingCancellation() = runBlocking {
+        capture()
+        val service = RoomBetaFinancialAdoption(db)
+        val preview = requireNotNull(service.preview("one"))
+        assertEquals(Money.of("23", Currency.USD), preview.amount)
+        assertEquals(instant, preview.time?.instant)
+        assertNull(preview.blockedReason)
+        assertNull(posting())
+        assertNull(betaApprovalDraft(preview, "EXPENSE", "external", "external", null))
+        val approval = requireNotNull(betaApprovalDraft(preview, "EXPENSE", "asset:${account.id.localId}", "external", null))
+        BetaAssetRegistry(db).save(account.copy(last4 = "5678"), true, account)
+        val result = service.approve(approval) as BetaFinancialAdoptionResult.Review
+        assertEquals("STALE_REGISTRY", result.reason)
+        assertNull(posting())
+        reopen()
+        val reopened = RoomBetaFinancialAdoption(db)
+        val pending = requireNotNull(reopened.preview("one")?.pending)
+        assertEquals(approval, pending)
+        assertFalse(reopened.cancelApproval(pending.copy(type = FinancialType.FEE)))
+        assertEquals("STALE_REGISTRY", (reopened.retryApproval("one") as BetaFinancialAdoptionResult.Review).reason)
+        assertTrue(reopened.cancelApproval(pending))
+        val fresh = requireNotNull(reopened.preview("one"))
+        assertNull(fresh.pending)
+        val replacement = requireNotNull(betaApprovalDraft(fresh, "EXPENSE", "asset:${account.id.localId}", "external", null))
+        assertTrue(reopened.approve(replacement) is BetaFinancialAdoptionResult.Posted)
+        assertEquals(1, RoomBetaFinancialLedger(db).history(RoomBetaFinancialAdoption.key("one")).size)
+    }
+
+    @Test fun previewRejectsUnsafeBankDisabledAndStaleArchiveWithoutPromotingCandidate() = runBlocking {
+        capture()
+        val service = RoomBetaFinancialAdoption(db)
+        val approvedDraft = requireNotNull(betaApprovalDraft(requireNotNull(service.preview("one")), "EXPENSE", "asset:${account.id.localId}", "external", null))
+        val store = RoomBetaEvidenceStore(db)
+        store.begin("one", instant)
+        assertEquals("INTERPRETATION_PENDING", service.preview("one")?.blockedReason)
+        store.complete("one", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive("one", amount = "29"), "candidate ignored"), instant)
+        assertEquals("STALE_ARCHIVE", (service.approve(approvedDraft) as BetaFinancialAdoptionResult.Review).reason)
+        assertNull(posting())
+        service.cancelApproval(approvedDraft)
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "DISABLED"))
+        assertEquals("BANK_DISABLED", service.preview("one")?.blockedReason)
+        assertNull(betaApprovalDraft(requireNotNull(service.preview("one")), "EXPENSE", "asset:${account.id.localId}", "external", null))
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
+        capture("unsafe", archive("unsafe", family = MessageFamily.OTP))
+        assertEquals("UNSAFE_BASELINE", service.preview("unsafe")?.blockedReason)
+        assertNull(service.preview("unsafe")?.amount)
+    }
+
+    @Test fun explicitInboundAttributionAndStableAssetIdentityRequired() = runBlocking {
+        capture()
+        val preview = requireNotNull(RoomBetaFinancialAdoption(db).preview("one"))
+        assertNull(betaApprovalDraft(preview, "EXTERNAL_TRANSFER_IN", "external", "asset:${account.id.localId}", null))
+        assertNull(betaApprovalDraft(preview, "EXPENSE", "1234", "external", null))
+        val draft = requireNotNull(betaApprovalDraft(preview, "EXTERNAL_TRANSFER_IN", "external", "asset:${account.id.localId}", "OTHER"))
+        assertEquals(IncomeAttribution.OTHER, draft.incomeAttribution)
+        assertEquals(account.id, draft.destination)
+    }
+
+    @Test fun externalNamedAssetIsDistinctAndReviewedRetryCannotReplaceSupersedingIntent() = runBlocking {
+        val named = account.copy(id = account.id.copy(localId = "external"))
+        BetaAssetRegistry(db).register(named)
+        capture()
+        val service = RoomBetaFinancialAdoption(db)
+        val preview = requireNotNull(service.preview("one"))
+        val original = requireNotNull(betaApprovalDraft(preview, "EXPENSE", "asset:external", "external", null))
+        assertEquals(named.id, original.source)
+        assertNull(original.destination)
+        // A stale archive leaves the original exact durable intent, then a newer user choice supersedes it.
+        RoomBetaEvidenceStore(db).begin("one", instant)
+        assertTrue(service.approve(original) is BetaFinancialAdoptionResult.Review)
+        val replacement = original.copy(type = FinancialType.FEE)
+        assertTrue(service.approve(replacement) is BetaFinancialAdoptionResult.Review)
+        assertEquals("SUPERSEDED_APPROVAL", (service.retryApproval("one", original) as BetaFinancialAdoptionResult.Review).reason)
+        assertEquals(replacement, service.preview("one")?.pending)
+        assertFalse(service.cancelApproval(original))
+        assertNull(posting())
+    }
+
     @Test fun durableIntentRecoversCrashAfterCommitBeforeAcknowledgementWithoutDuplicate() = runBlocking {
         capture(); val request = request()
         RoomBetaFinancialAdoption(db).approve(request)
