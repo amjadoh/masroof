@@ -48,7 +48,7 @@ internal fun BetaReviewPanel(container: BetaContainer, onClose: () -> Unit, onBu
         Text(stringResource(R.string.beta_review_title), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.beta_review_help))
         if (failed) {
-            Text(stringResource(R.string.beta_review_failed), color = MaterialTheme.colorScheme.error)
+            Text(stringResource(if (selected != null && detail == null) R.string.beta_review_unavailable else R.string.beta_review_failed), color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = { generation++ }, enabled = !busy) { Text(stringResource(R.string.beta_retry)) }
             if (selected != null) OutlinedButton(onClick = { selected = null }, enabled = !busy) { Text(stringResource(R.string.beta_asset_cancel)) }
         }
