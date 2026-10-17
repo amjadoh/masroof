@@ -100,7 +100,7 @@ internal class BetaBackupRecovery(
                 .put("hadDatabase", File(transaction, ORIGINAL_DB).exists()).put("originalHashes", originalHashes)
                 .put("preferencesSha256", sha(File(transaction, ORIGINAL_PREFS))).toString())
             fault(Stage.COMMITTED)
-            journal.delete()
+            deleteAtomic(journal)
             transaction.deleteRecursively()
             return true
         } catch (failure: Exception) {
@@ -147,14 +147,18 @@ internal class BetaBackupRecovery(
             "COMMITTED" -> Unit
             else -> error("Unsupported Beta recovery state")
         }
-        journal.delete()
+        deleteAtomic(journal)
         folder.deleteRecursively()
     }
 
     fun clear() {
         recover()
-        pointer.delete()
+        deleteAtomic(pointer)
         cleanupExcept(emptySet())
+        // Explicit Beta reset erases all retained Beta snapshots, including an
+        // abandoned pre-journal stage. Never prune an active recovery original.
+        root.listFiles()?.filter { it.isDirectory && it.name.startsWith("restore-") }
+            ?.forEach { check(child(it.name, "restore-").deleteRecursively()) }
     }
 
     private fun verify(folder: File) {
@@ -287,7 +291,7 @@ internal class BetaBackupRecovery(
     private fun newFolder(prefix: String) = child(prefix + UUID.randomUUID(), prefix).also { check(it.mkdir()) }
     private fun cleanupExcept(keep: Set<String>) {
         root.listFiles()?.filter { it.isDirectory && it.name.startsWith("snapshot-") && it.name !in keep }
-            ?.forEach { child(it.name, "snapshot-").deleteRecursively() }
+            ?.forEach { check(child(it.name, "snapshot-").deleteRecursively()) }
     }
     private fun copySynced(source: File, destination: File) {
         require(source.isFile && source.length() <= MAX_DATABASE)
@@ -298,6 +302,13 @@ internal class BetaBackupRecovery(
         val output = file.startWrite()
         try { output.write(value.toByteArray(Charsets.UTF_8)); file.finishWrite(output) }
         catch (failure: Throwable) { file.failWrite(output); throw failure }
+    }
+    private fun deleteAtomic(file: AtomicFile) {
+        file.delete()
+        val base = file.baseFile
+        check(listOf(base, File(base.path + ".bak"), File(base.path + ".new")).none { it.exists() }) {
+            "Could not clear Beta recovery metadata"
+        }
     }
     private fun readAtomic(file: AtomicFile): ByteArray? = try { file.openRead().use { require(it.channel.size() <= MAX_METADATA); it.readBytes() } }
         catch (failure: java.io.FileNotFoundException) {

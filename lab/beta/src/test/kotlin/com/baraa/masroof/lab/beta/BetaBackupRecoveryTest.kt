@@ -102,6 +102,18 @@ class BetaBackupRecoveryTest {
         assertOriginal()
     }
 
+    @Test fun resetErasesOrphanStages() {
+        seedOriginalAndBackup()
+        assertThrows(SimulatedDeath::class.java) {
+            BetaBackupRecovery(context) { if (it == BetaBackupRecovery.Stage.RESTORE_VALIDATED) throw SimulatedDeath() }.restore()
+        }
+        val root = File(context.filesDir, "beta_recovery_v1")
+        assertTrue(root.listFiles()!!.any { it.isDirectory && it.name.startsWith("restore-") })
+        BetaContainer.resetOffline(context)
+        assertTrue(root.listFiles()!!.none { it.isDirectory })
+        BetaContainer(context).use { beta -> assertEquals(0, beta.markerCount()); assertFalse(beta.settings().backupAvailable); assertNull(beta.preferenceProbe()) }
+    }
+
     private fun seedOriginalAndBackup() {
         BetaContainer.resetOffline(context)
         BetaContainer(context).use { beta -> beta.putMarker("backup", "synthetic"); beta.putPreferenceProbe("BACKUP"); beta.backup(); beta.putMarker("current", "synthetic"); beta.putPreferenceProbe("CURRENT") }
