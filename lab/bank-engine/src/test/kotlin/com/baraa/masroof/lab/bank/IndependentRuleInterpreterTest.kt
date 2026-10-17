@@ -67,6 +67,7 @@ class IndependentRuleInterpreterTest {
             purchase.replace("Amount: SAR 42.35", "Available balance: SAR 42.35"),
             purchase.replace("Amount: SAR 42.35", "Due amount: SAR 42.35"),
             purchase.replace("42.35", "0.00"), purchase.replace("42.35", "-42.35"),
+            purchase.replace("42.35", "42.35-"), purchase.replace("42.35", "42.35−"),
             purchase.replace("SAR", "JPY"), purchase.replace("42.35", "42.355"),
             purchase.replace("2026-10-17 13:00", "2026-02-30 13:00"),
             purchase.replace("2026-10-17 13:00", "Expires: 2026-10-17 13:00"),
