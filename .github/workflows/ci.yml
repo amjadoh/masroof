@@ -132,16 +132,7 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
-            SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-            echo "sdk.dir=${SDK_DIR}" > local.properties
-            # notPackage in app/build.gradle.kts keeps M13 process-death phases out of
-            # this clearPackageData=true suite.
-            ./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace
-            mkdir -p m19-statement-screenshots
-            adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
-            mkdir -p beta-dashboard-screenshots
-            adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
-            find m19-statement-screenshots -name 'm19-*.png' | grep -q .
+            bash .github/scripts/run-beta-instrumentation-smoke.sh
 
       - name: Upload statement reconciliation screenshots
         if: always()
