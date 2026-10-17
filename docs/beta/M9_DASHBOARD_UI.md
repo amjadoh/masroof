@@ -59,6 +59,9 @@ Merchant and trend coverage is distinct: an unavailable unselected trend scope
 does not invalidate a complete selected ordinary-spending series; its nullable
 points and average remain unavailable individually. Full-scope financial metrics
 are never recalculated from chart or list selections.
+Missing loan display names use a localized loan heading. Facility/loan commitment
+rows use localized asset headings rather than storage identifiers; genuine user
+commitment labels are preserved.
 
 ## Remaining acceptance
 
