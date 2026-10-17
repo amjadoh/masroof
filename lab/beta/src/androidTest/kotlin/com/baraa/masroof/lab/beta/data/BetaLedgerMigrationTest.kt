@@ -9,7 +9,6 @@ import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.BetaEnvironment
 import com.baraa.masroof.lab.finance.posting.PostingKey
 import com.baraa.masroof.lab.finance.value.Environment
-import java.io.File
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -71,9 +70,8 @@ class BetaLedgerMigrationTest {
 
     @Test fun oldVersionFourBetaBackupRestoresAndMigratesWithoutAProductionDatabase() {
         versionFourFixture()
-        val backup = File(context.filesDir, BetaEnvironment.BACKUP_DATABASE_FILE_NAME)
-        context.getDatabasePath(BetaDatabase.NAME).copyTo(backup, overwrite = true)
-        File(context.filesDir, BetaEnvironment.BACKUP_PREFS_FILE_NAME).writeText("${BetaContainer.PREFERENCE_PROBE_KEY}=v4-backup")
+        com.baraa.masroof.lab.beta.BetaBackupRecovery(context).publish(context.getDatabasePath(BetaDatabase.NAME),
+            mapOf(BetaContainer.PREFERENCE_PROBE_KEY to "v4-backup"))
         context.deleteDatabase(BetaDatabase.NAME)
         assertTrue(BetaContainer.restoreOffline(context))
         BetaContainer(context).use { beta ->
