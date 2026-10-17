@@ -70,6 +70,36 @@ class BetaProductionIsolationTest {
         assertTrue(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).name == BetaEnvironment.DATABASE_NAME)
     }
 
+    @Test
+    fun confirmedCleanupWaitsForLabHandles() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<MasroofApplication>()
+        val production = context.container
+        val before = production.rawSmsRepository.listIdsByReceivedAt().toSet()
+        BetaContainer.resetOffline(context)
+        context.deleteDatabase(com.baraa.masroof.lab.data.LabDatabase.FILE_NAME) // Synthetic fixture only.
+        val first = com.baraa.masroof.lab.data.LabDatabase.open(context)
+        val second = com.baraa.masroof.lab.data.LabDatabase.open(context)
+        val labFile = context.getDatabasePath(com.baraa.masroof.lab.data.LabDatabase.FILE_NAME)
+        first.openHelper.writableDatabase.execSQL("INSERT INTO lab_banks VALUES ('synthetic-m0', 'keep-until-confirmed', 1, '{}')")
+        try {
+            BetaContainer(context).use { beta ->
+                beta.putMarker("old-beta", "keep-until-confirmed")
+                org.junit.Assert.assertThrows(IllegalStateException::class.java) { beta.startFresh() }
+                first.close(); first.close()
+                org.junit.Assert.assertThrows(IllegalStateException::class.java) { beta.startFresh() }
+                assertTrue(labFile.isFile); assertEquals(1, beta.markerCount())
+                second.openHelper.writableDatabase.query("SELECT name FROM lab_banks WHERE id='synthetic-m0'").use { c ->
+                    assertTrue(c.moveToFirst()); assertEquals("keep-until-confirmed", c.getString(0))
+                }
+                second.close()
+                beta.startFresh()
+                assertTrue(!labFile.exists()); assertEquals(0, beta.markerCount())
+                assertEquals(com.baraa.masroof.lab.beta.application.BetaStartState.NEW, beta.startState())
+            }
+        } finally { first.close(); second.close() }
+        assertEquals(before, production.rawSmsRepository.listIdsByReceivedAt().toSet())
+    }
+
     private fun sha256(file: java.io.File): String =
         MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
 

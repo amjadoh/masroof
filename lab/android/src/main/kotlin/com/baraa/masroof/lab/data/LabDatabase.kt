@@ -71,8 +71,48 @@ interface LabDao {
     LabComparisonRow::class, LabComparisonResultRow::class], version = 3, exportSchema = true)
 abstract class LabDatabase : RoomDatabase() {
     abstract fun dao(): LabDao
+    private var cleanupLease: AutoCloseable? = null
+    override fun close() {
+        synchronized(this) {
+            super.close() // If Room cannot close, retain the lease and refuse destructive cleanup.
+            val lease = cleanupLease
+            cleanupLease = null
+            lease?.close()
+        }
+    }
     companion object {
         const val FILE_NAME = "masroof_parsing_lab.db"
+        private val leaseMonitor = Any()
+        private var leaseUsers = 0
+        private var leaseChannel: java.nio.channels.FileChannel? = null
+        private var sharedLease: java.nio.channels.FileLock? = null
+
+        // The Beta cleanup action uses an exclusive lock at the same fixed path. A live
+        // Parsing Lab must close first, so its Room handles cannot recreate a deleted file.
+        private fun acquireCleanupLease(context: Context): AutoCloseable = synchronized(leaseMonitor) {
+            if (leaseUsers == 0) {
+                val path = context.getDatabasePath("$FILE_NAME.cleanup.lock")
+                path.parentFile?.mkdirs()
+                val channel = java.io.RandomAccessFile(path, "rw").channel
+                try {
+                    sharedLease = checkNotNull(channel.tryLock(0, Long.MAX_VALUE, true)) { "Parsing Lab cleanup is active" }
+                    leaseChannel = channel
+                } catch (failure: Exception) { channel.close(); throw failure }
+            }
+            leaseUsers++
+            var released = false
+            AutoCloseable {
+                synchronized(leaseMonitor) {
+                    if (!released) {
+                        released = true
+                        leaseUsers--
+                        if (leaseUsers == 0) {
+                            try { sharedLease?.release() } finally { leaseChannel?.close(); sharedLease = null; leaseChannel = null }
+                        }
+                    }
+                }
+            }
+        }
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS lab_evidence_knowledge (version INTEGER NOT NULL, knowledgeJson TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(version))")
@@ -86,7 +126,13 @@ abstract class LabDatabase : RoomDatabase() {
                 db.execSQL("CREATE TABLE IF NOT EXISTS lab_shared_rule_versions (version INTEGER NOT NULL, libraryJson TEXT NOT NULL, createdAt INTEGER NOT NULL, PRIMARY KEY(version))")
             }
         }
-        fun open(context: Context): LabDatabase = Room.databaseBuilder(context.applicationContext,
-            LabDatabase::class.java, FILE_NAME).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        fun open(context: Context): LabDatabase {
+            val app = context.applicationContext
+            val lease = acquireCleanupLease(app)
+            try {
+                return Room.databaseBuilder(app, LabDatabase::class.java, FILE_NAME)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { it.cleanupLease = lease }
+            } catch (failure: Exception) { lease.close(); throw failure }
+        }
     }
 }

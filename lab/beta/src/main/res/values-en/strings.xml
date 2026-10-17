@@ -151,4 +151,14 @@
     <string name="beta_settings_restore_confirm">This will replace Beta data and settings with the local snapshot after validation. Continue?</string>
     <string name="beta_settings_confirm">Confirm</string>
     <string name="beta_startup_failed">Beta data could not be opened safely. Files were kept and no replacement data was created. Retry or return to Masroof.</string>
+    <string name="beta_start_new_title">Welcome to Masroof 2</string>
+    <string name="beta_start_new_body">This separate experience starts empty. We do not copy the main app’s data or saved messages. Choose a bank first. Importing phone messages is optional and requires your action.</string>
+    <string name="beta_start_existing_title">Previous Beta data is available</string>
+    <string name="beta_start_existing_body">Your previous Beta data is preserved. Continue opens that existing experience without clearing any data or starting an empty account. Nothing is imported from the main app.</string>
+    <string name="beta_start_begin">Start experience</string>
+    <string name="beta_start_resume">Continue existing Beta data</string>
+    <string name="beta_start_loading">Opening Beta…</string>
+    <string name="beta_start_fresh">Start a clean experience</string>
+    <string name="beta_start_fresh_warning">This deletes old Beta data, preferences and local snapshots, and the Parsing Lab database including its samples and annotations. Main Masroof data and phone messages are untouched. Close Parsing Lab first. Your new experience stays saved on every later launch.</string>
+    <string name="beta_start_fresh_confirm">Delete old experiments</string>
 </resources>
