@@ -36,4 +36,8 @@ journey armAfterComparisonBeforeCheckpoint resumeAfterComparisonBeforeCheckpoint
 CLASS="com.baraa.masroof.lab.beta.processdeath.BetaLedgerProcessDeathTest"
 journey armBeforeCommit resumeBeforeCommit
 journey armAfterCommit resumeAfterCommit
-echo "Beta permission dialog, evidence and durable-ledger process-death journeys passed"
+
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaCorrectionProcessDeathTest"
+journey armBeforeSuppressionCommit resumeBeforeSuppressionCommit
+journey armAfterSuppressionCommit resumeAfterSuppressionCommit
+echo "Beta permission dialog, evidence, durable-ledger and correction process-death journeys passed"
