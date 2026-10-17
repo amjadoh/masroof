@@ -12,10 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofShapes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofShapes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun ReviewNotificationIconButton(reviewCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -33,7 +33,7 @@ fun ReviewNotificationIconButton(reviewCount: Int, onClick: () -> Unit, modifier
         if (reviewCount > 0) Surface(modifier = Modifier.align(Alignment.TopEnd)
             .offset(x = MasroofReference.notificationOffsetX, y = MasroofReference.notificationOffsetY)
             .size(MasroofReference.notificationBadge), shape = MasroofShapes.extraLarge,
-            color = colors.liability, contentColor = if (MaterialTheme.colorScheme.background == com.baraa.masroof.presentation.theme.MasroofDarkColors.Background)
+            color = colors.liability, contentColor = if (MaterialTheme.colorScheme.background == com.baraa.masroof.ui.theme.MasroofDarkColors.Background)
                 colors.liabilitySoft else MaterialTheme.colorScheme.surface) {
             Box(contentAlignment = Alignment.Center) {
                 MasroofText(if (reviewCount > 99) "99+" else reviewCount.toString(), style = MasroofReference.notificationCount)

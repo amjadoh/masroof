@@ -52,8 +52,8 @@ import com.baraa.masroof.presentation.settings.SettingsViewModel
 import com.baraa.masroof.presentation.settings.SettingsViewModelFactory
 import com.baraa.masroof.presentation.statement.StatementReconciliationViewModel
 import com.baraa.masroof.presentation.statement.StatementReconciliationViewModelFactory
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofTheme
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import kotlinx.coroutines.launch
 

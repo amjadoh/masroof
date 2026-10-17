@@ -37,7 +37,7 @@ import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -230,8 +230,8 @@ fun SettingsCommitmentEditorScreen(
                 onClick = onToggleActive,
                 enabled = !saving,
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor =
-                    if (commitment.active) com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liability
-                    else com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.inflow),
+                    if (commitment.active) com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.liability
+                    else com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.inflow),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(
                     if (commitment.active) {

@@ -44,7 +44,7 @@ import com.baraa.masroof.presentation.common.SmsPermissionNotice
 import com.baraa.masroof.presentation.common.SmsRescanStatusNotice
 import com.baraa.masroof.presentation.common.UnregisteredCardsNotice
 import com.baraa.masroof.presentation.common.ForeignCurrencyNotice
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 fun DashboardRoute(

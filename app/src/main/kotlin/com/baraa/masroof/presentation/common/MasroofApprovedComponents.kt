@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofOpacity
+import com.baraa.masroof.ui.theme.MasroofOpacity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -18,11 +18,11 @@ import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.baraa.masroof.presentation.theme.MasroofCardShape
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.approvedHeroColors
-import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofCardShape
+import com.baraa.masroof.ui.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.approvedHeroColors
+import com.baraa.masroof.ui.theme.MasroofReference
 import androidx.compose.ui.graphics.Color
 
 /** Shared hero, amount rows and spacing for every account/card/loan detail. */
@@ -73,7 +73,7 @@ fun MasroofDetailRow(label: String, value: String, modifier: Modifier = Modifier
         ) {
             MasroofGuidanceLabel(label, guidance, Modifier.weight(1f), style = if (dense) MaterialTheme.typography.bodySmall else MasroofReference.pair,
                 contentColor = MaterialTheme.colorScheme.onSurface)
-            Text(value, Modifier.weight(1f), style = (if (dense) MaterialTheme.typography.bodySmall else MasroofReference.pair).copy(fontWeight = com.baraa.masroof.presentation.theme.MasroofFontWeights.semiBold),
+            Text(value, Modifier.weight(1f), style = (if (dense) MaterialTheme.typography.bodySmall else MasroofReference.pair).copy(fontWeight = com.baraa.masroof.ui.theme.MasroofFontWeights.semiBold),
                 textAlign = androidx.compose.ui.text.style.TextAlign.End, color = valueColor)
         }
         if (divider && !dense) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

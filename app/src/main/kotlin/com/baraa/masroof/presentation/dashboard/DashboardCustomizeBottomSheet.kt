@@ -1,7 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

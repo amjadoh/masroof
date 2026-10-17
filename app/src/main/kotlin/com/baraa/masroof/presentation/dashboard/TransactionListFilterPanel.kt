@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.common.*
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 
 @Suppress("UNUSED_PARAMETER")
 @Composable

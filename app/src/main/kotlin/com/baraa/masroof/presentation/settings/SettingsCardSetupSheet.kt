@@ -11,7 +11,7 @@ import com.baraa.masroof.domain.model.*
 import com.baraa.masroof.presentation.common.MasroofBottomSheet
 import com.baraa.masroof.presentation.common.MasroofSheetChoices
 import com.baraa.masroof.presentation.common.MasroofText
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 fun SettingsCardSetupSheet(

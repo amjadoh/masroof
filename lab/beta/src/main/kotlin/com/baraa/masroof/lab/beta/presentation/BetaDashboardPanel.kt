@@ -215,7 +215,16 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
     "ANALYSIS" to R.string.beta_dash_analysis, "TRANSACTIONS" to R.string.beta_transaction_title, "CONFIGURATION" to R.string.beta_controls_title)
 
 @Composable private fun DashCard(title: String, hero: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (hero) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer)) {
+    if (!hero) {
+        com.baraa.masroof.ui.components.MasroofCard {
+            Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                content()
+            }
+        }
+        return
+    }
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(BetaSpacing.screen), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
             Text(title, style = if (hero) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium)
             content()

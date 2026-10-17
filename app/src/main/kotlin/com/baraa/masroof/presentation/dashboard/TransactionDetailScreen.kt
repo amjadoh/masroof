@@ -44,9 +44,9 @@ import com.baraa.masroof.presentation.common.ShareActionIcon
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
 import com.baraa.masroof.presentation.review.ReviewReasonLabels
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

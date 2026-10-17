@@ -5,7 +5,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.baraa.masroof.domain.model.*
 import com.baraa.masroof.presentation.settings.*
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test

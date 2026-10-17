@@ -2,8 +2,8 @@ package com.baraa.masroof.presentation.settings
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,10 +95,10 @@ fun SettingsAboutScreen(
             ) {
             MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
-                vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+                vertical = com.baraa.masroof.ui.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                    MasroofLogo(size = com.baraa.masroof.presentation.theme.MasroofReference.aboutLogo, contentDescription = null)
+                    MasroofLogo(size = com.baraa.masroof.ui.theme.MasroofReference.aboutLogo, contentDescription = null)
                     Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.settings_about_version, appVersion), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -183,14 +183,14 @@ internal fun UpdateSectionCard(
     }
     MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
         horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
-        vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+        vertical = com.baraa.masroof.ui.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             androidx.compose.material3.Icon(if (failed) MasroofIcons.error else when (updateState) {
                 AppUpdateUiState.UpToDate -> MasroofIcons.success
                 AppUpdateUiState.Checking -> MasroofIcons.retry
                 else -> MasroofIcons.importBackup
-            }, null, Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox), tint = MaterialTheme.colorScheme.primary)
+            }, null, Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.iconBox), tint = MaterialTheme.colorScheme.primary)
             when (updateState) {
                 AppUpdateUiState.Idle -> Text(if (failed && message != null) resolveUpdateMessage(message)
                     else stringResource(R.string.reference_update_idle), style = MaterialTheme.typography.titleMedium,

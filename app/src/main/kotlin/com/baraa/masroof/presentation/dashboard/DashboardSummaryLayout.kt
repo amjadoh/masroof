@@ -6,7 +6,7 @@ import com.baraa.masroof.presentation.common.MasroofAmountText
 
 import com.baraa.masroof.presentation.common.MasroofTextStyles
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import com.baraa.masroof.core.money.Money
-import com.baraa.masroof.presentation.theme.MasroofShapes
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofShapes
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.math.BigDecimal
 
 internal val dashboardSummaryMetricTileHeight = MasroofSpacing.metricTileHeight

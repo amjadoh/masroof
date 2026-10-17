@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofRowShape
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofRowShape
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun MasroofMoneyRow(

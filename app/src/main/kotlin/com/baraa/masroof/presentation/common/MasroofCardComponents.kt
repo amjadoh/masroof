@@ -1,7 +1,7 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofComponentShapes
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofComponentShapes
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,47 +28,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.baraa.masroof.presentation.theme.MasroofBadgeShape
-import com.baraa.masroof.presentation.theme.MasroofCardShape
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofBadgeShape
+import com.baraa.masroof.ui.theme.MasroofCardShape
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun MasroofCard(
     modifier: Modifier = Modifier,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(MasroofSpacing.cardInnerPadding + MasroofSpacing.borderWidth),
     content: @Composable ColumnScope.() -> Unit,
-) {
-    val extended = MasroofThemeExtras.extendedColors
-    Card(
-        modifier = modifier
-            .fillMaxWidth(),
-        shape = MasroofCardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = extended.cardSurface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = MasroofSpacing.none,
-            pressedElevation = MasroofSpacing.none,
-            focusedElevation = MasroofSpacing.none,
-            hoveredElevation = MasroofSpacing.none,
-            draggedElevation = MasroofSpacing.none,
-            disabledElevation = MasroofSpacing.none,
-        ),
-        border = androidx.compose.foundation.BorderStroke(MasroofSpacing.borderWidth, extended.cardBorder),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(contentPadding),
-                content = content,
-            )
-        }
-    }
-}
+) = com.baraa.masroof.ui.components.MasroofCard(modifier, contentPadding, content)
 
 @Composable
 fun MasroofBadge(

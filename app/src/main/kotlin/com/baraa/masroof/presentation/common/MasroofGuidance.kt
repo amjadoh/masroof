@@ -35,8 +35,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.theme.MasroofGuidanceStyle
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofGuidanceStyle
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 /** Positions below its subject, flips above when needed and stays inside the window. */
 internal class MasroofGuidancePositionProvider(private val gap: Int, private val margin: Int) : PopupPositionProvider {

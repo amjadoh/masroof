@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 
 import java.io.File
 import org.junit.Assert.assertTrue

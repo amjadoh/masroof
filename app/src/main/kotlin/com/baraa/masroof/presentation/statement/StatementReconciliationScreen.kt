@@ -34,8 +34,8 @@ import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 const val STATEMENT_RECONCILIATION_PICK_TAG: String = "statement_reconciliation_pick"
 const val STATEMENT_COUNTS_HEADER_TAG: String = "statement_counts_header"

@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

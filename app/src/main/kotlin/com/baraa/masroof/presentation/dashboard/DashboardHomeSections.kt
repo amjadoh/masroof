@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +19,7 @@ import com.baraa.masroof.application.dashboard.AccountsSummary
 import com.baraa.masroof.presentation.common.MasroofCompactCard
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun DashboardHeroCard(
@@ -31,18 +31,18 @@ fun DashboardHeroCard(
     com.baraa.masroof.presentation.common.MasroofHeroCard(
         title = stringResource(R.string.dashboard_hero_remaining_title),
         value = accountsFleet.totalRemaining?.let { formatLocalizedMoney(it) } ?: unavailable,
-        role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Brand,
+        role = com.baraa.masroof.ui.theme.MasroofHeroRole.Brand,
         modifier = modifier,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.clickable(onClick = onIncome), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.heroFooterGap)) {
+            Column(Modifier.clickable(onClick = onIncome), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.heroFooterGap)) {
                 Text(stringResource(R.string.reference_inflow_short), style = MaterialTheme.typography.bodySmall)
-                Text(accountsFleet.totalInflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.presentation.theme.MasroofReference.heroFooterValue)
+                Text(accountsFleet.totalInflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.ui.theme.MasroofReference.heroFooterValue)
             }
             Column(Modifier.clickable(onClick = onOutflow), horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.heroFooterGap)) {
+                verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.heroFooterGap)) {
                 Text(stringResource(R.string.reference_outflow_short), style = MaterialTheme.typography.bodySmall)
-                Text(accountsFleet.totalOutflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.presentation.theme.MasroofReference.heroFooterValue)
+                Text(accountsFleet.totalOutflow?.let { formatLocalizedMoney(it) } ?: unavailable, style = com.baraa.masroof.ui.theme.MasroofReference.heroFooterValue)
             }
         }
     }
