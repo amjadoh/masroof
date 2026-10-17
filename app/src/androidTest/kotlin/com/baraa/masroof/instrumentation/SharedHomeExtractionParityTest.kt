@@ -65,7 +65,7 @@ class SharedHomeExtractionParityTest {
         var shortcut by mutableIntStateOf(-1)
         var point by mutableIntStateOf(1)
         val arabic = language == "ar"
-        val labels = if (arabic) listOf("الرئيسية", "العمليات", "المراجعة", "الإعدادات")
+        val labels = if (arabic) listOf("الرئيسية", "الحركات", "المراجعة", "الإعدادات")
             else listOf("Home", "Transactions", "Review", "Settings")
         val shortcuts = if (arabic) listOf("الحسابات", "البطاقات", "القروض", "الالتزامات")
             else listOf("Accounts", "Cards", "Loans", "Commitments")

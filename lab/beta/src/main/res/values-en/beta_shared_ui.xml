@@ -7,4 +7,7 @@
     <string name="beta_chart_previous_point">Previous point</string>
     <string name="beta_chart_next_point">Next point</string>
     <string name="beta_chart_average_announcement">Average %1$s</string>
+    <string name="beta_nav_transactions">Transactions</string>
+    <string name="beta_nav_review">Review</string>
+    <string name="beta_nav_settings">Settings</string>
 </resources>

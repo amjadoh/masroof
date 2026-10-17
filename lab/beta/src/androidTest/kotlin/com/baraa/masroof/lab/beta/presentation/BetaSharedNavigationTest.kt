@@ -24,15 +24,15 @@ class BetaSharedNavigationTest {
             BetaContainer(context).use { it.putMarker("m2-new-data", "keep"); it.acknowledgeStart() }
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
                 await("dash-refresh"); await("beta-bottom-navigation")
-                tab(R.string.beta_transaction_title).performClick()
+                tab(R.string.beta_nav_transactions).performClick()
                 compose.onNodeWithTag("dash-route-TRANSACTIONS").assertIsSelected()
                 scenario.recreate(); await("dash-refresh")
                 compose.onNodeWithTag("dash-route-TRANSACTIONS").assertIsSelected()
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
                 compose.onNodeWithTag("dash-route-OVERVIEW").assertIsSelected()
-                tab(R.string.beta_review_title).performClick(); await("review-close")
+                tab(R.string.beta_nav_review).performClick(); await("review-close")
                 compose.onNodeWithTag("review-close").performScrollTo().performClick(); await("beta-bottom-navigation")
-                tab(R.string.beta_settings_title).performClick(); await("beta-settings-panel")
+                tab(R.string.beta_nav_settings).performClick(); await("beta-settings-panel")
                 compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick(); await("beta-bottom-navigation")
                 compose.onNodeWithTag("beta-badge").assertIsDisplayed()
                 compose.onNodeWithTag("beta-return").performClick()
