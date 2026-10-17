@@ -42,6 +42,9 @@ fun BetaShell(
     onOpenReview: () -> Unit = {},
     onOpenApproval: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenHome: (() -> Unit)? = null,
+    onOpenTransactions: () -> Unit = {},
+    selectedHomeTab: String = "HOME",
     showMaintenanceActions: Boolean = true,
     onAddAsset: (BankId) -> Unit = {},
     onEditAsset: (OwnedAsset) -> Unit = {},
@@ -73,8 +76,23 @@ fun BetaShell(
             )
         },
         bottomBar = {
+            Column {
+            if (editor == null && dashboard != null && onOpenHome != null) {
+                val icons = com.baraa.masroof.ui.components.MasroofOutlineIcons
+                val items = listOf(
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_home), icons.LayoutDashboard, selectedHomeTab == "HOME"),
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_transaction_title), icons.List, selectedHomeTab == "TRANSACTIONS"),
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_review_title), icons.ShieldCheck, false),
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_settings_title), icons.Settings, false))
+                Column(Modifier.testTag("beta-bottom-navigation")) {
+                com.baraa.masroof.ui.components.MasroofBottomNavigation(items, { index ->
+                    when (index) { 0 -> onOpenHome(); 1 -> onOpenTransactions(); 2 -> onOpenReview(); 3 -> onOpenSettings() }
+                }, enabled = returnEnabled && !busy)
+                }
+            }
             Button(onClick = onReturn, enabled = returnEnabled, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
                 Text(stringResource(R.string.beta_return))
+            }
             }
         },
     ) { padding ->
