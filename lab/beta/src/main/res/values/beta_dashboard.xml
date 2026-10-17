@@ -51,4 +51,6 @@
     <string name="beta_dash_salary_payment">مدفوعات فترة الراتب</string>
     <string name="beta_dash_flow_remaining">المتبقي من حركة الحسابات</string>
     <string name="beta_dash_more">عرض 20 عنصرًا إضافيًا</string>
+    <string name="beta_dash_manage">إدارة بيئة Beta</string>
+    <string name="beta_dash_period">من %1$s حتى قبل %2$s</string>
 </resources>

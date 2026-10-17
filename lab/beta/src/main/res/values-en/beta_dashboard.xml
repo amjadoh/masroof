@@ -51,4 +51,6 @@
     <string name="beta_dash_salary_payment">Salary-period payments</string>
     <string name="beta_dash_flow_remaining">Remaining account flow</string>
     <string name="beta_dash_more">Show 20 more items</string>
+    <string name="beta_dash_manage">Manage Beta</string>
+    <string name="beta_dash_period">From %1$s until before %2$s</string>
 </resources>
