@@ -93,6 +93,11 @@ object BetaDashboardBuilder {
         details.values.forEach { fact ->
             val input = byKey[fact.key]?.classification?.input
             require(input != null && fact.revision == input.revision && fact.evidenceId in input.evidenceIds)
+            fact.debitCard?.let { id ->
+                val card = registry[id]
+                require(card?.kind == AssetKind.DEBIT_CARD && card.parentId != null &&
+                    listOf(input.source, input.destination).any { (it as? FinancialEndpoint.Owned)?.id == card.parentId })
+            }
         }
         val fees = batch.fees.toList().associateUnique { it.key }
         fees.values.forEach { fee ->
@@ -111,7 +116,7 @@ object BetaDashboardBuilder {
                 fact?.balance?.asOf, queryProjection?.let { flow(it, asset.id) })
         }
         val debitRows = assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { asset ->
-            DebitSpending(asset.id, salary?.let { debitNet(it, asset) }, asset.parentId,
+            DebitSpending(asset.id, salary?.let { debitNet(it, asset, details) }, asset.parentId,
                 facts[asset.id]?.label, asset.last4, facts[asset.id]?.network, batch.periods.salary)
         }
         val facilities = assets.filter { it.kind == AssetKind.CREDIT_FACILITY }.map { facility ->
@@ -149,7 +154,7 @@ object BetaDashboardBuilder {
             salary?.let { sumKnownSigned(debitRows.map { it.spending }) },
             if (completeRegistry) sumKnownMoney(loans.map { it.remaining }) else null,
             salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
-        val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key]) }
+        val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key], registry) }
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
             null, null, freezeList(transactions), totals, batch.revision, fleet)
         val unavailable = setOf(DashboardSection.ANALYSIS, DashboardSection.TRENDS, DashboardSection.MERCHANT_TOTALS,
@@ -191,33 +196,33 @@ object BetaDashboardBuilder {
         return candidate
     }
 
-    private fun transaction(row: StoredFinancialPosting, details: DashboardPostingFacts?, fee: LinkedInternationalFee?): TransactionFacts {
+    private fun transaction(row: StoredFinancialPosting, details: DashboardPostingFacts?, fee: LinkedInternationalFee?, registry: Map<AssetId, OwnedAsset>): TransactionFacts {
         val input = row.classification.input
         val endpoints = listOfNotNull((input.source as? FinancialEndpoint.Owned)?.id, (input.destination as? FinancialEndpoint.Owned)?.id)
         val assets = endpoints.map(input.assets::getValue)
         val accounts = assets.filter { it.kind == AssetKind.ACCOUNT }.map { it.id } +
             assets.filter { it.kind == AssetKind.DEBIT_CARD }.mapNotNull { it.parentId }
-        val cards = assets.filter { it.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) }.map { it.id }
+        val cards = assets.filter { it.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) }.map { it.id } + listOfNotNull(details?.debitCard)
         val debit = if (row.classification.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) {
-            assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { it.id }
+            assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { it.id } + listOfNotNull(details?.debitCard)
         } else emptyList()
         val loan = if (row.classification.effectiveType == FinancialType.LOAN_REPAYMENT) input.financingLoan else null
         val loans = assets.filter { it.kind == AssetKind.LOAN }.map { it.id } + listOfNotNull(loan)
         val sar = if (input.amount.currency == Currency.SAR) null else (PersistedSarProjection.project(input) as? SarRowProjection.Available)?.sarAmount
         return TransactionFacts(input.key, input.revision, input.time, input.storedType, row.classification.effectiveType, input.amount,
-            details?.merchant, details?.counterparty, assets.firstOrNull { it.id in cards }?.last4,
+            details?.merchant, details?.counterparty, assets.firstOrNull { it.id in cards }?.last4 ?: details?.debitCard?.let(registry::get)?.last4,
             freezeSet(accounts.toSet()), freezeSet(cards.toSet()), freezeSet(debit.toSet()), freezeSet(loans.toSet()),
-            categories(row, assets), input.appliedFx, sar, fee?.amount, freezeSet(input.evidenceIds),
+            categories(row, assets, details?.debitCard != null), input.appliedFx, sar, fee?.amount, freezeSet(input.evidenceIds),
             (input.source as? FinancialEndpoint.Owned)?.id, (input.destination as? FinancialEndpoint.Owned)?.id, details?.categoryId)
     }
 
-    private fun categories(row: StoredFinancialPosting, endpoints: List<OwnedAsset>): Set<ChartCategory> {
+    private fun categories(row: StoredFinancialPosting, endpoints: List<OwnedAsset>, provedMada: Boolean): Set<ChartCategory> {
         val type = row.classification.effectiveType
         val category = when (type) {
             FinancialType.EXPENSE -> when (endpoints.firstOrNull()?.kind) {
                 AssetKind.CREDIT_CARD, AssetKind.CREDIT_FACILITY -> ChartCategory.CREDIT_PURCHASES
                 AssetKind.DEBIT_CARD -> ChartCategory.MADA_PURCHASES
-                else -> ChartCategory.ACCOUNT_PURCHASES
+                else -> if (provedMada) ChartCategory.MADA_PURCHASES else ChartCategory.ACCOUNT_PURCHASES
             }
             FinancialType.FEE -> ChartCategory.FEES
             FinancialType.BILL_PAYMENT -> ChartCategory.BILLS
@@ -271,19 +276,21 @@ private fun cardNet(rows: List<SarRowProjection.Available>, id: AssetId) = signe
     }
     if (endpoint?.id == id && accepted) sum + (if (refund) row.sarAmount.amount.negate() else row.sarAmount.amount) else sum
 })
-private fun debitNet(rows: List<SarRowProjection.Available>, card: OwnedAsset): SignedAmount? {
+private fun debitNet(rows: List<SarRowProjection.Available>, card: OwnedAsset, facts: Map<PostingKey, DashboardPostingFacts>): SignedAmount? {
     val unresolved = rows.any { row ->
         if (row.native.effectiveType !in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)) false
         else {
             val input = row.native.input
             val endpoint = (if (row.native.effectiveType == FinancialType.REFUND) input.destination else input.source) as? FinancialEndpoint.Owned
             val account = endpoint?.id?.let(input.assets::get)?.takeIf { it.kind == AssetKind.ACCOUNT }
-            account != null && (card.parentId == account.id || (card.parentId == null && card.id.bank == account.id.bank))
+            account != null && facts[input.key]?.debitCard == null && (card.parentId == account.id || (card.parentId == null && card.id.bank == account.id.bank))
         }
     }
     // An account-backed POS/ATM/refund may mention a Mada card in persisted involvement facts.
     // That exact role-bound card attribution is not part of this beginning's source contract.
-    return if (unresolved) null else cardNet(rows, card.id)
+    return if (unresolved) null else signed(cardNet(rows, card.id).amount + rows.filter {
+        facts[it.native.input.key]?.debitCard == card.id && it.native.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.CASH_WITHDRAWAL, FinancialType.REFUND)
+    }.fold(BigDecimal.ZERO) { sum, row -> sum + if (row.native.effectiveType == FinancialType.REFUND) row.sarAmount.amount.negate() else row.sarAmount.amount })
 }
 private fun creditNet(rows: List<SarRowProjection.Available>, card: OwnedAsset): SignedAmount? {
     val unresolved = rows.any { row ->

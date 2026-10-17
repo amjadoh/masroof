@@ -64,9 +64,27 @@ class BetaContainer(
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database).summary(id) }
     }
 
+    /** Explicit bounded write-side maintenance after a Beta schema upgrade. */
+    fun refreshDashboardFacts(afterId: String = "", limit: Int = 100) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaDashboardFacts(database).refreshPage(afterId, limit) }
+    }
+
+    fun dashboard(query: com.baraa.masroof.lab.finance.dashboard.DashboardQuery,
+        periods: com.baraa.masroof.lab.finance.dashboard.producer.DashboardPeriods = com.baraa.masroof.lab.finance.dashboard.producer.DashboardPeriods()) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.finance.dashboard.producer.BetaDashboardProducer(
+            com.baraa.masroof.lab.beta.data.RoomBetaDashboardSource(database, periods)).readWithCoverage(query) }
+    }
+
     fun financialReviewPage(afterId: String = "", limit: Int = 25) = lock.withLock {
         check(!closed)
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).reviewPage(afterId, limit) }
+    }
+
+    fun financialApprovalPreview(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).preview(id) }
     }
 
     fun approveEvidenceFinancial(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
@@ -74,9 +92,9 @@ class BetaContainer(
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).approve(request) }
     }
 
-    fun retryFinancialApproval(id: String) = lock.withLock {
+    fun retryFinancialApproval(id: String, expected: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval? = null) = lock.withLock {
         check(!closed)
-        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).retryApproval(id) }
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).retryApproval(id, expected) }
     }
 
     fun cancelFinancialApproval(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
