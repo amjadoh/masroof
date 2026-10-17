@@ -44,6 +44,9 @@ CLASS="com.baraa.masroof.lab.beta.processdeath.BetaRestoreProcessDeathTest"
 journey armAfterDatabaseInstall resumeAfterDatabaseInstall
 journey armAfterPreferencesInstall resumeAfterPreferencesInstall
 journey armAfterCommit resumeAfterCommit
+journey armArchiveDatabase resumeArchiveDatabase
+journey armArchivePreferences resumeArchivePreferences
+journey armArchiveCommitted resumeArchiveCommitted
 adb shell pm clear "$APP_ID"
 instrument armCommittedWal false
 adb shell am force-stop "$APP_ID"

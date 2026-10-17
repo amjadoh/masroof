@@ -44,15 +44,7 @@ internal class BetaBackupRecovery(
         BetaEnvironment.requireBetaDatabaseName(database.name)
         val folder = newFolder("snapshot-")
         try {
-            copySynced(database, File(folder, DB))
-            standaloneDatabase(File(folder, DB))
-            writeSynced(File(folder, PREFS), encodePreferences(values).toString().toByteArray(Charsets.UTF_8))
-            val version = inspectSqlite(File(folder, DB))
-            writeSynced(File(folder, MANIFEST), JSONObject().apply {
-                put("format", 1); put("environment", "BETA"); put("database", BetaEnvironment.DATABASE_NAME)
-                put("schema", version); put("databaseSha256", sha(File(folder, DB))); put("preferencesSha256", sha(File(folder, PREFS)))
-            }.toString().toByteArray(Charsets.UTF_8))
-            verify(folder)
+            seal(database, values, folder)
             fault(Stage.BACKUP_STAGED)
             atomicWrite(pointer, folder.name)
             fault(Stage.BACKUP_PUBLISHED)
@@ -64,9 +56,44 @@ internal class BetaBackupRecovery(
         }
     }
 
+    private fun seal(database: File, values: Map<String, String>, folder: File) {
+        copySynced(database, File(folder, DB))
+        standaloneDatabase(File(folder, DB))
+        writeSynced(File(folder, PREFS), encodePreferences(values).toString().toByteArray(Charsets.UTF_8))
+        val version = inspectSqlite(File(folder, DB))
+        writeSynced(File(folder, MANIFEST), JSONObject().apply {
+            put("format", 1); put("environment", "BETA"); put("database", BetaEnvironment.DATABASE_NAME)
+            put("schema", version); put("databaseSha256", sha(File(folder, DB))); put("preferencesSha256", sha(File(folder, PREFS)))
+        }.toString().toByteArray(Charsets.UTF_8))
+        verify(folder)
+    }
+
+    fun exportArchive(output: java.io.OutputStream, password: CharArray, archive: BetaEncryptedArchive = BetaEncryptedArchive()) {
+        recover()
+        val stage = newFolder("archive-")
+        try {
+            require(live.isFile)
+            seal(live, preferenceValues(), stage)
+            archive.write(stage, output, password)
+        } finally { check(stage.deleteRecursively()) { "Could not clear Beta export stage" } }
+    }
+
+    fun importArchive(input: java.io.InputStream, password: CharArray, archive: BetaEncryptedArchive = BetaEncryptedArchive()): Boolean {
+        recover()
+        val stage = newFolder("archive-")
+        try {
+            archive.read(input, stage, password)
+            verify(stage)
+            return restoreFrom(stage)
+        } finally { check(stage.deleteRecursively()) { "Could not clear Beta archive stage" } }
+    }
+
     fun restore(): Boolean {
         recover()
-        val backup = activeBackup() ?: return false
+        return restoreFrom(activeBackup() ?: return false)
+    }
+
+    private fun restoreFrom(backup: File): Boolean {
         verify(backup)
         val transaction = newFolder("restore-")
         var journaled = false
@@ -157,8 +184,8 @@ internal class BetaBackupRecovery(
         cleanupExcept(emptySet())
         // Explicit Beta reset erases all retained Beta snapshots, including an
         // abandoned pre-journal stage. Never prune an active recovery original.
-        root.listFiles()?.filter { it.isDirectory && it.name.startsWith("restore-") }
-            ?.forEach { check(child(it.name, "restore-").deleteRecursively()) }
+        root.listFiles()?.filter { it.isDirectory && (it.name.startsWith("restore-") || it.name.startsWith("archive-")) }
+            ?.forEach { check(child(it.name, if (it.name.startsWith("restore-")) "restore-" else "archive-").deleteRecursively()) }
         val installation = File(live.parentFile, "masroof_beta_restore_install.tmp")
         check(!installation.exists() || installation.delete()) { "Could not clear Beta installation stage" }
     }

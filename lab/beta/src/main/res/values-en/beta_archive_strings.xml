@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="beta_archive_export">Export encrypted Beta copy</string>
+    <string name="beta_archive_import">Restore encrypted Beta copy</string>
+    <string name="beta_archive_boundary">These encrypted copies restore only in this Beta installation. Uninstalling the app, clearing Android app data or losing its secure key makes them unrestorable. Other devices and production copies are not accepted. Beta reset retains this key.</string>
+    <string name="beta_archive_replace_confirm">This replaces only current Beta data and settings after the password, origin and database checks pass.</string>
+    <string name="beta_archive_password">Password (12-256 characters)</string>
+    <string name="beta_archive_password_repeat">Repeat password</string>
+</resources>

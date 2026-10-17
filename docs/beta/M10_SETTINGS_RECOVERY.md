@@ -2,7 +2,9 @@
 
 This slice adds an actual **Beta settings** route (M10.3/M10.4) and strengthens
 the existing local Beta snapshot flow (M11). It is not production migration
-acceptance or a claim that M10/M11 are complete.
+acceptance or a claim that M10/M11 are complete. The subsequent
+[encrypted recovery increment](M11_ENCRYPTED_RECOVERY.md) adds user-selected
+SAF documents restricted to this trusted Beta installation.
 
 ## UI and state
 
@@ -39,9 +41,10 @@ database for installation. A native-device regression checks exact archive
 entries before/after read-only inspection and restore; external force-stop
 journeys repeat the entry and preference checks after reopening.
 
-**SHA-256 detects accidental corruption; this is not authenticated or encrypted
-external backup import.** No SAF import, sharing/export or production backup
-reader is exposed. Old unsealed database/text pairs are not automatically trusted
+**The private snapshot format alone uses corruption checks, not authentication.**
+The subsequent encrypted-document flow authenticates its complete payload and
+requires the existing installation origin key before using this restore path.
+No production backup reader is exposed. Old unsealed database/text pairs are not automatically trusted
 or installed. The historical v5 migration fixture explicitly packages its
 synthetic database through the new internal writer to retain migration coverage.
 
@@ -101,6 +104,6 @@ restore interruption. No additional emulator job/matrix is introduced.
 
 No production databases/preferences are read by these implementations. Tests use
 synthetic isolated state. No old production code is deleted. Remaining M11 work
-includes authenticated/encrypted external packages, broader transfer/production
-migration acceptance and performance/large-dataset qualification. Broader M10
+includes cross-device/key-recovery acceptance for encrypted copies, broader
+transfer/production migration acceptance and performance/large-dataset qualification. Broader M10
 language/notification/configuration and full screen-state parity remain open.
