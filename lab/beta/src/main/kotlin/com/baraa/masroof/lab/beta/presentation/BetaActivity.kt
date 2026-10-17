@@ -111,7 +111,7 @@ class BetaActivity : ComponentActivity() {
                 if (!loaded || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                     BetaShell(
                         markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
-                        returnEnabled = !busy, onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {},
+                        returnEnabled = !busy || !loaded, onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {},
                         editor = {
                             if (!loaded) {
                                 if (failed) BetaStartupFailure(onRetry = { perform { null } }, onReturn = { finish() })
