@@ -23,6 +23,8 @@ class BetaSettingsActivityTest {
         BetaContainer.resetOffline(context)
         BetaContainer(context).use { it.putMarker("synthetic", "keep") }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-start-continue").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-reset").assertDoesNotExist()
             compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
@@ -51,6 +53,8 @@ class BetaSettingsActivityTest {
             assertTrue(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).length() > 0)
             journal.delete()
             compose.onNodeWithTag("beta-startup-retry").performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-start-continue").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings").fetchSemanticsNodes().isNotEmpty() }
         }
         waitForClose()

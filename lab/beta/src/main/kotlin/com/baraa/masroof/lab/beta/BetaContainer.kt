@@ -2,6 +2,7 @@ package com.baraa.masroof.lab.beta
 
 import com.baraa.masroof.lab.beta.application.BetaManualAssetWorkflow
 import com.baraa.masroof.lab.beta.application.ManualAssetDraft
+import com.baraa.masroof.lab.beta.application.BetaStartState
 import com.baraa.masroof.lab.beta.application.BetaBankSelectionWorkflow
 import com.baraa.masroof.lab.beta.data.RoomBetaBankSelectionStore
 import com.baraa.masroof.lab.finance.value.BankId
@@ -36,6 +37,35 @@ class BetaContainer(
         BetaEnvironment.PREFS_NAME,
         Context.MODE_PRIVATE,
     ).also { BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME) }
+
+    /** Read only: prior Beta rows/preferences are history, never a new user's initial accounts. */
+    fun startState(): BetaStartState = lock.withLock {
+        check(!closed)
+        val sqlite = database.openHelper.writableDatabase
+        val stored = preferences.all[START_KEY]
+        if (stored != null) {
+            check(stored == START_VERSION) { "Unsupported Beta entry state" }
+            return@withLock BetaStartState.READY
+        }
+        // Open/validate Room even when only preferences exist. No destructive fallback or reset.
+        val hasRows = sqlite.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata', 'room_master_table')").use { tables ->
+            var found = false
+            while (!found && tables.moveToNext()) {
+                val table = tables.getString(0).replace("\"", "\"\"")
+                found = sqlite.query("SELECT 1 FROM \"$table\" LIMIT 1").use { it.moveToFirst() }
+            }
+            found
+        }
+        if (hasRows || preferences.all.isNotEmpty()) BetaStartState.EXISTING
+        else BetaStartState.NEW
+    }
+
+    /** Explicit user action; retains every existing row and unrelated preference. */
+    fun acknowledgeStart() = lock.withLock {
+        check(!closed)
+        startState() // Reject unknown future state or unreadable database rather than replacing it.
+        check(preferences.edit().putString(START_KEY, START_VERSION).commit()) { "Could not save Beta entry state" }
+    }
 
     fun bankChoices() = lock.withLock {
         check(!closed)
@@ -386,6 +416,18 @@ class BetaContainer(
         BetaEnvironment.requireBetaDatabaseName(name)
         val path = appContext.getDatabasePath(name)
         check(path.name == name) { "Resolved beta database path is ${path.name}" }
+        if (path.exists()) {
+            // Android's default corruption handler can delete files. Validate read-only with a
+            // non-destructive handler before handing an existing Beta database to Room.
+            android.database.sqlite.SQLiteDatabase.openDatabase(path.path, null,
+                android.database.sqlite.SQLiteDatabase.OPEN_READONLY, android.database.DatabaseErrorHandler { }).use { existing ->
+                existing.rawQuery("PRAGMA quick_check", null).use { result ->
+                    check(result.moveToFirst() && result.getString(0) == "ok" && !result.moveToNext()) {
+                        "Existing Beta database needs recovery"
+                    }
+                }
+            }
+        }
         return Room.databaseBuilder(appContext, BetaDatabase::class.java, name).build()
     }
 
@@ -412,6 +454,8 @@ class BetaContainer(
     }
 
     companion object {
+        internal const val START_KEY = "beta_entry_state"
+        private const val START_VERSION = "acknowledged-v1"
         const val PREFERENCE_PROBE_KEY: String = "beta_preference_probe"
 
         fun restoreOffline(context: Context): Boolean {

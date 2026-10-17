@@ -151,4 +151,11 @@
     <string name="beta_settings_restore_confirm">سيتم استبدال بيانات Beta وإعداداتها بالنسخة المحلية بعد فحصها. هل تريد المتابعة؟</string>
     <string name="beta_settings_confirm">تأكيد</string>
     <string name="beta_startup_failed">تعذر فتح بيانات Beta بأمان. احتفظنا بالملفات ولم ننشئ بيانات بديلة. أعد المحاولة أو ارجع إلى مصروف.</string>
+    <string name="beta_start_new_title">مرحبًا بك في مصروف 2</string>
+    <string name="beta_start_new_body">هذه تجربة مستقلة تبدأ فارغة. لا ننسخ بيانات مصروف الأساسي أو رسائله المحفوظة. تختار البنك أولًا، واستيراد رسائل الهاتف اختياري وبطلب منك.</string>
+    <string name="beta_start_existing_title">لديك بيانات سابقة في Beta</string>
+    <string name="beta_start_existing_body">حفظنا بيانات Beta السابقة كما هي. المتابعة تفتح تجربتك الموجودة ولا تبدأ حسابًا فارغًا أو تمسح أي بيانات. لا يتم استيراد شيء من مصروف الأساسي.</string>
+    <string name="beta_start_begin">بدء التجربة</string>
+    <string name="beta_start_resume">متابعة بيانات Beta الموجودة</string>
+    <string name="beta_start_loading">جارٍ فتح Beta…</string>
 </resources>

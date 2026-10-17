@@ -92,6 +92,8 @@ class BetaDashboardExplorationActivityTest {
             InstrumentationRegistry.getInstrumentation().runOnMainSync { locales.applicationLocales = LocaleList.forLanguageTags("ar") }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-start-continue").performClick()
                 waitLoaded(); compose.onNodeWithText("نظرة عامة").assertExists(); screenshot("activity-rtl-overview")
                 scenario.onActivity { activity ->
                     assertEquals(View.LAYOUT_DIRECTION_RTL, activity.window.decorView.layoutDirection)
