@@ -61,6 +61,8 @@ data class DashboardPostingFacts(
     val merchant: String? = null,
     val counterparty: String? = null,
     val categoryId: String? = null,
+    /** Proved account-backed Mada involvement; never an inferred financial endpoint. */
+    val debitCard: AssetId? = null,
 )
 
 /** A source consistency token covers every collection and coverage flag in this batch together.

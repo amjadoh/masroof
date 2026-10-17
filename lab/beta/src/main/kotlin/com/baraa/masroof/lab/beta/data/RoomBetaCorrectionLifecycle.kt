@@ -142,6 +142,7 @@ class RoomBetaCorrectionLifecycle internal constructor(private val database: Bet
                 dao.current(row(next))
                 dao.append(BetaCorrectionAuditEntity(key.environment.name, key.transactionId, sequence, operation.request?.decisionId,
                     BetaCorrectionCodec.encodeOperation(operation), BetaCorrectionCodec.encode(next)))
+                RoomBetaDashboardFacts(database).refreshTransaction(key)
                 afterWritesBeforeCommit()
                 BetaCorrectionResult.Applied(view(next))
             }

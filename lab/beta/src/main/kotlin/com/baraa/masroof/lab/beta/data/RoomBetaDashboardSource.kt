@@ -13,6 +13,9 @@ import com.baraa.masroof.lab.finance.posting.*
 import com.baraa.masroof.lab.finance.value.*
 import java.security.MessageDigest
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import com.baraa.masroof.lab.finance.projection.LinkedInternationalFee
 import java.util.Collections
 
 /** The v6 ledger stores time inside checksummed financial payloads, not an SQL time index.
@@ -46,6 +49,7 @@ class RoomBetaDashboardSource(
             listOfNotNull(frozenPeriods.salary, frozenPeriods.calendar) + frozenPeriods.statements.values
         require(windows.all { it.zone == query.zone })
         return database.withTransaction {
+            val readAt = clock.instant()
             val digest = MessageDigest.getInstance("SHA-256")
             fun fingerprint(value: String?) {
                 // Length framing distinguishes null, empty and concatenation collisions.
@@ -56,18 +60,27 @@ class RoomBetaDashboardSource(
             fingerprint("BETA_DASHBOARD_CURRENT_1")
             fingerprint(query.toString()); fingerprint(frozenPeriods.toString())
             val schema = database.openHelper.readableDatabase.version
-            check(schema in 6..7) { "Unsupported Beta dashboard schema" }
+            check(schema in 6..8) { "Unsupported Beta dashboard schema" }
             fingerprint(schema.toString())
             val capabilities = database.query(SimpleSQLiteQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry')",
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts')",
             )).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
             val hasAdoption = "beta_financial_adoption" in capabilities
             val hasApprovalRetry = "beta_financial_approval_retry" in capabilities
-            check(schema != 7 || (hasAdoption && hasApprovalRetry)) { "Missing Beta financial adoption gates" }
+            check(schema < 7 || (hasAdoption && hasApprovalRetry)) { "Missing Beta financial adoption gates" }
+            val hasFacts = "beta_dashboard_evidence_facts" in capabilities
+            check(schema < 8 || hasFacts) { "Missing Beta persisted dashboard facts" }
+            val factRows = if (hasFacts) database.dashboardFactsDao().all(limits.currentRows + 1) else emptyList()
+            if (factRows.size > limits.currentRows) throw BetaDashboardReadLimitExceeded("persisted facts", limits.currentRows)
+            val persistedFacts = factRows.associateBy { it.transactionId }
+            val projectedEvidence = factRows.mapTo(hashSetOf()) { it.evidenceId }
+            val adoptionBindings = mutableMapOf<String, Triple<String, String, Long>>()
             val held = linkedSetOf<String>()
             if (hasAdoption) {
                 database.query(SimpleSQLiteQuery(
-                    "SELECT transactionId,status FROM beta_financial_adoption ORDER BY evidenceId LIMIT ?",
+                    "SELECT a.transactionId,a.status,a.archiveFingerprint,a.observationRevision,a.bankId," +
+                        (if (hasApprovalRetry) "EXISTS(SELECT 1 FROM beta_financial_approval_retry r WHERE r.evidenceId=a.evidenceId)" else "0") +
+                        " FROM beta_financial_adoption a ORDER BY a.evidenceId LIMIT ?",
                     arrayOf(limits.currentRows + 1),
                 )).use { cursor ->
                     var count = 0
@@ -75,8 +88,10 @@ class RoomBetaDashboardSource(
                         if (++count > limits.currentRows) throw BetaDashboardReadLimitExceeded("adoption rows", limits.currentRows)
                         val id = cursor.getString(0); val status = cursor.getString(1)
                         check(id.isNotBlank() && status in setOf("ACTIVE", "REVIEW")) { "Invalid Beta adoption state" }
-                        fingerprint(id); fingerprint(status)
-                        if (status != "ACTIVE") held += id
+                        fingerprint(id); fingerprint(status); fingerprint(cursor.getString(2)); fingerprint(cursor.getLong(3).toString())
+                        adoptionBindings[id] = Triple(cursor.getString(4), cursor.getString(2), cursor.getLong(3)); fingerprint(cursor.getString(4))
+                        fingerprint(cursor.getInt(5).toString())
+                        if (status != "ACTIVE" || cursor.getInt(5) != 0) held += id
                     }
                 }
             }
@@ -90,6 +105,15 @@ class RoomBetaDashboardSource(
             if (held.isNotEmpty()) completeLedger = false
             fingerprint(completeLedger.toString())
             val unhandledEvidence = linkedSetOf<String>()
+            val evidenceOwners = mutableMapOf<String, String>()
+            val reviewKeys = linkedSetOf<String>()
+            if (hasFacts) database.query(SimpleSQLiteQuery("SELECT transactionId FROM beta_correction_current WHERE environment=? AND activity='REVIEW' ORDER BY transactionId LIMIT ?",
+                arrayOf(Environment.BETA.name, limits.currentRows + 1))).use { cursor ->
+                while (cursor.moveToNext()) {
+                    if (reviewKeys.size == limits.currentRows) throw BetaDashboardReadLimitExceeded("review identities", limits.currentRows)
+                    reviewKeys += cursor.getString(0); fingerprint(cursor.getString(0))
+                }
+            }
             database.query(SimpleSQLiteQuery(
                 "SELECT r.id,c.transactionId,c.correction,c.interpretation,c.transition,c.activity,c.payload " +
                     "FROM beta_raw_evidence r LEFT JOIN beta_correction_evidence_claim x ON x.environment=? AND x.evidenceId=r.id " +
@@ -102,6 +126,7 @@ class RoomBetaDashboardSource(
                     if (++count > limits.evidenceIds) throw BetaDashboardReadLimitExceeded("evidence identities", limits.evidenceIds)
                     repeat(7) { fingerprint(cursor.optional(it)) }
                     val id = cursor.getString(0)
+                    evidenceOwners[id] = cursor.optional(1) ?: "evidence:$id"
                     val correction = cursor.optional(6)?.let(BetaCorrectionCodec::decode)
                     if (correction != null) check(correction.overlay.key == PostingKey(Environment.BETA, cursor.getString(1)) &&
                         correction.overlay.correctionRevision == cursor.getLong(2) && correction.overlay.interpretationRevision == cursor.getLong(3) &&
@@ -128,6 +153,10 @@ class RoomBetaDashboardSource(
             val registry = assets.associateBy { it.id }
             val rows = mutableListOf<DashboardLedgerRow>()
             val postingFacts = mutableListOf<DashboardPostingFacts>()
+            val fees = mutableListOf<LinkedInternationalFee>()
+            val knownFees = mutableSetOf<PostingKey>()
+            data class Observation(val row: BetaDashboardFactsEntity, val eligible: Boolean)
+            val observations = mutableListOf<Observation>()
             database.query(SimpleSQLiteQuery(
                 "SELECT l.transactionId,l.correction,l.interpretation,l.payload," +
                     "c.correction,c.interpretation,c.transition,c.activity,c.payload " +
@@ -149,8 +178,17 @@ class RoomBetaDashboardSource(
                             correction.overlay.interpretationRevision == cursor.getLong(5) && correction.transition == cursor.getLong(6) &&
                             correction.activity.name == cursor.getString(7)) { "Inconsistent correction current row" }
                     } else check(cursor.isNull(7)) { "Missing correction payload" }
+                    val persisted = persistedFacts[id]
+                    if (persisted != null) {
+                        listOf(persisted.evidenceId, persisted.transactionId, persisted.bankId, persisted.archiveFingerprint, persisted.observationRevision.toString(),
+                            persisted.correction.toString(), persisted.interpretation.toString(), persisted.boundInput, persisted.observedAt,
+                            persisted.feeKnown.toString(), persisted.feeAmount, persisted.feeCurrency, persisted.balanceAsset, persisted.balanceAmount,
+                            persisted.balanceCurrency, persisted.facilityAsset, persisted.dueAmount, persisted.dueCurrency, persisted.dueDate,
+                            persisted.merchant, persisted.counterparty, persisted.debitCardAsset, persisted.debitCardLast4, persisted.debitCardParent).forEach(::fingerprint)
+                    }
                     val active = id !in held && (correction == null || correction.activity == BetaLedgerActivity.ACTIVE)
-                    if (id in held || correction?.activity == BetaLedgerActivity.REVIEW) completeLedger = false
+                    if (id in held || correction?.activity == BetaLedgerActivity.REVIEW) { completeLedger = false; reviewKeys += id }
+                    if (!active && persisted != null) observations += Observation(persisted, false)
                     if (!active) continue // Audit snapshots are never decoded/projected as current financial rows.
                     if (correction != null) check(revision == PostingRevision(correction.overlay.correctionRevision,
                         correction.overlay.interpretationRevision)) { "Active correction and ledger revisions differ" }
@@ -160,25 +198,67 @@ class RoomBetaDashboardSource(
                     // ownership snapshot is unavailable, not a crash or a silent zero balance.
                     if ((listOf(posting.classification.input) + posting.observations.map { it.input }).any { input ->
                             !matchesCurrentRegistry(input, registry)
-                        }) { completeLedger = false; continue }
+                        }) { completeLedger = false; reviewKeys += id; if (persisted != null) observations += Observation(persisted, false); continue }
                     unhandledEvidence.removeAll(posting.command.evidenceIds)
+                    val fact = persisted?.takeIf { row ->
+                        row.correction == revision.correction && row.interpretation == revision.interpretation &&
+                            BetaLedgerCodec.decodeInput(row.boundInput) == posting.classification.input &&
+                            adoptionBindings[id] == Triple(row.bankId, row.archiveFingerprint, row.observationRevision) && row.evidenceId in posting.command.evidenceIds
+                    }
+                    if (persisted != null) observations += Observation(persisted, fact != null)
+                    val provedDebit = fact?.debitCardAsset?.let { local -> registry[AssetId(Environment.BETA,
+                        BankId(fact.bankId), local)] }?.takeIf { card ->
+                        card.kind == AssetKind.DEBIT_CARD && card.last4 == fact.debitCardLast4 && card.parentId?.localId == fact.debitCardParent
+                    }?.id
                     if (windows.none { posting.command.time.instant >= it.from && posting.command.time.instant < it.until }) continue
                     rows += DashboardLedgerRow(posting, true)
                     val metadata = correction?.overlay?.metadata.orEmpty()
-                    if (metadata.keys.any { it == "merchant" || it == "counterparty" }) postingFacts += DashboardPostingFacts(
-                        key, revision, posting.command.evidenceIds.sorted().first(), metadata["merchant"], metadata["counterparty"],
+                    if (fact != null || metadata.keys.any { it == "merchant" || it == "counterparty" }) postingFacts += DashboardPostingFacts(
+                        key, revision, posting.command.evidenceIds.sorted().first(), metadata["merchant"] ?: fact?.merchant,
+                        metadata["counterparty"] ?: fact?.counterparty, debitCard = provedDebit,
                     )
+                    if (fact?.feeKnown == true && ((fact.feeAmount == null && fact.feeCurrency == null) ||
+                        (fact.feeAmount != null && fact.feeCurrency == Currency.SAR.name))) {
+                        knownFees += key
+                        if (fact.feeAmount != null && fact.feeCurrency != null) fees += LinkedInternationalFee(key, revision,
+                            fact.evidenceId, Money.of(fact.feeAmount, Currency.valueOf(fact.feeCurrency)))
+                    }
                 }
             }
             if (unhandledEvidence.isNotEmpty()) completeLedger = false
-            // Review queues currently mix comparison, processing retry and correction scopes.
-            // They are not one authoritative M9 review count. Do not manufacture a global zero.
+            // One unresolved identity per stable financial transaction; overlapping retries,
+            // adoption holds and correction holds do not multiply the global review count.
+            reviewKeys += unhandledEvidence.map { evidenceOwners.getValue(it) }
+            reviewKeys += held
+            val reviewCount = if (hasFacts && unhandledEvidence.all { it in projectedEvidence }) reviewKeys.size else null
+            val assetFacts = mutableListOf<DashboardAssetFacts>()
+            val observed = observations.filter { Instant.parse(it.row.observedAt) <= minOf(readAt, query.until) }
+            // A newer held/suppressed observation blocks fallback to an older apparently valid
+            // value. Same-time conflicting observations remain unknown rather than arbitrary.
+            for (asset in assets) {
+                fun latest(selector: (BetaDashboardFactsEntity) -> String?): Observation? {
+                    val candidates = observed.filter { selector(it.row) == asset.id.localId &&
+                        it.row.bankId == asset.id.bank.value }
+                    val at = candidates.maxOfOrNull { Instant.parse(it.row.observedAt) } ?: return null
+                    return candidates.filter { Instant.parse(it.row.observedAt) == at }.let { same ->
+                        same.singleOrNull()?.takeIf { it.eligible }
+                    }
+                }
+                val balance = latest { it.balanceAsset }?.row
+                val due = latest { it.facilityAsset }?.row
+                if (balance != null || due != null) assetFacts += DashboardAssetFacts(asset.id,
+                    balance = balance?.takeIf { it.balanceAmount != null && it.balanceCurrency == Currency.SAR.name }?.let {
+                        ObservedSignedBalance(SignedAmount(it.balanceAmount!!.toBigDecimal(), Currency.valueOf(it.balanceCurrency!!)), Instant.parse(it.observedAt)) },
+                    statement = due?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
+                        ObservedStatement(Money.of(it.dueAmount!!, Currency.valueOf(it.dueCurrency!!)), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) })
+            }
             val token = digest.digest().joinToString("") { "%02x".format(it) }
-            DashboardReadBatch(query, ReadRevision("beta-current-v1:$token", clock.instant()),
+            DashboardReadBatch(query, ReadRevision("beta-current-v2:$token", readAt),
                 Collections.unmodifiableList(rows), Collections.unmodifiableList(assets),
-                DashboardCoverage(completeLedger = completeLedger, completeRegistry = true, completeFeeFacts = false,
-                    reviewRequiredCount = null, atomicRuntimeSource = true),
-                frozenPeriods, postingFacts = Collections.unmodifiableList(postingFacts))
+                DashboardCoverage(completeLedger = completeLedger, completeRegistry = true, completeFeeFacts = hasFacts && rows.all { it.posting.command.key in knownFees },
+                    reviewRequiredCount = reviewCount, atomicRuntimeSource = true),
+                frozenPeriods, assetFacts = Collections.unmodifiableList(assetFacts), postingFacts = Collections.unmodifiableList(postingFacts),
+                fees = Collections.unmodifiableList(fees))
         }
     }
 }
