@@ -23,3 +23,4 @@ rootProject.name = "Masroof"
 include(":app")
 include(":lab:engine", ":lab:android", ":lab:beta")
 include(":lab:finance-core", ":lab:bank-engine")
+include(":lab:upgrade-host")
