@@ -237,4 +237,22 @@ class RoomBetaFinancialAdoptionTest {
         RoomBetaEvidenceStore(db).begin("one", instant)
         assertFalse(RoomBetaFinancialAdoption(db).cancelApproval(stale)); assertNull(posting())
     }
+
+    @Test fun immediateReconcileAfterManualTypeChangeIsIdempotentAndRealReparsePreservesSelection() = runBlocking {
+        capture(); RoomBetaFinancialAdoption(db).approve(request())
+        val first = requireNotNull(posting())
+        val observation = requireNotNull(RoomBetaFinancialAdoption(db).observation(first.command.key))
+        RoomBetaCorrectionLifecycle(db).submit(observation, CorrectionRequest("manual-type", first.command.key,
+            first.command.revision.correction + 1, observation.input.revision.interpretation, setOf("one"),
+            FinancialDecision.ResolveFinancialType(FinancialType.FEE)))
+        val manuallySelected = requireNotNull(posting())
+        val size = RoomBetaFinancialLedger(db).history(first.command.key).size
+        assertEquals(FinancialType.FEE, manuallySelected.command.type)
+        assertTrue((RoomBetaFinancialAdoption(db).reconcileApprovedEvidence("one") as BetaFinancialAdoptionResult.Posted).result is FinancialPostingResult.AlreadyApplied)
+        assertEquals(size, RoomBetaFinancialLedger(db).history(first.command.key).size)
+        capture(archive = archive("one", "777"))
+        assertTrue(RoomBetaFinancialAdoption(db).reconcileApprovedEvidence("one") is BetaFinancialAdoptionResult.Posted)
+        assertEquals(FinancialType.FEE, posting()!!.command.type)
+        assertEquals(manuallySelected.command.amount, posting()!!.command.amount)
+    }
 }

@@ -139,6 +139,16 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val outcome = database.evidenceDao().outcome(id) ?: return@withTransaction review("NO_COMPLETED_ARCHIVE")
         val key = key(id)
         val correction = readBetaCorrectionState(database, key) ?: return@withTransaction review("EXPLICIT_REAPPROVAL_REQUIRED")
+        // An immediate retry after a manual type/endpoint edit has no new raw observation. Rebuilding
+        // a baseline from the new selected endpoint at the old interpretation would falsely conflict
+        // with the immutable observation reviewed by that edit. Preserve that exact transition.
+        if (adopted.status == "ACTIVE" && adopted.archiveFingerprint == fingerprint(outcome) &&
+            adopted.observationRevision <= correction.overlay.interpretationRevision) {
+            val current = ledger.read(key)
+            return@withTransaction if (correction.activity == BetaLedgerActivity.ACTIVE && current != null)
+                BetaFinancialAdoptionResult.Posted(FinancialPostingResult.AlreadyApplied(current))
+            else review(if (correction.activity == BetaLedgerActivity.SUPPRESSED) "MANUAL_SUPPRESSION_PRESERVED" else "CORRECTION_REVIEW")
+        }
         val latest = observation(key) ?: run {
             val previous = correction.overlay.latestObservation.input
             CorrectionObservation(previous.copy(revision = PostingRevision(0, maxOf(outcome.attempts.toLong(), adopted.observationRevision)),
