@@ -1,7 +1,6 @@
 package com.baraa.masroof.lab.beta.data
 
 import android.content.Context
-import androidx.room.Room
 import androidx.room.util.TableInfo
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.testing.MigrationTestHelper
@@ -78,9 +77,9 @@ class BetaAuxFactsMigrationTest {
     private fun assertFreshSchemaMatches(migrated: SupportSQLiteDatabase) {
         val name = "beta-schema-nine-reference.db"
         context.deleteDatabase(name)
-        val fresh = Room.databaseBuilder(context, BetaDatabase::class.java, name).build()
+        val fresh = helper.createDatabase(name, 9)
         try {
-            val actual = fresh.openHelper.writableDatabase
+            val actual = fresh
             val tables = buildList {
                 actual.query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'beta_%' ORDER BY name").use {
                     while (it.moveToNext()) add(it.getString(0))

@@ -128,7 +128,7 @@ internal object BetaAnalysisBuilder {
     }
 
     fun commitments(batch: DashboardReadBatch, facilities: List<FacilitySummary>, loans: List<LoanSummary>,
-        salary: List<SarRowProjection.Available>?): CommitmentsSummary? {
+        salary: List<SarRowProjection.Available>?, settlements: Map<AssetId, List<SarRowProjection.Available>?> = emptyMap()): CommitmentsSummary? {
         val period = batch.periods.salary ?: return null
         if (salary == null) return null // PaymentStatus has no UNKNOWN; never invent UNPAID on incomplete rows.
         val from = period.from.atZone(period.zone).toLocalDate()
@@ -136,24 +136,29 @@ internal object BetaAnalysisBuilder {
         require(batch.commitmentOccurrences.all { it.environment == batch.query.environment && it.userCommitmentId != null &&
             it.expectedDate?.let { date -> date in from..until } != false })
         val rows = batch.commitmentOccurrences.toMutableList()
+        val coveredFacilities = hashSetOf<AssetId>()
         for (facility in facilities) {
             val due = facility.statementDue ?: continue
             if (due.currency != Currency.SAR) continue
             val date = facility.dueDate ?: facility.statementIssuedAt?.atZone(period.zone)?.toLocalDate() ?: continue
             if (date !in from..until) continue
             val issued = facility.statementIssuedAt ?: continue
-            // The batch guarantees salary rows only. An earlier statement needs payments from
-            // before salary.from too; omit this occurrence rather than falsely report UNPAID.
-            if (issued < period.from) continue
-            val payments = salary.filter { row -> row.native.effectiveType == FinancialType.CREDIT_CARD_PAYMENT &&
-                row.native.input.time.instant >= issued && (row.native.input.destination as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id.let { id ->
+            // An earlier statement requires proved settlement coverage beyond the display windows.
+            val settlementWindow = batch.settlementPeriods[facility.facilityId]
+            val completeWindow = settlementWindow != null && settlementWindow.from == issued &&
+                settlementWindow.until == batch.revision.asOf.plusNanos(1)
+            val paymentRows = if (settlementWindow != null) settlements[facility.facilityId].takeIf { completeWindow } else salary.takeIf { issued >= period.from }
+            if (paymentRows == null) continue
+            coveredFacilities += facility.facilityId
+            val payments = paymentRows.filter { row -> row.native.effectiveType == FinancialType.CREDIT_CARD_PAYMENT &&
+                row.native.input.time.instant >= issued && row.native.input.time.instant <= batch.revision.asOf && (row.native.input.destination as? com.baraa.masroof.lab.finance.classification.FinancialEndpoint.Owned)?.id.let { id ->
                     id == facility.facilityId || facility.cards.any { it.cardId == id } } }
             val paid = payments.fold(BigDecimal.ZERO) { sum, row -> sum + row.sarAmount.amount } >= due.amount
             rows += CommitmentRow(batch.query.environment, "facility:${facility.facilityId}:$issued", facility.facilityId.localId,
                 due, date, if (paid) PaymentStatus.PAID else PaymentStatus.UNPAID, facilityId = facility.facilityId)
         }
         for (loan in loans) {
-            val payment = loan.salaryPayment
+            val payment = signed(salary.filter { it.loan == loan.id && it.native.input.time.instant <= batch.revision.asOf }.fold(BigDecimal.ZERO) { sum, row -> sum + row.sarAmount.amount })
             val paid = payment != null && payment.amount.signum() > 0
             if (!paid && loan.remaining?.amount?.signum() == 0) continue
             val amount = if (paid) Money.of(requireNotNull(payment).amount, Currency.SAR) else loan.latestInstallment ?: continue
@@ -165,7 +170,7 @@ internal object BetaAnalysisBuilder {
             val due = facility.statementDue
             val issued = facility.statementIssuedAt
             val date = facility.dueDate ?: issued?.atZone(period.zone)?.toLocalDate()
-            due?.currency == Currency.SAR && issued != null && date != null && (date !in from..until || issued >= period.from)
+            due?.currency == Currency.SAR && issued != null && date != null && (date !in from..until || facility.facilityId in coveredFacilities)
         } && loans.all { it.remaining?.currency == Currency.SAR &&
             (it.latestInstallment?.currency == Currency.SAR || it.remaining.amount.signum() == 0) }
         fun sum(predicate: (CommitmentRow) -> Boolean) = if (!known) null else Money.of(rows.filter(predicate)

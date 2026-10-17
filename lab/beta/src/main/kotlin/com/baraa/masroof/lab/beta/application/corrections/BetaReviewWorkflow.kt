@@ -96,7 +96,7 @@ class BetaReviewWorkflow(private val database: BetaDatabase) {
 
     private fun adoptionHeld(key: PostingKey): Boolean {
         val version = database.openHelper.writableDatabase.query("PRAGMA user_version").use { check(it.moveToFirst()); it.getInt(0) }
-        if (version !in setOf(6, 7, 8, 9)) return true
+        if (version !in setOf(6, 7, 8, 9, 10)) return true
         if (version >= 7 && (!table("beta_financial_adoption") || !table("beta_financial_approval_retry"))) return true
         if (!table("beta_financial_adoption")) return false
         val sql = database.openHelper.writableDatabase
