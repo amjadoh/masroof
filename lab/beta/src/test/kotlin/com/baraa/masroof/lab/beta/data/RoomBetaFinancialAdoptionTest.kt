@@ -152,6 +152,21 @@ class RoomBetaFinancialAdoptionTest {
         assertNotNull(RoomBetaFinancialLedger(db).readAudit(direct.key))
     }
 
+    @Test fun unrelatedRegistrySnapshotDoesNotHoldAnOtherwiseUnchangedPosting() = runBlocking {
+        capture(); RoomBetaFinancialAdoption(db).approve(request())
+        val saved = requireNotNull(posting())
+        val unrelated = account.copy(id = account.id.copy(localId = "unrelated"), last4 = "9999")
+        BetaAssetRegistry(db).register(unrelated)
+        val direct = saved.classification.input.copy(key = PostingKey(Environment.BETA, "wide-snapshot"),
+            evidenceIds = setOf("wide-evidence"), assets = saved.classification.input.assets + (unrelated.id to unrelated))
+        RoomBetaFinancialLedger(db).post(direct)
+        val directBefore = requireNotNull(RoomBetaFinancialLedger(db).read(direct.key))
+        BetaAssetRegistry(db).save(unrelated.copy(last4 = "8888"), true, unrelated)
+        assertEquals(saved, posting())
+        assertEquals("ACTIVE", db.financialAdoptionDao().evidence("one")?.status)
+        assertEquals(directBefore, RoomBetaFinancialLedger(db).read(direct.key))
+    }
+
     @Test fun marketFxPersistenceRechecksRevisionAndPreservesCompletePair() = runBlocking {
         capture(archive = archive("one", rate = null)); RoomBetaFinancialAdoption(db).approve(request())
         val first = requireNotNull(posting()); assertNull(first.command.appliedFx)
