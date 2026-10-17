@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

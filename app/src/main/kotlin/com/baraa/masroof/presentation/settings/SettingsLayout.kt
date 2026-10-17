@@ -8,7 +8,7 @@ import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import com.baraa.masroof.presentation.common.MasroofTextStyles
 
 object SettingsSpacing {
@@ -39,13 +39,13 @@ fun SettingsScreenHeader(
     com.baraa.masroof.presentation.common.MasroofCard(modifier.then(if (onOpenBank != null) Modifier.clickable(onClick = onOpenBank) else Modifier)) {
         androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
-            androidx.compose.material3.Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
-                color = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.accountSoft) {
-                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox),
+            androidx.compose.material3.Surface(shape = com.baraa.masroof.ui.theme.MasroofShapes.small,
+                color = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.accountSoft) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.iconBox),
                     contentAlignment = androidx.compose.ui.Alignment.Center) {
                     androidx.compose.material3.Icon(com.baraa.masroof.presentation.common.MasroofIcons.moneyMovement, null,
-                        androidx.compose.ui.Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon),
-                        tint = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.account)
+                        androidx.compose.ui.Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon),
+                        tint = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.account)
                 }
             }
             com.baraa.masroof.presentation.common.MasroofGuidanceLabel(settingsBankLabel(bank), hint,

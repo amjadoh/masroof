@@ -22,7 +22,7 @@ import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 fun SettingsCommitmentsScreen(
@@ -53,7 +53,7 @@ fun SettingsCommitmentsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.shortcutGap)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf(CommitmentsListTab.ACTIVE to R.string.settings_commitments_tab_active,
                     CommitmentsListTab.DISABLED to R.string.settings_commitments_tab_disabled,
                     CommitmentsListTab.RECORD to R.string.settings_commitments_tab_record).forEach { (tab, label) ->

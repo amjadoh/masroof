@@ -37,11 +37,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofShapes
-import com.baraa.masroof.presentation.theme.MasroofBadgeShape
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofShapes
+import com.baraa.masroof.ui.theme.MasroofBadgeShape
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
 fun MasroofChoice(label: String, selected: Boolean, onClick: () -> Unit,

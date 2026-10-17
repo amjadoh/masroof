@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 import androidx.compose.ui.unit.dp
 /** Quiet flat surfaces; content hierarchy comes from typography and spacing. */
 object MasroofElevation {

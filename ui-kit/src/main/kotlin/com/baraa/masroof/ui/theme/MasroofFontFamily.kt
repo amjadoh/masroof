@@ -1,9 +1,9 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.baraa.masroof.R
+import com.baraa.masroof.ui.R
 
 val MasroofFontFamily = FontFamily(
     Font(R.font.ibm_plex_sans_arabic_regular, FontWeight.Normal),

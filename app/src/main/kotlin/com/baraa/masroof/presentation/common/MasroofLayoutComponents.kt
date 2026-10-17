@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 fun MasroofScreenBackground(
@@ -47,7 +47,7 @@ fun MasroofAppBar(
     backContentDescription: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val reference = com.baraa.masroof.presentation.theme.MasroofReference
+    val reference = com.baraa.masroof.ui.theme.MasroofReference
     Surface(modifier.fillMaxWidth(), color = if (showLogo) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background) {
         Row(Modifier.fillMaxWidth().padding(
             start = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,

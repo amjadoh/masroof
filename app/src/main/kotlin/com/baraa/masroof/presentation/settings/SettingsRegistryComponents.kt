@@ -1,8 +1,8 @@
 package com.baraa.masroof.presentation.settings
 
-import com.baraa.masroof.presentation.theme.MasroofOpacity
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofOpacity
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
@@ -48,7 +48,7 @@ fun SettingsRegistryItemCard(
     accent: com.baraa.masroof.presentation.common.MasroofCardAccent = if (icon == MasroofIcons.cardPayment)
         com.baraa.masroof.presentation.common.MasroofCardAccent.Credit else com.baraa.masroof.presentation.common.MasroofCardAccent.Account,
 ) {
-    val colors = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors
+    val colors = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors
     val foreground = when (accent) {
         com.baraa.masroof.presentation.common.MasroofCardAccent.Credit -> colors.card
         com.baraa.masroof.presentation.common.MasroofCardAccent.Liability -> colors.liability
@@ -63,12 +63,12 @@ fun SettingsRegistryItemCard(
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.rowGap)) {
-            androidx.compose.material3.Surface(shape = com.baraa.masroof.presentation.theme.MasroofShapes.small,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.rowGap)) {
+            androidx.compose.material3.Surface(shape = com.baraa.masroof.ui.theme.MasroofShapes.small,
                 color = background) {
-                Box(Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.iconBox), contentAlignment = Alignment.Center) {
                     Icon(icon, null, tint = foreground,
-                        modifier = Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon))
+                        modifier = Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon))
                 }
             }
             Column(Modifier.weight(1f)) {

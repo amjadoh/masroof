@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.debug
 
-import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import com.baraa.masroof.ui.theme.MasroofComponentShapes
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
@@ -50,9 +50,9 @@ import com.baraa.masroof.presentation.common.MasroofRankedBarRow
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.settings.SettingsSpacing
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,10 +75,10 @@ fun DesignCatalogScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(com.baraa.masroof.presentation.theme.MasroofDesign.version, style = MaterialTheme.typography.bodySmall)
+            Text(com.baraa.masroof.ui.theme.MasroofDesign.version, style = MaterialTheme.typography.bodySmall)
             com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.approved_daily_average),
                 stringResource(R.string.approved_average_basis, 15))
-            com.baraa.masroof.presentation.common.MasroofHeroCard("مصروف", "1,250", role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
+            com.baraa.masroof.presentation.common.MasroofHeroCard("مصروف", "1,250", role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account)
             TypographySection()
             ColorSection()
             SpacingSection()

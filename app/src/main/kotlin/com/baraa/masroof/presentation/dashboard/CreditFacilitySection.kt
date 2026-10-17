@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +17,7 @@ import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.formatCardLast4
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.time.ZoneId
 
 @Composable
@@ -26,7 +26,7 @@ fun DebitCardDetailSummaryCard(debit: DebitCardOverview, network: CardNetwork?, 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         com.baraa.masroof.presentation.common.MasroofHeroCard(debit.displayLabel,
             formatLocalizedMoney(debit.salaryPeriodSpendingNet), com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank),
-            role = com.baraa.masroof.presentation.theme.MasroofHeroRole.Account)
+            role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account)
         MasroofCard {
             Text(stringResource(R.string.reference_card_data), style = MaterialTheme.typography.titleMedium)
             com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_card_type), stringResource(R.string.card_network_mada))

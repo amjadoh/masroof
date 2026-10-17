@@ -122,6 +122,7 @@ ksp {
 }
 
 dependencies {
+    implementation(project(":ui-kit"))
     implementation(project(":lab:android"))
     implementation(project(":lab:beta"))
     implementation(libs.androidx.core.ktx)

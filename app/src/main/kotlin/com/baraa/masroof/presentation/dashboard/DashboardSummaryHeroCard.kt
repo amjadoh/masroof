@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofDetailRow
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -36,7 +36,7 @@ fun DashboardSummaryHeroCard(spec: DashboardSummaryHeroSpec, modifier: Modifier 
         MasroofHeroCard(title = spec.primary.title, value = spec.primary.amount, role = role, subtitle = spec.subtitle,
             guidance = listOfNotNull(spec.primary.hint, spec.footerHint).distinct().joinToString("\n\n"))
         if (spec.secondary.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.metricGap)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
                 spec.secondary.forEach { metric -> com.baraa.masroof.presentation.common.MasroofMetric(metric.title, metric.amount,
                     resolveMetricToneColor(metric.tone, metric.signedAmount), Modifier.weight(1f)) }
             }

@@ -1,9 +1,9 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofOpacity
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofSizes
-import com.baraa.masroof.presentation.theme.MasroofComponentShapes
+import com.baraa.masroof.ui.theme.MasroofOpacity
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofComponentShapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,11 +21,11 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.LoanOverview
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofDetailRow
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofHeroRole
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 

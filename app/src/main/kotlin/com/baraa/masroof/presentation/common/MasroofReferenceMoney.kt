@@ -8,7 +8,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import com.baraa.masroof.presentation.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofReference
 
 /** Typography only; no monetary parsing or arithmetic happens in the UI. */
 @Composable

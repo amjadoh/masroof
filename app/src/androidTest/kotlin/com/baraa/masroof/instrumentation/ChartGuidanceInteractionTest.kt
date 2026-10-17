@@ -36,8 +36,8 @@ import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.dashboard.MoneyUiFormatter
 import com.baraa.masroof.presentation.dashboard.SpendingTrendSection
 import com.baraa.masroof.presentation.locale.AppLocaleContext
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofTheme
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -81,8 +81,8 @@ class ChartGuidanceInteractionTest {
             fun select(fraction: Float, amount: String) {
                 val density = compose.activity.resources.displayMetrics.density
                 chart.performTouchInput {
-                    val left = com.baraa.masroof.presentation.theme.MasroofReference.chartLeft.value * density
-                    val right = com.baraa.masroof.presentation.theme.MasroofReference.chartRight.value * density
+                    val left = com.baraa.masroof.ui.theme.MasroofReference.chartLeft.value * density
+                    val right = com.baraa.masroof.ui.theme.MasroofReference.chartRight.value * density
                     click(Offset(left + (width-left-right) * fraction, height * 0.4f))
                 }
                 val description = chart.fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString()

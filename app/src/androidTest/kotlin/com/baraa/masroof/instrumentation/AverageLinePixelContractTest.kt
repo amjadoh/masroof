@@ -5,7 +5,7 @@ import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import androidx.compose.ui.graphics.toArgb
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 import org.junit.Assert.*
 import org.junit.Test
 import kotlin.math.roundToInt

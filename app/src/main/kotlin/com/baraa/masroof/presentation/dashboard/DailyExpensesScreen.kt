@@ -17,9 +17,9 @@ import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofMetric
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import java.time.format.DateTimeFormatter
 
 @Composable
