@@ -97,7 +97,7 @@ class BetaAssetRegistry(private val database: BetaDatabase) : ManualAssetStore {
             // Includes cards whose parent changed, and parent membership referenced by a posting.
             // Preserve approved/manual facts; require scoped explicit review before financial reuse.
             database.financialAdoptionDao().bank(asset.id.bank.value).forEach { adoption ->
-                if (asset.id in BetaLedgerCodec.decodeInput(adoption.approvedInput).assets)
+                if (asset.id in financialRegistryDependencies(BetaLedgerCodec.decodeInput(adoption.approvedInput)))
                     database.financialAdoptionDao().hold(adoption.evidenceId, "REGISTRY_CHANGED")
             }
         }
