@@ -94,4 +94,6 @@ data class DashboardReadBatch(
     val settlementPeriods: Map<AssetId, DisplayPeriod> = emptyMap(),
     /** Per-row exact fee amount/absence proof, bound through current posting metadata or fee identity. */
     val feeProofKeys: Set<PostingKey> = emptySet(),
+    /** Excluded newer obligation observations make only these assets' commitment status unavailable. */
+    val unavailableObligationAssets: Set<AssetId> = emptySet(),
 )

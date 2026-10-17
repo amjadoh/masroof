@@ -138,6 +138,7 @@ internal object BetaAnalysisBuilder {
         val rows = batch.commitmentOccurrences.toMutableList()
         val coveredFacilities = hashSetOf<AssetId>()
         for (facility in facilities) {
+            if (facility.facilityId in batch.unavailableObligationAssets) continue
             val due = facility.statementDue ?: continue
             if (due.currency != Currency.SAR) continue
             val date = facility.dueDate ?: facility.statementIssuedAt?.atZone(period.zone)?.toLocalDate() ?: continue
@@ -158,6 +159,7 @@ internal object BetaAnalysisBuilder {
                 due, date, if (paid) PaymentStatus.PAID else PaymentStatus.UNPAID, facilityId = facility.facilityId)
         }
         for (loan in loans) {
+            if (loan.id in batch.unavailableObligationAssets) continue
             val payment = signed(salary.filter { it.loan == loan.id && it.native.input.time.instant <= batch.revision.asOf }.fold(BigDecimal.ZERO) { sum, row -> sum + row.sarAmount.amount })
             val paid = payment != null && payment.amount.signum() > 0
             if (!paid && loan.remaining?.amount?.signum() == 0) continue
@@ -170,8 +172,8 @@ internal object BetaAnalysisBuilder {
             val due = facility.statementDue
             val issued = facility.statementIssuedAt
             val date = facility.dueDate ?: issued?.atZone(period.zone)?.toLocalDate()
-            due?.currency == Currency.SAR && issued != null && date != null && (date !in from..until || facility.facilityId in coveredFacilities)
-        } && loans.all { it.remaining?.currency == Currency.SAR &&
+            facility.facilityId !in batch.unavailableObligationAssets && due?.currency == Currency.SAR && issued != null && date != null && (date !in from..until || facility.facilityId in coveredFacilities)
+        } && loans.all { it.id !in batch.unavailableObligationAssets && it.remaining?.currency == Currency.SAR &&
             (it.latestInstallment?.currency == Currency.SAR || it.remaining.amount.signum() == 0) }
         fun sum(predicate: (CommitmentRow) -> Boolean) = if (!known) null else Money.of(rows.filter(predicate)
             .fold(BigDecimal.ZERO) { sum, row -> sum + row.amount.amount }, Currency.SAR)

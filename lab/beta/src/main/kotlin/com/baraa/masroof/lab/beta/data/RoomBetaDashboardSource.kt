@@ -185,6 +185,28 @@ class RoomBetaDashboardSource(
             }
             val registry = assets.associateBy { it.id }
             val registryBinding = dashboardRegistryBinding(assets)
+            val unavailableObligations = linkedSetOf<AssetId>()
+            frozenPeriods.salary?.let { salary ->
+                val tailUntil = minOf(salary.until, readAt.plusNanos(1))
+                if (tailUntil > query.until) {
+                    val facilitiesByBank = assets.filter { it.kind == AssetKind.CREDIT_FACILITY }.groupBy { it.id.bank.value }
+                    // All auxiliary rows are already loaded. Include held/tied/tombstone observations;
+                    // purchases and inert financial outstanding columns never block statement authority.
+                    for (row in auxiliary) {
+                        val at = row.observedAt?.let(Instant::parse) ?: continue
+                        if (at < query.until || at >= tailUntil) continue
+                        if (row.statementProved) {
+                            if (row.facilityAsset == null) facilitiesByBank[row.bankId].orEmpty().forEach { unavailableObligations += it.id }
+                            else AssetId(Environment.BETA, BankId(row.bankId), row.facilityAsset).let {
+                                if (registry[it]?.kind == AssetKind.CREDIT_FACILITY) unavailableObligations += it
+                            }
+                        }
+                        row.loanAsset?.let { AssetId(Environment.BETA, BankId(row.bankId), it) }?.let {
+                            if (registry[it]?.kind == AssetKind.LOAN) unavailableObligations += it
+                        }
+                    }
+                }
+            }
             val rows = mutableListOf<DashboardLedgerRow>()
             val postingFacts = mutableListOf<DashboardPostingFacts>()
             val fees = mutableListOf<LinkedInternationalFee>()
@@ -349,7 +371,8 @@ class RoomBetaDashboardSource(
                 frozenPeriods, assetFacts = Collections.unmodifiableList(assetFacts), postingFacts = Collections.unmodifiableList(postingFacts),
                 fees = Collections.unmodifiableList(fees), commitmentOccurrences = Collections.unmodifiableList(occurrences),
                 settlementPeriods = Collections.unmodifiableMap(settlementPeriods),
-                feeProofKeys = Collections.unmodifiableSet(knownFees.filterTo(linkedSetOf()) { it in includedKeys }))
+                feeProofKeys = Collections.unmodifiableSet(knownFees.filterTo(linkedSetOf()) { it in includedKeys }),
+                unavailableObligationAssets = Collections.unmodifiableSet(unavailableObligations))
         }
     }
 }

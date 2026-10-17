@@ -48,6 +48,13 @@ or after its end can satisfy a due inside the displayed salary period. Payments 
 cannot. Unrelated outside rows are removed before projection. No raw body/archive parsing, history
 scan, per-row DAO query or write runs on dashboard load.
 
+Calendar balance/statement observations keep their original query-end cutoff. If the displayed
+salary tail extends beyond that cutoff, already-loaded newer proved statement/loan observations
+(including held, tied or tombstone candidates) mark only affected obligation assets unavailable.
+Their automatic status rows are omitted and combined totals stay unknown; unrelated payments alone
+never invalidate coverage. Inert financial outstanding fields and purchases are not blockers. This
+is conservative coverage, not a new historical statement/loan reconstruction model.
+
 The pure producer validates every additional window against its facility's authoritative statement
 and readAsOf, and admits outside rows only for correctly attributed credit settlements. Such rows
 do not enter selected-period transactions, analysis, merchant totals or calendar spending. Missing
