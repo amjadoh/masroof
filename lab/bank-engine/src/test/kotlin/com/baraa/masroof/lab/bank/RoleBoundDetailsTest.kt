@@ -61,6 +61,7 @@ class RoleBoundDetailsTest {
         assertEquals("5678", parse(cardPayment).facts.card!!.last4)
         assertEquals("Synthetic Utilities", parse(bill).facts.biller)
         assertEquals("001", parse(bill).facts.billerCode)
+        assertEquals("AbC-007", parse(bill.replace("001", "AbC-007")).facts.billerCode)
         assertEquals("Synthetic Finance", parse(loan).facts.counterparty)
         listOf(cardPayment.replace("Card: 5678", ""), cardPayment.replace("From account: 1234", ""),
             bill.replace("Biller: Synthetic Utilities", ""), bill.replace("Biller code: 001", ""),

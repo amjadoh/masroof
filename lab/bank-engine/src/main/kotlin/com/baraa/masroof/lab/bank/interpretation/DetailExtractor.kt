@@ -65,7 +65,8 @@ internal class DetailExtractor(
             when {
                 entry.normalized.isBlank() || entry.original.length > 160 -> null
                 identifier && !entry.normalized.matches(Regex("[a-z0-9][a-z0-9_/-]{0,63}")) -> null
-                else -> if (field == "billerCode") entry.normalized else entry.original
+                // Normalize numeric codes (including Arabic digits) without changing opaque ID casing.
+                else -> if (field == "billerCode" && entry.normalized.all(Char::isDigit)) entry.normalized else entry.original
             }
         })
 
