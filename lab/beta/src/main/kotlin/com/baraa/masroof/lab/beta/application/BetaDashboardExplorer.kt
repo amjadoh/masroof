@@ -1,0 +1,40 @@
+package com.baraa.masroof.lab.beta.application
+
+import com.baraa.masroof.lab.finance.asset.AssetId
+import com.baraa.masroof.lab.finance.dashboard.*
+import com.baraa.masroof.lab.finance.posting.PostingKey
+import java.math.RoundingMode
+import java.time.LocalDate
+
+/** Presentation selection over authoritative facts, never a financial aggregation. */
+data class BetaChartChoice(val scope: TrendScope = TrendScope.OVERALL,
+    val category: ChartCategory? = null, val asset: AssetId? = null)
+
+data class BetaChartPoint(val day: DailySpending, val magnitude: Float?)
+
+object BetaDashboardExplorer {
+    fun trend(snapshot: DashboardSnapshot, choice: BetaChartChoice): SpendingTrend? =
+        snapshot.analysis?.trends?.singleOrNull { it.scope == choice.scope && it.category == choice.category && it.assetId == choice.asset }
+
+    /** Geometry only: absolute heights never replace signed labels or the producer's average. */
+    fun bars(trend: SpendingTrend): List<BetaChartPoint> {
+        val maximum = trend.points.mapNotNull { it.net?.amount?.abs() }.maxOrNull()
+        return trend.points.map { point -> BetaChartPoint(point, point.net?.amount?.let { value ->
+            if (maximum == null || maximum.signum() == 0) 0f else value.abs().divide(maximum, 6, RoundingMode.HALF_UP).toFloat()
+        }) }
+    }
+
+    fun transactions(snapshot: DashboardSnapshot, choice: BetaChartChoice? = null,
+        asset: AssetId? = null, day: LocalDate? = null): List<TransactionFacts> {
+        val ids = choice?.let { trend(snapshot, it) }?.points?.flatMap { it.transactions }?.toSet()
+        if (choice != null && ids == null) return emptyList()
+        val facilityCards = snapshot.creditFacilities.singleOrNull { it.facilityId == asset }?.cards?.map { it.cardId }.orEmpty()
+        return snapshot.transactions.filter { tx ->
+            (ids == null || tx.key in ids) &&
+                (asset == null || asset in tx.accounts || asset in tx.cards || asset in tx.loans || asset == tx.source || asset == tx.destination || tx.cards.any { it in facilityCards }) &&
+                (day == null || tx.time.instant.atZone(snapshot.query.zone).toLocalDate() == day)
+        }.sortedWith(compareByDescending<TransactionFacts> { it.time.instant }.thenBy { it.key.transactionId })
+    }
+
+    fun transaction(snapshot: DashboardSnapshot, key: PostingKey): TransactionFacts? = snapshot.transactions.singleOrNull { it.key == key }
+}

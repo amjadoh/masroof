@@ -52,6 +52,8 @@ class BetaActivity : ComponentActivity() {
                         withContext(BetaIo.dispatcher) { shellContainer.dashboard(query, periods) }
                     })
                 }
+                val dashboardControls = remember(shellContainer) { com.baraa.masroof.lab.beta.application.betaDashboardControls(shellContainer) }
+                val dashboardPreferences = remember(shellContainer) { com.baraa.masroof.lab.beta.application.BetaDashboardViewPreferencesWorkflow(applicationContext) }
                 var markerCount by remember { mutableIntStateOf(0) }
                 var restoreMissing by remember { mutableStateOf(false) }
                 var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
@@ -102,7 +104,7 @@ class BetaActivity : ComponentActivity() {
                 LaunchedEffect(Unit) { execute { null } }
                 BetaShell(
                     showMaintenanceActions = false,
-                    dashboard = { BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy) },
+                    dashboard = { BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, onBusyChanged = { historyBusy = it }) },
                     onOpenDiscovery = { if (!busy) { discoveryOpen = true; historyOpen = false; reviewOpen = false; approvalOpen = false; settingsOpen = false; editBank = null } },
                     onOpenHistory = { if (!busy) { historyOpen = true; discoveryOpen = false; reviewOpen = false; approvalOpen = false; settingsOpen = false; editBank = null } },
                     onOpenApproval = { if (!busy) { approvalOpen = true; historyOpen = false; reviewOpen = false; discoveryOpen = false; settingsOpen = false; editBank = null } },
@@ -146,7 +148,7 @@ class BetaActivity : ComponentActivity() {
                         }
                     }) else null,
                     banks = banks,
-                    busy = busy,
+                    busy = busy || historyBusy,
                     failed = failed,
                     onRetry = { perform { null } },
                     onSetBankEnabled = { bank, enabled ->
