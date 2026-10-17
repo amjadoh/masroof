@@ -268,7 +268,7 @@ class RoomBetaFinancialLedgerTest {
         }
     }
 
-    @Test fun betaBackupRestoreIncludesHistoryAndOldClaimsAndResetClearsOnlyBeta() = runBlocking {
+    @Test fun ledgerBackupIsolation() = runBlocking {
         db.close()
         val request = input(evidence = setOf("old", "kept"))
         BetaContainer(context).use { beta ->

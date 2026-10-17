@@ -95,7 +95,7 @@ class BetaManualAssetWorkflowTest {
         beta.saveManualAsset(draft("new-account"))
         assertEquals(3, beta.assets().size)
     }
-    @Test fun staleEditCannotOverwriteAnUpdatedOrRestoredAsset() = withBeta { beta ->
+    @Test fun staleEditRejected() = withBeta { beta ->
         beta.saveManualAsset(draft("account"))
         beta.backup()
         val first = edit(beta, draft("account", suffix = "9999"))
@@ -111,7 +111,7 @@ class BetaManualAssetWorkflowTest {
         expectFailure { beta.saveManualAsset(stale.copy(id = id("different"))) }
         assertEquals(before, beta.assets())
     }
-    @Test fun configurationSurvivesRestartBackupRestoreAndResetWithoutProductionChanges() {
+    @Test fun configurationRestore() {
         BetaContainer.resetOffline(context)
         val production = context.getDatabasePath(BetaEnvironment.PRODUCTION_DATABASE_NAME)
         production.parentFile?.mkdirs()

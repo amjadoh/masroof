@@ -40,4 +40,14 @@ journey armAfterCommit resumeAfterCommit
 CLASS="com.baraa.masroof.lab.beta.processdeath.BetaCorrectionProcessDeathTest"
 journey armBeforeSuppressionCommit resumeBeforeSuppressionCommit
 journey armAfterSuppressionCommit resumeAfterSuppressionCommit
-echo "Beta permission dialog, evidence, durable-ledger and correction process-death journeys passed"
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaRestoreProcessDeathTest"
+journey armAfterDatabaseInstall resumeAfterDatabaseInstall
+journey armAfterPreferencesInstall resumeAfterPreferencesInstall
+journey armAfterCommit resumeAfterCommit
+adb shell pm clear "$APP_ID"
+instrument armCommittedWal false
+adb shell am force-stop "$APP_ID"
+instrument armRestoreWithCommittedWal false
+adb shell am force-stop "$APP_ID"
+instrument resumeRestoreWithCommittedWal true
+echo "Beta permission dialog, evidence, ledger, correction and restore process-death journeys passed"

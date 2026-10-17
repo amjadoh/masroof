@@ -135,4 +135,20 @@
     <string name="beta_approval_merchant">التاجر: %1$s</string>
     <string name="beta_approval_rate">سعر الصرف في الدليل: %1$s</string>
     <string name="beta_approval_fee">الرسوم الدولية في الدليل: %1$s</string>
+    <string name="beta_settings_title">إعدادات Beta</string>
+    <string name="beta_settings_isolation">هذه الإعدادات والنسخ تخص Beta فقط. بيانات مصروف الفعلي منفصلة.</string>
+    <string name="beta_settings_theme">المظهر</string>
+    <string name="beta_theme_system">حسب الجهاز</string>
+    <string name="beta_theme_light">فاتح</string>
+    <string name="beta_theme_dark">داكن</string>
+    <string name="beta_settings_backup_available">توجد نسخة Beta محلية</string>
+    <string name="beta_settings_backup_missing">لا توجد نسخة Beta محلية</string>
+    <string name="beta_settings_backup_help">تحتوي النسخة المحلية على بيانات Beta وإعداداتها. نستعيدها بعد فحص سلامتها، ونحتفظ بالحالة الحالية إذا فشلت الاستعادة. هذه النسخة داخل الجهاز وليست نسخة سحابية.</string>
+    <string name="beta_settings_busy">جارٍ تنفيذ العملية. انتظر حتى تكتمل.</string>
+    <string name="beta_settings_success">اكتملت العملية</string>
+    <string name="beta_settings_failed">لم تكتمل العملية. لم نعتمد نسخة غير سليمة. يمكنك المحاولة مجددًا.</string>
+    <string name="beta_settings_reset_confirm">سيتم مسح بيانات Beta ونسختها المحلية فقط. هل تريد المتابعة؟</string>
+    <string name="beta_settings_restore_confirm">سيتم استبدال بيانات Beta وإعداداتها بالنسخة المحلية بعد فحصها. هل تريد المتابعة؟</string>
+    <string name="beta_settings_confirm">تأكيد</string>
+    <string name="beta_startup_failed">تعذر فتح بيانات Beta بأمان. احتفظنا بالملفات ولم ننشئ بيانات بديلة. أعد المحاولة أو ارجع إلى مصروف.</string>
 </resources>
