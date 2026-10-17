@@ -83,6 +83,31 @@ class BetaRestoreProcessDeathTest {
         }
     }
 
+    private fun armArchive(stage: BetaBackupRecovery.Stage) {
+        BetaContainer.resetOffline(context)
+        val packageFile = File(context.filesDir, "beta_encrypted_test.mbeta")
+        BetaContainer(context).use { beta ->
+            beta.putMarker("backup", "synthetic"); beta.putPreferenceProbe("BACKUP"); beta.backup()
+            packageFile.outputStream().use { beta.exportArchive(it, "Synthetic archive password".toCharArray()) }
+            beta.putMarker("current", "synthetic"); beta.putPreferenceProbe("CURRENT")
+        }
+        File(context.filesDir, "beta_restore_test_pid").writeText(Process.myPid().toString())
+        val entered = CountDownLatch(1)
+        Thread {
+            packageFile.inputStream().use { input ->
+                BetaBackupRecovery(context) { if (it == stage) { entered.countDown(); CountDownLatch(1).await() } }
+                    .importArchive(input, "Synthetic archive password".toCharArray())
+            }
+        }.apply { isDaemon = true; start() }
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+    }
+    @Test fun armArchiveDatabase() = armArchive(BetaBackupRecovery.Stage.DATABASE_INSTALLED)
+    @Test fun resumeArchiveDatabase() = resume(false)
+    @Test fun armArchivePreferences() = armArchive(BetaBackupRecovery.Stage.PREFERENCES_INSTALLED)
+    @Test fun resumeArchivePreferences() = resume(false)
+    @Test fun armArchiveCommitted() = armArchive(BetaBackupRecovery.Stage.COMMITTED)
+    @Test fun resumeArchiveCommitted() = resume(true)
+
     companion object {
         // Keep the native connection alive until the external job kills the UID, without checkpointing.
         private var retainedWalDatabase: android.database.sqlite.SQLiteDatabase? = null

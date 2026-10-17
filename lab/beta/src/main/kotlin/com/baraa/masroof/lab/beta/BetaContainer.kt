@@ -325,6 +325,19 @@ class BetaContainer(
         }
     }
 
+    /** The caller owns streams and erases the ephemeral password after return. */
+    fun exportArchive(output: java.io.OutputStream, password: CharArray) = lock.withLock {
+        check(!closed)
+        database.close()
+        try { recovery.exportArchive(output, password) } finally { database = openDatabase() }
+    }
+
+    fun importArchive(input: java.io.InputStream, password: CharArray): Boolean = lock.withLock {
+        check(!closed)
+        database.close()
+        try { recovery.importArchive(input, password) } finally { database = openDatabase() }
+    }
+
     fun reset() = lock.withLock {
         check(!closed)
         database.close()
