@@ -227,9 +227,15 @@ class BetaDashboardScreenTest {
             AssetId(Environment.BETA, bank, id), role, null, last4, null, null, null, null, null)
         val facility = FacilitySummary(facilityId, Money.of("2694.32", Currency.SAR), LocalDate.of(2026, 10, 25), at,
             cards = listOf(card("statement-primary", "7271", CreditCardRole.PRIMARY), card("statement-supplementary", "7288", CreditCardRole.SUPPLEMENTARY)))
+        val loanId = AssetId(Environment.BETA, bank, "TECH_LOAN_ID")
+        val loan = LoanSummary(loanId, "fixture", "", Money.of("1000", Currency.SAR), at, Money.of("125", Currency.SAR), at, null, null)
+        val commitments = CommitmentsSummary(Currency.SAR, listOf(
+            CommitmentRow(Environment.BETA, "fixture-facility", "TECH_FACILITY_ID", Money.of("2694.32", Currency.SAR), null, PaymentStatus.UNPAID, facilityId = facilityId),
+            CommitmentRow(Environment.BETA, "fixture-loan", "TECH_LOAN_ID", Money.of("125", Currency.SAR), null, PaymentStatus.UNPAID, loanId = loanId),
+            CommitmentRow(Environment.BETA, "fixture-user", "التزامي الشخصي", Money.of("50", Currency.SAR), null, PaymentStatus.UNPAID, userCommitmentId = "user-fixture")), null, null, null)
         // An authoritative read-contract fixture tests rendering; actual statement authority is the producer's responsibility.
         val workflow = BetaDashboardWorkflow({ query, _ -> DashboardProduction(
-            DashboardSnapshot(query, emptyList(), emptyList(), listOf(facility)), emptySet(), null)
+            DashboardSnapshot(query, emptyList(), emptyList(), listOf(facility), loans = listOf(loan), commitments = commitments), emptySet(), null)
         }, clock)
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded(); route("CARDS")
@@ -242,6 +248,13 @@ class BetaDashboardScreenTest {
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-supplementary").performScrollTo().performClick()
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+        route("LOANS")
+        compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_asset_loan)).assertExists()
+        route("COMMITMENTS")
+        compose.onNodeWithText("TECH_FACILITY_ID").assertDoesNotExist()
+        compose.onNodeWithText("TECH_LOAN_ID").assertDoesNotExist()
+        compose.onNodeWithText("التزامي الشخصي").assertExists()
     }
 
     @Test fun partialCoverageNeverClaimsKnownEmptyRegistryOrCommitments() {

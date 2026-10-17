@@ -155,10 +155,17 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                             }
                             if (DashboardSection.COMMITMENTS in read.unavailableSections) DashUnavailable()
                             else if (commitments.rows.isEmpty()) DashEmpty()
-                            commitments.rows.take(visibleRows).forEach { row -> DashCard(row.label) {
-                                Text(amount(row.amount)); row.expectedDate?.let { Text(it.toString()) }
-                                Text(stringResource(if (row.status == PaymentStatus.PAID) R.string.beta_dash_paid else R.string.beta_dash_unpaid))
-                            } }
+                            commitments.rows.take(visibleRows).forEach { row ->
+                                val label = when {
+                                    row.facilityId != null -> stringResource(R.string.beta_asset_facility)
+                                    row.loanId != null -> stringResource(R.string.beta_asset_loan)
+                                    else -> row.label.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_dash_commitments)
+                                }
+                                DashCard(label) {
+                                    Text(amount(row.amount)); row.expectedDate?.let { Text(it.toString()) }
+                                    Text(stringResource(if (row.status == PaymentStatus.PAID) R.string.beta_dash_paid else R.string.beta_dash_unpaid))
+                                }
+                            }
                             DashMore(commitments.rows.size > visibleRows) { visibleRows += 20 }
                         }
                     }
@@ -228,7 +235,7 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
     DashValue(R.string.beta_dash_inflow, amount(flow?.totalIn)); DashValue(R.string.beta_dash_outflow, amount(flow?.totalOut)); DashValue(R.string.beta_dash_remaining, amount(flow?.remaining))
 }
 @Composable private fun DashLoan(loan: LoanSummary, zone: java.time.ZoneId, content: @Composable () -> Unit = {}) {
-    DashCard(loan.label) {
+    DashCard(loan.label.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_loan)) {
         DashValue(R.string.beta_dash_loan_remaining, amount(loan.remaining))
         loan.remainingAsOf?.let { Text(stringResource(R.string.beta_dash_as_of, it.atZone(zone).toLocalDate().toString()), style = MaterialTheme.typography.bodySmall) }
         DashValue(R.string.beta_dash_installment, amount(loan.latestInstallment))
