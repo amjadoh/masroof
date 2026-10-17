@@ -90,20 +90,23 @@ class RoomBetaConfigTest {
         assertTrue(source().load(query).rows.isEmpty()) // Manual paid state creates no financial posting.
     }
 
-    private suspend fun statement(at: Instant = Instant.parse("2026-09-20T12:00:00Z")) {
+    private suspend fun statement(at: Instant = Instant.parse("2026-09-20T12:00:00Z"), dueDate: LocalDate = LocalDate.of(2026, 10, 5)) {
         for (asset in listOf(account, facility, card)) BetaAssetRegistry(db).register(asset)
+        captureStatement("statement", at, dueDate)
+        assertTrue(controls().save(0, BetaDashboardConfigurationDraft(BetaSalaryCycle(27), listOf(BetaFacilityCycle(facility.id, 10)))) is BetaDashboardConfigurationWrite.Saved)
+    }
+    private suspend fun captureStatement(id: String, at: Instant, dueDate: LocalDate) {
         val store = RoomBetaEvidenceStore(db)
         val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "synthetic")
-        store.capture(CapturedEvidence("statement", EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
-            EvidenceMessage("statement", "AlJazira", "synthetic statement", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
-        store.begin("statement", at)
+        store.capture(CapturedEvidence(id, EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
+            EvidenceMessage(id, "AlJazira", "synthetic statement", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
+        store.begin(id, at)
         val facts = Facts(MessageFamily.NON_FINANCIAL, card = CardReference(bank, "7271"), cardChannel = CardChannel.STATEMENT,
-            outstandingBalance = Money.of("100", Currency.SAR), paymentDueDate = LocalDate.of(2026, 10, 5), occurredAt = at)
-        val archive = InterpretationArchive.encode(Interpretation("statement", LegacyInterpretationAdapter.VERSION, bank, facts,
+            outstandingBalance = Money.of("100", Currency.SAR), paymentDueDate = dueDate, occurredAt = at)
+        val archive = InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
             ParseStatus.NON_FINANCIAL, null, emptyList(), emptySet()))
-        store.complete("statement", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
-        assertTrue(db.dashboardAuxFactsDao().evidence("statement")!!.statementProved)
-        assertTrue(controls().save(0, BetaDashboardConfigurationDraft(BetaSalaryCycle(27), listOf(BetaFacilityCycle(facility.id, 10)))) is BetaDashboardConfigurationWrite.Saved)
+        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
+        assertTrue(db.dashboardAuxFactsDao().evidence(id)!!.statementProved)
     }
     private suspend fun payment(id: String, amount: String, at: String, currency: Currency = Currency.SAR, fx: AppliedFx? = null) {
         val input = FinancialClassificationInput(PostingKey(Environment.BETA, id), PostingRevision(0, 1), FinancialType.CREDIT_CARD_PAYMENT,
@@ -150,6 +153,25 @@ class RoomBetaConfigTest {
         assertTrue(snapshot.transactions.isEmpty())
         assertEquals(PaymentStatus.PAID, snapshot.commitments!!.rows.single().status)
         assertEquals(Money.of("0", Currency.SAR), snapshot.commitments!!.remaining)
+    }
+
+    @Test fun newerStatementInSalaryTailNeverBecomesKnownZero() = runBlocking<Unit> {
+        statement(Instant.parse("2026-09-02T12:00:00Z"), LocalDate.of(2026, 9, 12))
+        val saved = controls().read()
+        assertTrue(controls().save(saved.revision, saved.draft.copy(salary = BetaSalaryCycle(15))) is BetaDashboardConfigurationWrite.Saved)
+        captureStatement("tail", Instant.parse("2026-10-02T12:00:00Z"), LocalDate.of(2026, 10, 12))
+        val september = query.copy(from = Instant.parse("2026-08-31T21:00:00Z"), until = Instant.parse("2026-09-30T21:00:00Z"))
+        val batch = source().load(september)
+        val snapshot = BetaDashboardBuilder.build(batch).snapshot
+        assertEquals(LocalDate.of(2026, 9, 12), snapshot.creditFacilities.single().dueDate)
+        assertEquals(Instant.parse("2026-09-02T12:00:00Z"), snapshot.creditFacilities.single().statementIssuedAt)
+        assertTrue(snapshot.commitments!!.rows.isEmpty())
+        assertNull(snapshot.commitments!!.total)
+        assertEquals(setOf(facility.id), batch.unavailableObligationAssets)
+        captureStatement("tied-tail", Instant.parse("2026-10-02T12:00:00Z"), LocalDate.of(2026, 10, 13))
+        assertEquals(setOf(facility.id), source().load(september).unavailableObligationAssets)
+        RoomBetaEvidenceStore(db).begin("tail", now)
+        assertEquals(setOf(facility.id), source().load(september).unavailableObligationAssets)
     }
 
     @Test fun outsideFeeGapDoesNotPoisonSelectedPurchases() = runBlocking<Unit> {

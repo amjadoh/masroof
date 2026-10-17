@@ -66,6 +66,9 @@ object BetaDashboardBuilder {
             require(dates.all { it <= batch.revision.asOf && it <= batch.query.until }) { "Observation is newer than its read scope" }
         }
         val selected = DisplayPeriod(batch.query.from, batch.query.until, batch.query.zone, PeriodKind.SELECTED, null)
+        require(batch.unavailableObligationAssets.all { registry[it]?.kind in setOf(AssetKind.CREDIT_FACILITY, AssetKind.LOAN) }) {
+            "Invalid unavailable obligation identity"
+        }
         val statements = batch.periods.statements.toMap()
         require(statements.keys.all { registry[it]?.kind == AssetKind.CREDIT_FACILITY })
         val periods = listOf(selected) + listOfNotNull(batch.periods.salary, batch.periods.calendar) + statements.values
