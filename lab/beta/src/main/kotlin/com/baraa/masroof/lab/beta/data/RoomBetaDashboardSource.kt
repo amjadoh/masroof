@@ -60,16 +60,23 @@ class RoomBetaDashboardSource(
             fingerprint("BETA_DASHBOARD_CURRENT_1")
             fingerprint(query.toString()); fingerprint(frozenPeriods.toString())
             val schema = database.openHelper.readableDatabase.version
-            check(schema in 6..8) { "Unsupported Beta dashboard schema" }
+            check(schema in 6..9) { "Unsupported Beta dashboard schema" }
             fingerprint(schema.toString())
             val capabilities = database.query(SimpleSQLiteQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts')",
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts','beta_dashboard_aux_facts')",
             )).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
             val hasAdoption = "beta_financial_adoption" in capabilities
             val hasApprovalRetry = "beta_financial_approval_retry" in capabilities
             check(schema < 7 || (hasAdoption && hasApprovalRetry)) { "Missing Beta financial adoption gates" }
             val hasFacts = "beta_dashboard_evidence_facts" in capabilities
             check(schema < 8 || hasFacts) { "Missing Beta persisted dashboard facts" }
+            val hasAux = "beta_dashboard_aux_facts" in capabilities
+            check(schema < 9 || hasAux) { "Missing Beta auxiliary dashboard facts" }
+            val auxiliary = if (hasAux) database.dashboardAuxFactsDao().all(limits.evidenceIds + 1) else emptyList()
+            if (auxiliary.size > limits.evidenceIds) throw BetaDashboardReadLimitExceeded("auxiliary facts", limits.evidenceIds)
+            val auxByEvidence = auxiliary.associateBy { it.evidenceId }
+            val currentAux = hashSetOf<String>()
+            val informationalAux = hashSetOf<String>()
             val factRows = if (hasFacts) database.dashboardFactsDao().all(limits.currentRows + 1) else emptyList()
             if (factRows.size > limits.currentRows) throw BetaDashboardReadLimitExceeded("persisted facts", limits.currentRows)
             val persistedFacts = factRows.associateBy { it.transactionId }
@@ -115,16 +122,18 @@ class RoomBetaDashboardSource(
                 }
             }
             database.query(SimpleSQLiteQuery(
-                "SELECT r.id,c.transactionId,c.correction,c.interpretation,c.transition,c.activity,c.payload " +
+                "SELECT r.id,c.transactionId,c.correction,c.interpretation,c.transition,c.activity,c.payload,o.attempts,o.updatedAt," +
+                    "EXISTS(SELECT 1 FROM beta_evidence_retry retry WHERE retry.rawId=r.id) " +
                     "FROM beta_raw_evidence r LEFT JOIN beta_correction_evidence_claim x ON x.environment=? AND x.evidenceId=r.id " +
                     "LEFT JOIN beta_correction_current c ON c.environment=x.environment AND c.transactionId=x.transactionId " +
+                    "LEFT JOIN beta_evidence_outcome o ON o.rawId=r.id " +
                     "ORDER BY r.id LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.evidenceIds + 1),
             )).use { cursor ->
                 var count = 0
                 while (cursor.moveToNext()) {
                     if (++count > limits.evidenceIds) throw BetaDashboardReadLimitExceeded("evidence identities", limits.evidenceIds)
-                    repeat(7) { fingerprint(cursor.optional(it)) }
+                    repeat(10) { fingerprint(cursor.optional(it)) }
                     val id = cursor.getString(0)
                     evidenceOwners[id] = cursor.optional(1) ?: "evidence:$id"
                     val correction = cursor.optional(6)?.let(BetaCorrectionCodec::decode)
@@ -133,6 +142,23 @@ class RoomBetaDashboardSource(
                         correction.transition == cursor.getLong(4) && correction.activity.name == cursor.getString(5)) { "Inconsistent evidence correction state" }
                     else check(cursor.isNull(5)) { "Missing evidence correction payload" }
                     if (correction?.activity != BetaLedgerActivity.SUPPRESSED) unhandledEvidence += id
+                    val aux = auxByEvidence[id]
+                    if (aux != null) {
+                        // No archive decoding: the write-side binds a completed outcome generation.
+                        listOf(aux.evidenceId, aux.bankId, aux.archiveFingerprint, aux.outcomeAttempt.toString(), aux.outcomeAt,
+                            aux.nonFinancial.toString(), aux.registryBinding, aux.boundInput, aux.observedAt, aux.balanceAsset,
+                            aux.balanceAmount, aux.balanceCurrency, aux.facilityAsset, aux.dueAmount, aux.dueCurrency, aux.dueDate,
+                            aux.loanAsset, aux.loanType, aux.loanRemaining, aux.loanRemainingCurrency,
+                            aux.loanInstallment, aux.loanInstallmentCurrency, aux.statementProved.toString()).forEach(::fingerprint)
+                        if (!cursor.isNull(7) && aux.outcomeAttempt == cursor.getInt(7) && aux.outcomeAt == cursor.getString(8) &&
+                            cursor.getInt(9) == 0 && correction?.activity !in setOf(BetaLedgerActivity.REVIEW, BetaLedgerActivity.SUPPRESSED)) {
+                            currentAux += id
+                            if (aux.nonFinancial && cursor.isNull(1) && "evidence:$id" !in adoptionBindings) {
+                                informationalAux += id
+                                unhandledEvidence -= id
+                            }
+                        }
+                    }
                 }
             }
             val assets = database.query(SimpleSQLiteQuery(
@@ -151,12 +177,15 @@ class RoomBetaDashboardSource(
                 result
             }
             val registry = assets.associateBy { it.id }
+            val registryBinding = dashboardRegistryBinding(assets)
             val rows = mutableListOf<DashboardLedgerRow>()
             val postingFacts = mutableListOf<DashboardPostingFacts>()
             val fees = mutableListOf<LinkedInternationalFee>()
             val knownFees = mutableSetOf<PostingKey>()
             data class Observation(val row: BetaDashboardFactsEntity, val eligible: Boolean)
             val observations = mutableListOf<Observation>()
+            val activeInputs = mutableMapOf<String, String>()
+            var completeMerchantFacts = hasFacts
             database.query(SimpleSQLiteQuery(
                 "SELECT l.transactionId,l.correction,l.interpretation,l.payload," +
                     "c.correction,c.interpretation,c.transition,c.activity,c.payload " +
@@ -184,7 +213,8 @@ class RoomBetaDashboardSource(
                             persisted.correction.toString(), persisted.interpretation.toString(), persisted.boundInput, persisted.observedAt,
                             persisted.feeKnown.toString(), persisted.feeAmount, persisted.feeCurrency, persisted.balanceAsset, persisted.balanceAmount,
                             persisted.balanceCurrency, persisted.facilityAsset, persisted.dueAmount, persisted.dueCurrency, persisted.dueDate,
-                            persisted.merchant, persisted.counterparty, persisted.debitCardAsset, persisted.debitCardLast4, persisted.debitCardParent).forEach(::fingerprint)
+                            persisted.merchant, persisted.counterparty, persisted.debitCardAsset, persisted.debitCardLast4, persisted.debitCardParent,
+                            persisted.messageFamily).forEach(::fingerprint)
                     }
                     val active = id !in held && (correction == null || correction.activity == BetaLedgerActivity.ACTIVE)
                     if (id in held || correction?.activity == BetaLedgerActivity.REVIEW) { completeLedger = false; reviewKeys += id }
@@ -200,6 +230,7 @@ class RoomBetaDashboardSource(
                             !matchesCurrentRegistry(input, registry)
                         }) { completeLedger = false; reviewKeys += id; if (persisted != null) observations += Observation(persisted, false); continue }
                     unhandledEvidence.removeAll(posting.command.evidenceIds)
+                    posting.command.evidenceIds.forEach { activeInputs[it] = BetaLedgerCodec.encodeInput(posting.classification.input) }
                     val fact = persisted?.takeIf { row ->
                         row.correction == revision.correction && row.interpretation == revision.interpretation &&
                             BetaLedgerCodec.decodeInput(row.boundInput) == posting.classification.input &&
@@ -213,9 +244,12 @@ class RoomBetaDashboardSource(
                     if (windows.none { posting.command.time.instant >= it.from && posting.command.time.instant < it.until }) continue
                     rows += DashboardLedgerRow(posting, true)
                     val metadata = correction?.overlay?.metadata.orEmpty()
+                    if (posting.classification.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.REFUND) &&
+                        fact == null && "merchant" !in metadata) completeMerchantFacts = false
                     if (fact != null || metadata.keys.any { it == "merchant" || it == "counterparty" }) postingFacts += DashboardPostingFacts(
                         key, revision, posting.command.evidenceIds.sorted().first(), metadata["merchant"] ?: fact?.merchant,
                         metadata["counterparty"] ?: fact?.counterparty, debitCard = provedDebit,
+                        messageFamily = fact?.messageFamily?.let(DashboardEvidenceFamily::valueOf),
                     )
                     if (fact?.feeKnown == true && ((fact.feeAmount == null && fact.feeCurrency == null) ||
                         (fact.feeAmount != null && fact.feeCurrency == Currency.SAR.name))) {
@@ -232,7 +266,12 @@ class RoomBetaDashboardSource(
             reviewKeys += held
             val reviewCount = if (hasFacts && unhandledEvidence.all { it in projectedEvidence }) reviewKeys.size else null
             val assetFacts = mutableListOf<DashboardAssetFacts>()
-            val observed = observations.filter { Instant.parse(it.row.observedAt) <= minOf(readAt, query.until) }
+            val observed = observations.filter { Instant.parse(it.row.observedAt).let { at -> at <= readAt && at < query.until } }
+            data class AuxObservation(val row: BetaDashboardAuxFactsEntity, val eligible: Boolean)
+            val auxObserved = auxiliary.filter { row -> row.observedAt?.let(Instant::parse)?.let { it <= readAt && it < query.until } == true }.map { row ->
+                AuxObservation(row, row.evidenceId in currentAux && row.registryBinding == registryBinding &&
+                    (if (row.nonFinancial) row.evidenceId in informationalAux else row.boundInput != null && activeInputs[row.evidenceId] == row.boundInput))
+            }
             // A newer held/suppressed observation blocks fallback to an older apparently valid
             // value. Same-time conflicting observations remain unknown rather than arbitrary.
             for (asset in assets) {
@@ -245,18 +284,45 @@ class RoomBetaDashboardSource(
                     }
                 }
                 val balance = latest { it.balanceAsset }?.row
-                val due = latest { it.facilityAsset }?.row
-                if (balance != null || due != null) assetFacts += DashboardAssetFacts(asset.id,
-                    balance = balance?.takeIf { it.balanceAmount != null && it.balanceCurrency == Currency.SAR.name }?.let {
-                        ObservedSignedBalance(SignedAmount(it.balanceAmount!!.toBigDecimal(), Currency.valueOf(it.balanceCurrency!!)), Instant.parse(it.observedAt)) },
-                    statement = due?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
-                        ObservedStatement(Money.of(it.dueAmount!!, Currency.valueOf(it.dueCurrency!!)), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) })
+                fun auxLatest(selector: (BetaDashboardAuxFactsEntity) -> String?): AuxObservation? {
+                    val candidates = auxObserved.filter { it.row.bankId == asset.id.bank.value && selector(it.row) == asset.id.localId }
+                    val at = candidates.maxOfOrNull { Instant.parse(it.row.observedAt) } ?: return null
+                    return candidates.filter { Instant.parse(it.row.observedAt) == at }.singleOrNull()?.takeIf { it.eligible }
+                }
+                // Compare all candidates, including invalidated tombstones, before choosing a source.
+                fun auxWins(selector: (BetaDashboardAuxFactsEntity) -> String?, old: (BetaDashboardFactsEntity) -> String?): Boolean? {
+                    val a = auxObserved.filter { it.row.bankId == asset.id.bank.value && selector(it.row) == asset.id.localId }
+                        .maxOfOrNull { Instant.parse(it.row.observedAt) }
+                    val b = observed.filter { it.row.bankId == asset.id.bank.value && old(it.row) == asset.id.localId }
+                        .maxOfOrNull { Instant.parse(it.row.observedAt) }
+                    return when { a == null -> false; b == null -> true; a == b -> null; else -> a > b }
+                }
+                val auxBalance = auxLatest { it.balanceAsset }?.row
+                val auxDue = auxLatest { if (it.statementProved) it.facilityAsset else null }?.row
+                val loan = auxLatest { it.loanAsset }?.row
+                val balanceFact = when (auxWins({ it.balanceAsset }, { it.balanceAsset })) {
+                    true -> auxBalance?.takeIf { it.balanceAmount != null && it.balanceCurrency == Currency.SAR.name }?.let {
+                        ObservedSignedBalance(SignedAmount(it.balanceAmount!!.toBigDecimal(), Currency.SAR), Instant.parse(it.observedAt)) }
+                    false -> balance?.takeIf { it.balanceAmount != null && it.balanceCurrency == Currency.SAR.name }?.let {
+                        ObservedSignedBalance(SignedAmount(it.balanceAmount!!.toBigDecimal(), Currency.valueOf(it.balanceCurrency!!)), Instant.parse(it.observedAt)) }
+                    null -> null
+                }
+                // Only a proved informational STATEMENT supplies dues. Inert v8 financial
+                // outstanding columns (even newer or held purchases) cannot supply or block one.
+                val statementFact = auxDue?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
+                        ObservedStatement(Money.of(it.dueAmount!!, Currency.SAR), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) }
+                if (balanceFact != null || statementFact != null || loan != null) assetFacts += DashboardAssetFacts(asset.id,
+                    balance = balanceFact, statement = statementFact, loanType = loan?.loanType,
+                    loanRemaining = loan?.takeIf { it.loanRemaining != null && it.loanRemainingCurrency == Currency.SAR.name }?.let {
+                        ObservedMoney(Money.of(it.loanRemaining!!, Currency.SAR), Instant.parse(it.observedAt)) },
+                    loanInstallment = loan?.takeIf { it.loanInstallment != null && it.loanInstallmentCurrency == Currency.SAR.name }?.let {
+                        ObservedMoney(Money.of(it.loanInstallment!!, Currency.SAR), Instant.parse(it.observedAt)) })
             }
             val token = digest.digest().joinToString("") { "%02x".format(it) }
             DashboardReadBatch(query, ReadRevision("beta-current-v2:$token", readAt),
                 Collections.unmodifiableList(rows), Collections.unmodifiableList(assets),
                 DashboardCoverage(completeLedger = completeLedger, completeRegistry = true, completeFeeFacts = hasFacts && rows.all { it.posting.command.key in knownFees },
-                    reviewRequiredCount = reviewCount, atomicRuntimeSource = true),
+                    reviewRequiredCount = reviewCount, atomicRuntimeSource = true, completeMerchantFacts = completeMerchantFacts),
                 frozenPeriods, assetFacts = Collections.unmodifiableList(assetFacts), postingFacts = Collections.unmodifiableList(postingFacts),
                 fees = Collections.unmodifiableList(fees))
         }

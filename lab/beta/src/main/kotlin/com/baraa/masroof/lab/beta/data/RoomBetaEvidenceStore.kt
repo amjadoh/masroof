@@ -92,6 +92,8 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
             JSONArray(comparison.reasons.sorted()).toString(), comparison.baselineJson, comparison.candidateJson,
             at.toString(), pending.attempts))
         dao.clearRetry(id)
+        RoomBetaDashboardAuxFacts(database).refresh(id)
+        Unit
     }
 
     override suspend fun failure(id: String, stage: EvidenceStage, at: Instant) = database.withTransaction {

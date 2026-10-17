@@ -63,7 +63,7 @@ data class TransactionFacts(
     }
 }
 
-enum class TrendScope { OVERALL, ACCOUNTS, CREDIT_CARDS, DEBIT_CARDS, PURCHASES, ASSET }
+enum class TrendScope { OVERALL, ACCOUNTS, CREDIT_CARDS, DEBIT_CARDS, PURCHASES, ASSET, FINANCIAL_OUTFLOWS }
 
 /** Aggregate scopes are precomputed too; consumers never sum per-asset/category trends. */
 data class SpendingTrend(

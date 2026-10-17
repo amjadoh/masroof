@@ -71,7 +71,7 @@ class BetaDashboardDatabaseTest {
         assertEquals(BigDecimal("37.50"), result.snapshot.transactions.single().sarEquivalent!!.amount)
         assertNull(result.snapshot.fleetFlow)
         assertNull(result.snapshot.totals!!.accountOutflow)
-        assertNull(result.snapshot.analysis)
+        assertNotNull(result.snapshot.analysis)
         assertTrue(RoomBetaFinancialLedger(db).post(input("another")) is FinancialPostingResult.Applied)
         try {
             RoomBetaDashboardSource(db, limits = BetaDashboardReadLimits(currentRows = 1)).load(query)

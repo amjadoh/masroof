@@ -90,7 +90,7 @@ class RoomBetaDashboardSourceTest {
         assertEquals(2, result.snapshot.transactions.size)
         assertEquals(BigDecimal("84.70"), result.snapshot.fleetFlow!!.externalOut.amount)
         assertFalse(DashboardSection.RUNTIME_SOURCE in result.unavailableSections)
-        assertNull(result.snapshot.analysis); assertNull(result.snapshot.commitments)
+        assertNotNull(result.snapshot.analysis); assertNotNull(result.snapshot.commitments)
     }
 
     @Test fun readsAreStableReadOnlyAndDoNotClaimAbsentObservationFeeOrReviewCoverage() = runBlocking {
@@ -268,7 +268,7 @@ class RoomBetaDashboardSourceTest {
         sql.clear()
         val batch = source().load(query)
         assertEquals(80, batch.rows.size); assertEquals(baselineReadQueries(), dataSelects().size)
-        assertTrue(sql.none { it.contains("beta_ledger_history") || it.contains("r.body") || it.contains("beta_evidence_outcome") })
+        assertTrue(sql.none { it.contains("beta_ledger_history") || it.contains("r.body") || it.contains("baselineJson") || it.contains("candidateJson") })
         val plans = db.query("EXPLAIN QUERY PLAN SELECT l.* FROM beta_ledger_current l LEFT JOIN beta_correction_current c " +
             "ON c.environment=l.environment AND c.transactionId=l.transactionId WHERE l.environment='BETA' ORDER BY l.transactionId LIMIT 10001", null).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.getString(3)) }

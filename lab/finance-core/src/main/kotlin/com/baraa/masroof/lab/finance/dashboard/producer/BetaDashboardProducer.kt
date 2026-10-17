@@ -155,10 +155,14 @@ object BetaDashboardBuilder {
             if (completeRegistry) sumKnownMoney(loans.map { it.remaining }) else null,
             salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
         val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key], registry) }
+        val analysis = financialSummary?.let { BetaAnalysisBuilder.build(batch.copy(assets = assets), it, transactions, queryProjection) }
+        val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary)
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
-            null, null, freezeList(transactions), totals, batch.revision, fleet)
-        val unavailable = setOf(DashboardSection.ANALYSIS, DashboardSection.TRENDS, DashboardSection.MERCHANT_TOTALS,
-            DashboardSection.COMMITMENTS) +
+            commitments, analysis, freezeList(transactions), totals, batch.revision, fleet)
+        val unavailable = (if (analysis == null) setOf(DashboardSection.ANALYSIS) else emptySet()) +
+            (if (analysis == null || analysis.trends.any { it.averageDailySpending == null }) setOf(DashboardSection.TRENDS) else emptySet()) +
+            (if (analysis == null || queryProjection == null || !batch.coverage.completeMerchantFacts) setOf(DashboardSection.MERCHANT_TOTALS) else emptySet()) +
+            (if (commitments?.total == null) setOf(DashboardSection.COMMITMENTS) else emptySet()) +
             (if (!batch.coverage.atomicRuntimeSource) setOf(DashboardSection.RUNTIME_SOURCE) else emptySet()) +
             (if (!batch.coverage.completeLedger) setOf(DashboardSection.CURRENT_LEDGER) else emptySet()) +
             (if (!batch.coverage.completeRegistry) setOf(DashboardSection.CONFIRMED_REGISTRY) else emptySet())
