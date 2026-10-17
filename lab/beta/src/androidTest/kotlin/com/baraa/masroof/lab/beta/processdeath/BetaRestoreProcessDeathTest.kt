@@ -56,7 +56,7 @@ class BetaRestoreProcessDeathTest {
             context.getDatabasePath(com.baraa.masroof.lab.beta.BetaEnvironment.DATABASE_NAME).absolutePath, null,
             android.database.sqlite.SQLiteDatabase.OPEN_READWRITE or android.database.sqlite.SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
         ).also { db ->
-            db.execSQL("PRAGMA wal_autocheckpoint=0")
+            db.rawQuery("PRAGMA wal_autocheckpoint=0", null).use { assertTrue(it.moveToFirst()) }
             db.execSQL("INSERT INTO beta_shell_marker (id,note) VALUES ('wal-only','synthetic committed WAL')")
         }
         assertTrue(File(context.getDatabasePath(com.baraa.masroof.lab.beta.BetaEnvironment.DATABASE_NAME).path + "-wal").length() > 0)
