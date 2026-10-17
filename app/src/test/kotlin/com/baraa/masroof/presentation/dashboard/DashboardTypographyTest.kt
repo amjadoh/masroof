@@ -1,7 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.ui.text.font.FontWeight
-import com.baraa.masroof.presentation.theme.MasroofTypography
+import com.baraa.masroof.ui.theme.MasroofTypography
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

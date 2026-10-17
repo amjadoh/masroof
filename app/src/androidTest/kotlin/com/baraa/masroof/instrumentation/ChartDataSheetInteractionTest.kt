@@ -23,7 +23,7 @@ import com.baraa.masroof.data.preferences.SharedPrefsChartDataPreferencesReposit
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.presentation.dashboard.*
 import com.baraa.masroof.presentation.locale.AppLocaleContext
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 import java.io.File
 import java.io.FileOutputStream
 import org.junit.Assert.*

@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofFontWeights
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
@@ -31,8 +31,8 @@ import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.commitmentDonutPaidFraction
 import com.baraa.masroof.presentation.common.formatCardLast4
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofSpacing
-import com.baraa.masroof.presentation.theme.MasroofThemeExtras
+import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -41,16 +41,16 @@ fun CommitmentsSection(overview: CommitmentsOverview, modifier: Modifier = Modif
     if (!overview.hasContent) return
     val colors = MasroofThemeExtras.extendedColors
     val pending = overview.rows.filter { it.status == CommitmentPaymentStatus.UNPAID }
-    Column(modifier.padding(top = com.baraa.masroof.presentation.theme.MasroofReference.sectionHeadingTop - MasroofSpacing.sectionGap),
-        verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofReference.sectionHeadingBottom)) {
+    Column(modifier.padding(top = com.baraa.masroof.ui.theme.MasroofReference.sectionHeadingTop - MasroofSpacing.sectionGap),
+        verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.sectionHeadingBottom)) {
         Text(stringResource(R.string.reference_period_commitments), style = MaterialTheme.typography.titleMedium)
         androidx.compose.material3.Surface(color = colors.liabilitySoft,
-            shape = com.baraa.masroof.presentation.theme.MasroofComponentShapes.radius14) {
-            Row(Modifier.fillMaxWidth().padding(com.baraa.masroof.presentation.theme.MasroofReference.contextualBandPadding),
+            shape = com.baraa.masroof.ui.theme.MasroofComponentShapes.radius14) {
+            Row(Modifier.fillMaxWidth().padding(com.baraa.masroof.ui.theme.MasroofReference.contextualBandPadding),
                 horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
                 verticalAlignment = Alignment.Top) {
                 androidx.compose.material3.Icon(MasroofIcons.clock, null,
-                    Modifier.size(com.baraa.masroof.presentation.theme.MasroofReference.icon), tint = colors.liability)
+                    Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon), tint = colors.liability)
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.reference_waiting_payment, formatLocalizedMoney(overview.remaining)),
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = MasroofFontWeights.semiBold))

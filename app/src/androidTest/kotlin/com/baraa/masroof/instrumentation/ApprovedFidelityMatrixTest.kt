@@ -27,7 +27,7 @@ import com.baraa.masroof.presentation.review.*
 import com.baraa.masroof.presentation.onboarding.*
 import com.baraa.masroof.presentation.notification.*
 import com.baraa.masroof.presentation.statement.*
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.domain.model.Bank
 import java.io.File

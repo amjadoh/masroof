@@ -2,9 +2,9 @@ package com.baraa.masroof.presentation.onboarding
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.presentation.theme.MasroofSizes
-import com.baraa.masroof.presentation.theme.MasroofIconSizes
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSizes
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -214,10 +214,10 @@ private fun WelcomeStep(
     Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = MasroofSpacing.periodDisplayHorizontalPadding + MasroofSpacing.borderWidth,
-            vertical = com.baraa.masroof.presentation.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
+            vertical = com.baraa.masroof.ui.theme.MasroofReference.headerTop + MasroofSpacing.borderWidth)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                MasroofLogo(size = com.baraa.masroof.presentation.theme.MasroofReference.aboutLogo, contentDescription = null)
+                MasroofLogo(size = com.baraa.masroof.ui.theme.MasroofReference.aboutLogo, contentDescription = null)
                 Text(stringResource(R.string.onboarding_welcome_title), style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center)
                 Text(stringResource(R.string.reference_welcome_body), style = MaterialTheme.typography.bodySmall,

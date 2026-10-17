@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import com.baraa.masroof.lab.beta.BetaIo
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,7 +37,7 @@ class BetaActivity : ComponentActivity() {
                 BetaContainer(applicationContext).also { betaContainer = it }
             } } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (_: Exception) {
-                setContent { MaterialTheme {
+                setContent { com.baraa.masroof.ui.theme.MasroofTheme {
                     BetaShell(markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
                         editor = { BetaStartupFailure(onRetry = { recreate() }, onReturn = { finish() }) },
                         onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {})
@@ -48,7 +47,7 @@ class BetaActivity : ComponentActivity() {
             setContent {
             var betaTheme by remember { mutableStateOf("SYSTEM") }
             val dark = when (betaTheme) { "DARK" -> true; "LIGHT" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
-            MaterialTheme(colorScheme = if (dark) androidx.compose.material3.darkColorScheme() else androidx.compose.material3.lightColorScheme()) {
+            com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
                 val shellContainer = remember { container }
                 val scope = rememberCoroutineScope()
                 val dashboardWorkflow = remember(shellContainer) {

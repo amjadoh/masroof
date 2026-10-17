@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.theme
+package com.baraa.masroof.ui.theme
 
 import android.app.Activity
 import android.content.Context
@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
-import com.baraa.masroof.application.locale.AppLocale
+import java.util.Locale
 
 private val LightColorScheme = lightColorScheme(
     primary = MasroofLightColors.Primary,
@@ -85,7 +85,7 @@ fun MasroofTheme(
     content: @Composable () -> Unit,
 ) {
     val languageTag = LocalConfiguration.current.locales[0].toLanguageTag()
-    val layoutDirection = if (AppLocale.isRtl(languageTag)) {
+    val layoutDirection = if (languageTag.substringBefore('-').substringBefore('_').lowercase(Locale.ROOT) != "en") {
         LayoutDirection.Rtl
     } else {
         LayoutDirection.Ltr

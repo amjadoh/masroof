@@ -23,7 +23,7 @@ fun SettingsUpdatesScreen(updateChannel: UpdateChannel, githubTokenConfigured: B
     var token by com.baraa.masroof.presentation.common.rememberSensitiveInput()
     MasroofSecondaryScaffold(stringResource(R.string.settings_updates_title), onBack,
         stringResource(R.string.settings_back)) { modifier ->
-        Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.presentation.theme.MasroofSpacing.sectionGap)) {
+        Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
             UpdateSectionCard(updateChannel, onSelectUpdateChannel, githubTokenConfigured, token,
                 { token = it }, { onSaveGithubToken(token); token = "" },
                 { token = ""; onClearGithubToken() }, updateState, { onClearUpdateMessage(); onCheckForUpdates() }, onDownloadUpdate, onInstallUpdate, message = updateMessage)

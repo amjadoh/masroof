@@ -36,6 +36,7 @@ ksp {
 }
 
 dependencies {
+    implementation(project(":ui-kit"))
     implementation(project(":lab:finance-core"))
     implementation(project(":lab:bank-engine"))
     // Transitional comparison engine; shares source with Parsing Lab, never :app.

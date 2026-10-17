@@ -1,6 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
@@ -15,7 +15,7 @@ import com.baraa.masroof.application.dashboard.CreditFacilityOverview
 import com.baraa.masroof.application.dashboard.statementDueFor
 import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofDetailRow
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofHeroRole
 import com.baraa.masroof.domain.model.CardNetwork
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
@@ -50,7 +50,7 @@ fun CreditCardDetailSummaryCard(
             val shared = facility != null && facility.primaryLast4 != row.last4
             MasroofDetailRow(stringResource(if (shared) R.string.reference_shared_due_amount else R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable,
                 guidance = if (facility != null && facility.primaryLast4 != row.last4) stringResource(R.string.approved_shared_due) else null,
-                valueColor = com.baraa.masroof.presentation.theme.MasroofThemeExtras.extendedColors.liability)
+                valueColor = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.liability)
             MasroofDetailRow(stringResource(R.string.approved_due_date), dueDate?.let(date::format) ?: unavailable)
             val registry = ownedCards.firstOrNull { it.bank == row.bank && it.last4 == row.last4 }
             val cardTypeLabel = when {

@@ -15,7 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import com.baraa.masroof.presentation.common.MasroofPeriodDisplay
 import com.baraa.masroof.presentation.locale.AppLocaleContext
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

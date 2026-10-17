@@ -11,7 +11,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.espresso.Espresso
 import com.baraa.masroof.presentation.common.MasroofBottomSheet
 import com.baraa.masroof.presentation.common.MasroofText
-import com.baraa.masroof.presentation.theme.MasroofTheme
+import com.baraa.masroof.ui.theme.MasroofTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

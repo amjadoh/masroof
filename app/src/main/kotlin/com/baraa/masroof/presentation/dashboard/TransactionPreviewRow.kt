@@ -13,7 +13,7 @@ import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
-import com.baraa.masroof.presentation.theme.*
+import com.baraa.masroof.ui.theme.*
 @Composable
 fun TransactionPreviewRow(
     row: TransactionPreviewUi,

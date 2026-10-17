@@ -32,9 +32,9 @@ import com.baraa.masroof.presentation.common.MasroofReferenceMoney
 import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.common.MasroofChartAverageLegend
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
-import com.baraa.masroof.presentation.theme.MasroofHeroRole
-import com.baraa.masroof.presentation.theme.MasroofReference
-import com.baraa.masroof.presentation.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofHeroRole
+import com.baraa.masroof.ui.theme.MasroofReference
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import java.time.format.DateTimeFormatter
 
 @Composable
