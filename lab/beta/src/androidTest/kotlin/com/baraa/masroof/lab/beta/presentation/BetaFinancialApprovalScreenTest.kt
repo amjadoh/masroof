@@ -147,4 +147,31 @@ class BetaFinancialApprovalScreenTest {
             assertEquals(1, container.financialHistory(RoomBetaFinancialAdoption.key("screen")).size)
         } finally { container.close() }
     }
+
+    @Test fun disabledBankBlocksLegacyPendingRetryAndExactCancelNeverPosts() {
+        val initial = seed()
+        runBlocking {
+            val db = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
+            try {
+                val original = BetaFinancialApproval("screen", initial.item.archiveRevision, null, FinancialType.EXPENSE, asset.id, null)
+                RoomBetaEvidenceStore(db).begin("screen", at)
+                assertTrue(RoomBetaFinancialAdoption(db).approve(original) is BetaFinancialAdoptionResult.Review)
+                db.evidenceDao().clearRetry("screen")
+                db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "DISABLED"))
+            } finally { db.close() }
+        }
+        val container = BetaContainer(context)
+        try {
+            compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaFinancialApprovalPanel(container, {}) } } }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("approval-item-0").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("approval-item-0").performScrollTo().performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("approval-retry").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("approval-retry").assertIsNotEnabled()
+            compose.onNodeWithTag("approval-cancel-pending").performScrollTo().performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("approval-retry").fetchSemanticsNodes().isEmpty() }
+            assertNull(container.financialApprovalPreview("screen")?.pending)
+            assertNull(container.financialAuditPosting(RoomBetaFinancialAdoption.key("screen")))
+            assertEquals(0, container.financialHistory(RoomBetaFinancialAdoption.key("screen")).size)
+        } finally { container.close() }
+    }
 }
