@@ -108,6 +108,8 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
         Text("${input.amount.amount.toPlainString()} ${input.amount.currency.name}", style = MaterialTheme.typography.titleMedium)
         Text(stringResource(financialTypeLabel(input.storedType)))
         Text(input.time.instant.atZone(input.time.zone).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
+        Text(stringResource(R.string.beta_review_source) + ": " + endpointSummary(input.source, input.assets))
+        Text(stringResource(R.string.beta_review_destination) + ": " + endpointSummary(input.destination, input.assets))
         Text(stringResource(activityLabel(detail.current?.activity)))
         if (detail.current?.reasons?.isNotEmpty() == true) Text(stringResource(R.string.beta_review_blockers))
         if (detail.stored?.matchIdentity != null) Text(stringResource(R.string.beta_review_pair))
@@ -137,7 +139,10 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
                 detail.observation.input.assets.values.forEachIndexed { index, asset ->
                     val id = "${asset.id.bank.value}:${asset.id.localId}"
                     FilterChip(selected = endpoint == id, onClick = { endpoint = id; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
-                        label = { Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1)) })
+                        label = { Column {
+                            Text(stringResource(bankName(asset.id.bank)))
+                            Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1))
+                        } })
                 }
             }
         }
@@ -170,6 +175,15 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
             enabled = !busy && decision != null && (mode == "note" || confirmed), modifier = Modifier.testTag("review-save")) { Text(stringResource(R.string.beta_asset_save)) }
         OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.testTag("review-cancel")) { Text(stringResource(R.string.beta_asset_cancel)) }
     }
+}
+
+@Composable
+private fun endpointSummary(endpoint: FinancialEndpoint, assets: Map<com.baraa.masroof.lab.finance.asset.AssetId, com.baraa.masroof.lab.finance.asset.OwnedAsset>): String = when (endpoint) {
+    FinancialEndpoint.External -> stringResource(R.string.beta_review_external)
+    FinancialEndpoint.Unresolved -> stringResource(R.string.beta_review_unknown_endpoint)
+    is FinancialEndpoint.Owned -> assets[endpoint.id]?.let {
+        stringResource(bankName(it.id.bank)) + " · " + stringResource(assetKindLabel(it.kind)) + " · " + it.last4.orEmpty()
+    } ?: stringResource(R.string.beta_review_unknown_endpoint)
 }
 
 private fun financialTypeLabel(type: FinancialType) = when (type) {
