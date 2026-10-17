@@ -22,6 +22,7 @@ internal data class BetaDashboardAuxFactsEntity(
     val facilityAsset: String?, val dueAmount: String?, val dueCurrency: String?, val dueDate: String?,
     val loanAsset: String?, val loanType: String?, val loanRemaining: String?, val loanRemainingCurrency: String?,
     val loanInstallment: String?, val loanInstallmentCurrency: String?,
+    val statementProved: Boolean = false,
 ) { override fun toString() = "BetaDashboardAuxFactsEntity(redacted)" }
 
 @Dao internal interface BetaDashboardAuxFactsDao {
@@ -113,7 +114,7 @@ internal class RoomBetaDashboardAuxFacts(private val database: BetaDatabase) {
             (extraAccount == null || accountSuffix == null || extraAccount == accountSuffix)) registry.values.singleOrNull {
             it.id.bank.value == bank && it.kind == AssetKind.CREDIT_CARD && it.last4 == cardSuffix
         } else null
-        val facility = if (informational && family != "OTP") card?.parentId?.let(registry::get) else null
+        val facility = if (informational && family != "OTP" && channel == "STATEMENT") card?.parentId?.let(registry::get) else null
         val candidateAccount = if (channel !in setOf("CREDIT", "STATEMENT") && !accountSuffix.isNullOrEmpty() &&
             (extraAccount == null || extraAccount == accountSuffix) && (cardSuffix == null || cardSuffix.isNotEmpty())) registry.values.singleOrNull {
             it.id.bank.value == bank && it.kind == AssetKind.ACCOUNT && it.last4 == accountSuffix
@@ -136,7 +137,7 @@ internal class RoomBetaDashboardAuxFacts(private val database: BetaDatabase) {
             balanceAsset?.id?.localId, balance?.amount?.toPlainString(), balance?.currency?.name,
             facility?.id?.localId, due?.amount?.toPlainString(), due?.currency?.name, dueDate,
             loan?.id?.localId, if (loan != null) text("loanType") else null, remaining?.amount?.toPlainString(), remaining?.currency?.name,
-            installment?.amount?.toPlainString(), installment?.currency?.name))
+            installment?.amount?.toPlainString(), installment?.currency?.name, facility != null && channel == "STATEMENT"))
         return true
     }
 }

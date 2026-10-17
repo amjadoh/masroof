@@ -86,7 +86,7 @@ class BetaPersistedFactsDatabaseTest {
         assertEquals(BigDecimal("86.41"), result.snapshot.transactions.single().sarEquivalent!!.amount)
         assertEquals(BigDecimal("88.40"), result.financialSummary!!.metrics.getValue(SummaryMetric.CREDIT_PURCHASES)!!.amount)
         assertEquals(BigDecimal("16958.89"), result.snapshot.creditFacilities.single().cards.single().availableBalance!!.amount)
-        assertEquals(Money.of("2694.32", Currency.SAR), result.snapshot.creditFacilities.single().statementDue)
+        assertNull(result.snapshot.creditFacilities.single().statementDue) // Purchase outstanding is not a statement due.
         assertNull(result.snapshot.accounts.single().balance)
         assertNotNull(result.snapshot.analysis)
         db.close(); db = openDb()
@@ -130,7 +130,7 @@ class BetaPersistedFactsDatabaseTest {
     @Test fun newerHeldObservationPreventsFallingBackToOlderBalanceAndDeduplicatesReview() = runBlocking {
         capture("old", facts().copy(occurredAtLocal = LocalDateTime.ofInstant(at.minusSeconds(60), zone))); approve("old")
         capture("new"); approve("new")
-        assertEquals(Money.of("2694.32", Currency.SAR), BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+        assertNull(BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
         RoomBetaEvidenceStore(db).begin("new", at)
         val held = source().load(query)
         assertFalse(held.coverage.completeLedger); assertEquals(1, held.coverage.reviewRequiredCount)

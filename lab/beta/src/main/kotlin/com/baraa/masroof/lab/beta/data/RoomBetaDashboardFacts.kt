@@ -91,7 +91,9 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         val previousFacts = database.dashboardFactsDao().evidence(id)
         val fee = if (sameMoneyTime) money("internationalFee") else null
         val balance = balanceAsset?.let { money("availableBalance") }
-        val due = facility?.let { money("outstandingBalance") }
+        // A financial purchase/refund outstanding balance is not a statement. Historical v8
+        // columns remain intact, but new financial writes cannot manufacture statement authority.
+        val due: Money? = null
         database.dashboardFactsDao().put(BetaDashboardFactsEntity(id, key.transactionId, adopted.bankId,
             adopted.archiveFingerprint, adopted.observationRevision, input.revision.correction, input.revision.interpretation,
             BetaLedgerCodec.encodeInput(input), baseline.time.instant.toString(),

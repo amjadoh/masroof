@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 9,
-    "identityHash": "a77ebda5f43d118ba34136e0d937a444",
+    "identityHash": "590a451b346bca7d6b4673280ba5e3fe",
     "entities": [
       {
         "tableName": "beta_shell_marker",
@@ -1351,7 +1351,7 @@
       },
       {
         "tableName": "beta_dashboard_aux_facts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`evidenceId` TEXT NOT NULL, `bankId` TEXT NOT NULL, `archiveFingerprint` TEXT NOT NULL, `outcomeAttempt` INTEGER NOT NULL, `outcomeAt` TEXT NOT NULL, `nonFinancial` INTEGER NOT NULL, `registryBinding` TEXT NOT NULL, `boundInput` TEXT, `observedAt` TEXT, `balanceAsset` TEXT, `balanceAmount` TEXT, `balanceCurrency` TEXT, `facilityAsset` TEXT, `dueAmount` TEXT, `dueCurrency` TEXT, `dueDate` TEXT, `loanAsset` TEXT, `loanType` TEXT, `loanRemaining` TEXT, `loanRemainingCurrency` TEXT, `loanInstallment` TEXT, `loanInstallmentCurrency` TEXT, PRIMARY KEY(`evidenceId`), FOREIGN KEY(`evidenceId`) REFERENCES `beta_raw_evidence`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`evidenceId` TEXT NOT NULL, `bankId` TEXT NOT NULL, `archiveFingerprint` TEXT NOT NULL, `outcomeAttempt` INTEGER NOT NULL, `outcomeAt` TEXT NOT NULL, `nonFinancial` INTEGER NOT NULL, `registryBinding` TEXT NOT NULL, `boundInput` TEXT, `observedAt` TEXT, `balanceAsset` TEXT, `balanceAmount` TEXT, `balanceCurrency` TEXT, `facilityAsset` TEXT, `dueAmount` TEXT, `dueCurrency` TEXT, `dueDate` TEXT, `loanAsset` TEXT, `loanType` TEXT, `loanRemaining` TEXT, `loanRemainingCurrency` TEXT, `loanInstallment` TEXT, `loanInstallmentCurrency` TEXT, `statementProved` INTEGER NOT NULL, PRIMARY KEY(`evidenceId`), FOREIGN KEY(`evidenceId`) REFERENCES `beta_raw_evidence`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "evidenceId",
@@ -1484,6 +1484,12 @@
             "columnName": "loanInstallmentCurrency",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "statementProved",
+            "columnName": "statementProved",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -1511,7 +1517,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a77ebda5f43d118ba34136e0d937a444')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '590a451b346bca7d6b4673280ba5e3fe')"
     ]
   }
 }
