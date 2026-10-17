@@ -311,6 +311,7 @@ class RoomBetaCorrectionLifecycleTest {
             EvidenceRequest("review-fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
             EvidenceMessage("evidence-transaction", "fixture", "synthetic only", capturedAt, ReceiptTimeSource.USER_SUPPLIED),
             capturedAt, EvidenceRoute(RouteKind.MATCHED, setOf(bank), "review-fixture"), emptyList()))
+        db.evidenceDao().clearRetry("evidence-transaction")
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
         val columns = mutableListOf<String>()
         db.openHelper.writableDatabase.query("PRAGMA table_info(beta_financial_adoption)").use { while (it.moveToNext()) columns += it.getString(1) }
@@ -323,6 +324,10 @@ class RoomBetaCorrectionLifecycleTest {
         assertEquals(BetaLedgerActivity.REVIEW, workflow.page().single().activity)
         assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "held", FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE)))
         db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='ACTIVE'")
+        assertNotNull(workflow.detail(first.input.key))
+        db.evidenceDao().retry(BetaEvidenceRetryEntity("evidence-transaction", "INTERPRETATION", 1, "PENDING", capturedAt.toString()))
+        assertNull(workflow.detail(first.input.key))
+        db.evidenceDao().clearRetry("evidence-transaction")
         assertNotNull(workflow.detail(first.input.key))
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_approval_retry(evidenceId TEXT PRIMARY KEY, request TEXT)")
         db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_approval_retry VALUES('evidence-transaction','pending')")
