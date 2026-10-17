@@ -153,7 +153,8 @@ object BetaDashboardBuilder {
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
             null, null, freezeList(transactions), totals, batch.revision, fleet)
         val unavailable = setOf(DashboardSection.ANALYSIS, DashboardSection.TRENDS, DashboardSection.MERCHANT_TOTALS,
-            DashboardSection.COMMITMENTS, DashboardSection.RUNTIME_SOURCE) +
+            DashboardSection.COMMITMENTS) +
+            (if (!batch.coverage.atomicRuntimeSource) setOf(DashboardSection.RUNTIME_SOURCE) else emptySet()) +
             (if (!batch.coverage.completeLedger) setOf(DashboardSection.CURRENT_LEDGER) else emptySet()) +
             (if (!batch.coverage.completeRegistry) setOf(DashboardSection.CONFIRMED_REGISTRY) else emptySet())
         return DashboardProduction(snapshot, freezeSet(unavailable), financialSummary)
@@ -179,8 +180,13 @@ object BetaDashboardBuilder {
         }
         require(prepared is PostingPreparation.Ready && prepared.posting == stored) { "Stored financial payload/gate is inconsistent" }
         val candidate = prepared.posting
-        candidate.classification.input.assets.forEach { (id, asset) ->
-            require(registry[id] == asset && asset.id == id) { "Current confirmed registry differs from active posting" }
+        (listOf(candidate.classification.input) + candidate.observations.map { it.input }).forEach { input ->
+            val endpoints = listOfNotNull((input.source as? FinancialEndpoint.Owned)?.id,
+                (input.destination as? FinancialEndpoint.Owned)?.id, input.financingLoan).toSet()
+            val dependencies = endpoints + endpoints.mapNotNull { input.assets[it]?.parentId }
+            require(dependencies.all { id -> input.assets[id]?.let { it.id == id && registry[id] == it } == true }) {
+                "Current confirmed registry differs from active posting dependencies"
+            }
         }
         return candidate
     }
