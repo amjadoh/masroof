@@ -45,6 +45,7 @@ internal class BetaBackupRecovery(
         val folder = newFolder("snapshot-")
         try {
             copySynced(database, File(folder, DB))
+            standaloneDatabase(File(folder, DB))
             writeSynced(File(folder, PREFS), encodePreferences(values).toString().toByteArray(Charsets.UTF_8))
             val version = inspectSqlite(File(folder, DB))
             writeSynced(File(folder, MANIFEST), JSONObject().apply {
@@ -173,8 +174,10 @@ internal class BetaBackupRecovery(
 
     @android.annotation.SuppressLint("RestrictedApi")
     private fun validateRoom(file: File) {
-        val staged = Room.databaseBuilder(context, BetaDatabase::class.java, file.absolutePath).build()
-        val reference = Room.databaseBuilder(context, BetaDatabase::class.java, File(file.parentFile, "reference.db").absolutePath).build()
+        val staged = Room.databaseBuilder(context, BetaDatabase::class.java, file.absolutePath)
+            .setJournalMode(androidx.room.RoomDatabase.JournalMode.TRUNCATE).build()
+        val reference = Room.databaseBuilder(context, BetaDatabase::class.java, File(file.parentFile, "reference.db").absolutePath)
+            .setJournalMode(androidx.room.RoomDatabase.JournalMode.TRUNCATE).build()
         try {
             val actual = staged.openHelper.writableDatabase
             val expected = reference.openHelper.writableDatabase
@@ -194,15 +197,28 @@ internal class BetaBackupRecovery(
 
     private fun inspectSqlite(file: File): Int {
         require(file.isFile && file.length() in 100..MAX_DATABASE) { "Invalid Beta database size" }
-        // All callers pass an isolated copy, never the live database. A writable
-        // connection lets SQLite recover an internal journal before validation.
-        return SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+        return SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("PRAGMA integrity_check", null).use { require(it.moveToFirst() && it.getString(0) == "ok" && !it.moveToNext()) }
             db.rawQuery("PRAGMA foreign_key_check", null).use { require(!it.moveToFirst()) { "Broken Beta foreign keys" } }
             require(db.version in 1..BetaDatabase.VERSION) { "Unsupported Beta schema" }
             db.rawQuery("SELECT identity_hash FROM room_master_table WHERE id=42", null).use { require(it.moveToFirst() && it.getString(0).isNotBlank()) }
             db.version
         }
+    }
+
+    /** Seal only a NEW isolated copy. Published snapshots must never acquire WAL sidecars. */
+    private fun standaloneDatabase(file: File) {
+        SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { while (it.moveToNext()) Unit }
+            db.rawQuery("PRAGMA journal_mode=DELETE", null).use {
+                require(it.moveToFirst() && it.getString(0).equals("delete", ignoreCase = true))
+            }
+        }
+        listOf("-wal", "-shm", "-journal").forEach { suffix ->
+            val sidecar = File(file.path + suffix)
+            check(!sidecar.exists() || sidecar.delete())
+        }
+        FileOutputStream(file, true).use { it.fd.sync() }
     }
 
     private fun preferenceValues(): Map<String, String> = preferences.all.mapValues { (_, value) ->

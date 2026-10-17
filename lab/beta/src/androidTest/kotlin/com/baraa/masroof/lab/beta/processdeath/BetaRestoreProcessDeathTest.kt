@@ -35,6 +35,11 @@ class BetaRestoreProcessDeathTest {
             assertEquals(if (committed) 1 else 2, beta.markerCount())
             assertEquals(if (committed) "BACKUP" else "CURRENT", beta.preferenceProbe())
             assertTrue(beta.settings().backupAvailable)
+            val entries = setOf("database.db", "preferences.json", "manifest.json")
+            assertEquals(entries, beta.backupDatabaseFile().parentFile!!.list()!!.toSet())
+            assertTrue(beta.restore())
+            assertEquals(1, beta.markerCount()); assertEquals("BACKUP", beta.preferenceProbe())
+            assertEquals(entries, beta.backupDatabaseFile().parentFile!!.list()!!.toSet())
         }
     }
     @Test fun armAfterDatabaseInstall() = arm(BetaBackupRecovery.Stage.DATABASE_INSTALLED)
@@ -72,7 +77,10 @@ class BetaRestoreProcessDeathTest {
     @Test fun resumeRestoreWithCommittedWal() {
         assertEquals("true", InstrumentationRegistry.getArguments().getString("betaResume"))
         assertNotEquals(File(context.filesDir, "beta_restore_test_pid").readText(), Process.myPid().toString())
-        BetaContainer(context).use { beta -> assertEquals(3, beta.markerCount()); assertEquals("CURRENT", beta.preferenceProbe()) }
+        BetaContainer(context).use { beta ->
+            assertEquals(3, beta.markerCount()); assertEquals("CURRENT", beta.preferenceProbe())
+            assertEquals(setOf("database.db", "preferences.json", "manifest.json"), beta.backupDatabaseFile().parentFile!!.list()!!.toSet())
+        }
     }
 
     companion object {

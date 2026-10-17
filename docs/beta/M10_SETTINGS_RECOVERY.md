@@ -31,6 +31,14 @@ and SHA-256 of both payload files. An AtomicFile pointer publishes a fully
 validated generation. Failure while making a new generation leaves the previous
 published snapshot available.
 
+Before its manifest is sealed, a new isolated snapshot is checkpointed into
+DELETE journal mode. Published snapshots are inspected through read-only SQLite
+connections, so native Android cannot create WAL/SHM entries inside an immutable
+generation. Staged Room migration uses TRUNCATE mode, leaving a standalone
+database for installation. A native-device regression checks exact archive
+entries before/after read-only inspection and restore; external force-stop
+journeys repeat the entry and preference checks after reopening.
+
 **SHA-256 detects accidental corruption; this is not authenticated or encrypted
 external backup import.** No SAF import, sharing/export or production backup
 reader is exposed. Old unsealed database/text pairs are not automatically trusted
