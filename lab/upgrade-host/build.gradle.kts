@@ -58,6 +58,10 @@ tasks.matching { it.name.startsWith("validateSigning") }.configureEach { depends
 
 dependencies {
     implementation(project(":lab:beta"))
+    // Make the explicitly removed debug-only ComponentActivity visible to manifest lint.
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(project(":lab:finance-core"))
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.core)

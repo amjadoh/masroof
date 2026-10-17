@@ -18,14 +18,14 @@ verify_apk() {
   printf '%s\n' "$package" | grep -F "package: name='$HOST' versionCode='$version'"
   if printf '%s\n' "$package" | grep -F "uses-permission: name='android.permission.READ_SMS'"; then exit 1; fi
   "$TOOLS/apksigner" verify --verbose --print-certs "$apk" > "$OUT/certificate-$version.txt"
-  certificate=$(grep 'Signer #1 certificate SHA-256 digest:' "$OUT/certificate-$version.txt" | head -n1)
+  certificate=$(sed -nE 's/^(Signer #1 |V2 Signer: )certificate SHA-256 digest: ([a-fA-F0-9]{64})$/\2/p' "$OUT/certificate-$version.txt")
   test -n "$certificate"
   printf '%s\n' "$certificate"
   sha256sum "$apk" | tee "$OUT/apk-sha-$version.txt"
 }
 verify_apk "$before" 1
 verify_apk "$after" 2
-diff <(grep 'Signer #1 certificate SHA-256 digest:' "$OUT/certificate-1.txt") <(grep 'Signer #1 certificate SHA-256 digest:' "$OUT/certificate-2.txt")
+diff <(grep 'certificate SHA-256 digest:' "$OUT/certificate-1.txt") <(grep 'certificate SHA-256 digest:' "$OUT/certificate-2.txt")
 
 instrument() {
   local method="$1" output
