@@ -62,11 +62,19 @@ class BetaOnboardingPermissionTest {
             assertNotNull("Actual Android permission dialog button $id; resource-only diagnostics saved", button)
             assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         }
+        fun awaitEnabled(tag: String) {
+            compose.waitUntil(10_000) {
+                runCatching { compose.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false)
+            }
+        }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
+            awaitEnabled("beta-history")
             compose.onNodeWithTag("beta-history").performScrollTo().performClick()
+            awaitEnabled("history-days-7")
             compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
+            awaitEnabled("history-start")
             compose.onNodeWithTag("history-start").performScrollTo().performClick()
             systemClick("permission_deny_button")
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
@@ -74,19 +82,27 @@ class BetaOnboardingPermissionTest {
             scenario.recreate()
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("history-start").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("history-denied").performScrollTo().assertExists()
+            awaitEnabled("history-close")
             compose.onNodeWithTag("history-close").performScrollTo().performClick()
+            awaitEnabled("asset-add-BANK_ALJAZIRA")
             compose.onNodeWithTag("asset-add-BANK_ALJAZIRA").performScrollTo().performClick()
+            awaitEnabled("asset-last4")
             compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
             compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+            awaitEnabled("asset-cancel")
             compose.onNodeWithTag("asset-cancel").performScrollTo().performClick()
+            awaitEnabled("beta-history")
             compose.onNodeWithTag("beta-history").performScrollTo().performClick()
+            awaitEnabled("history-days-7")
             compose.onNodeWithTag("history-days-7").performScrollTo().performClick()
+            awaitEnabled("history-start")
             compose.onNodeWithTag("history-start").performScrollTo().performClick()
             systemClick("permission_allow_button")
             compose.waitUntil(15_000) { runCatching { compose.onNodeWithTag("history-close").assertIsEnabled(); compose.onNodeWithTag("history-progress").assertExists(); true }.getOrDefault(false) }
             assertEquals(PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_SMS))
             // Grant follows this explicit Start; nothing was read on welcome, denial, or recreation.
             BetaContainer(context).use { assertNotNull(it.historySession()); assertEquals(7L * 86_400_000L, it.historySession()!!.until - it.historySession()!!.from) }
+            awaitEnabled("history-close")
             compose.onNodeWithTag("history-close").performScrollTo().performClick()
             compose.onNodeWithTag("beta-return").assertIsEnabled()
         }
