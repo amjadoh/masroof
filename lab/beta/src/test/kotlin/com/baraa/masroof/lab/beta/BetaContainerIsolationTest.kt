@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [28])
 class BetaContainerIsolationTest {
     @Test
-    fun betaMaintenance_leavesProductionAndParsingLabFilesUntouched() {
+    fun maintenanceIsolation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         BetaContainer.resetOffline(context)
 

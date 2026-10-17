@@ -30,6 +30,7 @@ class BetaContainer(
     private val appContext = context.applicationContext
     private val lock = ReentrantLock()
     private var closed = false
+    private val recovery = BetaBackupRecovery(appContext).also { it.recover() }
     private var database = openDatabase()
     private val preferences = appContext.getSharedPreferences(
         BetaEnvironment.PREFS_NAME,
@@ -308,8 +309,7 @@ class BetaContainer(
         check(!closed)
         database.close()
         try {
-            copyLiveDatabaseToBackup()
-            exportPreferences()
+            recovery.backup()
         } finally {
             database = openDatabase()
         }
@@ -335,7 +335,18 @@ class BetaContainer(
         }
     }
 
-    fun backupDatabaseFile(): File = backupDatabase(appContext)
+    fun backupDatabaseFile(): File = recovery.backupFile()
+
+    fun settings(): BetaSettings = lock.withLock {
+        check(!closed)
+        BetaSettings(preferences.getString("beta_ui_theme", "SYSTEM") ?: "SYSTEM", recovery.hasBackup())
+    }
+
+    fun setTheme(theme: String) = lock.withLock {
+        check(!closed)
+        require(theme in setOf("SYSTEM", "LIGHT", "DARK"))
+        check(preferences.edit().putString("beta_ui_theme", theme).commit())
+    }
 
     override fun close() {
         lock.withLock {
@@ -379,29 +390,27 @@ class BetaContainer(
         const val PREFERENCE_PROBE_KEY: String = "beta_preference_probe"
 
         fun restoreOffline(context: Context): Boolean {
-            val appContext = context.applicationContext
-            val backup = backupDatabase(appContext)
-            val prefsBackup = backupPreferences(appContext)
-            if (!backup.isFile || !prefsBackup.isFile) return false
-            BetaEnvironment.requireBackupDatabaseName(backup.name)
-            BetaEnvironment.requireBetaDatabaseName(BetaEnvironment.DATABASE_NAME)
-            appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)
-            backup.copyTo(appContext.getDatabasePath(BetaEnvironment.DATABASE_NAME), overwrite = true)
-            importPreferences(appContext, prefsBackup)
-            return true
+            return BetaBackupRecovery(context.applicationContext).restore()
         }
 
         fun resetOffline(context: Context) {
             val appContext = context.applicationContext
+            BetaBackupRecovery(appContext).clear()
             BetaEnvironment.requireBetaDatabaseName(BetaEnvironment.DATABASE_NAME)
             BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME)
-            appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)
-            appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
+            val live = appContext.getDatabasePath(BetaEnvironment.DATABASE_NAME)
+            val databaseFiles = listOf(live) + listOf("-wal", "-shm", "-journal").map { File(live.path + it) }
+            val hadDatabaseFiles = databaseFiles.any { it.exists() }
+            val deleted = appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)
+            check(!hadDatabaseFiles || deleted) { "Could not clear Beta database" }
+            check(databaseFiles.none { it.exists() }) { "Could not clear Beta database sidecars" }
+            check(appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
-                .commit()
-            backupDatabase(appContext).delete()
-            backupPreferences(appContext).delete()
+                .commit()) { "Could not clear Beta preferences" }
+            listOf(backupDatabase(appContext), backupPreferences(appContext)).forEach { file ->
+                check(!file.exists() || file.delete()) { "Could not clear legacy Beta snapshot" }
+            }
         }
 
         private fun importPreferences(context: Context, file: File) {
@@ -422,3 +431,5 @@ class BetaContainer(
             File(context.filesDir, BetaEnvironment.BACKUP_PREFS_FILE_NAME)
     }
 }
+
+data class BetaSettings(val theme: String, val backupAvailable: Boolean)

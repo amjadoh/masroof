@@ -135,4 +135,20 @@
     <string name="beta_approval_merchant">Merchant: %1$s</string>
     <string name="beta_approval_rate">Evidence exchange rate: %1$s</string>
     <string name="beta_approval_fee">Evidence international fee: %1$s</string>
+    <string name="beta_settings_title">Beta settings</string>
+    <string name="beta_settings_isolation">These settings and snapshots belong to Beta only. Your regular Masroof data stays separate.</string>
+    <string name="beta_settings_theme">Appearance</string>
+    <string name="beta_theme_system">Follow device</string>
+    <string name="beta_theme_light">Light</string>
+    <string name="beta_theme_dark">Dark</string>
+    <string name="beta_settings_backup_available">A local Beta snapshot is available</string>
+    <string name="beta_settings_backup_missing">No local Beta snapshot</string>
+    <string name="beta_settings_backup_help">The local snapshot contains Beta data and settings. We validate it before restoring and keep the current state if restore fails. This stays on this device and is not a cloud backup.</string>
+    <string name="beta_settings_busy">Working. Wait for the operation to finish.</string>
+    <string name="beta_settings_success">Operation completed</string>
+    <string name="beta_settings_failed">The operation did not complete. An invalid snapshot was not accepted. You can try again.</string>
+    <string name="beta_settings_reset_confirm">This will erase Beta data and its local snapshot only. Continue?</string>
+    <string name="beta_settings_restore_confirm">This will replace Beta data and settings with the local snapshot after validation. Continue?</string>
+    <string name="beta_settings_confirm">Confirm</string>
+    <string name="beta_startup_failed">Beta data could not be opened safely. Files were kept and no replacement data was created. Retry or return to Masroof.</string>
 </resources>
