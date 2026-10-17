@@ -175,7 +175,7 @@ class BetaDashboardScreenTest {
 رسوم العمليات الدولية: 1.99
 سعر الصرف: 3.756957
 الرصيد المتاح: SAR 16958.89
-إجمالي المبلغ المستحق: SAR 2694.32"""
+"""
         val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer())
             .importBatch(EvidenceRequest("synthetic-ui-fx", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(
                 EvidenceMessage("synthetic-provider", "AlJazira", body, at, ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
@@ -194,6 +194,7 @@ class BetaDashboardScreenTest {
             val facts = beta.dashboard(query).snapshot.transactions.single()
             assertEquals(BigDecimal("86.41"), facts.sarEquivalent!!.amount) // Original fee-free equivalent, not spending.
             assertEquals(Money.of("1.99", Currency.SAR), facts.internationalFee)
+            assertNull(beta.dashboard(query).snapshot.creditFacilities.single().statementDue)
             val arabic = Configuration(context.resources.configuration).apply { setLocale(Locale("ar")); setLayoutDirection(Locale("ar")) }
             val arabicContext = context.createConfigurationContext(arabic)
             compose.setContent { MaterialTheme { CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl,
@@ -205,19 +206,42 @@ class BetaDashboardScreenTest {
             compose.onAllNodesWithText("86.41 SAR").assertCountEquals(0)
             screenshot("rtl-approved-overview")
             route("CARDS")
-            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-facility").performScrollTo().performClick()
-            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // A purchase does not establish a statement due.
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-facility")
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-card").performScrollTo().performClick()
             compose.onNodeWithText("16958.89 SAR").assertExists()
-            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // Due stays on the facility once.
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-card")
             compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
             compose.onNodeWithTag("dash-month-next").performScrollTo().performClick(); waitLoaded()
             assertEquals(original, beta.financialPosting(key)); assertEquals(history, beta.financialHistory(key))
             assertEquals(BigDecimal("86.41"), beta.dashboard(query).snapshot.transactions.single().sarEquivalent!!.amount)
         }
+    }
+
+    @Test fun authoritativeFacilityDueIsDisplayedOnceAndNeverCopiedToMemberCards() {
+        val facilityId = AssetId(Environment.BETA, bank, "statement-facility")
+        fun card(id: String, last4: String, role: CreditCardRole) = CreditCardSummary(
+            AssetId(Environment.BETA, bank, id), role, null, last4, null, null, null, null, null)
+        val facility = FacilitySummary(facilityId, Money.of("2694.32", Currency.SAR), LocalDate.of(2026, 10, 25), at,
+            cards = listOf(card("statement-primary", "7271", CreditCardRole.PRIMARY), card("statement-supplementary", "7288", CreditCardRole.SUPPLEMENTARY)))
+        // An authoritative read-contract fixture tests rendering; actual statement authority is the producer's responsibility.
+        val workflow = BetaDashboardWorkflow({ query, _ -> DashboardProduction(
+            DashboardSnapshot(query, emptyList(), emptyList(), listOf(facility)), emptySet(), null)
+        }, clock)
+        compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
+        waitLoaded(); route("CARDS")
+        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
+        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-primary").performScrollTo().performClick()
+        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
+        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-supplementary").performScrollTo().performClick()
+        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
     }
 
     @Test fun partialCoverageNeverClaimsKnownEmptyRegistryOrCommitments() {
