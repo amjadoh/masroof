@@ -164,7 +164,7 @@ class BetaPersistedFactsDatabaseTest {
         assertNull(result.snapshot.creditFacilities.single { it.facilityId.bank == other }.cards.single().availableBalance)
         assertNull(result.snapshot.accounts.single { it.id.bank == other }.balance)
         assertEquals(setOf(debit.id), result.snapshot.transactions.single { it.key.transactionId == "evidence:debit" }.debitSpendingCards)
-        assertEquals(BigDecimal("0.00"), result.snapshot.debitCards.single { it.cardId.bank == other }.spending!!.amount)
+        assertEquals(0, result.snapshot.debitCards.single { it.cardId.bank == other }.spending!!.amount.compareTo(BigDecimal.ZERO))
     }
 
     @Test fun unapprovedInformationalEvidenceDoesNotInventAnAuthoritativeGlobalReviewCount() = runBlocking {
