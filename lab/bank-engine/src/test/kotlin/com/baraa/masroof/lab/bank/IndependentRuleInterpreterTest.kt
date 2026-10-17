@@ -69,6 +69,7 @@ class IndependentRuleInterpreterTest {
             purchase.replace("42.35", "0.00"), purchase.replace("42.35", "-42.35"),
             purchase.replace("SAR", "JPY"), purchase.replace("42.35", "42.355"),
             purchase.replace("2026-10-17 13:00", "2026-02-30 13:00"),
+            purchase.replace("2026-10-17 13:00", "Expires: 2026-10-17 13:00"),
             purchase.replace("2026-10-17 13:00", ""), purchase.replace("Card: **1234", ""),
             purchase + "\n2026-10-18 13:00", purchase + "\nMerchant: Another Shop",
             purchase + "\nAmount: JPY 100", purchase + "\nAmount: SAR -50", purchase + "\nIncoming transfer")

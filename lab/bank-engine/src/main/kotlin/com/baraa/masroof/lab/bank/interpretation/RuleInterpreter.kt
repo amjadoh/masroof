@@ -133,6 +133,11 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         }.distinct()
         if (merchants.size > 1) problem("CONFLICTING_MERCHANT", Blocker.CONFLICTING_FACTS)
         val times = TIME.findAll(source.text).mapNotNull { match ->
+            val lineStart = source.text.lastIndexOf('\n', match.range.first).let { if (it < 0) 0 else it + 1 }
+            val prefix = source.text.substring(lineStart, match.range.first).trim().removeSuffix(":").trim()
+            if (prefix !in TIME_LABELS) {
+                problem("UNBOUND_TIME_ROLE"); return@mapNotNull null
+            }
             evidence += source.evidence("extract.time", "occurredAtLocal", match.range)
             runCatching { LocalDateTime.parse(match.value.replace(' ', 'T').replace('t', 'T')) }.getOrElse { problem("INVALID_TIME"); null }
         }.distinct().toList()
@@ -163,6 +168,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         private const val CURRENCY = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
         private const val MONEY = "(?:(?<c1>$CURRENCY)[ \\t]+(?<n1>$NUMBER)|(?<n2>$NUMBER)[ \\t]+(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,])"
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
+        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
