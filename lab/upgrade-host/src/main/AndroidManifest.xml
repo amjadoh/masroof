@@ -2,5 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <!-- Never a production identity, launcher, inbox reader or release artifact. -->
     <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
-    <application android:testOnly="true" android:allowBackup="false" android:label="Beta upgrade rehearsal" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <application android:testOnly="true" android:allowBackup="false" android:label="Beta upgrade rehearsal">
+        <activity android:name="androidx.activity.ComponentActivity" tools:node="remove" />
+    </application>
 </manifest>
