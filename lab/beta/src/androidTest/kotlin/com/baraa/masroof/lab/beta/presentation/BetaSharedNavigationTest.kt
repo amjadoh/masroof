@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.beta.*
+import com.baraa.masroof.lab.beta.R
 import org.junit.Assert.*
 import org.junit.Assume
 import org.junit.Rule
