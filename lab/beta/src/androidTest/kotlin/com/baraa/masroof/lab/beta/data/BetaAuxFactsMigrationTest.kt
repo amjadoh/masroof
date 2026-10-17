@@ -1,6 +1,9 @@
 package com.baraa.masroof.lab.beta.data
 
 import android.content.Context
+import androidx.room.Room
+import androidx.room.util.TableInfo
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -54,6 +57,7 @@ class BetaAuxFactsMigrationTest {
             }
             query("SELECT COUNT(*) FROM beta_dashboard_aux_facts").use { assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0)) }
             query("SELECT messageFamily FROM beta_dashboard_evidence_facts").use { assertTrue(it.moveToFirst()); assertTrue(it.isNull(0)) }
+            assertFreshSchemaMatches(this)
             query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }; close()
         }
     }
@@ -65,7 +69,28 @@ class BetaAuxFactsMigrationTest {
             query("SELECT note FROM beta_shell_marker").use { assertTrue(it.moveToFirst()); assertEquals("preserved", it.getString(0)) }
             for (table in listOf("beta_ledger_current", "beta_dashboard_evidence_facts", "beta_dashboard_aux_facts"))
                 query("SELECT COUNT(*) FROM $table").use { assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0)) }
+            assertFreshSchemaMatches(this)
             close()
+        }
+    }
+
+    /** Archive validation compares two actual databases, including SQLite default metadata. */
+    private fun assertFreshSchemaMatches(migrated: SupportSQLiteDatabase) {
+        val name = "beta-schema-nine-reference.db"
+        context.deleteDatabase(name)
+        val fresh = Room.databaseBuilder(context, BetaDatabase::class.java, name).build()
+        try {
+            val actual = fresh.openHelper.writableDatabase
+            val tables = buildList {
+                actual.query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'beta_%' ORDER BY name").use {
+                    while (it.moveToNext()) add(it.getString(0))
+                }
+            }
+            assertEquals(20, tables.size)
+            for (table in tables) assertEquals(table, TableInfo.read(actual, table), TableInfo.read(migrated, table))
+        } finally {
+            fresh.close()
+            context.deleteDatabase(name)
         }
     }
 }
