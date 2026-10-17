@@ -17,7 +17,7 @@ class BetaHistoryStorageTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val bank = BankId("BANK_ALJAZIRA")
     private val prefs get() = context.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
-    @Test fun checkpointBackupRestoreResetStayInsideBeta() {
+    @Test fun checkpointIsolation() {
         BetaContainer.resetOffline(context)
         val production = context.getSharedPreferences("production_canary", Context.MODE_PRIVATE)
         production.edit().putString("value", "untouched").commit()

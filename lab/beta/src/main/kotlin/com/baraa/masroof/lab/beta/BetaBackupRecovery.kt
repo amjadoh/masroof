@@ -33,6 +33,7 @@ internal class BetaBackupRecovery(
     fun hasBackup(): Boolean = activeBackup() != null
 
     fun backup() {
+        // Caller owns the Beta lifetime lock and has closed/checkpointed every live handle.
         recover()
         require(live.isFile)
         publish(live, preferenceValues())
@@ -273,7 +274,7 @@ internal class BetaBackupRecovery(
             ?.forEach { child(it.name, "snapshot-").deleteRecursively() }
     }
     private fun copySynced(source: File, destination: File) {
-        require(source.length() <= MAX_DATABASE)
+        require(source.isFile && source.length() <= MAX_DATABASE)
         FileOutputStream(destination).use { output -> source.inputStream().use { it.copyTo(output) }; output.fd.sync() }
     }
     private fun writeSynced(file: File, bytes: ByteArray) = FileOutputStream(file).use { it.write(bytes); it.fd.sync() }
@@ -283,7 +284,11 @@ internal class BetaBackupRecovery(
         catch (failure: Throwable) { file.failWrite(output); throw failure }
     }
     private fun readAtomic(file: AtomicFile): ByteArray? = try { file.openRead().use { require(it.channel.size() <= MAX_METADATA); it.readBytes() } }
-        catch (_: java.io.FileNotFoundException) { null }
+        catch (failure: java.io.FileNotFoundException) {
+            val base = file.baseFile
+            if (!base.exists() && !File(base.path + ".bak").exists() && !File(base.path + ".new").exists()) null
+            else throw failure
+        }
     private fun sha(file: File): String {
         require(file.isFile && file.length() <= MAX_DATABASE)
         val digest = MessageDigest.getInstance("SHA-256")

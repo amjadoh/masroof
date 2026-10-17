@@ -269,7 +269,7 @@ class ProcessBetaEvidenceTest {
         assertEquals(RouteKind.UNRECOGNIZED, router.route(message().copy(sender = "UnknownSender")).kind)
     }
 
-    @Test fun backupRestoreAndResetInSameContainerUseFreshEvidenceStoresAndPreserveProduction() {
+    @Test fun restoreFreshStores() {
         db.close()
         val production = context.getDatabasePath(BetaEnvironment.PRODUCTION_DATABASE_NAME)
         production.parentFile?.mkdirs()
