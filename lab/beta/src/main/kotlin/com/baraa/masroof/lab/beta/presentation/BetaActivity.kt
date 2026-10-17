@@ -53,6 +53,7 @@ class BetaActivity : ComponentActivity() {
                 var proposalEvidence by rememberSaveable { mutableStateOf<String?>(null) }
                 var proposalRevision by rememberSaveable { mutableStateOf<String?>(null) }
                 var proposalKind by rememberSaveable { mutableStateOf<String?>(null) }
+                var reviewOpen by rememberSaveable { mutableStateOf(false) }
                 var historyOpen by rememberSaveable { mutableStateOf(false) }
                 var editBank by rememberSaveable { mutableStateOf<String?>(null) }
                 var editId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -88,12 +89,13 @@ class BetaActivity : ComponentActivity() {
                 BetaShell(
                     onOpenDiscovery = { if (!busy) discoveryOpen = true },
                     onOpenHistory = { if (!busy) historyOpen = true },
+                    onOpenReview = { if (!busy) reviewOpen = true },
                     markerCount = markerCount,
                     assets = assets,
                     returnEnabled = !historyBusy && (editBank == null || !busy),
                     onAddAsset = { bank -> if (!busy) { editBank = bank.value; editId = null; proposalId = null; failed = false } },
                     onEditAsset = { asset -> if (!busy) { editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false } },
-                    editor = if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
+                    editor = if (reviewOpen && loaded) ({ BetaReviewPanel(shellContainer, onClose = { reviewOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
                         onSelect = { proposal -> editBank = proposal.id.bank.value; editId = null; proposalId = proposal.id.localId; proposalSuffix = proposal.last4; proposalKind = proposal.kind.name; proposalEvidence = proposal.evidenceId; proposalRevision = proposal.revision },
                         onClose = { discoveryOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = { historyOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (editBank != null && loaded) ({
                         key(editBank, editId) {

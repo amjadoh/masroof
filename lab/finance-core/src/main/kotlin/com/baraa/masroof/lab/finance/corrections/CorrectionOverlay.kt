@@ -17,6 +17,11 @@ sealed interface FinancialDecision {
         init { require(type != null || amount != null) }
     }
     data class ResolveFinancialType(val type: FinancialType) : FinancialDecision
+    /** Explicit fact edit of an already selected financial result. Never grants parse authority. */
+    data class EditFacts(val time: TransactionTime? = null, val source: FinancialEndpoint? = null,
+        val destination: FinancialEndpoint? = null) : FinancialDecision {
+        init { require(time != null || source != null || destination != null) }
+    }
     data object SuppressAsNonFinancial : FinancialDecision
 }
 
@@ -97,6 +102,10 @@ object CorrectionOverlays {
             // A complete rate belongs to its native currency. This API has no explicit FX-edit proof.
             return CorrectionResult.Rejected(CorrectionRejection.UNSUPPORTED_CHANGE)
         }
+        val edit = command.decision as? FinancialDecision.EditFacts
+        if (edit != null && previous?.financial == null) {
+            return CorrectionResult.Rejected(CorrectionRejection.UNSUPPORTED_CHANGE)
+        }
         val financial = when (val decision = command.decision) {
             FinancialDecision.Keep -> previous?.financial
             is FinancialDecision.ConfirmFamilyOrAmount -> selected.copy(storedType = decision.type ?: selected.storedType,
@@ -104,9 +113,11 @@ object CorrectionOverlays {
             is FinancialDecision.ResolveFinancialType -> selected.copy(storedType = decision.type,
                 authority = CorrectionAuthority.USER_FINANCIAL_TYPE)
             FinancialDecision.SuppressAsNonFinancial -> previous?.financial
+            is FinancialDecision.EditFacts -> selected.copy(time = decision.time ?: selected.time,
+                source = decision.source ?: selected.source, destination = decision.destination ?: selected.destination)
         }
         val suppressed = when (command.decision) {
-            FinancialDecision.Keep -> previous?.suppressed ?: false
+            FinancialDecision.Keep, is FinancialDecision.EditFacts -> previous?.suppressed ?: false
             FinancialDecision.SuppressAsNonFinancial -> true
             else -> false
         }

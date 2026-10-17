@@ -72,6 +72,7 @@ object CorrectionSnapshots {
             metadata.putAll(command.metadata)
             when (command.decision) {
                 FinancialDecision.Keep -> Unit
+                is FinancialDecision.EditFacts -> require(hasFinancial || frozenSeed != null)
                 FinancialDecision.SuppressAsNonFinancial -> suppressed = true
                 else -> { suppressed = false; hasFinancial = true }
             }
@@ -84,6 +85,10 @@ object CorrectionSnapshots {
         }
         require((hasFinancial || frozenSeed != null) == (state.financial != null))
         state.financial?.let { financial ->
+            val edits = state.history.mapNotNull { it.decision as? FinancialDecision.EditFacts }
+            edits.lastOrNull { it.time != null }?.time?.let { require(financial.time == it) }
+            edits.lastOrNull { it.source != null }?.source?.let { require(financial.source == it) }
+            edits.lastOrNull { it.destination != null }?.destination?.let { require(financial.destination == it) }
             require(financial.key == state.key && financial.revision.correction == 0L &&
                 financial.revision.interpretation <= state.interpretationRevision)
             require(latest.evidenceIds.containsAll(financial.evidenceIds))
@@ -95,8 +100,13 @@ object CorrectionSnapshots {
                     require(decision.amount == null || financial.amount == decision.amount)
                 }
                 is FinancialDecision.ResolveFinancialType -> require(financial.authority == CorrectionAuthority.USER_FINANCIAL_TYPE && financial.storedType == decision.type)
-                null -> require(financial == requireNotNull(frozenSeed).classification.input.copy(
-                    revision = PostingRevision(0, frozenSeed.command.revision.interpretation)))
+                null -> {
+                    val seed = requireNotNull(frozenSeed).classification.input
+                    require(financial == seed.copy(revision = PostingRevision(0, seed.revision.interpretation),
+                        time = edits.lastOrNull { it.time != null }?.time ?: seed.time,
+                        source = edits.lastOrNull { it.source != null }?.source ?: seed.source,
+                        destination = edits.lastOrNull { it.destination != null }?.destination ?: seed.destination))
+                }
                 else -> error("Missing financial decision")
             }
         }
