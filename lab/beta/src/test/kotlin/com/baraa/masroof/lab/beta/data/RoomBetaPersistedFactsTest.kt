@@ -265,6 +265,7 @@ class RoomBetaPersistedFactsTest {
             val result = BetaDashboardBuilder.build(batch)
             val tx = result.snapshot.transactions.single { it.key == key }
             assertTrue(tx.debitSpendingCards.isEmpty()); assertNull(result.snapshot.debitCards.single().spending)
+            assertNull(result.snapshot.accounts.single().balance)
             assertEquals(account.id, tx.source); assertEquals(Money.of("10", Currency.SAR), tx.amount)
         }
     }

@@ -72,9 +72,9 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         } else null
         val balanceAsset = if (!sameEndpoints || !sameMoneyTime) null else when (endpoint?.kind) {
             AssetKind.ACCOUNT -> endpoint.takeIf {
-                val accountSuffix = text("debitSourceAccountLast4") ?: if (facts.isNull("sourceAccount")) null
-                    else facts.getJSONObject("sourceAccount").optString("number").takeLast(4)
-                text("cardChannel") != "CREDIT" && accountSuffix != null && it.last4 == accountSuffix
+                text("cardChannel") != "CREDIT" && accountSuffixes.isNotEmpty() &&
+                    referenceBankMatches("sourceAccount") && referenceBankMatches("card") &&
+                    accountSuffixes.all { suffix -> suffix == it.last4 }
             }
             AssetKind.DEBIT_CARD -> endpoint.parentId?.let(registry::get)
             AssetKind.CREDIT_CARD -> endpoint.takeIf { it.last4 == cardReference && text("cardChannel") == "CREDIT" }
