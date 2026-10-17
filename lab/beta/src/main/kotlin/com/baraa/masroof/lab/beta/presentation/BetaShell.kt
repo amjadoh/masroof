@@ -36,6 +36,7 @@ fun BetaShell(
     banks: List<BetaBankChoice> = emptyList(),
     assets: List<OwnedAsset> = emptyList(),
     editor: (@Composable () -> Unit)? = null,
+    dashboard: (@Composable () -> Unit)? = null,
     onOpenDiscovery: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenReview: () -> Unit = {},
@@ -54,6 +55,7 @@ fun BetaShell(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
 ) {
+    val homeState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     BackHandler { if (returnEnabled) onReturn() }
     Scaffold(
         topBar = {
@@ -84,6 +86,7 @@ fun BetaShell(
                 editor()
                 return@Column
             }
+            if (dashboard != null) homeState.SaveableStateProvider("dashboard") { dashboard() }
             Text(stringResource(R.string.beta_welcome), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.beta_welcome_steps))
             OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_settings_title)) }
