@@ -113,7 +113,9 @@ class BetaStartActivityTest {
         val tags = compose.onRoot(useUnmergedTree = true).printToString()
         val metadata = "api=${Build.VERSION.SDK_INT}\nhardware=${Build.HARDWARE}\n" + context.resources.configuration.toString() + "\n" + tags
         val encoded = android.util.Base64.encodeToString(metadata.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
-        command("echo '$encoded' | base64 -d > /sdcard/beta-dashboard-screenshots/$name.txt")
-        assertTrue(command("cat /sdcard/beta-dashboard-screenshots/$name.txt").isNotEmpty())
+        // executeShellCommand does not interpret pipes/redirection unless an explicit shell owns them.
+        command("sh -c 'echo $encoded | base64 -d > /sdcard/beta-dashboard-screenshots/$name.txt'")
+        val saved = command("cat /sdcard/beta-dashboard-screenshots/$name.txt").toString(Charsets.UTF_8)
+        assertTrue(saved.contains("api=${Build.VERSION.SDK_INT}") && saved.contains("hardware=${Build.HARDWARE}"))
     }
 }
