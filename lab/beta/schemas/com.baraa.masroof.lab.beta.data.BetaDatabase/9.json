@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 9,
-    "identityHash": "590a451b346bca7d6b4673280ba5e3fe",
+    "identityHash": "a0bf5ca913b452a9a533f6169211e13b",
     "entities": [
       {
         "tableName": "beta_shell_marker",
@@ -1165,7 +1165,7 @@
       },
       {
         "tableName": "beta_dashboard_evidence_facts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`evidenceId` TEXT NOT NULL, `transactionId` TEXT NOT NULL, `bankId` TEXT NOT NULL, `archiveFingerprint` TEXT NOT NULL, `observationRevision` INTEGER NOT NULL, `correction` INTEGER NOT NULL, `interpretation` INTEGER NOT NULL, `boundInput` TEXT NOT NULL, `observedAt` TEXT NOT NULL, `feeKnown` INTEGER NOT NULL, `feeAmount` TEXT, `feeCurrency` TEXT, `balanceAsset` TEXT, `balanceAmount` TEXT, `balanceCurrency` TEXT, `facilityAsset` TEXT, `dueAmount` TEXT, `dueCurrency` TEXT, `dueDate` TEXT, `merchant` TEXT, `counterparty` TEXT, `debitCardAsset` TEXT, `debitCardLast4` TEXT, `debitCardParent` TEXT, `messageFamily` TEXT, PRIMARY KEY(`evidenceId`), FOREIGN KEY(`evidenceId`) REFERENCES `beta_raw_evidence`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`evidenceId` TEXT NOT NULL, `transactionId` TEXT NOT NULL, `bankId` TEXT NOT NULL, `archiveFingerprint` TEXT NOT NULL, `observationRevision` INTEGER NOT NULL, `correction` INTEGER NOT NULL, `interpretation` INTEGER NOT NULL, `boundInput` TEXT NOT NULL, `observedAt` TEXT NOT NULL, `feeKnown` INTEGER NOT NULL, `feeAmount` TEXT, `feeCurrency` TEXT, `balanceAsset` TEXT, `balanceAmount` TEXT, `balanceCurrency` TEXT, `facilityAsset` TEXT, `dueAmount` TEXT, `dueCurrency` TEXT, `dueDate` TEXT, `merchant` TEXT, `counterparty` TEXT, `debitCardAsset` TEXT, `debitCardLast4` TEXT, `debitCardParent` TEXT, `messageFamily` TEXT DEFAULT NULL, PRIMARY KEY(`evidenceId`), FOREIGN KEY(`evidenceId`) REFERENCES `beta_raw_evidence`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "evidenceId",
@@ -1315,7 +1315,8 @@
             "fieldPath": "messageFamily",
             "columnName": "messageFamily",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": false,
+            "defaultValue": "NULL"
           }
         ],
         "primaryKey": {
@@ -1517,7 +1518,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '590a451b346bca7d6b4673280ba5e3fe')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a0bf5ca913b452a9a533f6169211e13b')"
     ]
   }
 }
