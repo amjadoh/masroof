@@ -37,4 +37,11 @@ object BetaDashboardExplorer {
     }
 
     fun transaction(snapshot: DashboardSnapshot, key: PostingKey): TransactionFacts? = snapshot.transactions.singleOrNull { it.key == key }
+
+    /** Comparison-window provenance may be outside the selected-month transaction read. */
+    fun canDrillDown(snapshot: DashboardSnapshot, choice: BetaChartChoice, day: LocalDate): Boolean {
+        val point = trend(snapshot, choice)?.points?.singleOrNull { it.date == day } ?: return false
+        val available = snapshot.transactions.mapTo(hashSetOf()) { it.key }
+        return point.net != null && point.transactions.all { it in available }
+    }
 }

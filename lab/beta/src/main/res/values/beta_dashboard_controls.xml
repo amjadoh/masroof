@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="beta_controls_status_asof">حالة السداد بحسب الأدلة المتاحة حتى %1$s؛ ليست إعادة بناء لحالة السداد في نهاية شهر سابق.</string>
     <string name="beta_controls_cancel">إلغاء</string>
     <string name="beta_controls_apply">تطبيق</string>
     <string name="beta_controls_title">الفترات والالتزامات</string>

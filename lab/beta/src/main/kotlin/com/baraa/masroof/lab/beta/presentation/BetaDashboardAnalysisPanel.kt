@@ -79,7 +79,9 @@ internal fun BetaDashboardAnalysisPanel(snapshot: DashboardSnapshot, enabled: Bo
         selectedDay?.let { date ->
             Text(stringResource(R.string.beta_chart_day_transactions) + ": $date", style = MaterialTheme.typography.titleMedium)
             OutlinedButton(onClick = { selectedDay = null }, modifier = Modifier.testTag("chart-clear-day")) { Text(stringResource(R.string.beta_chart_clear_day)) }
-            BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, choice, day = LocalDate.parse(date)), enabled, onTransaction)
+            if (BetaDashboardExplorer.canDrillDown(snapshot, choice, LocalDate.parse(date)))
+                BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, choice, day = LocalDate.parse(date)), enabled, onTransaction)
+            else Text(stringResource(R.string.beta_dash_unavailable_help), modifier = Modifier.testTag("chart-drilldown-unavailable"))
         }
     }
     if (customize) BetaBottomSheet(stringResource(R.string.beta_chart_customize), preferenceBusy, onCancel = { customize = false },
@@ -118,11 +120,12 @@ internal fun BetaDashboardAnalysisPanel(snapshot: DashboardSnapshot, enabled: Bo
 
 @Composable
 internal fun BetaDashboardTransactions(snapshot: DashboardSnapshot, rows: List<TransactionFacts> = snapshot.transactions,
-    enabled: Boolean, onTransaction: (PostingKey) -> Unit) {
+    enabled: Boolean, onTransaction: (PostingKey) -> Unit, complete: Boolean = true) {
     var limit by rememberSaveable(snapshot.query.from.toString(), rows.map { it.key }.hashCode()) { mutableIntStateOf(20) }
     Text(stringResource(R.string.beta_transaction_title), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(R.string.beta_transaction_scope_help), style = MaterialTheme.typography.bodySmall)
-    if (rows.isEmpty()) Text(stringResource(R.string.beta_dash_empty), modifier = Modifier.testTag("transactions-empty"))
+    if (!complete) Text(stringResource(R.string.beta_dash_unavailable_help), modifier = Modifier.testTag("transactions-unavailable"))
+    else if (rows.isEmpty()) Text(stringResource(R.string.beta_dash_empty), modifier = Modifier.testTag("transactions-empty"))
     rows.take(limit).forEach { row ->
         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(BetaSpacing.screen), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
             Text(row.merchant ?: row.counterparty ?: stringResource(financialTypeLabel(row.effectiveType)))

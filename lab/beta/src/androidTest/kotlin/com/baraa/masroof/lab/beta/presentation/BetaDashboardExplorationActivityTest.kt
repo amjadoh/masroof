@@ -54,11 +54,12 @@ class BetaDashboardExplorationActivityTest {
             beta.setBankEnabled(bank, true)
             beta.saveManualAsset(ManualAssetDraft(account.id, account.kind, checkNotNull(account.last4), ownedConfirmed = true))
         }
-        Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build().use { db ->
-            assertTrue(RoomBetaFinancialLedger(db).post(FinancialClassificationInput(key, PostingRevision(0, 0), FinancialType.EXPENSE,
+        val seeded = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
+        try {
+            assertTrue(RoomBetaFinancialLedger(seeded).post(FinancialClassificationInput(key, PostingRevision(0, 0), FinancialType.EXPENSE,
                 Money.of("42.35", Currency.SAR), TransactionTime(Instant.now().minusSeconds(60), ZoneId.of("Asia/Riyadh")),
                 FinancialEndpoint.Owned(account.id), FinancialEndpoint.External, mapOf(account.id to account), setOf("synthetic-full-evidence"), true)) is FinancialPostingResult.Applied)
-        }
+        } finally { seeded.close() }
         val locales = context.getSystemService(LocaleManager::class.java)
         val original = locales.applicationLocales
         try {
@@ -99,9 +100,8 @@ class BetaDashboardExplorationActivityTest {
                 scenario.recreate(); waitLoaded(); compose.onNodeWithTag("dash-route-CONFIGURATION").assertIsSelected()
             }
             closed()
-            Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build().use { db ->
-                assertEquals(1, RoomBetaFinancialLedger(db).history(key).size)
-            }
+            val verified = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
+            try { assertEquals(1, RoomBetaFinancialLedger(verified).history(key).size) } finally { verified.close() }
         } finally { locales.applicationLocales = original; closed(); BetaContainer.resetOffline(context) }
     }
 }
