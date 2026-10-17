@@ -35,7 +35,9 @@ def check(directory):
     certificates = []
     for version in (1, 2):
         text = (root / f"certificate-{version}.txt").read_text(encoding="utf-8")
-        certificates.append(re.search(r"Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]{64})", text)[1].lower())
+        matches = re.findall(r"^(?:Signer #1 |V2 Signer: )certificate SHA-256 digest: ([a-fA-F0-9]{64})$", text, re.MULTILINE)
+        assert len(matches) == 1, "Exactly one verified test signer certificate is required"
+        certificates.append(matches[0].lower())
         package = (root / f"package-{version}.txt").read_text(encoding="utf-8")
         assert f"package: name='com.baraa.masroof.beta.upgrade.rehearsal' versionCode='{version}'" in package
         assert "uses-permission: name='android.permission.READ_SMS'" not in package
