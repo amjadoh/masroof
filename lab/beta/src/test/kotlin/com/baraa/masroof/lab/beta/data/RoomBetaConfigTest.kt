@@ -1,0 +1,182 @@
+package com.baraa.masroof.lab.beta.data
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.lab.bank.*
+import com.baraa.masroof.lab.beta.BetaContainer
+import com.baraa.masroof.lab.beta.application.*
+import com.baraa.masroof.lab.beta.application.evidence.*
+import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.finance.asset.*
+import com.baraa.masroof.lab.finance.classification.*
+import com.baraa.masroof.lab.finance.dashboard.*
+import com.baraa.masroof.lab.finance.dashboard.producer.*
+import com.baraa.masroof.lab.finance.posting.*
+import com.baraa.masroof.lab.finance.value.*
+import java.time.*
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executor
+import kotlinx.coroutines.*
+import org.junit.*
+import org.junit.Assert.*
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class) @Config(sdk = [28])
+class RoomBetaConfigTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private lateinit var db: BetaDatabase
+    private val sql = CopyOnWriteArrayList<String>()
+    private val zone = ZoneId.of("Asia/Riyadh")
+    private val now = Instant.parse("2026-10-17T12:00:00Z")
+    private val query = DashboardQuery(Environment.BETA, Instant.parse("2026-09-30T21:00:00Z"), Instant.parse("2026-10-31T21:00:00Z"), zone, Currency.SAR)
+    private val bank = BankId("BANK_ALJAZIRA")
+    private val account = OwnedAsset(AssetId(Environment.BETA, bank, "account"), AssetKind.ACCOUNT, "3001")
+    private val facility = OwnedAsset(AssetId(Environment.BETA, bank, "facility"), AssetKind.CREDIT_FACILITY)
+    private val card = OwnedAsset(AssetId(Environment.BETA, bank, "card"), AssetKind.CREDIT_CARD, "7271", facility.id, CreditCardRole.PRIMARY)
+    private fun openDb() = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME)
+        .setQueryCallback({ query, _ -> sql += query }, Executor { it.run() }).build()
+    @Before fun open() { BetaContainer.resetOffline(context); db = openDb() }
+    @After fun close() { db.close(); BetaContainer.resetOffline(context) }
+    private fun controls() = RoomBetaDashboardConfiguration(db)
+    private fun source() = RoomBetaDashboardSource(db, clock = Clock.fixed(now, ZoneOffset.UTC))
+    private fun draft(paid: Boolean = false) = BetaDashboardConfigurationDraft(BetaSalaryCycle(27), commitments = listOf(
+        BetaRecurringCommitment("rent", "Synthetic rent", Money.of("100", Currency.SAR), 5, YearMonth.of(2026, 1),
+            paidMonths = if (paid) setOf(YearMonth.of(2026, 10)) else emptySet())))
+
+    @Test fun durableAuthorityAndReadOnly() = runBlocking {
+        val unknown = source().load(query)
+        assertFalse(unknown.coverage.completeUserCommitments); assertNull(unknown.periods.salary)
+        val saved = controls().save(0, draft(true)) as BetaDashboardConfigurationWrite.Saved
+        assertEquals(1, saved.configuration.revision)
+        db.close(); db = openDb(); assertEquals(saved.configuration, controls().read())
+        sql.clear()
+        val batch = source().load(query)
+        val result = BetaDashboardBuilder.build(batch)
+        assertTrue(batch.coverage.completeUserCommitments)
+        assertEquals(Instant.parse("2026-09-26T21:00:00Z"), batch.periods.salary!!.from)
+        assertEquals(Money.of("100", Currency.SAR), result.snapshot.commitments!!.paid)
+        assertEquals(Money.of("0", Currency.SAR), result.snapshot.commitments!!.remaining)
+        assertTrue(batch.rows.isEmpty())
+        assertEquals(1, sql.count { it.startsWith("SELECT", true) && it.contains("beta_dashboard_configuration") })
+        assertFalse(sql.any { it.trimStart().matches(Regex("(?is)(INSERT|UPDATE|DELETE|ALTER|CREATE|REPLACE).*")) })
+        assertFalse(sql.any { it.contains("baselineJson") || it.contains("candidateJson") || it.contains("body") || it.contains("beta_ledger_history") })
+        val changed = controls().save(1, BetaDashboardConfigurationDraft(BetaSalaryCycle(27))) as BetaDashboardConfigurationWrite.Saved
+        assertEquals(2, changed.configuration.revision)
+        val empty = source().load(query)
+        assertNotEquals(batch.revision.token, empty.revision.token)
+        assertEquals(Money.of("0", Currency.SAR), BetaDashboardBuilder.build(empty).snapshot.commitments!!.total)
+    }
+
+    @Test fun atomicRevisionAndValidation() = runBlocking {
+        assertTrue(controls().save(0, draft().copy(salary = BetaSalaryCycle(0))) is BetaDashboardConfigurationWrite.Invalid)
+        assertTrue(controls().save(0, draft().copy(salary = BetaSalaryCycle(27, ZoneId.of("UTC")))) is BetaDashboardConfigurationWrite.Invalid)
+        val item = draft().commitments.single()
+        for (invalid in listOf(item.copy(amount = Money.of("1", Currency.USD)), item.copy(label = ""), item.copy(dueDay = 32),
+            item.copy(ends = YearMonth.of(2025, 1)), item.copy(paidMonths = setOf(YearMonth.of(2025, 1))))) {
+            assertTrue(controls().save(0, draft().copy(commitments = listOf(invalid))) is BetaDashboardConfigurationWrite.Invalid)
+        }
+        assertTrue(controls().save(0, draft().copy(commitments = listOf(item, item))) is BetaDashboardConfigurationWrite.Invalid)
+        assertTrue(controls().save(0, draft().copy(statements = listOf(BetaFacilityCycle(facility.id, 10)))) is BetaDashboardConfigurationWrite.Invalid)
+        assertEquals(0, controls().read().revision)
+        val results = listOf(async { controls().save(0, draft()) }, async { controls().save(0, draft(true)) }).awaitAll()
+        assertEquals(1, results.count { it is BetaDashboardConfigurationWrite.Saved })
+        assertEquals(1, results.count { it is BetaDashboardConfigurationWrite.Conflict })
+        val current = controls().read()
+        assertEquals(current, (controls().save(current.revision, current.draft) as BetaDashboardConfigurationWrite.Saved).configuration)
+        assertTrue(source().load(query).rows.isEmpty()) // Manual paid state creates no financial posting.
+    }
+
+    private suspend fun statement(at: Instant = Instant.parse("2026-09-20T12:00:00Z")) {
+        for (asset in listOf(account, facility, card)) BetaAssetRegistry(db).register(asset)
+        val store = RoomBetaEvidenceStore(db)
+        val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "synthetic")
+        store.capture(CapturedEvidence("statement", EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
+            EvidenceMessage("statement", "AlJazira", "synthetic statement", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
+        store.begin("statement", at)
+        val facts = Facts(MessageFamily.NON_FINANCIAL, card = CardReference(bank, "7271"), cardChannel = CardChannel.STATEMENT,
+            outstandingBalance = Money.of("100", Currency.SAR), paymentDueDate = LocalDate.of(2026, 10, 5), occurredAt = at)
+        val archive = InterpretationArchive.encode(Interpretation("statement", LegacyInterpretationAdapter.VERSION, bank, facts,
+            ParseStatus.NON_FINANCIAL, null, emptyList(), emptySet()))
+        store.complete("statement", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
+        assertTrue(db.dashboardAuxFactsDao().evidence("statement")!!.statementProved)
+        assertTrue(controls().save(0, BetaDashboardConfigurationDraft(BetaSalaryCycle(27), listOf(BetaFacilityCycle(facility.id, 10)))) is BetaDashboardConfigurationWrite.Saved)
+    }
+    private suspend fun payment(id: String, amount: String, at: String, currency: Currency = Currency.SAR) {
+        val input = FinancialClassificationInput(PostingKey(Environment.BETA, id), PostingRevision(0, 1), FinancialType.CREDIT_CARD_PAYMENT,
+            Money.of(amount, currency), TransactionTime(Instant.parse(at), zone), FinancialEndpoint.Owned(account.id),
+            FinancialEndpoint.Owned(card.id), listOf(account, facility, card).associateBy { it.id }, setOf("evidence-$id"), true)
+        assertTrue(RoomBetaFinancialLedger(db).post(input) is FinancialPostingResult.Applied)
+    }
+
+    @Test fun settlementOutsideBothWindowsIsPaid() = runBlocking {
+        statement()
+        payment("before", "999", "2026-09-19T12:00:00Z")
+        payment("outside", "100", "2026-09-22T12:00:00Z")
+        val batch = source().load(query)
+        assertEquals(listOf("outside"), batch.rows.map { it.posting.command.key.transactionId })
+        val result = BetaDashboardBuilder.build(batch)
+        assertTrue(result.snapshot.transactions.isEmpty())
+        val commitments = result.snapshot.commitments!!
+        assertEquals(PaymentStatus.PAID, commitments.rows.single().status)
+        assertEquals(Money.of("100", Currency.SAR), commitments.paid)
+        assertEquals(Money.of("0", Currency.SAR), commitments.remaining)
+    }
+
+    @Test fun futureSettlementDoesNotPay() = runBlocking {
+        statement()
+        payment("partial", "40", "2026-09-22T12:00:00Z")
+        payment("future", "60", "2026-10-18T12:00:00Z")
+        val result = BetaDashboardBuilder.build(source().load(query))
+        val commitments = result.snapshot.commitments!!
+        assertEquals(PaymentStatus.UNPAID, commitments.rows.single().status)
+        assertEquals(Money.of("100", Currency.SAR), commitments.remaining)
+    }
+
+    @Test fun settlementAfterCalendarEndIsPaid() = runBlocking {
+        statement()
+        val saved = controls().read()
+        assertTrue(controls().save(saved.revision, saved.draft.copy(salary = BetaSalaryCycle(15))) is BetaDashboardConfigurationWrite.Saved)
+        payment("after", "100", "2026-10-02T12:00:00Z")
+        val september = query.copy(from = Instant.parse("2026-08-31T21:00:00Z"), until = Instant.parse("2026-09-30T21:00:00Z"))
+        val batch = source().load(september)
+        assertEquals(LocalDate.of(2026, 9, 15), batch.periods.salary!!.from.atZone(zone).toLocalDate())
+        assertEquals(LocalDate.of(2026, 10, 15), batch.periods.salary!!.until.atZone(zone).toLocalDate())
+        assertTrue(batch.rows.single().posting.command.time.instant >= september.until)
+        val snapshot = BetaDashboardBuilder.build(batch).snapshot
+        assertTrue(snapshot.transactions.isEmpty())
+        assertEquals(PaymentStatus.PAID, snapshot.commitments!!.rows.single().status)
+        assertEquals(Money.of("0", Currency.SAR), snapshot.commitments!!.remaining)
+    }
+
+    @Test fun unknownSettlementFxIsNotKnownZero() = runBlocking {
+        statement(Instant.parse("2026-09-28T12:00:00Z"))
+        payment("foreign", "100", "2026-10-28T12:00:00Z", Currency.USD)
+        val batch = RoomBetaDashboardSource(db, clock = Clock.fixed(Instant.parse("2026-11-17T12:00:00Z"), ZoneOffset.UTC)).load(query)
+        assertTrue(batch.assetFacts.single().statement!!.issuedAt >= batch.periods.salary!!.from)
+        val result = BetaDashboardBuilder.build(batch)
+        assertTrue(result.snapshot.commitments!!.rows.isEmpty())
+        assertNull(result.snapshot.commitments!!.total)
+        assertTrue(DashboardSection.COMMITMENTS in result.unavailableSections)
+    }
+
+    @Test fun backupRestoreRetainsConfiguration() = runBlocking {
+        db.close()
+        try {
+            BetaContainer(context).use { beta ->
+                val facade = betaDashboardControls(beta)
+                assertTrue(facade.save(0, draft(true)) is BetaDashboardConfigurationWrite.Saved)
+                val saved = facade.read()
+                beta.backup()
+                assertTrue(facade.save(saved.revision, BetaDashboardConfigurationDraft()) is BetaDashboardConfigurationWrite.Saved)
+                assertTrue(beta.restore())
+                assertEquals(saved, facade.read()) // Existing facade follows the reopened database.
+                beta.reset()
+                assertEquals(0, facade.read().revision)
+                assertFalse(beta.backupDatabaseFile().exists())
+            }
+        } finally { db = openDb() }
+    }
+}

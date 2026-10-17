@@ -16,8 +16,8 @@ import com.baraa.masroof.lab.beta.BetaEnvironment
         BetaRawEvidenceEntity::class, BetaEvidenceOutcomeEntity::class, BetaEvidenceRetryEntity::class, BetaEvidenceDecisionEntity::class,
         BetaLedgerCurrentEntity::class, BetaLedgerHistoryEntity::class, BetaLedgerEvidenceClaimEntity::class, BetaLedgerProofClaimEntity::class,
         BetaCorrectionCurrentEntity::class, BetaCorrectionAuditEntity::class, BetaCorrectionEvidenceClaimEntity::class, BetaCorrectionProofClaimEntity::class,
-        BetaFinancialAdoptionEntity::class, BetaFinancialApprovalRetryEntity::class, BetaDashboardFactsEntity::class, BetaDashboardAuxFactsEntity::class],
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9)],
+        BetaFinancialAdoptionEntity::class, BetaFinancialApprovalRetryEntity::class, BetaDashboardFactsEntity::class, BetaDashboardAuxFactsEntity::class, BetaDashboardConfigurationEntity::class],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9), AutoMigration(from = 9, to = 10)],
     version = BetaDatabase.VERSION,
     exportSchema = true,
 )
@@ -30,10 +30,11 @@ abstract class BetaDatabase : RoomDatabase() {
     internal abstract fun financialAdoptionDao(): BetaFinancialAdoptionDao
     internal abstract fun dashboardFactsDao(): BetaDashboardFactsDao
     internal abstract fun dashboardAuxFactsDao(): BetaDashboardAuxFactsDao
+    internal abstract fun dashboardConfigurationDao(): BetaDashboardConfigurationDao
     abstract fun shellMarkerDao(): BetaShellMarkerDao
 
     companion object {
         const val NAME: String = BetaEnvironment.DATABASE_NAME
-        const val VERSION: Int = 9
+        const val VERSION: Int = 10
     }
 }

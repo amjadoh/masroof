@@ -83,7 +83,14 @@ object BetaDashboardBuilder {
         })
         val rows = rawRows.filter { it.active }.map { validateCurrent(it.posting, registry) }
             .sortedBy { it.command.key.transactionId }
-        require(rows.all { row -> periods.any { contains(it, row.command.time.instant) } }) { "Unbounded ledger rows supplied" }
+        require(batch.settlementPeriods.all { (facility, window) -> registry[facility]?.kind == AssetKind.CREDIT_FACILITY &&
+            window.zone == batch.query.zone && window.until == batch.revision.asOf.plusNanos(1) &&
+            facts[facility]?.statement?.issuedAt == window.from }) { "Invalid settlement coverage window" }
+        require(rows.all { row -> periods.any { contains(it, row.command.time.instant) } ||
+            (row.classification.effectiveType == FinancialType.CREDIT_CARD_PAYMENT && batch.settlementPeriods.any { (facility, window) ->
+                val destination = (row.classification.input.destination as? FinancialEndpoint.Owned)?.id
+                contains(window, row.command.time.instant) && (destination == facility || registry[destination]?.parentId == facility)
+            }) }) { "Unbounded ledger rows supplied" }
         val claimed = rows.flatMap { it.command.evidenceIds }
         require(claimed.distinct().size == claimed.size) { "Evidence claimed by multiple active postings" }
         val proofs = rows.mapNotNull { it.matchIdentity }
@@ -156,7 +163,14 @@ object BetaDashboardBuilder {
             salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
         val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key], registry) }
         val analysis = financialSummary?.let { BetaAnalysisBuilder.build(batch.copy(assets = assets), it, transactions, queryProjection) }
-        val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary)
+        val settlementsByFacility = rows.filter { it.classification.effectiveType == FinancialType.CREDIT_CARD_PAYMENT }.groupBy {
+            val destination = (it.classification.input.destination as? FinancialEndpoint.Owned)?.id
+            destination?.let { id -> if (registry[id]?.kind == AssetKind.CREDIT_CARD) registry[id]?.parentId else id }
+        }
+        val settlementProjections = batch.settlementPeriods.mapValues { (facility, window) ->
+            ProjectionContext(batch.coverage, settlementsByFacility[facility].orEmpty(), fees).period(window)
+        }
+        val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary, settlementProjections)
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
             commitments, analysis, freezeList(transactions), totals, batch.revision, fleet)
         val unavailable = (if (analysis == null) setOf(DashboardSection.ANALYSIS) else emptySet()) +

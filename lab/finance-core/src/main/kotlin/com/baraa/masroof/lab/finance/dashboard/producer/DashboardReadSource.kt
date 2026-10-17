@@ -90,4 +90,6 @@ data class DashboardReadBatch(
     val postingFacts: List<DashboardPostingFacts> = emptyList(),
     val fees: List<LinkedInternationalFee> = emptyList(),
     val commitmentOccurrences: List<CommitmentRow> = emptyList(),
+    /** Complete settlement-only windows since each authoritative statement; other outside rows are forbidden. */
+    val settlementPeriods: Map<AssetId, DisplayPeriod> = emptyMap(),
 )
