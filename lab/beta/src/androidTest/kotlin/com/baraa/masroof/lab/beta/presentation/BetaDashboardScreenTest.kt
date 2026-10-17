@@ -17,7 +17,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.beta.BetaContainer
+import com.baraa.masroof.lab.beta.BetaIo
 import com.baraa.masroof.lab.beta.application.BetaDashboardWorkflow
+import com.baraa.masroof.lab.beta.application.evidence.*
 import com.baraa.masroof.lab.beta.data.*
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.classification.*
@@ -36,6 +38,7 @@ import android.content.res.Configuration
 import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.Locale
+import java.math.BigDecimal
 
 class BetaDashboardScreenTest {
     @get:Rule val compose = createComposeRule()
@@ -149,5 +152,79 @@ class BetaDashboardScreenTest {
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-account").assertExists()
         Unit
+    }
+
+    @Test fun approvedParserFxAndFeeReachActualDashboardWithoutReposting() = runBlocking<Unit> {
+        db.close(); BetaContainer.resetOffline(context)
+        db = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
+        val facility = OwnedAsset(AssetId(Environment.BETA, bank, "synthetic-facility"), AssetKind.CREDIT_FACILITY)
+        val card = OwnedAsset(AssetId(Environment.BETA, bank, "synthetic-card"), AssetKind.CREDIT_CARD, "7271", facility.id, CreditCardRole.PRIMARY)
+        BetaAssetRegistry(db).register(facility); BetaAssetRegistry(db).register(card)
+        db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
+        val body = """شراء عبر الانترنت
+بطاقة ائتمانية: 7271
+لدى: Synthetic Store
+بمبلغ: USD 23.00
+في: 2026-10-17 13:00
+الدولة: USA
+رسوم العمليات الدولية: 1.99
+سعر الصرف: 3.756957
+الرصيد المتاح: SAR 16958.89
+إجمالي المبلغ المستحق: SAR 2694.32"""
+        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer())
+            .importBatch(EvidenceRequest("synthetic-ui-fx", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(
+                EvidenceMessage("synthetic-provider", "AlJazira", body, at, ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
+        val key = RoomBetaFinancialAdoption.key(stored.summary.id)
+        db.close()
+        BetaContainer(context).use { beta ->
+            val preview = checkNotNull(beta.financialApprovalPreview(stored.summary.id))
+            val request = checkNotNull(betaApprovalDraft(preview, FinancialType.EXPENSE.name, "asset:" + card.id.localId, "external", null))
+            assertNull(beta.financialPosting(key))
+            assertTrue(beta.approveEvidenceFinancial(request) is BetaFinancialAdoptionResult.Posted)
+            val original = checkNotNull(beta.financialPosting(key))
+            val history = beta.financialHistory(key)
+            assertEquals(AppliedFx(BigDecimal("3.756957"), "SMS"), original.command.appliedFx)
+            val workflow = BetaDashboardWorkflow({ query, periods -> withContext(BetaIo.dispatcher) { beta.dashboard(query, periods) } }, clock)
+            val query = workflow.query(workflow.currentMonth())
+            val facts = beta.dashboard(query).snapshot.transactions.single()
+            assertEquals(BigDecimal("86.41"), facts.sarEquivalent!!.amount) // Original fee-free equivalent, not spending.
+            assertEquals(Money.of("1.99", Currency.SAR), facts.internationalFee)
+            val arabic = Configuration(context.resources.configuration).apply { setLocale(Locale("ar")); setLayoutDirection(Locale("ar")) }
+            val arabicContext = context.createConfigurationContext(arabic)
+            compose.setContent { MaterialTheme { CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl,
+                LocalContext provides arabicContext, LocalConfiguration provides arabic) {
+                Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) }
+            } } }
+            waitLoaded()
+            assertTrue(compose.onAllNodesWithText("88.40 SAR").fetchSemanticsNodes().isNotEmpty())
+            compose.onAllNodesWithText("86.41 SAR").assertCountEquals(0)
+            screenshot("rtl-approved-overview")
+            route("CARDS")
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+            compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-facility").performScrollTo().performClick()
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+            compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-facility")
+            compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-card").performScrollTo().performClick()
+            compose.onNodeWithText("16958.89 SAR").assertExists()
+            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // Due stays on the facility once.
+            compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-card")
+            compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
+            compose.onNodeWithTag("dash-month-next").performScrollTo().performClick(); waitLoaded()
+            assertEquals(original, beta.financialPosting(key)); assertEquals(history, beta.financialHistory(key))
+            assertEquals(BigDecimal("86.41"), beta.dashboard(query).snapshot.transactions.single().sarEquivalent!!.amount)
+        }
+    }
+
+    @Test fun partialCoverageNeverClaimsKnownEmptyRegistryOrCommitments() {
+        val workflow = BetaDashboardWorkflow({ query, _ -> DashboardProduction(
+            DashboardSnapshot(query, emptyList(), emptyList(), emptyList(), commitments = CommitmentsSummary(Currency.SAR, emptyList(), null, null, null)),
+            setOf(DashboardSection.CONFIRMED_REGISTRY, DashboardSection.COMMITMENTS), null)
+        }, clock)
+        compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
+        waitLoaded()
+        listOf("ACCOUNTS", "CARDS", "LOANS", "COMMITMENTS").forEach { section ->
+            route(section); compose.onNodeWithTag("dash-empty").assertDoesNotExist()
+            compose.onNodeWithTag("dash-unavailable").assertExists()
+        }
     }
 }

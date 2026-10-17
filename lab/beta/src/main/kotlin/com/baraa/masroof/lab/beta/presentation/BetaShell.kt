@@ -87,11 +87,11 @@ fun BetaShell(
                 return@Column
             }
             if (dashboard != null) homeState.SaveableStateProvider("dashboard") { dashboard() }
-            Text(stringResource(R.string.beta_welcome), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(R.string.beta_welcome_steps))
+            Text(stringResource(if (dashboard == null) R.string.beta_welcome else R.string.beta_dash_manage), style = MaterialTheme.typography.titleLarge)
+            if (dashboard == null) Text(stringResource(R.string.beta_welcome_steps))
             OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_settings_title)) }
             OutlinedButton(enabled = !busy, onClick = onOpenDiscovery, modifier = Modifier.testTag("beta-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
-            Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
+            if (dashboard == null) Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
                 Text(stringResource(R.string.beta_history_title))
             }

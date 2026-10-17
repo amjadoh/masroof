@@ -103,7 +103,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                             DashValue(R.string.beta_dash_salary_spending, amount(card.salarySpending?.net)); DashPeriod(card.salarySpending?.period)
                             DashValue(R.string.beta_dash_statement_spending, amount(card.statementSpending?.net)); DashPeriod(card.statementSpending?.period)
                         }
-                        loan != null -> DashLoan(loan)
+                        loan != null -> DashLoan(loan, snapshot.query.zone)
                         else -> Text(stringResource(R.string.beta_dash_missing), modifier = Modifier.testTag("dash-missing"))
                     }
                 } else when (route) {
@@ -123,7 +123,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                         }
                     }
                     "ACCOUNTS" -> {
-                        if (snapshot.accounts.isEmpty()) DashEmpty()
+                        if (snapshot.accounts.isEmpty()) { if (DashboardSection.CONFIRMED_REGISTRY in read.unavailableSections) DashUnavailable() else DashEmpty() }
                         snapshot.accounts.take(visibleRows).forEachIndexed { index, account -> DashCard(account.label ?: stringResource(R.string.beta_dash_account_number, index + 1)) {
                             DashValue(R.string.beta_dash_balance, amount(account.balance)); DashLink(account.id, stringResource(R.string.beta_dash_details), enabled, ::select)
                         } }
@@ -131,7 +131,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                         snapshot.fleetFlow?.let { DashCard(stringResource(R.string.beta_dash_flow)) { DashFlow(it) } }
                     }
                     "CARDS" -> {
-                        if (snapshot.debitCards.isEmpty() && snapshot.creditFacilities.isEmpty()) DashEmpty()
+                        if (snapshot.debitCards.isEmpty() && snapshot.creditFacilities.isEmpty()) { if (DashboardSection.CONFIRMED_REGISTRY in read.unavailableSections) DashUnavailable() else DashEmpty() }
                         snapshot.debitCards.take(visibleRows).forEach { debit -> DashCard(debit.label ?: stringResource(R.string.beta_asset_debit)) {
                             Text(debit.last4.orEmpty()); DashValue(R.string.beta_dash_salary_spending, amount(debit.spending))
                             DashLink(debit.cardId, stringResource(R.string.beta_dash_details), enabled, ::select)
@@ -143,8 +143,8 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                         DashMore(snapshot.debitCards.size > visibleRows || snapshot.creditFacilities.size > visibleRows) { visibleRows += 20 }
                     }
                     "LOANS" -> {
-                        if (snapshot.loans.isEmpty()) DashEmpty()
-                        snapshot.loans.take(visibleRows).forEach { loan -> DashLoan(loan) { DashLink(loan.id, stringResource(R.string.beta_dash_details), enabled, ::select) } }
+                        if (snapshot.loans.isEmpty()) { if (DashboardSection.CONFIRMED_REGISTRY in read.unavailableSections) DashUnavailable() else DashEmpty() }
+                        snapshot.loans.take(visibleRows).forEach { loan -> DashLoan(loan, snapshot.query.zone) { DashLink(loan.id, stringResource(R.string.beta_dash_details), enabled, ::select) } }
                         DashMore(snapshot.loans.size > visibleRows) { visibleRows += 20 }
                     }
                     "COMMITMENTS" -> {
@@ -153,7 +153,8 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                             DashCard(stringResource(R.string.beta_dash_commitments)) {
                                 DashValue(R.string.beta_dash_total, amount(commitments.total)); DashValue(R.string.beta_dash_paid, amount(commitments.paid)); DashValue(R.string.beta_dash_remaining, amount(commitments.remaining))
                             }
-                            if (commitments.rows.isEmpty()) DashEmpty()
+                            if (DashboardSection.COMMITMENTS in read.unavailableSections) DashUnavailable()
+                            else if (commitments.rows.isEmpty()) DashEmpty()
                             commitments.rows.take(visibleRows).forEach { row -> DashCard(row.label) {
                                 Text(amount(row.amount)); row.expectedDate?.let { Text(it.toString()) }
                                 Text(stringResource(if (row.status == PaymentStatus.PAID) R.string.beta_dash_paid else R.string.beta_dash_unpaid))
@@ -176,7 +177,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true)
                             DashMore(analysis.merchants.size > visibleRows) { visibleRows += 20 }
                             Text(stringResource(R.string.beta_dash_trends), style = MaterialTheme.typography.titleLarge)
                             val trends = analysis.trends.filter { it.scope == TrendScope.OVERALL && it.category == null }
-                            if (trends.isEmpty()) DashUnavailable()
+                            if (trends.isEmpty() || DashboardSection.TRENDS in read.unavailableSections) DashUnavailable()
                             trends.forEach { trend -> DashCard(trend.period.label ?: stringResource(R.string.beta_dash_trends)) {
                                 DashPeriod(trend.period); DashValue(R.string.beta_dash_average, amount(trend.averageDailySpending))
                                 trend.points.forEach { day -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(day.date.toString()); Text(amount(day.net)) } }
@@ -216,7 +217,8 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
 }
 @Composable private fun DashPeriod(period: DisplayPeriod?) {
     if (period == null) Text(stringResource(R.string.beta_dash_period_unavailable), style = MaterialTheme.typography.bodySmall)
-    else Text("${period.from.atZone(period.zone).toLocalDate()} — ${period.until.atZone(period.zone).toLocalDate()}", style = MaterialTheme.typography.bodySmall)
+    else Text(stringResource(R.string.beta_dash_period, period.from.atZone(period.zone).toLocalDateTime().toString(),
+        period.until.atZone(period.zone).toLocalDateTime().toString()), style = MaterialTheme.typography.bodySmall)
 }
 @Composable private fun DashLink(id: AssetId, label: String, enabled: Boolean, onClick: (AssetId) -> Unit) {
     OutlinedButton(enabled = enabled, onClick = { onClick(id) }, modifier = Modifier.testTag("dash-asset-${id.bank.value}-${id.localId}")) { Text(label) }
@@ -224,9 +226,12 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
 @Composable private fun DashFlow(flow: AccountFlow?) {
     DashValue(R.string.beta_dash_inflow, amount(flow?.totalIn)); DashValue(R.string.beta_dash_outflow, amount(flow?.totalOut)); DashValue(R.string.beta_dash_remaining, amount(flow?.remaining))
 }
-@Composable private fun DashLoan(loan: LoanSummary, content: @Composable () -> Unit = {}) {
+@Composable private fun DashLoan(loan: LoanSummary, zone: java.time.ZoneId, content: @Composable () -> Unit = {}) {
     DashCard(loan.label) {
-        DashValue(R.string.beta_dash_loan_remaining, amount(loan.remaining)); DashValue(R.string.beta_dash_installment, amount(loan.latestInstallment))
+        DashValue(R.string.beta_dash_loan_remaining, amount(loan.remaining))
+        loan.remainingAsOf?.let { Text(stringResource(R.string.beta_dash_as_of, it.atZone(zone).toLocalDate().toString()), style = MaterialTheme.typography.bodySmall) }
+        DashValue(R.string.beta_dash_installment, amount(loan.latestInstallment))
+        loan.installmentAsOf?.let { Text(stringResource(R.string.beta_dash_as_of, it.atZone(zone).toLocalDate().toString()), style = MaterialTheme.typography.bodySmall) }
         DashValue(R.string.beta_dash_salary_payment, amount(loan.salaryPayment)); DashPeriod(loan.salaryPeriod); content()
     }
 }
