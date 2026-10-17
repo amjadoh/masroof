@@ -1,0 +1,52 @@
+package com.baraa.masroof.lab.beta.presentation
+
+import android.content.Context
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.lab.beta.BetaContainer
+import com.baraa.masroof.lab.beta.BetaIo
+import com.baraa.masroof.lab.finance.asset.*
+import com.baraa.masroof.lab.finance.value.*
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+class BetaDashboardActivityTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private val context get() = ApplicationProvider.getApplicationContext<Context>()
+    @Test fun actualBetaActivityPreservesDashboardSelectionAcrossSettingsAndRecreation() {
+        BetaContainer.resetOffline(context)
+        BetaContainer(context).use { beta ->
+            val bank = BankId("BANK_ALJAZIRA")
+            beta.setBankEnabled(bank, true)
+            beta.saveManualAsset(com.baraa.masroof.lab.beta.application.ManualAssetDraft(AssetId(Environment.BETA, bank, "synthetic-activity"), AssetKind.ACCOUNT, "1234", ownedConfirmed = true))
+        }
+        ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-badge").assertIsDisplayed()
+            compose.onNodeWithTag("beta-return").assertIsDisplayed()
+            compose.onNodeWithTag("dash-route-ACCOUNTS").performScrollTo().performClick()
+            compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-activity").performScrollTo().performClick()
+            compose.onNodeWithTag("dash-detail-back").assertExists()
+            compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-settings-panel").assertExists()
+            compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-detail-back").fetchSemanticsNodes().isNotEmpty() }
+            scenario.recreate()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("dash-detail-back").assertExists()
+            compose.onNodeWithTag("beta-badge").assertIsDisplayed()
+            compose.onNodeWithTag("beta-return").assertIsDisplayed()
+            compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+            compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
+        }
+        val closed = CountDownLatch(1); BetaIo.execute { closed.countDown() }; assertTrue(closed.await(15, TimeUnit.SECONDS))
+        BetaContainer(context).use { beta -> assertEquals(1, beta.assets().size); assertEquals(0, beta.markerCount()) }
+        BetaContainer.resetOffline(context)
+    }
+}
+
