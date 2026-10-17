@@ -38,6 +38,7 @@ fun BetaShell(
     editor: (@Composable () -> Unit)? = null,
     onOpenDiscovery: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenReview: () -> Unit = {},
     onAddAsset: (BankId) -> Unit = {},
     onEditAsset: (OwnedAsset) -> Unit = {},
     returnEnabled: Boolean = true,
@@ -87,6 +88,7 @@ fun BetaShell(
             OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
                 Text(stringResource(R.string.beta_history_title))
             }
+            OutlinedButton(enabled = !busy, onClick = onOpenReview, modifier = Modifier.testTag("beta-review")) { Text(stringResource(R.string.beta_review_title)) }
             Text(stringResource(R.string.beta_bank_title), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.beta_bank_help), style = MaterialTheme.typography.bodyMedium)
             if (failed) {

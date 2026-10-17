@@ -261,4 +261,72 @@ class RoomBetaCorrectionLifecycleTest {
         assertEquals(1, store().history(first.input.key).size)
         assertEquals(first.input.appliedFx, ledger().read(first.input.key)!!.command.appliedFx)
     }
+
+    @Test fun typedTimeAndEndpointEditsPersistExactlyAcrossReopenWithoutLosingFxAuthority() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val time = first.input.time.copy(instant = first.input.time.instant.plusSeconds(901))
+        val change = command(first, 2, decision = FinancialDecision.EditFacts(time, FinancialEndpoint.Owned(destination.id)))
+        val view = applied(store().submit(first, change))
+        assertEquals(BetaLedgerActivity.ACTIVE, view.activity)
+        assertEquals(time, view.posting!!.command.time)
+        assertEquals(destination.id, view.posting.command.source)
+        assertEquals(first.input.appliedFx, view.posting.command.appliedFx)
+        reopen()
+        assertEquals(time, store().read(first.input.key)!!.posting!!.command.time)
+        assertTrue(store().submit(first, change) is BetaCorrectionResult.AlreadyApplied)
+        assertEquals(2, store().history(first.input.key).size)
+    }
+    @Test fun reviewPageIncludesSuppressedAndUnpostedCorrectionsAndUsesBoundedCursor() = runBlocking {
+        for (id in listOf("a", "b", "c")) { val first = base(id); store().submit(first, command(first, decision = FinancialDecision.SuppressAsNonFinancial)) }
+        val workflow = BetaReviewWorkflow(db)
+        assertEquals(listOf("a", "b"), workflow.page(limit = 2).map { it.key.transactionId })
+        assertEquals(listOf("c"), workflow.page("b", 2).map { it.key.transactionId })
+        assertTrue(workflow.page(limit = 3).all { it.activity == BetaLedgerActivity.SUPPRESSED })
+    }
+    @Test fun reviewSaveBindsToCurrentInterpretationAndTransitionWithoutAcceptingUiFacts() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val workflow = BetaReviewWorkflow(db)
+        val shown = workflow.detail(first.input.key)!!
+        val result = workflow.save(shown.token, "review-note", FinancialDecision.Keep, mapOf("note" to "reviewed"))
+        assertTrue(result is BetaCorrectionResult.Applied)
+        assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(shown.token, "stale", FinancialDecision.SuppressAsNonFinancial))
+        assertTrue(workflow.save(shown.token, "review-note", FinancialDecision.Keep, mapOf("note" to "reviewed")) is BetaCorrectionResult.AlreadyApplied)
+        assertEquals("reviewed", store().read(first.input.key)!!.overlay.metadata["note"])
+        assertEquals(2, store().history(first.input.key).size)
+    }
+    @Test fun reviewSaveRejectsChangedConfirmedRegistryWithoutPartialDecision() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val workflow = BetaReviewWorkflow(db); val shown = workflow.detail(first.input.key)!!
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_asset SET last4='9999' WHERE localId='account'")
+        assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(shown.token, "stale-asset", FinancialDecision.Keep))
+        assertEquals(1, store().history(first.input.key).size)
+    }
+
+    @Test fun optionalAdoptionHoldAndRetryNeverFallBackToOldOrdinaryFinancialSnapshot() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
+        db.openHelper.writableDatabase.execSQL("CREATE TABLE beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption VALUES('evidence-transaction','transaction','REVIEW')")
+        assertNull(workflow.detail(first.input.key))
+        assertEquals(BetaLedgerActivity.REVIEW, workflow.page().single().activity)
+        assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "held", FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE)))
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='ACTIVE'")
+        assertNotNull(workflow.detail(first.input.key))
+        db.openHelper.writableDatabase.execSQL("CREATE TABLE beta_financial_approval_retry(evidenceId TEXT PRIMARY KEY, request TEXT)")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_approval_retry VALUES('evidence-transaction','pending')")
+        assertNull(workflow.detail(first.input.key))
+        assertEquals(1, store().history(first.input.key).size)
+    }
+
+    @Test fun reviewRejectsUnknownSchemaAndMissingV7FinancialHoldCapabilities() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
+        try {
+            for (version in listOf(7, 999)) {
+                db.openHelper.writableDatabase.execSQL("PRAGMA user_version=$version")
+                assertNull(workflow.detail(first.input.key))
+                assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "unknown-$version", FinancialDecision.Keep))
+            }
+        } finally { db.openHelper.writableDatabase.execSQL("PRAGMA user_version=6") }
+    }
 }
