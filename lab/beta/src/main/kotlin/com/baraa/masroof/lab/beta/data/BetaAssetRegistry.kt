@@ -93,6 +93,14 @@ class BetaAssetRegistry(private val database: BetaDatabase) : ManualAssetStore {
             }
         }
         if (existing == null) dao.insert(asset.toEntity()) else check(dao.update(asset.toEntity()) == 1)
+        if (existing != asset) {
+            // Includes cards whose parent changed, and parent membership referenced by a posting.
+            // Preserve approved/manual facts; require scoped explicit review before financial reuse.
+            database.financialAdoptionDao().bank(asset.id.bank.value).forEach { adoption ->
+                if (asset.id in financialRegistryDependencies(BetaLedgerCodec.decodeInput(adoption.approvedInput)))
+                    database.financialAdoptionDao().hold(adoption.evidenceId, "REGISTRY_CHANGED")
+            }
+        }
         dao.clearManualSuffix(asset.id.environment.name, asset.id.bank.value, asset.id.localId)
         asset.last4?.let { suffix -> dao.insertAlias(BetaAssetAliasEntity(
             asset.id.environment.name, asset.id.bank.value, asset.id.localId,

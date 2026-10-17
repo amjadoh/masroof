@@ -63,6 +63,42 @@ class BetaContainer(
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database).summary(id) }
     }
 
+    fun financialReviewPage(afterId: String = "", limit: Int = 25) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).reviewPage(afterId, limit) }
+    }
+
+    fun approveEvidenceFinancial(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).approve(request) }
+    }
+
+    fun retryFinancialApproval(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).retryApproval(id) }
+    }
+
+    fun cancelFinancialApproval(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).cancelApproval(request) }
+    }
+
+    fun financialObservation(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).observation(key) }
+    }
+
+    fun reconcileApprovedEvidence(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).reconcileApprovedEvidence(id) }
+    }
+
+    fun enrichEvidenceFx(id: String, expected: com.baraa.masroof.lab.finance.posting.PostingRevision,
+        market: com.baraa.masroof.lab.finance.fx.FxMarketRateProvider) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).enrich(id, expected, market) }
+    }
+
     fun decideEvidence(id: String, expectedRevision: Long,
         decision: com.baraa.masroof.lab.beta.application.evidence.EvidenceReviewDecision) = lock.withLock {
         check(!closed)
