@@ -381,7 +381,11 @@ class BetaContainer(
             BetaEnvironment.requireBetaDatabaseName(BetaEnvironment.DATABASE_NAME)
             BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME)
             val live = appContext.getDatabasePath(BetaEnvironment.DATABASE_NAME)
-            check(!live.exists() || appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)) { "Could not clear Beta database" }
+            val databaseFiles = listOf(live) + listOf("-wal", "-shm", "-journal").map { File(live.path + it) }
+            val hadDatabaseFiles = databaseFiles.any { it.exists() }
+            val deleted = appContext.deleteDatabase(BetaEnvironment.DATABASE_NAME)
+            check(!hadDatabaseFiles || deleted) { "Could not clear Beta database" }
+            check(databaseFiles.none { it.exists() }) { "Could not clear Beta database sidecars" }
             check(appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .clear()

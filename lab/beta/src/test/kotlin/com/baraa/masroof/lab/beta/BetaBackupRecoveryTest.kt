@@ -116,6 +116,10 @@ class BetaBackupRecoveryTest {
         BetaContainer.resetOffline(context)
         assertTrue(root.listFiles()!!.none { it.isDirectory })
         assertFalse(installation.exists()); assertFalse(legacyDatabase.exists()); assertFalse(legacyPreferences.exists())
+        val sidecars = listOf("-wal", "-shm", "-journal").map { File(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).path + it) }
+        sidecars.forEach { it.writeText("synthetic orphan Beta sidecar") }
+        BetaContainer.resetOffline(context)
+        assertTrue(sidecars.none { it.exists() })
         BetaContainer(context).use { beta -> assertEquals(0, beta.markerCount()); assertFalse(beta.settings().backupAvailable); assertNull(beta.preferenceProbe()) }
     }
 
