@@ -114,4 +114,25 @@
     <string name="beta_review_adjustment">Adjustment</string>
     <string name="beta_review_unknown_endpoint">Unresolved endpoint</string>
     <string name="beta_review_unavailable">Review the evidence first. Its interpretation may have changed or a retry may be pending; this screen cannot edit the old financial effect.</string>
+    <string name="beta_approval_title">Approve transactions</string>
+    <string name="beta_approval_help">Review the amount and time, then explicitly choose the type and confirmed endpoints. Viewing evidence does not approve it.</string>
+    <string name="beta_approval_item">Transaction %1$d: %2$s</string>
+    <string name="beta_approval_pending">Approval pending</string>
+    <string name="beta_approval_pending_help">An exact approval request is saved. Retry those choices or cancel the request before making a new decision.</string>
+    <string name="beta_approval_cancel_pending">Cancel pending approval</string>
+    <string name="beta_approval_reconcile">Refresh saved decision</string>
+    <string name="beta_approval_salary">Salary</string>
+    <string name="beta_approval_other_income">Other income</string>
+    <string name="beta_approval_confirm">I confirm the displayed amount, time, type and endpoints</string>
+    <string name="beta_approval_save">Approve transaction</string>
+    <string name="beta_approval_wait">Evidence processing is incomplete. Finish reprocessing first.</string>
+    <string name="beta_approval_bank_disabled">Enable the bank before approving this transaction.</string>
+    <string name="beta_approval_stale">The evidence, asset or decision changed. Cancel the pending request and reopen the transaction.</string>
+    <string name="beta_approval_correction">A saved correction owns this transaction. Refreshing preserves corrections and suppression.</string>
+    <string name="beta_approval_cancelled">The pending approval was cancelled. The saved financial decision is unchanged.</string>
+    <string name="beta_approval_fx_unknown">The SAR value is unavailable. The native amount is preserved.</string>
+    <string name="beta_approval_unsafe">The evidence or choices need review; financial approval is incomplete.</string>
+    <string name="beta_approval_merchant">Merchant: %1$s</string>
+    <string name="beta_approval_rate">Evidence exchange rate: %1$s</string>
+    <string name="beta_approval_fee">Evidence international fee: %1$s</string>
 </resources>
