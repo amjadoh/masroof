@@ -178,7 +178,7 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
 }
 
 @Composable
-private fun endpointSummary(endpoint: FinancialEndpoint, assets: Map<com.baraa.masroof.lab.finance.asset.AssetId, com.baraa.masroof.lab.finance.asset.OwnedAsset>): String = when (endpoint) {
+internal fun endpointSummary(endpoint: FinancialEndpoint, assets: Map<com.baraa.masroof.lab.finance.asset.AssetId, com.baraa.masroof.lab.finance.asset.OwnedAsset>): String = when (endpoint) {
     FinancialEndpoint.External -> stringResource(R.string.beta_review_external)
     FinancialEndpoint.Unresolved -> stringResource(R.string.beta_review_unknown_endpoint)
     is FinancialEndpoint.Owned -> assets[endpoint.id]?.let {
@@ -186,7 +186,7 @@ private fun endpointSummary(endpoint: FinancialEndpoint, assets: Map<com.baraa.m
     } ?: stringResource(R.string.beta_review_unknown_endpoint)
 }
 
-private fun financialTypeLabel(type: FinancialType) = when (type) {
+internal fun financialTypeLabel(type: FinancialType) = when (type) {
     FinancialType.EXPENSE -> R.string.beta_review_expense
     FinancialType.INCOME -> R.string.beta_review_income
     FinancialType.EXTERNAL_TRANSFER_IN -> R.string.beta_review_transfer_in
