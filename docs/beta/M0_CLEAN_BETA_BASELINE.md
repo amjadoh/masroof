@@ -38,7 +38,7 @@ Back/Return before acknowledging leaves entry unacknowledged. Acknowledgement is
 
 ## Native evidence
 
-The existing `instrumentation-reports` artifact collects `beta-dashboard-screenshots/m0-{new-welcome,existing-preserved,corrupt-retained,cleanup-confirmation}.png`. Each M0 capture also records API/hardware/window configuration and the synthetic screen's semantics in private test storage, pulled into the same artifact. Existing-data capture is Arabic/RTL; fresh/failure/confirmation captures use the default English locale. Native XML is authoritative for pass/fail. CI run/head and verification results are recorded in the PR after the run completes.
+The existing `instrumentation-reports` artifact collects `beta-dashboard-screenshots/m0-{new-welcome,existing-preserved,corrupt-retained,cleanup-confirmation}.png`. Each M0 capture also records API/hardware/window configuration and the synthetic screen's semantics in private test storage, then copies it beside the public synthetic screenshots before AGP uninstalls the test APK. The existing screenshot pull retains both PNG and metadata in the same artifact. Existing-data capture is Arabic/RTL; fresh/failure/confirmation captures use the default English locale. Native XML is authoritative for pass/fail. CI run/head and verification results are recorded in the PR after the run completes.
 
 M0 screenshots document entry/failure behavior only. Full Production/Beta screenshot parity for Home/Transactions/Review/Settings/details, Arabic/English, light/dark/font/foldable is not certified here and belongs to the following shared-design work. Existing Production source/financial golden expectations are frozen by the manifest and baseline tests; user data is never used for screenshots.
 
