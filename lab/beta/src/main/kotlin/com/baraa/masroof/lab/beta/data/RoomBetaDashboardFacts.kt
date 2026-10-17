@@ -54,9 +54,20 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         val endpoint = (if (input.storedType == FinancialType.REFUND) input.destination else input.source)
             .let { (it as? FinancialEndpoint.Owned)?.id }?.let(registry::get)
         val cardReference = if (facts.isNull("card")) null else facts.getJSONObject("card").getString("number")
+        fun maskedSuffix(value: String): String = value.trim().let {
+            if (it.matches(Regex("[0-9*•xX\\s-]*[0-9]{4}"))) it.takeLast(4) else ""
+        }
+        val accountSuffixes = listOfNotNull(text("debitSourceAccountLast4")?.let {
+            if (it.matches(Regex("[0-9]{4}"))) it else ""
+        }, if (facts.isNull("sourceAccount")) null else maskedSuffix(facts.getJSONObject("sourceAccount").optString("number")))
+        fun referenceBankMatches(name: String): Boolean = facts.isNull(name) || facts.getJSONObject(name).let {
+            it.isNull("bank") || it.getString("bank") == adopted.bankId
+        }
         val debitCard = if (sameEndpoints && text("cardChannel") == "DEBIT" && cardReference != null) {
             registry.values.filter { it.kind == AssetKind.DEBIT_CARD && it.id.bank == endpoint?.id?.bank &&
-                it.last4 == cardReference && (endpoint.kind == AssetKind.ACCOUNT && it.parentId == endpoint.id) }
+                it.last4 == cardReference && (endpoint.kind == AssetKind.ACCOUNT && it.parentId == endpoint.id) &&
+                referenceBankMatches("sourceAccount") && referenceBankMatches("card") &&
+                accountSuffixes.all { suffix -> suffix == endpoint.last4 } }
                 .singleOrNull()
         } else null
         val balanceAsset = if (!sameEndpoints || !sameMoneyTime) null else when (endpoint?.kind) {
