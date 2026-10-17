@@ -161,6 +161,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
                 request.archiveRevision, "ACTIVE", if (enriched is FxEnrichmentResult.Unavailable) "FX_UNAVAILABLE" else "APPROVED",
                 BetaLedgerCodec.encodeInput(finalInput), finalInput.revision.correction, finalInput.revision.interpretation,
                 encodeRequest(request), finalInput.revision.interpretation))
+            RoomBetaDashboardFacts(database).refresh(request.evidenceId)
         }
         BetaFinancialAdoptionResult.Posted(result)
     }
@@ -217,6 +218,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             approvedInput = posting?.classification?.input?.let(BetaLedgerCodec::encodeInput) ?: adopted.approvedInput,
             correction = posting?.command?.revision?.correction ?: adopted.correction,
             interpretation = posting?.command?.revision?.interpretation ?: adopted.interpretation))
+        RoomBetaDashboardFacts(database).refresh(id)
         if (current.activity == BetaLedgerActivity.ACTIVE && posting != null)
             BetaFinancialAdoptionResult.Posted(FinancialPostingResult.AlreadyApplied(posting))
         else review(if (current.activity == BetaLedgerActivity.SUPPRESSED) "MANUAL_SUPPRESSION_PRESERVED" else "CORRECTION_REVIEW")
@@ -248,6 +250,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             val result = ledger.post(updated)
             if (result is FinancialPostingResult.Applied || result is FinancialPostingResult.AlreadyApplied)
                 dao.put(adopted.copy(approvedInput = BetaLedgerCodec.encodeInput(updated), correction = updated.revision.correction, reason = "FX_ENRICHED"))
+            RoomBetaDashboardFacts(database).refresh(evidenceId)
             BetaFinancialAdoptionResult.Posted(result)
         }
     }

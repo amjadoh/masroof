@@ -102,9 +102,9 @@ class RoomBetaDashboardSourceTest {
         assertTrue(sql.none { statement -> statement.contains("beta_") &&
             listOf("INSERT", "UPDATE", "DELETE").any { statement.trimStart().startsWith(it, true) } })
         assertTrue(sql.none { it.contains("r.body") || it.contains("beta_ledger_history") })
-        assertFalse(first.coverage.completeFeeFacts); assertNull(first.coverage.reviewRequiredCount)
+        assertFalse(first.coverage.completeFeeFacts); assertEquals(0, first.coverage.reviewRequiredCount)
         val produced = BetaDashboardBuilder.build(first)
-        assertNull(produced.financialSummary)
+        assertNotNull(produced.financialSummary)
         assertNull(produced.snapshot.accounts.single().balance)
         assertNull(produced.snapshot.accounts.single().balanceAsOf)
         assertEquals(1, RoomBetaFinancialLedger(db).history(input().key).size)
