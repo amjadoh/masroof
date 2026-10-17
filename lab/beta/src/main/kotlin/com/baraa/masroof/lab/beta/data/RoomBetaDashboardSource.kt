@@ -149,7 +149,7 @@ class RoomBetaDashboardSource(
                             aux.nonFinancial.toString(), aux.registryBinding, aux.boundInput, aux.observedAt, aux.balanceAsset,
                             aux.balanceAmount, aux.balanceCurrency, aux.facilityAsset, aux.dueAmount, aux.dueCurrency, aux.dueDate,
                             aux.loanAsset, aux.loanType, aux.loanRemaining, aux.loanRemainingCurrency,
-                            aux.loanInstallment, aux.loanInstallmentCurrency).forEach(::fingerprint)
+                            aux.loanInstallment, aux.loanInstallmentCurrency, aux.statementProved.toString()).forEach(::fingerprint)
                         if (!cursor.isNull(7) && aux.outcomeAttempt == cursor.getInt(7) && aux.outcomeAt == cursor.getString(8) &&
                             cursor.getInt(9) == 0 && correction?.activity !in setOf(BetaLedgerActivity.REVIEW, BetaLedgerActivity.SUPPRESSED)) {
                             currentAux += id
@@ -284,7 +284,6 @@ class RoomBetaDashboardSource(
                     }
                 }
                 val balance = latest { it.balanceAsset }?.row
-                val due = latest { it.facilityAsset }?.row
                 fun auxLatest(selector: (BetaDashboardAuxFactsEntity) -> String?): AuxObservation? {
                     val candidates = auxObserved.filter { it.row.bankId == asset.id.bank.value && selector(it.row) == asset.id.localId }
                     val at = candidates.maxOfOrNull { Instant.parse(it.row.observedAt) } ?: return null
@@ -299,7 +298,7 @@ class RoomBetaDashboardSource(
                     return when { a == null -> false; b == null -> true; a == b -> null; else -> a > b }
                 }
                 val auxBalance = auxLatest { it.balanceAsset }?.row
-                val auxDue = auxLatest { it.facilityAsset }?.row
+                val auxDue = auxLatest { if (it.statementProved) it.facilityAsset else null }?.row
                 val loan = auxLatest { it.loanAsset }?.row
                 val balanceFact = when (auxWins({ it.balanceAsset }, { it.balanceAsset })) {
                     true -> auxBalance?.takeIf { it.balanceAmount != null && it.balanceCurrency == Currency.SAR.name }?.let {
@@ -308,13 +307,10 @@ class RoomBetaDashboardSource(
                         ObservedSignedBalance(SignedAmount(it.balanceAmount!!.toBigDecimal(), Currency.valueOf(it.balanceCurrency!!)), Instant.parse(it.observedAt)) }
                     null -> null
                 }
-                val statementFact = when (auxWins({ it.facilityAsset }, { it.facilityAsset })) {
-                    true -> auxDue?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
+                // Only a proved informational STATEMENT supplies dues. Inert v8 financial
+                // outstanding columns (even newer or held purchases) cannot supply or block one.
+                val statementFact = auxDue?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
                         ObservedStatement(Money.of(it.dueAmount!!, Currency.SAR), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) }
-                    false -> due?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
-                        ObservedStatement(Money.of(it.dueAmount!!, Currency.valueOf(it.dueCurrency!!)), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) }
-                    null -> null
-                }
                 if (balanceFact != null || statementFact != null || loan != null) assetFacts += DashboardAssetFacts(asset.id,
                     balance = balanceFact, statement = statementFact, loanType = loan?.loanType,
                     loanRemaining = loan?.takeIf { it.loanRemaining != null && it.loanRemainingCurrency == Currency.SAR.name }?.let {

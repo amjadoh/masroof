@@ -20,7 +20,11 @@ ambiguous route or missing archive cannot do so. Completion writes the auxiliary
 projection failure keeps the evidence attempt retryable. It never creates a ledger posting.
 
 Statement/card and account observations require unique, bank-qualified structured references to
-confirmed assets. Card dues belong to the confirmed facility once. Conflicting references and
+confirmed assets. Only a typed informational `STATEMENT` channel proves statement dues; the auxiliary
+row persists that proof explicitly. Purchase/refund outstanding balances never supply or block a
+statement, including untouched schema8 financial projection rows with a null message family. Their
+historical columns/archives remain stored, while new financial projections stop emitting a due.
+Card dues belong to the confirmed facility once. Conflicting references and
 collisions stay unknown. OTP never supplies money observations. Bank local time uses the existing
 AlJazira Riyadh policy; absent bank timestamps use captured receipt time for informational snapshots,
 matching the original statement reader. Neither a due date nor a manual transaction time becomes

@@ -64,12 +64,16 @@ class RoomBetaAuxFactsTest {
     }
 
     @Test fun legacyNoticeAndOtp() = runBlocking {
-        val statement = actual("إصدار كشف حساب بطاقة ائتمانية\nبطاقة: **7271\nإجمالي المبلغ المستحق: 1,250.00 SAR\nالحد الأدنى: 125.00 SAR\nتاريخ الاستحقاق: 2026-08-25", "statement")
+        val statement = actual("بطاقة إئتمانية: إصدار كشف حساب\nبطاقة: 7271 بطاقة إئتمانية\nإجمالي المبلغ المستحق: SAR 1250.00\nتاريخ الاستحقاق: 2026-08-25", "statement")
         val otp = actual("رمز التحقق الخاص بك هو 482911. لا تشاركه مع أي شخص.", "otp")
         assertTrue(db.dashboardAuxFactsDao().evidence(statement)!!.nonFinancial)
         assertTrue(db.dashboardAuxFactsDao().evidence(otp)!!.nonFinancial)
         val archived = org.json.JSONObject(db.evidenceDao().outcome(statement)!!.baselineJson).getJSONObject("facts")
         assertTrue(archived.isNull("occurredAt")); assertTrue(archived.isNull("occurredAtLocal"))
+        assertEquals("7271", archived.getJSONObject("card").getString("number"))
+        assertEquals("STATEMENT", archived.getString("cardChannel"))
+        assertEquals("1250.00", archived.getJSONObject("outstandingBalance").getString("amount"))
+        assertTrue(db.dashboardAuxFactsDao().evidence(statement)!!.statementProved)
         val batch = source().load(query)
         assertTrue(batch.coverage.completeLedger); assertEquals(0, batch.coverage.reviewRequiredCount)
         assertTrue(batch.rows.isEmpty()); assertNotNull(BetaDashboardBuilder.build(batch).snapshot.analysis)
@@ -198,5 +202,33 @@ class RoomBetaAuxFactsTest {
         capture("fault")
         assertTrue(source().load(query).coverage.completeLedger)
         assertNull(RoomBetaFinancialLedger(db).readAudit(RoomBetaFinancialAdoption.key("fault")))
+    }
+
+    @Test fun ordinaryNoticeIsNotStatement() = runBlocking {
+        capture("statement", notice().copy(occurredAt = at.minusSeconds(30)))
+        capture("ordinary", notice().copy(cardChannel = CardChannel.CREDIT, outstandingBalance = Money.of("9000", Currency.SAR)))
+        assertFalse(db.dashboardAuxFactsDao().evidence("ordinary")!!.statementProved)
+        assertNull(db.dashboardAuxFactsDao().evidence("ordinary")!!.facilityAsset)
+        assertEquals(Money.of("1250", Currency.SAR), BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+    }
+
+    @Test fun purchaseNeverSuppliesOrBlocksDue() = runBlocking {
+        val id = actual("شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nلدى: Synthetic Store\nبمبلغ: SAR 23.00\nفي: 2026-08-06 20:22\nإجمالي المبلغ المستحق: SAR 9000.00", "purchase")
+        val service = RoomBetaFinancialAdoption(db)
+        val item = service.reviewPage().single { it.evidenceId == id }
+        assertTrue(service.approve(BetaFinancialApproval(id, item.archiveRevision, null, FinancialType.EXPENSE, card.id, null)) is BetaFinancialAdoptionResult.Posted)
+        assertNull(db.dashboardFactsDao().evidence(id)!!.dueAmount)
+        assertNull(BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+        // Simulate an untouched schema8 projection: its family was nullable and it stored a
+        // purchase outstanding amount. Neither the value nor the newer timestamp is a statement.
+        val old = db.dashboardFactsDao().evidence(id)!!
+        db.dashboardFactsDao().put(old.copy(facilityAsset = facility.id.localId, dueAmount = "9000.00", dueCurrency = "SAR", messageFamily = null))
+        assertNull(BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+        capture("older-statement", notice().copy(occurredAt = at.minusSeconds(60)))
+        assertEquals(Money.of("1250", Currency.SAR), BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+        val detail = BetaReviewWorkflow(db).detail(RoomBetaFinancialAdoption.key(id))!!
+        assertTrue(BetaReviewWorkflow(db).save(detail.token, "suppress-purchase", FinancialDecision.SuppressAsNonFinancial) is BetaCorrectionResult.Applied)
+        assertEquals(Money.of("1250", Currency.SAR), BetaDashboardBuilder.build(source().load(query)).snapshot.creditFacilities.single().statementDue)
+        assertEquals(1, RoomBetaFinancialLedger(db).history(RoomBetaFinancialAdoption.key(id)).size)
     }
 }
