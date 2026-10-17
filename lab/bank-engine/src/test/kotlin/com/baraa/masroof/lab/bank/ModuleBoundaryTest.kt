@@ -24,6 +24,8 @@ class ModuleBoundaryTest {
                 }
                 assertFalse("Fully qualified Android API in ${file.name}",
                     Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()))
+                assertFalse("Legacy interpreter reference in ${file.name}",
+                    Regex("com\\.baraa\\.masroof\\.lab\\.(engine|copy)\\.").containsMatchIn(file.readText()))
             }
         }
     }
@@ -40,7 +42,7 @@ class ModuleBoundaryTest {
         }
         assertEquals(emptySet<String>(), graph[":lab:finance-core"])
         assertEquals(setOf(":lab:finance-core"), graph[":lab:bank-engine"])
-        assertEquals(setOf(":lab:finance-core", ":lab:bank-engine", ":lab:engine"), graph[":lab:beta"])
+        assertEquals(setOf(":ui-kit", ":lab:finance-core", ":lab:bank-engine", ":lab:engine"), graph[":lab:beta"])
         fun visit(module: String, ancestors: Set<String>) {
             assertFalse("Dependency cycle: $ancestors -> $module", module in ancestors)
             graph[module].orEmpty().forEach { visit(it, ancestors + module) }
@@ -53,7 +55,8 @@ class ModuleBoundaryTest {
         File(root, "lab/beta/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.forEach { file ->
             imports.findAll(file.readText()).forEach { match ->
                 assertTrue("${file.name} imports production ${match.groupValues[1]}",
-                    match.groupValues[1].startsWith("com.baraa.masroof.lab."))
+                    match.groupValues[1].startsWith("com.baraa.masroof.lab.") ||
+                        match.groupValues[1].startsWith("com.baraa.masroof.ui."))
             }
         }
     }
