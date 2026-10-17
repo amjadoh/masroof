@@ -13,6 +13,5 @@ smoke_status=0
 mkdir -p m19-statement-screenshots beta-dashboard-screenshots
 adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
 adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
-adb pull /sdcard/Android/data/com.baraa.masroof.lab.beta.test/files/m0-entry/. beta-dashboard-screenshots || true
 if [ "$smoke_status" -ne 0 ]; then exit "$smoke_status"; fi
 find m19-statement-screenshots -name 'm19-*.png' | grep -q .

@@ -123,6 +123,7 @@ class BetaStartActivityTest {
         BetaContainer(context).use { it.putMarker("old-experiment", "discard"); it.putPreferenceProbe("old") }
         ActivityScenario.launch(BetaActivity::class.java).use {
             await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
+            compose.onNodeWithTag("beta-start-fresh-confirm").assertIsDisplayed()
             capture("m0-cleanup-confirmation")
             compose.onNodeWithTag("beta-start-fresh-cancel").performClick()
             compose.onNodeWithTag("beta-return").performClick()
@@ -156,7 +157,10 @@ class BetaStartActivityTest {
     }
     private fun assertProtectedPreferences() { BetaEnvironment.forbiddenPreferenceNames.forEach { name -> assertEquals("synthetic-$name", context.getSharedPreferences(name, 0).getString("m0-sentinel", null)) } }
     private fun capture(name: String) {
+        compose.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        automation.waitForIdle(100, 5000)
         fun command(value: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(value)).use { it.readBytes() }
         command("mkdir -p /sdcard/beta-dashboard-screenshots")
         command("screencap -p /sdcard/beta-dashboard-screenshots/$name.png")
@@ -169,5 +173,9 @@ class BetaStartActivityTest {
         file.writeText(metadata)
         val saved = file.readText()
         assertTrue(saved.contains("api=${Build.VERSION.SDK_INT}") && saved.contains("hardware=${Build.HARDWARE}"))
+        // AGP uninstalls the test APK before the CI helper pulls artifacts. Retain the
+        // synthetic diagnostics beside the screenshots while this package still exists.
+        command("cp ${file.absolutePath} /sdcard/beta-dashboard-screenshots/$name.txt")
+        assertEquals(metadata, command("cat /sdcard/beta-dashboard-screenshots/$name.txt").toString(Charsets.UTF_8))
     }
 }
