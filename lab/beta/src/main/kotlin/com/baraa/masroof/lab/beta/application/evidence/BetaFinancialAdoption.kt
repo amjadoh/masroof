@@ -15,12 +15,28 @@ data class BetaFinancialApproval(
     val source: AssetId?,
     val destination: AssetId?,
     val incomeAttribution: IncomeAttribution? = null,
+    val expectedRegistryRevision: String? = null,
 ) {
     init {
         require(evidenceId.isNotBlank() && archiveRevision.isNotBlank())
         require(listOfNotNull(source, destination).all { it.environment == Environment.BETA })
     }
 }
+
+/** Safe preserved facts, never experimental candidates or reconstructed financial authority. */
+data class BetaFinancialApprovalPreview(
+    val item: BetaFinancialReviewItem,
+    val amount: com.baraa.masroof.lab.finance.value.Money?,
+    val time: TransactionTime?,
+    val assets: List<com.baraa.masroof.lab.finance.asset.OwnedAsset>,
+    val registryRevision: String,
+    val pending: BetaFinancialApproval?,
+    val blockedReason: String?,
+    val correctionOwned: Boolean,
+    val merchant: String? = null,
+    val exchangeRate: String? = null,
+    val internationalFee: com.baraa.masroof.lab.finance.value.Money? = null,
+)
 
 data class BetaFinancialReviewItem(val evidenceId: String, val key: PostingKey,
     val archiveRevision: String, val status: String, val reason: String,

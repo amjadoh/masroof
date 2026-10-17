@@ -17,10 +17,29 @@ executed state and non-informational family. Only the reviewed AlJazira fixed
 `Asia/Riyadh` bank-clock policy is currently supported. Missing bank time fails
 closed; no device receipt clock or experimental candidate supplies money.
 
-This explicit API is operational and exercised against Room. The initial approval
-screen with a bank-fact preview and asset chooser is **not implemented** here.
-The separate Review UI can edit a posted row; it does not bootstrap approval of
-unposted archived evidence. No automatic financial posting is enabled.
+The Beta shell now exposes a separate initial approval queue and preview. It
+shows preserved baseline amount/currency/time and available merchant, SMS FX and
+fee facts, then requires explicit type, confirmed same-bank stable asset identities,
+external endpoints and inbound attribution. No default financial choices or
+last-four matches are submitted. The pure classifier disables invalid endpoint/type
+combinations before the write adapter independently validates them. An explicit
+confirmation checkbox is required and busy writes block editing and dismissal.
+
+Drafts survive recreation; Back/Cancel discard without posting. Preview keys bind
+evidence identity, archive revision, registry fingerprint, posting revision and the
+exact pending request, so changed observations reset drafts. The optional request
+registry fingerprint is persisted in the existing request JSON (old requests remain
+readable); a changed bank registry or disabled bank rejects a newly reviewed request.
+No schema migration is required by this approval UI.
+
+Pending decisions display their saved type and endpoints and support exact-request
+cancel/retry. Retry does not rewrite the durable intent: it checks the reviewed
+request and the atomic posting path checks the same saved intent again. A
+superseding request cannot be retried or cleared by an older screen. Success clears
+only the same request and preserves the existing idempotent history and complete
+FX pair. Correction-owned rows expose trusted reconciliation rather than fresh
+financial approval; suppression/manual decisions remain preserved. The correction
+editor remains separate. No automatic financial posting is enabled.
 
 ## Durable state and retries
 
@@ -88,3 +107,22 @@ changes, correction rebase and sticky safety. API 36 instrumentation adds 1→7 
 Existing smoke and external force-stop suites run unchanged in the existing
 emulator jobs; no second device matrix is introduced. Reopen is not claimed as a
 new external force-stop test for this adapter.
+
+## Initial approval verification and limits
+
+Meaningful JVM regressions cover preserved preview with no financial side effect,
+stale registry and archive, bank disable, unsafe OTP archive, exact pending request
+cancellation, superseded retry protection, inbound attribution and an actual stable
+asset ID named `external` distinguished from the external-party choice. Existing
+adoption, hold, correction and FX tests remain in the same suite.
+
+API 36 tests in the existing instrumentation job cover RTL draft recreation and
+cancel, explicit confirmation plus busy editing/dismissal protection, actual panel
+approval into Room with full SMS FX followed by close/reopen idempotent recovery,
+and actual panel retry of the reviewed durable request without duplicate history.
+These are synthetic isolated Beta data; the new approval adapter does not yet have
+a dedicated operating-system force-stop journey. Existing lifecycle CI is unchanged.
+
+This completes the initial approval entry point, not all M7/M5/M10 acceptance:
+experimental interpreter acceptance, automatic schedules, additional banks, broader
+owned-transfer pairing and full visual/financial parity still require their own gates.

@@ -23,6 +23,45 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     private val dao get() = database.financialAdoptionDao()
     private val ledger get() = RoomBetaFinancialLedger(database)
 
+    suspend fun preview(id: String): BetaFinancialApprovalPreview? = database.withTransaction {
+        if (database.evidenceDao().raw(id) == null) return@withTransaction null
+        val outcome = database.evidenceDao().outcome(id)
+        val adopted = dao.evidence(id)
+        val pending = dao.retry(id)?.let { decodeRequest(it.request) }
+        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val bank = outcome?.let { runCatching { rawBank(it) }.getOrNull() }
+        val choices = registry.values.filter { it.id.bank.value == bank }.sortedBy { it.id.localId }
+        val facts = outcome?.let { runCatching { baseline(it, null, null, FinancialType.EXPENSE, null, registry) }.getOrNull() }
+        val correctionOwned = database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null
+        val blocked = when {
+            database.evidenceDao().retry(id) != null -> "INTERPRETATION_PENDING"
+            outcome == null -> "NO_COMPLETED_ARCHIVE"
+            facts == null -> "UNSAFE_BASELINE"
+            database.bankSelectionDao().all().none { it.bankId == bank && it.state == "ENABLED" } -> "BANK_DISABLED"
+            correctionOwned -> "CORRECTION_OWNS_DECISION"
+            else -> null
+        }
+        val item = BetaFinancialReviewItem(id, key(id), outcome?.let(::fingerprint).orEmpty(),
+            if (pending != null) "RETRY" else adopted?.status ?: "UNAPPROVED",
+            adopted?.reason ?: "EXPLICIT_APPROVAL_REQUIRED", ledger.readAudit(key(id))?.command?.revision)
+        val display = if (facts != null) JSONObject(requireNotNull(outcome).baselineJson).getJSONObject("facts") else null
+        val fee = display?.takeUnless { it.isNull("internationalFee") }?.getJSONObject("internationalFee")?.let {
+            runCatching { Money.of(it.getString("amount"), Currency.valueOf(it.getString("currency"))) }.getOrNull() }
+        BetaFinancialApprovalPreview(item, facts?.amount, facts?.time,
+            java.util.Collections.unmodifiableList(choices.toList()), registryFingerprint(choices), pending, blocked, correctionOwned,
+            display?.text("merchant"), display?.text("exchangeRate"), fee)
+    }
+
+    private fun registryFingerprint(assets: Collection<OwnedAsset>): String {
+        val encoded = org.json.JSONArray()
+        assets.sortedWith(compareBy({ it.id.bank.value }, { it.id.localId })).forEach { asset ->
+            encoded.put(org.json.JSONArray(listOf(asset.id.bank.value, asset.id.localId, asset.kind.name,
+                asset.last4, asset.parentId?.localId, asset.creditCardRole?.name)))
+        }
+        return MessageDigest.getInstance("SHA-256").digest(encoded.toString().toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }
+
     suspend fun reviewPage(afterId: String = "", limit: Int = 25): List<BetaFinancialReviewItem> = database.withTransaction {
         require(limit in 1..100)
         database.evidenceDao().idsAfter(afterId, limit).map { id ->
@@ -50,9 +89,16 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         return result
     }
 
-    suspend fun retryApproval(id: String): BetaFinancialAdoptionResult {
+    suspend fun retryApproval(id: String, expected: BetaFinancialApproval? = null): BetaFinancialAdoptionResult {
         val request = dao.retry(id) ?: return review("NO_APPROVAL_RETRY")
-        return approve(decodeRequest(request.request))
+        if (expected != null && request.request != encodeRequest(expected)) return review("SUPERSEDED_APPROVAL")
+        // Never rewrite a newer request while retrying the exact intent the user reviewed.
+        val decoded = decodeRequest(request.request)
+        val result = approveAtomic(decoded, requireEnabledBank = expected != null)
+        if (result is BetaFinancialAdoptionResult.Posted && result.result.let {
+                it is FinancialPostingResult.Applied || it is FinancialPostingResult.AlreadyApplied })
+            database.withTransaction { if (dao.retry(id)?.request == request.request) dao.clearRetry(id) }
+        return result
     }
 
     /** Explicit cancellation affects only this exact pending request. It never clears a parser or
@@ -62,7 +108,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         else { dao.clearRetry(request.evidenceId); true }
     }
 
-    private suspend fun approveAtomic(request: BetaFinancialApproval): BetaFinancialAdoptionResult = database.withTransaction {
+    private suspend fun approveAtomic(request: BetaFinancialApproval, requireEnabledBank: Boolean = false): BetaFinancialAdoptionResult = database.withTransaction {
         if (dao.retry(request.evidenceId)?.request != encodeRequest(request)) return@withTransaction review("SUPERSEDED_APPROVAL")
         val outcome = database.evidenceDao().outcome(request.evidenceId)
             ?: return@withTransaction review("NO_COMPLETED_ARCHIVE")
@@ -85,6 +131,11 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (existing != null && adopted == null) return@withTransaction review("UNOWNED_EXISTING_POSTING")
         val raw = requireNotNull(database.evidenceDao().raw(request.evidenceId))
         val allAssets = BetaAssetRegistry(database).all().associateBy { it.id }
+        if (request.expectedRegistryRevision != null && request.expectedRegistryRevision !=
+            registryFingerprint(allAssets.values.filter { it.id.bank.value == rawBank(outcome) }))
+            return@withTransaction review("STALE_REGISTRY")
+        if ((request.expectedRegistryRevision != null || requireEnabledBank) && database.bankSelectionDao().all().none {
+                it.bankId == rawBank(outcome) && it.state == "ENABLED" }) return@withTransaction review("BANK_DISABLED")
         val next = try { baseline(outcome, request.source, request.destination, request.type,
             request.incomeAttribution, allAssets) } catch (_: Exception) { return@withTransaction review("UNSAFE_BASELINE") }
         if (next.assets.values.any { it.id.bank.value != rawBank(outcome) }) return@withTransaction review("CROSS_BANK_ENDPOINT")
@@ -255,14 +306,17 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             .put("expected", value.expectedPostingRevision?.let { "${it.correction}:${it.interpretation}" } ?: JSONObject.NULL)
             .put("type", value.type.name).put("source", asset(value.source) ?: JSONObject.NULL)
             .put("destination", asset(value.destination) ?: JSONObject.NULL)
-            .put("income", value.incomeAttribution?.name ?: JSONObject.NULL).toString()
+            .put("income", value.incomeAttribution?.name ?: JSONObject.NULL).apply {
+                value.expectedRegistryRevision?.let { put("registry", it) }
+            }.toString()
     }
     private fun decodeRequest(value: String): BetaFinancialApproval = JSONObject(value).let { json ->
         fun asset(name: String) = if (json.isNull(name)) null else json.getJSONObject(name).let {
             AssetId(Environment.BETA, BankId(it.getString("bank")), it.getString("id")) }
         BetaFinancialApproval(json.getString("id"), json.getString("archive"), json.text("expected")?.split(':')?.let {
             PostingRevision(it[0].toLong(), it[1].toLong()) }, FinancialType.valueOf(json.getString("type")),
-            asset("source"), asset("destination"), json.text("income")?.let(IncomeAttribution::valueOf))
+            asset("source"), asset("destination"), json.text("income")?.let(IncomeAttribution::valueOf),
+            if (json.has("registry")) json.getString("registry") else null)
     }
     companion object {
         fun key(evidenceId: String) = PostingKey(Environment.BETA, "evidence:$evidenceId")
