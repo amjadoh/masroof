@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.corrections.*
+import com.baraa.masroof.lab.beta.application.evidence.*
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.classification.*
 import com.baraa.masroof.lab.finance.corrections.*
@@ -305,12 +306,17 @@ class RoomBetaCorrectionLifecycleTest {
     @Test fun optionalAdoptionHoldAndRetryNeverFallBackToOldOrdinaryFinancialSnapshot() = runBlocking {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
+        val capturedAt = Instant.parse("2026-10-17T12:00:00Z")
+        RoomBetaEvidenceStore(db).capture(CapturedEvidence("evidence-transaction",
+            EvidenceRequest("review-fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
+            EvidenceMessage("evidence-transaction", "fixture", "synthetic only", capturedAt, ReceiptTimeSource.USER_SUPPLIED),
+            capturedAt, EvidenceRoute(RouteKind.MATCHED, setOf(bank), "review-fixture"), emptyList()))
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
         val columns = mutableListOf<String>()
         db.openHelper.writableDatabase.query("PRAGMA table_info(beta_financial_adoption)").use { while (it.moveToNext()) columns += it.getString(1) }
         val values: Map<String, Any> = mapOf("evidenceId" to "evidence-transaction", "transactionId" to "transaction", "status" to "REVIEW",
             "bankId" to bank.value, "archiveFingerprint" to "fixture", "reason" to "SECURITY", "approvedInput" to "{}",
-            "correction" to 0L, "interpretation" to 0L, "approvalRequest" to "{}")
+            "correction" to 0L, "interpretation" to 0L, "approvalRequest" to "{}", "observationRevision" to 0L)
         db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption (${columns.joinToString()}) VALUES (${columns.joinToString { "?" }})",
             columns.map { values.getValue(it) }.toTypedArray())
         assertNull(workflow.detail(first.input.key))
