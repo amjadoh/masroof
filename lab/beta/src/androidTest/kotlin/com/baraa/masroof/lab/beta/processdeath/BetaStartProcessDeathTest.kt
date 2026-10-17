@@ -24,18 +24,24 @@ class BetaStartProcessDeathTest {
     }
     @Test fun armUnacknowledged() {
         emulator()
-        BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()) }
+        BetaContainer(context).use {
+            it.putMarker("synthetic-old", "discard")
+            context.getDatabasePath(com.baraa.masroof.lab.beta.BetaEnvironment.PARSING_LAB_DATABASE_NAME).writeText("synthetic-old-lab")
+            it.startFresh()
+            assertEquals(BetaStartState.NEW, it.startState()); assertFalse(it.hasParsingLabHistory())
+        }
         mark()
     }
     @Test fun resumeAndAcknowledge() {
         resumed()
-        BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); it.acknowledgeStart() }
+        BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); it.acknowledgeStart(); it.putMarker("synthetic-new", "retain") }
         mark()
     }
     @Test fun resumeAcknowledged() {
         resumed()
         BetaContainer(context).use {
-            assertEquals(BetaStartState.READY, it.startState())
+            assertEquals(BetaStartState.READY, it.startState()); assertEquals(1, it.markerCount())
+            assertThrows(IllegalStateException::class.java) { it.startFresh() }
             assertTrue(it.assets().isEmpty()); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession())
             assertTrue(it.bankChoices().all { choice -> choice.state == null })
         }

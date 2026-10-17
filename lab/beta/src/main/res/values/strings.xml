@@ -158,4 +158,7 @@
     <string name="beta_start_begin">بدء التجربة</string>
     <string name="beta_start_resume">متابعة بيانات Beta الموجودة</string>
     <string name="beta_start_loading">جارٍ فتح Beta…</string>
+    <string name="beta_start_fresh">بدء تجربة نظيفة</string>
+    <string name="beta_start_fresh_warning">سيُحذف محتوى Beta القديم وتفضيلاته ونسخه المحلية، وقاعدة Parsing Lab ورسائلها وتصحيحاتها. لا يشمل ذلك بيانات مصروف الأساسي أو رسائل الهاتف. أغلق Parsing Lab أولًا. بعد بدء التجربة الجديدة تبقى بياناتك محفوظة عند كل فتح.</string>
+    <string name="beta_start_fresh_confirm">حذف التجارب القديمة</string>
 </resources>
