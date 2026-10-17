@@ -25,6 +25,7 @@ class BetaDashboardViewPreferencesWorkflowTest {
         val prefs = context.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
         assertTrue(prefs.all.values.all { it is String })
         BetaContainer(context).use { beta ->
+            beta.putMarker("synthetic-view-preferences", "isolated backup fixture")
             beta.backup(); workflow.save(BetaDashboardViewPreferences()); assertTrue(beta.restore())
         }
         assertEquals(chosen, BetaDashboardViewPreferencesWorkflow(context).read())
