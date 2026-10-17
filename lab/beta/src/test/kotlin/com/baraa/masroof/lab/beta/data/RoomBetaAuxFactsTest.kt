@@ -64,7 +64,7 @@ class RoomBetaAuxFactsTest {
     }
 
     @Test fun legacyNoticeAndOtp() = runBlocking {
-        val statement = actual("إصدار كشف حساب بطاقة ائتمانية\nبطاقة: **7271\nالمبلغ المستحق: 1,250.00 SAR\nالحد الأدنى: 125.00 SAR\nتاريخ الاستحقاق: 2026-08-25", "statement")
+        val statement = actual("إصدار كشف حساب بطاقة ائتمانية\nبطاقة: **7271\nإجمالي المبلغ المستحق: 1,250.00 SAR\nالحد الأدنى: 125.00 SAR\nتاريخ الاستحقاق: 2026-08-25", "statement")
         val otp = actual("رمز التحقق الخاص بك هو 482911. لا تشاركه مع أي شخص.", "otp")
         assertTrue(db.dashboardAuxFactsDao().evidence(statement)!!.nonFinancial)
         assertTrue(db.dashboardAuxFactsDao().evidence(otp)!!.nonFinancial)
