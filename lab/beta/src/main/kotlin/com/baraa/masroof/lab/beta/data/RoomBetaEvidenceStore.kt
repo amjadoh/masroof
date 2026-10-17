@@ -80,6 +80,7 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
 
     override suspend fun begin(id: String, at: Instant) = database.withTransaction {
         requireNotNull(dao.raw(id)) { "Unknown Beta evidence" }
+        database.financialAdoptionDao().hold(id, "INTERPRETATION_PENDING")
         val attempts = (dao.retry(id)?.attempts ?: dao.outcome(id)?.attempts ?: 0) + 1
         dao.retry(BetaEvidenceRetryEntity(id, EvidenceStage.INTERPRETATION.name, attempts, "INTERPRETATION_PENDING", at.toString()))
     }

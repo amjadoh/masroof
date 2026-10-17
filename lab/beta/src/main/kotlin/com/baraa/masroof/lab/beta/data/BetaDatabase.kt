@@ -15,8 +15,9 @@ import com.baraa.masroof.lab.beta.BetaEnvironment
     entities = [BetaShellMarkerEntity::class, BetaAssetEntity::class, BetaAssetAliasEntity::class, BetaBankSelectionEntity::class,
         BetaRawEvidenceEntity::class, BetaEvidenceOutcomeEntity::class, BetaEvidenceRetryEntity::class, BetaEvidenceDecisionEntity::class,
         BetaLedgerCurrentEntity::class, BetaLedgerHistoryEntity::class, BetaLedgerEvidenceClaimEntity::class, BetaLedgerProofClaimEntity::class,
-        BetaCorrectionCurrentEntity::class, BetaCorrectionAuditEntity::class, BetaCorrectionEvidenceClaimEntity::class, BetaCorrectionProofClaimEntity::class],
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6)],
+        BetaCorrectionCurrentEntity::class, BetaCorrectionAuditEntity::class, BetaCorrectionEvidenceClaimEntity::class, BetaCorrectionProofClaimEntity::class,
+        BetaFinancialAdoptionEntity::class, BetaFinancialApprovalRetryEntity::class],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7)],
     version = BetaDatabase.VERSION,
     exportSchema = true,
 )
@@ -26,10 +27,11 @@ abstract class BetaDatabase : RoomDatabase() {
     internal abstract fun evidenceDao(): BetaEvidenceDao
     internal abstract fun ledgerDao(): BetaLedgerDao
     internal abstract fun correctionDao(): BetaCorrectionDao
+    internal abstract fun financialAdoptionDao(): BetaFinancialAdoptionDao
     abstract fun shellMarkerDao(): BetaShellMarkerDao
 
     companion object {
         const val NAME: String = BetaEnvironment.DATABASE_NAME
-        const val VERSION: Int = 6
+        const val VERSION: Int = 7
     }
 }
