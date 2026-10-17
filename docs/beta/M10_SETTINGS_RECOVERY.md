@@ -67,6 +67,13 @@ itself is killed between moves, hashes identify already moved originals at their
 destination and recovery resumes. Missing/corrupt recovery originals fail closed
 with files preserved for recovery.
 
+An abrupt stop before the journal is published can leave an unreferenced private
+staging directory. It cannot become the active database. Automatic startup pruning
+is deferred; explicit confirmed Beta reset erases these validated stage directories
+as well as published generations. Metadata deletion is verified before deleting
+recovery originals, so an I/O failure cannot leave a journal pointing to discarded
+rollback material.
+
 The live database is closed before container maintenance. Offline restore callers
 must likewise have no open database handles; the actual Activity serializes all
 such work. Storage errors before cutover leave the live database untouched;
