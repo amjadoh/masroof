@@ -95,3 +95,8 @@ No installed production APK/data, signing key or real inbox is used.
 
 References: [Android cryptography](https://developer.android.com/privacy-and-security/cryptography),
 [Android Keystore](https://developer.android.com/privacy-and-security/keystore).
+
+The subsequent [M12 synthetic signed-update rehearsal](M12_SIGNED_UPDATE_REHEARSAL.md)
+adds rich financial recovery fixtures, measured native dashboard samples and an
+isolated test-only APK version1-to-version2 replacement. Its documented workload
+and trust limits do not complete production migration or portable recovery.
