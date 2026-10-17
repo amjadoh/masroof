@@ -340,4 +340,12 @@ class RoomBetaCorrectionLifecycleTest {
             if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("ALTER TABLE review_test_hidden_retry RENAME TO beta_financial_approval_retry")
         }
     }
+
+    @Test fun unrelatedRegistryEditDoesNotBlockAnOtherwiseCurrentReviewDecision() = runBlocking {
+        val first = base(); store().submit(first, command(first))
+        val workflow = BetaReviewWorkflow(db); val shown = workflow.detail(first.input.key)!!
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_asset SET last4='9999' WHERE localId='other'")
+        assertTrue(workflow.save(shown.token, "unrelated-asset-note", FinancialDecision.Keep, mapOf("note" to "still current")) is BetaCorrectionResult.Applied)
+        assertEquals("still current", store().read(first.input.key)!!.overlay.metadata["note"])
+    }
 }
