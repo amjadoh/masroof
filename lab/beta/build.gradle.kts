@@ -26,6 +26,8 @@ android {
     }
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        getByName("androidTest").java.srcDir("verification/kotlin")
+        getByName("test").java.srcDir("verification/kotlin")
     }
 }
 
