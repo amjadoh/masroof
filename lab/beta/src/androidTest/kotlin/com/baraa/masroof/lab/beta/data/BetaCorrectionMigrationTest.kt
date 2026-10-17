@@ -129,8 +129,8 @@ class BetaCorrectionMigrationTest {
             execSQL("INSERT INTO beta_ledger_evidence_claim VALUES ('BETA','backup-evidence','backup-transaction')")
             close()
         }
-        context.getDatabasePath(BetaDatabase.NAME).copyTo(File(context.filesDir, BetaEnvironment.BACKUP_DATABASE_FILE_NAME), overwrite = true)
-        File(context.filesDir, BetaEnvironment.BACKUP_PREFS_FILE_NAME).writeText("${BetaContainer.PREFERENCE_PROBE_KEY}=v5-backup")
+        com.baraa.masroof.lab.beta.BetaBackupRecovery(context).publish(context.getDatabasePath(BetaDatabase.NAME),
+            mapOf(BetaContainer.PREFERENCE_PROBE_KEY to "v5-backup"))
         context.deleteDatabase(BetaDatabase.NAME)
         assertTrue(BetaContainer.restoreOffline(context))
         BetaContainer(context).use { beta ->
