@@ -290,4 +290,40 @@ class ProcessBetaEvidenceTest {
         }
         assertEquals("production-canary", production.readText())
     }
+    @Test fun duplicateImportAfterDisableCannotResumePendingInterpretationOrChangeSavedHistory() = runBlocking {
+        val broken = workflow(compare = EvidenceComparer { _, _ -> calls++; error("synthetic interruption") })
+        val first = stored(broken.importBatch(request, listOf(message())).single())
+        assertTrue(broken.decide(first.id, 0, EvidenceReviewDecision.KEEP_FOR_REVIEW))
+        val raw = db.evidenceDao().raw(first.id)
+        val retry = db.evidenceDao().retry(first.id)
+        val decision = db.evidenceDao().decision(first.id)
+        selectionRows = listOf(UserBankSelection(bank, BankSelectionState.DISABLED))
+        reopen()
+        assertEquals(EvidenceResult.NotCaptured(ScopeRejection.NOT_ENABLED),
+            workflow().importBatch(request, listOf(message())).single())
+        assertEquals(raw, db.evidenceDao().raw(first.id))
+        assertEquals(retry, db.evidenceDao().retry(first.id))
+        assertEquals(decision, db.evidenceDao().decision(first.id))
+        assertEquals(1, calls)
+        // Saved review has a separate explicit reprocess action, even while the bank is paused.
+        assertNull(workflow().reprocess(first.id).retryStage)
+        assertEquals(2, calls)
+        assertEquals(decision, db.evidenceDao().decision(first.id))
+    }
+
+    @Test fun duplicateHistoryOutsideCurrentRequestedBankScopeIsExcludedWithoutChangingExistingEvidence() = runBlocking {
+        val original = request.copy(origin = EvidenceOrigin.EXPLICIT_HISTORY, historyBanks = setOf(bank))
+        val first = stored(workflow().importBatch(original, listOf(message())).single())
+        val raw = db.evidenceDao().raw(first.id)
+        val outcome = db.evidenceDao().outcome(first.id)
+        selectionRows = listOf(UserBankSelection(bank, BankSelectionState.ENABLED), UserBankSelection(other, BankSelectionState.ENABLED))
+        val otherSession = original.copy(historyBanks = setOf(other))
+        assertEquals(EvidenceResult.NotCaptured(ScopeRejection.OUTSIDE_REQUESTED_HISTORY),
+            workflow().importBatch(otherSession, listOf(message())).single())
+        assertEquals(raw, db.evidenceDao().raw(first.id))
+        assertEquals(outcome, db.evidenceDao().outcome(first.id))
+        assertEquals(1, calls)
+        assertEquals(first, stored(workflow().importBatch(original, listOf(message())).single()))
+    }
+
 }
