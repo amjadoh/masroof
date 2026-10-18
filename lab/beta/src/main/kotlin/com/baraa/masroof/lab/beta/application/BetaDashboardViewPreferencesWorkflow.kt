@@ -47,4 +47,15 @@ class BetaDashboardViewPreferencesWorkflow(context: Context) {
         }
     }
 
+    suspend fun readHomeLayout(): BetaHomeLayout = withContext(BetaIo.dispatcher) {
+        runCatching { BetaHomeLayout.decode(preferences().getString("dashboard_home_layout", null)) }.getOrDefault(BetaHomeLayout())
+    }
+    /** Compare-and-save prevents another open editor from silently overwriting the saved layout. */
+    suspend fun saveHomeLayout(expected: BetaHomeLayout, next: BetaHomeLayout): Boolean = withContext(BetaIo.dispatcher) {
+        val prefs = preferences()
+        val current = runCatching { BetaHomeLayout.decode(prefs.getString("dashboard_home_layout", null)) }.getOrDefault(BetaHomeLayout())
+        if (current != expected) false
+        else { check(prefs.edit().putString("dashboard_home_layout", next.encode()).commit()); true }
+    }
+
 }

@@ -58,7 +58,7 @@ class RoomBetaDashboardSource(
             fingerprint("BETA_DASHBOARD_CURRENT_1")
             fingerprint(query.toString())
             val schema = database.openHelper.readableDatabase.version
-            check(schema in 6..11) { "Unsupported Beta dashboard schema" }
+            check(schema in 6..BetaDatabase.VERSION) { "Unsupported Beta dashboard schema" }
             fingerprint(schema.toString())
             val configuration = if (schema >= 10) RoomBetaDashboardConfiguration(database).current() else null
             val configured = configuration?.takeIf { it.revision > 0 }?.let { BetaConfiguredPeriods.periods(it.draft, query, readAt) } ?: DashboardPeriods()

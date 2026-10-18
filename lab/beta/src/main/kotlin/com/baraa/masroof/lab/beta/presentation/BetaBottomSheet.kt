@@ -21,8 +21,8 @@ internal fun BetaBottomSheet(title: String, busy: Boolean, onCancel: () -> Unit,
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true,
         confirmValueChange = { it != SheetValue.Hidden || !currentBusy })
     ModalBottomSheet(onDismissRequest = { if (!currentBusy) onCancel() }, sheetState = state,
-        sheetMaxWidth = BetaSheetTokens.maxWidth) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(BetaSheetTokens.heightFraction).testTag("dash-sheet")) {
+        sheetMaxWidth = com.baraa.masroof.ui.theme.MasroofSheetTokens.maxWidth) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(com.baraa.masroof.ui.theme.MasroofSheetTokens.windowHeightFraction).testTag("dash-sheet")) {
             Text(title, Modifier.padding(BetaSpacing.screen), style = MaterialTheme.typography.titleLarge)
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(BetaSpacing.screen).testTag("dash-sheet-body"),
                 verticalArrangement = Arrangement.spacedBy(BetaSpacing.section), content = content)
@@ -33,10 +33,4 @@ internal fun BetaBottomSheet(title: String, busy: Boolean, onCancel: () -> Unit,
             }
         }
     }
-}
-
-/** Neutral MasroofSheetTokens mirror; the isolated module cannot depend on :app. */
-private object BetaSheetTokens {
-    val maxWidth = 560.dp
-    const val heightFraction = .94f
 }

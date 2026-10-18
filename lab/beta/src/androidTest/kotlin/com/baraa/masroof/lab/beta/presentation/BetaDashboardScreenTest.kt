@@ -289,7 +289,7 @@ class BetaDashboardScreenTest {
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // A purchase does not establish a statement due.
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-facility")
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-card").performScrollTo().performClick()
-            compose.onNodeWithText("16958.89 SAR").assertExists()
+            compose.onNodeWithText(com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(BigDecimal("16958.89"), "SAR", "ar")).assertExists()
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-card")
             compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
@@ -299,7 +299,7 @@ class BetaDashboardScreenTest {
         }
     }
 
-    @Test fun authoritativeFacilityDueIsDisplayedOnceAndNeverCopiedToMemberCards() {
+    @Test fun authoritativeFacilityDueIsDisplayedOnceAndReferencedExplicitlyByMemberDetails() {
         val facilityId = AssetId(Environment.BETA, bank, "statement-facility")
         fun card(id: String, last4: String, role: CreditCardRole) = CreditCardSummary(
             AssetId(Environment.BETA, bank, id), role, null, last4, null, null, null, null, null)
@@ -319,13 +319,17 @@ class BetaDashboardScreenTest {
         waitLoaded(); route("CARDS")
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+        compose.onAllNodesWithText(com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())).assertCountEquals(1)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-primary").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onAllNodesWithText(com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())).assertCountEquals(1)
+        compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_detail_shared_due)).assertExists()
+        assertEquals(Money.of("2694.32", Currency.SAR), facility.statementDue) // Shared reference never duplicates financial authority.
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-supplementary").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onAllNodesWithText(com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())).assertCountEquals(1)
+        compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_detail_shared_due)).assertExists()
+        assertEquals(Money.of("2694.32", Currency.SAR), facility.statementDue) // Shared reference never duplicates financial authority.
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         route("LOANS")
         compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_asset_loan)).assertExists()

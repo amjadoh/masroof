@@ -26,6 +26,7 @@ internal fun BetaAssetEditor(
     onSave: (ManualAssetDraft) -> Unit,
     onCancel: () -> Unit,
     proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal? = null,
+    initialKind: AssetKind = AssetKind.ACCOUNT,
 ) {
     val localId = rememberSaveable { existing?.id?.localId ?: proposal?.id?.localId ?: UUID.randomUUID().toString() }
     val originalKind by rememberSaveable { mutableStateOf(existing?.kind?.name) }
@@ -35,7 +36,7 @@ internal fun BetaAssetEditor(
     val stableId = AssetId(Environment.BETA, bank, localId)
     val original = originalKind?.let { OwnedAsset(stableId, AssetKind.valueOf(it), originalSuffix,
         originalParent?.let { parent -> AssetId(Environment.BETA, bank, parent) }, originalRole?.let(CreditCardRole::valueOf)) }
-    var kindName by rememberSaveable { mutableStateOf((existing?.kind ?: proposal?.kind ?: AssetKind.ACCOUNT).name) }
+    var kindName by rememberSaveable { mutableStateOf((existing?.kind ?: proposal?.kind ?: initialKind).name) }
     var suffix by rememberSaveable { mutableStateOf((existing?.last4 ?: proposal?.last4).orEmpty()) }
     var parentLocalId by rememberSaveable { mutableStateOf(existing?.parentId?.localId) }
     var roleName by rememberSaveable { mutableStateOf((existing?.creditCardRole ?: CreditCardRole.PRIMARY).name) }
