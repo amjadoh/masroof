@@ -27,6 +27,8 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
     var failed by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
     var original by remember { mutableStateOf(TextFieldValue()) }
+    var selectedStart by remember { mutableIntStateOf(-1) }
+    var selectedEnd by remember { mutableIntStateOf(-1) }
     var fieldName by rememberSaveable { mutableStateOf(BetaLabelField.FAMILY.name) }
     var value by rememberSaveable { mutableStateOf("") }
     var decisionId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
@@ -38,7 +40,7 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
         review = withContext(BetaIo.dispatcher) { container.interpretationReview(evidenceId) }
         original = TextFieldValue(review?.body.orEmpty())
         // A reopened/restored form must not silently attach an old draft to a new interpretation.
-        value = ""; confirmed = false; decisionId = UUID.randomUUID().toString()
+        value = ""; confirmed = false; selectedStart = -1; selectedEnd = -1; decisionId = UUID.randomUUID().toString()
         loaded = true
     }
     LaunchedEffect(evidenceId) {
@@ -54,10 +56,18 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
         if (loaded && review == null) Text(stringResource(R.string.beta_label_unavailable))
         review?.let { current ->
             OutlinedTextField(value = original, readOnly = true, enabled = !busy,
-                onValueChange = { original = it.copy(text = current.body) },
+                onValueChange = { next ->
+                    original = next.copy(text = current.body)
+                    if (!next.selection.collapsed) {
+                        selectedStart = next.selection.min; selectedEnd = next.selection.max; confirmed = false
+                    }
+                },
                 label = { Text(stringResource(R.string.beta_label_original)) },
                 modifier = Modifier.fillMaxWidth().testTag("label-original"))
             Text(stringResource(R.string.beta_label_select))
+            if (selectedStart >= 0 && selectedEnd > selectedStart) {
+                Text(stringResource(R.string.beta_label_selected, current.body.substring(selectedStart, selectedEnd)), modifier = Modifier.testTag("label-selected"))
+            }
             Box {
                 OutlinedButton(enabled = !busy, onClick = { fieldsOpen = true }, modifier = Modifier.testTag("label-field")) {
                     Text(stringResource(labelFieldName(field)))
@@ -92,9 +102,9 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
                 Checkbox(checked = confirmed, enabled = !busy, onCheckedChange = { confirmed = it }, modifier = Modifier.testTag("label-confirm"))
                 Text(stringResource(R.string.beta_label_confirm))
             }
-            Button(enabled = !busy && confirmed && value.isNotBlank() && !original.selection.collapsed,
+            Button(enabled = !busy && confirmed && value.isNotBlank() && selectedStart >= 0 && selectedEnd > selectedStart,
                 modifier = Modifier.testTag("label-save"), onClick = {
-                    val draft = BetaLabelDraft(current.token, decisionId, field, value, original.selection.min, original.selection.max, confirmed)
+                    val draft = BetaLabelDraft(current.token, decisionId, field, value, selectedStart, selectedEnd, confirmed)
                     busy = true; failed = false
                     scope.launch {
                         try {
