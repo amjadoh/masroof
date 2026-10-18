@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 /** Opening a queue or preview never grants financial authority. Every action is explicit. */
 @Composable
 internal fun BetaFinancialApprovalPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var after by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var rows by remember { mutableStateOf<List<BetaFinancialReviewItem>?>(null) }
@@ -31,7 +31,7 @@ internal fun BetaFinancialApprovalPanel(container: BetaContainer, onClose: () ->
     var generation by remember { mutableIntStateOf(0) }
     SideEffect { onBusyChanged(busy) }
     DisposableEffect(Unit) { onDispose { onBusyChanged(false) } }
-    LaunchedEffect(after, selected, generation) {
+    BetaLaunchedEffect(after, selected, generation) {
         rows = null; preview = null; failed = false
         try {
             val snapshot = withContext(BetaIo.dispatcher) {

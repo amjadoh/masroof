@@ -1,5 +1,8 @@
 package com.baraa.masroof.lab.beta.presentation
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +22,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalTestApi::class)
 class BetaInterpretationReviewScreenTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>(effectContext = kotlinx.coroutines.test.StandardTestDispatcher())
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var beta: BetaContainer
     @Before fun open() { BetaContainer.resetOffline(context); beta = BetaContainer(context) }
@@ -88,6 +91,48 @@ class BetaInterpretationReviewScreenTest {
             compose.onAllNodesWithTag("label-save").fetchSemanticsNodes().singleOrNull()?.config
                 ?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == false
         }
+    }
+
+    @Test fun uiEffectsAndActionsResumeOnMainAfterIo() {
+        val effectGate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val actionGate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val effectEntered = java.util.concurrent.atomic.AtomicBoolean(false)
+        val actionEntered = java.util.concurrent.atomic.AtomicBoolean(false)
+        compose.setContent {
+            val scope = rememberBetaUiScope()
+            var effectDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            var actionDone by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            BetaLaunchedEffect(Unit) {
+                kotlinx.coroutines.withContext(com.baraa.masroof.lab.beta.BetaIo.dispatcher) {
+                    effectEntered.set(true); effectGate.await()
+                    assertNotEquals(android.os.Looper.getMainLooper(), android.os.Looper.myLooper())
+                }
+                assertEquals(android.os.Looper.getMainLooper(), android.os.Looper.myLooper())
+                effectDone = true
+            }
+            androidx.compose.foundation.layout.Column {
+                androidx.compose.material3.Text(if (effectDone) "effect-main" else "effect-pending")
+                androidx.compose.material3.Button(onClick = {
+                    scope.launch {
+                        kotlinx.coroutines.withContext(com.baraa.masroof.lab.beta.BetaIo.dispatcher) {
+                            actionEntered.set(true); actionGate.await()
+                        }
+                        assertEquals(android.os.Looper.getMainLooper(), android.os.Looper.myLooper())
+                        actionDone = true
+                    }
+                }) { androidx.compose.material3.Text("start-main-action") }
+                androidx.compose.material3.Text(if (actionDone) "action-main" else "action-pending")
+            }
+        }
+        compose.waitUntil(15000) { effectEntered.get() }
+        compose.runOnIdle { } // The UI has yielded while IO is still suspended.
+        effectGate.complete(Unit)
+        compose.waitUntil(15000) { compose.onAllNodesWithText("effect-main").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("start-main-action").performClick()
+        compose.waitUntil(15000) { actionEntered.get() }
+        compose.runOnIdle { }
+        actionGate.complete(Unit)
+        compose.waitUntil(15000) { compose.onAllNodesWithText("action-main").fetchSemanticsNodes().isNotEmpty() }
     }
 
 }

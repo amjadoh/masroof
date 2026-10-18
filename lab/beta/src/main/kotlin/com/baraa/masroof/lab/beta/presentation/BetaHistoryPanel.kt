@@ -31,7 +31,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         return
     }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var session by remember { mutableStateOf<HistorySession?>(null) }
     var page by remember { mutableStateOf<List<EvidenceSummary>>(emptyList()) }
     var after by rememberSaveable { mutableStateOf("") }
@@ -81,7 +81,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         // A grant does not authorize an automatic restarted import; user explicitly resumes/starts.
         if (granted && requested != null) scan(requested.takeIf { it != 0 })
     }
-    LaunchedEffect(Unit) {
+    BetaLaunchedEffect(Unit) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed = true }
     }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {

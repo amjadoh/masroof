@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun BetaSettingsPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onChanged: () -> Unit = {}) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var archivePassword by remember { mutableStateOf("") }
     var passwordRepeat by remember { mutableStateOf("") }
     var pendingPassword by remember { mutableStateOf<CharArray?>(null) }
@@ -52,7 +52,7 @@ fun BetaSettingsPanel(container: BetaContainer, onClose: () -> Unit, onBusyChang
         val settings = withContext(BetaIo.dispatcher) { container.settings() }
         theme = settings.theme; backupAvailable = settings.backupAvailable
     }
-    LaunchedEffect(Unit) {
+    BetaLaunchedEffect(Unit) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { result = "FAILED" }
     }

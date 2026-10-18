@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsset>, onSelect: (BetaAssetProposal) -> Unit, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var busy by remember { mutableStateOf(false) }
     var generation by remember { mutableIntStateOf(0) }
     SideEffect { onBusyChanged(busy) }
@@ -26,7 +26,7 @@ internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsse
     var after by rememberSaveable { mutableStateOf("") }
     var page by remember { mutableStateOf<BetaDiscoveryPage?>(null) }
     var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(after, generation) {
+    BetaLaunchedEffect(after, generation) {
         try { page = withContext(BetaIo.dispatcher) { container.discoveryPage(after) } }
         catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (_: Exception) { page = null; failed = true }

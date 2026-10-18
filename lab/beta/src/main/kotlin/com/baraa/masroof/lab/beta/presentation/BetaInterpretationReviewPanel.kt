@@ -21,7 +21,7 @@ import java.util.UUID
 @Composable
 internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId: String, onClose: () -> Unit,
     onBusyChanged: (Boolean) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var review by remember { mutableStateOf<BetaInterpretationReview?>(null) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
@@ -43,7 +43,7 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
         value = ""; confirmed = false; selectedStart = -1; selectedEnd = -1; decisionId = UUID.randomUUID().toString()
         loaded = true
     }
-    LaunchedEffect(evidenceId) {
+    BetaLaunchedEffect(evidenceId) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed = true; loaded = true }
     }
     SideEffect { onBusyChanged(busy) }

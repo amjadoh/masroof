@@ -15,9 +15,8 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalTestApi::class)
 class BetaSettingsActivityTest {
-    @get:Rule val compose = createEmptyComposeRule(effectContext = kotlinx.coroutines.test.StandardTestDispatcher())
+    @get:Rule val compose = createEmptyComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
 
     @Test fun actualActivityRestoresSettingsRouteThemeAndUncommittedConfirmationAfterRecreation() {
