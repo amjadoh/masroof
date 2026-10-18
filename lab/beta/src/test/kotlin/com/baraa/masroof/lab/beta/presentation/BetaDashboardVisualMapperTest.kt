@@ -1,7 +1,10 @@
 package com.baraa.masroof.lab.beta.presentation
 
+import com.baraa.masroof.lab.finance.asset.AssetId
+import com.baraa.masroof.lab.finance.asset.CreditCardRole
 import com.baraa.masroof.lab.finance.dashboard.*
 import com.baraa.masroof.lab.finance.dashboard.producer.DashboardProduction
+import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.lab.finance.value.Currency
 import com.baraa.masroof.lab.finance.value.Environment
 import com.baraa.masroof.lab.finance.value.Money
@@ -41,5 +44,40 @@ class BetaDashboardVisualMapperTest {
         val mapped = checkNotNull(BetaDashboardVisualMapper.trend(known))
         assertEquals(listOf(BigDecimal("-20.25")), mapped.values)
         assertEquals(listOf("2026-10-01"), mapped.dates); assertNull(mapped.average)
+    }
+
+    @Test fun accountFlowOmitsZeroRowsAndKeepsSignedMovement() {
+        val flow = accountFlow(FlowBucket.SALARY to "10.00", FlowBucket.POS_PURCHASES to "40.00", FlowBucket.INTERNAL_IN to "5.00")
+        assertEquals(0, flow.cashPosition.amount.compareTo(BigDecimal("-25.00")))
+        assertEquals(listOf(FlowBucket.SALARY), BetaAssetDetailFacts.lines(flow, BetaAssetDetailFacts.externalIn).map { it.bucket })
+        assertEquals(listOf(FlowBucket.POS_PURCHASES), BetaAssetDetailFacts.lines(flow, BetaAssetDetailFacts.externalOut).map { it.bucket })
+        assertEquals(listOf(FlowBucket.INTERNAL_IN), BetaAssetDetailFacts.lines(flow, BetaAssetDetailFacts.internal).map { it.bucket })
+        assertEquals(0, BetaAssetDetailFacts.lines(accountFlow(), BetaAssetDetailFacts.externalIn).size)
+    }
+
+    @Test fun memberCardAmountsExcludeFacilityDue() {
+        val card = CreditCardSummary(AssetId(Environment.BETA, BankId("BANK_ALJAZIRA"), "card"), CreditCardRole.SUPPLEMENTARY,
+            null, "7288", null, null, PeriodSpending(DisplayPeriod(from, until, query.zone, PeriodKind.STATEMENT, null),
+                SignedAmount(BigDecimal("12.00"), Currency.SAR)), SignedAmount(BigDecimal("100.00"), Currency.SAR), null)
+        val shown = BetaAssetDetailFacts.memberCardAmounts(card).mapNotNull { it?.amount }
+        assertEquals(listOf(BigDecimal("100.00"), BigDecimal("12.00")), shown)
+        assertFalse(shown.any { it.compareTo(BigDecimal("2694.32")) == 0 })
+        assertNull(BetaAssetDetailFacts.knownLoanType("UNKNOWN"))
+        assertNull(BetaAssetDetailFacts.knownLoanType("fixture"))
+        assertEquals("PERSONAL", BetaAssetDetailFacts.knownLoanType("PERSONAL"))
+    }
+
+    private fun accountFlow(vararg entries: Pair<FlowBucket, String>): AccountFlow {
+        val buckets = FlowBucket.entries.associateWith { bucket ->
+            Money.of(entries.firstOrNull { it.first == bucket }?.second ?: "0", Currency.SAR)
+        }
+        fun sum(keys: List<FlowBucket>) = keys.fold(BigDecimal.ZERO) { total, key -> total + buckets.getValue(key).amount }
+        val externalIn = sum(BetaAssetDetailFacts.externalIn)
+        val externalOut = sum(BetaAssetDetailFacts.externalOut)
+        val totalIn = externalIn + sum(listOf(FlowBucket.INTERNAL_IN))
+        val totalOut = externalOut + sum(listOf(FlowBucket.INTERNAL_OUT))
+        fun signed(value: BigDecimal) = SignedAmount(value.setScale(2), Currency.SAR)
+        return AccountFlow(Currency.SAR, buckets, Money.of(totalIn, Currency.SAR), Money.of(totalOut, Currency.SAR),
+            Money.of(externalIn, Currency.SAR), Money.of(externalOut, Currency.SAR), signed(externalIn - externalOut), signed(totalIn - totalOut))
     }
 }
