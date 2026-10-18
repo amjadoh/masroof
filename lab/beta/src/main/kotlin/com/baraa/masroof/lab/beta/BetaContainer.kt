@@ -27,6 +27,8 @@ import kotlinx.coroutines.runBlocking
  */
 class BetaContainer(
     context: Context,
+    private val evidenceInterpreter: com.baraa.masroof.lab.beta.application.evidence.EvidenceComparer =
+        com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(),
 ) : AutoCloseable {
     private val appContext = context.applicationContext
     private val lock = ReentrantLock()
@@ -102,7 +104,7 @@ class BetaContainer(
         runBlocking { BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database)).choices() }
     }
 
-    /** Explicit caller-supplied batch, comparison only; no inbox access or live scheduling. */
+    /** Explicit caller-supplied batch through the independent engine; no inbox access or live scheduling. */
     fun importEvidence(request: com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest,
         messages: List<com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage>) = lock.withLock {
         check(!closed)
@@ -199,7 +201,7 @@ class BetaContainer(
     private fun evidenceWorkflow() = com.baraa.masroof.lab.beta.application.evidence.ProcessBetaEvidence(
         com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database), RoomBetaBankSelectionStore(database),
         com.baraa.masroof.lab.beta.application.evidence.LabEvidenceRouter(),
-        com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer())
+        evidenceInterpreter)
 
     fun historySession() = lock.withLock {
         check(!closed)

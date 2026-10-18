@@ -28,6 +28,9 @@ android {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
         getByName("androidTest").java.srcDir("verification/kotlin")
         getByName("test").java.srcDir("verification/kotlin")
+        // Beta-internal Room checks shared by its JVM and device tests, not the separate upgrade host.
+        getByName("androidTest").java.srcDir("runtime-verification/kotlin")
+        getByName("test").java.srcDir("runtime-verification/kotlin")
     }
 }
 

@@ -44,7 +44,11 @@ internal class ObservationExtractor(
             val found = linkedSetOf<String>()
             reader.read(header).forEach { row ->
                 val candidates = keys.filter { id -> configured[id].orEmpty().any { key(it) == key(row.normalized) } }
-                if (candidates.size != 1) fail("UNKNOWN_OR_AMBIGUOUS_$header") else found += candidates.single()
+                if (candidates.size != 1) fail("UNKNOWN_OR_AMBIGUOUS_$header") else {
+                    val id = candidates.single()
+                    found += id
+                    evidence += source.evidence("extract.observation.role", "observation.$id", row.range)
+                }
             }
             keys.forEach { id -> configured[id].orEmpty().forEach { phrase ->
                 source.phrase(phrase).findAll(source.text).filter { scoped(it.range, boundField) }.forEach { match ->
