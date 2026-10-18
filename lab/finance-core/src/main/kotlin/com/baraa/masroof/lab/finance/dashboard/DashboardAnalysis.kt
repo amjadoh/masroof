@@ -74,6 +74,8 @@ data class SpendingTrend(
     val points: List<DailySpending>,
     val averageDailySpending: SignedAmount?,
     val scope: TrendScope = TrendScope.OVERALL,
+    /** Elapsed-point total computed by the owning builder, never summed in Compose. */
+    val totalSpending: SignedAmount? = null,
 ) {
     init {
         require((scope == TrendScope.ASSET) == (assetId != null))
@@ -83,7 +85,7 @@ data class SpendingTrend(
             val nextDay = it.date.plusDays(1).atStartOfDay(period.zone).toInstant()
             day < period.until && nextDay > period.from
         })
-        requireSignedCurrency(currency, averageDailySpending, *points.flatMap {
+        requireSignedCurrency(currency, totalSpending, averageDailySpending, *points.flatMap {
             listOfNotNull(it.net, it.beforeRefunds, it.refunds)
         }.toTypedArray())
     }
@@ -97,7 +99,9 @@ data class DailySpending(
     val transactions: Set<PostingKey>,
 )
 
-data class MerchantSpending(val merchant: String, val net: SignedAmount)
+data class MerchantSpending(val merchant: String, val net: SignedAmount, val purchaseTransactionCount: Int? = null) {
+    init { require(purchaseTransactionCount == null || purchaseTransactionCount >= 0) }
+}
 
 /** Missing metric is rejected. Null value marks unavailable; valid empty history has explicit zero.
  * Chart selection filters trends only; it never changes these full-scope summary metrics.

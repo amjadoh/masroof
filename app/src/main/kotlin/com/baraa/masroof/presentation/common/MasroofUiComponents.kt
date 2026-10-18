@@ -9,16 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofOutlinedButton as OutlinedButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,34 +53,10 @@ fun SectionHeader(
     onViewAll: (() -> Unit)? = null,
     viewAllLabel: String? = null,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
-            modifier = Modifier.weight(1f),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(MasroofIconSizes.sectionHeader),
-            )
-            MasroofSectionTitle(title = title, modifier = Modifier.fillMaxWidth())
-        }
-        if (onViewAll != null && viewAllLabel != null) {
-            TextButton(onClick = onViewAll) {
-                Text(
-                    viewAllLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-    }
+    com.baraa.masroof.ui.dashboard.DashboardSectionHeading(
+        com.baraa.masroof.application.locale.AppDigits.display(title), icon, modifier,
+        viewAllLabel?.let(com.baraa.masroof.application.locale.AppDigits::display), onViewAll)
+
 }
 
 @Composable

@@ -64,13 +64,7 @@ fun MasroofTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enable
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
     contentPadding: PaddingValues = PaddingValues(horizontal = MasroofSpacing.none, vertical = MasroofSpacing.inlineGap),
     content: @Composable RowScope.() -> Unit) {
-    Surface(onClick = onClick, modifier = modifier, enabled = enabled,
-        color = androidx.compose.ui.graphics.Color.Transparent,
-        contentColor = if (enabled) colors.contentColor else colors.disabledContentColor) {
-        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-            Row(Modifier.padding(contentPadding), verticalAlignment = Alignment.CenterVertically, content = content)
-        }
-    }
+    com.baraa.masroof.ui.components.MasroofTextButton(onClick, modifier, enabled, colors, contentPadding, content)
 }
 
 @Composable

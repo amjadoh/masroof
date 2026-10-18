@@ -18,11 +18,7 @@ fun MasroofLogo(
     size: Dp = MasroofIconSizes.logo,
     contentDescription: String? = null,
 ) {
-    Image(
-        painter = painterResource(R.drawable.masroof_approved_logo),
-        contentDescription = contentDescription,
-        modifier = modifier.size(size).clip(MasroofLogoShape),
-    )
+    com.baraa.masroof.ui.components.MasroofLogo(modifier, size, contentDescription)
 }
 
 @Composable
