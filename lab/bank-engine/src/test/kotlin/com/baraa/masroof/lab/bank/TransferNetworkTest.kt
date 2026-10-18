@@ -14,7 +14,7 @@ class TransferNetworkTest {
     private val outgoing = "Outgoing transfer\nAmount: SAR 100\nFrom account: 1234\nTo account: 5678\n2026-10-18 13:00"
     private val incoming = outgoing.replace("Outgoing", "Incoming")
     private val schema get() = RuleLibrary.current().let { it.copy(network = it.network.copy(bankAliases = mapOf(
-        "LOCAL" to listOf("Local Bank", "البنك المحلي"), "REMOTE" to listOf("Remote Bank", "البنك الآخر")))) }
+        "LOCAL" to listOf("Local Bank", "ط§ظ„ط¨ظ†ظƒ ط§ظ„ظ…ط­ظ„ظٹ"), "REMOTE" to listOf("Remote Bank", "ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±")))) }
     private fun input(body: String) = MessageInput("transfer-fixture", "SyntheticSender", body, Instant.parse("2026-10-18T10:00:00Z"))
     private fun parse(body: String, config: BankRuleSchema = schema) = RuleInterpreter(config).interpret(input(body), catalog)
 
@@ -88,12 +88,12 @@ class TransferNetworkTest {
     }
 
     @Test fun originalArabicEvidenceAndEqualLast4AcrossBanksStayDistinct() {
-        val body = "😀\r\nحوالة صادرة\r\nبمبلغ: ١٠٠ SAR\r\nمن حساب: ١٢٣٤\r\nإلى حساب: ١٢٣٤\r\nبنك المستفيد: البنك الآخر\r\n٢٠٢٦-١٠-١٨ ١٣:٠٠"
+        val body = "ًںک€\r\nط­ظˆط§ظ„ط© طµط§ط¯ط±ط©\r\nط¨ظ…ط¨ظ„ط؛: ظ،ظ ظ  SAR\r\nظ…ظ† ط­ط³ط§ط¨: ظ،ظ¢ظ£ظ¤\r\nط¥ظ„ظ‰ ط­ط³ط§ط¨: ظ،ظ¢ظ£ظ¤\r\nط¨ظ†ظƒ ط§ظ„ظ…ط³طھظپظٹط¯: ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±\r\nظ¢ظ ظ¢ظ¦-ظ،ظ -ظ،ظ¨ ظ،ظ£:ظ ظ "
         val r = parse(body)
         assertEquals(ParseStatus.SUCCESS, r.status)
         assertEquals(local, r.facts.sourceAccount!!.bank); assertEquals(remote, r.facts.destinationAccount!!.bank)
         assertEquals("1234", r.facts.sourceAccount!!.maskedNumber); assertEquals("1234", r.facts.destinationAccount!!.maskedNumber)
-        assertTrue(r.evidence.any { it.field == "destinationBank" && it.slice(input(body)) == "بنك المستفيد: البنك الآخر" })
+        assertTrue(r.evidence.any { it.field == "destinationBank" && it.slice(input(body)) == "ط¨ظ†ظƒ ط§ظ„ظ…ط³طھظپظٹط¯: ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±" })
         assertTrue(r.evidence.all { it.end <= body.length })
     }
 
@@ -109,7 +109,7 @@ class TransferNetworkTest {
         assertTrue(Blocker.AMBIGUOUS_BANK in engine.interpret(input(body), collision).blockers)
         val invalid = schema.copy(network = schema.network.copy(bankAliases = mapOf("UNKNOWN" to listOf("Remote Bank"))))
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body, invalid).status)
-        val foldedEmpty = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("ـ"))))
+        val foldedEmpty = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("ظ€"))))
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$outgoing\nDestination bank:", foldedEmpty).status)
         val literal = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("(a+)+$"))))
         assertEquals(ParseStatus.SUCCESS, parse("$outgoing\nDestination bank: (a+)+$", literal).status)
@@ -130,4 +130,20 @@ class TransferNetworkTest {
         assertTrue(Blocker.CONFLICTING_FACTS in r.blockers)
         assertEquals(ParseStatus.SUCCESS, parse(outgoing.replace("Outgoing transfer", "Fund transfer debited") + "\nNetwork: inter-bank").status)
     }
+    @Test fun incomingBracketNeedsExplicitLocalDestinationAndPartyAndNeverUsesDebitLineAsSource() {
+        val config = schema.copy(network = schema.network.copy(standaloneSourceBrackets = true))
+        val body = "Incoming transfer\nDeposited to account: 1234\nValue: 100 SAR\nFrom: Synthetic Person\n[Remote Bank]\nخصمت من حساب: 9999\nTime: 13:00 18-10-2026"
+        val result = parse(body, config)
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertNull(result.facts.sourceAccount)
+        assertEquals(local, result.facts.destinationAccount!!.bank)
+        assertEquals(BankNetwork.INTER_BANK, result.facts.bankNetwork)
+        assertTrue(result.evidence.any { it.field == "sourceBank" && it.slice(input(body)) == "[Remote Bank]" })
+        listOf(body.replace("Deposited to account: 1234", ""), body.replace("From: Synthetic Person", ""),
+            body.replace("Remote Bank", "Unknown"), "$body\nSource bank: Local Bank").forEach {
+            assertEquals(it, ParseStatus.REVIEW_REQUIRED, parse(it, config).status)
+        }
+        assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body).status)
+    }
+
 }
