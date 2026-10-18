@@ -9,8 +9,9 @@ internal class RoleLineReader(
     private val source: SourceText,
     private val bindings: Map<String, List<String>>,
     private val evidence: MutableList<Evidence>,
+    knownLabels: List<String> = emptyList(),
 ) {
-    private val prefixes = bindings.values.flatten().distinct().map {
+    private val prefixes = (bindings.values.flatten() + knownLabels).distinct().map {
         SourceText(it).text.length to Regex("^ *" + source.phrase(it).pattern + "(?=[ \\t:]|$)")
     }
 
