@@ -167,12 +167,14 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         }
         val balance = money(ExtractionField.AVAILABLE_BALANCE)
         val amount = if (family in INFORMATIONAL) null else money(ExtractionField.AMOUNT)
-        val card = identifier(ExtractionField.CARD) ?: run {
+        val labeledCard = identifier(ExtractionField.CARD)
+        val card = run {
             val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
             val hits = pattern.findAll(source.text).toList()
-            if (hits.map { it.groupValues[1].takeLast(4) }.distinct().size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
+            val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) }).distinct()
+            if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
             hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
-            hits.map { it.groupValues[1].takeLast(4) }.distinct().singleOrNull()
+            values.singleOrNull()
         }
         val account = identifier(ExtractionField.SOURCE_ACCOUNT)
         val destination = identifier(ExtractionField.DESTINATION_ACCOUNT)
