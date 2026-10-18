@@ -31,8 +31,10 @@ import java.time.ZoneId
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@OptIn(ExperimentalTestApi::class)
 class BetaDashboardExplorationActivityTest {
-    @get:Rule val compose = createEmptyComposeRule()
+    // Queue frame resumptions on the test scheduler: an IO completion must not apply Views inline.
+    @get:Rule val compose = createEmptyComposeRule(effectContext = kotlinx.coroutines.test.StandardTestDispatcher())
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val key = PostingKey(Environment.BETA, "synthetic-full-activity")
     private fun waitLoaded() { compose.waitUntil(20000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }

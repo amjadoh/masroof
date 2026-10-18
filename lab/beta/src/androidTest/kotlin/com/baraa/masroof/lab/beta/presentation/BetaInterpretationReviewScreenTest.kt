@@ -19,7 +19,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalTestApi::class)
 class BetaInterpretationReviewScreenTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>(effectContext = kotlinx.coroutines.test.StandardTestDispatcher())
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var beta: BetaContainer
     @Before fun open() { BetaContainer.resetOffline(context); beta = BetaContainer(context) }
