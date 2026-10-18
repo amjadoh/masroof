@@ -448,7 +448,15 @@ class BetaContainer(
         BetaEnvironment.requireBetaDatabaseName(name)
         val path = appContext.getDatabasePath(name)
         check(path.name == name) { "Resolved beta database path is ${path.name}" }
-        if (path.exists()) {
+        if (!path.exists()) {
+            val sidecars = listOf("-wal", "-shm", "-journal").map { File(path.path + it) }
+            // Acknowledgement follows a validated Room open. Losing its database is not first launch.
+            val acknowledged = appContext.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
+                .all[START_KEY] == START_VERSION
+            check(sidecars.none { it.exists() } && !acknowledged) { "Existing Beta storage needs recovery" }
+        } else {
+            // SQLite can initialize a zero-byte file as an empty database. Retain it for recovery instead.
+            check(path.isFile && path.length() >= 100) { "Existing Beta database needs recovery" }
             // Android's default corruption handler can delete files. Validate read-only with a
             // non-destructive handler before handing an existing Beta database to Room.
             android.database.sqlite.SQLiteDatabase.openDatabase(path.path, null,
