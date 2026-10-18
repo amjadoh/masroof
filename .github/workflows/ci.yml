@@ -62,7 +62,6 @@ jobs:
           path: |
             ui-kit/build/reports/tests/
             app/build/reports/tests/
-            lab/android/build/reports/tests/
             lab/beta/build/reports/tests/
             lab/beta/build/reports/beta-interpretation/
           if-no-files-found: warn
@@ -151,8 +150,6 @@ jobs:
           path: |
             app/build/reports/androidTests/connected/debug/
             app/build/outputs/androidTest-results/connected/debug/
-            lab/android/build/reports/androidTests/connected/debug/
-            lab/android/build/outputs/androidTest-results/connected/debug/
             lab/beta/build/reports/androidTests/connected/debug/
             lab/beta/build/outputs/androidTest-results/connected/debug/
             beta-dashboard-screenshots/

@@ -1,5 +1,0 @@
-<resources>
-    <string name="settings_developer_title">إعدادات المطورين</string>
-    <string name="settings_parsing_lab_title">مختبر تحليل رسائل البنوك</string>
-    <string name="settings_parsing_lab_hint">بنوك وقواعد وعينات تجريبية في قاعدة مستقلة</string>
-</resources>

@@ -104,7 +104,7 @@ class M0ProductionBaselineTest {
         assertTrue(gradle.contains("targetSdk = 34"))
         assertTrue(gradle.contains("minSdk = 26"))
         assertTrue(gradle.contains("project(\":lab:beta\")"))
-        assertTrue(gradle.contains("project(\":lab:android\")"))
+        assertFalse(gradle.contains("project(\":lab:android\")"))
         assertFalse(gradle.contains("parsing-lab"))
         val release = File("../.github/workflows/release.yml").readText()
         assertTrue(release.contains("assembleRelease"))

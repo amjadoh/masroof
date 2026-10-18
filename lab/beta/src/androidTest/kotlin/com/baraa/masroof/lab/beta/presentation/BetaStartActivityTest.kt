@@ -118,7 +118,7 @@ class BetaStartActivityTest {
     }
 
     @Test fun confirmedCleanupRunsOnceAndKeepsNewDataOnLaterLaunches() {
-        val protected = protectedFiles().filter { it.name != BetaEnvironment.PARSING_LAB_DATABASE_NAME }
+        val protected = protectedFiles()
         val hashes = protected.map(::hash)
         BetaContainer(context).use { it.putMarker("old-experiment", "discard"); it.putPreferenceProbe("old") }
         ActivityScenario.launch(BetaActivity::class.java).use {
@@ -129,7 +129,7 @@ class BetaStartActivityTest {
             compose.onNodeWithTag("beta-return").performClick()
         }
         drain()
-        BetaContainer(context).use { assertEquals(1, it.markerCount()); assertEquals("old", it.preferenceProbe()); assertTrue(it.hasParsingLabHistory()) }
+        BetaContainer(context).use { assertEquals(1, it.markerCount()); assertEquals("old", it.preferenceProbe()) }
         ActivityScenario.launch(BetaActivity::class.java).use {
             await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
             compose.onNodeWithTag("beta-start-fresh-confirm").performClick()
@@ -138,7 +138,7 @@ class BetaStartActivityTest {
         }
         drain()
         BetaContainer(context).use {
-            assertEquals(0, it.markerCount()); assertNull(it.preferenceProbe()); assertFalse(it.hasParsingLabHistory())
+            assertEquals(0, it.markerCount()); assertNull(it.preferenceProbe())
             it.putMarker("new-experience", "keep"); it.putPreferenceProbe("new")
         }
         ActivityScenario.launch(BetaActivity::class.java).use { await("dash-refresh"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").performClick() }

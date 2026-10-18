@@ -39,7 +39,7 @@ android {
         buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
         buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", "false")
-        buildConfigField("boolean", "ENABLE_PARSING_LAB", "true")
+        buildConfigField("boolean", "ENABLE_MASROOF_BETA", "true")
 
         testInstrumentationRunner = "com.baraa.masroof.instrumentation.MasroofAndroidTestRunner"
         // Orchestrator clears app data before each device smoke so journeys do not leak.
@@ -123,7 +123,6 @@ ksp {
 
 dependencies {
     implementation(project(":ui-kit"))
-    implementation(project(":lab:android"))
     implementation(project(":lab:beta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -160,7 +159,6 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.androidx.work.testing)
-    androidTestImplementation(project(":lab:engine"))
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
