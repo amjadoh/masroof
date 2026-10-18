@@ -106,6 +106,7 @@ class BetaOnboardingPermissionTest {
                     throw failure
                 }
             }
+            compose.onNodeWithTag("beta-tools").performClick()
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
             awaitEnabled("beta-history")

@@ -1,15 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
@@ -34,27 +27,10 @@ fun TransactionPreviewRow(
     val formatted = money.substringBeforeLast(' ')
     val currency = money.substringAfterLast(' ')
     val sign = if (inward) "+" else if (transfer) "" else "−"
-    Column(modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = MasroofReference.rowVertical),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MasroofReference.rowGap)) {
-            Surface(shape = MasroofShapes.small, color = background) {
-                Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
-                    Icon(MasroofIcons.transactionType(row.typeLabelResHint), null, Modifier.size(MasroofReference.icon), tint = color)
-                }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
-                MasroofText(title, style = MasroofReference.pair.copy(fontWeight = MasroofFontWeights.semiBold))
-                MasroofText(transactionTypeLabel(row.typeLabelResHint) +
-                    (cardDisplayLabelFromTransaction(row, ownedCards)?.let { " · " + it } ?: ""),
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                MasroofText(sign + formatted, style = MasroofReference.rowAmount, color = color)
-                MasroofText(formatLocalizedTransactionDate(row.localDate) + " · " + currency,
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        HorizontalDivider(color = colors.cardBorder)
-    }
+    com.baraa.masroof.ui.dashboard.DashboardTransactionRow(
+        com.baraa.masroof.application.locale.AppDigits.display(title),
+        com.baraa.masroof.application.locale.AppDigits.display(transactionTypeLabel(row.typeLabelResHint) +
+            (cardDisplayLabelFromTransaction(row, ownedCards)?.let { " · " + it } ?: "")),
+        sign + formatted, formatLocalizedTransactionDate(row.localDate) + " · " + currency,
+        MasroofIcons.transactionType(row.typeLabelResHint), color, background, modifier, onClick)
 }

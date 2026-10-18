@@ -80,6 +80,7 @@ class BetaAnalysisParityTest {
             same(old.refunds.amount, current.refunds!!.amount)
         }
         same(originalTrend.averageDailySpending.amount, trend.averageDailySpending!!.amount)
+        same(originalTrend.totalSpending.amount, trend.totalSpending!!.amount)
     }
 
     @Test fun ordinaryAndExplicitOutflowScopesKeepMovementsSeparate() {
@@ -95,7 +96,7 @@ class BetaAnalysisParityTest {
     @Test fun futureAndEmptyHistoryHaveKnownZeroButMissingFxDoesNot() {
         val empty = batch(emptyList())
         val future = build(empty.copy(revision = empty.revision.copy(asOf = query.from.minusSeconds(60)))).snapshot.analysis!!
-        assertTrue(future.trends.all { it.points.isEmpty() && it.averageDailySpending!!.amount.signum() == 0 })
+        assertTrue(future.trends.all { it.points.isEmpty() && it.averageDailySpending!!.amount.signum() == 0 && it.totalSpending!!.amount.signum() == 0 })
         val known = build(empty).snapshot.analysis!!
         assertEquals(2, known.trends.first().points.size)
         assertTrue(known.trends.first().points.all { it.net!!.amount.signum() == 0 })
@@ -106,6 +107,7 @@ class BetaAnalysisParityTest {
         assertTrue(DashboardSection.TRENDS in result.unavailableSections)
         assertTrue(DashboardSection.MERCHANT_TOTALS in result.unavailableSections)
         assertTrue(result.snapshot.analysis!!.trends.first().points.all { it.net == null })
+        assertNull(result.snapshot.analysis.trends.first().totalSpending)
     }
 
     @Test fun merchantThresholdRefundAndUnknownCoverageAreDistinct() {
