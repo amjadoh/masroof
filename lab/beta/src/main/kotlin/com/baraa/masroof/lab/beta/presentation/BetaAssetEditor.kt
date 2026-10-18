@@ -52,7 +52,7 @@ internal fun BetaAssetEditor(
         Text(stringResource(if (existing == null) R.string.beta_asset_add else R.string.beta_asset_edit), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(bankName(bank)), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.beta_asset_manual_help), style = MaterialTheme.typography.bodyMedium)
-        val kinds = if (existing == null) listOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_FACILITY, AssetKind.CREDIT_CARD)
+        val kinds = if (existing == null) listOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_FACILITY, AssetKind.CREDIT_CARD, AssetKind.LOAN)
             else if (existing.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD)) listOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) else listOf(existing.kind)
         kinds.forEach { choice ->
             FilterChip(selected = kind == choice, enabled = !busy, modifier = Modifier.testTag("asset-kind-${choice.name}"),

@@ -110,4 +110,30 @@ class BetaManualAssetScreenTest {
         beta = BetaContainer(context)
         assertEquals(changed, beta.assets().single { it.id == changed.id })
     }
+    @Test fun manualLoanRequiresOwnershipAndPersistsWithoutAnSmsOrPosting() {
+        var saved = false
+        showEditor(onSaved = { saved = true })
+        compose.onNodeWithTag("asset-kind-LOAN").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("١٢٣٤")
+        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+        assertTrue(beta.assets().isEmpty())
+        compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        assertTrue(saved)
+        val original = beta.assets().single()
+        assertEquals(AssetKind.LOAN, original.kind)
+        assertEquals("1234", original.last4)
+        assertNull(original.parentId); assertNull(original.creditCardRole)
+        beta.close(); beta = BetaContainer(context)
+        assertEquals(original, beta.assets().single())
+        assertTrue(beta.discoveryPage().proposals.isEmpty())
+        val db = androidx.room.Room.databaseBuilder(context, com.baraa.masroof.lab.beta.data.BetaDatabase::class.java,
+            com.baraa.masroof.lab.beta.data.BetaDatabase.NAME).build()
+        try {
+            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_ledger_current").use {
+                assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0))
+            }
+        } finally { db.close() }
+    }
+
 }
