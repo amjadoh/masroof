@@ -6,7 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.classification.*
 import com.baraa.masroof.lab.finance.corrections.*
@@ -40,8 +40,8 @@ class RoomBetaFinancialAdoptionTest {
     @After fun close() { db.close(); BetaContainer.resetOffline(context) }
     private fun reopen() { db.close(); db = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build() }
     private fun archive(id: String, amount: String = "23", currency: Currency = Currency.USD,
-        rate: BigDecimal? = BigDecimal("3.756957"), family: MessageFamily = MessageFamily.PURCHASE) = InterpretationArchive.encode(
-        Interpretation(id, LegacyInterpretationAdapter.VERSION, bank,
+        rate: BigDecimal? = BigDecimal("3.756957"), family: MessageFamily = MessageFamily.PURCHASE) = FinancialArchiveFixture.encode(
+        Interpretation(id, FinancialArchiveFixture.VERSION, bank,
             Facts(family, Money.of(amount, currency), MoneyDirection.OUTGOING,
                 occurredAtLocal = LocalDateTime.parse("2026-10-17T13:30:00"), exchangeRate = rate),
             ParseStatus.SUCCESS, null, emptyList(), emptySet()))
@@ -50,7 +50,7 @@ class RoomBetaFinancialAdoptionTest {
         store.capture(CapturedEvidence(id, EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
             EvidenceMessage(id, "fixture", "synthetic only", instant, ReceiptTimeSource.USER_SUPPLIED), instant, route, emptyList()))
         store.begin(id, instant)
-        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "candidate not trusted"), instant)
+        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), instant)
     }
     private suspend fun request(id: String = "one", expected: PostingRevision? = null): BetaFinancialApproval {
         val item = RoomBetaFinancialAdoption(db).reviewPage().single { it.evidenceId == id }
@@ -109,7 +109,7 @@ class RoomBetaFinancialAdoptionTest {
         val store = RoomBetaEvidenceStore(db)
         store.begin("one", instant)
         assertEquals("INTERPRETATION_PENDING", service.preview("one")?.blockedReason)
-        store.complete("one", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive("one", amount = "29"), "candidate ignored"), instant)
+        store.complete("one", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive("one", amount = "29")), instant)
         assertEquals("STALE_ARCHIVE", (service.approve(approvedDraft) as BetaFinancialAdoptionResult.Review).reason)
         assertNull(posting())
         service.cancelApproval(approvedDraft)
@@ -118,7 +118,7 @@ class RoomBetaFinancialAdoptionTest {
         assertNull(betaApprovalDraft(requireNotNull(service.preview("one")), "EXPENSE", "asset:${account.id.localId}", "external", null))
         db.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
         capture("unsafe", archive("unsafe", family = MessageFamily.OTP))
-        assertEquals("UNSAFE_BASELINE", service.preview("unsafe")?.blockedReason)
+        assertEquals("UNSAFE_INTERPRETATION", service.preview("unsafe")?.blockedReason)
         assertNull(service.preview("unsafe")?.amount)
     }
 
@@ -203,7 +203,7 @@ class RoomBetaFinancialAdoptionTest {
         RoomBetaEvidenceStore(db).begin("one", instant)
         assertNull(posting()); assertEquals(saved, RoomBetaFinancialLedger(db).readAudit(saved.command.key))
         RoomBetaEvidenceStore(db).complete("one", route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY,
-            emptySet(), archive("one", "777", Currency.EUR), "{}"), instant)
+            emptySet(), "{}", archive("one", "777", Currency.EUR)), instant)
         assertTrue(RoomBetaFinancialAdoption(db).approve(initial) is BetaFinancialAdoptionResult.Review)
         assertNull(posting()); assertEquals(saved, RoomBetaFinancialLedger(db).readAudit(saved.command.key))
         val fresh = request(expected = saved.command.revision)
@@ -215,7 +215,7 @@ class RoomBetaFinancialAdoptionTest {
             // UNKNOWN's well-formed archive requires a blocker, constructed directly for this corrupt archive boundary.
             val json = JSONObject(archive("unsafe$index")).apply { getJSONObject("facts").put("family", family.name) }.toString()
             capture("unsafe$index", json)
-            assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_BASELINE"), RoomBetaFinancialAdoption(db).approve(request("unsafe$index")))
+            assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_INTERPRETATION"), RoomBetaFinancialAdoption(db).approve(request("unsafe$index")))
             assertNull(posting("unsafe$index"))
         }
     }
@@ -228,12 +228,12 @@ class RoomBetaFinancialAdoptionTest {
             { it.put("contractVersion", 999) })
         variants.forEachIndexed { i, mutate ->
             capture("bad$i", JSONObject(archive("bad$i")).apply(mutate).toString())
-            assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_BASELINE"), RoomBetaFinancialAdoption(db).approve(request("bad$i")))
+            assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_INTERPRETATION"), RoomBetaFinancialAdoption(db).approve(request("bad$i")))
         }
         capture("route")
         val old = requireNotNull(db.evidenceDao().outcome("route"))
         db.evidenceDao().outcome(old.copy(route = "{\"kind\":\"SUSPECTED\",\"candidates\":[]}"))
-        assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_BASELINE"), RoomBetaFinancialAdoption(db).approve(request("route")))
+        assertEquals(BetaFinancialAdoptionResult.Review("UNSAFE_INTERPRETATION"), RoomBetaFinancialAdoption(db).approve(request("route")))
     }
 
     @Test fun manualRegistryChangeHoldsAdoptionAndDirectLegacyPostingWithoutDeletingFacts() = runBlocking {

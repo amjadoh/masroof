@@ -8,7 +8,7 @@ import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.corrections.BetaCorrectionResult
 import com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.corrections.*
 import com.baraa.masroof.lab.finance.dashboard.*
@@ -56,9 +56,9 @@ class RoomBetaPersistedFactsTest {
         store.capture(CapturedEvidence(id, EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
             EvidenceMessage(id, "AlJazira", "synthetic", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
         store.begin(id, at)
-        val archive = InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
+        val archive = FinancialArchiveFixture.encode(Interpretation(id, FinancialArchiveFixture.VERSION, bank, facts,
             ParseStatus.SUCCESS, null, emptyList(), emptySet()))
-        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "candidate untrusted"), at)
+        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
     }
     private suspend fun approve(id: String, asset: OwnedAsset = credit) {
         val service = RoomBetaFinancialAdoption(db)
@@ -66,18 +66,18 @@ class RoomBetaPersistedFactsTest {
         assertTrue(service.approve(BetaFinancialApproval(id, item.archiveRevision, null, FinancialType.EXPENSE, asset.id, null)) is BetaFinancialAdoptionResult.Posted)
     }
 
-    @Test fun actualPreservedLegacyParserFeeFxAndObservationsReachRealSqlWithoutFinancialRecomputation() = runBlocking {
+    @Test fun currentEngineExplicitFeeFxAndObservationsReachRealSqlWithoutFinancialRecomputation() = runBlocking {
         val body = """شراء عبر الانترنت
 بطاقة ائتمانية: 7271
 لدى: Synthetic Store
 بمبلغ: USD 23.00
 في: 2026-08-06 20:22
 الدولة: USA
-رسوم العمليات الدولية: 1.99
+رسوم العمليات الدولية: SAR 1.99
 سعر الصرف: 3.756957
 الرصيد المتاح: SAR 16958.89
 إجمالي المبلغ المستحق: SAR 2694.32"""
-        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules()))
+        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent()))
             .importBatch(EvidenceRequest("actual", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(EvidenceMessage("one", "AlJazira", body, at,
                 ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
         approve(stored.summary.id)

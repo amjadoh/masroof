@@ -29,7 +29,7 @@ object IndependentEngineChecks {
             assertEquals(EvidenceProcessingState.INTERPRETED, result.summary.processingState)
             beta.decideEvidence(id, 0, EvidenceReviewDecision.KEEP_FOR_REVIEW)
             assertEquals(1, (beta.importEvidence(request, listOf(message("one"))).single() as EvidenceResult.Stored).summary.attempts)
-            assertNotNull(beta.financialApprovalPreview(id)!!.blockedReason)
+            assertNull(beta.financialApprovalPreview(id)!!.blockedReason) // M8 enables preview; explicit financial approval is still required.
             assertNull(beta.financialPosting(RoomBetaFinancialAdoption.key(id)))
             beta.backup()
         }

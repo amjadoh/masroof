@@ -44,7 +44,7 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         val baseline = RoomBetaFinancialAdoption(database).observation(key)?.input ?: return false
         val registry = BetaAssetRegistry(database).all().associateBy { it.id }
         if (financialRegistryDependencies(input).any { input.assets[it] != registry[it] }) return false
-        val facts = JSONObject(outcome.baselineJson).getJSONObject("facts")
+        val facts = BetaCurrentFinancialArchive.read(outcome, requireNotNull(database.evidenceDao().raw(id)).body).getJSONObject("facts")
         fun text(name: String): String? = if (facts.isNull(name)) null else facts.getString(name)
         fun money(name: String): Money? = if (facts.isNull(name)) null else facts.getJSONObject(name).let {
             Money.of(it.getString("amount"), Currency.valueOf(it.getString("currency"))) }

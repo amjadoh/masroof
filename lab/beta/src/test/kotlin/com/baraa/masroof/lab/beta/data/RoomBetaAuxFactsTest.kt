@@ -7,7 +7,7 @@ import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.corrections.*
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.corrections.*
 import com.baraa.masroof.lab.finance.dashboard.*
@@ -52,12 +52,12 @@ class RoomBetaAuxFactsTest {
         store.capture(CapturedEvidence(id, EvidenceRequest("fixture", EvidenceOrigin.EXPLICIT_SAMPLE),
             EvidenceMessage(id, "AlJazira", "synthetic", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
         store.begin(id, at)
-        val archive = org.json.JSONObject(InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
+        val archive = org.json.JSONObject(FinancialArchiveFixture.encode(Interpretation(id, FinancialArchiveFixture.VERSION, bank, facts,
             status, null, emptyList(), emptySet()))).apply(change).toString()
-        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "candidate untrusted"), at)
+        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
     }
     private suspend fun actual(body: String, id: String): String {
-        val result = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules()))
+        val result = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent()))
             .importBatch(EvidenceRequest("actual", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(EvidenceMessage(id, "AlJazira", body, at,
                 ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
         return result.summary.id
@@ -68,7 +68,7 @@ class RoomBetaAuxFactsTest {
         val otp = actual("رمز التحقق الخاص بك هو 482911. لا تشاركه مع أي شخص.", "otp")
         assertTrue(db.dashboardAuxFactsDao().evidence(statement)!!.nonFinancial)
         assertTrue(db.dashboardAuxFactsDao().evidence(otp)!!.nonFinancial)
-        val archived = org.json.JSONObject(db.evidenceDao().outcome(statement)!!.baselineJson).getJSONObject("facts")
+        val archived = org.json.JSONObject(db.evidenceDao().outcome(statement)!!.candidateJson).getJSONObject("facts")
         assertTrue(archived.isNull("occurredAt")); assertTrue(archived.isNull("occurredAtLocal"))
         assertEquals("7271", archived.getJSONObject("card").getString("number"))
         assertEquals("STATEMENT", archived.getString("cardChannel"))
