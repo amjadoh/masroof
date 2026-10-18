@@ -7,6 +7,7 @@ data class NetworkRules(
     val destinationBankLabels: List<String> = emptyList(),
     val standaloneDestinationBrackets: Boolean = false,
     val networkLabels: List<String> = emptyList(),
+    val standaloneSourceBrackets: Boolean = false,
 ) {
     fun validate() {
         require(bankAliases.size <= 100)

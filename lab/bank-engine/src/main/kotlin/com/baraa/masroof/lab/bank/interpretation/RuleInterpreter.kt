@@ -72,7 +72,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         fun roleEnd(text: String) = rolePrefixes.mapNotNull { it.find(text)?.range?.last?.plus(1) }.maxOrNull() ?: 0
         val roleEnd = roleEnd(title)
         fun titleMatches(phrase: String) = source.phrase(phrase).findAll(title).filter { roleEnd == 0 || (it.range.first == 0 && it.range.last + 1 > roleEnd) }.toList()
-        if (Regex("^ *اسم المستفيد *: *[^\\n]+\\n+ *الاسم المختصر *: *[^\\n]+\\n+ *حالة *: *(?:غير نشط|نشط) *$").matches(source.text.trim())) {
+        if (Regex("^ *اسم المستفيد *: *[^\\n]+\\n+ *الاسم المختصر *: *[^\\n]+\\n+ *حالة *: *(?:غير نشط|نشط) *(?:\\n+ *(?:حساب|بنك|في) *: *[^\\n]+)*$").matches(source.text.trim())) {
             evidence += source.evidence("notice.beneficiary.directory", "family", 0..(source.text.length - 1))
             return result(Facts(MessageFamily.NON_FINANCIAL), ParseStatus.NON_FINANCIAL)
         }
@@ -168,7 +168,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val balance = money(ExtractionField.AVAILABLE_BALANCE)
         val amount = if (family in INFORMATIONAL) null else money(ExtractionField.AMOUNT)
         val card = identifier(ExtractionField.CARD) ?: run {
-            val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى) *\\n+ *(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
+            val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
             val hits = pattern.findAll(source.text).toList()
             if (hits.map { it.groupValues[1].takeLast(4) }.distinct().size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
             hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
@@ -207,7 +207,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             problem("CONFLICTING_FOREIGN_PRINCIPAL", Blocker.CONFLICTING_FACTS)
         val observations = matching.flatMap { it.observations.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }
         val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem)
-            .resolve(family, banks.single(), matching.flatMap { it.phrases }, account != null && details.counterparty != null)
+            .resolve(family, banks.single(), matching.flatMap { it.phrases }, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
         val observed = ObservationExtractor(source, observations, family, matching.flatMap { it.phrases }, evidence, ::problem).read()
         if (observed.card == CardChannel.STATEMENT && family !in INFORMATIONAL) problem("STATEMENT_CHANNEL_IN_MOVEMENT", Blocker.CONFLICTING_FACTS)
         if (observed.balanceMarker && balance == null) problem("MISSING_OBSERVED_BALANCE")
@@ -243,11 +243,11 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v5"
+        const val VERSION = "bank-rules-independent-v6"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
-        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "رمز سري")
+        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
         private val INCOMING = RuleLibrary.incomingTransferPhrases()

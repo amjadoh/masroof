@@ -35,9 +35,9 @@ internal class TransferNetworkResolver(
             if (ids.size > 1) fail("NETWORK_ROLE_CONFLICT")
             return ids.singleOrNull()
         }
-        val sourceRows = reader.read("sourceBank")
+        val sourceRows = reader.read("sourceBank").toMutableList()
         val destinationRows = reader.read("destinationBank").toMutableList()
-        if (rules.standaloneDestinationBrackets) {
+        if (rules.standaloneDestinationBrackets || rules.standaloneSourceBrackets) {
             val lines = source.text.lineSequence().toList()
             val first = lines.indexOfFirst { it.any(Char::isLetterOrDigit) }
             val next = if (first >= 0) (first + 1 until lines.size).firstOrNull { lines[it].isNotBlank() } else null
@@ -46,11 +46,13 @@ internal class TransferNetworkResolver(
                 val match = Regex("^ *\\[([^\\[\\]]+)] *$").matchEntire(line)
                 if (match != null) {
                     val title = first >= 0 && familyPhrases.any { source.phrase(it).containsMatchIn(lines[first]) }
-                    if (family != MessageFamily.TRANSFER_OUT || !title || (index != next && !(explicitRecipient && index > first))) fail("UNBOUND_DESTINATION_BRACKET")
+                    val incoming = family == MessageFamily.TRANSFER_IN && rules.standaloneSourceBrackets
+                    val outgoing = family == MessageFamily.TRANSFER_OUT && rules.standaloneDestinationBrackets
+                    if ((!incoming && !outgoing) || !title || (incoming && !explicitRecipient) || (index != next && !(explicitRecipient && index > first))) fail("UNBOUND_BANK_BRACKET")
                     else {
                         val range = offset..(offset + line.length - 1)
-                        evidence += source.evidence("extract.network.bracket", "destinationBank", range)
-                        destinationRows += RoleLine(match.groupValues[1], source.original((offset + match.groups[1]!!.range.first)..(offset + match.groups[1]!!.range.last)), range)
+                        evidence += source.evidence("extract.network.bracket", if (incoming) "sourceBank" else "destinationBank", range)
+                        (if (incoming) sourceRows else destinationRows) += RoleLine(match.groupValues[1], source.original((offset + match.groups[1]!!.range.first)..(offset + match.groups[1]!!.range.last)), range)
                     }
                 }
                 offset += line.length + 1

@@ -73,6 +73,8 @@ dependencies {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     inputs.files(rootProject.fileTree("app/src/test") {
         include("kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+            "kotlin/com/baraa/masroof/bank/aljazira/CreditCardMessageHeuristicsTest.kt",
+            "kotlin/com/baraa/masroof/bank/aljazira/ParsedEventDetailsFactsCharacterizationTest.kt",
             "resources/testdata/bank_aljazira/**/*.json")
     }).withPathSensitivity(PathSensitivity.RELATIVE)
 }
