@@ -82,6 +82,8 @@ class BetaAnalysisParityTest {
         }
         same(originalTrend.averageDailySpending.amount, trend.averageDailySpending!!.amount)
         same(originalTrend.totalSpending.amount, trend.totalSpending!!.amount)
+        same(originalTrend.totalBeforeRefunds.amount, trend.totalBeforeRefunds!!.amount)
+        same(originalTrend.totalRefunds.amount, trend.totalRefunds!!.amount)
     }
 
     @Test fun ordinaryAndExplicitOutflowScopesKeepMovementsSeparate() {

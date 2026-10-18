@@ -128,6 +128,7 @@ private fun DebitDetail(snapshot: DashboardSnapshot, debit: DebitSpending, enabl
     onTransaction: (String) -> Unit, ledgerComplete: Boolean) {
     val unavailable = stringResource(R.string.beta_dash_unavailable)
     val label = debit.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_debit)
+    val trend = BetaDashboardExplorer.trend(snapshot, BetaChartChoice(TrendScope.ASSET, asset = debit.cardId))
     val linked = debit.accountId?.let { id -> snapshot.accounts.singleOrNull { it.id == id }?.label?.takeIf(String::isNotBlank) }
     Column(Modifier.testTag("beta-debit-detail"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofHeroCard(label + " · " + stringResource(R.string.beta_dash_salary_spending),
@@ -137,6 +138,9 @@ private fun DebitDetail(snapshot: DashboardSnapshot, debit: DebitSpending, enabl
             debit.last4?.let { DetailRow(stringResource(R.string.beta_detail_last4), it) }
             debit.network?.takeIf(String::isNotBlank)?.let { DetailRow(stringResource(R.string.beta_detail_network), it) }
             DetailRow(stringResource(R.string.beta_detail_linked_account), linked ?: unavailable)
+            DetailRow(stringResource(R.string.beta_detail_before_refunds), formatMoney(trend?.totalBeforeRefunds, unavailable))
+            DetailRow(stringResource(R.string.beta_dash_refunds), formatMoney(trend?.totalRefunds, unavailable))
+            DetailRow(stringResource(R.string.beta_dash_salary_spending), formatMoney(debit.spending, unavailable))
             DetailRow(stringResource(R.string.beta_detail_salary_period),
                 if (debit.salaryPeriod == null) stringResource(R.string.beta_dash_period_unavailable) else period(checkNotNull(debit.salaryPeriod)), divider = false)
         }
@@ -315,7 +319,7 @@ private fun AssetTrend(snapshot: DashboardSnapshot, asset: AssetId, role: Masroo
 @Composable
 private fun AssetTransactions(snapshot: DashboardSnapshot, asset: AssetId, title: String, enabled: Boolean,
     onTransaction: (String) -> Unit, complete: Boolean) {
-    var limit by rememberSaveable(snapshot.query.from.toString(), asset.localId) { mutableIntStateOf(20) }
+    var limit by rememberSaveable(snapshot.query.toString(), asset.bank.value, asset.localId) { mutableIntStateOf(20) }
     val rows = BetaDashboardExplorer.transactions(snapshot, asset = asset)
     val language = LocalConfiguration.current.locales[0].toLanguageTag()
     val locale = LocalConfiguration.current.locales[0]
@@ -345,7 +349,7 @@ private fun AssetTransactions(snapshot: DashboardSnapshot, asset: AssetId, title
             }
         }
     }
-    if (complete && rows.size > limit) OutlinedButton(onClick = { limit += 20 }, modifier = Modifier.testTag("transactions-more")) {
+    if (complete && rows.size > limit) OutlinedButton(enabled = enabled, onClick = { limit += 20 }, modifier = Modifier.testTag("transactions-more")) {
         Text(stringResource(R.string.beta_dash_more))
     }
 }
@@ -370,8 +374,11 @@ private fun day(instant: Instant?, zone: ZoneId): String? = instant?.let {
 private fun day(date: LocalDate): String = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0]).format(date)
 
 @Composable
-private fun period(period: DisplayPeriod): String = stringResource(R.string.beta_dash_period,
-    period.from.atZone(period.zone).toLocalDateTime().toString(), period.until.atZone(period.zone).toLocalDateTime().toString())
+private fun period(period: DisplayPeriod): String {
+    val format = DateTimeFormatter.ofPattern("d MMM yyyy", LocalConfiguration.current.locales[0])
+    return stringResource(R.string.beta_dash_period,
+        format.format(period.from.atZone(period.zone)), format.format(period.until.atZone(period.zone)))
+}
 
 private fun bucketLabel(bucket: FlowBucket): Int = when (bucket) {
     FlowBucket.SALARY -> R.string.beta_detail_salary

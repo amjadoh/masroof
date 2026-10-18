@@ -58,8 +58,8 @@ class BetaStartActivityTest {
         BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession()) }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             await("beta-start-new"); compose.onNodeWithTag("beta-start-continue").performClick()
-            await("dash-refresh"); compose.onNodeWithTag("beta-start-new").assertDoesNotExist()
-            scenario.recreate(); await("dash-refresh")
+            await("onboarding-BANK"); compose.onNodeWithTag("beta-start-new").assertDoesNotExist()
+            scenario.recreate(); await("onboarding-BANK")
             compose.onNodeWithTag("beta-return").performClick()
         }
         drain()
@@ -134,14 +134,14 @@ class BetaStartActivityTest {
             await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
             compose.onNodeWithTag("beta-start-fresh-confirm").performClick()
             await("beta-start-new"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist()
-            compose.onNodeWithTag("beta-start-continue").performClick(); await("dash-refresh")
+            compose.onNodeWithTag("beta-start-continue").performClick(); await("onboarding-BANK")
         }
         drain()
         BetaContainer(context).use {
             assertEquals(0, it.markerCount()); assertNull(it.preferenceProbe())
             it.putMarker("new-experience", "keep"); it.putPreferenceProbe("new")
         }
-        ActivityScenario.launch(BetaActivity::class.java).use { await("dash-refresh"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").performClick() }
+        ActivityScenario.launch(BetaActivity::class.java).use { await("onboarding-BANK"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").performClick() }
         drain()
         BetaContainer(context).use { assertEquals(BetaStartState.READY, it.startState()); assertEquals(1, it.markerCount()); assertEquals("new", it.preferenceProbe()) }
         assertEquals(hashes, protected.map(::hash)); assertProtectedPreferences()

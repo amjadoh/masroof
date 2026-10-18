@@ -28,7 +28,7 @@ class BetaSettingsActivityTest {
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-tools").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             compose.onNodeWithTag("beta-reset").assertDoesNotExist()
             compose.onNodeWithTag("beta-tools").performClick()
-            compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-developer-tools").performScrollTo().performClick()
             compose.onNodeWithTag("beta-theme-DARK").performScrollTo().performClick()
             compose.waitUntil(10000) { context.getSharedPreferences(BetaEnvironment.PREFS_NAME, 0).getString("beta_ui_theme", null) == "DARK" }
             compose.waitUntil(10000) { compose.onAllNodesWithTag("beta-settings-busy").fetchSemanticsNodes().isEmpty() }

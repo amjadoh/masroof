@@ -13,4 +13,6 @@ class BetaLearningTest {
     @Test fun labelsSurvive() = BetaLearningChecks.labelsSurvive(context)
     @Test fun reparseDoesNotPromote() = BetaLearningChecks.reparseDoesNotPromote(context)
     @Test fun unsafeLabelsRejected() = BetaLearningChecks.unsafeLabelsRejected(context)
+    @Test fun expandedRolesKeepEvidenceAndMoneyIndependent() = BetaLearningChecks.expandedRolesKeepEvidenceAndMoneyIndependent(context)
+
 }

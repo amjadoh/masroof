@@ -29,6 +29,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     controls: BetaDashboardControls = UnavailableBetaDashboardControls,
     preferences: BetaDashboardViewPreferencesWorkflow? = null, requestedRoute: String? = null, routeRequest: Int = 0, onPrimaryTabChanged: (String) -> Unit = {}, onBusyChanged: (Boolean) -> Unit = {}, onImport: () -> Unit = {}) {
     var controlsBusy by remember { mutableStateOf(false) }
+    var homeLayoutOpen by rememberSaveable { mutableStateOf(false) }
     val interactive = enabled && !controlsBusy
     var selectedTransaction by rememberSaveable { mutableStateOf<String?>(null) }
     var monthText by rememberSaveable { mutableStateOf(workflow.currentMonth().toString()) }
@@ -75,7 +76,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
             onPrevious = { monthText = month.minusMonths(1).toString() }, onNext = { monthText = month.plusMonths(1).toString() },
             enabled = interactive && !loading, rangeTag = "dash-month", rangeModifier = Modifier.semantics { contentDescription = monthText }, previousTag = "dash-month-previous", nextTag = "dash-month-next",
             customize = {
-                com.baraa.masroof.ui.components.MasroofTextButton(enabled = interactive, onClick = { route = "CONFIGURATION"; selectedId = null; selectedBank = null; selectedTransaction = null },
+                com.baraa.masroof.ui.components.MasroofTextButton(enabled = interactive, onClick = { homeLayoutOpen = true; route = "OVERVIEW"; selectedId = null; selectedBank = null; selectedTransaction = null },
                     modifier = Modifier.heightIn(min = com.baraa.masroof.ui.theme.MasroofSpacing.minimumTouchTarget).testTag("home-configure")) {
                     Icon(com.baraa.masroof.ui.components.MasroofOutlineIcons.SlidersHorizontal, null,
                         Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon))
@@ -118,7 +119,8 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                     }
                 } else when (route) {
                     "OVERVIEW" -> BetaDashboardHome(read, interactive, preferences, onRoute = { route = it },
-                        onTransaction = { selectedTransaction = it }, onImport = onImport)
+                        onTransaction = { selectedTransaction = it }, onImport = onImport, layoutOpen = homeLayoutOpen,
+                        onLayoutClose = { homeLayoutOpen = false }, onConfiguration = { homeLayoutOpen = false; route = "CONFIGURATION" })
                     "FLOW_IN", "FLOW_OUT" -> {
                         val incoming = route == "FLOW_IN"
                         val flow = snapshot.fleetFlow
