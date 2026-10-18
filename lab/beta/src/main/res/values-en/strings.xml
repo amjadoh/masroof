@@ -50,7 +50,7 @@
     <string name="beta_history_denied">You can add accounts and cards manually without message access. To grant access later, start import again or use system settings.</string>
     <string name="beta_history_start">Start selected-period import</string>
     <string name="beta_history_progress">Scanned %1$d • Saved %2$d • Excluded %3$d • Identity conflicts %4$d</string>
-    <string name="beta_history_done">Period scan complete; saved evidence is comparison only. Some evidence may still need retry or review.</string>
+    <string name="beta_history_done">Period scan complete and interpretations saved. Some messages may still need retry or review.</string>
     <string name="beta_history_limited">Scan limit reached; the entire period was not scanned. Choose a shorter period.</string>
     <string name="beta_history_paused">The saved scan can be resumed after pausing or closing Beta.</string>
     <string name="beta_history_resume">Resume saved period and banks</string>
@@ -60,8 +60,8 @@
     <string name="beta_history_row">Evidence %1$d: %2$s</string>
     <string name="beta_history_pending">Needs retry</string>
     <string name="beta_history_review">Needs review</string>
-    <string name="beta_history_compared">Comparison saved only</string>
-    <string name="beta_history_reparse">Compare evidence again</string>
+    <string name="beta_history_compared">Historical interpretation; reprocess required</string>
+    <string name="beta_history_reparse">Reinterpret message</string>
     <string name="beta_history_next">Next page</string>
     <string name="beta_history_first">First page</string>
     <string name="beta_history_range">Saved period: %1$s — %2$s</string>
@@ -80,8 +80,8 @@
     <string name="beta_discovery_link">Confirm evidence for selected asset</string>
     <string name="beta_discovery_parent">Linked to %1$s · %2$s — asset %3$d</string>
     <string name="beta_review_title">Review Beta transactions</string>
-    <string name="beta_review_help">Only saved Beta financial records and corrections appear here. Unaccepted comparisons are not transactions. Changes apply only after Save; notes do not confirm amounts or types.</string>
-    <string name="beta_review_empty">No saved financial records or corrections on this page. Comparison evidence may still need engine acceptance and binding.</string>
+    <string name="beta_review_help">Only saved Beta financial records and corrections appear here. Saving an interpretation does not post money. Changes apply only after Save; notes do not confirm amounts or types.</string>
+    <string name="beta_review_empty">No saved financial records or corrections on this page. Some messages may still need interpretation, review and financial approval.</string>
     <string name="beta_review_failed">The change was not saved. Facts may have changed or this decision may be unsupported. Reopen and review; do not treat it as posted.</string>
     <string name="beta_review_item">Transaction %1$d — %2$s</string>
     <string name="beta_review_active">Financially active</string>
@@ -159,8 +159,8 @@
     <string name="beta_start_resume">Continue existing Beta data</string>
     <string name="beta_start_loading">Opening Beta…</string>
     <string name="beta_start_fresh">Start a clean experience</string>
-    <string name="beta_start_fresh_warning">This deletes old Beta data, preferences and local snapshots, and the Parsing Lab database including its samples and annotations. Main Masroof data and phone messages are untouched. Close Parsing Lab first. Your new experience stays saved on every later launch.</string>
-    <string name="beta_start_fresh_confirm">Delete old experiments</string>
+    <string name="beta_start_fresh_warning">Only after confirmation, Beta data, preferences and local backups will be cleared. Production and device messages are unaffected. New Beta data stays saved across launches.</string>
+    <string name="beta_start_fresh_confirm">Confirm fresh Beta</string>
     <string name="beta_history_interpreted">Interpretation saved — not financially approved</string>
     <string name="beta_label_title">Review message interpretation</string>
     <string name="beta_label_help">A manual label stored only in Beta. It does not change the engine result or create a financial transaction. No automatic export or model training.</string>

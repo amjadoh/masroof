@@ -1,8 +1,6 @@
 package com.baraa.masroof.lab.beta.data
 
 import androidx.room.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
-import com.baraa.masroof.lab.bank.InterpretationVersion
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.classification.*
 import com.baraa.masroof.lab.finance.posting.*
@@ -52,15 +50,8 @@ internal class RoomBetaDashboardAuxFacts(private val database: BetaDatabase) {
         check(database.inTransaction())
         val outcome = database.evidenceDao().outcome(id) ?: return false
         if (database.evidenceDao().retry(id) != null) return false
-        val json = try { JSONObject(outcome.baselineJson) } catch (_: org.json.JSONException) { return false }
-        val route = try { JSONObject(outcome.route) } catch (_: org.json.JSONException) { return false }
-        if (json.optInt("archiveVersion") != 1 || json.optInt("contractVersion") != InterpretationVersion.CURRENT_CONTRACT ||
-            json.optString("engineVersion") != LegacyInterpretationAdapter.VERSION.engine ||
-            json.optString("rulesVersion") != LegacyInterpretationAdapter.VERSION.rules ||
-            json.optString("evidenceId") != id || json.optString("bank") != "BANK_ALJAZIRA" ||
-            route.optString("kind") != "MATCHED") return false
-        val candidates = route.optJSONArray("candidates") ?: return false
-        if (candidates.length() != 1 || candidates.optString(0) != json.getString("bank")) return false
+        val json = try { BetaCurrentFinancialArchive.read(outcome, requireNotNull(database.evidenceDao().raw(id)).body, financial = false) }
+            catch (_: Exception) { return false }
         val blockers = json.optJSONArray("blockers") ?: return false
         if (blockers.length() != 0) return false
         val diagnostics = json.optJSONArray("diagnostics") ?: return false

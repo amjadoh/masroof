@@ -18,7 +18,7 @@ class BetaAssetDiscoveryTest {
     private val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "full")
     private fun archive(facts: Facts = Facts(MessageFamily.PURCHASE, sourceAccount = AccountReference(bank, "1234")), status: ParseStatus = ParseStatus.PARTIAL,
         blockers: Set<Blocker> = setOf(Blocker.VALIDATION_ERROR), id: String = "evidence") =
-        InterpretationArchive.encode(Interpretation(id, InterpretationVersion(1, "engine", "rules"), bank, facts, status, null, listOf(Evidence("typed-source", "source", 0, 4), Evidence("typed-destination", "destination", 5, 9),
+        InterpretationArchive.encode(Interpretation(id, com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture.VERSION, bank, facts, status, null, listOf(Evidence("typed-source", "source", 0, 4), Evidence("typed-destination", "destination", 5, 9),
             Evidence("typed-card", "card", 10, 14), Evidence("typed-channel", "card.credit", 15, 20)), blockers + if (facts.family == MessageFamily.UNKNOWN) setOf(Blocker.UNKNOWN_FAMILY) else emptySet(),
             if (blockers == setOf(Blocker.VALIDATION_ERROR)) listOf(InterpretationDiagnostic("MISSING_AMOUNT", "Amount absent", DiagnosticSeverity.ERROR)) else emptyList()))
     private fun proposals(json: String) = BetaAssetDiscovery.proposals("evidence", route, json)

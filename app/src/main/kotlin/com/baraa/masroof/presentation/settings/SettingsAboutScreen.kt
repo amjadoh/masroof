@@ -128,11 +128,11 @@ fun SettingsAboutScreen(
                 )
             }
 
-            if (BuildConfig.ENABLE_PARSING_LAB) {
+            if (BuildConfig.ENABLE_MASROOF_BETA) {
                 SettingsNavRow(
                     icon = MasroofIcons.periodHint,
                     title = stringResource(R.string.settings_developer_title),
-                    subtitle = stringResource(R.string.settings_parsing_lab_title),
+                    subtitle = stringResource(R.string.beta_entry_title),
                     onClick = onOpenDeveloperSettings,
                 )
             }

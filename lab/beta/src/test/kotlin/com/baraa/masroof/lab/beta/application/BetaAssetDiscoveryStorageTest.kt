@@ -23,7 +23,7 @@ class BetaAssetDiscoveryStorageTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val bank = BankId("BANK_ALJAZIRA")
     private val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "full")
-    private fun archive(id: String, suffix: String) = InterpretationArchive.encode(Interpretation(id, InterpretationVersion(1, "test", "test"), bank,
+    private fun archive(id: String, suffix: String) = InterpretationArchive.encode(Interpretation(id, com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture.VERSION, bank,
         Facts(MessageFamily.PURCHASE, sourceAccount = AccountReference(bank, suffix)), ParseStatus.PARTIAL, null,
         listOf(Evidence("source", "source", if (suffix == "5678") 5 else 0, if (suffix == "5678") 9 else 4)), emptySet()))
     private inline fun <T> withDatabase(block: (BetaDatabase) -> T): T {
@@ -37,7 +37,7 @@ class BetaAssetDiscoveryStorageTest {
                 EvidenceMessage(id, "AlJazira", "1234 5678 synthetic", Instant.EPOCH, ReceiptTimeSource.USER_SUPPLIED), Instant.EPOCH, route,
                 listOf(UserBankSelection(bank, BankSelectionState.ENABLED))))
             store.begin(id, Instant.EPOCH)
-            store.complete(id, route, EvidenceComparison(EvidenceDisposition.REVIEW, emptySet(), archive(id, baselineSuffix), archive(id, suffix)), Instant.EPOCH)
+            store.complete(id, route, EvidenceComparison(EvidenceDisposition.REVIEW, emptySet(), if (baselineSuffix == suffix) "{}" else archive(id, baselineSuffix), archive(id, suffix)), Instant.EPOCH)
         }
     }
     @Test fun confirmationIsSafe() {
@@ -137,7 +137,7 @@ class BetaAssetDiscoveryStorageTest {
     @Test fun accountAndCardRolesWithinOneCaptureKeepIndependentExplicitBindings() = runBlocking {
         BetaContainer.resetOffline(context)
         val rawId = "same-capture"
-        val interpretation = Interpretation(rawId, InterpretationVersion(1, "test", "test"), bank,
+        val interpretation = Interpretation(rawId, com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture.VERSION, bank,
             Facts(MessageFamily.PURCHASE, sourceAccount = AccountReference(bank, "1234"), card = CardReference(bank, "1234"), cardChannel = CardChannel.CREDIT),
             ParseStatus.PARTIAL, null, listOf(Evidence("source", "source", 0, 4), Evidence("card", "card", 5, 9), Evidence("credit", "card.credit", 10, 16)), emptySet())
         withDatabase { db ->
@@ -145,7 +145,7 @@ class BetaAssetDiscoveryStorageTest {
             store.capture(CapturedEvidence(rawId, EvidenceRequest("test", EvidenceOrigin.EXPLICIT_SAMPLE), EvidenceMessage("provider", "AlJazira", "1234 1234 credit", Instant.EPOCH, ReceiptTimeSource.USER_SUPPLIED), Instant.EPOCH, route, listOf(UserBankSelection(bank, BankSelectionState.ENABLED))))
             store.begin(rawId, Instant.EPOCH)
             val json = InterpretationArchive.encode(interpretation)
-            store.complete(rawId, route, EvidenceComparison(EvidenceDisposition.REVIEW, emptySet(), json, json), Instant.EPOCH)
+            store.complete(rawId, route, EvidenceComparison(EvidenceDisposition.REVIEW, emptySet(), "{}", json), Instant.EPOCH)
         }
         BetaContainer(context).use { beta ->
             beta.setBankEnabled(bank, true)

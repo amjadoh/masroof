@@ -71,32 +71,29 @@ class BetaProductionIsolationTest {
     }
 
     @Test
-    fun confirmedCleanupWaitsForLabHandles() = runBlocking {
+    fun explicitFreshBetaPreservesProductionAndUnrelatedOpenDatabase() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<MasroofApplication>()
         val production = context.container
         val before = production.rawSmsRepository.listIdsByReceivedAt().toSet()
         BetaContainer.resetOffline(context)
-        context.deleteDatabase(com.baraa.masroof.lab.data.LabDatabase.FILE_NAME) // Synthetic fixture only.
-        val first = com.baraa.masroof.lab.data.LabDatabase.open(context)
-        val second = com.baraa.masroof.lab.data.LabDatabase.open(context)
-        val labFile = context.getDatabasePath(com.baraa.masroof.lab.data.LabDatabase.FILE_NAME)
-        first.openHelper.writableDatabase.execSQL("INSERT INTO lab_banks VALUES ('synthetic-m0', 'keep-until-confirmed', 1, '{}')")
-        try {
+        val file = context.getDatabasePath(BetaEnvironment.MIGRATION_STAGING_DATABASE_NAME)
+        file.parentFile?.mkdirs()
+        android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null).use { other ->
+            other.execSQL("CREATE TABLE IF NOT EXISTS protected_sentinel(value TEXT)")
+            other.execSQL("DELETE FROM protected_sentinel")
+            other.execSQL("INSERT INTO protected_sentinel VALUES ('keep-unrelated')")
+            val hash = sha256(file)
             BetaContainer(context).use { beta ->
-                beta.putMarker("old-beta", "keep-until-confirmed")
-                org.junit.Assert.assertThrows(IllegalStateException::class.java) { beta.startFresh() }
-                first.close(); first.close()
-                org.junit.Assert.assertThrows(IllegalStateException::class.java) { beta.startFresh() }
-                assertTrue(labFile.isFile); assertEquals(1, beta.markerCount())
-                second.openHelper.writableDatabase.query("SELECT name FROM lab_banks WHERE id='synthetic-m0'").use { c ->
-                    assertTrue(c.moveToFirst()); assertEquals("keep-until-confirmed", c.getString(0))
-                }
-                second.close()
+                beta.putMarker("unacknowledged-beta", "discard-only-if-confirmed")
                 beta.startFresh()
-                assertTrue(!labFile.exists()); assertEquals(0, beta.markerCount())
+                assertEquals(0, beta.markerCount())
                 assertEquals(com.baraa.masroof.lab.beta.application.BetaStartState.NEW, beta.startState())
             }
-        } finally { first.close(); second.close() }
+            assertEquals(hash, sha256(file))
+            other.rawQuery("SELECT value FROM protected_sentinel", null).use { cursor ->
+                assertTrue(cursor.moveToFirst()); assertEquals("keep-unrelated", cursor.getString(0))
+            }
+        }
         assertEquals(before, production.rawSmsRepository.listIdsByReceivedAt().toSet())
     }
 

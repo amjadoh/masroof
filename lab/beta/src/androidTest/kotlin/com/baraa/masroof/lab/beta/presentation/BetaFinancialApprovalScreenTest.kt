@@ -16,7 +16,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.beta.data.*
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.posting.*
@@ -45,11 +45,11 @@ class BetaFinancialApprovalScreenTest {
             val store = RoomBetaEvidenceStore(db)
             store.capture(CapturedEvidence("screen", EvidenceRequest("screen", EvidenceOrigin.EXPLICIT_SAMPLE),
                 EvidenceMessage("screen", "synthetic", "synthetic only", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
-            val archive = InterpretationArchive.encode(Interpretation("screen", LegacyInterpretationAdapter.VERSION, bank,
+            val archive = FinancialArchiveFixture.encode(Interpretation("screen", FinancialArchiveFixture.VERSION, bank,
                 Facts(MessageFamily.PURCHASE, Money.of("23", Currency.USD), occurredAtLocal = LocalDateTime.parse("2026-10-17T13:30:00"),
                     exchangeRate = BigDecimal("3.756957")), ParseStatus.SUCCESS, null, emptyList(), emptySet()))
             store.begin("screen", at); store.complete("screen", route,
-                EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "never authority"), at)
+                EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
             requireNotNull(RoomBetaFinancialAdoption(db).preview("screen"))
         } finally { db.close() }
     }

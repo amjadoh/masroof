@@ -40,9 +40,10 @@ class ModuleBoundaryTest {
         graph.filterKeys { it.startsWith(":lab:") }.forEach { (module, deps) ->
             assertFalse("$module depends on production", ":app" in deps)
         }
+        assertFalse("Removed legacy modules must not return", graph.keys.any { it in setOf(":lab:engine", ":lab:android") })
         assertEquals(emptySet<String>(), graph[":lab:finance-core"])
         assertEquals(setOf(":lab:finance-core"), graph[":lab:bank-engine"])
-        assertEquals(setOf(":ui-kit", ":lab:finance-core", ":lab:bank-engine", ":lab:engine"), graph[":lab:beta"])
+        assertEquals(setOf(":ui-kit", ":lab:finance-core", ":lab:bank-engine"), graph[":lab:beta"])
         fun visit(module: String, ancestors: Set<String>) {
             assertFalse("Dependency cycle: $ancestors -> $module", module in ancestors)
             graph[module].orEmpty().forEach { visit(it, ancestors + module) }

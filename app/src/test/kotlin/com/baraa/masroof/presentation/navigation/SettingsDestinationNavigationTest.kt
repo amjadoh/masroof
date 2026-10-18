@@ -25,7 +25,11 @@ class SettingsDestinationNavigationTest {
         )
         assertEquals(SettingsDestination.DesignCatalog, decodeSettingsDestination("design_catalog"))
         assertEquals(SettingsDestination.DeveloperSettings, decodeSettingsDestination(SettingsDestination.DeveloperSettings.encode()))
-        assertEquals(SettingsDestination.ParsingLab, decodeSettingsDestination(SettingsDestination.ParsingLab.encode()))
+    }
+
+    @Test
+    fun removedLabRouteFallsBackWithoutRestoringOldScreen() {
+        assertEquals(SettingsDestination.Hub, decodeSettingsDestination("parsing_lab"))
     }
 
     @Test

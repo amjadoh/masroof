@@ -19,7 +19,7 @@ import com.baraa.masroof.lab.beta.application.BetaStartState
 import com.baraa.masroof.lab.beta.presentation.theme.BetaSpacing
 
 @Composable
-internal fun BetaStartPanel(state: BetaStartState, hasParsingLab: Boolean, busy: Boolean, failed: Boolean,
+internal fun BetaStartPanel(state: BetaStartState, busy: Boolean, failed: Boolean,
     onContinue: () -> Unit, onFresh: () -> Unit) {
     val existing = state == BetaStartState.EXISTING
     var confirmFresh by rememberSaveable { mutableStateOf(false) }
@@ -31,7 +31,7 @@ internal fun BetaStartPanel(state: BetaStartState, hasParsingLab: Boolean, busy:
         Button(onClick = onContinue, enabled = !busy, modifier = Modifier.testTag("beta-start-continue")) {
             Text(stringResource(if (existing) R.string.beta_start_resume else R.string.beta_start_begin))
         }
-        if (existing || hasParsingLab) OutlinedButton(onClick = { confirmFresh = true }, enabled = !busy,
+        if (existing) OutlinedButton(onClick = { confirmFresh = true }, enabled = !busy,
             modifier = Modifier.testTag("beta-start-fresh")) { Text(stringResource(R.string.beta_start_fresh)) }
     }
     if (confirmFresh) AlertDialog(

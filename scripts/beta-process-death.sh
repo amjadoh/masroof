@@ -46,6 +46,10 @@ CLASS="com.baraa.masroof.lab.beta.processdeath.BetaLedgerProcessDeathTest"
 journey armBeforeCommit resumeBeforeCommit
 journey armAfterCommit resumeAfterCommit
 
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaFinancialApprovalProcessDeathTest"
+journey armBeforeApprovalCommit resumeBeforeApprovalCommit
+journey armAfterApprovalCommitBeforeAcknowledgement resumeAfterApprovalCommitBeforeAcknowledgement
+
 CLASS="com.baraa.masroof.lab.beta.processdeath.BetaCorrectionProcessDeathTest"
 journey armBeforeSuppressionCommit resumeBeforeSuppressionCommit
 journey armAfterSuppressionCommit resumeAfterSuppressionCommit

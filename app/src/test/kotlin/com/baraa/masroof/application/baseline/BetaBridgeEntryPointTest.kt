@@ -44,7 +44,9 @@ class BetaBridgeEntryPointTest {
     @Test
     fun labGradleModules_useLabPathNotParsingLab() {
         val settings = File("../settings.gradle.kts").readText()
-        assertTrue(settings.contains("include(\":lab:engine\", \":lab:android\", \":lab:beta\")"))
+        assertTrue(settings.contains("include(\":lab:beta\")"))
+        assertFalse(settings.contains("\":lab:engine\""))
+        assertFalse(settings.contains("\":lab:android\""))
         assertFalse(settings.contains("parsing-lab"))
         assertTrue(File("../lab/beta/build.gradle.kts").isFile)
         assertTrue(File("../lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/data/BetaDatabase.kt").isFile)
