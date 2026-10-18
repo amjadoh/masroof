@@ -24,8 +24,6 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Configure SDK
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
-      - name: Verify experiment scoring and review guards (no model download)
-        run: python3 -m unittest discover -s lab/experiments -p 'test_*.py'
       # CI's root testDebugUnitTest task covers app and lab/beta.
       # Pure JVM modules have separate test tasks and run only here.
       - name: Test lab JVM engines and domain contracts

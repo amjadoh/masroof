@@ -23,7 +23,6 @@
     <string name="beta_dash_due_date">تاريخ الاستحقاق</string>
     <string name="beta_dash_balance_date">تاريخ الرصيد</string>
     <string name="beta_detail_before_refunds">المصاريف قبل الاسترداد</string>
-    <string name="beta_detail_loan_type">نوع القرض</string>
     <string name="beta_detail_personal">شخصي</string>
     <string name="beta_detail_auto">سيارة</string>
     <string name="beta_detail_mortgage">عقاري</string>

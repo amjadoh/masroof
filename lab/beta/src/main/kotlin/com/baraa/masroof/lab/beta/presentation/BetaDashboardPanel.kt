@@ -105,12 +105,18 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                 if (selectedTransaction != null) {
                     BetaDashboardTransactionDetail(snapshot, checkNotNull(selectedTransaction))
                 } else if (selectedId != null) {
-                    BetaEntityDetail(snapshot, com.baraa.masroof.lab.finance.asset.AssetId(
-                        com.baraa.masroof.lab.finance.value.Environment.BETA,
-                        com.baraa.masroof.lab.finance.value.BankId(checkNotNull(selectedBank)), checkNotNull(selectedId)),
-                        interactive, ::select)
-                    val selected = (snapshot.accounts.map { it.id } + snapshot.debitCards.map { it.cardId } + snapshot.creditFacilities.flatMap { listOf(it.facilityId) + it.cards.map { card -> card.cardId } } + snapshot.loans.map { it.id }).singleOrNull(::matches)
-                    selected?.let { BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, asset = it), interactive, { key -> selectedTransaction = key.transactionId }, complete = DashboardSection.CURRENT_LEDGER !in read.unavailableSections && DashboardSection.RUNTIME_SOURCE !in read.unavailableSections) }
+                    val account = snapshot.accounts.singleOrNull { matches(it.id) }
+                    val debit = snapshot.debitCards.singleOrNull { matches(it.cardId) }
+                    val facility = snapshot.creditFacilities.singleOrNull { matches(it.facilityId) }
+                    val loan = snapshot.loans.singleOrNull { matches(it.id) }
+                    val card = snapshot.creditFacilities.flatMap { it.cards }.singleOrNull { matches(it.cardId) }
+                    when {
+                        account != null || debit != null || facility != null || card != null || loan != null -> BetaAssetDetail(
+                            snapshot, account, debit, facility, card, loan, interactive, ::select,
+                            { selectedTransaction = it },
+                            DashboardSection.CURRENT_LEDGER !in read.unavailableSections && DashboardSection.RUNTIME_SOURCE !in read.unavailableSections)
+                        else -> Text(stringResource(R.string.beta_dash_missing), modifier = Modifier.testTag("dash-missing"))
+                    }
                 } else when (route) {
                     "OVERVIEW" -> BetaDashboardHome(read, interactive, preferences, onRoute = { route = it },
                         onTransaction = { selectedTransaction = it }, onImport = onImport, layoutOpen = homeLayoutOpen,

@@ -23,18 +23,18 @@ Human labels now include direction, execution state, available balance and outst
 
 Beta schema 11 -> 12 adds nullable metadata columns only. Historical annotations keep their original contents and null metadata rather than acquiring invented provenance. Existing labels, raw evidence, archives, ledger, revisions and protected production data are retained. Learning labels still cannot authorize posting or modify interpretation.
 
-The existing encrypted Beta archive includes the label table; no plaintext export, background training, model download or promotion is introduced. Offline tools remain under lab/experiments. M7.2-M7.5 require an explicitly supplied/consented human dataset, frozen template-separated holdout, actual candidate measurements and promotion approval. These are evidence gates, not a reason to enable a placeholder model.
+The existing encrypted Beta archive includes the label table; no plaintext export, background training, model download or promotion is introduced. M7.2-M7.5 require an explicitly supplied/consented human dataset, frozen template-separated holdout, actual candidate measurements and promotion approval. These are evidence gates, not a reason to enable a placeholder model.
 
 Local verification: BankEngine tests, the full Beta JVM suite, and all seven native learning/migration tests passed on isolated Android 15 / API 35. The native set includes 11 -> 12 preservation and existing 10 -> 11 / 1 -> 11 schema checks.
 
 ## M9 implementation
 
-- Beta-only detail layouts reuse unchanged ui-kit primitives and mirror the existing production geometry. No production source, formatter or callback is changed. Beta account/card/loan details display precomputed current facts, observation dates, configured periods and unavailable values; member-card due is explicitly a reference to the one facility due.
+- Beta-only detail layouts reuse unchanged ui-kit primitives and mirror the existing production geometry. No production source, formatter or callback is changed. Beta account/card/loan details display precomputed current facts, observation dates, configured periods and unavailable values; facility due appears on the facility detail only; member-card details explain that shared authority without repeating a due value.
 - Debit gross/refund totals are computed in BetaAnalysisBuilder and checked against the original production trend builder, never added in Compose.
 - Home section order/visibility and quick metrics have a draft-only editor using a Beta-only layout-choice row with the existing production tokens. Apply uses compare-and-save in isolated Beta preferences; dismissal discards. Layout is included in existing Beta backups. Financial period configuration remains accessible from the layout editor.
 - A native synthetic 10,000-current-row test checks three complete reads, constant query count, no audit/raw-body scans, no read-side writes and explicit overflow rejection. API 35 emulator cold/warm reads were 7,987 / 6,257 / 5,912 ms while local builds were running. The test budget is 30 seconds per read; these are emulator measurements, not a promise of phone latency.
 
-Verification: the 10,000-row native history check and all 12 Beta-only Home/detail/layout UI journeys passed against the unchanged shared ui-kit. Native expectations now use localized money and assert the explicit shared-facility reference; financial fixture values are unchanged.
+Verification: the 10,000-row native history check and all 12 Beta-only Home/detail/layout UI journeys passed against the unchanged shared ui-kit. Native expectations use localized money and assert facility-only due display; financial fixture values are unchanged.
 
 
 ## M10 implementation
@@ -43,7 +43,7 @@ New welcome acknowledgement atomically starts a persisted Beta-only BANK -> IMPO
 
 The four primary tabs remain visible on normal financial routes, show their actual selection, discard unsaved drafts on navigation and are disabled during busy writes. Settings contains only accounts, cards, loans and commitments. Account bank scope and owned entities use stable bank-qualified identities. Commitment management reuses the existing revision-checked draft workflow, with salary/statement configuration excluded from that settings category. Appearance, backup, restore, reset and encrypted archives remain available only through the explicit developer-tools workspace route.
 
-Local targeted checks passed: new/reopened onboarding state and backup restoration, full fresh optional journey, current-engine discovery -> explicit ownership -> financial approval -> Home -> reopen with one posting, existing-data preservation, confirmed fresh-start safety, financial-management-only settings, developer-tools restoration and primary navigation (11 native tests). The complete isolated Beta Android suite also passed: 148 tests, no failures or skips. JVM verification passed 244 Beta + 56 BankEngine + 178 Finance Core tests (478 total), with no failures/skips. Beta lintDebug and 16 offline experiment guard tests passed.
+Local targeted checks passed: new/reopened onboarding state and backup restoration, full fresh optional journey, current-engine discovery -> explicit ownership -> financial approval -> Home -> reopen with one posting, existing-data preservation, confirmed fresh-start safety, financial-management-only settings, developer-tools restoration and primary navigation (11 native tests). The complete isolated Beta Android suite also passed: 148 tests, no failures or skips. JVM verification passed 244 Beta + 56 BankEngine + 178 Finance Core tests (478 total), with no failures/skips. Beta lintDebug passed.
 
 A separate run without concurrent builds measured the same 10,000-row read at 6,762 / 5,998 / 5,759 ms on this emulator. Real-phone latency and manual production/Beta comparison remain acceptance work.
 
@@ -53,9 +53,16 @@ A separate run without concurrent builds measured the same 10,000-row read at 6,
 - `:lab:beta:testDebugUnitTest :lab:bank-engine:test :lab:finance-core:test :lab:beta:lintDebug`: pass; 478 JVM tests, no failures/errors/skips, and Beta lint passes.
 - `:lab:beta:connectedDebugAndroidTest`: 148 native tests pass on an isolated Android 15 / API 35 emulator, no failures/errors/skips.
 - Existing `scripts/beta-process-death.sh`, run against only com.baraa.masroof.lab.beta.test: actual permission deny/grant and 39 separate instrumentation phases pass, including the persisted BANK onboarding step after a new process, evidence/approval/correction/label COMMIT boundaries and restore/WAL recovery.
-- `python3 -m unittest discover -s lab/experiments -p 'test_*.py'`: 16 pass. No training or model download was performed.
 - Synthetic native screenshots inspected for account details, bank onboarding and financial-management settings. Production app/ and ui-kit/ have no source changes. The pre-existing gradle.properties edit remains outside this work.
 
 ## Remaining acceptance gates
 
 The implementation is ready for review and a fresh isolated Beta trial. User comparison on the same real phone, exact visual acceptance across its supported window configurations, and phone latency remain unverified. Automated synthetic screenshots and emulator timings are not substitutes for those checks. Optional ML stays OFF: consented trusted-label dataset, template-separated holdout, candidate safety/quality measurements, Android size/heap/latency and explicit promotion approval are still required. No production migration, cleanup, release or cutover is authorized by this branch.
+
+## PR 299 integration after PR 298
+
+Main is incorporated into the M9 detail branch. BetaAssetDetail replaces BetaEntityDetail and its unused layout helpers. Accounts show cashPosition (including internal transfers); debit gross/refund facts from PR 298 remain visible; facility due appears only on the facility screen, with explanatory text on members. Home customization, learning-label capture and M10 onboarding remain intact. Duplicate loan-type resources are removed. Period display uses localized dates.
+
+Local verification: 246 Beta JVM tests pass with no failures/errors/skips; Beta lint and Android test APK assembly pass. Sixteen targeted API 35 native tests pass across asset details, dashboard navigation, Home layout and the clean onboarding journey. New native checks cover internal-transfer cash position and debit gross/refund presentation. Synthetic Arabic account/card screenshots were inspected. These checks do not close real-phone acceptance or the ML training/evaluation gates.
+
+The user requested removal of the offline Python training/benchmark tools and their sample annotations. The directory and its CI step have been deleted. Beta learning labels and correction capture remain intact; ML training/evaluation and runtime integration remain unfinished.
