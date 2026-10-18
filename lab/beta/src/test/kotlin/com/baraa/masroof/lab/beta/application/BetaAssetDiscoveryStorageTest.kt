@@ -166,7 +166,7 @@ class BetaAssetDiscoveryStorageTest {
         BetaContainer(context).use { beta ->
             beta.setBankEnabled(bank, true)
             beta.importEvidence(EvidenceRequest("synthetic", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(EvidenceMessage("provider", "AlJazira",
-                "POS Purchase\nCard: 1234\nAmount: 42 SAR\nAvailable balance: 100 SAR", Instant.parse("2026-10-16T12:00:00Z"), ReceiptTimeSource.USER_SUPPLIED)))
+                "POS Purchase\nCard: 1234\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\n2026-10-16 12:00", Instant.parse("2026-10-16T12:00:00Z"), ReceiptTimeSource.USER_SUPPLIED)))
             assertEquals(AssetKind.CREDIT_CARD, beta.discoveryPage().proposals.single().kind)
             assertTrue(beta.assets().isEmpty())
         }

@@ -22,7 +22,7 @@ class BetaRichLegacyArchiveTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         BetaContainer.resetOffline(context)
         lateinit var fixture: JSONObject
-        BetaContainer(context).use { fixture = SyntheticFinancialHistory.seed(it, 80) }
+        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules())).use { fixture = SyntheticFinancialHistory.seed(it, 80) }
         val expected = SyntheticFinancialHistory.fingerprint(context)
         val source = File(context.cacheDir, "synthetic_current.db")
         context.getDatabasePath(BetaDatabase.NAME).copyTo(source, overwrite = true)

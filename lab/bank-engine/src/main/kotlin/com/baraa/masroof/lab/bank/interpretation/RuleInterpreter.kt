@@ -218,7 +218,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v3"
+        const val VERSION = "bank-rules-independent-v4"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
