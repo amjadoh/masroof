@@ -19,6 +19,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.ui.components.MasroofMoneyDisplay
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.BetaIo
 import com.baraa.masroof.lab.beta.application.BetaDashboardWorkflow
@@ -289,8 +290,9 @@ class BetaDashboardScreenTest {
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // A purchase does not establish a statement due.
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-facility")
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-card").performScrollTo().performClick()
-            compose.onNodeWithText("16958.89 SAR").assertExists()
+            compose.onNodeWithText(MasroofMoneyDisplay.format(BigDecimal("16958.89"), "SAR", "ar")).assertExists()
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+            compose.onAllNodesWithText(MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", "ar")).assertCountEquals(0)
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-card")
             compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
             compose.onNodeWithTag("dash-month-next").performScrollTo().performClick(); waitLoaded()
@@ -317,15 +319,19 @@ class BetaDashboardScreenTest {
         }, clock)
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded(); route("CARDS")
+        val due = MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+        compose.onAllNodesWithText(due).assertCountEquals(1)
+        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-primary").performScrollTo().performClick()
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onAllNodesWithText(due).assertCountEquals(0)
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-supplementary").performScrollTo().performClick()
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
+        compose.onAllNodesWithText(due).assertCountEquals(0)
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         route("LOANS")
         compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_asset_loan)).assertExists()
