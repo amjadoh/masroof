@@ -35,6 +35,8 @@ object BetaStorageChecks {
                 beta.putPreferenceProbe("m3-retained"); beta.backup()
             }
             val prefs = context.getSharedPreferences(BetaEnvironment.PREFS_NAME, 0)
+            // Cover existing data from before entry acknowledgement as well as acknowledged history.
+            if (includeSidecars) assertTrue(prefs.edit().remove(BetaContainer.START_KEY).commit())
             val beforePrefs = prefs.all.toMap()
             val recovery = File(context.filesDir, "beta_recovery_v1")
             val beforeRecovery = hashes(recovery)
