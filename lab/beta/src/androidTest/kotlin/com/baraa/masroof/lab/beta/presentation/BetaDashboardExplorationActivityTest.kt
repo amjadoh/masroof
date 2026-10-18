@@ -57,7 +57,8 @@ class BetaDashboardExplorationActivityTest {
                 runCatching { compose.onNodeWithTag("dash-routes").performScrollTo(); compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
             }
             compose.onNodeWithTag(tag).performClick()
-            compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
+            if (name == "OVERVIEW") compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-home-hero").fetchSemanticsNodes().isNotEmpty() }
+            else compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
             if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
         } catch (failure: Throwable) {
             runCatching { println(compose.onRoot(useUnmergedTree = true).printToString()) }
@@ -139,7 +140,7 @@ class BetaDashboardExplorationActivityTest {
                 compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
                 val chosen = BetaDashboardViewPreferencesWorkflow(context).read()
                 assertEquals(TrendScope.FINANCIAL_OUTFLOWS, chosen.choice.scope); assertFalse(chosen.bars)
-                route("OVERVIEW", scenario); compose.onNodeWithText("42.35 SAR").assertExists()
+                route("OVERVIEW", scenario); compose.onNode(hasText("42.35 ر.س") and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
             }
             closed()
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->

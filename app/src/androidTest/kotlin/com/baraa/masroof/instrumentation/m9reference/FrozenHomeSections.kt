@@ -370,4 +370,23 @@ fun MasroofAppBar(
     showLogo: Boolean = true,
     onBack: (() -> Unit)? = null,
     backContentDescription: String? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    val reference = com.baraa.masroof.ui.theme.MasroofReference
+    Surface(modifier.fillMaxWidth(), color = if (showLogo) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background) {
+        Row(Modifier.fillMaxWidth().padding(
+            start = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
+            end = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
+            top = if (showLogo) reference.headerTop else MasroofSpacing.screenVertical,
+            bottom = reference.headerBottom),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
+            if (onBack != null) BackNavigationIcon(onBack, backContentDescription)
+            if (showLogo) MasroofLogo(size = MasroofIconSizes.logo, contentDescription = null)
+            Text(title, Modifier.weight(1f),
+                style = if (showLogo) reference.brand else MaterialTheme.typography.headlineSmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, content = actions)
+        }
+    }
+}
