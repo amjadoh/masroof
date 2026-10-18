@@ -20,6 +20,27 @@ class NewMessageEvaluationTest {
     @Test fun finalHeldOutSnippetsKeepMissingTimeReviewable() = evaluate("m6-final-heldout-split.json", "final-heldout-snippets.txt")
     @Test fun finalHeldOutMessagesHaveNoUnsafeAcceptance() = evaluate("m6-final-complete-split.json", "final-heldout-messages.txt")
 
+    private fun body(row: JsonObject): String {
+        val source = File("../..", row.text("source")!!).readText().replace("\r\n", "\n")
+        val raw = row.text("referenceId")?.let { id -> Json.parseToJsonElement(source).jsonObject.getValue("messages").jsonArray
+            .single { it.jsonObject.text("id") == id }.jsonObject.text("body")!! } ?: Regex("\"\"\"(.*?)\"\"\"", RegexOption.DOT_MATCHES_ALL)
+            .findAll(source).toList()[row.getValue("index").jsonPrimitive.int].groupValues[1]
+        assertEquals("Source drift: ${row.text("function")}", row.text("sha256"), sha(raw))
+        return if (row.text("referenceId") == null) raw.trimIndent() else raw
+    }
+
+    @Test fun sourceSplitsExcludeExactNormalizedDuplicatesOfKnownFixturesAndEachOther() {
+        fun key(body: String) = body.replace(Regex("\\s+"), " ").trim()
+        val seen = File("../../app/src/test/resources/testdata/bank_aljazira").walkTopDown()
+            .filter { it.extension == "json" && it.parentFile?.name != "reference" }
+            .map { key(Json.parseToJsonElement(it.readText().removePrefix("\uFEFF")).jsonObject.text("body")!!) }.toMutableSet()
+        assertEquals(40, seen.size)
+        listOf("m6-unseen-split.json", "m6-final-heldout-split.json", "m6-final-complete-split.json").forEach { resource ->
+            val rows = Json.parseToJsonElement(requireNotNull(javaClass.classLoader!!.getResource(resource)).readText().removePrefix("\uFEFF")).jsonArray
+            rows.forEach { row -> assertTrue("Duplicate source example: $resource ${row.jsonObject.text("function")}", seen.add(key(body(row.jsonObject)))) }
+        }
+    }
+
     private fun evaluate(resource: String, reportName: String) {
         val manifest = requireNotNull(javaClass.classLoader!!.getResource(resource)).readText().removePrefix("\uFEFF").replace("\r\n", "\n")
         val rows = Json.parseToJsonElement(manifest).jsonArray
@@ -31,12 +52,7 @@ class NewMessageEvaluationTest {
         var coreMatches = 0
         val reports = rows.map { element ->
             val row = element.jsonObject
-            val source = File("../..", row.text("source")!!).readText().replace("\r\n", "\n")
-            val raw = row.text("referenceId")?.let { id -> Json.parseToJsonElement(source).jsonObject.getValue("messages").jsonArray
-                .single { it.jsonObject.text("id") == id }.jsonObject.text("body")!! } ?: Regex("\"\"\"(.*?)\"\"\"", RegexOption.DOT_MATCHES_ALL)
-                .findAll(source).toList()[row.getValue("index").jsonPrimitive.int].groupValues[1]
-            assertEquals("Source drift: ${row.text("function")}", row.text("sha256"), sha(raw))
-            val body = if (row.text("referenceId") == null) raw.trimIndent() else raw
+            val body = body(row)
             val id = row.text("function")!! + ":" + (row.text("index") ?: row.text("referenceId"))
             val result = engine.interpret(MessageInput(id, "AlJazira", body, Instant.parse("2026-10-18T00:00:00Z")),
                 BankCatalog(listOf(BankDefinition(bank, setOf("AlJazira")))))
