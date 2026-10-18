@@ -133,7 +133,7 @@ class SharedRuleInterpretationTest {
     }
 
     @Test fun shadowCorpusProducesAnHonestFieldDiffReportWithoutChangingTheReference() {
-        val service = BetaInterpretationService.sharedRules(clock)
+        val service = HistoricalInterpretationService.sharedRules(clock)
         val fixtures = File("../engine/src/test/resources/testdata/bank_aljazira").walkTopDown()
             .filter { it.extension == "json" && it.parentFile.name != "reference" }.sortedBy { it.path }.toList()
         val counts = sortedMapOf<String, Int>()

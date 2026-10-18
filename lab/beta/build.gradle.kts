@@ -42,8 +42,8 @@ dependencies {
     implementation(project(":ui-kit"))
     implementation(project(":lab:finance-core"))
     implementation(project(":lab:bank-engine"))
-    // Transitional comparison engine; shares source with Parsing Lab, never :app.
-    implementation(project(":lab:engine"))
+    // Preserved reference adapters belong to historical JVM tests, never Beta runtime.
+    testImplementation(project(":lab:engine"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
