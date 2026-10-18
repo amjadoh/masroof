@@ -33,19 +33,22 @@ class BetaInterpretationReviewScreenTest {
         compose.setContent { MaterialTheme { BetaShell(0, false, editor = {
             BetaHistoryPanel(beta, onClose = {})
         }, onReturn = {}, onReset = {}, onBackup = {}, onRestore = {}) } }
-        compose.waitUntil { compose.onAllNodesWithTag("history-review-0").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("history-review-0").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("history-review-0").performScrollTo().performClick()
-        compose.waitUntil { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("label-field").performScrollTo().performClick()
         compose.onNodeWithTag("label-field-AMOUNT").performClick()
         compose.onNodeWithTag("label-value").performScrollTo().performTextInput("43")
         compose.onNodeWithTag("label-save").performScrollTo().assertIsNotEnabled()
         assertTrue(beta.interpretationReview(result.summary.id)!!.labels.isEmpty())
         compose.onNodeWithTag("label-original").performScrollTo().performTextInputSelection(TextRange(body.indexOf("42 SAR"), body.indexOf("42 SAR") + 2))
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("label-selected").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("label-selected").performScrollTo().assertTextContains("42", substring = true)
         compose.onNodeWithTag("label-confirm").performScrollTo().performClick()
+        awaitSaveReady()
         compose.onNodeWithTag("label-save").performScrollTo().performClick()
-        compose.waitUntil { beta.interpretationReview(result.summary.id)!!.labels.size == 1 }
-        compose.waitUntil { compose.onAllNodesWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_label_count, 1)).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { beta.interpretationReview(result.summary.id)!!.labels.size == 1 }
+        compose.waitUntil(15000) { compose.onAllNodesWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_label_count, 1)).fetchSemanticsNodes().isNotEmpty() }
         val label = beta.interpretationReview(result.summary.id)!!.labels.single()
         assertEquals("43", label.value); assertEquals("42", label.originalText)
         assertEquals("42.00", beta.interpretationReview(result.summary.id)!!.observed[BetaLabelField.AMOUNT])
@@ -62,19 +65,29 @@ class BetaInterpretationReviewScreenTest {
         restoration.setContent { MaterialTheme { BetaShell(0, false, editor = {
             BetaInterpretationReviewPanel(beta, summary.id, onClose = {})
         }, onReturn = {}, onReset = {}, onBackup = {}, onRestore = {}) } }
-        compose.waitUntil { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("label-field").performScrollTo().performClick()
         compose.onNodeWithTag("label-field-AMOUNT").performClick()
         compose.onNodeWithTag("label-value").performScrollTo().performTextInput("43")
         compose.onNodeWithTag("label-original").performScrollTo().performTextInputSelection(TextRange(body.indexOf("42 SAR"), body.indexOf("42 SAR") + 2))
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("label-selected").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("label-selected").performScrollTo().assertTextContains("42", substring = true)
         compose.onNodeWithTag("label-confirm").performScrollTo().performClick()
+        awaitSaveReady()
         compose.onNodeWithTag("label-save").performScrollTo().assertIsEnabled()
         beta.reprocessEvidence(summary.id)
         restoration.emulateSavedInstanceStateRestore()
-        compose.waitUntil { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("label-confirm").performScrollTo().assertIsOff()
         compose.onNodeWithTag("label-save").performScrollTo().assertIsNotEnabled()
         assertTrue(beta.interpretationReview(summary.id)!!.labels.isEmpty())
+    }
+
+    private fun awaitSaveReady() {
+        compose.waitUntil(15000) {
+            compose.onAllNodesWithTag("label-save").fetchSemanticsNodes().singleOrNull()?.config
+                ?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == false
+        }
     }
 
 }

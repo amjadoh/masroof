@@ -15,8 +15,9 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalTestApi::class)
 class BetaSettingsActivityTest {
-    @get:Rule val compose = createEmptyComposeRule()
+    @get:Rule val compose = createEmptyComposeRule(effectContext = kotlinx.coroutines.test.StandardTestDispatcher())
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
 
     @Test fun actualActivityRestoresSettingsRouteThemeAndUncommittedConfirmationAfterRecreation() {
@@ -35,7 +36,10 @@ class BetaSettingsActivityTest {
             scenario.recreate()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings-confirm").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             compose.onNodeWithTag("beta-settings-cancel").performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings-panel").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-settings-panel").assertExists()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-theme-DARK").fetchSemanticsNodes().singleOrNull()?.config
+                ?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == true }
             compose.onNodeWithTag("beta-theme-DARK").performScrollTo().assertIsNotEnabled()
         }
         waitForClose()
