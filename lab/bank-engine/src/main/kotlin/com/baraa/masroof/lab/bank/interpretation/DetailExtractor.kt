@@ -19,9 +19,10 @@ internal class DetailExtractor(
     private val configured: Map<String, List<String>>,
     private val evidence: MutableList<Evidence>,
     private val problem: (String, Blocker) -> Unit,
+    knownLabels: List<String> = emptyList(),
 ) {
     private val reserved = mutableListOf<IntRange>()
-    private val reader = RoleLineReader(source, configured + mapOf("internationalFee" to FEE_LABELS, "exchangeRate" to RATE_LABELS), evidence)
+    private val reader = RoleLineReader(source, configured + mapOf("internationalFee" to FEE_LABELS, "exchangeRate" to RATE_LABELS), evidence, knownLabels)
     private fun entries(field: String, reserve: Boolean = false): List<RoleLine> = reader.read(field).also { rows ->
         if (reserve) reserved += rows.map { it.range }
     }
@@ -37,7 +38,11 @@ internal class DetailExtractor(
         one(field, entries(field, reserve = true).map { MoneyGrammar.parse(it.normalized) })
 
     private fun text(field: String, identifier: Boolean = false): String? =
-        one(field, entries(field).map { entry ->
+        one(field, entries(field).filter { entry ->
+            val accountRole = field == "counterparty" && entry.normalized.matches(Regex("[*x]*[0-9]{4}"))
+            if (accountRole) { val span = source.evidence("scope", field, entry.range); evidence.removeAll { it.field == field && it.start == span.start && it.end == span.end } }
+            !accountRole
+        }.map { entry ->
             when {
                 entry.normalized.isBlank() || entry.original.length > 160 -> null
                 identifier && !entry.normalized.matches(Regex("[a-z0-9][a-z0-9_/-]{0,63}")) -> null
@@ -57,14 +62,14 @@ internal class DetailExtractor(
             else it.normalized.toBigDecimalOrNull()?.takeIf { value -> value.signum() > 0 }?.stripTrailingZeros()
         })
         val date = one("paymentDueDate", entries("paymentDueDate").map {
-            runCatching { LocalDate.parse(it.normalized) }.getOrNull()
+            DateGrammar.date(it.normalized)
         })
         return RoleDetails(due, foreign, fee, rate, date, text("counterparty"), text("transactionReference", true),
             text("biller"), text("billerCode", true), reserved.toList())
     }
 
     companion object {
-        private val FEE_LABELS = listOf("international fee", "fee amount", "رسوم العمليات الدولية", "مبلغ الرسوم")
+        private val FEE_LABELS = listOf("international fee", "fee amount", "رسوم العمليات الدولية", "مبلغ الرسوم", "رسوم:")
         private val RATE_LABELS = listOf("exchange rate", "سعر الصرف")
     }
 }

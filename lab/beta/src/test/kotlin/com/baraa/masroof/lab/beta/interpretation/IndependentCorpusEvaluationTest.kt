@@ -11,7 +11,7 @@ import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Frozen pre-M6 annotation source; no legacy parser execution or generated expected results. */
+/** Known development regressions; frozen pre-M6 annotations, no legacy parser oracle. */
 class IndependentCorpusEvaluationTest {
     private fun hash(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
     @Test fun frozenExternalToEngineFixturesReportCoverageAndRejectUnsafeSuccess() {
@@ -25,6 +25,7 @@ class IndependentCorpusEvaluationTest {
         val bank = BankId("BANK_ALJAZIRA")
         val counts = sortedMapOf<String, Int>()
         val unsafe = mutableListOf<String>()
+        val statusMismatches = mutableListOf<String>()
         val rows = files.map { file ->
             val sample = Json.parseToJsonElement(file.readText()).jsonObject
             fun JsonObject.text(key: String) = this[key]?.takeUnless { it == JsonNull }?.jsonPrimitive?.content
@@ -37,7 +38,9 @@ class IndependentCorpusEvaluationTest {
                 "cardLast4" to f.card?.last4, "sourceAccountLast4" to f.sourceAccount?.maskedNumber,
                 "destinationAccountLast4" to f.destinationAccount?.maskedNumber, "merchant" to f.merchant,
                 "counterparty" to f.counterparty, "occurredAt" to f.occurredAtLocal?.toString(),
-                "bankNetwork" to f.bankNetwork?.name, "cardSmsChannel" to f.cardChannel?.name,
+                "transactionReference" to f.transactionReference, "salaryIncomeWording" to f.salaryIncomeWording?.toString(),
+                "bankNetworkType" to f.bankNetwork?.name, "cardSmsChannel" to f.cardChannel?.name,
+                "debitSourceAccountLast4" to f.debitSourceAccountLast4,
                 "purchaseChannel" to f.purchaseChannel?.name, "availableBalance" to f.availableBalance?.amount?.toPlainString(),
                 "outstandingBalance" to f.outstandingBalance?.amount?.toPlainString(), "biller" to f.biller,
                 "billerCode" to f.billerCode, "paymentDueDate" to f.paymentDueDate?.toString(), "loanType" to f.loanType?.name)
@@ -55,6 +58,7 @@ class IndependentCorpusEvaluationTest {
                 val core = setOf("bank", "messageFamily", "direction", "amount", "currency", "cardLast4", "sourceAccountLast4", "destinationAccountLast4", "occurredAt")
                 if (expected.text("parseStatus") != "SUCCESS" || differences.any { it in core || observed[it] != null }) unsafe += input.evidenceId
             }
+            if (result.status.name != expected.text("parseStatus")) statusMismatches += input.evidenceId
             counts[result.status.name] = counts.getOrDefault(result.status.name, 0) + 1
             result.evidence.forEach { assertTrue(it.start >= 0 && it.end <= input.body.length && it.end > it.start) }
             "${input.evidenceId}: ${result.status}; differences=${differences.sorted()}; diagnostics=${result.diagnostics.map { it.code }}"
@@ -63,8 +67,9 @@ class IndependentCorpusEvaluationTest {
         requireNotNull(report.parentFile).mkdirs()
         report.writeText("Source: frozen checked-in Production fixture annotations, no Production DB or parser reads\n" +
             "Manifest SHA256: ${hash(manifest)}\nEngine: ${interpreter.version}\nFixtures: ${files.size}\nStatuses: $counts\nUnsafe successes: $unsafe\n" +
-            "Retrospective evaluation independent of implementation outputs; not a fresh blinded/device-message holdout or general accuracy estimate. No rule tuning from this split.\n" + rows.joinToString("\n"))
+            "Known development regression set, used for rule refinement in this increment. New held-out examples are evaluated separately; not a general accuracy estimate.\n" + rows.joinToString("\n"))
         println(report.readLines().take(7).joinToString("\n"))
         assertTrue("Unsafe successes: $unsafe", unsafe.isEmpty())
+        assertTrue("Known status coverage gaps: $statusMismatches", statusMismatches.isEmpty())
     }
 }

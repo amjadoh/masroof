@@ -49,6 +49,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             security.forEach { evidence += source.evidence("security.otp", "family", it.range) }
             return result(Facts(MessageFamily.OTP), ParseStatus.NON_FINANCIAL)
         }
+        source.segmentInlinePurchase()
         val validSchema = runCatching { snapshot.validate() }.isSuccess
         // Validate every configured literal before executing the closed grammar.
         val networkTerms = snapshot.network.bankAliases.values.flatten() + snapshot.network.sourceBankLabels +
@@ -71,7 +72,19 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         fun roleEnd(text: String) = rolePrefixes.mapNotNull { it.find(text)?.range?.last?.plus(1) }.maxOrNull() ?: 0
         val roleEnd = roleEnd(title)
         fun titleMatches(phrase: String) = source.phrase(phrase).findAll(title).filter { roleEnd == 0 || (it.range.first == 0 && it.range.last + 1 > roleEnd) }.toList()
-        val matching = snapshot.rules.filter { rule -> rule.phrases.any { titleMatches(it).isNotEmpty() } && rule.excludes.none(::contains) }
+        if (Regex("^ *اسم المستفيد *: *[^\\n]+\\n+ *الاسم المختصر *: *[^\\n]+\\n+ *حالة *: *(?:غير نشط|نشط) *(?:\\n+ *(?:حساب|بنك|في) *: *[^\\n]+)*$").matches(source.text.trim())) {
+            evidence += source.evidence("notice.beneficiary.directory", "family", 0..(source.text.length - 1))
+            return result(Facts(MessageFamily.NON_FINANCIAL), ParseStatus.NON_FINANCIAL)
+        }
+        val candidates = snapshot.rules.filter { rule -> rule.phrases.any { titleMatches(it).isNotEmpty() } && rule.excludes.none(::contains) }
+        // A configured compound title (e.g. refund of a purchase) consumes its nested literal,
+        // but independent movement cues on another span still conflict.
+        val matching = candidates.filter { rule ->
+            val spans = rule.phrases.flatMap(::titleMatches).map { it.range }
+            spans.any { span -> candidates.filter { it.family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE }.none { other ->
+                other.phrases.flatMap(::titleMatches).any { it.range.first <= span.first && it.range.last >= span.last && it.range != span }
+            } }
+        }
         matching.forEach { rule -> rule.phrases.forEach { phrase -> titleMatches(phrase).forEach { match ->
             evidence += source.evidence(rule.id, "family", (lineStart + leading + match.range.first)..(lineStart + leading + match.range.last))
         } } }
@@ -90,7 +103,10 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
                 val indent = line.length - line.trimStart().length
                 val bound = roleEnd(line.trimStart())
                 val cueAtStart = match.range.first == start + indent
-                if (bound == 0 || (cueAtStart && match.value.length > bound)) {
+                val consumedTitle = family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE && start == lineStart && matching.flatMap { it.phrases }.flatMap(::titleMatches).any {
+                    match.range.first >= lineStart + leading + it.range.first && match.range.last <= lineStart + leading + it.range.last
+                }
+                if (!consumedTitle && (bound == 0 || (cueAtStart && match.value.length > bound))) {
                     problem("FAMILY_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
                     evidence += source.evidence(rule.id, "family", match.range)
                 }
@@ -98,7 +114,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         }
         if (source.text.lineSequence().any { it.trimStart().let { line -> line.startsWith(">") || line.startsWith("```") || line.startsWith('"') || line.startsWith('«') || line.startsWith('“') } })
             problem("QUOTED_MESSAGE_CONTEXT")
-        if (BLOCKED.any(::contains)) problem("EXECUTION_NOT_PROVEN")
+        if (family !in INFORMATIONAL && BLOCKED.any(::contains)) problem("EXECUTION_NOT_PROVEN")
         if (CONTEXT.any(::contains) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
         if ((family == MessageFamily.TRANSFER_IN && OUTGOING.any(::contains)) ||
@@ -112,7 +128,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
 
         fun labels(field: ExtractionField) = matching.flatMap { it.labels[field].orEmpty() }.distinct()
         data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
-        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem).read()
+        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels).read()
         val secondaryRanges = details.reserved.toMutableList()
         fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
         // Reserve all known secondary roles even when the selected rule does not expose them.
@@ -124,7 +140,9 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
                 val pattern = Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
                 val matches = pattern.findAll(source.text).toList()
                 Regex("(?m)^ *" + source.phrase(label).pattern).findAll(source.text).forEach { mention ->
-                    if ((field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first })
+                    val longerRole = labels(field).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
+                        Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
+                    if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first })
                         problem("MALFORMED_${field.name}")
                 }
                 matches.mapNotNull { match ->
@@ -149,25 +167,33 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         }
         val balance = money(ExtractionField.AVAILABLE_BALANCE)
         val amount = if (family in INFORMATIONAL) null else money(ExtractionField.AMOUNT)
-        val card = identifier(ExtractionField.CARD)
+        val labeledCard = identifier(ExtractionField.CARD)
+        val card = run {
+            val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
+            val hits = pattern.findAll(source.text).toList()
+            val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) }).distinct()
+            if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
+            hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
+            values.singleOrNull()
+        }
         val account = identifier(ExtractionField.SOURCE_ACCOUNT)
         val destination = identifier(ExtractionField.DESTINATION_ACCOUNT)
         val merchants = labels(ExtractionField.MERCHANT).flatMap { label ->
-            Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:[ \\t]*([^\\n\\r]+)").findAll(source.text).map { match ->
+            Regex("(?m)^ *" + source.phrase(label).pattern + "(?:[ \\t]*:[ \\t]*|[ \\t]+)([^\\n\\r]+)").findAll(source.text).map { match ->
                 val range = match.groups[1]!!.range
                 evidence += source.evidence("extract.merchant", "MERCHANT", range)
                 source.original(range).trim()
             }.toList()
         }.distinct()
         if (merchants.size > 1) problem("CONFLICTING_MERCHANT", Blocker.CONFLICTING_FACTS)
-        val times = TIME.findAll(source.text).mapNotNull { match ->
+        val times = DateGrammar.timestamp.findAll(source.text).mapNotNull { match ->
             val lineStart = source.text.lastIndexOf('\n', match.range.first).let { if (it < 0) 0 else it + 1 }
             val prefix = source.text.substring(lineStart, match.range.first).trim().removeSuffix(":").trim()
             if (prefix !in TIME_LABELS) {
                 problem("UNBOUND_TIME_ROLE"); return@mapNotNull null
             }
             evidence += source.evidence("extract.time", "occurredAtLocal", match.range)
-            runCatching { LocalDateTime.parse(match.value.replace(' ', 'T').replace('t', 'T')) }.getOrElse { problem("INVALID_TIME"); null }
+            DateGrammar.time(match.value).also { if (it == null) problem("INVALID_TIME") }
         }.distinct().toList()
         if (times.size > 1) problem("CONFLICTING_TIME", Blocker.CONFLICTING_FACTS)
         if (family !in INFORMATIONAL) {
@@ -177,19 +203,19 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) && account == null) problem("MISSING_SOURCE_ROLE")
         }
         if (family == MessageFamily.CARD_PAYMENT && card == null) problem("MISSING_CARD_ROLE")
-        if (family == MessageFamily.BILL_PAYMENT && (details.biller == null || details.billerCode == null)) problem("MISSING_BILLER_ROLE")
+        if (family == MessageFamily.BILL_PAYMENT && details.biller == null) problem("MISSING_BILLER_ROLE")
         if (family == MessageFamily.FINANCING_INSTALLMENT && details.counterparty == null) problem("MISSING_FINANCING_ROLE")
         if (details.foreign != null && amount != null && details.foreign.currency == amount.currency && details.foreign != amount)
             problem("CONFLICTING_FOREIGN_PRINCIPAL", Blocker.CONFLICTING_FACTS)
         val observations = matching.flatMap { it.observations.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }
         val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem)
-            .resolve(family, banks.single(), matching.flatMap { it.phrases })
+            .resolve(family, banks.single(), matching.flatMap { it.phrases }, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
         val observed = ObservationExtractor(source, observations, family, matching.flatMap { it.phrases }, evidence, ::problem).read()
         if (observed.card == CardChannel.STATEMENT && family !in INFORMATIONAL) problem("STATEMENT_CHANNEL_IN_MOVEMENT", Blocker.CONFLICTING_FACTS)
         if (observed.balanceMarker && balance == null) problem("MISSING_OBSERVED_BALANCE")
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
-        if (transfer && account == null) problem("MISSING_TRANSFER_SOURCE")
-        if (transfer && destination == null) problem("MISSING_TRANSFER_DESTINATION")
+        if (transfer && account == null && (family == MessageFamily.TRANSFER_OUT || details.counterparty == null)) problem("MISSING_TRANSFER_SOURCE")
+        if (transfer && destination == null && (family == MessageFamily.TRANSFER_IN || details.counterparty == null)) problem("MISSING_TRANSFER_DESTINATION")
         val sourceBank = if (family == MessageFamily.TRANSFER_IN) {
             if (network.kind == BankNetwork.INTRA_BANK) banks.single() else network.source
         } else network.source ?: banks.single()
@@ -209,6 +235,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             biller = details.biller, billerCode = details.billerCode, bankNetwork = network.kind,
             cardChannel = observed.card, purchaseChannel = observed.purchase, loanType = observed.loan,
             salaryIncomeWording = observed.salary,
+            debitSourceAccountLast4 = account?.takeIf { observed.card == CardChannel.DEBIT && family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) },
             executionState = if (family in INFORMATIONAL || blockers.isNotEmpty()) null else "EXECUTED")
         return result(facts, when {
             blockers.isNotEmpty() -> ParseStatus.REVIEW_REQUIRED
@@ -218,11 +245,11 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v4"
+        const val VERSION = "bank-rules-independent-v6"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
-        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "رمز سري")
+        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
         private val INCOMING = RuleLibrary.incomingTransferPhrases()

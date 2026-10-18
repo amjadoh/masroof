@@ -27,7 +27,7 @@ class SharedRuleInterpretationAdapter(schema: BankRuleSchema, clock: Clock = Clo
         if (banks.size != 1) return LegacyInterpretationAdapter.unavailable(input,
             if (banks.isEmpty()) Blocker.UNKNOWN_BANK else Blocker.AMBIGUOUS_BANK).copy(version = version())
         val bank = banks.single()
-        val library = try { snapshot.validate(); library() } catch (_: IllegalArgumentException) {
+        val library = try { snapshot.validate(); require(!snapshot.network.standaloneSourceBrackets); library() } catch (_: IllegalArgumentException) {
             return failure(input, bank, Blocker.UNSUPPORTED_RULE_SCHEMA)
         }
         val result = try {

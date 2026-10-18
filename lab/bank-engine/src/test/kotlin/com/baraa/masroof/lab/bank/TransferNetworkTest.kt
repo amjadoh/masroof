@@ -130,4 +130,20 @@ class TransferNetworkTest {
         assertTrue(Blocker.CONFLICTING_FACTS in r.blockers)
         assertEquals(ParseStatus.SUCCESS, parse(outgoing.replace("Outgoing transfer", "Fund transfer debited") + "\nNetwork: inter-bank").status)
     }
+    @Test fun incomingBracketNeedsExplicitLocalDestinationAndPartyAndNeverUsesDebitLineAsSource() {
+        val config = schema.copy(network = schema.network.copy(standaloneSourceBrackets = true))
+        val body = "Incoming transfer\nDeposited to account: 1234\nValue: 100 SAR\nFrom: Synthetic Person\n[Remote Bank]\nخصمت من حساب: 9999\nTime: 13:00 18-10-2026"
+        val result = parse(body, config)
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertNull(result.facts.sourceAccount)
+        assertEquals(local, result.facts.destinationAccount!!.bank)
+        assertEquals(BankNetwork.INTER_BANK, result.facts.bankNetwork)
+        assertTrue(result.evidence.any { it.field == "sourceBank" && it.slice(input(body)) == "[Remote Bank]" })
+        listOf(body.replace("Deposited to account: 1234", ""), body.replace("From: Synthetic Person", ""),
+            body.replace("Remote Bank", "Unknown"), "$body\nSource bank: Local Bank").forEach {
+            assertEquals(it, ParseStatus.REVIEW_REQUIRED, parse(it, config).status)
+        }
+        assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body).status)
+    }
+
 }
