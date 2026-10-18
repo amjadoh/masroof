@@ -138,6 +138,48 @@ class BetaManualAssetWorkflowTest {
         assertArrayEquals(sentinel, production.readBytes())
         BetaContainer.resetOffline(context)
     }
+    @Test fun loanConfigurationRestore() {
+        BetaContainer.resetOffline(context)
+        val firstDraft = draft("loan-one", AssetKind.LOAN)
+        val secondDraft = draft("loan-two", AssetKind.LOAN)
+        val originals = BetaContainer(context).use { beta ->
+            beta.setBankEnabled(bank, true)
+            expectFailure { beta.saveManualAsset(firstDraft.copy(ownedConfirmed = false)) }
+            expectFailure { beta.saveManualAsset(firstDraft.copy(parentId = id("account"))) }
+            expectFailure { beta.saveManualAsset(firstDraft.copy(role = CreditCardRole.PRIMARY)) }
+            expectFailure { beta.saveManualAsset(firstDraft.copy(last4 = "")) }
+            assertTrue(beta.assets().isEmpty())
+            val first = beta.saveManualAsset(firstDraft)
+            assertEquals(first, beta.saveManualAsset(firstDraft))
+            val second = beta.saveManualAsset(secondDraft)
+            assertNotEquals(first.id, second.id)
+            assertEquals(first.last4, second.last4)
+            assertNull(first.parentId); assertNull(first.creditCardRole)
+            beta.backup()
+            beta.saveManualAsset(firstDraft.copy(last4 = "5678", editing = true, expectedOriginal = first))
+            listOf(first, second)
+        }
+        BetaContainer(context).use { beta ->
+            val changed = beta.assets().single { it.id == firstDraft.id }
+            assertEquals("5678", changed.last4)
+            expectFailure { beta.saveManualAsset(firstDraft.copy(last4 = "9999", editing = true, expectedOriginal = originals.first())) }
+            expectFailure { beta.saveManualAsset(firstDraft.copy(kind = AssetKind.ACCOUNT, editing = true, expectedOriginal = changed)) }
+            assertTrue(beta.restore())
+            assertEquals(originals.toSet(), beta.assets().toSet())
+            beta.setBankEnabled(bank, false)
+            expectFailure { beta.saveManualAsset(draft("paused-loan", AssetKind.LOAN)) }
+            beta.saveManualAsset(firstDraft.copy(last4 = "8888", editing = true, expectedOriginal = originals.first()))
+            assertTrue(beta.discoveryPage().proposals.isEmpty())
+        }
+        val db = androidx.room.Room.databaseBuilder(context, com.baraa.masroof.lab.beta.data.BetaDatabase::class.java,
+            com.baraa.masroof.lab.beta.data.BetaDatabase.NAME).build()
+        try {
+            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_ledger_current").use {
+                assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0))
+            }
+        } finally { db.close() }
+        BetaContainer.resetOffline(context)
+    }
     private fun expectFailure(block: () -> Unit) {
         try { block(); fail("Expected rejected manual configuration") } catch (_: IllegalArgumentException) { } catch (_: IllegalStateException) { }
     }
