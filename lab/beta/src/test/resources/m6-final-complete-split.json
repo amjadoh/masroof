@@ -1,0 +1,104 @@
+[
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 0,
+    "function": "cardLast4BeforeAmount_doesNotBecomeAmount",
+    "sha256": "cfdf70d666f5fecea62992db6736a37ad2da0c906a661ad32fc725fcfcee6332"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 1,
+    "function": "cardBalancesAroundAmount_stayDistinct",
+    "sha256": "5be69f26cfc183093844f5a6995c917dd4be81585098e2b2ed8a1ad766e62ec6"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 3,
+    "function": "transferOutInter_sourceAlJazira_destinationUnknown",
+    "sha256": "b81fda83a34a48b9c2854483df7fd5495c48fb210c3ccf3f7dc92debfe962f9a"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 5,
+    "function": "transferInIntra_bothAccountsBankAlJazira",
+    "sha256": "eec0db29597cc7d39fd3707a811bfa67dae79eb7adfb26479952ed994aa2c1a1"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 6,
+    "function": "crossBankTransfer_isInterBank",
+    "sha256": "9d66f2446f8df14e50d0934a79059b02aff6d8f2eb45b21db2373e7d1b78eebc"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 7,
+    "function": "nonTransferLocalAccounts_remainBankAlJazira",
+    "sha256": "73e9b4c979a543a96f96c9cb2e32768ac3a3710805e5b56eb42df896805e2adc"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 8,
+    "function": "nonTransferLocalAccounts_remainBankAlJazira",
+    "sha256": "6fc5ad266a242b1979413c9d1660a1733387ccf29c688b4179653fa33108689d"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 10,
+    "function": "madaGooglePayPos_parsesWithoutSourceAccount",
+    "sha256": "f0c756836706a55c85fbb2174c82bc768ba4b84a48fc0043d53c9b7833a618f2"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 12,
+    "function": "creditCardPayment_isCardPaymentNotPurchase",
+    "sha256": "8d2f3e5d3fba4e366c0e7e1ad9316085e1bb452c4cf39d9005c90714edaece1e"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 13,
+    "function": "creditCardSettlement_tasdidWording_parsesAsCardPayment",
+    "sha256": "a85fcc68b573965d8ff70767f94c210e4d4f857f9e1f7df37e81792ebb99c1e2"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 15,
+    "function": "balanceNotice_extractsBalanceWithoutTransactionAmount",
+    "sha256": "732f5f8ecc44e8b41338e694d0ed58ad6958e81aab81357ec921ae2208637977"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 20,
+    "function": "creditCardRefund_hamzaSpellingAndNumberLabel_isParsed",
+    "sha256": "d91826f7c7fb6bd752fe79dec1704617e23eae880344647774c0e603887de70a"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 25,
+    "function": "arabicOneTimePassword_onlinePurchaseZeroAmount_isNonFinancialWithoutAmount",
+    "sha256": "a0a21e0a5c7b96549054e659b112e75578d30842f7181edc453cd1a0534718ac"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 26,
+    "function": "saudiElectricityOnlinePurchase_stillParsesAsPurchase",
+    "sha256": "049b75a3c44766be7ef8035e00535c2fe10e83a2defa4208f452883f00f9c69a"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 27,
+    "function": "intraTransfer_bareDmyDateTime_extractsOccurredAt",
+    "sha256": "1d3b48412d1be7c37d2beddbd4f8aeb251dfe17d27e7828492106f2a7a970209"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 28,
+    "function": "intraTransferOut_bareDmyDateTime_extractsOccurredAt",
+    "sha256": "a283a28f9c78e8c45797c5162fc4b8bf4a0d4c40c8deec139f43787ff98eee07"
+  },
+  {
+    "source": "app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+    "index": 29,
+    "function": "typographyVariantLabels_doNotDegradeMerchantDisplayText",
+    "sha256": "2c5de39747065be177b1ec644b52b07dc822e79fc3a6dc0775303efb050edb22"
+  }
+]
