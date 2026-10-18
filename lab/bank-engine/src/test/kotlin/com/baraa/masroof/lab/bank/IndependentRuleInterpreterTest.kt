@@ -102,8 +102,8 @@ class IndependentRuleInterpreterTest {
         assertNotEquals(engine.version, changed.version)
         val configured = rule.copy(phrases = listOf("purchase"))
         val valid = schema.copy(rules = listOf(configured))
-        listOf(valid.copy(schema = 2), valid.copy(network = NetworkRules(networkLabels = listOf("network"))),
-            schema.copy(rules = listOf(configured.copy(observations = mapOf("card.credit" to listOf("credit"))))),
+        listOf(valid.copy(schema = 2), valid.copy(network = NetworkRules(bankAliases = mapOf("UNKNOWN" to listOf("bad")))),
+            schema.copy(rules = listOf(configured.copy(observations = mapOf("ownership.mine" to listOf("credit"))))),
             schema.copy(rules = listOf(configured.copy(direction = MoneyDirection.INCOMING))))
             .forEach { invalid -> assertEquals(ParseStatus.REVIEW_REQUIRED, RuleInterpreter(invalid).interpret(input(purchase), catalog).status) }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("x".repeat(16001)).status)
@@ -117,7 +117,7 @@ class IndependentRuleInterpreterTest {
         assertTrue(Blocker.CONFLICTING_FACTS in r.blockers)
     }
 
-    @Test fun initialFamiliesAreBankAgnosticButUnsupportedFamiliesStayReview() {
+    @Test fun initialFamiliesAreBankAgnosticButIncompleteTransfersStayReview() {
         listOf("Refund\nAmount: USD 10.00\nCard: 1234" to MessageFamily.REFUND,
             "Cash withdrawal\nAmount: EUR 15.00\nFrom account: 5678" to MessageFamily.WITHDRAWAL,
             "Fee charged\nAmount: GBP 1.00" to MessageFamily.FEE).forEach { (body, family) ->
@@ -133,6 +133,6 @@ class IndependentRuleInterpreterTest {
         val transfer = RuleLibrary.initial().rules.first().copy(family = MessageFamily.TRANSFER_OUT)
         val unsupported = RuleInterpreter(BankRuleSchema(revision = 1, rules = listOf(transfer))).interpret(input(purchase), catalog)
         assertEquals(ParseStatus.REVIEW_REQUIRED, unsupported.status)
-        assertTrue(Blocker.UNSUPPORTED_RULE_SCHEMA in unsupported.blockers)
+        assertTrue(Blocker.VALIDATION_ERROR in unsupported.blockers)
     }
 }
