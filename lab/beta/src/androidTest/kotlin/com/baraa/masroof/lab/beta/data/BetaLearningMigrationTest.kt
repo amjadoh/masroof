@@ -63,4 +63,26 @@ class BetaLearningMigrationTest {
             }
         } finally { BetaContainer.resetOffline(context) }
     }
+    @Test fun versionElevenPreservesHumanLabelsWithoutInventingTokenMetadata() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        BetaContainer.resetOffline(context)
+        try {
+            helper.createDatabase(BetaDatabase.NAME, 11).apply {
+                execSQL("INSERT INTO beta_raw_evidence(id,namespace,providerId,origin,sender,body,receivedAt,timeSource,capturedAt,captureRoute,captureSelections,historyBanks) VALUES ('raw','migration','one','EXPLICIT_SAMPLE','AlJazira','original 42 SAR','2026-10-18T00:00:00Z','USER_SUPPLIED','2026-10-18T00:00:00Z','{}','[]','[]')")
+                execSQL("INSERT INTO beta_learning_label(rawId,revision,decisionId,archiveHash,interpretationAttempt,engineVersion,rulesVersion,field,value,start,end,originalText,provenance,createdAt) VALUES ('raw',1,'decision','hash',2,'old-engine','old-rules','AMOUNT','43',9,11,'42','USER_EXPLICIT_ORIGINAL_SPAN_V1','2026-10-18T00:00:00Z')")
+                execSQL("INSERT INTO beta_shell_marker(id,note) VALUES ('preserved','before-twelve')")
+                close()
+            }
+            helper.runMigrationsAndValidate(BetaDatabase.NAME, 12, true).apply {
+                query("SELECT value,originalText,archiveHash,tokenStart,tokenEnd,tokenizerVersion,modelVersion,humanProvenance,sourceReceivedAt FROM beta_learning_label").use {
+                    assertTrue(it.moveToFirst()); assertEquals("43", it.getString(0)); assertEquals("42", it.getString(1)); assertEquals("hash", it.getString(2))
+                    (3..8).forEach { column -> assertTrue(it.isNull(column)) }
+                }
+                query("SELECT note FROM beta_shell_marker").use { assertTrue(it.moveToFirst()); assertEquals("before-twelve", it.getString(0)) }
+                query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
+                close()
+            }
+        } finally { BetaContainer.resetOffline(context) }
+    }
+
 }

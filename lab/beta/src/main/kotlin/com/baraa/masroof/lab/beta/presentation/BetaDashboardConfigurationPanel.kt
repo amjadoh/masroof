@@ -18,7 +18,7 @@ import java.time.YearMonth
 
 @Composable
 internal fun BetaDashboardConfigurationPanel(controls: BetaDashboardControls, facilities: List<FacilitySummary>,
-    month: YearMonth, enabled: Boolean, onBusyChanged: (Boolean) -> Unit, onSaved: () -> Unit) {
+    month: YearMonth, enabled: Boolean, onBusyChanged: (Boolean) -> Unit, onSaved: () -> Unit, commitmentsOnly: Boolean = false) {
     val scope = rememberBetaUiScope()
     var config by remember { mutableStateOf<BetaDashboardConfiguration?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -71,6 +71,7 @@ internal fun BetaDashboardConfigurationPanel(controls: BetaDashboardControls, fa
             config?.available != true -> Text(stringResource(R.string.beta_controls_unavailable), modifier = Modifier.testTag("controls-unavailable"))
             else -> {
                 val current = checkNotNull(config)
+                if (!commitmentsOnly) {
                 Text(stringResource(R.string.beta_controls_salary) + ": " + (current.draft.salary?.day?.toString() ?: stringResource(R.string.beta_controls_unset)))
                 OutlinedButton(enabled = enabled && !busy, onClick = { open("SALARY") }, modifier = Modifier.testTag("controls-salary")) { Text(stringResource(R.string.beta_controls_salary)) }
                 facilities.forEachIndexed { index, facility ->
@@ -78,6 +79,7 @@ internal fun BetaDashboardConfigurationPanel(controls: BetaDashboardControls, fa
                     Text(current.draft.statements.singleOrNull { it.facilityId == facility.facilityId }?.closingDay?.toString() ?: stringResource(R.string.beta_controls_unset))
                     OutlinedButton(enabled = enabled && !busy, onClick = { open("STATEMENT", facility.facilityId.localId, facility.facilityId.bank.value) },
                         modifier = Modifier.testTag("controls-statement-${facility.facilityId.bank.value}-${facility.facilityId.localId}")) { Text(stringResource(R.string.beta_controls_statement)) }
+                }
                 }
                 Text(stringResource(R.string.beta_controls_recurring), style = MaterialTheme.typography.titleMedium)
                 if (current.draft.commitments.isEmpty()) Text(stringResource(R.string.beta_dash_empty))

@@ -42,6 +42,7 @@ fun BetaShell(
     onOpenReview: () -> Unit = {},
     onOpenApproval: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenDeveloperTools: () -> Unit = {},
     onOpenHome: (() -> Unit)? = null,
     onOpenTransactions: () -> Unit = {},
     selectedHomeTab: String = "HOME",
@@ -84,16 +85,16 @@ fun BetaShell(
         },
         bottomBar = {
             Column {
-            if (editor == null && dashboard != null && onOpenHome != null) {
+            if (dashboard != null && onOpenHome != null) {
                 val icons = com.baraa.masroof.ui.components.MasroofOutlineIcons
                 val items = listOf(
                     com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_home), icons.LayoutDashboard, selectedHomeTab == "HOME"),
                     com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_transactions), icons.List, selectedHomeTab == "TRANSACTIONS"),
-                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_review), icons.ShieldCheck, false),
-                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_settings), icons.Settings, false))
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_review), icons.ShieldCheck, selectedHomeTab == "REVIEW"),
+                    com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_settings), icons.Settings, selectedHomeTab == "SETTINGS"))
                 Column(Modifier.testTag("beta-bottom-navigation")) {
                 com.baraa.masroof.ui.components.MasroofBottomNavigation(items, { index ->
-                    when (index) { 0 -> { workspaceOpen = false; onOpenHome() }; 1 -> { workspaceOpen = false; onOpenTransactions() }; 2 -> onOpenReview(); 3 -> onOpenSettings() }
+                    when (index) { 0 -> { workspaceOpen = false; onOpenHome() }; 1 -> { workspaceOpen = false; onOpenTransactions() }; 2 -> { workspaceOpen = false; onOpenReview() }; 3 -> { workspaceOpen = false; onOpenSettings() } }
                 }, enabled = returnEnabled && !busy)
                 }
             }
@@ -117,7 +118,8 @@ fun BetaShell(
             }
             Text(stringResource(if (dashboard == null) R.string.beta_welcome else R.string.beta_home_tools), style = MaterialTheme.typography.titleLarge)
             if (dashboard == null) Text(stringResource(R.string.beta_welcome_steps))
-            OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_settings_title)) }
+            OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_nav_settings)) }
+            OutlinedButton(enabled = !busy, onClick = onOpenDeveloperTools, modifier = Modifier.testTag("beta-developer-tools")) { Text(stringResource(R.string.beta_developer_tools)) }
             OutlinedButton(enabled = !busy, onClick = onOpenDiscovery, modifier = Modifier.testTag("beta-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
             if (dashboard == null) Text(stringResource(R.string.beta_empty_body), style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(enabled = !busy, onClick = onOpenHistory, modifier = Modifier.testTag("beta-history")) {
