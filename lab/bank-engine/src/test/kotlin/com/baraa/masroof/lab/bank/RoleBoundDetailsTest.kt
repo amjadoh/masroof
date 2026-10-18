@@ -143,7 +143,9 @@ class RoleBoundDetailsTest {
         }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$bill\nLoan repayment").status)
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$purchase\nIncoming transfer").status)
-        assertEquals(ParseStatus.REVIEW_REQUIRED, parse(purchase, RuleLibrary.current().copy(network = NetworkRules(networkLabels = listOf("network")))).status)
+        val unusedNetwork = parse(purchase, RuleLibrary.current().copy(network = NetworkRules(networkLabels = listOf("network"))))
+        assertEquals(ParseStatus.SUCCESS, unusedNetwork.status)
+        assertNull(unusedNetwork.facts.bankNetwork)
     }
 
     @Test fun aConfiguredLabelCannotAssignOneSpanToDifferentFieldRoles() {
