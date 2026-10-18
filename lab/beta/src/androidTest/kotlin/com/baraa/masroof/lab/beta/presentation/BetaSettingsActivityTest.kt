@@ -25,8 +25,9 @@ class BetaSettingsActivityTest {
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             compose.onNodeWithTag("beta-start-continue").performClick()
-            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-tools").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             compose.onNodeWithTag("beta-reset").assertDoesNotExist()
+            compose.onNodeWithTag("beta-tools").performClick()
             compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
             compose.onNodeWithTag("beta-theme-DARK").performScrollTo().performClick()
             compose.waitUntil(10000) { context.getSharedPreferences(BetaEnvironment.PREFS_NAME, 0).getString("beta_ui_theme", null) == "DARK" }
@@ -58,7 +59,7 @@ class BetaSettingsActivityTest {
             compose.onNodeWithTag("beta-startup-retry").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             compose.onNodeWithTag("beta-start-continue").performClick()
-            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-settings").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-tools").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         }
         waitForClose()
         BetaContainer(context).use { assertEquals(1, it.markerCount()) }

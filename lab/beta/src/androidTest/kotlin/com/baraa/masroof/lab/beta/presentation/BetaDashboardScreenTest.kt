@@ -1,6 +1,7 @@
 package com.baraa.masroof.lab.beta.presentation
 
 import android.content.Context
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -77,11 +78,18 @@ class BetaDashboardScreenTest {
         compose.waitUntil(15000) {
             compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
                 compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty() &&
-                (expectedMonth == null || compose.onAllNodesWithTag("dash-month").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.any { it.text == expectedMonth } == true)
+                (expectedMonth == null || compose.onAllNodesWithTag("dash-month").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.ContentDescription)?.any { it == expectedMonth } == true)
         }
         compose.waitForIdle()
     }
-    private fun route(value: String) { compose.onNodeWithTag("dash-routes").performScrollTo(); compose.onNodeWithTag("dash-route-$value").performScrollTo().performClick() }
+    private fun route(value: String) {
+        if (compose.onAllNodesWithTag("home-shortcuts").fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithTag("home-shortcuts").performScrollTo()
+            compose.onNodeWithTag("dashboard-shortcut-0").performClick()
+        }
+        compose.onNodeWithTag("dash-routes").performScrollTo()
+        compose.onNodeWithTag("dash-route-$value").performScrollTo().performClick()
+    }
     private fun screenshot(name: String) {
         compose.waitForIdle()
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
@@ -92,6 +100,62 @@ class BetaDashboardScreenTest {
         val png = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("cat /sdcard/beta-dashboard-screenshots/$name.png")).use { it.readBytes() }
         assertTrue("A captured PNG must contain image data", png.size > 8)
         assertArrayEquals(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a), png.copyOfRange(0, 8))
+    }
+
+    @Test fun homeArabicLight() = verifyHome("ar", false)
+    @Test fun homeArabicDarkLargeText() = verifyHome("ar", true, 1.5f)
+    @Test fun homeEnglishLight() = verifyHome("en", false)
+    @Test fun homeEnglishDark() = verifyHome("en", true)
+
+    private fun verifyHome(language: String, dark: Boolean, scale: Float = 1f) {
+        val configuration = Configuration(context.resources.configuration).apply { setLocale(Locale(language)); setLayoutDirection(Locale(language)) }
+        val localized = context.createConfigurationContext(configuration)
+        val preferences = com.baraa.masroof.lab.beta.application.BetaDashboardViewPreferencesWorkflow(context)
+        val state = StateRestorationTester(compose)
+        val workflow = workflow()
+        state.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
+                CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration,
+                    LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
+                    androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, scale)) {
+                    androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.background) {
+                        Column(Modifier.verticalScroll(rememberScrollState()).padding(com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal)) {
+                            BetaDashboardPanel(workflow, preferences = preferences)
+                        }
+                    }
+                }
+            }
+        }
+        waitLoaded()
+        compose.onNodeWithTag("beta-home-hero").assertExists()
+        compose.onNodeWithTag("dash-routes").assertDoesNotExist()
+        val formatted = com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(BigDecimal("42.35"), "SAR", language)
+        compose.onNode(hasText(formatted) and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
+        screenshot("m9-home-$language-${if (dark) "dark" else "light"}-top")
+        compose.onNodeWithTag("home-trend-card").performScrollTo()
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("home-scope-loading").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithTag("home-chart-scope-1").performScrollTo().performClick()
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("home-spending-chart").fetchSemanticsNodes().isNotEmpty() }
+        screenshot("m9-home-$language-${if (dark) "dark" else "light"}-chart")
+        state.emulateSavedInstanceStateRestore(); waitLoaded()
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("home-spending-chart").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("home-chart-scope-1").assertIsSelected()
+        compose.onNode(hasText(formatted) and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
+        compose.onNodeWithTag("home-recent-heading").performScrollTo()
+        screenshot("m9-home-$language-${if (dark) "dark" else "light"}-recent")
+        compose.onNodeWithTag("home-transaction-synthetic-ui").performScrollTo().performClick()
+        compose.onNodeWithTag("transaction-detail").assertExists()
+        compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+        compose.onNodeWithTag("beta-home-hero").assertExists()
+        compose.onNodeWithTag("beta-home-hero").performScrollTo()
+        compose.onNode(hasText(localized.getString(com.baraa.masroof.lab.beta.R.string.beta_home_outflow)) and hasAnyAncestor(hasTestTag("beta-home-hero"))).performClick()
+        compose.onNodeWithTag("home-shortcuts").assertDoesNotExist()
+        assertTrue(statements.none { sql -> sql.contains("beta_") && listOf("INSERT", "UPDATE", "DELETE").any { sql.trimStart().startsWith(it, true) } })
+        runBlocking {
+            assertEquals(1, RoomBetaFinancialLedger(db).history(PostingKey(Environment.BETA, "synthetic-ui")).size)
+            assertEquals(TrendScope.OVERALL, preferences.readHomeScope())
+        }
     }
 
     @Test fun realRoomReadShowsUnavailableBalanceAndNeverWritesWhenNavigating() {
@@ -126,12 +190,12 @@ class BetaDashboardScreenTest {
         compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-account-unknown")
         state.emulateSavedInstanceStateRestore(); waitLoaded("2026-10")
         compose.onNodeWithTag("dash-detail-back").assertExists()
-        compose.onNodeWithTag("dash-month").assertTextEquals("2026-10")
+        compose.onNodeWithTag("dash-month").assertContentDescriptionEquals("2026-10")
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
         compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded("2026-09")
         state.emulateSavedInstanceStateRestore(); waitLoaded("2026-09")
-        compose.onNodeWithTag("dash-month").assertTextEquals("2026-09")
+        compose.onNodeWithTag("dash-month").assertContentDescriptionEquals("2026-09")
         compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
     }
 
@@ -144,17 +208,17 @@ class BetaDashboardScreenTest {
             LocalContext provides arabicContext, LocalConfiguration provides arabic) {
             Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) }
         } } }
-        waitLoaded(); compose.onNode(hasText("42.35 SAR") and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
+        waitLoaded(); compose.onNode(hasText("42.35 ر.س") and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
         fail.set(true)
         compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick()
         compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-error").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("dash-error").performScrollTo(); screenshot("period-error")
-        compose.onAllNodesWithText("42.35 SAR").assertCountEquals(0)
+        compose.onAllNodesWithText("42.35 ر.س").assertCountEquals(0)
         fail.set(false); compose.onNodeWithTag("dash-retry").performScrollTo().performClick(); waitLoaded()
-        compose.onNodeWithTag("dash-month").assertTextEquals("2026-09")
-        compose.onAllNodesWithText("42.35 SAR").assertCountEquals(0)
+        compose.onNodeWithTag("dash-month").assertContentDescriptionEquals("2026-09")
+        compose.onAllNodesWithText("42.35 ر.س").assertCountEquals(0)
         compose.onNodeWithTag("dash-month-next").performScrollTo().performClick(); waitLoaded()
-        compose.onNode(hasText("42.35 SAR") and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
+        compose.onNode(hasText("42.35 ر.س") and hasAnyAncestor(hasTestTag("dash-summary-spending"))).assertExists()
     }
 
     @Test fun removedQualifiedSelectionDoesNotOpenSameLocalIdAtAnotherBank() = runBlocking {
@@ -216,7 +280,7 @@ class BetaDashboardScreenTest {
                 Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) }
             } } }
             waitLoaded()
-            assertTrue(compose.onAllNodesWithText("88.40 SAR").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodesWithText("88.40 ر.س").fetchSemanticsNodes().isNotEmpty())
             compose.onAllNodesWithText("86.41 SAR").assertCountEquals(0)
             screenshot("rtl-approved-overview")
             route("CARDS")

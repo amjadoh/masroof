@@ -13,8 +13,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -58,13 +58,20 @@ fun BetaShell(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
 ) {
+    var workspaceOpen by rememberSaveable { mutableStateOf(false) }
     val homeState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
-    BackHandler { if (returnEnabled) onReturn() }
+    BackHandler { if (returnEnabled) { if (workspaceOpen && editor == null) workspaceOpen = false else onReturn() } }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.beta_title)) },
+            com.baraa.masroof.ui.components.MasroofAppBar(
+                title = stringResource(R.string.beta_home_brand),
                 actions = {
+                    if (dashboard != null && editor == null) androidx.compose.material3.IconButton(
+                        enabled = !busy, onClick = { workspaceOpen = !workspaceOpen }, modifier = Modifier.testTag("beta-tools")) {
+                        androidx.compose.material3.Icon(com.baraa.masroof.ui.components.MasroofOutlineIcons.SlidersHorizontal,
+                            stringResource(R.string.beta_home_tools))
+                    }
+
                     Surface(Modifier.padding(end = BetaSpacing.section).testTag("beta-badge"),
                         color = MaterialTheme.colorScheme.errorContainer) {
                         Text(stringResource(R.string.beta_badge),
@@ -86,7 +93,7 @@ fun BetaShell(
                     com.baraa.masroof.ui.components.MasroofNavigationItem(stringResource(R.string.beta_nav_settings), icons.Settings, false))
                 Column(Modifier.testTag("beta-bottom-navigation")) {
                 com.baraa.masroof.ui.components.MasroofBottomNavigation(items, { index ->
-                    when (index) { 0 -> onOpenHome(); 1 -> onOpenTransactions(); 2 -> onOpenReview(); 3 -> onOpenSettings() }
+                    when (index) { 0 -> { workspaceOpen = false; onOpenHome() }; 1 -> { workspaceOpen = false; onOpenTransactions() }; 2 -> onOpenReview(); 3 -> onOpenSettings() }
                 }, enabled = returnEnabled && !busy)
                 }
             }
@@ -104,8 +111,11 @@ fun BetaShell(
                 editor()
                 return@Column
             }
-            if (dashboard != null) homeState.SaveableStateProvider("dashboard") { dashboard() }
-            Text(stringResource(if (dashboard == null) R.string.beta_welcome else R.string.beta_dash_manage), style = MaterialTheme.typography.titleLarge)
+            if (dashboard != null && !workspaceOpen) {
+                homeState.SaveableStateProvider("dashboard") { dashboard() }
+                return@Column
+            }
+            Text(stringResource(if (dashboard == null) R.string.beta_welcome else R.string.beta_home_tools), style = MaterialTheme.typography.titleLarge)
             if (dashboard == null) Text(stringResource(R.string.beta_welcome_steps))
             OutlinedButton(enabled = !busy, onClick = onOpenSettings, modifier = Modifier.testTag("beta-settings")) { Text(stringResource(R.string.beta_settings_title)) }
             OutlinedButton(enabled = !busy, onClick = onOpenDiscovery, modifier = Modifier.testTag("beta-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
@@ -191,7 +201,7 @@ fun BetaShell(
                 Text(stringResource(R.string.beta_reset))
             }
             }
-            Text(stringResource(R.string.beta_marker_count, markerCount), style = MaterialTheme.typography.bodySmall)
+            if (showMaintenanceActions) Text(stringResource(R.string.beta_marker_count, markerCount), style = MaterialTheme.typography.bodySmall)
             if (restoreMissing) Text(stringResource(R.string.beta_restore_missing), color = MaterialTheme.colorScheme.error)
         }
     }

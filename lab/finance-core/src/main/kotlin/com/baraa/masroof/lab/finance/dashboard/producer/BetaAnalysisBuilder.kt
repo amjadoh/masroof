@@ -8,7 +8,6 @@ import com.baraa.masroof.lab.finance.value.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.Normalizer
-import java.time.LocalDate
 import java.util.Collections
 import java.util.Locale
 
@@ -101,9 +100,11 @@ internal object BetaAnalysisBuilder {
                 DailySpending(date, if (gross == null || refunds == null) null else signed(gross.amount - refunds.amount), gross, refunds,
                     freezeSet(rows.mapTo(linkedSetOf()) { it.key }))
             }
-            val average = if (!known) null else signed(if (points.isEmpty()) BigDecimal.ZERO else points.fold(BigDecimal.ZERO) { sum, point ->
-                sum + requireNotNull(point.net).amount }.divide(points.size.toBigDecimal(), 2, RoundingMode.HALF_EVEN))
-            return SpendingTrend(asset, category, period, Currency.SAR, freezeList(points), average, scope)
+            val total = if (!known) null else signed(points.fold(BigDecimal.ZERO) { sum, point -> sum + requireNotNull(point.net).amount })
+            val average = total?.let { signed(if (points.isEmpty()) BigDecimal.ZERO else
+                it.amount.divide(points.size.toBigDecimal(), 2, RoundingMode.HALF_EVEN)) }
+            return SpendingTrend(asset, category, period, Currency.SAR, freezeList(points), average, scope, total)
+
         }
         val trends = TrendScope.entries.filter { it != TrendScope.ASSET }.map { trend(it) } +
             batch.assets.filter { it.kind in setOf(AssetKind.ACCOUNT, AssetKind.CREDIT_CARD, AssetKind.DEBIT_CARD) }

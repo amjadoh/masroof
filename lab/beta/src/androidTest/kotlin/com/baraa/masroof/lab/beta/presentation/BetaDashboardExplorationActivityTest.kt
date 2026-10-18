@@ -37,6 +37,10 @@ class BetaDashboardExplorationActivityTest {
     private val key = PostingKey(Environment.BETA, "synthetic-full-activity")
     private fun waitLoaded() { compose.waitUntil(20000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }
     private fun route(name: String, scenario: ActivityScenario<BetaActivity>) {
+        if (compose.onAllNodesWithTag("home-shortcuts").fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithTag("home-shortcuts").performScrollTo()
+            compose.onNodeWithTag("dashboard-shortcut-0").performClick()
+        }
         val tag = "dash-route-$name"
         try {
             compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
@@ -99,7 +103,7 @@ class BetaDashboardExplorationActivityTest {
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-start-continue").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-start-continue").performClick()
-                waitLoaded(); compose.onNodeWithText("نظرة عامة").assertExists(); screenshot("activity-rtl-overview")
+                waitLoaded(); compose.onNodeWithTag("beta-home-hero").assertExists(); screenshot("activity-rtl-overview")
                 scenario.onActivity { activity ->
                     assertEquals(View.LAYOUT_DIRECTION_RTL, activity.window.decorView.layoutDirection)
                     assertEquals(View.LAYOUT_DIRECTION_RTL, activity.resources.configuration.layoutDirection)
