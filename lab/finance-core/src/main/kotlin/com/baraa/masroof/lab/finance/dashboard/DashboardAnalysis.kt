@@ -76,6 +76,8 @@ data class SpendingTrend(
     val scope: TrendScope = TrendScope.OVERALL,
     /** Elapsed-point total computed by the owning builder, never summed in Compose. */
     val totalSpending: SignedAmount? = null,
+    val totalBeforeRefunds: SignedAmount? = null,
+    val totalRefunds: SignedAmount? = null,
 ) {
     init {
         require((scope == TrendScope.ASSET) == (assetId != null))
@@ -85,7 +87,7 @@ data class SpendingTrend(
             val nextDay = it.date.plusDays(1).atStartOfDay(period.zone).toInstant()
             day < period.until && nextDay > period.from
         })
-        requireSignedCurrency(currency, totalSpending, averageDailySpending, *points.flatMap {
+        requireSignedCurrency(currency, totalSpending, totalBeforeRefunds, totalRefunds, averageDailySpending, *points.flatMap {
             listOfNotNull(it.net, it.beforeRefunds, it.refunds)
         }.toTypedArray())
     }

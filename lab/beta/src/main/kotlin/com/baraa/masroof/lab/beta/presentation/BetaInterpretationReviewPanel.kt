@@ -80,18 +80,22 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
                 }
             }
             current.observed[field]?.let { observed ->
-                Text(stringResource(R.string.beta_label_observed, if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(observed)) else observed))
+                Text(stringResource(R.string.beta_label_observed, if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(observed)) else labelChoice(field, observed)))
             }
-            if (field == BetaLabelField.FAMILY || field == BetaLabelField.CURRENCY) {
+            if (field in setOf(BetaLabelField.FAMILY, BetaLabelField.CURRENCY, BetaLabelField.DIRECTION, BetaLabelField.EXECUTION_STATE)) {
                 Box {
                     OutlinedButton(enabled = !busy, onClick = { valuesOpen = true }, modifier = Modifier.testTag("label-value-choice")) {
-                        Text(if (value.isEmpty()) stringResource(R.string.beta_label_value) else if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(value)) else value)
+                        Text(if (value.isEmpty()) stringResource(R.string.beta_label_value) else if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(value)) else labelChoice(field, value))
                     }
                     DropdownMenu(expanded = valuesOpen, onDismissRequest = { valuesOpen = false }) {
                         val choices = if (field == BetaLabelField.FAMILY) com.baraa.masroof.lab.bank.MessageFamily.entries.map { it.name }
-                            else com.baraa.masroof.lab.finance.value.Currency.entries.map { it.name }
+                            else when (field) {
+                                BetaLabelField.DIRECTION -> com.baraa.masroof.lab.bank.MoneyDirection.entries.map { it.name }
+                                BetaLabelField.EXECUTION_STATE -> listOf("EXECUTED", "PENDING", "REJECTED", "CANCELLED", "UNKNOWN")
+                                else -> com.baraa.masroof.lab.finance.value.Currency.entries.map { it.name }
+                            }
                         choices.forEach { choice ->
-                            DropdownMenuItem(text = { Text(if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(choice)) else choice) },
+                            DropdownMenuItem(text = { Text(if (field == BetaLabelField.FAMILY) stringResource(labelFamilyName(choice)) else labelChoice(field, choice)) },
                                 modifier = Modifier.testTag("label-value-$choice"), onClick = { value = choice; confirmed = false; valuesOpen = false })
                         }
                     }
@@ -119,7 +123,7 @@ internal fun BetaInterpretationReviewPanel(container: BetaContainer, evidenceId:
             current.labels.takeLast(25).forEach { label ->
                 val currentBasis = label.archiveHash == current.token.archiveHash && label.attempt == current.token.attempt
                 Text(stringResource(R.string.beta_label_saved_row, label.revision,
-                    stringResource(labelFieldName(label.field)), if (label.field == BetaLabelField.FAMILY) stringResource(labelFamilyName(label.value)) else label.value))
+                    stringResource(labelFieldName(label.field)), if (label.field == BetaLabelField.FAMILY) stringResource(labelFamilyName(label.value)) else labelChoice(label.field, label.value)))
                 Text(label.originalText)
                 if (!currentBasis) Text(stringResource(R.string.beta_label_previous))
             }
@@ -136,6 +140,10 @@ private fun labelFieldName(field: BetaLabelField): Int = when (field) {
     BetaLabelField.SOURCE_ACCOUNT -> R.string.beta_label_field_source
     BetaLabelField.DESTINATION_ACCOUNT -> R.string.beta_label_field_destination
     BetaLabelField.CARD -> R.string.beta_label_field_card
+    BetaLabelField.DIRECTION -> R.string.beta_label_field_direction
+    BetaLabelField.EXECUTION_STATE -> R.string.beta_label_field_execution
+    BetaLabelField.AVAILABLE_BALANCE -> R.string.beta_label_field_available
+    BetaLabelField.OUTSTANDING_BALANCE -> R.string.beta_label_field_outstanding
 }
 private fun labelFamilyName(value: String): Int = when (value) {
     "PURCHASE" -> R.string.beta_label_family_purchase; "TRANSFER_IN" -> R.string.beta_label_family_transfer_in
@@ -145,4 +153,22 @@ private fun labelFamilyName(value: String): Int = when (value) {
     "FEE" -> R.string.beta_label_family_fee; "BALANCE_NOTICE" -> R.string.beta_label_family_balance
     "OTP" -> R.string.beta_label_family_otp; "NON_FINANCIAL" -> R.string.beta_label_family_nonfinancial
     else -> R.string.beta_label_family_unknown
+}
+
+@Composable
+private fun labelChoice(field: BetaLabelField, value: String): String = when (field) {
+    BetaLabelField.DIRECTION -> stringResource(when (value) {
+        "INCOMING" -> R.string.beta_label_incoming
+        "OUTGOING" -> R.string.beta_label_outgoing
+        "NEUTRAL" -> R.string.beta_label_neutral
+        else -> R.string.beta_label_unknown
+    })
+    BetaLabelField.EXECUTION_STATE -> stringResource(when (value) {
+        "EXECUTED" -> R.string.beta_label_executed
+        "PENDING" -> R.string.beta_label_pending
+        "REJECTED" -> R.string.beta_label_rejected
+        "CANCELLED" -> R.string.beta_label_cancelled
+        else -> R.string.beta_label_unknown
+    })
+    else -> value
 }

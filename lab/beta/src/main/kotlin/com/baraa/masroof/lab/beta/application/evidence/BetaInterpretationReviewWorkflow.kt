@@ -3,6 +3,8 @@ package com.baraa.masroof.lab.beta.application.evidence
 import androidx.room.withTransaction
 import com.baraa.masroof.lab.beta.data.*
 import com.baraa.masroof.lab.bank.MessageFamily
+import com.baraa.masroof.lab.bank.MoneyDirection
+import com.baraa.masroof.lab.bank.interpretation.LearningTokenization
 import com.baraa.masroof.lab.finance.value.Currency
 import java.math.BigDecimal
 import java.security.MessageDigest
@@ -33,13 +35,20 @@ class BetaInterpretationReviewWorkflow(private val database: BetaDatabase, priva
         val amount = facts.optJSONObject("amount")
         val observed = buildMap {
             put(BetaLabelField.FAMILY, facts.getString("family"))
+            listOf(BetaLabelField.DIRECTION to "direction", BetaLabelField.EXECUTION_STATE to "executionState").forEach { (field, key) ->
+                if (!facts.isNull(key)) put(field, facts.getString(key))
+            }
+            listOf(BetaLabelField.AVAILABLE_BALANCE to "availableBalance", BetaLabelField.OUTSTANDING_BALANCE to "outstandingBalance").forEach { (field, key) ->
+                facts.optJSONObject(key)?.let { put(field, it.getString("amount")) }
+            }
             amount?.let { put(BetaLabelField.AMOUNT, it.getString("amount")); put(BetaLabelField.CURRENCY, it.getString("currency")) }
             listOf(BetaLabelField.SOURCE_ACCOUNT to "sourceAccount", BetaLabelField.DESTINATION_ACCOUNT to "destinationAccount", BetaLabelField.CARD to "card").forEach { (field, key) ->
                 facts.optJSONObject(key)?.optString("number")?.takeIf { it.isNotBlank() }?.let { put(field, it) }
             }
         }
         val labels = database.learningDao().history(id).map { BetaTrustedLabel(it.revision, BetaLabelField.valueOf(it.field),
-            it.value, it.start, it.end, it.originalText, it.archiveHash, it.interpretationAttempt) }
+            it.value, it.start, it.end, it.originalText, it.archiveHash, it.interpretationAttempt,
+            it.tokenStart, it.tokenEnd, it.tokenizerVersion, it.humanProvenance) }
         val hash = MessageDigest.getInstance("SHA-256").digest(outcome.candidateJson.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
         BetaInterpretationReview(BetaInterpretationToken(id, hash, outcome.attempts, labels.lastOrNull()?.revision ?: 0), raw.body,
             json.getString("engineVersion"), json.getString("rulesVersion"), json.getString("status"), observed, original, labels)
@@ -49,7 +58,7 @@ class BetaInterpretationReviewWorkflow(private val database: BetaDatabase, priva
         require(draft.confirmed) { "Explicit human confirmation required" }
         require(draft.decisionId.isNotBlank() && draft.decisionId.length <= 100)
         val trimmed = draft.value.trim()
-        val value = if (draft.field in setOf(BetaLabelField.FAMILY, BetaLabelField.CURRENCY)) trimmed else
+        val value = if (draft.field in setOf(BetaLabelField.FAMILY, BetaLabelField.CURRENCY, BetaLabelField.DIRECTION, BetaLabelField.EXECUTION_STATE)) trimmed else
             trimmed.map { char -> when (char) {
                 in '\u0660'..'\u0669' -> '0' + (char - '\u0660')
                 in '\u06f0'..'\u06f9' -> '0' + (char - '\u06f0')
@@ -60,6 +69,9 @@ class BetaInterpretationReviewWorkflow(private val database: BetaDatabase, priva
         when (draft.field) {
             BetaLabelField.FAMILY -> require(MessageFamily.entries.any { it.name == value })
             BetaLabelField.CURRENCY -> require(Currency.entries.any { it.name == value })
+            BetaLabelField.DIRECTION -> require(MoneyDirection.entries.any { it.name == value })
+            BetaLabelField.EXECUTION_STATE -> require(value in setOf("EXECUTED", "PENDING", "REJECTED", "CANCELLED", "UNKNOWN"))
+            BetaLabelField.AVAILABLE_BALANCE, BetaLabelField.OUTSTANDING_BALANCE -> require(value.matches(Regex("[0-9]{1,18}(\\.[0-9]{1,8})?")) && BigDecimal(value).signum() >= 0)
             BetaLabelField.AMOUNT -> require(value.matches(Regex("[0-9]{1,18}(\\.[0-9]{1,8})?")) && BigDecimal(value).signum() > 0)
             else -> require(value.matches(Regex("[0-9]{4}")))
         }
@@ -75,15 +87,22 @@ class BetaInterpretationReviewWorkflow(private val database: BetaDatabase, priva
         require(validRange(current.body, draft.start, draft.end)) { "Select original evidence" }
         val original = current.body.substring(draft.start, draft.end)
         require(original.isNotBlank())
+        val tokenRange = LearningTokenization.range(current.body, draft.start, draft.end)
+        val raw = requireNotNull(database.evidenceDao().raw(draft.token.evidenceId))
+        val humanProvenance = if (current.observed[draft.field]?.let { observed ->
+            if (draft.field in setOf(BetaLabelField.AMOUNT, BetaLabelField.AVAILABLE_BALANCE, BetaLabelField.OUTSTANDING_BALANCE))
+                observed.toBigDecimalOrNull()?.compareTo(value.toBigDecimal()) == 0 else observed == value
+        } == true) "HUMAN_CONFIRMED" else "HUMAN_CORRECTED"
         val row = BetaLearningLabelEntity(draft.token.evidenceId, Math.addExact(draft.token.labelRevision, 1), draft.decisionId,
             draft.token.archiveHash, draft.token.attempt, current.engineVersion, current.rulesVersion,
-            draft.field.name, value, draft.start, draft.end, original, "USER_EXPLICIT_ORIGINAL_SPAN_V1", clock.instant().toString())
+            draft.field.name, value, draft.start, draft.end, original, "USER_EXPLICIT_ORIGINAL_SPAN_V1", clock.instant().toString(),
+            tokenRange.first, tokenRange.last + 1, LearningTokenization.VERSION, null, humanProvenance, raw.receivedAt)
         dao.append(row)
         row.toLabel()
     }
 
     private fun BetaLearningLabelEntity.toLabel() = BetaTrustedLabel(revision, BetaLabelField.valueOf(field), value, start, end,
-        originalText, archiveHash, interpretationAttempt)
+        originalText, archiveHash, interpretationAttempt, tokenStart, tokenEnd, tokenizerVersion, humanProvenance)
 
     private fun validRange(body: String, start: Int, end: Int): Boolean = start >= 0 && end > start && end <= body.length &&
         !(start > 0 && body[start].isLowSurrogate() && body[start - 1].isHighSurrogate()) &&

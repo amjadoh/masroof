@@ -69,6 +69,33 @@ class BetaContainer(
         check(preferences.edit().putString(START_KEY, START_VERSION).commit()) { "Could not save Beta entry state" }
     }
 
+    fun onboardingStep(): com.baraa.masroof.lab.beta.application.BetaOnboardingStep = lock.withLock {
+        check(!closed)
+        val stored = preferences.getString("beta_onboarding_v1", null)
+        if (stored == null) com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE
+        else com.baraa.masroof.lab.beta.application.BetaOnboardingStep.valueOf(stored)
+    }
+
+    /** One explicit welcome action commits acknowledgement and initial progress together. */
+    fun beginOnboarding() = lock.withLock {
+        check(!closed)
+        check(startState() == BetaStartState.NEW)
+        check(preferences.edit().putString(START_KEY, START_VERSION).putString("beta_onboarding_v1", "BANK").commit())
+    }
+
+    fun advanceOnboarding(expected: com.baraa.masroof.lab.beta.application.BetaOnboardingStep) = lock.withLock {
+        check(!closed)
+        val steps = com.baraa.masroof.lab.beta.application.BetaOnboardingStep.entries
+        require(expected != com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE)
+        val next = steps[expected.ordinal + 1]
+        val current = onboardingStep()
+        if (current == next) return@withLock // Idempotent retry of this exact transition.
+        check(current == expected) { "Onboarding changed; reopen" }
+        if (expected == com.baraa.masroof.lab.beta.application.BetaOnboardingStep.BANK)
+            check(bankChoices().any { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED })
+        check(preferences.edit().putString("beta_onboarding_v1", next.name).commit())
+    }
+
     /** Explicit fresh Beta choice, never called by entry/relaunch. */
     fun startFresh() = lock.withLock {
         check(!closed)

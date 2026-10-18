@@ -150,4 +150,33 @@ object BetaLearningChecks {
             assertTrue(beta.interpretationReview(emojiId)!!.labels.isEmpty())
         } } finally { BetaContainer.resetOffline(context) }
     }
+    fun expandedRolesKeepEvidenceAndMoneyIndependent(context: Context) {
+        BetaContainer.resetOffline(context)
+        try { BetaContainer(context).use { beta ->
+            val id = capture(beta)
+            val originalAuthority = authority(context, id)
+            val values = listOf(BetaLabelField.DIRECTION to "OUTGOING", BetaLabelField.EXECUTION_STATE to "EXECUTED",
+                BetaLabelField.AVAILABLE_BALANCE to "٠", BetaLabelField.OUTSTANDING_BALANCE to "١٢٣٫٤٥")
+            values.forEachIndexed { index, (field, value) ->
+                val detail = requireNotNull(beta.interpretationReview(id))
+                val saved = beta.saveInterpretationLabel(draft(detail, "expanded-$index").copy(field = field, value = value))
+                assertNotNull(saved.tokenStart); assertNotNull(saved.tokenEnd)
+                assertTrue(saved.tokenEnd!! > saved.tokenStart!!)
+                assertEquals("bank-source-tokens-v1", saved.tokenizerVersion)
+                assertEquals(if (field in setOf(BetaLabelField.DIRECTION, BetaLabelField.EXECUTION_STATE))
+                    "HUMAN_CONFIRMED" else "HUMAN_CORRECTED", saved.humanProvenance)
+                assertEquals("42", saved.originalText)
+            }
+            assertEquals("0", beta.interpretationReview(id)!!.labels[2].value)
+            assertEquals("123.45", beta.interpretationReview(id)!!.labels[3].value)
+            val current = requireNotNull(beta.interpretationReview(id))
+            rejected { beta.saveInterpretationLabel(draft(current, "bad-state").copy(field = BetaLabelField.EXECUTION_STATE, value = "SUCCESS")) }
+            rejected { beta.saveInterpretationLabel(draft(current, "bad-direction").copy(field = BetaLabelField.DIRECTION, value = "EXECUTED")) }
+            assertEquals(originalAuthority, authority(context, id))
+            beta.backup()
+            assertTrue(beta.restore())
+            assertEquals(4, beta.interpretationReview(id)!!.labels.size)
+        } } finally { BetaContainer.resetOffline(context) }
+    }
+
 }

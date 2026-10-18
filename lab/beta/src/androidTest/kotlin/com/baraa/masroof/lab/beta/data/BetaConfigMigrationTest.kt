@@ -68,8 +68,8 @@ class BetaConfigMigrationTest {
             }
             val migrated = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
             try {
-                assertEquals(11, migrated.openHelper.readableDatabase.version)
-                assertFresh(migrated.openHelper.readableDatabase, 11)
+                assertEquals(BetaDatabase.VERSION, migrated.openHelper.readableDatabase.version)
+                assertFresh(migrated.openHelper.readableDatabase, BetaDatabase.VERSION)
             } finally { migrated.close() }
             android.database.sqlite.SQLiteDatabase.openDatabase(recovery.backupFile().absolutePath, null,
                 android.database.sqlite.SQLiteDatabase.OPEN_READONLY).use { assertEquals(9, it.version) }
