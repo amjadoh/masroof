@@ -5,12 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import com.baraa.masroof.lab.beta.BetaIo
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,7 +47,7 @@ class BetaActivity : ComponentActivity() {
             val dark = when (betaTheme) { "DARK" -> true; "LIGHT" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
             com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
                 val shellContainer = remember { container }
-                val scope = rememberCoroutineScope()
+                val scope = rememberBetaUiScope()
                 val dashboardWorkflow = remember(shellContainer) {
                     com.baraa.masroof.lab.beta.application.BetaDashboardWorkflow({ query, periods ->
                         withContext(BetaIo.dispatcher) { shellContainer.dashboard(query, periods) }
@@ -110,7 +108,7 @@ class BetaActivity : ComponentActivity() {
                     busy = true
                     scope.launch { execute(action) }
                 }
-                LaunchedEffect(Unit) { execute { null } }
+                BetaLaunchedEffect(Unit) { execute { null } }
                 if (!loaded || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                     BetaShell(
                         markerCount = 0, restoreMissing = false, showMaintenanceActions = false,

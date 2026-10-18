@@ -238,6 +238,16 @@ class BetaContainer(
         }
     }
 
+    fun interpretationReview(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.application.evidence.BetaInterpretationReviewWorkflow(database).detail(id) }
+    }
+
+    fun saveInterpretationLabel(draft: com.baraa.masroof.lab.beta.application.evidence.BetaLabelDraft) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.application.evidence.BetaInterpretationReviewWorkflow(database).save(draft) }
+    }
+
     fun confirmProposal(proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal, draft: ManualAssetDraft): OwnedAsset = lock.withLock {
         check(!closed)
         require(draft.id == proposal.id && !draft.editing)

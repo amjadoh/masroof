@@ -61,6 +61,9 @@ class BetaDashboardExplorationActivityTest {
             throw failure
         }
     }
+    private fun waitDetail() {
+        compose.waitUntil(15000) { compose.onAllNodesWithTag("transaction-detail").fetchSemanticsNodes().isNotEmpty() }
+    }
     private fun closed() { val latch = CountDownLatch(1); BetaIo.execute { latch.countDown() }; assertTrue(latch.await(15, TimeUnit.SECONDS)) }
     private fun screenshot(name: String, assertChrome: Boolean = true) {
         compose.waitForIdle()
@@ -105,9 +108,9 @@ class BetaDashboardExplorationActivityTest {
                 }
                 route("TRANSACTIONS", scenario)
                 compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
-                compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText("42.35 SAR").assertExists()
+                waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText("42.35 SAR").assertExists()
                 screenshot("activity-rtl-transaction-detail")
-                scenario.recreate(); waitLoaded(); compose.onNodeWithTag("transaction-detail").assertExists()
+                scenario.recreate(); waitLoaded(); waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists()
                 compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
                 route("ANALYSIS", scenario)
                 val day = postedAt.atZone(ZoneId.of("Asia/Riyadh")).toLocalDate()
@@ -115,7 +118,7 @@ class BetaDashboardExplorationActivityTest {
                 screenshot("activity-rtl-chart")
                 compose.onNodeWithTag("chart-day-$day").performClick()
                 compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
-                compose.onNodeWithTag("transaction-detail").assertExists()
+                waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists()
                 compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
                 compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
                 compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").performScrollTo().performClick()

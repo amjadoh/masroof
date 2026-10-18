@@ -25,8 +25,13 @@ import kotlinx.coroutines.*
 /** Explicit optional import. No reads, jobs or automatic resume on entering this screen. */
 @Composable
 internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
+    var selectedEvidence by rememberSaveable { mutableStateOf<String?>(null) }
+    selectedEvidence?.let { id ->
+        BetaInterpretationReviewPanel(container, id, onClose = { selectedEvidence = null }, onBusyChanged = onBusyChanged)
+        return
+    }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var session by remember { mutableStateOf<HistorySession?>(null) }
     var page by remember { mutableStateOf<List<EvidenceSummary>>(emptyList()) }
     var after by rememberSaveable { mutableStateOf("") }
@@ -76,7 +81,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         // A grant does not authorize an automatic restarted import; user explicitly resumes/starts.
         if (granted && requested != null) scan(requested.takeIf { it != 0 })
     }
-    LaunchedEffect(Unit) {
+    BetaLaunchedEffect(Unit) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed = true }
     }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
@@ -124,6 +129,9 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 EvidenceProcessingState.COMPARISON_ONLY -> R.string.beta_history_compared
                 EvidenceProcessingState.INTERPRETED -> R.string.beta_history_interpreted
             })))
+            OutlinedButton(enabled = !busy, onClick = { selectedEvidence = summary.id }, modifier = Modifier.testTag("history-review-$index")) {
+                Text(stringResource(R.string.beta_label_title))
+            }
             OutlinedButton(enabled = !busy, onClick = { action { withContext(BetaIo.dispatcher) { container.reprocessEvidence(summary.id) } } }, modifier = Modifier.testTag("history-reparse-$index")) {
                 Text(stringResource(R.string.beta_history_reparse))
             }
