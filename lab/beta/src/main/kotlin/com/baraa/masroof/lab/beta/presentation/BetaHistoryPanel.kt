@@ -25,6 +25,11 @@ import kotlinx.coroutines.*
 /** Explicit optional import. No reads, jobs or automatic resume on entering this screen. */
 @Composable
 internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
+    var selectedEvidence by rememberSaveable { mutableStateOf<String?>(null) }
+    selectedEvidence?.let { id ->
+        BetaInterpretationReviewPanel(container, id, onClose = { selectedEvidence = null }, onBusyChanged = onBusyChanged)
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var session by remember { mutableStateOf<HistorySession?>(null) }
@@ -124,6 +129,9 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 EvidenceProcessingState.COMPARISON_ONLY -> R.string.beta_history_compared
                 EvidenceProcessingState.INTERPRETED -> R.string.beta_history_interpreted
             })))
+            OutlinedButton(enabled = !busy, onClick = { selectedEvidence = summary.id }, modifier = Modifier.testTag("history-review-$index")) {
+                Text(stringResource(R.string.beta_label_title))
+            }
             OutlinedButton(enabled = !busy, onClick = { action { withContext(BetaIo.dispatcher) { container.reprocessEvidence(summary.id) } } }, modifier = Modifier.testTag("history-reparse-$index")) {
                 Text(stringResource(R.string.beta_history_reparse))
             }

@@ -68,8 +68,8 @@ class BetaConfigMigrationTest {
             }
             val migrated = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
             try {
-                assertEquals(10, migrated.openHelper.readableDatabase.version)
-                assertFresh(migrated.openHelper.readableDatabase)
+                assertEquals(11, migrated.openHelper.readableDatabase.version)
+                assertFresh(migrated.openHelper.readableDatabase, 11)
             } finally { migrated.close() }
             android.database.sqlite.SQLiteDatabase.openDatabase(recovery.backupFile().absolutePath, null,
                 android.database.sqlite.SQLiteDatabase.OPEN_READONLY).use { assertEquals(9, it.version) }
@@ -82,16 +82,16 @@ class BetaConfigMigrationTest {
             while (cursor.moveToNext()) add((0 until cursor.columnCount).map { if (cursor.isNull(it)) null else cursor.getString(it) })
         }
     }
-    private fun assertFresh(migrated: SupportSQLiteDatabase) {
+    private fun assertFresh(migrated: SupportSQLiteDatabase, version: Int = 10) {
         val name = "beta-schema-ten-reference.db"
         context.deleteDatabase(name)
-        val fresh = Room.databaseBuilder(context, BetaDatabase::class.java, name).build()
+        val fresh = helper.createDatabase(name, version)
         try {
-            val actual = fresh.openHelper.writableDatabase
+            val actual = fresh
             val tables = buildList { actual.query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'beta_%' ORDER BY name").use {
                 while (it.moveToNext()) add(it.getString(0))
             } }
-            assertEquals(21, tables.size)
+            assertEquals(if (version == 10) 21 else 22, tables.size)
             for (table in tables) assertEquals(table, TableInfo.read(actual, table), TableInfo.read(migrated, table))
             migrated.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
         } finally { fresh.close(); context.deleteDatabase(name) }
