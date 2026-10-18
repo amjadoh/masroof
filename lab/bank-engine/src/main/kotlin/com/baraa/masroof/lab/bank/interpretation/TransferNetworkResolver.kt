@@ -23,7 +23,7 @@ internal class TransferNetworkResolver(
         } }
     }
 
-    fun resolve(family: MessageFamily, local: BankId, familyPhrases: List<String>): TransferNetwork {
+    fun resolve(family: MessageFamily, local: BankId, familyPhrases: List<String>, explicitRecipient: Boolean = false): TransferNetwork {
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
         val reader = RoleLineReader(source, mapOf("sourceBank" to rules.sourceBankLabels,
             "destinationBank" to rules.destinationBankLabels, "bankNetwork" to rules.networkLabels), evidence)
@@ -35,9 +35,9 @@ internal class TransferNetworkResolver(
             if (ids.size > 1) fail("NETWORK_ROLE_CONFLICT")
             return ids.singleOrNull()
         }
-        val sourceRows = reader.read("sourceBank")
+        val sourceRows = reader.read("sourceBank").toMutableList()
         val destinationRows = reader.read("destinationBank").toMutableList()
-        if (rules.standaloneDestinationBrackets) {
+        if (rules.standaloneDestinationBrackets || rules.standaloneSourceBrackets) {
             val lines = source.text.lineSequence().toList()
             val first = lines.indexOfFirst { it.any(Char::isLetterOrDigit) }
             val next = if (first >= 0) (first + 1 until lines.size).firstOrNull { lines[it].isNotBlank() } else null
@@ -45,12 +45,14 @@ internal class TransferNetworkResolver(
             lines.forEachIndexed { index, line ->
                 val match = Regex("^ *\\[([^\\[\\]]+)] *$").matchEntire(line)
                 if (match != null) {
-                    val title = first >= 0 && familyPhrases.any { source.phrase(it).find(lines[first].trimStart())?.range?.first == 0 }
-                    if (family != MessageFamily.TRANSFER_OUT || !title || index != next) fail("UNBOUND_DESTINATION_BRACKET")
+                    val title = first >= 0 && familyPhrases.any { source.phrase(it).containsMatchIn(lines[first]) }
+                    val incoming = family == MessageFamily.TRANSFER_IN && rules.standaloneSourceBrackets
+                    val outgoing = family == MessageFamily.TRANSFER_OUT && rules.standaloneDestinationBrackets
+                    if ((!incoming && !outgoing) || !title || (incoming && !explicitRecipient) || (index != next && !(explicitRecipient && index > first))) fail("UNBOUND_BANK_BRACKET")
                     else {
                         val range = offset..(offset + line.length - 1)
-                        evidence += source.evidence("extract.network.bracket", "destinationBank", range)
-                        destinationRows += RoleLine(match.groupValues[1], source.original((offset + match.groups[1]!!.range.first)..(offset + match.groups[1]!!.range.last)), range)
+                        evidence += source.evidence("extract.network.bracket", if (incoming) "sourceBank" else "destinationBank", range)
+                        (if (incoming) sourceRows else destinationRows) += RoleLine(match.groupValues[1], source.original((offset + match.groups[1]!!.range.first)..(offset + match.groups[1]!!.range.last)), range)
                     }
                 }
                 offset += line.length + 1
@@ -59,6 +61,16 @@ internal class TransferNetworkResolver(
         val sourceBank = bank(sourceRows)
         val destinationBank = bank(destinationRows)
         val networks = linkedSetOf<BankNetwork>()
+        if (transfer) {
+            val title = source.text.lineSequence().firstOrNull { it.any(Char::isLetterOrDigit) }.orEmpty()
+            listOf("network.intra" to BankNetwork.INTRA_BANK, "network.inter" to BankNetwork.INTER_BANK).forEach { (key, kind) ->
+                observations[key].orEmpty().forEach { term -> source.phrase(term).findAll(title).forEach { match ->
+                    networks += kind
+                    val start = source.text.indexOf(title)
+                    evidence += source.evidence("extract.network.title", "observation.$key", (start + match.range.first)..(start + match.range.last))
+                } }
+            }
+        }
         val networkRows = reader.read("bankNetwork")
         networkRows.forEach { row ->
             val value = key(row.normalized)

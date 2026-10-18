@@ -64,9 +64,12 @@ class RoleBoundDetailsTest {
         assertEquals("AbC-007", parse(bill.replace("001", "AbC-007")).facts.billerCode)
         assertEquals("Synthetic Finance", parse(loan).facts.counterparty)
         listOf(cardPayment.replace("Card: 5678", ""), cardPayment.replace("From account: 1234", ""),
-            bill.replace("Biller: Synthetic Utilities", ""), bill.replace("Biller code: 001", ""),
+            bill.replace("Biller: Synthetic Utilities", ""),
             loan.replace("Counterparty: Synthetic Finance", ""), loan.replace("From account: 1234", ""))
             .forEach { assertEquals(it, ParseStatus.REVIEW_REQUIRED, parse(it).status) }
+        val noCode = parse(bill.replace("Biller code: 001", ""))
+        assertEquals(ParseStatus.SUCCESS, noCode.status)
+        assertNull(noCode.facts.billerCode)
     }
 
     @Test fun dueDateIsInformationalAndNeverSubstitutesForMovementTime() {
