@@ -99,7 +99,9 @@ data class DailySpending(
     val transactions: Set<PostingKey>,
 )
 
-data class MerchantSpending(val merchant: String, val net: SignedAmount)
+data class MerchantSpending(val merchant: String, val net: SignedAmount, val purchaseTransactionCount: Int? = null) {
+    init { require(purchaseTransactionCount == null || purchaseTransactionCount >= 0) }
+}
 
 /** Missing metric is rejected. Null value marks unavailable; valid empty history has explicit zero.
  * Chart selection filters trends only; it never changes these full-scope summary metrics.

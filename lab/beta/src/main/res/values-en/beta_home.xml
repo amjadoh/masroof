@@ -24,4 +24,5 @@
     <string name="beta_home_cards">Cards</string>
     <string name="beta_home_loans">Loans</string>
     <string name="beta_home_commitments_shortcut">Commitments</string>
+    <string name="beta_home_merchant_count">%1$d purchase / payment transactions</string>
 </resources>

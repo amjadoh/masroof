@@ -24,4 +24,5 @@
     <string name="beta_home_cards">البطاقات</string>
     <string name="beta_home_loans">القروض</string>
     <string name="beta_home_commitments_shortcut">الالتزامات</string>
+    <string name="beta_home_merchant_count">%1$d حركات شراء / دفع</string>
 </resources>
