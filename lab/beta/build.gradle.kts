@@ -68,3 +68,11 @@ dependencies {
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.kotlinx.serialization.json)
 }
+
+// Corpus checks read frozen source fixtures without executing Production parsers.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    inputs.files(rootProject.fileTree("app/src/test") {
+        include("kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
+            "resources/testdata/bank_aljazira/**/*.json")
+    }).withPathSensitivity(PathSensitivity.RELATIVE)
+}

@@ -28,7 +28,7 @@ internal class ObservationExtractor(
 
     fun read(): ObservedFacts {
         val reader = RoleLineReader(source, headers, evidence)
-        val physical = evidence.filter { it.field in setOf("CARD", "AVAILABLE_BALANCE") }.toList()
+        val physical = evidence.filter { it.field in setOf("CARD", "AVAILABLE_BALANCE", "counterparty") }.toList()
         val first = source.text.indexOfFirst(Char::isLetterOrDigit)
         val titleStart = if (first < 0) -1 else source.text.lastIndexOf('\n', first).let { it + 1 }
         fun scoped(range: IntRange, boundField: String?): Boolean {
@@ -42,11 +42,13 @@ internal class ObservationExtractor(
         }
         fun choose(keys: List<String>, header: String, allowed: Set<MessageFamily>, boundField: String? = null): String? {
             val found = linkedSetOf<String>()
+            val typed = linkedSetOf<String>()
             reader.read(header).forEach { row ->
                 val candidates = keys.filter { id -> configured[id].orEmpty().any { key(it) == key(row.normalized) } }
                 if (candidates.size != 1) fail("UNKNOWN_OR_AMBIGUOUS_$header") else {
                     val id = candidates.single()
                     found += id
+                    typed += id
                     evidence += source.evidence("extract.observation.role", "observation.$id", row.range)
                 }
             }
@@ -56,6 +58,10 @@ internal class ObservationExtractor(
                     evidence += source.evidence("extract.observation", "observation.$id", match.range)
                 }
             } }
+            val title = source.text.substring(titleStart.coerceAtLeast(0)).substringBefore('\n')
+            val statementTitle = configured["card.statement"].orEmpty().any { source.phrase(it).containsMatchIn(title) }
+            if (header == "observation.cardType" && statementTitle && family in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE) &&
+                typed.size <= 1 && "card.statement" in found && "card.debit" !in found) found.remove("card.credit")
             if (found.size > 1) fail("CONFLICTING_$header")
             if (found.isNotEmpty() && family !in allowed) fail("UNRELATED_$header")
             return found.singleOrNull()?.takeIf { family in allowed }
@@ -68,7 +74,7 @@ internal class ObservationExtractor(
         val purchase = when (choose(listOf("purchase.pos", "purchase.online"), "observation.purchaseChannel", setOf(MessageFamily.PURCHASE))) {
             "purchase.pos" -> PurchaseChannel.POS; "purchase.online" -> PurchaseChannel.ONLINE; else -> null
         }
-        val loan = when (choose(listOf("loan.personal", "loan.auto", "loan.mortgage"), "observation.loanType", setOf(MessageFamily.FINANCING_INSTALLMENT))) {
+        val loan = when (choose(listOf("loan.personal", "loan.auto", "loan.mortgage"), "observation.loanType", setOf(MessageFamily.FINANCING_INSTALLMENT), "counterparty")) {
             "loan.personal" -> LoanType.PERSONAL; "loan.auto" -> LoanType.AUTO; "loan.mortgage" -> LoanType.MORTGAGE; else -> null
         }
         val salary = choose(listOf("income.salary"), "observation.incomeType", setOf(MessageFamily.TRANSFER_IN))?.let { true }
