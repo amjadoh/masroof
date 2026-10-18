@@ -44,6 +44,6 @@ class BetaSharedNavigationTest {
         } finally { drain(); BetaContainer.resetOffline(context) }
     }
     private fun tab(label: Int) = compose.onNode(hasText(context.getString(label)) and hasAnyAncestor(hasTestTag("beta-bottom-navigation")))
-    private fun await(tag: String) { compose.waitUntil(20000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }; compose.waitForIdle() }
+    private fun await(tag: String) { compose.waitUntil(20000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }; compose.waitForIdle() }
     private fun drain() { val done = CountDownLatch(1); BetaIo.execute { done.countDown() }; assertTrue(done.await(20, TimeUnit.SECONDS)) }
 }
