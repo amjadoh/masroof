@@ -1,11 +1,14 @@
 package com.baraa.masroof.lab.beta.application.evidence
 
 /** Human labels describe original evidence; they never alter interpreter/financial authority. */
-enum class BetaLabelField { FAMILY, AMOUNT, CURRENCY, SOURCE_ACCOUNT, DESTINATION_ACCOUNT, CARD }
+enum class BetaLabelField { FAMILY, AMOUNT, CURRENCY, SOURCE_ACCOUNT, DESTINATION_ACCOUNT, CARD,
+    DIRECTION, EXECUTION_STATE, AVAILABLE_BALANCE, OUTSTANDING_BALANCE }
 data class BetaInterpretationToken(val evidenceId: String, val archiveHash: String, val attempt: Int, val labelRevision: Long)
 data class BetaOriginalSpan(val field: String, val ruleId: String, val start: Int, val end: Int)
 data class BetaTrustedLabel(val revision: Long, val field: BetaLabelField, val value: String,
-    val start: Int, val end: Int, val originalText: String, val archiveHash: String, val attempt: Int) {
+    val start: Int, val end: Int, val originalText: String, val archiveHash: String, val attempt: Int,
+    val tokenStart: Int? = null, val tokenEnd: Int? = null, val tokenizerVersion: String? = null,
+    val humanProvenance: String? = null) {
     override fun toString() = "BetaTrustedLabel(redacted)"
 }
 data class BetaInterpretationReview(val token: BetaInterpretationToken, val body: String,

@@ -103,7 +103,9 @@ internal object BetaAnalysisBuilder {
             val total = if (!known) null else signed(points.fold(BigDecimal.ZERO) { sum, point -> sum + requireNotNull(point.net).amount })
             val average = total?.let { signed(if (points.isEmpty()) BigDecimal.ZERO else
                 it.amount.divide(points.size.toBigDecimal(), 2, RoundingMode.HALF_EVEN)) }
-            return SpendingTrend(asset, category, period, Currency.SAR, freezeList(points), average, scope, total)
+            val beforeRefunds = if (!known) null else signed(points.fold(BigDecimal.ZERO) { sum, point -> sum + requireNotNull(point.beforeRefunds).amount })
+            val refunds = if (!known) null else signed(points.fold(BigDecimal.ZERO) { sum, point -> sum + requireNotNull(point.refunds).amount })
+            return SpendingTrend(asset, category, period, Currency.SAR, freezeList(points), average, scope, total, beforeRefunds, refunds)
 
         }
         val trends = TrendScope.entries.filter { it != TrendScope.ASSET }.map { trend(it) } +
