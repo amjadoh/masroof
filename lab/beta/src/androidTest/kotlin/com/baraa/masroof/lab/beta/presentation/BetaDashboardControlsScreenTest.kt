@@ -43,6 +43,13 @@ class BetaDashboardControlsScreenTest {
         compose.waitUntil(10000) { compose.onAllNodesWithTag("controls-salary").fetchSemanticsNodes().isNotEmpty() }
     }
     private fun node(tag: String) = compose.onNodeWithTag(tag)
+    private fun confirm() {
+        // The confirmation is a separate dialog window, installed after Apply changes state.
+        compose.waitUntil(10000) {
+            compose.onAllNodesWithTag("controls-confirm").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
+        node("controls-confirm").assertIsDisplayed().performClick()
+    }
     @Test fun statementEditorKeepsSameLocalIdAtDifferentBanksSeparate() {
         val a = AssetId(Environment.BETA, BankId("A"), "same")
         val b = AssetId(Environment.BETA, BankId("B"), "same")
@@ -51,7 +58,7 @@ class BetaDashboardControlsScreenTest {
         show(controls, listOf(FacilitySummary(a, null), FacilitySummary(b, null)))
         node("controls-statement-B-same").performScrollTo().performClick()
         node("controls-day").performTextInput("14")
-        node("dash-sheet-apply").performClick(); node("controls-confirm").performClick()
+        node("dash-sheet-apply").performClick(); confirm()
         compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
         assertEquals(listOf(BetaFacilityCycle(a, 20), BetaFacilityCycle(b, 14)), controls.state.draft.statements)
         assertEquals(1, controls.saves.get())
@@ -67,7 +74,7 @@ class BetaDashboardControlsScreenTest {
         node("dash-sheet-apply").performClick()
         assertEquals(0, controls.saves.get())
         controls.hold = CompletableDeferred()
-        node("controls-confirm").performClick()
+        confirm()
         compose.waitUntil { controls.saves.get() == 1 }
         node("controls-confirm").assertIsNotEnabled()
         compose.onAllNodesWithTag("dash-sheet-cancel").onFirst().assertIsNotEnabled()
@@ -78,7 +85,7 @@ class BetaDashboardControlsScreenTest {
     @Test fun staleRevisionRequiresDiscardAndReloadRatherThanOverwritingNewerConfiguration() {
         val controls = Controls(); show(controls)
         node("controls-salary").performScrollTo().performClick(); node("controls-day").performTextInput("27")
-        node("dash-sheet-apply").performClick(); controls.conflict = true; node("controls-confirm").performClick()
+        node("dash-sheet-apply").performClick(); controls.conflict = true; confirm()
         compose.waitUntil { compose.onAllNodesWithTag("controls-conflict").fetchSemanticsNodes().isNotEmpty() }
         node("dash-sheet-apply").assertIsNotEnabled(); assertNull(controls.state.draft.salary)
         node("controls-reload").performScrollTo().performClick()
@@ -109,12 +116,12 @@ class BetaDashboardControlsScreenTest {
         node("controls-day").performScrollTo().performTextInput("31")
         node("dash-sheet-apply").performClick(); node("controls-invalid").assertExists(); assertEquals(0, controls.saves.get())
         node("controls-amount").performScrollTo().performTextReplacement("1200.00")
-        node("dash-sheet-apply").performClick(); node("controls-confirm").performClick()
+        node("dash-sheet-apply").performClick(); confirm()
         compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
         val row = controls.state.draft.commitments.single()
         node("controls-paid-${row.id}").performScrollTo().performClick(); node("dash-sheet-cancel").performClick()
         assertTrue(controls.state.draft.commitments.single().paidMonths.isEmpty())
-        node("controls-paid-${row.id}").performScrollTo().performClick(); node("dash-sheet-apply").performClick(); node("controls-confirm").performClick()
+        node("controls-paid-${row.id}").performScrollTo().performClick(); node("dash-sheet-apply").performClick(); confirm()
         compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
         assertEquals(setOf(month), controls.state.draft.commitments.single().paidMonths)
         node("controls-delete-${row.id}").performScrollTo().performClick(); node("dash-sheet-cancel").performClick()
