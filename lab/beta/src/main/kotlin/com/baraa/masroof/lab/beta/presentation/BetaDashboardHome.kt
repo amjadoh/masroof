@@ -25,7 +25,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
     preferences: BetaDashboardViewPreferencesWorkflow?, onRoute: (String) -> Unit,
-    onTransaction: (String) -> Unit, onImport: () -> Unit) {
+    onTransaction: (String) -> Unit, onImport: () -> Unit, layoutOpen: Boolean = false,
+    onLayoutClose: () -> Unit = {}, onConfiguration: () -> Unit = {}) {
     val snapshot = read.snapshot
     val unavailable = stringResource(R.string.beta_dash_unavailable)
     val language = LocalConfiguration.current.locales[0].toLanguageTag()
@@ -33,10 +34,27 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
     val analysis = snapshot.analysis
     val overall = BetaDashboardExplorer.trend(snapshot, BetaChartChoice(TrendScope.OVERALL))
     val icons = MasroofOutlineIcons
+    var layout by remember { mutableStateOf(BetaHomeLayout()) }
+    var layoutLoaded by remember { mutableStateOf(preferences == null) }
+    var layoutError by remember { mutableStateOf(false) }
+    BetaLaunchedEffect(preferences) {
+        try { layout = preferences?.readHomeLayout() ?: BetaHomeLayout(); layoutLoaded = true }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { layoutError = true }
+    }
+    if (layoutError) Text(stringResource(R.string.beta_chart_save_error), color = MaterialTheme.colorScheme.error)
+    if (layoutOpen && layoutLoaded) BetaHomeLayoutSheet(layout, preferences, onClose = onLayoutClose,
+        onSaved = { layout = it; onLayoutClose() }, onConfiguration = onConfiguration)
+    layout.sections.filter { it.visible }.forEach { entry -> key(entry.section) {
+        when (entry.section) {
+            BetaHomeSection.HERO -> {
     DashboardHomeHero(BetaDashboardVisualMapper.hero(read, stringResource(R.string.beta_home_remaining),
         stringResource(R.string.beta_home_inflow), stringResource(R.string.beta_home_outflow), unavailable, language),
         icons.Wallet, onIncome = { onRoute("FLOW_IN") }, onOutflow = { onRoute("FLOW_OUT") },
         enabled = enabled, modifier = Modifier.testTag("beta-home-hero"))
+
+            }
+            BetaHomeSection.SHORTCUTS -> {
     MasroofShortcutStrip(listOf(
         MasroofShortcutItem(stringResource(R.string.beta_home_accounts), icons.Landmark, MasroofCardAccent.Account) { onRoute("ACCOUNTS") },
         MasroofShortcutItem(stringResource(R.string.beta_home_cards), icons.CreditCard, MasroofCardAccent.Credit) { onRoute("CARDS") },
@@ -44,6 +62,9 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
         MasroofShortcutItem(stringResource(R.string.beta_home_commitments_shortcut), icons.CalendarCheck, MasroofCardAccent.Liability) { onRoute("COMMITMENTS") }
     ), modifier = Modifier.testTag("home-shortcuts"), enabled = enabled)
 
+
+            }
+            BetaHomeSection.COMMITMENTS -> {
     val commitments = snapshot.commitments
     if (commitments == null || DashboardSection.COMMITMENTS in read.unavailableSections) {
         HomeUnavailable(stringResource(R.string.beta_home_commitments), "home-commitments-unavailable")
@@ -63,21 +84,30 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
                 }
             }) else null)
     }
+
+            }
+            BetaHomeSection.METRICS -> {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         val colors = MasroofThemeExtras.extendedColors
         val total = overall?.totalSpending
         val tone = when (total?.amount?.signum()) { 1 -> colors.outflow; -1 -> colors.inflow; else -> MaterialTheme.colorScheme.onSurface }
-        DashboardMetric(money(total), tone, Modifier.weight(1f).testTag("dash-summary-spending")) {
+        if (layout.expensesVisible) DashboardMetric(money(total), tone, Modifier.weight(1f).testTag("dash-summary-spending")) {
             HomeGuidanceLabel(stringResource(R.string.beta_home_expenses))
         }
-        DashboardMetric(money(overall?.averageDailySpending), MaterialTheme.colorScheme.primary,
+        if (layout.averageVisible) DashboardMetric(money(overall?.averageDailySpending), MaterialTheme.colorScheme.primary,
             Modifier.weight(1f).testTag("home-daily-average")) {
             HomeGuidanceLabel(stringResource(R.string.beta_home_daily_average),
                 stringResource(R.string.beta_home_average_basis, overall?.points?.size ?: 0))
         }
     }
+
+            }
+            BetaHomeSection.TREND -> {
     BetaHomeTrend(snapshot, enabled, preferences, onRoute)
 
+
+            }
+            BetaHomeSection.MERCHANTS -> {
     Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         DashboardSectionHeading(stringResource(R.string.beta_dash_analysis), icons.ChartLine)
         DashboardSectionHeading(stringResource(R.string.beta_home_top_merchants), icons.Store,
@@ -99,6 +129,9 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
             }
         }
     }
+
+            }
+            BetaHomeSection.TRANSACTIONS -> {
     DashboardSectionHeading(stringResource(R.string.beta_home_recent), icons.List,
         modifier = Modifier.testTag("home-recent-heading"), actionLabel = stringResource(R.string.beta_home_view_all),
         onAction = if (enabled) ({ onRoute("TRANSACTIONS") }) else null)
@@ -136,6 +169,10 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
             }
         }
     }
+            }
+        }
+    } }
+
 }
 
 @Composable

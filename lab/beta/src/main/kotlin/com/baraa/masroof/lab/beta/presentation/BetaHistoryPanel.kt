@@ -2,6 +2,7 @@ package com.baraa.masroof.lab.beta.presentation
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
     }
     SideEffect { onBusyChanged(busy) }
     DisposableEffect(Unit) { onDispose { onBusyChanged(false) } }
+    BackHandler { if (!busy) onClose() }
     fun action(block: suspend () -> Unit) {
         if (busy) return
         busy = true

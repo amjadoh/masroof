@@ -37,4 +37,29 @@ class BetaDashboardViewPreferencesWorkflowTest {
         assertEquals(BetaDashboardViewPreferences(), workflow.read())
         BetaContainer.resetOffline(context)
     }
+    @Test fun homeLayoutIsAtomicAndBackedUp(): Unit = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        BetaContainer.resetOffline(context)
+        try {
+            val workflow = BetaDashboardViewPreferencesWorkflow(context)
+            val original = workflow.readHomeLayout()
+            val draft = original.toggle(BetaHomeSection.HERO).move(BetaHomeSection.TRANSACTIONS, -1).copy(averageVisible = false)
+            assertEquals(original, workflow.readHomeLayout()) // An unsaved draft never changes stored state.
+            assertTrue(workflow.saveHomeLayout(original, draft))
+            assertEquals(draft, BetaDashboardViewPreferencesWorkflow(context).readHomeLayout())
+            assertFalse(workflow.saveHomeLayout(original, original)) // Another open editor is stale.
+            BetaContainer(context).use { beta ->
+                beta.putMarker("home-layout", "retained"); beta.backup()
+                assertTrue(workflow.saveHomeLayout(draft, original)); assertTrue(beta.restore())
+            }
+            assertEquals(draft, workflow.readHomeLayout())
+            context.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE).edit().putString("dashboard_home_layout", "unknown-layout").commit()
+            assertEquals(BetaHomeLayout(), workflow.readHomeLayout())
+            assertTrue(workflow.saveHomeLayout(BetaHomeLayout(), draft)) // Explicit Apply repairs only display preferences.
+            assertEquals(BetaHomeSection.entries.size, draft.sections.map { it.section }.distinct().size)
+            assertEquals(original, BetaHomeLayout.decode(original.encode()))
+            assertThrows(IllegalArgumentException::class.java) { BetaHomeLayout.decode("v1|true|true|HERO:true") }
+        } finally { BetaContainer.resetOffline(context) }
+    }
+
 }

@@ -301,7 +301,7 @@ class BetaDashboardScreenTest {
         }
     }
 
-    @Test fun authoritativeFacilityDueIsDisplayedOnceAndNeverCopiedToMemberCards() {
+    @Test fun authoritativeFacilityDueIsDisplayedOnlyOnFacilityDetails() {
         val facilityId = AssetId(Environment.BETA, bank, "statement-facility")
         fun card(id: String, last4: String, role: CreditCardRole) = CreditCardSummary(
             AssetId(Environment.BETA, bank, id), role, null, last4, null, null, null, null, null)
