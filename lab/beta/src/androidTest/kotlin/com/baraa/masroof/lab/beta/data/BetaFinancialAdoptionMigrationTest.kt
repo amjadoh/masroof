@@ -95,7 +95,10 @@ class BetaFinancialAdoptionMigrationTest {
             val adapter = RoomBetaFinancialAdoption(database)
             val request = BetaFinancialApproval("device", adapter.reviewPage().single().archiveRevision, null,
                 FinancialType.EXPENSE, account.id, null)
-            assertTrue(adapter.approve(request) is BetaFinancialAdoptionResult.Posted)
+            assertEquals(BetaFinancialAdoptionResult.Review("BANK_DISABLED"), adapter.approve(request))
+            assertNull(RoomBetaFinancialLedger(database).readAudit(RoomBetaFinancialAdoption.key("device")))
+            database.bankSelectionDao().upsert(BetaBankSelectionEntity(bank.value, "ENABLED"))
+            assertTrue(adapter.retryApproval("device", request) is BetaFinancialAdoptionResult.Posted)
             val key = RoomBetaFinancialAdoption.key("device")
             val expected = requireNotNull(RoomBetaFinancialLedger(database).read(key))
             assertEquals(AppliedFx(BigDecimal("3.756957"), "SMS"), expected.command.appliedFx)
