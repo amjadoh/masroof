@@ -43,7 +43,7 @@
     <string name="beta_asset_summary">%1$s • %2$s — %3$d</string>
     <string name="beta_asset_missing">الأصل لم يعد موجودًا. أغلق التكوين وأعد تحميل القائمة.</string>
     <string name="beta_history_title">استيراد رسائل إلى Beta</string>
-    <string name="beta_history_help">اختياري. اختر بنوكك أولًا، ثم الفترة والإذن. تُحفظ الأدلة للمقارنة والمراجعة فقط؛ لا تُسجل معاملات مالية ولا تتغير بيانات مصروف الأساسي.</string>
+    <string name="beta_history_help">اختياري. اختر بنوكك أولًا، ثم الفترة والإذن. تُفسّر الأدلة وتُحفظ داخل Beta للمراجعة؛ لا تُسجل معاملات مالية ولا تتغير بيانات مصروف الأساسي.</string>
     <string name="beta_history_scope">تُقرأ رسائل الوارد خلال الفترة المحددة لتحديد البنوك المختارة. يُحفظ المتطابق فقط في Beta. الحد ١٠٬٠٠٠ رسالة لكل استيراد. البدء مجددًا يعيد فحص الفترة دون تكرار الأدلة المحفوظة.</string>
     <string name="beta_history_days">آخر %1$d أيام</string>
     <string name="beta_history_days_selected">✓ آخر %1$d أيام</string>
@@ -161,4 +161,5 @@
     <string name="beta_start_fresh">بدء تجربة نظيفة</string>
     <string name="beta_start_fresh_warning">سيُحذف محتوى Beta القديم وتفضيلاته ونسخه المحلية، وقاعدة Parsing Lab ورسائلها وتصحيحاتها. لا يشمل ذلك بيانات مصروف الأساسي أو رسائل الهاتف. أغلق Parsing Lab أولًا. بعد بدء التجربة الجديدة تبقى بياناتك محفوظة عند كل فتح.</string>
     <string name="beta_start_fresh_confirm">حذف التجارب القديمة</string>
+    <string name="beta_history_interpreted">تفسير محفوظ — دون اعتماد مالي</string>
 </resources>

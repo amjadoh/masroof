@@ -57,7 +57,7 @@ class RoomBetaAuxFactsTest {
         store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "candidate untrusted"), at)
     }
     private suspend fun actual(body: String, id: String): String {
-        val result = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer())
+        val result = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules()))
             .importBatch(EvidenceRequest("actual", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(EvidenceMessage(id, "AlJazira", body, at,
                 ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
         return result.summary.id

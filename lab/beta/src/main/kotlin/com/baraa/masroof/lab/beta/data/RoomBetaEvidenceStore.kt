@@ -36,6 +36,11 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
         if (dao.retry(id) != null) return emptyList()
         val route = try { decodeRoute(outcome.route) } catch (_: IllegalArgumentException) { return emptyList() } catch (_: org.json.JSONException) { return emptyList() }
         val body = dao.raw(id)?.body ?: return emptyList()
+        if (outcome.baselineJson == "{}") {
+            val current = try { JSONObject(outcome.candidateJson) } catch (_: org.json.JSONException) { return emptyList() }
+            if (!InterpretationArchive.isCurrent(current)) return emptyList()
+            return BetaAssetDiscovery.proposals(id, route, outcome.candidateJson, body = body)
+        }
         val candidate = BetaAssetDiscovery.proposals(id, route, outcome.candidateJson, body = body)
         val baseline = BetaAssetDiscovery.proposals(id, route, outcome.baselineJson, requireFieldProof = false)
         return candidate.filter { p -> baseline.any { it.id == p.id && it.kind == p.kind && it.last4 == p.last4 } }

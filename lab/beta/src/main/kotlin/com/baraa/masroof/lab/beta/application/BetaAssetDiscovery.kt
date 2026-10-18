@@ -38,8 +38,14 @@ object BetaAssetDiscovery {
         if (blockers.length() > 0 && (diagnostics.length() == 0 || (0 until diagnostics.length()).any {
                 diagnostics.getJSONObject(it).getString("code") !in amountOnlyCodes })) return emptyList()
         val spans = json.getJSONArray("evidence")
+        val current = com.baraa.masroof.lab.beta.application.evidence.InterpretationArchive.isCurrent(json)
+        fun role(field: String) = if (!current) field else when (field) {
+            "SOURCE_ACCOUNT" -> "source"; "DESTINATION_ACCOUNT" -> "destination"; "CARD" -> "card"
+            "observation.card.credit" -> "card.credit"; "observation.card.debit" -> "card.debit"
+            "observation.card.statement" -> "card.statement"; else -> field
+        }
         val fields = (0 until spans.length()).mapNotNull { index -> spans.getJSONObject(index).let {
-            if (it.getInt("start") >= 0 && it.getInt("end") > it.getInt("start") && it.getInt("end") <= (body?.length ?: 16_000) && it.getString("ruleId").isNotBlank()) it.getString("field") else null
+            if (it.getInt("start") >= 0 && it.getInt("end") > it.getInt("start") && it.getInt("end") <= (body?.length ?: 16_000) && it.getString("ruleId").isNotBlank()) role(it.getString("field")) else null
         } }.toSet()
         fun proven(vararg roles: String) = !requireFieldProof || roles.any { it in fields }
         fun provenSuffix(number: String?, vararg roles: String): Boolean {
@@ -48,8 +54,8 @@ object BetaAssetDiscovery {
             if (body == null) return true // Pure contract tests; storage always supplies its immutable captured body.
             return (0 until spans.length()).any { index -> spans.getJSONObject(index).let { span ->
                 val start = span.getInt("start"); val end = span.getInt("end")
-                span.getString("field") in roles && start >= 0 && end > start && end <= body.length &&
-                    normalizeManualAssetSuffix(body.substring(start, end)) == number
+                role(span.getString("field")) in roles && start >= 0 && end > start && end <= body.length &&
+                    normalizeManualAssetSuffix(body.substring(start, end).trimStart('*', 'x', 'X')) == number
             } }
         }
         val f = json.getJSONObject("facts")

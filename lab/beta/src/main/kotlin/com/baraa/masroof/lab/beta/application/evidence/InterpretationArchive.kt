@@ -7,6 +7,12 @@ import org.json.JSONObject
 
 /** Lossless versioned local archive only, never a log/report or a public summary. */
 internal object InterpretationArchive {
+    private val currentVersion = com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
+        com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.currentSchema()).version
+    fun isCurrent(json: JSONObject): Boolean = json.optInt("archiveVersion") == 1 &&
+        json.optInt("contractVersion") == currentVersion.contract && json.optString("authority") == "BANK_ENGINE" &&
+        json.optString("engineVersion") == currentVersion.engine && json.optString("rulesVersion") == currentVersion.rules
+
     fun encode(value: Interpretation): String {
         val f = value.facts
         fun money(value: Money?) = value?.let { JSONObject().put("amount", it.amount.toPlainString()).put("currency", it.currency.name) }
@@ -31,6 +37,7 @@ internal object InterpretationArchive {
             "accountIdentifier" to f.accountIdentifier,
         ).forEach { (key, field) -> facts.put(key, field ?: JSONObject.NULL) }
         return JSONObject().put("archiveVersion", 1).put("evidenceId", value.evidenceId)
+            .put("authority", if (value.version.engine == com.baraa.masroof.lab.bank.interpretation.RuleInterpreter.VERSION) "BANK_ENGINE" else "HISTORICAL")
             .put("contractVersion", value.version.contract).put("engineVersion", value.version.engine)
             .put("rulesVersion", value.version.rules).put("bank", value.bank?.value ?: JSONObject.NULL)
             .put("status", value.status.name).put("facts", facts)

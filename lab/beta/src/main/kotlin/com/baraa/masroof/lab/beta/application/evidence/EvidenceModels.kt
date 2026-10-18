@@ -39,8 +39,8 @@ data class CapturedEvidence(val id: String, val request: EvidenceRequest, val me
     override fun toString() = "CapturedEvidence(redacted)"
 }
 
-enum class EvidenceDisposition { REVIEW, COMPARISON_ONLY }
-enum class EvidenceProcessingState { RETRY, REVIEW, COMPARISON_ONLY }
+enum class EvidenceDisposition { REVIEW, COMPARISON_ONLY, INTERPRETED }
+enum class EvidenceProcessingState { RETRY, REVIEW, COMPARISON_ONLY, INTERPRETED }
 enum class EvidenceStage { CAPTURED, INTERPRETATION, SAVE_OUTCOME }
 enum class CaptureState { INSERTED, EXISTING, CONFLICT }
 enum class ScopeRejection { UNRECOGNIZED, NOT_ENABLED, OUTSIDE_REQUESTED_HISTORY, UNPROVEN_HISTORY_SCOPE }
@@ -52,6 +52,7 @@ data class EvidenceSummary(val id: String, val disposition: EvidenceDisposition?
         retryStage != null -> EvidenceProcessingState.RETRY
         disposition == EvidenceDisposition.REVIEW -> EvidenceProcessingState.REVIEW
         disposition == EvidenceDisposition.COMPARISON_ONLY -> EvidenceProcessingState.COMPARISON_ONLY
+        disposition == EvidenceDisposition.INTERPRETED -> EvidenceProcessingState.INTERPRETED
         else -> error("Missing durable evidence outcome")
     }
 }
