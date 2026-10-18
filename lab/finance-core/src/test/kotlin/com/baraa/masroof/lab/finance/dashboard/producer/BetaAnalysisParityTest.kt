@@ -72,6 +72,7 @@ class BetaAnalysisParityTest {
         same(BigDecimal("86.41"), result.transactions.single { it.key.transactionId == "a" }.sarEquivalent!!.amount)
         assertEquals(oldMerchants.merchants.map { it.displayName }, result.analysis!!.merchants.map { it.merchant })
         same(oldMerchants.merchants.single().totalSpent.amount, result.analysis.merchants.single().net.amount)
+        assertEquals(oldMerchants.merchants.single().purchaseTransactionCount, result.analysis.merchants.single().purchaseTransactionCount)
         assertTrue(result.analysis.merchants.single().net.amount.signum() < 0)
         val trend = result.analysis.trends.single { it.scope == TrendScope.OVERALL && it.category == null }
         assertEquals(originalTrend.points.map { it.date }, trend.points.map { it.date })

@@ -122,7 +122,8 @@ internal object BetaAnalysisBuilder {
                     .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).first().key
                 MerchantSpending(label, signed(group.fold(BigDecimal.ZERO) { sum, tx ->
                     val amount = requireNotNull(byKey!![tx.key]).sarAmount.amount
-                    sum + if (tx.effectiveType == FinancialType.REFUND) amount.negate() else amount }))
+                    sum + if (tx.effectiveType == FinancialType.REFUND) amount.negate() else amount }),
+                    group.count { it.effectiveType == FinancialType.EXPENSE })
             }.sortedWith(compareByDescending<MerchantSpending> { it.net.amount }.thenBy { it.merchant.lowercase(Locale.ROOT) }.thenBy { merchantKey(it.merchant) })
         return AnalysisSummary(Currency.SAR, summary.metrics, summary.transactionCount, summary.reviewRequiredCount,
             summary.excludedOtherCurrencyCount, freezeList(trends), freezeList(merchants))

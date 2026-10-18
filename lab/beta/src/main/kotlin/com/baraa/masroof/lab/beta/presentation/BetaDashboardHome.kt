@@ -81,7 +81,7 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
     Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         DashboardSectionHeading(stringResource(R.string.beta_dash_analysis), icons.ChartLine)
         DashboardSectionHeading(stringResource(R.string.beta_home_top_merchants), icons.Store,
-            actionLabel = stringResource(R.string.beta_home_view_all), onAction = if (enabled) ({ onRoute("ANALYSIS") }) else null)
+            actionLabel = stringResource(R.string.beta_home_view_all), onAction = if (enabled && DashboardSection.MERCHANT_TOTALS !in read.unavailableSections && analysis?.merchants?.isNotEmpty() == true) ({ onRoute("ANALYSIS") }) else null)
         when {
             DashboardSection.MERCHANT_TOTALS in read.unavailableSections || analysis == null ->
                 Text(stringResource(R.string.beta_dash_unavailable_help), Modifier.testTag("home-merchants-unavailable"))
@@ -92,7 +92,9 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
                 val maximum = rows.maxOf { it.net.amount.max(java.math.BigDecimal.ZERO) }
                 Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.listItemGap)) {
                     rows.forEach { row -> MasroofRankedBarRow(row.merchant, money(row.net),
-                        MasroofBarChart.progress(row.net.amount, maximum), style = MasroofHorizontalBarStyle.Outflow) }
+                        MasroofBarChart.progress(row.net.amount, maximum),
+                        subtitle = row.purchaseTransactionCount?.let { stringResource(R.string.beta_home_merchant_count, it) },
+                        style = MasroofHorizontalBarStyle.Outflow) }
                 }
             }
         }
