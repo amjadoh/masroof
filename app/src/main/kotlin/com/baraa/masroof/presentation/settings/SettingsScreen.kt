@@ -384,21 +384,16 @@ fun SettingsRoute(
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
-        SettingsDestination.DeveloperSettings -> if (com.baraa.masroof.BuildConfig.ENABLE_PARSING_LAB) {
+        SettingsDestination.DeveloperSettings -> if (com.baraa.masroof.BuildConfig.ENABLE_MASROOF_BETA) {
             val betaContext = LocalContext.current
             SettingsDeveloperScreen(
                 onBack = { popOrExit() },
-                onOpenLab = { navigateTo(SettingsDestination.ParsingLab) },
                 onOpenBeta = { BetaEntry.open(betaContext) },
             )
         } else {
             LaunchedEffect(Unit) { popOrExit() }
         }
-        SettingsDestination.ParsingLab -> if (com.baraa.masroof.BuildConfig.ENABLE_PARSING_LAB) {
-            com.baraa.masroof.lab.presentation.ParsingLabEntry(onBack = { popOrExit() })
-        } else {
-            LaunchedEffect(Unit) { popOrExit() }
-        }
+
     }
 }
 

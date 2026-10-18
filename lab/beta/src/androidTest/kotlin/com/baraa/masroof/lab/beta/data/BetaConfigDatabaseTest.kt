@@ -7,7 +7,7 @@ import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.*
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.classification.*
 import com.baraa.masroof.lab.finance.dashboard.*
@@ -103,9 +103,9 @@ class BetaConfigDatabaseTest {
         store.begin(id, at)
         val facts = Facts(MessageFamily.NON_FINANCIAL, card = CardReference(bank, "7271"), cardChannel = CardChannel.STATEMENT,
             outstandingBalance = Money.of("100", Currency.SAR), paymentDueDate = dueDate, occurredAt = at)
-        val archive = InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
+        val archive = FinancialArchiveFixture.encode(Interpretation(id, FinancialArchiveFixture.VERSION, bank, facts,
             ParseStatus.NON_FINANCIAL, null, emptyList(), emptySet()))
-        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
+        store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
         assertTrue(db.dashboardAuxFactsDao().evidence(id)!!.statementProved)
     }
     private suspend fun payment(id: String, amount: String, at: String, currency: Currency = Currency.SAR, fx: AppliedFx? = null) {
@@ -187,9 +187,9 @@ class BetaConfigDatabaseTest {
             val facts = Facts(MessageFamily.PURCHASE, Money.of("23", Currency.USD), MoneyDirection.OUTGOING,
                 card = CardReference(bank, "7271"), cardChannel = CardChannel.CREDIT, merchant = "Synthetic Store",
                 occurredAt = at, exchangeRate = BigDecimal("3.756957"), internationalFee = Money.of("1.99", Currency.SAR))
-            val archive = InterpretationArchive.encode(Interpretation(id, LegacyInterpretationAdapter.VERSION, bank, facts,
+            val archive = FinancialArchiveFixture.encode(Interpretation(id, FinancialArchiveFixture.VERSION, bank, facts,
                 ParseStatus.SUCCESS, null, emptyList(), emptySet()))
-            store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "untrusted candidate"), at)
+            store.complete(id, route, EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
             val service = RoomBetaFinancialAdoption(db)
             val review = service.reviewPage().single { it.evidenceId == id }
             assertTrue(service.approve(BetaFinancialApproval(id, review.archiveRevision, null, FinancialType.EXPENSE, card.id, null)) is BetaFinancialAdoptionResult.Posted)

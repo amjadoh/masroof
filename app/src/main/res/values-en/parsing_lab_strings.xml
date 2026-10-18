@@ -1,5 +1,0 @@
-<resources>
-    <string name="settings_developer_title">Developer settings</string>
-    <string name="settings_parsing_lab_title">Bank SMS parsing lab</string>
-    <string name="settings_parsing_lab_hint">Experimental banks, rules and samples in a separate database</string>
-</resources>

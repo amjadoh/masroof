@@ -69,34 +69,11 @@ class BetaContainer(
         check(preferences.edit().putString(START_KEY, START_VERSION).commit()) { "Could not save Beta entry state" }
     }
 
-    fun hasParsingLabHistory(): Boolean = lock.withLock {
-        check(!closed)
-        parsingLabFiles().any { it.exists() }
-    }
-
-    /** User-confirmed, one-time disposal of old experiments. Never called by entry/relaunch. */
+    /** Explicit fresh Beta choice, never called by entry/relaunch. */
     fun startFresh() = lock.withLock {
         check(!closed)
         check(startState() != BetaStartState.READY) { "Entry already acknowledged" }
-        val name = BetaEnvironment.PARSING_LAB_DATABASE_NAME
-        check(name != BetaEnvironment.PRODUCTION_DATABASE_NAME && name != BetaDatabase.NAME)
-        val lease = appContext.getDatabasePath("$name.cleanup.lock")
-        lease.parentFile?.mkdirs()
-        java.io.RandomAccessFile(lease, "rw").channel.use { channel ->
-            val exclusive = try { channel.tryLock() } catch (_: java.nio.channels.OverlappingFileLockException) { null }
-            checkNotNull(exclusive) { "Close Parsing Lab before cleaning experiments" }.use {
-                val files = parsingLabFiles()
-                check(files.none { it.exists() } || appContext.deleteDatabase(name)) { "Could not delete Parsing Lab" }
-                check(files.none { it.exists() }) { "Parsing Lab files remain" }
-                reset()
-            }
-        }
-    }
-
-    private fun parsingLabFiles(): List<File> {
-        val path = appContext.getDatabasePath(BetaEnvironment.PARSING_LAB_DATABASE_NAME)
-        check(path.name == BetaEnvironment.PARSING_LAB_DATABASE_NAME)
-        return listOf(path) + listOf("-wal", "-shm", "-journal").map { File(path.path + it) }
+        reset()
     }
 
     fun bankChoices() = lock.withLock {

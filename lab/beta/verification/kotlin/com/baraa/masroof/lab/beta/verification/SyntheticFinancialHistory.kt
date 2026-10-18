@@ -42,7 +42,7 @@ object SyntheticFinancialHistory {
                 val money = if (usd) "USD" else "SAR"
                 val body = "شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nلدى: Synthetic Merchant ${index % 17}\n" +
                     "بمبلغ: $money ${10 + index % 37}.00\nفي: ${local.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))}\nالدولة: USA\n" +
-                    (if (usd) "رسوم العمليات الدولية: 1.99\nسعر الصرف: 3.756957\n" else "") +
+                    (if (usd) "رسوم العمليات الدولية: SAR 1.99\nسعر الصرف: 3.756957\n" else "") +
                     "الرصيد المتاح: SAR 16958.89\nإجمالي المبلغ المستحق: SAR 2694.32"
                 EvidenceMessage("synthetic-$index", "AlJazira", body, local.atZone(query.zone).toInstant(), ReceiptTimeSource.USER_SUPPLIED)
             }

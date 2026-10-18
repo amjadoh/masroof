@@ -16,11 +16,11 @@ data class BetaDiscoveryPage(val proposals: List<BetaAssetProposal>, val afterId
 
 /** Reads the persisted archive, never reparses SMS. Partial financial parsing may still identify an asset. */
 object BetaAssetDiscovery {
-    fun proposals(id: String, route: EvidenceRoute, archive: String, requireFieldProof: Boolean = true, body: String? = null): List<BetaAssetProposal> = try {
-        if (route.kind != RouteKind.MATCHED) emptyList() else decode(id, route.candidates.single(), JSONObject(archive), requireFieldProof, body)
+    fun proposals(id: String, route: EvidenceRoute, archive: String, body: String? = null): List<BetaAssetProposal> = try {
+        if (route.kind != RouteKind.MATCHED) emptyList() else decode(id, route.candidates.single(), JSONObject(archive), body)
     } catch (_: Exception) { emptyList() } // Unsupported/malformed archives remain in evidence review.
 
-    private fun decode(id: String, bank: BankId, json: JSONObject, requireFieldProof: Boolean, body: String?): List<BetaAssetProposal> {
+    private fun decode(id: String, bank: BankId, json: JSONObject, body: String?): List<BetaAssetProposal> {
         require(json.get("archiveVersion") == 1 && json.get("contractVersion") == InterpretationVersion.CURRENT_CONTRACT)
         require(json.getString("evidenceId") == id && json.getString("bank") == bank.value)
         require(BetaBankCatalog.current.contains(bank))
@@ -38,8 +38,8 @@ object BetaAssetDiscovery {
         if (blockers.length() > 0 && (diagnostics.length() == 0 || (0 until diagnostics.length()).any {
                 diagnostics.getJSONObject(it).getString("code") !in amountOnlyCodes })) return emptyList()
         val spans = json.getJSONArray("evidence")
-        val current = com.baraa.masroof.lab.beta.application.evidence.InterpretationArchive.isCurrent(json)
-        fun role(field: String) = if (!current) field else when (field) {
+        require(com.baraa.masroof.lab.beta.application.evidence.InterpretationArchive.isCurrent(json))
+        fun role(field: String) = when (field) {
             "SOURCE_ACCOUNT" -> "source"; "DESTINATION_ACCOUNT" -> "destination"; "CARD" -> "card"
             "observation.card.credit" -> "card.credit"; "observation.card.debit" -> "card.debit"
             "observation.card.statement" -> "card.statement"; else -> field
@@ -47,9 +47,8 @@ object BetaAssetDiscovery {
         val fields = (0 until spans.length()).mapNotNull { index -> spans.getJSONObject(index).let {
             if (it.getInt("start") >= 0 && it.getInt("end") > it.getInt("start") && it.getInt("end") <= (body?.length ?: 16_000) && it.getString("ruleId").isNotBlank()) role(it.getString("field")) else null
         } }.toSet()
-        fun proven(vararg roles: String) = !requireFieldProof || roles.any { it in fields }
+        fun proven(vararg roles: String) = roles.any { it in fields }
         fun provenSuffix(number: String?, vararg roles: String): Boolean {
-            if (!requireFieldProof) return true
             if (!proven(*roles)) return false
             if (body == null) return true // Pure contract tests; storage always supplies its immutable captured body.
             return (0 until spans.length()).any { index -> spans.getJSONObject(index).let { span ->
@@ -85,8 +84,8 @@ object BetaAssetDiscovery {
                 // A card number alone, OTP digits, IBAN, balance, or transaction reference cannot supply a card kind.
                 val channelProven = when (channel) {
                     "DEBIT" -> proven("card.debit")
-                    "CREDIT" -> proven("card.credit", "balance") && (!requireFieldProof || "card.debit" !in fields)
-                    "STATEMENT" -> proven("card.statement") && (!requireFieldProof || "card.debit" !in fields)
+                    "CREDIT" -> proven("card.credit", "balance") && ("card.debit" !in fields)
+                    "STATEMENT" -> proven("card.statement") && ("card.debit" !in fields)
                     else -> false
                 }
                 if (kind != null && proven("card") && channelProven && card.text("bank") == bank.value) suffix(card.text("number"))?.takeIf { provenSuffix(it, "card") }?.let { add(proposal("card", kind, it)) }

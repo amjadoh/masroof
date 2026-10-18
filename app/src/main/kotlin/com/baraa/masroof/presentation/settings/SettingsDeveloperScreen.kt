@@ -16,7 +16,6 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 @Composable
 fun SettingsDeveloperScreen(
     onBack: () -> Unit,
-    onOpenLab: () -> Unit,
     onOpenBeta: () -> Unit,
 ) {
     MasroofSecondaryScaffold(title = stringResource(R.string.settings_developer_title), onBack = onBack,
@@ -29,8 +28,6 @@ fun SettingsDeveloperScreen(
                     MasroofIcons.settings,
                     onOpenBeta,
                 )
-                MasroofReferenceNavigationRow(stringResource(R.string.settings_parsing_lab_title),
-                    stringResource(R.string.settings_parsing_lab_hint), MasroofIcons.periodHint, onOpenLab, divider = false)
             }
         }
     }

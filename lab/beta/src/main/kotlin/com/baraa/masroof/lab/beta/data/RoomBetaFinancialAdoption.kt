@@ -1,8 +1,6 @@
 package com.baraa.masroof.lab.beta.data
 
 import androidx.room.withTransaction
-import com.baraa.masroof.lab.bank.InterpretationVersion
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
 import com.baraa.masroof.lab.beta.application.evidence.*
 import com.baraa.masroof.lab.beta.application.corrections.*
 import com.baraa.masroof.lab.finance.asset.*
@@ -15,9 +13,8 @@ import org.json.JSONObject
 import java.security.MessageDigest
 import java.time.*
 
-/** Explicit Beta-only archive adoption. Neither candidate agreement nor acknowledgement authorizes
- * money. Every financial command is bound to a completed baseline archive and explicit endpoints.
- * The preserved production parser baseline is not silently replaced by the experimental engine. */
+/** Explicit Beta-only adoption of the current BankEngine record. Interpretation and learning
+ * labels alone never authorize money; every write revalidates the exact archive and owned assets. */
 class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     init { require(database.openHelper.databaseName == BetaDatabase.NAME) { "Financial adoption requires the isolated Beta database" } }
     private val dao get() = database.financialAdoptionDao()
@@ -31,12 +28,12 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val registry = BetaAssetRegistry(database).all().associateBy { it.id }
         val bank = outcome?.let { runCatching { rawBank(it) }.getOrNull() }
         val choices = registry.values.filter { it.id.bank.value == bank }.sortedBy { it.id.localId }
-        val facts = outcome?.let { runCatching { baseline(it, null, null, FinancialType.EXPENSE, null, registry) }.getOrNull() }
+        val facts = outcome?.let { runCatching { currentInput(it, null, null, FinancialType.EXPENSE, null, registry) }.getOrNull() }
         val correctionOwned = database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null
         val blocked = when {
             database.evidenceDao().retry(id) != null -> "INTERPRETATION_PENDING"
             outcome == null -> "NO_COMPLETED_ARCHIVE"
-            facts == null -> "UNSAFE_BASELINE"
+            facts == null -> "UNSAFE_INTERPRETATION"
             database.bankSelectionDao().all().none { it.bankId == bank && it.state == "ENABLED" } -> "BANK_DISABLED"
             correctionOwned -> "CORRECTION_OWNS_DECISION"
             else -> null
@@ -44,7 +41,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val item = BetaFinancialReviewItem(id, key(id), outcome?.let(::fingerprint).orEmpty(),
             if (pending != null) "RETRY" else adopted?.status ?: "UNAPPROVED",
             adopted?.reason ?: "EXPLICIT_APPROVAL_REQUIRED", ledger.readAudit(key(id))?.command?.revision)
-        val display = if (facts != null) JSONObject(requireNotNull(outcome).baselineJson).getJSONObject("facts") else null
+        val display = if (facts != null) currentArchive(requireNotNull(outcome)).getJSONObject("facts") else null
         val fee = display?.takeUnless { it.isNull("internationalFee") }?.getJSONObject("internationalFee")?.let {
             runCatching { Money.of(it.getString("amount"), Currency.valueOf(it.getString("currency"))) }.getOrNull() }
         BetaFinancialApprovalPreview(item, facts?.amount, facts?.time,
@@ -94,7 +91,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (expected != null && request.request != encodeRequest(expected)) return review("SUPERSEDED_APPROVAL")
         // Never rewrite a newer request while retrying the exact intent the user reviewed.
         val decoded = decodeRequest(request.request)
-        val result = approveAtomic(decoded, requireEnabledBank = expected != null)
+        val result = approveAtomic(decoded)
         if (result is BetaFinancialAdoptionResult.Posted && result.result.let {
                 it is FinancialPostingResult.Applied || it is FinancialPostingResult.AlreadyApplied })
             database.withTransaction { if (dao.retry(id)?.request == request.request) dao.clearRetry(id) }
@@ -108,12 +105,13 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         else { dao.clearRetry(request.evidenceId); true }
     }
 
-    private suspend fun approveAtomic(request: BetaFinancialApproval, requireEnabledBank: Boolean = false): BetaFinancialAdoptionResult = database.withTransaction {
+    private suspend fun approveAtomic(request: BetaFinancialApproval): BetaFinancialAdoptionResult = database.withTransaction {
         if (dao.retry(request.evidenceId)?.request != encodeRequest(request)) return@withTransaction review("SUPERSEDED_APPROVAL")
         val outcome = database.evidenceDao().outcome(request.evidenceId)
             ?: return@withTransaction review("NO_COMPLETED_ARCHIVE")
         if (database.evidenceDao().retry(request.evidenceId) != null) return@withTransaction review("INTERPRETATION_PENDING")
         if (fingerprint(outcome) != request.archiveRevision) return@withTransaction review("STALE_ARCHIVE")
+        try { currentArchive(outcome) } catch (_: Exception) { return@withTransaction review("UNSAFE_INTERPRETATION") }
         val existing = ledger.readAudit(key(request.evidenceId))
         if (database.correctionDao().current(Environment.BETA.name, key(request.evidenceId).transactionId) != null)
             return@withTransaction review("CORRECTION_OWNS_DECISION")
@@ -134,10 +132,10 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (request.expectedRegistryRevision != null && request.expectedRegistryRevision !=
             registryFingerprint(allAssets.values.filter { it.id.bank.value == rawBank(outcome) }))
             return@withTransaction review("STALE_REGISTRY")
-        if ((request.expectedRegistryRevision != null || requireEnabledBank) && database.bankSelectionDao().all().none {
+        if (database.bankSelectionDao().all().none {
                 it.bankId == rawBank(outcome) && it.state == "ENABLED" }) return@withTransaction review("BANK_DISABLED")
-        val next = try { baseline(outcome, request.source, request.destination, request.type,
-            request.incomeAttribution, allAssets) } catch (_: Exception) { return@withTransaction review("UNSAFE_BASELINE") }
+        val next = try { currentInput(outcome, request.source, request.destination, request.type,
+            request.incomeAttribution, allAssets) } catch (_: Exception) { return@withTransaction review("UNSAFE_INTERPRETATION") }
         if (next.assets.values.any { it.id.bank.value != rawBank(outcome) }) return@withTransaction review("CROSS_BANK_ENDPOINT")
         // Repeating an exact approved choice is idempotent, not a new manual revision.
         val previousInput = adopted?.let { BetaLedgerCodec.decodeInput(it.approvedInput) }
@@ -174,7 +172,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val outcome = database.evidenceDao().outcome(adopted.evidenceId) ?: return@withTransaction null
         if (database.evidenceDao().retry(adopted.evidenceId) != null) return@withTransaction null
         val previous = ledger.readAudit(key)?.classification?.input ?: BetaLedgerCodec.decodeInput(adopted.approvedInput)
-        try { CorrectionObservation(baseline(outcome, (previous.source as? FinancialEndpoint.Owned)?.id,
+        try { CorrectionObservation(currentInput(outcome, (previous.source as? FinancialEndpoint.Owned)?.id,
             (previous.destination as? FinancialEndpoint.Owned)?.id, previous.storedType, previous.incomeAttribution,
             BetaAssetRegistry(database).all().associateBy { it.id }).let { it.copy(revision = PostingRevision(0,
                 maxOf(it.revision.interpretation, adopted.observationRevision))) }, ObservationSafety.ORDINARY) }
@@ -192,7 +190,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val key = key(id)
         val correction = readBetaCorrectionState(database, key) ?: return@withTransaction review("EXPLICIT_REAPPROVAL_REQUIRED")
         // An immediate retry after a manual type/endpoint edit has no new raw observation. Rebuilding
-        // a baseline from the new selected endpoint at the old interpretation would falsely conflict
+        // an observation from the new selected endpoint at the old interpretation would falsely conflict
         // with the immutable observation reviewed by that edit. Preserve that exact transition.
         if (adopted.status == "ACTIVE" && adopted.archiveFingerprint == fingerprint(outcome) &&
             adopted.observationRevision <= correction.overlay.interpretationRevision) {
@@ -231,6 +229,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             val adopted = dao.evidence(evidenceId) ?: return@withTransaction null
             val posting = ledger.read(key(evidenceId)) ?: return@withTransaction null
             val outcome = database.evidenceDao().outcome(evidenceId) ?: return@withTransaction null
+            try { currentArchive(outcome) } catch (_: Exception) { return@withTransaction null }
             if (adopted.status != "ACTIVE" || posting.command.revision != expected ||
                 adopted.archiveFingerprint != fingerprint(outcome) || database.evidenceDao().retry(evidenceId) != null) null
             else Triple(adopted, posting.classification.input, outcome)
@@ -257,7 +256,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
 
     private suspend fun resolveFx(input: FinancialClassificationInput, outcome: BetaEvidenceOutcomeEntity,
         market: FxMarketRateProvider = FxMarketRateProvider { _, _ -> null }): FxEnrichmentResult {
-        val f = JSONObject(outcome.baselineJson).getJSONObject("facts")
+        val f = currentArchive(outcome).getJSONObject("facts")
         fun money(name: String): Money? = if (f.isNull(name)) null else f.getJSONObject(name).let {
             Money.of(it.getString("amount"), Currency.valueOf(it.getString("currency"))) }
         val fact = FxEvidenceFact(Environment.BETA, outcome.rawId, money("amount")?.currency,
@@ -268,12 +267,9 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         return FxEnrichmentPolicy(market).resolve(FxEnrichmentRequest(input, listOf(outcome.rawId), listOf(fact)))
     }
 
-    private fun baseline(outcome: BetaEvidenceOutcomeEntity, source: AssetId?, destination: AssetId?, type: FinancialType,
+    private suspend fun currentInput(outcome: BetaEvidenceOutcomeEntity, source: AssetId?, destination: AssetId?, type: FinancialType,
         income: IncomeAttribution?, registry: Map<AssetId, OwnedAsset>): FinancialClassificationInput {
-        val json = JSONObject(outcome.baselineJson)
-        require(json.getInt("archiveVersion") == 1 && json.getInt("contractVersion") == InterpretationVersion.CURRENT_CONTRACT)
-        require(json.getString("engineVersion") == LegacyInterpretationAdapter.VERSION.engine &&
-            json.getString("rulesVersion") == LegacyInterpretationAdapter.VERSION.rules)
+        val json = currentArchive(outcome)
         val route = JSONObject(outcome.route)
         require(route.getString("kind") == "MATCHED" && route.getJSONArray("candidates").let {
             it.length() == 1 && it.getString(0) == rawBank(outcome) })
@@ -301,7 +297,10 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             validatedParse = true, incomeAttribution = income)
     }
 
-    private fun rawBank(outcome: BetaEvidenceOutcomeEntity) = JSONObject(outcome.baselineJson).getString("bank")
+    private fun rawBank(outcome: BetaEvidenceOutcomeEntity) = JSONObject(outcome.candidateJson).getString("bank")
+
+    private suspend fun currentArchive(outcome: BetaEvidenceOutcomeEntity) = BetaCurrentFinancialArchive.read(
+        outcome, requireNotNull(database.evidenceDao().raw(outcome.rawId)).body)
     private fun JSONObject.text(name: String): String? = if (isNull(name)) null else get(name) as String
     private fun encodeRequest(value: BetaFinancialApproval): String {
         fun asset(id: AssetId?) = id?.let { JSONObject().put("bank", it.bank.value).put("id", it.localId) }
@@ -324,7 +323,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     companion object {
         fun key(evidenceId: String) = PostingKey(Environment.BETA, "evidence:$evidenceId")
         internal fun fingerprint(outcome: BetaEvidenceOutcomeEntity): String = MessageDigest.getInstance("SHA-256")
-            .digest((outcome.route + "\n" + outcome.baselineJson + "\n" + outcome.attempts).toByteArray())
+            .digest(("BANK_ENGINE_FINANCE_V1\n" + outcome.route + "\n" + outcome.candidateJson + "\n" + outcome.baselineJson + "\n" + outcome.attempts).toByteArray())
             .joinToString("") { "%02x".format(it) }
         private fun review(reason: String) = BetaFinancialAdoptionResult.Review(reason)
     }

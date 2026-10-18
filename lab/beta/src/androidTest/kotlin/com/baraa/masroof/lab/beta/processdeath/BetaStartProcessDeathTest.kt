@@ -28,7 +28,7 @@ class BetaStartProcessDeathTest {
             it.putMarker("synthetic-old", "discard")
             context.getDatabasePath(com.baraa.masroof.lab.beta.BetaEnvironment.PARSING_LAB_DATABASE_NAME).writeText("synthetic-old-lab")
             it.startFresh()
-            assertEquals(BetaStartState.NEW, it.startState()); assertFalse(it.hasParsingLabHistory())
+            assertEquals(BetaStartState.NEW, it.startState())
         }
         mark()
     }

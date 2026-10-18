@@ -35,7 +35,10 @@ internal class ObservationExtractor(
             val start = source.text.lastIndexOf('\n', range.first).let { it + 1 }
             val end = source.text.indexOf('\n', range.last).let { if (it < 0) source.text.length else it }
             val line = source.text.substring(start, end).trim().removeSuffix(":")
-            val title = start == titleStart && ':' !in line && familyPhrases.any { source.phrase(it).containsMatchIn(line) }
+            val title = start == titleStart && evidence.any { it.field == "family" &&
+                it.start >= source.evidence("scope", "scope", start..(end - 1)).start &&
+                it.end <= source.evidence("scope", "scope", start..(end - 1)).end } &&
+                familyPhrases.any { source.phrase(it).containsMatchIn(line) }
             val lineRange = source.evidence("scope", "scope", start..(end - 1))
             val bound = boundField != null && physical.any { it.field == boundField && it.start >= lineRange.start && it.end <= lineRange.end }
             return title || bound

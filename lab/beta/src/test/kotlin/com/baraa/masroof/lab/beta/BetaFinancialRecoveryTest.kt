@@ -21,7 +21,7 @@ class BetaFinancialRecoveryTest {
     @Before fun clear() { BetaContainer.resetOffline(context) }
 
     @Test fun richFailures() {
-        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules())).use { SyntheticFinancialHistory.seed(it, 80) }
+        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent())).use { SyntheticFinancialHistory.seed(it, 80) }
         val archive = ByteArrayOutputStream().also { BetaBackupRecovery(context).exportArchive(it, password, crypto) }.toByteArray()
         BetaContainer(context).use { it.putMarker("changed", "synthetic"); it.putPreferenceProbe("CURRENT"); it.setTheme("LIGHT") }
         val current = SyntheticFinancialHistory.fingerprint(context).toString()
@@ -37,7 +37,7 @@ class BetaFinancialRecoveryTest {
 
     @Test fun richCutover() {
         lateinit var fixture: org.json.JSONObject
-        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules())).use { fixture = SyntheticFinancialHistory.seed(it, 80) }
+        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent())).use { fixture = SyntheticFinancialHistory.seed(it, 80) }
         val original = SyntheticFinancialHistory.fingerprint(context).toString()
         val archive = ByteArrayOutputStream().also { BetaBackupRecovery(context).exportArchive(it, password, crypto) }.toByteArray()
         for (stage in listOf(BetaBackupRecovery.Stage.RESTORE_VALIDATED, BetaBackupRecovery.Stage.JOURNALED,
