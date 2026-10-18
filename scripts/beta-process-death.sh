@@ -49,6 +49,9 @@ journey armAfterCommit resumeAfterCommit
 CLASS="com.baraa.masroof.lab.beta.processdeath.BetaCorrectionProcessDeathTest"
 journey armBeforeSuppressionCommit resumeBeforeSuppressionCommit
 journey armAfterSuppressionCommit resumeAfterSuppressionCommit
+CLASS="com.baraa.masroof.lab.beta.processdeath.BetaLearningProcessDeathTest"
+journey armBeforeLabelCommit resumeBeforeLabelCommit
+journey armAfterLabelCommit resumeAfterLabelCommit
 CLASS="com.baraa.masroof.lab.beta.processdeath.BetaRestoreProcessDeathTest"
 journey armAfterDatabaseInstall resumeAfterDatabaseInstall
 journey armAfterPreferencesInstall resumeAfterPreferencesInstall

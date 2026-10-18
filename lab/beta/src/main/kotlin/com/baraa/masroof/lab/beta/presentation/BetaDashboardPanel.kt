@@ -38,8 +38,8 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     var result by remember { mutableStateOf<DashboardProduction?>(null) }
     var loading by remember { mutableStateOf(true) }
     var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(route) { onPrimaryTabChanged(if (route == "TRANSACTIONS") "TRANSACTIONS" else "HOME") }
-    LaunchedEffect(routeRequest) {
+    BetaLaunchedEffect(route) { onPrimaryTabChanged(if (route == "TRANSACTIONS") "TRANSACTIONS" else "HOME") }
+    BetaLaunchedEffect(routeRequest) {
         if (lastRouteRequest != routeRequest && requestedRoute != null) {
             route = requestedRoute; selectedId = null; selectedBank = null; selectedTransaction = null
             lastRouteRequest = routeRequest
@@ -47,7 +47,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     }
     val month = YearMonth.parse(monthText)
     var visibleRows by rememberSaveable(route, monthText) { mutableIntStateOf(20) }
-    LaunchedEffect(workflow, monthText, retry) {
+    BetaLaunchedEffect(workflow, monthText, retry) {
         // Clear old money before a different period is exposed, including failed reads.
         loading = true; failed = false; result = null
         try { result = workflow.load(month) }

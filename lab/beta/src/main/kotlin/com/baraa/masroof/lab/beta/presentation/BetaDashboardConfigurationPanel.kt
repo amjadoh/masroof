@@ -19,7 +19,7 @@ import java.time.YearMonth
 @Composable
 internal fun BetaDashboardConfigurationPanel(controls: BetaDashboardControls, facilities: List<FacilitySummary>,
     month: YearMonth, enabled: Boolean, onBusyChanged: (Boolean) -> Unit, onSaved: () -> Unit) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var config by remember { mutableStateOf<BetaDashboardConfiguration?>(null) }
     var failed by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
@@ -35,7 +35,7 @@ internal fun BetaDashboardConfigurationPanel(controls: BetaDashboardControls, fa
     var starts by rememberSaveable { mutableStateOf("") }
     var ends by rememberSaveable { mutableStateOf("") }
     var confirmation by remember { mutableStateOf<BetaDashboardConfigurationDraft?>(null) }
-    LaunchedEffect(controls, reload) {
+    BetaLaunchedEffect(controls, reload) {
         config = null; failed = false
         try { config = controls.read() }
         catch (cancelled: CancellationException) { throw cancelled }
