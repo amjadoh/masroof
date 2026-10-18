@@ -26,4 +26,4 @@ The user explicitly deferred old-code deletion. Historical comparison tooling an
 
 ## Validation
 
-Pending final local/PR validation; record exact final head and native/lifecycle report results before declaring ready.
+Local validation: 261 Beta JVM tests and 54 BankEngine tests pass, and Beta Android test sources compile. The existing isolated APK-update rehearsal now seeds the independent interpreter as well. Final-head CI, native/lifecycle reports and artifact hashes are recorded in [PR #295](https://github.com/bakhshb/masroof/pull/295); require those results before merging.

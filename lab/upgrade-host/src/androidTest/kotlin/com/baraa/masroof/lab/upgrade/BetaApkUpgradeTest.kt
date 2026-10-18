@@ -36,7 +36,7 @@ class BetaApkUpgradeTest {
         BetaContainer.resetOffline(context)
         lateinit var fixture: JSONObject
         lateinit var performance: JSONObject
-        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules())).use { beta ->
+        BetaContainer(context, com.baraa.masroof.lab.beta.application.evidence.LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent())).use { beta ->
             fixture = SyntheticFinancialHistory.seed(beta, 600)
             SyntheticFinancialHistory.verify(beta, fixture)
             performance = measure(beta)
