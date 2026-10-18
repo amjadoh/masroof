@@ -62,7 +62,7 @@ class BetaAuxFactsDatabaseTest {
         return result.summary.id
     }
 
-    @Test fun legacyNoticeAndOtp() = runBlocking {
+    @Test fun currentNoticeAndOtp() = runBlocking {
         val statement = actual("بطاقة إئتمانية: إصدار كشف حساب\nبطاقة: 7271 بطاقة إئتمانية\nإجمالي المبلغ المستحق: SAR 1250.00\nتاريخ الاستحقاق: 2026-08-25", "statement")
         val otp = actual("رمز التحقق الخاص بك هو 482911. لا تشاركه مع أي شخص.", "otp")
         assertTrue(db.dashboardAuxFactsDao().evidence(statement)!!.nonFinancial)

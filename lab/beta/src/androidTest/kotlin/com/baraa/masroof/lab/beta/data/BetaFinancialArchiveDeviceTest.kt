@@ -16,7 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /** Constructed v8 synthetic fixture, not an old production APK or a database downgrade API. */
-class BetaRichLegacyArchiveTest {
+class BetaFinancialArchiveDeviceTest {
     @get:Rule val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), BetaDatabase::class.java)
     @Test fun encryptedEightPreservesFinancialHistory() {
         val context = ApplicationProvider.getApplicationContext<Context>()
