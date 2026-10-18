@@ -6,13 +6,7 @@ import com.baraa.masroof.lab.bank.Interpretation
 import com.baraa.masroof.lab.bank.MessageInput
 
 /** Explicit caller-supplied samples only: no inbox access, repository writes, corrections or posting. */
-class BetaInterpretationService(private val candidate: BankInterpreter, private val baseline: BankInterpreter? = null) {
-    val isHistoricalComparison: Boolean get() = baseline != null
-    data class ShadowComparison(val baseline: Interpretation, val candidate: Interpretation)
-
-    fun compare(input: MessageInput, catalog: BankCatalog): ShadowComparison =
-        ShadowComparison(requireNotNull(baseline) { "Historical comparison must be explicitly configured" }.interpret(input, catalog), candidate.interpret(input, catalog))
-
+class BetaInterpretationService(private val candidate: BankInterpreter) {
     /** Beta runtime: exactly one interpreter call, without a reference/fallback. */
     fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation = candidate.interpret(input, catalog)
     companion object {

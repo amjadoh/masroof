@@ -50,7 +50,7 @@
     <string name="beta_history_denied">يمكنك المتابعة بإضافة الحسابات والبطاقات يدويًا دون إذن الرسائل. لمنح الإذن لاحقًا اضغط بدء الاستيراد أو استخدم إعدادات النظام.</string>
     <string name="beta_history_start">بدء استيراد الفترة المختارة</string>
     <string name="beta_history_progress">فُحصت %1$d • محفوظة %2$d • خارج النطاق %3$d • تعارض هوية %4$d</string>
-    <string name="beta_history_done">اكتمل فحص الفترة؛ المحفوظ للمقارنة فقط. قد تبقى أدلة تحتاج إعادة المحاولة أو المراجعة.</string>
+    <string name="beta_history_done">اكتمل فحص الفترة وحفظ التفسيرات. قد تبقى رسائل تحتاج إعادة المحاولة أو المراجعة.</string>
     <string name="beta_history_limited">وصل الفحص إلى الحد المسموح؛ لم تُفحص الفترة كاملة. اختر فترة أقصر.</string>
     <string name="beta_history_paused">يمكن استئناف الفحص المحفوظ بعد التوقف أو إغلاق Beta.</string>
     <string name="beta_history_resume">استئناف الفترة والبنوك المحفوظة</string>
@@ -60,8 +60,8 @@
     <string name="beta_history_row">الدليل %1$d: %2$s</string>
     <string name="beta_history_pending">تحتاج إعادة المحاولة</string>
     <string name="beta_history_review">تحتاج مراجعة</string>
-    <string name="beta_history_compared">مقارنة محفوظة فقط</string>
-    <string name="beta_history_reparse">إعادة مقارنة الدليل</string>
+    <string name="beta_history_compared">تفسير تاريخي يحتاج إعادة معالجة</string>
+    <string name="beta_history_reparse">إعادة تفسير الرسالة</string>
     <string name="beta_history_next">الصفحة التالية</string>
     <string name="beta_history_first">الصفحة الأولى</string>
     <string name="beta_history_range">الفترة المحفوظة: %1$s — %2$s</string>
@@ -80,8 +80,8 @@
     <string name="beta_discovery_link">تأكيد الدليل للأصل المختار</string>
     <string name="beta_discovery_parent">مرتبط بـ %1$s · %2$s — الأصل رقم %3$d</string>
     <string name="beta_review_title">مراجعة معاملات Beta</string>
-    <string name="beta_review_help">تعرض هذه القائمة القيود والتصحيحات المحفوظة في Beta فقط. المقارنات غير المقبولة ليست معاملات. عدّل ثم احفظ صراحة؛ لا يؤكد تعديل الملاحظة المبلغ أو النوع.</string>
-    <string name="beta_review_empty">لا توجد قيود أو تصحيحات مالية محفوظة في هذه الصفحة. قد تبقى أدلة المقارنة بحاجة إلى قبول المحرك والربط.</string>
+    <string name="beta_review_help">تظهر هنا القيود والتصحيحات المالية المحفوظة في Beta فقط. حفظ التفسير لا يرحّل مبلغًا. تُطبّق التغييرات بعد الحفظ فقط؛ الملاحظات لا تؤكد المبلغ أو النوع.</string>
+    <string name="beta_review_empty">لا توجد قيود أو تصحيحات مالية محفوظة في هذه الصفحة. قد تبقى رسائل بحاجة إلى تفسير ومراجعة واعتماد مالي.</string>
     <string name="beta_review_failed">لم يُحفظ التعديل. قد تكون البيانات تغيرت أو القرار غير مدعوم. أعد فتح المعاملة وراجعها؛ لا تعتبرها مسجلة ماليًا.</string>
     <string name="beta_review_item">المعاملة %1$d — %2$s</string>
     <string name="beta_review_active">فعّالة ماليًا</string>
@@ -159,8 +159,8 @@
     <string name="beta_start_resume">متابعة بيانات Beta الموجودة</string>
     <string name="beta_start_loading">جارٍ فتح Beta…</string>
     <string name="beta_start_fresh">بدء تجربة نظيفة</string>
-    <string name="beta_start_fresh_warning">سيُحذف محتوى Beta القديم وتفضيلاته ونسخه المحلية، وقاعدة Parsing Lab ورسائلها وتصحيحاتها. لا يشمل ذلك بيانات مصروف الأساسي أو رسائل الهاتف. أغلق Parsing Lab أولًا. بعد بدء التجربة الجديدة تبقى بياناتك محفوظة عند كل فتح.</string>
-    <string name="beta_start_fresh_confirm">حذف التجارب القديمة</string>
+    <string name="beta_start_fresh_warning">سيُحذف محتوى Beta وتفضيلاته ونسخه المحلية بعد تأكيدك فقط. لا يشمل ذلك بيانات مصروف الأساسي أو رسائل الهاتف. تبقى بيانات التجربة الجديدة محفوظة عند كل فتح.</string>
+    <string name="beta_start_fresh_confirm">تأكيد بدء Beta جديدة</string>
     <string name="beta_history_interpreted">تفسير محفوظ — دون اعتماد مالي</string>
     <string name="beta_label_title">مراجعة تفسير الرسالة</string>
     <string name="beta_label_help">تصحيح يدوي محفوظ داخل Beta فقط. لا يغيّر نتيجة المحرك أو ينشئ حركة مالية، ولا يتم تصديره أو تدريب نموذج عليه تلقائيًا.</string>

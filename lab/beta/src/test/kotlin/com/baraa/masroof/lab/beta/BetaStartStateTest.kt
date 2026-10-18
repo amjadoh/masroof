@@ -113,7 +113,7 @@ class BetaStartStateTest {
         assertTrue(file.exists()); assertEquals(before, hash(file)); assertTrue(prefs.all.isEmpty())
     }
 
-    @Test fun freshOnceDeletesOnlyOldExperiments() {
+    @Test fun explicitFreshBetaRunsOnceAndRetainsOtherFiles() {
         val lab = context.getDatabasePath(BetaEnvironment.PARSING_LAB_DATABASE_NAME).apply { parentFile?.mkdirs(); writeText("synthetic-old-lab") }
         val protected = listOf(BetaEnvironment.PRODUCTION_DATABASE_NAME, BetaEnvironment.MIGRATION_STAGING_DATABASE_NAME).map { name ->
             context.getDatabasePath(name).apply { parentFile?.mkdirs(); writeText("synthetic-$name") }
@@ -121,8 +121,8 @@ class BetaStartStateTest {
         val before = protected.map(::hash)
         BetaContainer(context).use { beta ->
             beta.putMarker("old-annotation", "discard"); beta.putPreferenceProbe("old"); beta.backup()
-            assertTrue(beta.hasParsingLabHistory()); beta.startFresh()
-            assertFalse(lab.exists()); assertFalse(beta.hasParsingLabHistory())
+            beta.startFresh()
+            assertTrue(lab.exists())
             assertEquals(BetaStartState.NEW, beta.startState()); assertEquals(0, beta.markerCount()); assertNull(beta.preferenceProbe())
             assertFalse(beta.settings().backupAvailable)
             beta.acknowledgeStart(); beta.putMarker("new-annotation", "keep"); beta.putPreferenceProbe("new")
@@ -130,20 +130,6 @@ class BetaStartStateTest {
         }
         BetaContainer(context).use { beta -> assertEquals(BetaStartState.READY, beta.startState()); assertEquals(1, beta.markerCount()); assertEquals("new", beta.preferenceProbe()) }
         assertEquals(before, protected.map(::hash))
-    }
-
-    @Test fun busyParsingLabPreventsAnyCleanup() {
-        val lab = context.getDatabasePath(BetaEnvironment.PARSING_LAB_DATABASE_NAME).apply { parentFile?.mkdirs(); writeText("synthetic-busy-lab") }
-        val before = hash(lab)
-        BetaContainer(context).use { beta ->
-            beta.putMarker("old-annotation", "keep"); beta.putPreferenceProbe("old")
-            java.io.RandomAccessFile(context.getDatabasePath("${BetaEnvironment.PARSING_LAB_DATABASE_NAME}.cleanup.lock"), "rw").channel.use { channel ->
-                channel.lock(0, Long.MAX_VALUE, true).use {
-                    assertThrows(IllegalStateException::class.java) { beta.startFresh() }
-                    assertEquals(1, beta.markerCount()); assertEquals("old", beta.preferenceProbe()); assertEquals(before, hash(lab))
-                }
-            }
-        }
     }
 
     private fun hash(file: java.io.File) = MessageDigest.getInstance("SHA-256").digest(file.readBytes()).toList()

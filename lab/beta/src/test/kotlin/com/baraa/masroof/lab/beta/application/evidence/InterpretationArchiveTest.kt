@@ -64,17 +64,17 @@ class InterpretationArchiveTest {
         }
     }
 
-    @Test fun equalPartialInvalidUnsupportedAndReviewStatusesRemainReviewEvenWithoutBlockers() {
+    @Test fun partialInvalidUnsupportedAndReviewStatusesRemainReviewEvenWithoutBlockers() {
         val bank = BankId("BANK_ALJAZIRA")
-        val input = MessageInput("id", "sender", "private body", Instant.EPOCH)
+        val input = MessageInput("id", "AlJazira", "private body", Instant.EPOCH)
         val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "full")
         ParseStatus.entries.forEach { status ->
             val interpreter = BankInterpreter { _, _ -> Interpretation("id", InterpretationVersion(1, "fake", "r1"),
                 bank, Facts(if (status == ParseStatus.NON_FINANCIAL) MessageFamily.NON_FINANCIAL else MessageFamily.PURCHASE),
                 status, null, emptyList(), emptySet()) }
-            val comparison = LabEvidenceComparer(BetaInterpretationService(interpreter, interpreter)).compare(input, route)
+            val comparison = LabEvidenceComparer(BetaInterpretationService(interpreter)).compare(input, route)
             if (status in setOf(ParseStatus.SUCCESS, ParseStatus.NON_FINANCIAL)) {
-                assertEquals(EvidenceDisposition.COMPARISON_ONLY, comparison.disposition)
+                assertEquals(EvidenceDisposition.INTERPRETED, comparison.disposition)
             } else {
                 assertEquals(status.name, EvidenceDisposition.REVIEW, comparison.disposition)
                 assertTrue("INTERPRETATION_REQUIRES_REVIEW" in comparison.reasons)

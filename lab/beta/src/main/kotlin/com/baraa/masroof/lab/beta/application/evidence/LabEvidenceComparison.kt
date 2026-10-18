@@ -33,7 +33,6 @@ class LabEvidenceRouter : EvidenceRouter {
 class LabEvidenceComparer(private val service: BetaInterpretationService = BetaInterpretationService.independent()) : EvidenceComparer {
     override fun compare(input: MessageInput, route: EvidenceRoute): EvidenceComparison {
         require(route.kind == RouteKind.MATCHED)
-        if (service.isHistoricalComparison) return historical(input, route)
         val catalog = BetaEngineRouting.router.catalog(input.sender)
         require(catalog.candidates(input.sender) == route.candidates) { "Route changed" }
         val result = service.interpret(input, catalog)
@@ -48,20 +47,4 @@ class LabEvidenceComparer(private val service: BetaInterpretationService = BetaI
             reasons, "{}", InterpretationArchive.encode(result))
     }
 
-    /** Explicit historical regression inputs only; never the Beta default. */
-    private fun historical(input: MessageInput, route: EvidenceRoute): EvidenceComparison {
-        val result = service.compare(input, BankCatalog(route.candidates.map { BankDefinition(it, setOf(input.sender)) }))
-        require(result.baseline.evidenceId == input.evidenceId && result.candidate.evidenceId == input.evidenceId)
-        require(result.baseline.version.isSupported() && result.candidate.version.isSupported())
-        val reasons = buildSet {
-            if (result.baseline.facts != result.candidate.facts) add("FACTS_DIFFER")
-            if (result.baseline.status != result.candidate.status) add("STATUS_DIFFERS")
-            if (result.baseline.bank != result.candidate.bank) add("BANK_DIFFERS")
-            if (result.baseline.bank != route.candidates.single() || result.candidate.bank != route.candidates.single()) add("BANK_ROUTE_MISMATCH")
-            if (result.baseline.blockers.isNotEmpty() || result.candidate.blockers.isNotEmpty()) add("BLOCKED_INTERPRETATION")
-            if (listOf(result.baseline.status, result.candidate.status).any { it !in setOf(ParseStatus.SUCCESS, ParseStatus.NON_FINANCIAL) }) add("INTERPRETATION_REQUIRES_REVIEW")
-        }
-        return EvidenceComparison(if (reasons.isEmpty()) EvidenceDisposition.COMPARISON_ONLY else EvidenceDisposition.REVIEW,
-            reasons, InterpretationArchive.encode(result.baseline), InterpretationArchive.encode(result.candidate))
-    }
 }

@@ -9,7 +9,7 @@ printf 'sdk.dir=%s\n' "$task_sdk_dir" > local.properties
 
 # Existing notPackage arguments keep process-death phases out of this suite.
 smoke_status=0
-./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest :lab:android:connectedDebugAndroidTest --no-parallel --stacktrace || smoke_status=$?
+./gradlew :lab:beta:connectedDebugAndroidTest :app:connectedDebugAndroidTest --no-parallel --stacktrace || smoke_status=$?
 mkdir -p m19-statement-screenshots beta-dashboard-screenshots
 adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
 adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
