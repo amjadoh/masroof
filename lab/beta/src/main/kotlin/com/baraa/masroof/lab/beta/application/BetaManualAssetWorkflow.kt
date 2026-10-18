@@ -23,7 +23,7 @@ class BetaManualAssetWorkflow(private val store: ManualAssetStore) {
         require(draft.ownedConfirmed) { "Ownership must be explicitly confirmed" }
         require(draft.id.environment == Environment.BETA)
         require(BetaBankCatalog.current.contains(draft.id.bank)) { "Unsupported Beta bank" }
-        require(draft.kind in setOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD, AssetKind.CREDIT_FACILITY))
+        require(draft.kind in setOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD, AssetKind.CREDIT_FACILITY, AssetKind.LOAN))
         val suffix = requireNotNull(normalizeManualAssetSuffix(draft.last4.trim())) {
             "Enter at most four decimal digits"
         }.takeIf { it.isNotEmpty() }
