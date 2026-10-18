@@ -33,6 +33,10 @@ class BetaModuleLayoutTest {
             "import com.baraa.masroof.MasroofApplication",
             "import com.baraa.masroof.MainActivity",
             "MasroofDatabase",
+            "com.baraa.masroof.lab.engine.",
+            "com.baraa.masroof.lab.copy.",
+            "LegacyInterpretationAdapter",
+            "SharedRuleInterpretationAdapter",
         )
         sources.forEach { file ->
             val text = file.readText()
@@ -41,6 +45,7 @@ class BetaModuleLayoutTest {
             }
         }
         assertFalse(File("build.gradle.kts").readText().contains("project(\":app\")"))
+        assertFalse(File("build.gradle.kts").readText().contains("    implementation(project(\":lab:engine\"))"))
     }
 
     @Test

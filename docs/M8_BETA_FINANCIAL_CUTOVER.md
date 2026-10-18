@@ -22,7 +22,7 @@ Synthetic financial backup and UI fixtures now exercise independent intake and e
 
 ## Scope exceptions and remaining
 
-The user explicitly deferred old-code deletion. Historical comparison tooling and its source dependency are retained, but the current finance/observation path no longer uses their authority. Physical legacy cleanup is deferred. M9 is not started. Storage fixture tests are converted to current versioned records without changing their financial expectations; separate end-to-end tests exercise real independent interpretation and original spans.
+The user explicitly deferred old-code deletion. Both reference adapters and their factory are preserved in JVM test sources, with unchanged adapter contents. The old engine dependency is now test-only; Beta main sources no longer import or package it as a runtime dependency. A source-boundary guard and the actual Gradle runtime graph verify this separation. The old engine module and historical regression tests remain, and physical legacy cleanup is deferred. M9 is not started. Storage fixture tests are converted to current versioned records without changing their financial expectations; separate end-to-end tests exercise real independent interpretation and original spans.
 
 ## Validation
 
