@@ -1,9 +1,0 @@
-# Use a separate Python 3.11 venv; install the official torch CPU wheel first.
-torch==2.6.0
-setfit==1.2.0
-sentence-transformers==3.4.1
-transformers==4.48.3
-tokenizers==0.21.4
-datasets==3.2.0
-scikit-learn==1.6.1
-numpy==2.3.4
