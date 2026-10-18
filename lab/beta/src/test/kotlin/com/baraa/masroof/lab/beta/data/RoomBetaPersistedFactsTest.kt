@@ -77,7 +77,7 @@ class RoomBetaPersistedFactsTest {
 سعر الصرف: 3.756957
 الرصيد المتاح: SAR 16958.89
 إجمالي المبلغ المستحق: SAR 2694.32"""
-        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer())
+        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules()))
             .importBatch(EvidenceRequest("actual", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(EvidenceMessage("one", "AlJazira", body, at,
                 ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
         approve(stored.summary.id)

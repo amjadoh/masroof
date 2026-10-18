@@ -122,6 +122,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 EvidenceProcessingState.RETRY -> R.string.beta_history_pending
                 EvidenceProcessingState.REVIEW -> R.string.beta_history_review
                 EvidenceProcessingState.COMPARISON_ONLY -> R.string.beta_history_compared
+                EvidenceProcessingState.INTERPRETED -> R.string.beta_history_interpreted
             })))
             OutlinedButton(enabled = !busy, onClick = { action { withContext(BetaIo.dispatcher) { container.reprocessEvidence(summary.id) } } }, modifier = Modifier.testTag("history-reparse-$index")) {
                 Text(stringResource(R.string.beta_history_reparse))

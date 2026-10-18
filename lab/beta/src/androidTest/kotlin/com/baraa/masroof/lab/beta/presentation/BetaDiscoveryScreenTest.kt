@@ -48,7 +48,7 @@ class BetaDiscoveryScreenTest {
             val bank = BankId("BANK_ALJAZIRA")
             beta.setBankEnabled(bank, true)
             beta.importEvidence(com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest("synthetic", com.baraa.masroof.lab.beta.application.evidence.EvidenceOrigin.EXPLICIT_SAMPLE),
-                listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nAmount: 42 SAR\nAvailable balance: 100 SAR", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
+                listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\n2026-10-16 12:00", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
             val facility = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "facility"), AssetKind.CREDIT_FACILITY, "", ownedConfirmed = true))
             val card = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.PRIMARY, ownedConfirmed = true))
             val assets = beta.assets()
@@ -73,7 +73,7 @@ class BetaDiscoveryScreenTest {
             val bank = BankId("BANK_ALJAZIRA")
             beta.setBankEnabled(bank, true)
             beta.importEvidence(com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest("synthetic", com.baraa.masroof.lab.beta.application.evidence.EvidenceOrigin.EXPLICIT_SAMPLE),
-                listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nAmount: 42 SAR\nAvailable balance: 100 SAR", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
+                listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\n2026-10-16 12:00", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
             val facility = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "facility"), AssetKind.CREDIT_FACILITY, "", ownedConfirmed = true))
             beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.PRIMARY, ownedConfirmed = true))
             val assets = beta.assets()
@@ -92,7 +92,7 @@ class BetaDiscoveryScreenTest {
                     store.begin(id, java.time.Instant.EPOCH)
                     store.complete(id, com.baraa.masroof.lab.beta.application.evidence.EvidenceRoute(com.baraa.masroof.lab.beta.application.evidence.RouteKind.MATCHED, setOf(bank), "full"),
                         com.baraa.masroof.lab.beta.application.evidence.EvidenceComparison(com.baraa.masroof.lab.beta.application.evidence.EvidenceDisposition.REVIEW, emptySet(),
-                            org.json.JSONObject(saved.baselineJson).put("rulesVersion", "recompared").toString(), org.json.JSONObject(saved.candidateJson).put("rulesVersion", "recompared").toString()), java.time.Instant.EPOCH)
+                            saved.baselineJson, org.json.JSONObject(saved.candidateJson).put("reprocessingNote", "recompared").toString()), java.time.Instant.EPOCH)
                 } finally { db.close() }
             }
             compose.onNodeWithTag("proposal-link-0").performScrollTo().performClick()

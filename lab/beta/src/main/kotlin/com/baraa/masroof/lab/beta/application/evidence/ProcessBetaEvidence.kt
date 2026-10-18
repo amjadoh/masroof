@@ -6,7 +6,7 @@ import java.security.MessageDigest
 import java.time.Clock
 import kotlinx.coroutines.CancellationException
 
-/** Comparison-only M7 foundation. No classification, ownership, reconciliation or ledger writes. */
+/** Durable single-interpretation intake. No ownership, reconciliation or ledger writes. */
 class ProcessBetaEvidence(
     private val store: BetaEvidenceStore,
     private val selections: BetaBankSelectionStore,

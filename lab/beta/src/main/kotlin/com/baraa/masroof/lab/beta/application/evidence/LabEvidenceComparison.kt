@@ -1,31 +1,56 @@
 package com.baraa.masroof.lab.beta.application.evidence
 
 import com.baraa.masroof.lab.bank.*
+import com.baraa.masroof.lab.bank.interpretation.SenderRouter
 import com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService
-import com.baraa.masroof.lab.copy.bank.BankRoutingResult
-import com.baraa.masroof.lab.copy.bank.BankSmsRegistry
-import com.baraa.masroof.lab.copy.bank.aljazira.AlJaziraSmsAdapter
 import com.baraa.masroof.lab.finance.value.BankId
 
-/** Uses every preserved lab adapter, including normalized sender and suspicion handling. */
-class LabEvidenceRouter : EvidenceRouter {
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
-    override fun route(input: EvidenceMessage): EvidenceRoute = when (val route = registry.route(input.sender, input.body)) {
-        is BankRoutingResult.Matched -> EvidenceRoute(RouteKind.MATCHED, setOf(BankId(route.adapter.bank.id)), VERSION)
-        is BankRoutingResult.Ambiguous -> EvidenceRoute(RouteKind.AMBIGUOUS,
-            route.candidates.map { BankId(it.adapter.bank.id) }.toSet(), VERSION)
-        is BankRoutingResult.SuspectedBank -> EvidenceRoute(RouteKind.SUSPECTED, emptySet(), VERSION)
-        is BankRoutingResult.NotMatched -> EvidenceRoute(RouteKind.UNRECOGNIZED, emptySet(), VERSION)
-    }
-    companion object { const val VERSION = "preserved-lab-router-v1" }
+/** Identity configuration only, independent of any parser or user-enabled import scope. */
+internal object BetaEngineRouting {
+    val router = SenderRouter(listOf(BankDefinition(BankId("BANK_ALJAZIRA"), setOf(
+        "AlJazira", "JaziraBank", "BankAlJazira", "AlJaziraBank",
+        "AlJazira-AD", "JaziraBank-AD", "BankAlJazira-AD", "AlJaziraBank-AD",
+        "بنك الجزيرة", "بنك الجزيره",
+    ))), listOf("بنك الجزيرة", "بنك الجزيره", "bank aljazira", "aljazira bank"))
 }
 
-class LabEvidenceComparer(private val service: BetaInterpretationService = BetaInterpretationService.sharedRules()) : EvidenceComparer {
+/** Full independent sender catalog. Plausible sender/body text is review-only. */
+class LabEvidenceRouter : EvidenceRouter {
+    override fun route(input: EvidenceMessage): EvidenceRoute {
+        val candidates = BetaEngineRouting.router.catalog(input.sender).candidates(input.sender)
+        val kind = when {
+            candidates.size > 1 -> RouteKind.AMBIGUOUS
+            candidates.size == 1 -> RouteKind.MATCHED
+            BetaEngineRouting.router.suspected(input.sender, input.body) -> RouteKind.SUSPECTED
+            else -> RouteKind.UNRECOGNIZED
+        }
+        return EvidenceRoute(kind, candidates, VERSION)
+    }
+    companion object { const val VERSION = "bank-engine-sender-router-v1" }
+}
+
+/** Existing injection boundary; new outcomes contain one current interpretation only. */
+class LabEvidenceComparer(private val service: BetaInterpretationService = BetaInterpretationService.independent()) : EvidenceComparer {
     override fun compare(input: MessageInput, route: EvidenceRoute): EvidenceComparison {
         require(route.kind == RouteKind.MATCHED)
-        // This is the result of the full router, never a selected-bank filtered catalog or override.
-        val catalog = BankCatalog(route.candidates.map { BankDefinition(it, setOf(input.sender)) })
-        val result = service.compare(input, catalog)
+        if (service.isHistoricalComparison) return historical(input, route)
+        val catalog = BetaEngineRouting.router.catalog(input.sender)
+        require(catalog.candidates(input.sender) == route.candidates) { "Route changed" }
+        val result = service.interpret(input, catalog)
+        require(result.evidenceId == input.evidenceId && result.version.isSupported())
+        val reasons = buildSet {
+            if (result.bank != route.candidates.single()) add("BANK_ROUTE_MISMATCH")
+            if (result.blockers.isNotEmpty()) add("BLOCKED_INTERPRETATION")
+            if (result.status !in setOf(ParseStatus.SUCCESS, ParseStatus.NON_FINANCIAL)) add("INTERPRETATION_REQUIRES_REVIEW")
+        }
+        // Retain old Room columns without a destructive rewrite. Baseline is inert, never a duplicate result.
+        return EvidenceComparison(if (reasons.isEmpty()) EvidenceDisposition.INTERPRETED else EvidenceDisposition.REVIEW,
+            reasons, "{}", InterpretationArchive.encode(result))
+    }
+
+    /** Explicit historical regression inputs only; never the Beta default. */
+    private fun historical(input: MessageInput, route: EvidenceRoute): EvidenceComparison {
+        val result = service.compare(input, BankCatalog(route.candidates.map { BankDefinition(it, setOf(input.sender)) }))
         require(result.baseline.evidenceId == input.evidenceId && result.candidate.evidenceId == input.evidenceId)
         require(result.baseline.version.isSupported() && result.candidate.version.isSupported())
         val reasons = buildSet {
@@ -34,9 +59,7 @@ class LabEvidenceComparer(private val service: BetaInterpretationService = BetaI
             if (result.baseline.bank != result.candidate.bank) add("BANK_DIFFERS")
             if (result.baseline.bank != route.candidates.single() || result.candidate.bank != route.candidates.single()) add("BANK_ROUTE_MISMATCH")
             if (result.baseline.blockers.isNotEmpty() || result.candidate.blockers.isNotEmpty()) add("BLOCKED_INTERPRETATION")
-            if (listOf(result.baseline.status, result.candidate.status).any {
-                it !in setOf(ParseStatus.SUCCESS, ParseStatus.NON_FINANCIAL)
-            }) add("INTERPRETATION_REQUIRES_REVIEW")
+            if (listOf(result.baseline.status, result.candidate.status).any { it !in setOf(ParseStatus.SUCCESS, ParseStatus.NON_FINANCIAL) }) add("INTERPRETATION_REQUIRES_REVIEW")
         }
         return EvidenceComparison(if (reasons.isEmpty()) EvidenceDisposition.COMPARISON_ONLY else EvidenceDisposition.REVIEW,
             reasons, InterpretationArchive.encode(result.baseline), InterpretationArchive.encode(result.candidate))
