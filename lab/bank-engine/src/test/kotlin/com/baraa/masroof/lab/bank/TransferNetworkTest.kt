@@ -14,7 +14,7 @@ class TransferNetworkTest {
     private val outgoing = "Outgoing transfer\nAmount: SAR 100\nFrom account: 1234\nTo account: 5678\n2026-10-18 13:00"
     private val incoming = outgoing.replace("Outgoing", "Incoming")
     private val schema get() = RuleLibrary.current().let { it.copy(network = it.network.copy(bankAliases = mapOf(
-        "LOCAL" to listOf("Local Bank", "ط§ظ„ط¨ظ†ظƒ ط§ظ„ظ…ط­ظ„ظٹ"), "REMOTE" to listOf("Remote Bank", "ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±")))) }
+        "LOCAL" to listOf("Local Bank", "البنك المحلي"), "REMOTE" to listOf("Remote Bank", "البنك الآخر")))) }
     private fun input(body: String) = MessageInput("transfer-fixture", "SyntheticSender", body, Instant.parse("2026-10-18T10:00:00Z"))
     private fun parse(body: String, config: BankRuleSchema = schema) = RuleInterpreter(config).interpret(input(body), catalog)
 
@@ -88,12 +88,12 @@ class TransferNetworkTest {
     }
 
     @Test fun originalArabicEvidenceAndEqualLast4AcrossBanksStayDistinct() {
-        val body = "ًںک€\r\nط­ظˆط§ظ„ط© طµط§ط¯ط±ط©\r\nط¨ظ…ط¨ظ„ط؛: ظ،ظ ظ  SAR\r\nظ…ظ† ط­ط³ط§ط¨: ظ،ظ¢ظ£ظ¤\r\nط¥ظ„ظ‰ ط­ط³ط§ط¨: ظ،ظ¢ظ£ظ¤\r\nط¨ظ†ظƒ ط§ظ„ظ…ط³طھظپظٹط¯: ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±\r\nظ¢ظ ظ¢ظ¦-ظ،ظ -ظ،ظ¨ ظ،ظ£:ظ ظ "
+        val body = "😀\r\nحوالة صادرة\r\nبمبلغ: ١٠٠ SAR\r\nمن حساب: ١٢٣٤\r\nإلى حساب: ١٢٣٤\r\nبنك المستفيد: البنك الآخر\r\n٢٠٢٦-١٠-١٨ ١٣:٠٠"
         val r = parse(body)
         assertEquals(ParseStatus.SUCCESS, r.status)
         assertEquals(local, r.facts.sourceAccount!!.bank); assertEquals(remote, r.facts.destinationAccount!!.bank)
         assertEquals("1234", r.facts.sourceAccount!!.maskedNumber); assertEquals("1234", r.facts.destinationAccount!!.maskedNumber)
-        assertTrue(r.evidence.any { it.field == "destinationBank" && it.slice(input(body)) == "ط¨ظ†ظƒ ط§ظ„ظ…ط³طھظپظٹط¯: ط§ظ„ط¨ظ†ظƒ ط§ظ„ط¢ط®ط±" })
+        assertTrue(r.evidence.any { it.field == "destinationBank" && it.slice(input(body)) == "بنك المستفيد: البنك الآخر" })
         assertTrue(r.evidence.all { it.end <= body.length })
     }
 
@@ -109,7 +109,7 @@ class TransferNetworkTest {
         assertTrue(Blocker.AMBIGUOUS_BANK in engine.interpret(input(body), collision).blockers)
         val invalid = schema.copy(network = schema.network.copy(bankAliases = mapOf("UNKNOWN" to listOf("Remote Bank"))))
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body, invalid).status)
-        val foldedEmpty = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("ظ€"))))
+        val foldedEmpty = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("ـ"))))
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$outgoing\nDestination bank:", foldedEmpty).status)
         val literal = schema.copy(network = schema.network.copy(bankAliases = mapOf("REMOTE" to listOf("(a+)+$"))))
         assertEquals(ParseStatus.SUCCESS, parse("$outgoing\nDestination bank: (a+)+$", literal).status)

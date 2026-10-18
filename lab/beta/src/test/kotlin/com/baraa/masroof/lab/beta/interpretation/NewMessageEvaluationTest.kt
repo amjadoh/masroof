@@ -17,6 +17,9 @@ class NewMessageEvaluationTest {
     private fun JsonObject.text(key: String) = this[key]?.jsonPrimitive?.content
     @Test fun sourceChallengeHasNoUnsafeAcceptance() = evaluate("m6-unseen-split.json", "new-source-challenge.txt")
 
+    @Test fun finalHeldOutSnippetsKeepMissingTimeReviewable() = evaluate("m6-final-heldout-split.json", "final-heldout-snippets.txt")
+    @Test fun finalHeldOutMessagesHaveNoUnsafeAcceptance() = evaluate("m6-final-complete-split.json", "final-heldout-messages.txt")
+
     private fun evaluate(resource: String, reportName: String) {
         val manifest = requireNotNull(javaClass.classLoader!!.getResource(resource)).readText().removePrefix("\uFEFF").replace("\r\n", "\n")
         val rows = Json.parseToJsonElement(manifest).jsonArray
@@ -25,6 +28,7 @@ class NewMessageEvaluationTest {
         val counts = sortedMapOf<String, Int>()
         val unsafe = mutableListOf<String>()
         var recognized = 0
+        var coreMatches = 0
         val reports = rows.map { element ->
             val row = element.jsonObject
             val source = File("../..", row.text("source")!!).readText().replace("\r\n", "\n")
@@ -33,7 +37,7 @@ class NewMessageEvaluationTest {
                 .findAll(source).toList()[row.getValue("index").jsonPrimitive.int].groupValues[1]
             assertEquals("Source drift: ${row.text("function")}", row.text("sha256"), sha(raw))
             val body = if (row.text("referenceId") == null) raw.trimIndent() else raw
-            val id = row.text("function")!!
+            val id = row.text("function")!! + ":" + (row.text("index") ?: row.text("referenceId"))
             val result = engine.interpret(MessageInput(id, "AlJazira", body, Instant.parse("2026-10-18T00:00:00Z")),
                 BankCatalog(listOf(BankDefinition(bank, setOf("AlJazira")))))
             val truth = row.getValue("expected").jsonObject
@@ -49,6 +53,8 @@ class NewMessageEvaluationTest {
                 if (key == "amount") values[key]?.toBigDecimalOrNull()?.compareTo(truth.text(key)!!.toBigDecimal()) != 0
                 else values[key] != truth.text(key)
             }
+            if (purposeMatches && differences.isEmpty()) coreMatches++
+            row.text("expectedStatus")?.let { assertEquals("Incomplete source snippet must stay reviewable: $id", it, result.status.name) }
             if (result.status == ParseStatus.SUCCESS && (informational || !purposeMatches || differences.isNotEmpty())) unsafe += id
             if (result.status == ParseStatus.NON_FINANCIAL && (!informational || result.facts.amount != null)) unsafe += id
             result.evidence.forEach { assertTrue(it.start >= 0 && it.end > it.start && it.end <= body.length) }
@@ -57,9 +63,9 @@ class NewMessageEvaluationTest {
         }
         val file = File("build/reports/beta-interpretation", reportName)
         requireNotNull(file.parentFile).mkdirs()
-        file.writeText("Manifest: ${sha(manifest)}\nEngine: ${engine.version}\nSamples: ${rows.size}\nStatuses: $counts\nPurpose recognized: $recognized/${rows.size}\nUnsafe acceptance: $unsafe\n" +
+        file.writeText("Manifest: ${sha(manifest)}\nEngine: ${engine.version}\nSamples: ${rows.size}\nStatuses: $counts\nPurpose recognized: $recognized/${rows.size}\nCore labels matched: $coreMatches/${rows.size}\nUnsafe acceptance: $unsafe\n" +
             "Labels are source assertions/text review, not legacy/new parser predictions. Independent examples are not a fresh phone-message or template-isolated accuracy claim.\n" + reports.joinToString("\n"))
-        println(file.readLines().take(7).joinToString("\n"))
+        println(file.readLines().take(8).joinToString("\n"))
         assertTrue("Unsafe acceptance: $unsafe", unsafe.isEmpty())
     }
 }
