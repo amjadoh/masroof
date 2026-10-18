@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun BetaDashboardAnalysisPanel(snapshot: DashboardSnapshot, enabled: Boolean, preferences: BetaDashboardViewPreferencesWorkflow? = null, onTransaction: (PostingKey) -> Unit) {
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberBetaUiScope()
     var preferenceBusy by remember { mutableStateOf(false) }
     var preferenceError by remember { mutableStateOf(false) }
     var preferencesLoaded by rememberSaveable { mutableStateOf(false) }
@@ -36,7 +36,7 @@ internal fun BetaDashboardAnalysisPanel(snapshot: DashboardSnapshot, enabled: Bo
     var draftBars by rememberSaveable { mutableStateOf(bars) }
     var selectedDay by rememberSaveable(snapshot.query.from.toString()) { mutableStateOf<String?>(null) }
     val assets = dashboardAssetLabels(snapshot)
-    LaunchedEffect(preferences) {
+    BetaLaunchedEffect(preferences) {
         if (!preferencesLoaded && preferences != null) {
             preferenceBusy = true
             try {

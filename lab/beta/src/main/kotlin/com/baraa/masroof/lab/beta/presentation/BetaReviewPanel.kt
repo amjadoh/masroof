@@ -23,7 +23,7 @@ import java.util.UUID
 
 @Composable
 internal fun BetaReviewPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberBetaUiScope()
     var after by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var page by remember { mutableStateOf<List<BetaReviewItem>?>(null) }
@@ -33,7 +33,7 @@ internal fun BetaReviewPanel(container: BetaContainer, onClose: () -> Unit, onBu
     var generation by remember { mutableIntStateOf(0) }
     SideEffect { onBusyChanged(busy) }
     DisposableEffect(Unit) { onDispose { onBusyChanged(false) } }
-    LaunchedEffect(after, selected, generation) {
+    BetaLaunchedEffect(after, selected, generation) {
         failed = false; page = null; detail = null
         try {
             withContext(BetaIo.dispatcher) {
