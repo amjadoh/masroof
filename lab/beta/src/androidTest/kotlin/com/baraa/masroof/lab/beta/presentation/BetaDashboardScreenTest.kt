@@ -186,11 +186,11 @@ class BetaDashboardScreenTest {
 بمبلغ: USD 23.00
 في: 2026-10-17 13:00
 الدولة: USA
-رسوم العمليات الدولية: 1.99
+رسوم العمليات الدولية: SAR 1.99
 سعر الصرف: 3.756957
 الرصيد المتاح: SAR 16958.89
 """
-        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.sharedRules()))
+        val stored = ProcessBetaEvidence(RoomBetaEvidenceStore(db), RoomBetaBankSelectionStore(db), LabEvidenceRouter(), LabEvidenceComparer(com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.independent()))
             .importBatch(EvidenceRequest("synthetic-ui-fx", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(
                 EvidenceMessage("synthetic-provider", "AlJazira", body, at, ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored
         val key = RoomBetaFinancialAdoption.key(stored.summary.id)

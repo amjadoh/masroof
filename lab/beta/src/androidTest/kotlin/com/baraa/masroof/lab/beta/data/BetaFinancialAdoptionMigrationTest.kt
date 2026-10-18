@@ -9,7 +9,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.evidence.*
-import com.baraa.masroof.lab.beta.application.interpretation.LegacyInterpretationAdapter
+import com.baraa.masroof.lab.beta.verification.FinancialArchiveFixture
 import com.baraa.masroof.lab.finance.asset.*
 import com.baraa.masroof.lab.finance.posting.*
 import com.baraa.masroof.lab.finance.value.*
@@ -87,11 +87,11 @@ class BetaFinancialAdoptionMigrationTest {
             val route = EvidenceRoute(RouteKind.MATCHED, setOf(bank), "fixture-router")
             store.capture(CapturedEvidence("device", EvidenceRequest("device", EvidenceOrigin.EXPLICIT_SAMPLE),
                 EvidenceMessage("device", "fixture", "synthetic only", at, ReceiptTimeSource.USER_SUPPLIED), at, route, emptyList()))
-            val archive = InterpretationArchive.encode(Interpretation("device", LegacyInterpretationAdapter.VERSION, bank,
+            val archive = FinancialArchiveFixture.encode(Interpretation("device", FinancialArchiveFixture.VERSION, bank,
                 Facts(MessageFamily.PURCHASE, Money.of("23", Currency.USD), occurredAtLocal = LocalDateTime.parse("2026-10-17T13:30:00"),
                     exchangeRate = BigDecimal("3.756957")), ParseStatus.SUCCESS, null, emptyList(), emptySet()))
             store.begin("device", at); store.complete("device", route,
-                EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), archive, "candidate unused"), at)
+                EvidenceComparison(EvidenceDisposition.COMPARISON_ONLY, emptySet(), "{}", archive), at)
             val adapter = RoomBetaFinancialAdoption(database)
             val request = BetaFinancialApproval("device", adapter.reviewPage().single().archiveRevision, null,
                 FinancialType.EXPENSE, account.id, null)
