@@ -30,7 +30,7 @@ class BetaSharedNavigationTest {
                 scenario.recreate(); await("dash-refresh")
                 compose.onNodeWithTag("dash-route-TRANSACTIONS").assertIsSelected()
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-                compose.onNodeWithTag("dash-route-OVERVIEW").assertIsSelected()
+                compose.onNodeWithTag("beta-home-hero").assertExists()
                 tab(R.string.beta_nav_review).performClick(); await("review-close")
                 compose.onNodeWithTag("review-close").performScrollTo().performClick(); await("beta-bottom-navigation")
                 tab(R.string.beta_nav_settings).performClick(); await("beta-settings-panel")

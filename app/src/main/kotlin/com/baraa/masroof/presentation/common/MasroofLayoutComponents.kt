@@ -1,26 +1,16 @@
 package com.baraa.masroof.presentation.common
 
-import com.baraa.masroof.ui.theme.MasroofFontWeights
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
-import com.baraa.masroof.ui.theme.MasroofIconSizes
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
@@ -47,23 +37,9 @@ fun MasroofAppBar(
     backContentDescription: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val reference = com.baraa.masroof.ui.theme.MasroofReference
-    Surface(modifier.fillMaxWidth(), color = if (showLogo) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background) {
-        Row(Modifier.fillMaxWidth().padding(
-            start = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
-            end = if (showLogo) reference.headerHorizontal else MasroofSpacing.screenHorizontal,
-            top = if (showLogo) reference.headerTop else MasroofSpacing.screenVertical,
-            bottom = reference.headerBottom),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
-            if (onBack != null) BackNavigationIcon(onBack, backContentDescription)
-            if (showLogo) MasroofLogo(size = MasroofIconSizes.logo, contentDescription = null)
-            Text(title, Modifier.weight(1f),
-                style = if (showLogo) reference.brand else MaterialTheme.typography.headlineSmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, content = actions)
-        }
-    }
+    com.baraa.masroof.ui.components.MasroofAppBar(com.baraa.masroof.application.locale.AppDigits.display(title), modifier, showLogo,
+        navigation = if (onBack != null) ({ BackNavigationIcon(onBack, backContentDescription) }) else null, actions = actions)
+
 }
 
 @Composable

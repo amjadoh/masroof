@@ -34,4 +34,17 @@ class BetaDashboardViewPreferencesWorkflow(context: Context) {
             .putString("dashboard_view_asset", value.choice.asset?.localId)
             .putString("dashboard_view_mode", if (value.bars) "BARS" else "TABLE").commit()) { "Beta view preferences were not saved" }
     }
+    suspend fun readHomeScope(): TrendScope = withContext(BetaIo.dispatcher) {
+        when (preferences().getString("dashboard_home_scope", "purchases")) {
+            "overall" -> TrendScope.OVERALL
+            else -> TrendScope.PURCHASES
+        }
+    }
+    suspend fun saveHomeScope(scope: TrendScope) = withContext(BetaIo.dispatcher) {
+        require(scope in setOf(TrendScope.PURCHASES, TrendScope.OVERALL))
+        check(preferences().edit().putString("dashboard_home_scope", if (scope == TrendScope.OVERALL) "overall" else "purchases").commit()) {
+            "Beta Home scope was not saved"
+        }
+    }
+
 }

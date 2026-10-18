@@ -8,8 +8,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -28,7 +26,6 @@ import com.baraa.masroof.application.dashboard.DailySpendingTrend
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofInteractiveLineChart
-import com.baraa.masroof.presentation.common.MasroofReferenceMoney
 import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.common.MasroofChartAverageLegend
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
@@ -89,17 +86,11 @@ private fun SpendingTrendCard(trend: DailySpendingTrend?, title: String, modifie
         customLabel?.let { MasroofText(it, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("chart-custom-summary")) }
         controls?.let { content -> Column(Modifier.fillMaxWidth().padding(top = MasroofSpacing.sectionGap)) { content() } }
-        Row(Modifier.fillMaxWidth().paddingForReferenceChartHead(), verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.none)) {
-                MasroofText(date.format(point.date), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                MasroofReferenceMoney(formatLocalizedMoney(point.spending), style = MasroofReference.selectedAmount)
-            }
-            if (showAverage) MasroofChartAverageLegend(
-                stringResource(R.string.dashboard_chart_average_value, formatLocalizedMoney(trend.averageDailySpending)),
-                Modifier.weight(1f).testTag("daily-expenses-average"))
-        }
+        com.baraa.masroof.ui.dashboard.DashboardTrendHead(date.format(point.date), formatLocalizedMoney(point.spending),
+            average = if (showAverage) ({
+                MasroofChartAverageLegend(stringResource(R.string.dashboard_chart_average_value, formatLocalizedMoney(trend.averageDailySpending)),
+                    Modifier.weight(1f).testTag("daily-expenses-average"))
+            }) else null)
         MasroofInteractiveLineChart(trend.points.map { it.spending.amount }, trend.averageDailySpending.amount,
             Modifier.testTag("daily-expenses-chart"), index,
             onPointSelected = { selected = it; onDaySelected?.invoke(trend.points[it].date) },
@@ -115,11 +106,8 @@ private fun ChartHeader(title: String, explanation: String, onCustomize: (() -> 
         MasroofGuidanceLabel(title, explanation, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
             contentColor = MaterialTheme.colorScheme.onSurface)
         if (onCustomize != null) IconButton(onClick = onCustomize, modifier = Modifier.testTag("chart-customize")) {
-            Icon(Icons.Default.MoreHoriz, androidx.compose.ui.res.stringResource(R.string.chart_customize_title),
+            Icon(com.baraa.masroof.ui.dashboard.DashboardChartMenuIcon, androidx.compose.ui.res.stringResource(R.string.chart_customize_title),
                 Modifier.size(MasroofReference.icon))
         } else Icon(com.baraa.masroof.presentation.common.MasroofIcons.analysis, null, Modifier.size(MasroofReference.icon))
     }
 }
-
-private fun Modifier.paddingForReferenceChartHead(): Modifier =
-    this.then(Modifier.padding(top = MasroofReference.chartHeadGap))

@@ -10,6 +10,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import com.baraa.masroof.lab.beta.R
 import com.baraa.masroof.lab.beta.application.*
 import com.baraa.masroof.lab.beta.presentation.theme.BetaSpacing
@@ -25,7 +27,7 @@ import java.time.YearMonth
 @Composable
 fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     controls: BetaDashboardControls = UnavailableBetaDashboardControls,
-    preferences: BetaDashboardViewPreferencesWorkflow? = null, requestedRoute: String? = null, routeRequest: Int = 0, onPrimaryTabChanged: (String) -> Unit = {}, onBusyChanged: (Boolean) -> Unit = {}) {
+    preferences: BetaDashboardViewPreferencesWorkflow? = null, requestedRoute: String? = null, routeRequest: Int = 0, onPrimaryTabChanged: (String) -> Unit = {}, onBusyChanged: (Boolean) -> Unit = {}, onImport: () -> Unit = {}) {
     var controlsBusy by remember { mutableStateOf(false) }
     val interactive = enabled && !controlsBusy
     var selectedTransaction by rememberSaveable { mutableStateOf<String?>(null) }
@@ -63,21 +65,31 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     fun select(id: AssetId) { selectedBank = id.bank.value; selectedId = id.localId }
     fun matches(id: AssetId) = id.bank.value == selectedBank && id.localId == selectedId
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section), modifier = Modifier.testTag("beta-dashboard")) {
-        Text(stringResource(R.string.beta_dash_title), style = MaterialTheme.typography.headlineMedium)
-        Text(stringResource(R.string.beta_dash_scope), style = MaterialTheme.typography.bodySmall)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = interactive && !loading, onClick = { monthText = month.minusMonths(1).toString() }, modifier = Modifier.testTag("dash-month-previous")) { Text(stringResource(R.string.beta_dash_previous)) }
-            Text(monthText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("dash-month"))
-            TextButton(enabled = interactive && !loading, onClick = { monthText = month.plusMonths(1).toString() }, modifier = Modifier.testTag("dash-month-next")) { Text(stringResource(R.string.beta_dash_next)) }
-        }
-        if (selectedId == null && selectedTransaction == null) {
+        val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+        val dateFormat = java.time.format.DateTimeFormatter.ofPattern("d MMM", locale)
+        val periodLabel = dateFormat.format(month.atDay(1)) + " – " + dateFormat.format(month.atEndOfMonth())
+        com.baraa.masroof.ui.dashboard.DashboardPeriodHeader(periodLabel, scope = {
+            Text(stringResource(R.string.beta_home_calendar_month), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }, previousDescription = stringResource(R.string.beta_dash_previous), nextDescription = stringResource(R.string.beta_dash_next),
+            onPrevious = { monthText = month.minusMonths(1).toString() }, onNext = { monthText = month.plusMonths(1).toString() },
+            enabled = interactive && !loading, rangeTag = "dash-month", rangeModifier = Modifier.semantics { contentDescription = monthText }, previousTag = "dash-month-previous", nextTag = "dash-month-next",
+            customize = {
+                com.baraa.masroof.ui.components.MasroofTextButton(enabled = interactive, onClick = { route = "CONFIGURATION"; selectedId = null; selectedBank = null; selectedTransaction = null },
+                    modifier = Modifier.heightIn(min = com.baraa.masroof.ui.theme.MasroofSpacing.minimumTouchTarget).testTag("home-configure")) {
+                    Icon(com.baraa.masroof.ui.components.MasroofOutlineIcons.SlidersHorizontal, null,
+                        Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon))
+                    Text(stringResource(R.string.beta_home_customize), Modifier.padding(start = com.baraa.masroof.ui.theme.MasroofSpacing.smallGap), style = MaterialTheme.typography.titleSmall)
+                }
+            })
+        if (selectedId == null && selectedTransaction == null && route != "OVERVIEW") {
             Row(Modifier.testTag("dash-routes").horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
                 dashboardRoutes.forEach { (key, label) ->
                     FilterChip(selected = route == key, enabled = interactive, onClick = { route = key },
                         label = { Text(stringResource(label)) }, modifier = Modifier.testTag("dash-route-$key"))
                 }
             }
-        } else TextButton(enabled = interactive, onClick = { if (selectedTransaction != null) selectedTransaction = null else { selectedId = null; selectedBank = null } }, modifier = Modifier.testTag("dash-detail-back")) { Text(stringResource(R.string.beta_dash_back)) }
+        } else if (selectedId != null || selectedTransaction != null) TextButton(enabled = interactive, onClick = { if (selectedTransaction != null) selectedTransaction = null else { selectedId = null; selectedBank = null } }, modifier = Modifier.testTag("dash-detail-back")) { Text(stringResource(R.string.beta_dash_back)) }
         when {
             loading || (result != null && result?.snapshot?.query != workflow.query(month)) -> { LinearProgressIndicator(Modifier.fillMaxWidth().testTag("dash-loading")); Text(stringResource(R.string.beta_dash_loading)) }
             failed -> {
@@ -128,30 +140,17 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                     val selected = (snapshot.accounts.map { it.id } + snapshot.debitCards.map { it.cardId } + snapshot.creditFacilities.flatMap { listOf(it.facilityId) + it.cards.map { card -> card.cardId } } + snapshot.loans.map { it.id }).singleOrNull(::matches)
                     selected?.let { BetaDashboardTransactions(snapshot, BetaDashboardExplorer.transactions(snapshot, asset = it), interactive, { key -> selectedTransaction = key.transactionId }, complete = DashboardSection.CURRENT_LEDGER !in read.unavailableSections && DashboardSection.RUNTIME_SOURCE !in read.unavailableSections) }
                 } else when (route) {
-                    "OVERVIEW" -> {
-                        com.baraa.masroof.ui.dashboard.DashboardHomeHero(
-                            BetaDashboardVisualMapper.hero(read, stringResource(R.string.beta_home_remaining),
-                                stringResource(R.string.beta_home_inflow), stringResource(R.string.beta_home_outflow),
-                                stringResource(R.string.beta_dash_unavailable), androidx.compose.ui.platform.LocalConfiguration.current.locales[0].toLanguageTag()),
-                            com.baraa.masroof.ui.components.MasroofOutlineIcons.Wallet,
-                            onIncome = { route = "ACCOUNTS" }, onOutflow = { route = "ACCOUNTS" }, enabled = interactive)
-                        com.baraa.masroof.ui.components.MasroofShortcutStrip(listOf(
-                            com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_accounts), com.baraa.masroof.ui.components.MasroofOutlineIcons.Landmark, com.baraa.masroof.ui.components.MasroofCardAccent.Account) { route = "ACCOUNTS" },
-                            com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_cards), com.baraa.masroof.ui.components.MasroofOutlineIcons.CreditCard, com.baraa.masroof.ui.components.MasroofCardAccent.Credit) { route = "CARDS" },
-                            com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_loans), com.baraa.masroof.ui.components.MasroofOutlineIcons.HandCoins, com.baraa.masroof.ui.components.MasroofCardAccent.Liability) { route = "LOANS" },
-                            com.baraa.masroof.ui.components.MasroofShortcutItem(stringResource(R.string.beta_dash_commitments), com.baraa.masroof.ui.components.MasroofOutlineIcons.CalendarCheck, com.baraa.masroof.ui.components.MasroofCardAccent.Liability) { route = "COMMITMENTS" }), enabled = interactive)
-                        DashCard(stringResource(R.string.beta_dash_summary)) {
-                            DashValue(R.string.beta_dash_spending, amount(read.financialSummary?.metrics?.get(SummaryMetric.SPENDING_NET)), Modifier.testTag("dash-summary-spending"))
-                            DashValue(R.string.beta_dash_income, amount(read.financialSummary?.metrics?.get(SummaryMetric.INCOME)))
-                            DashValue(R.string.beta_dash_net, amount(read.financialSummary?.metrics?.get(SummaryMetric.NET_CASH_FLOW)))
-                        }
-                        DashCard(stringResource(R.string.beta_dash_portfolio)) {
-                            DashValue(R.string.beta_dash_flow_remaining, amount(snapshot.totals?.accountRemaining))
-                            DashValue(R.string.beta_dash_due, amount(snapshot.totals?.facilityDue))
-                            DashValue(R.string.beta_dash_loan_remaining, amount(snapshot.totals?.loanRemaining))
-                        }
-                        DashCard(stringResource(R.string.beta_dash_review)) {
-                            Text(read.financialSummary?.reviewRequiredCount?.toString() ?: stringResource(R.string.beta_dash_unavailable), modifier = Modifier.testTag("dash-review-count"))
+                    "OVERVIEW" -> BetaDashboardHome(read, interactive, preferences, onRoute = { route = it },
+                        onTransaction = { selectedTransaction = it }, onImport = onImport)
+                    "FLOW_IN", "FLOW_OUT" -> {
+                        val incoming = route == "FLOW_IN"
+                        val flow = snapshot.fleetFlow
+                        if (flow == null) DashUnavailable() else DashCard(stringResource(if (incoming) R.string.beta_home_inflow else R.string.beta_home_outflow)) {
+                            DashValue(R.string.beta_dash_total, amount(if (incoming) flow.totalIn else flow.totalOut))
+                            val inbound = setOf(FlowBucket.SALARY, FlowBucket.OTHER_INCOME, FlowBucket.EXTERNAL_IN, FlowBucket.ACCOUNT_REFUNDS, FlowBucket.INTERNAL_IN)
+                            flow.buckets.filterKeys { (it in inbound) == incoming }.forEach { (bucket, value) ->
+                                DashValue(flowLabel(bucket), amount(value))
+                            }
                         }
                     }
                     "ACCOUNTS" -> {
@@ -271,4 +270,18 @@ private val dashboardRoutes = listOf("OVERVIEW" to R.string.beta_dash_summary, "
         loan.installmentAsOf?.let { Text(stringResource(R.string.beta_dash_as_of, it.atZone(zone).toLocalDate().toString()), style = MaterialTheme.typography.bodySmall) }
         DashValue(R.string.beta_dash_salary_payment, amount(loan.salaryPayment)); DashPeriod(loan.salaryPeriod); content()
     }
+}
+
+private fun flowLabel(bucket: FlowBucket): Int = when (bucket) {
+    FlowBucket.SALARY, FlowBucket.OTHER_INCOME -> R.string.beta_review_income
+    FlowBucket.EXTERNAL_IN -> R.string.beta_review_transfer_in
+    FlowBucket.ACCOUNT_REFUNDS -> R.string.beta_review_refund
+    FlowBucket.INTERNAL_IN, FlowBucket.INTERNAL_OUT -> R.string.beta_review_self_transfer
+    FlowBucket.EXTERNAL_OUT -> R.string.beta_review_transfer_out
+    FlowBucket.CREDIT_SETTLEMENT -> R.string.beta_review_card_payment
+    FlowBucket.CASH_WITHDRAWAL -> R.string.beta_review_cash
+    FlowBucket.BILLS -> R.string.beta_review_bill
+    FlowBucket.POS_PURCHASES -> R.string.beta_review_expense
+    FlowBucket.FEES -> R.string.beta_review_fee
+    FlowBucket.LOAN -> R.string.beta_review_loan
 }

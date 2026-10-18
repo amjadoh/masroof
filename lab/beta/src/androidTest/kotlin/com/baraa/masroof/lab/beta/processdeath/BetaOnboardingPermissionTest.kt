@@ -75,8 +75,8 @@ class BetaOnboardingPermissionTest {
                     awaitEnabled(tag)
                     if (tag == "beta-history" || tag.startsWith("asset-add-")) {
                         compose.waitUntil(10_000) {
-                            compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
-                                compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+                            compose.onAllNodesWithTag("beta-home-hero").fetchSemanticsNodes().isEmpty() &&
+                                compose.onAllNodesWithTag("beta-history").fetchSemanticsNodes().isNotEmpty()
                         }
                     }
                     val node = compose.onNodeWithTag(tag)
@@ -106,6 +106,8 @@ class BetaOnboardingPermissionTest {
                     throw failure
                 }
             }
+            awaitEnabled("beta-tools")
+            compose.onNodeWithTag("beta-tools").performClick()
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
             awaitEnabled("beta-history")

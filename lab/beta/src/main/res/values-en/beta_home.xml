@@ -1,0 +1,28 @@
+<resources>
+    <string name="beta_home_expenses">Total expenses</string>
+    <string name="beta_home_daily_average">Average daily expenses</string>
+    <string name="beta_home_average_basis">Average over %1$d days, including days with no expenses.</string>
+    <string name="beta_home_purchases">Daily purchases</string>
+    <string name="beta_home_all_expenses">All daily expenses</string>
+    <string name="beta_home_recent">Recent transactions</string>
+    <string name="beta_home_top_merchants">Expenses by merchant</string>
+    <string name="beta_home_merchants_empty">No merchant has two or more purchases in this period</string>
+    <string name="beta_home_empty">No transactions in this period</string>
+    <string name="beta_home_view_all">View all ›</string>
+    <string name="beta_home_commitments">Commitments this period</string>
+    <string name="beta_home_waiting">%1$s awaiting payment</string>
+    <string name="beta_home_card_details">Card details</string>
+    <string name="beta_home_chart_average">Average %1$s</string>
+    <string name="beta_home_no_elapsed_days">This period has not started. There are no elapsed days to display expenses or calculate an average.</string>
+    <string name="beta_home_customize">Customize</string>
+    <string name="beta_home_about">About %1$s</string>
+    <string name="beta_home_calendar_month">Calendar month</string>
+    <string name="beta_home_tools">Manage Beta data</string>
+    <string name="beta_home_chart_basis">Spending computed from the Beta ledger for the displayed period. Unproved values remain unavailable.</string>
+    <string name="beta_home_brand">Masroof</string>
+    <string name="beta_home_accounts">Accounts</string>
+    <string name="beta_home_cards">Cards</string>
+    <string name="beta_home_loans">Loans</string>
+    <string name="beta_home_commitments_shortcut">Commitments</string>
+    <string name="beta_home_merchant_count">%1$d purchase / payment transactions</string>
+</resources>

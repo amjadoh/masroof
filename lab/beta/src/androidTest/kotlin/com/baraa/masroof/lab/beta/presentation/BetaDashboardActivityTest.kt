@@ -31,12 +31,15 @@ class BetaDashboardActivityTest {
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-badge").assertIsDisplayed()
             compose.onNodeWithTag("beta-return").assertIsDisplayed()
-            compose.onNodeWithTag("dash-route-ACCOUNTS").performScrollTo().performClick()
+            compose.onNodeWithTag("home-shortcuts").performScrollTo()
+            compose.onNodeWithTag("dashboard-shortcut-0").performClick()
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-activity").performScrollTo().performClick()
             compose.onNodeWithTag("dash-detail-back").assertExists()
+            compose.onNodeWithTag("beta-tools").performClick()
             compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
             compose.onNodeWithTag("beta-settings-panel").assertExists()
             compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-tools").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-detail-back").fetchSemanticsNodes().isNotEmpty() }
             scenario.recreate()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }

@@ -1,6 +1,5 @@
 package com.baraa.masroof.presentation.common
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
@@ -17,15 +16,8 @@ import com.baraa.masroof.ui.theme.*
 @Composable
 fun MasroofMetric(label: String, value: String, color: Color,
     modifier: Modifier = Modifier, guidance: String? = null) {
-    Surface(modifier, shape = MasroofComponentShapes.radius16,
-        color = MasroofThemeExtras.extendedColors.cardSurface,
-        border = BorderStroke(MasroofSpacing.borderWidth, MasroofThemeExtras.extendedColors.cardBorder)) {
-        Column(Modifier.fillMaxWidth().padding(MasroofSpacing.compactCardContentPadding + MasroofSpacing.borderWidth)) {
-            MasroofGuidanceLabel(label, guidance)
-            Spacer(Modifier.height(MasroofReference.shortcutGap))
-            MasroofReferenceMoney(value, style = MasroofReference.metricValue, color = color)
-            Spacer(Modifier.height(MasroofSpacing.hairlineGap))
-        }
+    com.baraa.masroof.ui.dashboard.DashboardMetric(value, color, modifier) {
+        MasroofGuidanceLabel(label, guidance)
     }
 }
 
