@@ -24,7 +24,9 @@ jobs:
       - name: Test stable-image selection
         run: python3 scripts/test-latest-stable-android.py
       - name: Test device-suite routing and failure reporting
-        run: python3 scripts/test-instrumentation-smoke.py
+        run: |
+          python3 scripts/test-instrumentation-smoke.py
+          python3 scripts/test-lifecycle-suite.py
       - name: Resolve latest stable Android emulator image
         id: android
         run: python3 scripts/latest-stable-android.py
@@ -267,8 +269,13 @@ jobs:
             beta-dashboard-screenshots/
           if-no-files-found: warn
 
-  # The full Beta suite has its own device; stateful halt/resume pairs stay together.
-  emulator-lifecycle:
+  # Independent recovery suites run on separate devices. Never shard the phases
+  # within a stateful halt/resume journey across processes or runners.
+  emulator-recovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [beta, production, upgrade]
     needs: android-version
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -303,11 +310,10 @@ jobs:
           path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.api-level }}/google_apis/x86_64
           key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.api-level }}-google_apis-x86_64
 
-      - name: Assemble lifecycle and Beta device tests
-        run: >-
-          ./gradlew :lab:beta:assembleDebugAndroidTest :app:assembleDebug :app:assembleDebugAndroidTest
-          :lab:upgrade-host:assembleBeforeDebug :lab:upgrade-host:assembleAfterDebug
-          :lab:upgrade-host:assembleBeforeDebugAndroidTest :lab:upgrade-host:assembleAfterDebugAndroidTest --stacktrace
+      - name: Assemble recovery APKs
+        env:
+          RECOVERY_SUITE: ${{ matrix.suite }}
+        run: bash .github/scripts/run-lifecycle-suite.sh "$RECOVERY_SUITE" build
 
       - name: Enable KVM
         run: |
@@ -326,29 +332,33 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: |
-            SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-            echo "sdk.dir=${SDK_DIR}" > local.properties
-            adb install -r -t lab/beta/build/outputs/apk/androidTest/debug/beta-debug-androidTest.apk
-            bash scripts/beta-process-death.sh
-            ./gradlew :app:installDebug :app:installDebugAndroidTest --stacktrace
-            # RestoreConcurrencyTest already runs in the production shards.
-            bash scripts/m13-process-death.sh
-            bash scripts/beta-apk-upgrade.sh
+          script: bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
       - name: Upload synthetic signed-update and performance diagnostics
-        if: always()
+        if: always() && matrix.suite == 'upgrade'
         uses: actions/upload-artifact@v4
         with:
-          name: beta-upgrade-diagnostics
+          name: beta-upgrade-diagnostics-${{ matrix.suite }}
           path: beta-upgrade-diagnostics/
           if-no-files-found: warn
       - name: Upload isolated Beta permission dialog diagnostics
-        if: always()
+        if: always() && matrix.suite == 'beta'
         uses: actions/upload-artifact@v4
         with:
-          name: beta-permission-dialog-diagnostics
+          name: beta-permission-dialog-diagnostics-${{ matrix.suite }}
           path: beta-permission-diagnostics/
           if-no-files-found: warn
+
+  # Retain one required lifecycle result; any failed/cancelled suite fails it.
+  emulator-lifecycle:
+    needs: emulator-recovery
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every recovery suite
+        env:
+          RECOVERY_RESULT: ${{ needs.emulator-recovery.result }}
+        run: test "$RECOVERY_RESULT" = success
 
   # The API 26-28 pre-VACUUM backup device job is intentionally retired from CI.
   # Its test and production fallback remain in the repository for later cleanup.
