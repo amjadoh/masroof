@@ -11,7 +11,7 @@ import java.time.Instant
 /** Only durable capture occurs inside goAsync; interpretation is scheduled by raw id. */
 class BetaLiveSmsReceiver: BroadcastReceiver() {
     override fun onReceive(context: Context,intent: Intent) {
-        if(context.packageName!=BetaLiveSms.HOST_PACKAGE || intent.action!=Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        if(!BetaLiveSms.enabled(context) || intent.action!=Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         val parts=Telephony.Sms.Intents.getMessagesFromIntent(intent)?.toList().orEmpty()
         if(parts.isEmpty()) return
         val senders=parts.map { it.displayOriginatingAddress }.distinct()

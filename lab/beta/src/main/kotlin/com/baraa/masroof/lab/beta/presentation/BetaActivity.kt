@@ -7,9 +7,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
+import com.baraa.masroof.lab.beta.R
 import com.baraa.masroof.lab.beta.BetaIo
 import com.baraa.masroof.lab.beta.application.BetaOnboardingStep
 import com.baraa.masroof.lab.finance.asset.AssetKind
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +55,10 @@ class BetaActivity : ComponentActivity() {
             val dark = when (betaTheme) { "DARK" -> true; "LIGHT" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
             BetaLocaleProvider(betaLanguage) { com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
                 val shellContainer = remember { container }
+                DisposableEffect(shellContainer) {
+                    com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.resume(applicationContext)
+                    onDispose { }
+                }
                 val scope = rememberBetaUiScope()
                 val dashboardWorkflow = remember(shellContainer) {
                     com.baraa.masroof.lab.beta.application.BetaDashboardWorkflow({ query, periods ->
@@ -89,6 +95,7 @@ class BetaActivity : ComponentActivity() {
                 var settingsCategory by rememberSaveable { mutableStateOf("HUB") }
                 var ownershipEditSuffix by rememberSaveable { mutableStateOf("") }
                 var initialAssetKind by rememberSaveable { mutableStateOf(AssetKind.ACCOUNT.name) }
+                var dashboardPageTitle by remember {mutableStateOf<String?>(null)}
                 var dashboardTab by rememberSaveable { mutableStateOf("HOME") }
                 var dashboardRequest by rememberSaveable { mutableIntStateOf(0) }
                 var historyOpen by rememberSaveable { mutableStateOf(false) }
@@ -142,10 +149,11 @@ class BetaActivity : ComponentActivity() {
                     busy = true
                     scope.launch { execute(action) }
                 }
+                var maintenanceTools by rememberSaveable { mutableStateOf(false) }
                 fun openRoute(route: String) {
                     if (busy || historyBusy) return
                     historyOpen = route == "HISTORY"; reviewOpen = route == "REVIEW"; approvalOpen = route == "APPROVAL"
-                    discoveryOpen = route == "DISCOVERY"; settingsOpen = route == "SETTINGS"; developerToolsOpen = route == "DEVELOPER"
+                    discoveryOpen = route == "DISCOVERY"; settingsOpen = route == "SETTINGS"; developerToolsOpen = route in setOf("DEVELOPER","DATA"); maintenanceTools=route=="DEVELOPER"
                     editBank = null; editId = null; proposalId = null; approvalEvidenceId = null
                     if (route == "HOME" || route == "TRANSACTIONS") { dashboardTab = route; dashboardRequest++ }
                 }
@@ -193,6 +201,15 @@ class BetaActivity : ComponentActivity() {
                 } else BetaShell(
                     showMaintenanceActions = false,
                     showReturn = false,
+                    secondaryTitle=when {
+                        settingsOpen -> androidx.compose.ui.res.stringResource(R.string.beta_nav_settings)
+                        reviewOpen -> androidx.compose.ui.res.stringResource(R.string.beta_nav_review)
+                        historyOpen -> androidx.compose.ui.res.stringResource(R.string.beta_history_title)
+                        developerToolsOpen -> androidx.compose.ui.res.stringResource(R.string.beta_parity_data_settings)
+                        onboarding!=BetaOnboardingStep.COMPLETE -> androidx.compose.ui.res.stringResource(R.string.beta_setup_continue)
+                        else -> dashboardPageTitle
+                    },
+                    onNavigateBack={onBackPressedDispatcher.onBackPressed()},
                     setupFooter = if(onboarding==BetaOnboardingStep.ASSETS && editBank==null && !settingsOpen && !developerToolsOpen) ({
                         androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal),verticalArrangement=androidx.compose.foundation.layout.Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.smallGap)) {
                             if(ownershipPending in 1 until Int.MAX_VALUE) androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_parity_ownership_pending,ownershipPending),style=androidx.compose.material3.MaterialTheme.typography.bodySmall)
@@ -206,7 +223,7 @@ class BetaActivity : ComponentActivity() {
                     selectedHomeTab = when { settingsOpen -> "SETTINGS"; reviewOpen -> "REVIEW"; else -> dashboardTab },
                     onOpenHome = { openRoute("HOME") },
                     onOpenTransactions = { openRoute("TRANSACTIONS") },
-                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, pendingCardCount=cardTasks.size,onCards={openRoute("SETTINGS");settingsCategory="CARDS"},
+                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, showInternalHeader=false, onPageTitle={dashboardPageTitle=it}, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, pendingCardCount=cardTasks.size,onCards={openRoute("SETTINGS");settingsCategory="CARDS"},
                         requestedRoute = if (dashboardTab == "TRANSACTIONS") "TRANSACTIONS" else "OVERVIEW", routeRequest = dashboardRequest, onPrimaryTabChanged = { dashboardTab = it }, onBusyChanged = { historyBusy = it }, onImport = { openRoute("HISTORY") }, onSetup = ::resumeSetup) }),
                     onOpenDiscovery = { openRoute("DISCOVERY") },
                     onOpenHistory = { openRoute("HISTORY") },
@@ -224,12 +241,12 @@ class BetaActivity : ComponentActivity() {
                         onConfigureTask={task -> editBank=task.bank.value;editId=task.assetId?.localId;ownershipEditSuffix=task.suffix;initialAssetKind=AssetKind.DEBIT_CARD.name;proposalId=null;failed=false},
                         onTheme={value -> perform {shellContainer.setTheme(value);null}},
                         onLanguage={value -> perform {shellContainer.setLanguage(value);null}},
-                        onData={openRoute("DEVELOPER")},
+                        onData={openRoute("DATA")},
                         onBankEnabled = { bank, enabled -> perform { shellContainer.setBankEnabled(bank, enabled); null } },
                         onAdd = ::openAsset, onEdit = { asset -> editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false },
                         onBusyChanged = { historyBusy = it }, onClose = { settingsOpen = false },
                         onSetup = ::resumeSetup, onReset = { perform { shellContainer.reset(); null } }) })
-                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if ((discoveryOpen || onboarding == BetaOnboardingStep.ASSETS) && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
+                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, showMaintenance=maintenanceTools, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if ((discoveryOpen || onboarding == BetaOnboardingStep.ASSETS) && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
                         onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }, showContinue = onboarding!=BetaOnboardingStep.ASSETS, parentBusy = busy,
                         onContinue = if (onboarding == BetaOnboardingStep.ASSETS) ({
                             discoveryOpen = false

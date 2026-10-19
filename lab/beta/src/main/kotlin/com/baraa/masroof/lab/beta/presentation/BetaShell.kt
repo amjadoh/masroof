@@ -60,6 +60,8 @@ fun BetaShell(
     onRestore: () -> Unit,
     showReturn: Boolean = true,
     setupFooter: (@Composable () -> Unit)? = null,
+    secondaryTitle: String? = null,
+    onNavigateBack: (() -> Unit)? = null,
 ) {
     var workspaceOpen by rememberSaveable { mutableStateOf(false) }
     val homeState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -67,7 +69,15 @@ fun BetaShell(
     Scaffold(
         topBar = {
             com.baraa.masroof.ui.components.MasroofAppBar(
-                title = stringResource(R.string.beta_home_brand),
+                title = secondaryTitle ?: stringResource(R.string.beta_home_brand),
+                showLogo = secondaryTitle == null,
+                navigation = if(secondaryTitle!=null && onNavigateBack!=null) ({
+                    androidx.compose.material3.IconButton(onClick=onNavigateBack,enabled=!busy && returnEnabled,modifier=Modifier.testTag("beta-page-back")) {
+                        androidx.compose.material3.Icon(if(androidx.compose.ui.platform.LocalLayoutDirection.current==androidx.compose.ui.unit.LayoutDirection.Rtl)
+                            com.baraa.masroof.ui.components.MasroofOutlineIcons.ChevronRight else com.baraa.masroof.ui.components.MasroofOutlineIcons.ChevronLeft,
+                            stringResource(R.string.beta_dash_back))
+                    }
+                }) else null,
                 actions = {
                     if (dashboard != null && editor == null) androidx.compose.material3.IconButton(
                         enabled = !busy, onClick = { workspaceOpen = !workspaceOpen }, modifier = Modifier.testTag("beta-tools")) {

@@ -13,7 +13,8 @@ internal data class BetaAutomaticDecision(val type: FinancialType, val source: A
 /** Consumes proven persisted identities only. Never guesses ownership, loan attribution or transfer pairing. */
 internal object BetaAutomaticPostingPolicy {
     fun decide(family: MessageFamily, direction: MoneyDirection?, salary: Boolean, financing: Boolean,
-        cardObserved: Boolean, proposals: List<BetaAssetProposal>, registry: Map<AssetId, OwnedAsset>, loanId: AssetId? = null): BetaAutomaticDecision {
+        cardObserved: Boolean, proposals: List<BetaAssetProposal>, registry: Map<AssetId, OwnedAsset>, loanId: AssetId? = null,
+        transferSource: AssetId? = null, transferDestination: AssetId? = null): BetaAutomaticDecision {
         fun hold(reason: String) = BetaAutomaticDecision(FinancialType.UNKNOWN, hold = reason)
         val resolved = mutableListOf<OwnedAsset>()
         for (proposal in proposals) {
@@ -26,6 +27,20 @@ internal object BetaAutomaticPostingPolicy {
         }
         val accounts = resolved.filter { it.kind == AssetKind.ACCOUNT }.distinctBy { it.id }
         val cards = resolved.filter { it.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) }.distinctBy { it.id }
+        if (family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)) {
+            val source = transferSource ?: accounts.singleOrNull()?.id.takeIf { family == MessageFamily.TRANSFER_OUT }
+            val destination = transferDestination ?: accounts.singleOrNull()?.id.takeIf { family == MessageFamily.TRANSFER_IN }
+            if (direction != if (family == MessageFamily.TRANSFER_IN) MoneyDirection.INCOMING else MoneyDirection.OUTGOING)
+                return hold("UNCLEAR_DIRECTION")
+            if (source != null && destination != null)
+                return BetaAutomaticDecision(FinancialType.SELF_TRANSFER, source, destination)
+            return if (family == MessageFamily.TRANSFER_IN && destination != null)
+                BetaAutomaticDecision(if (salary) FinancialType.INCOME else FinancialType.EXTERNAL_TRANSFER_IN,
+                    destination = destination, income = if (salary) IncomeAttribution.SALARY else IncomeAttribution.OTHER)
+            else if (family == MessageFamily.TRANSFER_OUT && source != null)
+                BetaAutomaticDecision(FinancialType.EXTERNAL_TRANSFER_OUT, source = source)
+            else hold("CONFIRM_OWNERSHIP")
+        }
         if (accounts.size > 1 || cards.size > 1) return hold("AMBIGUOUS_OWNER")
         val account = accounts.singleOrNull()
         val card = cards.singleOrNull()
@@ -56,7 +71,8 @@ internal object BetaAutomaticPostingPolicy {
             return BetaAutomaticDecision(type, account.id, card.id)
         }
         if (cardObserved && card == null && type != FinancialType.CASH_WITHDRAWAL) return hold("CONFIRM_CARD")
-        val owner = if (type in setOf(FinancialType.INCOME, FinancialType.CASH_WITHDRAWAL)) account else card ?: account
+        val owner = if (type in setOf(FinancialType.INCOME, FinancialType.CASH_WITHDRAWAL)) account
+            else if(card?.kind==AssetKind.DEBIT_CARD) card.parentId?.let(registry::get) else card ?: account
         if (owner == null) return hold("CONFIRM_OWNERSHIP")
         return if (incoming) BetaAutomaticDecision(type, destination = owner.id,
             income = IncomeAttribution.SALARY.takeIf { type == FinancialType.INCOME }) else BetaAutomaticDecision(type, source = owner.id)

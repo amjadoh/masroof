@@ -118,7 +118,7 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
             "time" to R.string.beta_review_time, "source" to R.string.beta_review_source, "destination" to R.string.beta_review_destination)
         val selectedFinancial = detail.current?.overlay?.let { CorrectionSnapshots.export(it).financial } != null || detail.stored != null
         modes.forEach { (value, label) ->
-            FilterChip(selected = mode == value, onClick = { mode = value; confirmed = false; endpoint = null; decisionId = UUID.randomUUID().toString() },
+            BetaChoice(selected = mode == value, onClick = { mode = value; confirmed = false; endpoint = null; decisionId = UUID.randomUUID().toString() },
                 enabled = !busy && (value in setOf("note", "suppress") || detail.stored?.matchIdentity == null) &&
                     (value !in setOf("time", "source", "destination") || selectedFinancial), label = { Text(stringResource(label)) }, modifier = Modifier.testTag("review-mode-$value"))
         }
@@ -130,15 +130,15 @@ internal fun BetaReviewEditor(detail: BetaReviewDetail, busy: Boolean, failed: B
             "time" -> OutlinedTextField(time, { time = it; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
                 label = { Text(stringResource(R.string.beta_review_time)) }, supportingText = { Text(stringResource(R.string.beta_review_time_help)) }, modifier = Modifier.testTag("review-time"))
             "type" -> FinancialType.entries.filter { it !in setOf(FinancialType.UNKNOWN, FinancialType.ADJUSTMENT, FinancialType.SELF_TRANSFER) }.forEach { value ->
-                FilterChip(selected = type == value.name, onClick = { type = value.name; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
+                BetaChoice(selected = type == value.name, onClick = { type = value.name; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
                     label = { Text(stringResource(financialTypeLabel(value))) }, modifier = Modifier.testTag("review-type-${value.name}"))
             }
             "source", "destination" -> {
-                FilterChip(selected = endpoint == "external", onClick = { endpoint = "external"; confirmed = false; decisionId = UUID.randomUUID().toString() },
+                BetaChoice(selected = endpoint == "external", onClick = { endpoint = "external"; confirmed = false; decisionId = UUID.randomUUID().toString() },
                     enabled = !busy, label = { Text(stringResource(R.string.beta_review_external)) })
                 detail.observation.input.assets.values.forEachIndexed { index, asset ->
                     val id = "${asset.id.bank.value}:${asset.id.localId}"
-                    FilterChip(selected = endpoint == id, onClick = { endpoint = id; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
+                    BetaChoice(selected = endpoint == id, onClick = { endpoint = id; confirmed = false; decisionId = UUID.randomUUID().toString() }, enabled = !busy,
                         label = { Column {
                             Text(stringResource(bankName(asset.id.bank)))
                             Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1))

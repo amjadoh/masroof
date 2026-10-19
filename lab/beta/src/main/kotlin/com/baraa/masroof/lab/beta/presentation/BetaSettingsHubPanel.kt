@@ -32,7 +32,6 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
     var resetConfirmation by rememberSaveable { mutableStateOf(false) }
     BackHandler { if (!busy) { if (resetConfirmation) resetConfirmation = false else if (category == "HUB") onClose() else onCategory("HUB") } }
     Column(Modifier.testTag("beta-settings-panel"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        Text(stringResource(R.string.beta_nav_settings), style = MaterialTheme.typography.headlineSmall)
         if (category == "HUB") MasroofCard(Modifier.testTag("beta-management-settings")) {
             Text(stringResource(R.string.beta_manage_title), style = MaterialTheme.typography.titleMedium)
             val groups = listOf("ACCOUNTS" to R.string.beta_home_accounts, "CARDS" to R.string.beta_home_cards,
@@ -48,15 +47,15 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
         } else if(category=="APP") {
             MasroofCard {
                 Text(stringResource(R.string.beta_parity_theme),style=MaterialTheme.typography.titleMedium)
-                listOf("LIGHT" to R.string.beta_parity_light,"DARK" to R.string.beta_parity_dark,"SYSTEM" to R.string.beta_parity_system).forEach { (value,label) ->
-                    FilterChip(selected=theme==value,enabled=!busy,onClick={onTheme(value)},label={Text(stringResource(label))},modifier=Modifier.testTag("settings-theme-$value"))
-                }
+                val themes=listOf("LIGHT" to R.string.beta_parity_light,"DARK" to R.string.beta_parity_dark,"SYSTEM" to R.string.beta_parity_system)
+                MasroofSheetChoices(themes,themes.filter {it.first==theme}.toSet(),{stringResource(it.second)},
+                    {onTheme(it.first)},{"settings-theme-${it.first}"},enabled=!busy)
             }
             MasroofCard {
                 Text(stringResource(R.string.beta_parity_language),style=MaterialTheme.typography.titleMedium)
-                listOf("ar" to "العربية","en" to "English","SYSTEM" to stringResource(R.string.beta_parity_system)).forEach { (value,label) ->
-                    FilterChip(selected=language==value,enabled=!busy,onClick={onLanguage(value)},label={Text(label)},modifier=Modifier.testTag("settings-language-$value"))
-                }
+                val languages=listOf("ar" to "العربية","en" to "English","SYSTEM" to stringResource(R.string.beta_parity_system))
+                MasroofSheetChoices(languages,languages.filter {it.first==language}.toSet(),{it.second},
+                    {onLanguage(it.first)},{"settings-language-${it.first}"},enabled=!busy)
             }
         } else if (category == "COMMITMENTS") {
             BetaDashboardConfigurationPanel(controls, emptyList(), YearMonth.now(java.time.ZoneId.of("Asia/Riyadh")), !busy,

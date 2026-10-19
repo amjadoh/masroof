@@ -185,7 +185,9 @@ class RoomBetaPersistedFactsTest {
         val unavailable = source().load(query)
         assertFalse(unavailable.coverage.completeFeeFacts)
         assertTrue(unavailable.fees.isEmpty())
-        assertNull(BetaDashboardBuilder.build(unavailable).financialSummary!!.metrics.getValue(SummaryMetric.CREDIT_PURCHASES))
+        val partial=BetaDashboardBuilder.build(unavailable)
+        assertEquals(BigDecimal("86.41"),partial.financialSummary!!.metrics.getValue(SummaryMetric.CREDIT_PURCHASES)!!.amount)
+        assertTrue(DashboardSection.VALUATION in partial.unavailableSections)
     }
 
     @Test fun changedConfirmedMadaCardCannotRetainItsOldRoleAttribution() = runBlocking {

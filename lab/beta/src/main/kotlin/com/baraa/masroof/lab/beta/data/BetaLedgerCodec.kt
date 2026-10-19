@@ -92,14 +92,15 @@ internal object BetaLedgerCodec {
             if (identity != null) {
                 check(identity.environment == command.key.environment && identity.reference.isNotBlank())
                 check(when (identity.kind) {
+                    "BANK_NOTICES" -> identity.issuer != null && identity.reference==command.key.transactionId && observations.size in 1..2
                     "BANK_REFERENCE" -> identity.issuer != null && observations.all {
                         it.reference == ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference)
                     }
                     "USER_PAIR" -> identity.issuer == null
                     else -> false
                 }) { "Invalid Beta transfer proof" }
-                check(observations.size == 2 && observations.map { it.direction }.toSet() == TransferDirection.entries.toSet() &&
-                    observations.map { it.input.key }.distinct().size == 2 && observations.all { it.input.key.environment == command.key.environment })
+                check((if(identity.kind=="BANK_NOTICES") observations.size in 1..2 else observations.size == 2 && observations.map { it.direction }.toSet() == TransferDirection.entries.toSet()) &&
+                    observations.map { it.input.key }.distinct().size == observations.size && observations.all { it.input.key.environment == command.key.environment })
             }
             StoredFinancialPosting(FinancialClassification.Classified(input, type, settlement,
                 Collections.unmodifiableMap(LinkedHashMap(metrics.toMap())), Collections.unmodifiableList(movements)),

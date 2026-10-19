@@ -52,7 +52,9 @@ object FinancialPostingRules {
     fun prepare(transfer: MatchedSelfTransfer): PostingPreparation {
         // Re-run matching at the boundary rather than trust an object after external mutation.
         val proof = transfer.identity.let { identity ->
-            if (identity.kind == "BANK_REFERENCE") {
+            if(identity.kind=="BANK_NOTICES") {
+                TransferMatchProof.BankNotices(transfer.input.key)
+            } else if (identity.kind == "BANK_REFERENCE") {
                 TransferMatchProof.BankReference(ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference))
             } else {
                 val outgoing = transfer.observations.single { it.direction == TransferDirection.OUTBOUND }.input

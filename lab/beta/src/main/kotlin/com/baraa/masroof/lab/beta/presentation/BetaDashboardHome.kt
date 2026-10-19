@@ -152,7 +152,7 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
         onAction = if (enabled) ({ onRoute("TRANSACTIONS") }) else null)
     val rows = BetaDashboardExplorer.transactions(snapshot)
     when {
-        DashboardSection.CURRENT_LEDGER in read.unavailableSections || DashboardSection.RUNTIME_SOURCE in read.unavailableSections ->
+        DashboardSection.RUNTIME_SOURCE in read.unavailableSections ->
             Text(stringResource(R.string.beta_dash_unavailable_help), Modifier.testTag("home-transactions-unavailable"))
         rows.isEmpty() -> {
             Text(stringResource(R.string.beta_home_empty), style = MaterialTheme.typography.bodyMedium,
@@ -271,7 +271,7 @@ private fun HomeGuidanceLabel(label: String, message: String? = null, modifier: 
 @Composable
 private fun HomeUnavailable(title: String, tag: String) {
     DashboardSectionHeading(title, MasroofOutlineIcons.Clock3)
-    Text(stringResource(R.string.beta_dash_unavailable_help), Modifier.testTag(tag), style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.beta_fix_commitments_unknown), Modifier.testTag(tag), style = MaterialTheme.typography.bodySmall)
 }
 
 private fun transactionIcon(type: FinancialType) = when (type) {
