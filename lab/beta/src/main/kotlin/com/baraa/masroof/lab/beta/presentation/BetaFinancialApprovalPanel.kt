@@ -141,7 +141,7 @@ internal fun BetaFinancialApprovalEditor(preview: BetaFinancialApprovalPreview, 
                 BetaChoice(selected == "external", { choose("external"); confirmed = false }, enabled = !busy,
                     label = { Text(stringResource(R.string.beta_review_external)) }, modifier = Modifier.testTag("approval-$prefix-external"))
                 preview.assets.forEachIndexed { index, asset ->
-                    BetaChoice(selected == "asset:${asset.id.localId}", { choose("asset:${asset.id.localId}"); confirmed = false }, enabled = !busy,
+                    BetaChoice(selected == betaAssetChoiceKey(asset.id), { choose(betaAssetChoiceKey(asset.id)); confirmed = false }, enabled = !busy,
                         label = { Column { Text(stringResource(bankName(asset.id.bank)))
                             Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1)) } },
                         modifier = Modifier.testTag("approval-$prefix-$index"))
@@ -165,6 +165,7 @@ internal fun BetaFinancialApprovalEditor(preview: BetaFinancialApprovalPreview, 
 }
 
 internal fun approvalReason(reason: String) = when (reason) {
+    "CONFIRM_LOAN" -> R.string.beta_complete_review_loan_reason
     "CONFIRM_OWNERSHIP", "LINK_DEBIT_ACCOUNT", "CONFIRM_CARD", "CONFIGURE_CARD", "AMBIGUOUS_OWNER", "CONFLICTING_ACCOUNT_LINK" -> R.string.beta_fix_ownership_reason
     "CONFIRM_TRANSFER", "CONFIRM_TRANSFER_OR_TYPE", "AUTOMATIC_POSTING_REVIEW" -> R.string.beta_fix_transfer_reason
     "POSSIBLE_DUPLICATE" -> R.string.beta_fix_duplicate_reason

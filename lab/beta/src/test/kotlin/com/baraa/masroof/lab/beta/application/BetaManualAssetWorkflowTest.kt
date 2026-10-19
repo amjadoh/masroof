@@ -155,20 +155,20 @@ class BetaManualAssetWorkflowTest {
     }
     @Test fun loanConfigurationRestore() {
         BetaContainer.resetOffline(context)
-        val firstDraft = draft("loan-one", AssetKind.LOAN)
+        val firstDraft = draft("loan-one", AssetKind.LOAN).copy(last4="")
         val secondDraft = draft("loan-two", AssetKind.LOAN)
         val originals = BetaContainer(context).use { beta ->
             beta.setBankEnabled(bank, true)
             expectFailure { beta.saveManualAsset(firstDraft.copy(ownedConfirmed = false)) }
             expectFailure { beta.saveManualAsset(firstDraft.copy(parentId = id("account"))) }
             expectFailure { beta.saveManualAsset(firstDraft.copy(role = CreditCardRole.PRIMARY)) }
-            expectFailure { beta.saveManualAsset(firstDraft.copy(last4 = "")) }
             assertTrue(beta.assets().isEmpty())
             val first = beta.saveManualAsset(firstDraft)
+            assertNull(first.last4)
             assertEquals(first, beta.saveManualAsset(firstDraft))
             val second = beta.saveManualAsset(secondDraft)
             assertNotEquals(first.id, second.id)
-            assertEquals(first.last4, second.last4)
+            assertEquals("1234", second.last4)
             assertNull(first.parentId); assertNull(first.creditCardRole)
             beta.backup()
             beta.saveManualAsset(firstDraft.copy(last4 = "5678", editing = true, expectedOriginal = first))

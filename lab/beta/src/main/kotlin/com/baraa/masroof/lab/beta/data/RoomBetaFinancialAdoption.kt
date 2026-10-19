@@ -61,6 +61,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     suspend fun automaticEvidence(id: String) = database.withTransaction { automaticIds(listOf(id)) }
 
     private suspend fun automaticIds(ids: List<String>) {
+        com.baraa.masroof.lab.beta.application.BetaLoanDiscoveryWorkflow(database).synchronize(ids)
         val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         val enabled = database.bankSelectionDao().all().filter { it.state == "ENABLED" }.map { it.bankId }.toSet()
         val ownership = database.ownershipDao().all().associateBy { Triple(it.bankId, it.kind, it.suffix) }
@@ -102,7 +103,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             database.ledgerDao().evidenceOwner(Environment.BETA.name,id)?.let {owner -> dao.transaction(owner)?.status=="ACTIVE"}==true) return
         if (outcome.disposition != EvidenceDisposition.INTERPRETED.name) return
         val raw = evidence.raw(id) ?: return
-        val json = try { BetaCurrentFinancialArchive.read(outcome, raw.body) }
+        val json = try { BetaCurrentFinancialArchive.read(outcome, raw.body,durableReceipt=raw.durableReceiptTime()) }
             catch (_: IllegalArgumentException) { return }
             catch (_: org.json.JSONException) { return }
         if (json.getString("bank") !in enabled) return
@@ -487,8 +488,10 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
 
     private fun rawBank(outcome: BetaEvidenceOutcomeEntity) = JSONObject(outcome.candidateJson).getString("bank")
 
-    private suspend fun currentArchive(outcome: BetaEvidenceOutcomeEntity) = BetaCurrentFinancialArchive.read(
-        outcome, requireNotNull(database.evidenceDao().raw(outcome.rawId)).body)
+    private suspend fun currentArchive(outcome: BetaEvidenceOutcomeEntity): JSONObject {
+        val raw=requireNotNull(database.evidenceDao().raw(outcome.rawId))
+        return BetaCurrentFinancialArchive.read(outcome,raw.body,durableReceipt=raw.durableReceiptTime())
+    }
     private fun JSONObject.text(name: String): String? = if (isNull(name)) null else get(name) as String
     private fun encodeRequest(value: BetaFinancialApproval): String {
         fun asset(id: AssetId?) = id?.let { JSONObject().put("bank", it.bank.value).put("id", it.localId) }

@@ -165,7 +165,7 @@ class BetaDashboardScreenTest {
         }
     }
 
-    @Test fun realRoomReadShowsUnavailableBalanceAndNeverWritesWhenNavigating() {
+    @Test fun realRoomReadShowsConfirmedFlowWithoutInventingAnObservedBalanceOrWritingDuringNavigation() {
         val workflow = workflow()
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded()
@@ -173,7 +173,8 @@ class BetaDashboardScreenTest {
         route("ACCOUNTS")
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-account").performScrollTo().performClick()
         compose.onNodeWithTag("dash-detail-back").assertExists()
-        compose.onAllNodesWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_dash_unavailable)).fetchSemanticsNodes().also { assertTrue(it.isNotEmpty()) }
+        compose.onNodeWithTag("beta-account-detail").assertExists()
+        compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_detail_observed_balance)).assertDoesNotExist()
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         route("CARDS"); compose.onNodeWithTag("dash-empty").assertExists()
         route("LOANS"); compose.onNodeWithTag("dash-empty").assertExists()
@@ -292,14 +293,13 @@ class BetaDashboardScreenTest {
             screenshot("rtl-approved-overview")
             route("CARDS")
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
-            compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-facility").performScrollTo().performClick()
-            compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0) // A purchase does not establish a statement due.
-            compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-facility")
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-card").performScrollTo().performClick()
             compose.onNodeWithText(MasroofMoneyDisplay.format(BigDecimal("16958.89"), "SAR", "ar")).assertExists()
             compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
             compose.onAllNodesWithText(MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", "ar")).assertCountEquals(0)
             compose.onNodeWithTag("dash-detail-back").performScrollTo(); screenshot("rtl-approved-card")
+            compose.onNodeWithTag("dash-month").assertDoesNotExist()
+            compose.onNodeWithTag("dash-detail-back").performClick()
             compose.onNodeWithTag("dash-month-previous").performScrollTo().performClick(); waitLoaded()
             compose.onNodeWithTag("dash-month-next").performScrollTo().performClick(); waitLoaded()
             assertEquals(original, beta.financialPosting(key)); assertEquals(history, beta.financialHistory(key))
@@ -307,7 +307,7 @@ class BetaDashboardScreenTest {
         }
     }
 
-    @Test fun authoritativeFacilityDueIsDisplayedOnlyOnFacilityDetails() {
+    @Test fun authoritativeFacilityDueIsDisplayedOnPrimaryAndNeverSupplementary() {
         val facilityId = AssetId(Environment.BETA, bank, "statement-facility")
         fun card(id: String, last4: String, role: CreditCardRole) = CreditCardSummary(
             AssetId(Environment.BETA, bank, id), role, null, last4, null, null, null, null, null)
@@ -327,16 +327,10 @@ class BetaDashboardScreenTest {
         waitLoaded(); route("CARDS")
         val due = MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())
         compose.onAllNodesWithText(due).assertCountEquals(1)
-        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
-        compose.onAllNodesWithText(due).assertCountEquals(1)
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-primary").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
-        compose.onAllNodesWithText(due).assertCountEquals(0)
+        compose.onAllNodesWithText(due).assertCountEquals(1) // The primary displays the single shared facility due.
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
-        compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-supplementary").performScrollTo().performClick()
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
         compose.onAllNodesWithText(due).assertCountEquals(0)
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
         route("LOANS")

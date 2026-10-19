@@ -23,6 +23,59 @@ class BetaKnownMessageJourneyChecks(private val context: Context): AutoCloseable
     override fun close() {beta.close();BetaContainer.resetOffline(context)}
     private fun capture(id: String,body: String): String=(beta.importEvidence(EvidenceRequest("journey-$id",EvidenceOrigin.EXPLICIT_SAMPLE),listOf(EvidenceMessage(id,"AlJazira",body,at,ReceiptTimeSource.USER_SUPPLIED))).single() as EvidenceResult.Stored).summary.id
     private fun key(id: String)=PostingKey(Environment.BETA,"evidence:$id")
+    fun aSavedMineDecisionIsReusedWhenALaterMessageProvesCardKind() {
+        capture("unknown-kind", "POS Purchase\nCard: 4521\nAt: TEST STORE\nAmount: 10 SAR\nDate: 2026-10-18 10:00")
+        beta.decideOwnership(beta.ownershipSnapshot().candidates.single(),true)
+        assertNull(beta.ownershipSnapshot().candidates.single().asset)
+        capture("known-kind", "POS Purchase\nCard: 4521\nAt: TEST STORE\nAmount: 11 SAR\nAvailable balance: 200 SAR\nDate: 2026-10-18 11:00")
+        beta.processAutomaticEvidence()
+        val candidate=beta.ownershipSnapshot().candidates.single()
+        assertEquals(com.baraa.masroof.lab.beta.application.BetaOwnershipStatus.OWNED,candidate.status)
+        val card=requireNotNull(candidate.asset)
+        assertEquals(AssetKind.CREDIT_CARD,card.kind)
+        beta.saveManualAsset(com.baraa.masroof.lab.beta.application.ManualAssetDraft(card.id,card.kind,card.last4.orEmpty(),
+            AssetId(Environment.BETA,bank,"new-facility"),CreditCardRole.PRIMARY,true,true,card,true))
+        beta.processAutomaticEvidence()
+        assertEquals(2,beta.dashboard(query).snapshot.transactions.size)
+        assertTrue(beta.reviewInboxPage().rows.isEmpty())
+    }
+    fun repeatedOwnershipReviewsAreGroupedAndOneConfirmationPostsAllMessages() {
+        repeat(205) { capture("same-account-$it", "Cash withdrawal\nFrom account: 1234\nAmount: ${it+1} SAR\nDate: 2026-10-18 12:00") }
+        beta.processAutomaticEvidence()
+        assertEquals(1,beta.reviewInboxPage().rows.size)
+        assertEquals(1,beta.evidenceInboxCounts().needsReview)
+        assertNull(beta.reviewInboxPage().next)
+        val candidates=beta.ownershipSnapshot().candidates
+        assertEquals(1,candidates.size)
+        beta.decideOwnership(candidates.single(),true)
+        beta.processAutomaticEvidence()
+        assertEquals(205,beta.dashboard(query).snapshot.transactions.size)
+        assertTrue(beta.reviewInboxPage().rows.isEmpty())
+        assertEquals(0,beta.evidenceInboxCounts().needsReview)
+    }
+    fun transactionClassificationAndIgnoredRestoreKeepOneLedgerRowAndCorrectDirection() {
+        beta.registerAsset(account("1234"))
+        val id=capture("correction", "Cash withdrawal\nFrom account: 1234\nAmount: 42 SAR\nDate: 2026-10-18 12:00")
+        beta.processAutomaticEvidence()
+        val token=requireNotNull(beta.transactionActionDetail(key(id).transactionId)).token
+        assertTrue(beta.reclassifyTransaction(token,"refund",FinancialType.REFUND))
+        assertTrue(beta.reclassifyTransaction(token,"refund-again",FinancialType.REFUND))
+        assertFalse(beta.reclassifyTransaction(token,"stale",FinancialType.INCOME))
+        assertEquals(FinancialType.REFUND,beta.financialPosting(key(id))!!.command.type)
+        assertEquals("42",beta.dashboard(query).snapshot.accounts.single().flow!!.totalIn.amount.stripTrailingZeros().toPlainString())
+        val current=requireNotNull(beta.transactionActionDetail(key(id).transactionId)).token
+        val result=beta.saveReview(current,"ignore",com.baraa.masroof.lab.finance.corrections.FinancialDecision.SuppressAsNonFinancial)
+        assertTrue(result is com.baraa.masroof.lab.beta.application.corrections.BetaCorrectionResult.Applied)
+        assertTrue(beta.dashboard(query).snapshot.transactions.isEmpty())
+        assertTrue(beta.reviewInboxPage().rows.isEmpty())
+        assertEquals(id,beta.reviewInboxPage(ignored=true).rows.single().id)
+        beta.resolveReviewAsNonFinancial(id,restore=true)
+        assertEquals(FinancialType.REFUND,beta.financialPosting(key(id))!!.command.type)
+        assertEquals(1,beta.dashboard(query).snapshot.transactions.size)
+        assertTrue(beta.reviewInboxPage(ignored=true).rows.isEmpty())
+        beta.processAutomaticEvidence()
+        assertEquals(FinancialType.REFUND,beta.financialPosting(key(id))!!.command.type)
+    }
     fun capturedUnprocessedEvidenceIsOperationalWorkRatherThanHumanReview() {
         val id=requireNotNull(beta.captureLive(EvidenceMessage("technical-pending","AlJazira","شراء عبر نقاط البيع\nبطاقة: 1234\nمبلغ: SAR 25\nلدى: STORE",at,ReceiptTimeSource.USER_SUPPLIED)))
         assertEquals(1,beta.evidenceInboxCounts().processing)
@@ -30,6 +83,46 @@ class BetaKnownMessageJourneyChecks(private val context: Context): AutoCloseable
         assertTrue(beta.reviewInboxPage().rows.isEmpty())
         assertEquals(1,beta.reviewInboxPage().processing)
         assertNotNull(beta.evidenceSummary(id))
+    }
+    fun knownLoanInstallmentsCreateOneOwnedLoanPerBankAndType() {
+        beta.registerAsset(account("3001"))
+        val ids=listOf("شخصي","سيارة","عقاري").mapIndexed {index,label ->
+            capture("loan-$index","خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 3,036.11\nالمبلغ المتبقي: SAR 33,397.25\nلـ: تمويل $label\nفي: 2026-10-18 01:10")
+        }
+        beta.processAutomaticEvidence()
+        assertEquals(3,beta.assets().count {it.kind==AssetKind.LOAN})
+        ids.forEach {assertEquals(FinancialType.LOAN_REPAYMENT,beta.financialPosting(key(it))?.classification?.effectiveType)}
+        assertTrue(beta.reviewInboxPage().rows.isEmpty())
+        val snapshot=beta.dashboard(query).snapshot
+        assertEquals(setOf("PERSONAL","AUTO","MORTGAGE"),snapshot.loans.map {it.type}.toSet())
+        assertTrue(snapshot.loans.all {it.remaining?.amount?.compareTo(java.math.BigDecimal("33397.25"))==0})
+        beta.processAutomaticEvidence();beta.close();beta=BetaContainer(context);beta.processAutomaticEvidence()
+        assertEquals(3,beta.assets().count {it.kind==AssetKind.LOAN})
+        assertEquals(3,beta.dashboard(query).snapshot.transactions.size)
+    }
+    fun loansNeedOwnedSourceAndAnUnambiguousType() {
+        capture("unowned-loan","خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 20\nلـ: تمويل شخصي\nفي: 2026-10-18 01:10")
+        beta.processAutomaticEvidence()
+        assertTrue(beta.assets().none {it.kind==AssetKind.LOAN})
+        beta.registerAsset(account("3001"))
+        val unknown=capture("unknown-loan","خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 21\nلـ: تمويل\nفي: 2026-10-18 02:10")
+        beta.processAutomaticEvidence()
+        assertNull(beta.financialPosting(key(unknown)))
+        assertEquals("CONFIRM_LOAN",beta.evidenceSummary(unknown).financialReviewReason)
+    }
+    fun durableSmsReceiptIsUsedOnlyWhenBankTimeIsAbsent() {
+        beta.registerAsset(account("1234"))
+        val body="Cash withdrawal\nFrom account: 1234\nAmount: 23 SAR"
+        val manual=capture("manual-no-time",body)
+        assertEquals(EvidenceDisposition.REVIEW,beta.evidenceSummary(manual).disposition)
+        val result=beta.importEvidence(EvidenceRequest("durable-time",EvidenceOrigin.EXPLICIT_HISTORY,setOf(bank)),
+            listOf(EvidenceMessage("receipt-no-time","AlJazira",body,at.plusSeconds(600),ReceiptTimeSource.PROVIDER_TIMESTAMP)))
+        val id=(result.single() as EvidenceResult.Stored).summary.id
+        beta.processAutomaticEvidence()
+        // The sample is deliberately retained; an identical body at another time is a separate receipt.
+        assertEquals(at.plusSeconds(600),beta.financialPosting(key(id))?.command?.time?.instant)
+        assertEquals(EvidenceDisposition.INTERPRETED,beta.evidenceSummary(id).disposition)
+        assertNull(beta.financialPosting(key(manual)))
     }
     fun clearExternalTransfersAndSalaryReachAccountAndDashboardWithoutApproval() {
         beta.registerAsset(account("1234"))

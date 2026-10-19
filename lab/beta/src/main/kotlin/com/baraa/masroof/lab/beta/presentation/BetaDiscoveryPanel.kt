@@ -88,7 +88,7 @@ internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsse
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OwnershipCandidateCard(candidate: BetaOwnershipCandidate, busy: Boolean,
+internal fun OwnershipCandidateCard(candidate: BetaOwnershipCandidate, busy: Boolean,
     onDecide: (Boolean?, AssetId?) -> Unit, onConfigure: () -> Unit) {
     val ref = candidate.reference
     val tag = "ownership-${ref.bank.value}-${ref.kind}-${ref.suffix}"

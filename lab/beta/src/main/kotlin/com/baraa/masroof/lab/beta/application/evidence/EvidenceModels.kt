@@ -35,7 +35,9 @@ data class EvidenceMessage(val providerId: String, val sender: String, val body:
 
 data class CapturedEvidence(val id: String, val request: EvidenceRequest, val message: EvidenceMessage,
     val capturedAt: Instant, val route: EvidenceRoute, val selections: List<UserBankSelection>) {
-    fun input() = MessageInput(id, message.sender, message.body, message.receivedAt)
+    fun input() = MessageInput(id, message.sender, message.body, message.receivedAt,
+        request.origin in setOf(EvidenceOrigin.LIVE,EvidenceOrigin.EXPLICIT_HISTORY) &&
+            message.timeSource in setOf(ReceiptTimeSource.PROVIDER_TIMESTAMP,ReceiptTimeSource.SERVICE_CENTER_TIMESTAMP,ReceiptTimeSource.DEVICE_FALLBACK))
     override fun toString() = "CapturedEvidence(redacted)"
 }
 

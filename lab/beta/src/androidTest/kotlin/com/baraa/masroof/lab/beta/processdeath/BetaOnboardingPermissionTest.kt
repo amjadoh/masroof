@@ -111,7 +111,9 @@ class BetaOnboardingPermissionTest {
                 }
             }
             awaitEnabled("beta-tools")
-            compose.onNodeWithTag("beta-tools").performClick()
+            compose.onNode(hasText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_nav_settings)) and hasAnyAncestor(hasTestTag("beta-bottom-navigation"))).performClick()
+            clickWhenReady("manage-ABOUT")
+            clickWhenReady("settings-developer-tools")
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("beta-history").assertIsEnabled(); true }.getOrDefault(false) }
             compose.onNodeWithTag("beta-badge").assertExists()
             awaitEnabled("beta-history")

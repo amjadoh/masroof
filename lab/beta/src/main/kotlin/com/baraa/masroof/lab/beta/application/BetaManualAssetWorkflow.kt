@@ -30,7 +30,7 @@ class BetaManualAssetWorkflow(private val store: ManualAssetStore) {
         val suffix = requireNotNull(normalizeManualAssetSuffix(draft.last4.trim())) {
             "Enter at most four decimal digits"
         }.takeIf { it.isNotEmpty() }
-        require(draft.kind == AssetKind.CREDIT_FACILITY || suffix != null) { "Last four digits are required" }
+        require(draft.kind in setOf(AssetKind.CREDIT_FACILITY,AssetKind.LOAN) || suffix != null) { "Last four digits are required" }
         require(draft.kind != AssetKind.CREDIT_CARD || draft.role != null) {
             "A credit card needs its facility and role"
         }
