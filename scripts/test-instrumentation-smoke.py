@@ -36,8 +36,8 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
         self.environment = dict(os.environ, ANDROID_SDK_ROOT="/synthetic/sdk",
                                 PATH=str(tools) + os.pathsep + os.environ["PATH"])
 
-    def run_suite(self, suite, **environment):
-        return subprocess.run(["bash", str(WRAPPER), suite], cwd=self.work,
+    def run_suite(self, suite, *arguments, **environment):
+        return subprocess.run(["bash", str(WRAPPER), suite, *arguments], cwd=self.work,
                               env=dict(self.environment, **environment),
                               text=True, capture_output=True, timeout=10)
 
@@ -81,20 +81,51 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
         self.assertFalse((self.work / "gradle-args.json").exists())
         self.assertFalse((self.work / "adb-calls.jsonl").exists())
 
-    def test_workflow_keeps_each_suite_once_and_builds_before_boot(self):
+    def test_each_app_shard_passes_both_runner_arguments(self):
+        for shard in ("0", "1"):
+            with self.subTest(shard=shard):
+                result = self.run_suite("app", shard, "2", TEST_SCREENSHOT="0")
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual([
+                    ":app:connectedDebugAndroidTest",
+                    "-Pandroid.testInstrumentationRunnerArguments.numShards=2",
+                    f"-Pandroid.testInstrumentationRunnerArguments.shardIndex={shard}",
+                    "--no-parallel", "--stacktrace"], self.gradle_args())
+
+    def test_invalid_shards_cannot_start_tools(self):
+        for suite, args in (("app", ("2", "2")), ("app", ("0",)),
+                            ("app", ("0", "0")), ("beta", ("0", "2"))):
+            self.assertEqual(2, self.run_suite(suite, *args).returncode)
+        self.assertFalse((self.work / "gradle-args.json").exists())
+
+    def test_shard_failure_is_preserved(self):
+        self.assertEqual(17, self.run_suite("app", "1", "2",
+                         TEST_GRADLE_STATUS="17").returncode)
+        self.assertEqual(1, len(self.captures()))
+
+    def test_workflow_keeps_complete_coverage_and_clean_devices(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertEqual(1, workflow.count("run-instrumentation-smoke.sh app"))
         self.assertEqual(1, workflow.count("run-instrumentation-smoke.sh beta"))
-        self.assertEqual(2, workflow.count("profile: pixel_2"))
-        smoke = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-lifecycle:", 1)[0]
+        self.assertEqual(3, workflow.count("profile: pixel_2"))
+        app = workflow.split("  emulator-app:", 1)[1].split("  emulator-smoke:", 1)[0]
+        beta = workflow.split("  emulator-beta:", 1)[1].split("  emulator-lifecycle:", 1)[0]
         lifecycle = workflow.split("  emulator-lifecycle:", 1)[1]
-        for job in (smoke, lifecycle):
+        self.assertIn("shard: [0, 1]", app)
+        self.assertIn("fail-fast: false", app)
+        for job in (app, beta, lifecycle):
             self.assertLess(job.index("- name: Assemble"), job.index("uses: reactivecircus/android-emulator-runner"))
-        self.assertNotIn("run-instrumentation-smoke.sh beta", smoke)
-        self.assertLess(lifecycle.index("run-instrumentation-smoke.sh beta"), lifecycle.index("bash scripts/beta-process-death.sh"))
-        self.assertIn("bash scripts/m13-process-death.sh", lifecycle)
-        self.assertIn("bash scripts/beta-apk-upgrade.sh", lifecycle)
-        self.assertIn("name: beta-instrumentation-reports", lifecycle)
+            self.assertIn("/system-images/android-", job)
+            self.assertIn("-no-snapshot", job)
+        self.assertNotIn("run-instrumentation-smoke.sh beta", lifecycle)
+        for script in ("beta-process-death", "m13-process-death", "beta-apk-upgrade"):
+            self.assertEqual(1, workflow.count(f"bash scripts/{script}.sh"))
+        self.assertIn("name: beta-instrumentation-reports", beta)
+        self.assertIn("name: instrumentation-reports-${{ matrix.shard }}", app)
+        gate = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-beta:", 1)[0]
+        self.assertIn("if: always()", gate)
+        self.assertIn('test "$SHARDS_RESULT" = success', gate)
+        self.assertIn("find m19-statement-screenshots", gate)
 
 
 if __name__ == "__main__":
