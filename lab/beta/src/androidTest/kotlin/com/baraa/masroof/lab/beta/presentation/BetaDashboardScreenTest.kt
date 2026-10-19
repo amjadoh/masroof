@@ -74,7 +74,7 @@ class BetaDashboardScreenTest {
             if (fail?.get() == true) error("synthetic read error")
             BetaDashboardProducer(RoomBetaDashboardSource(db, periods, clock = clock)).readWithCoverage(query)
         }
-    }, clock)
+    }, clock,periodStartDay=1)
     private fun waitLoaded(expectedMonth: String? = null) {
         compose.waitUntil(15000) {
             compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
@@ -230,7 +230,7 @@ class BetaDashboardScreenTest {
         state.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded(); route("ACCOUNTS")
         compose.onNodeWithTag("dash-asset-SYNTHETIC_OTHER_BANK-synthetic-account").performScrollTo().performClick()
-        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_asset WHERE bankId='SYNTHETIC_OTHER_BANK'")
+        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_account_registry WHERE bankId='SYNTHETIC_OTHER_BANK'")
         state.emulateSavedInstanceStateRestore(); waitLoaded()
         compose.onNodeWithTag("dash-missing").assertExists()
         compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
@@ -268,7 +268,7 @@ class BetaDashboardScreenTest {
             val original = checkNotNull(beta.financialPosting(key))
             val history = beta.financialHistory(key)
             assertEquals(AppliedFx(BigDecimal("3.756957"), "SMS"), original.command.appliedFx)
-            val workflow = BetaDashboardWorkflow({ query, periods -> withContext(BetaIo.dispatcher) { beta.dashboard(query, periods) } }, clock)
+            val workflow = BetaDashboardWorkflow({ query, periods -> withContext(BetaIo.dispatcher) { beta.dashboard(query, periods) } }, clock,periodStartDay=1)
             val query = workflow.query(workflow.currentMonth())
             val facts = beta.dashboard(query).snapshot.transactions.single()
             assertEquals(BigDecimal("86.41"), facts.sarEquivalent!!.amount) // Original fee-free equivalent, not spending.
@@ -316,7 +316,7 @@ class BetaDashboardScreenTest {
         // An authoritative read-contract fixture tests rendering; actual statement authority is the producer's responsibility.
         val workflow = BetaDashboardWorkflow({ query, _ -> DashboardProduction(
             DashboardSnapshot(query, emptyList(), emptyList(), listOf(facility), loans = listOf(loan), commitments = commitments), emptySet(), null)
-        }, clock)
+        }, clock,periodStartDay=1)
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded(); route("CARDS")
         val due = MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())
@@ -351,7 +351,7 @@ class BetaDashboardScreenTest {
                 DashboardSnapshot(query, emptyList(), emptyList(), emptyList(), commitments = CommitmentsSummary(Currency.SAR, emptyList(), null, null, null),
                     analysis = AnalysisSummary(Currency.SAR, SummaryMetric.entries.associateWith { null }, 0, 0, 0, listOf(trend), emptyList())),
                 setOf(DashboardSection.CONFIRMED_REGISTRY, DashboardSection.COMMITMENTS, DashboardSection.TRENDS, DashboardSection.MERCHANT_TOTALS), null)
-        }, clock)
+        }, clock,periodStartDay=1)
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded()
         listOf("ACCOUNTS", "CARDS", "LOANS", "COMMITMENTS").forEach { section ->

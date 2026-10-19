@@ -9,8 +9,7 @@ import androidx.room.PrimaryKey
  * Full RawEvidence and finance tables arrive with later Beta foundation work.
  * This marker is not a production ledger row.
  */
-@Entity(tableName = "beta_shell_marker")
 data class BetaShellMarkerEntity(
-    @PrimaryKey val id: String,
+    val id: String,
     val note: String,
 )

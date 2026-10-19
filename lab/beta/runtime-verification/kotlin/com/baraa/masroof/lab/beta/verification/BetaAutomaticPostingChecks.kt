@@ -114,7 +114,7 @@ object BetaAutomaticPostingChecks {
         val id = capture(beta)
         val db = Room.databaseBuilder(context, BetaDatabase::class.java, BetaDatabase.NAME).build()
         try {
-            db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_auto BEFORE INSERT ON beta_ledger_current BEGIN SELECT RAISE(ABORT,'synthetic'); END")
+            db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_auto BEFORE INSERT ON beta_financial_transaction BEGIN SELECT RAISE(ABORT,'synthetic'); END")
             assertThrows(Exception::class.java) { beta.processAutomaticEvidence() }
             assertNull(beta.financialPosting(key(id)))
             assertTrue(beta.financialHistory(key(id)).isEmpty())

@@ -81,10 +81,10 @@ class BetaBackupRecoveryTest {
 
     @Test fun badJournalFailsClosed() {
         BetaContainer(context).use { it.putMarker("keep", "synthetic") }
-        File(context.filesDir, "beta_recovery_v1/restore_journal").writeText("broken")
+        File(context.filesDir, "beta_recovery_v2/restore_journal").writeText("broken")
         assertThrows(Exception::class.java) { BetaContainer(context) }
         assertTrue(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).isFile)
-        File(context.filesDir, "beta_recovery_v1/restore_journal").delete()
+        File(context.filesDir, "beta_recovery_v2/restore_journal").delete()
         BetaContainer(context).use { assertEquals(1, it.markerCount()) }
     }
 
@@ -92,7 +92,7 @@ class BetaBackupRecoveryTest {
         seedOriginalAndBackup()
         val file = BetaBackupRecovery(context).backupFile()
         android.database.sqlite.SQLiteDatabase.openDatabase(file.absolutePath, null, 0).use { db ->
-            db.execSQL("DROP TABLE beta_shell_marker")
+            db.execSQL("DROP TABLE beta_audit_log")
         }
         val manifest = File(file.parentFile, "manifest.json")
         val metadata = org.json.JSONObject(manifest.readText())
@@ -107,7 +107,7 @@ class BetaBackupRecoveryTest {
         assertThrows(SimulatedDeath::class.java) {
             BetaBackupRecovery(context) { if (it == BetaBackupRecovery.Stage.RESTORE_VALIDATED) throw SimulatedDeath() }.restore()
         }
-        val root = File(context.filesDir, "beta_recovery_v1")
+        val root = File(context.filesDir, "beta_recovery_v2")
         assertTrue(root.listFiles()!!.any { it.isDirectory && it.name.startsWith("restore-") })
         val installation = File(context.getDatabasePath(BetaEnvironment.DATABASE_NAME).parentFile, "masroof_beta_restore_install.tmp")
         installation.writeText("synthetic interrupted database copy")

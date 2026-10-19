@@ -72,7 +72,7 @@ class BetaDashboardExplorationActivityTest {
     private fun closed() { val latch = CountDownLatch(1); BetaIo.execute { latch.countDown() }; assertTrue(latch.await(15, TimeUnit.SECONDS)) }
     private fun screenshot(name: String, assertChrome: Boolean = true) {
         compose.waitForIdle()
-        if (assertChrome) { compose.onNodeWithTag("beta-badge").assertIsDisplayed(); compose.onNodeWithTag("beta-return").assertIsDisplayed() }
+        if (assertChrome) { compose.onNodeWithTag("beta-badge").assertIsDisplayed(); compose.onNodeWithTag("beta-bottom-navigation").assertIsDisplayed() }
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun command(value: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(value)).use { it.readBytes() }
         command("mkdir -p /sdcard/beta-dashboard-screenshots")

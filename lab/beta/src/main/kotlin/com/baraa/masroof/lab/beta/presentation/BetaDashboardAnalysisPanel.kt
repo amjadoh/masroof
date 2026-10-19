@@ -184,6 +184,7 @@ internal fun BetaDashboardTransactionDetail(snapshot: DashboardSnapshot, transac
         put(row.facilityId, stringResource(R.string.beta_controls_facility_number, index + 1))
         row.cards.forEachIndexed { cardIndex, card -> put(card.cardId, (card.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_dash_card_number, cardIndex + 1)) + " · " + card.last4.orEmpty()) }
     }
+    snapshot.standaloneCreditCards.forEach { card -> put(card.cardId,(card.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_credit))+" · "+card.last4.orEmpty()) }
     snapshot.loans.forEach { put(it.id, it.label.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_loan)) }
 }
 

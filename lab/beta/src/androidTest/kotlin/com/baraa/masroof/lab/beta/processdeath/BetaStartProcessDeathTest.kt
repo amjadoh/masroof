@@ -34,17 +34,17 @@ class BetaStartProcessDeathTest {
     }
     @Test fun resumeAndAcknowledge() {
         resumed()
-        BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); it.beginOnboarding(); assertEquals(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.BANK, it.onboardingStep()); it.putMarker("synthetic-new", "retain") }
+        BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); it.beginOnboarding(); assertEquals(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.PERMISSION, it.onboardingStep()); it.putMarker("synthetic-new", "retain") }
         mark()
     }
     @Test fun resumeAcknowledged() {
         resumed()
         BetaContainer(context).use {
             assertEquals(BetaStartState.READY, it.startState()); assertEquals(1, it.markerCount())
-            assertEquals(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.BANK, it.onboardingStep())
+            assertEquals(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.PERMISSION, it.onboardingStep())
             assertThrows(IllegalStateException::class.java) { it.startFresh() }
             assertTrue(it.assets().isEmpty()); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession())
-            assertTrue(it.bankChoices().all { choice -> choice.state == null })
+            assertTrue(it.bankChoices().all { choice -> choice.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED })
         }
     }
 }

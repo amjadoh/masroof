@@ -27,7 +27,8 @@ import java.time.YearMonth
 internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit,
     banks: List<BetaBankChoice>, assets: List<OwnedAsset>, controls: BetaDashboardControls, busy: Boolean,
     onBankEnabled: (BankId, Boolean) -> Unit, onAdd: (BankId, AssetKind) -> Unit, onEdit: (OwnedAsset) -> Unit,
-    onBusyChanged: (Boolean) -> Unit, onClose: () -> Unit, onSetup: () -> Unit = {}, onReset: () -> Unit = {}) {
+    onBusyChanged: (Boolean) -> Unit, onClose: () -> Unit,
+    theme: String = "SYSTEM", language: String = "SYSTEM", cardTasks: List<BetaCardSetupTask> = emptyList(), metadata: Map<AssetId,BetaAssetMetadata> = emptyMap(), onConfigureTask: (BetaCardSetupTask) -> Unit = {}, onTheme: (String) -> Unit = {}, onLanguage: (String) -> Unit = {}, onData: () -> Unit = {}, onSetup: () -> Unit = {}, onReset: () -> Unit = {}) {
     var resetConfirmation by rememberSaveable { mutableStateOf(false) }
     BackHandler { if (!busy) { if (resetConfirmation) resetConfirmation = false else if (category == "HUB") onClose() else onCategory("HUB") } }
     Column(Modifier.testTag("beta-settings-panel"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
@@ -41,6 +42,21 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
                     "ACCOUNTS" -> MasroofOutlineIcons.Landmark; "CARDS" -> MasroofOutlineIcons.CreditCard
                     "LOANS" -> MasroofOutlineIcons.HandCoins; else -> MasroofOutlineIcons.CalendarCheck
                 }, enabled = !busy, onClick = { onCategory(key) }, modifier = Modifier.testTag("manage-$key"), divider = index != groups.lastIndex)
+            }
+            BetaManagementRow(stringResource(R.string.beta_parity_app_settings),"",MasroofOutlineIcons.Settings,!busy,{onCategory("APP")},modifier=Modifier.testTag("manage-APP"))
+            BetaManagementRow(stringResource(R.string.beta_parity_data_settings),"",MasroofOutlineIcons.DatabaseBackup,!busy,onData,modifier=Modifier.testTag("manage-DATA"),divider=false)
+        } else if(category=="APP") {
+            MasroofCard {
+                Text(stringResource(R.string.beta_parity_theme),style=MaterialTheme.typography.titleMedium)
+                listOf("LIGHT" to R.string.beta_parity_light,"DARK" to R.string.beta_parity_dark,"SYSTEM" to R.string.beta_parity_system).forEach { (value,label) ->
+                    FilterChip(selected=theme==value,enabled=!busy,onClick={onTheme(value)},label={Text(stringResource(label))},modifier=Modifier.testTag("settings-theme-$value"))
+                }
+            }
+            MasroofCard {
+                Text(stringResource(R.string.beta_parity_language),style=MaterialTheme.typography.titleMedium)
+                listOf("ar" to "العربية","en" to "English","SYSTEM" to stringResource(R.string.beta_parity_system)).forEach { (value,label) ->
+                    FilterChip(selected=language==value,enabled=!busy,onClick={onLanguage(value)},label={Text(label)},modifier=Modifier.testTag("settings-language-$value"))
+                }
             }
         } else if (category == "COMMITMENTS") {
             BetaDashboardConfigurationPanel(controls, emptyList(), YearMonth.now(java.time.ZoneId.of("Asia/Riyadh")), !busy,
@@ -61,12 +77,15 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
                                 modifier = Modifier.testTag("manage-bank-${bank.bankId.value}"))
                         }
                     }
+                    if(category=="CARDS") cardTasks.filter { it.bank==bank.bankId && it.assetId==null }.forEach { task ->
+                        BetaManagementRow("•• "+task.suffix,stringResource(R.string.beta_parity_card_missing),MasroofOutlineIcons.CreditCard,!busy,{onConfigureTask(task)},modifier=Modifier.testTag("configure-card-${task.suffix}"))
+                    }
                     assets.filter { it.id.bank == bank.bankId && it.kind in kinds }.forEach { asset ->
-                        BetaManagementRow(stringResource(assetKindLabel(asset.kind)), asset.last4?.let { "•• $it" }.orEmpty(), MasroofOutlineIcons.Wallet,
+                        BetaManagementRow(metadata[asset.id]?.displayName ?: stringResource(assetKindLabel(asset.kind)), asset.last4?.let { "•• $it" }.orEmpty(), MasroofOutlineIcons.Wallet,
                             enabled = !busy, onClick = { onEdit(asset) }, modifier = Modifier.testTag("manage-asset-${asset.id.bank.value}-${asset.id.localId}"))
                     }
                     OutlinedButton(enabled = !busy && bank.state == BankSelectionState.ENABLED, onClick = {
-                        onAdd(bank.bankId, when (category) { "ACCOUNTS" -> AssetKind.ACCOUNT; "LOANS" -> AssetKind.LOAN; else -> AssetKind.CREDIT_FACILITY })
+                        onAdd(bank.bankId, when (category) { "ACCOUNTS" -> AssetKind.ACCOUNT; "LOANS" -> AssetKind.LOAN; else -> AssetKind.CREDIT_CARD })
                     }, modifier = Modifier.fillMaxWidth().testTag("manage-add-${bank.bankId.value}")) { Text(stringResource(R.string.beta_asset_add)) }
                 }
             }

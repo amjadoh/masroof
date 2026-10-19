@@ -73,7 +73,7 @@ class BetaAssetDiscoveryStorageTest {
         BetaContainer.resetOffline(context)
     }
     private fun aliases(): List<Pair<String, String>> = withDatabase { db ->
-        db.openHelper.readableDatabase.query("SELECT value,evidenceId FROM beta_asset_alias ORDER BY evidenceId").use { cursor ->
+        db.openHelper.readableDatabase.query("SELECT aliasValue,evidenceId FROM beta_audit_log a WHERE eventKind='ASSET_ALIAS' AND NOT EXISTS(SELECT 1 FROM beta_audit_log removed WHERE removed.eventKind='ALIAS_REMOVED' AND removed.relatedId=a.id) ORDER BY evidenceId").use { cursor ->
             buildList<Pair<String, String>> { while (cursor.moveToNext()) add(cursor.getString(0) to cursor.getString(1)) }
         }
     }

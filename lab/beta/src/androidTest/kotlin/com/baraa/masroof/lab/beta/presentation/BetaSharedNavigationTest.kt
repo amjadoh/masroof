@@ -41,7 +41,7 @@ class BetaSharedNavigationTest {
                 tab(R.string.beta_nav_settings).performClick(); await("beta-settings-panel")
                 compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick(); await("beta-bottom-navigation")
                 compose.onNodeWithTag("beta-badge").assertIsDisplayed()
-                compose.onNodeWithTag("beta-return").performClick()
+                scenario.onActivity {it.onBackPressedDispatcher.onBackPressed()}
             }
             drain()
             BetaContainer(context).use { assertEquals(1, it.markerCount()); assertEquals(com.baraa.masroof.lab.beta.application.BetaStartState.READY, it.startState()) }

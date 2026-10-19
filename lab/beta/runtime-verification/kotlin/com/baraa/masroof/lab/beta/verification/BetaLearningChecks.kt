@@ -36,7 +36,7 @@ object BetaLearningChecks {
     private fun authority(context: Context, id: String) = database(context) { db -> runBlocking {
         val raw = requireNotNull(db.evidenceDao().raw(id))
         val outcome = requireNotNull(db.evidenceDao().outcome(id))
-        val count = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_ledger_current").use {
+        val count = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_financial_transaction").use {
             assertTrue(it.moveToFirst()); it.getInt(0)
         }
         Triple(raw, outcome, count)
