@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.lab.beta.BetaContainer
 import com.baraa.masroof.lab.beta.application.ManualAssetDraft
@@ -41,6 +42,14 @@ class BetaManualAssetScreenTest {
             }
         }
     }
+    private fun confirmOwnership() {
+        // Real IME animations are outside Compose's idle clock. Finish text entry
+        // before scrolling/clicking so a changing keyboard inset cannot move the target.
+        closeSoftKeyboard()
+        compose.onNodeWithTag("asset-owned-confirm").performScrollTo()
+            .assertIsDisplayed().performClick().assertIsOn()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsEnabled()
+    }
     @Test fun cancelAndBackDiscardUnconfirmedDraftWithoutWrites() {
         var canceled = 0
         showEditor(onCancel = { canceled++ })
@@ -55,9 +64,9 @@ class BetaManualAssetScreenTest {
         var saved = false
         showEditor(onSaved = { saved = true })
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("١٢٣٤")
-        compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
+        confirmOwnership()
         compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
-        assertTrue(saved)
+        compose.runOnIdle { assertTrue(saved) }
         val original = beta.assets().single()
         beta.close()
         beta = BetaContainer(context)
@@ -77,11 +86,12 @@ class BetaManualAssetScreenTest {
             }
         }
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
-        compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
+        confirmOwnership()
         compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
-        assertEquals(2, savedIds.size)
+        compose.onNodeWithTag("asset-owned-confirm").assertIsOn()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(2, savedIds.size) }
         assertEquals(savedIds.first(), savedIds.last())
         assertEquals(1, beta.assets().size)
     }
@@ -94,7 +104,7 @@ class BetaManualAssetScreenTest {
         compose.onNodeWithTag("asset-kind-CREDIT_CARD").performScrollTo().performClick()
         compose.onNodeWithTag("asset-role-SUPPLEMENTARY").performScrollTo().performClick()
         compose.onNodeWithTag("asset-primary-primary").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
+        confirmOwnership()
         compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         val changed = beta.assets().single { it.id == debit.id }
         assertEquals(AssetKind.CREDIT_CARD, changed.kind)
@@ -117,9 +127,9 @@ class BetaManualAssetScreenTest {
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("١٢٣٤")
         compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
         assertTrue(beta.assets().isEmpty())
-        compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
+        confirmOwnership()
         compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
-        assertTrue(saved)
+        compose.runOnIdle { assertTrue(saved) }
         val original = beta.assets().single()
         assertEquals(AssetKind.LOAN, original.kind)
         assertEquals("1234", original.last4)
