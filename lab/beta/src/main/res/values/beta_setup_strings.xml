@@ -1,0 +1,31 @@
+<resources>
+    <string name="beta_setup_empty_title">عملياتك ستظهر هنا</string>
+    <string name="beta_setup_empty_help">تظهر العمليات المستوردة الواضحة بعد تأكيد حساباتك وبطاقاتك. أكمل الإعداد لاستيراد الرسائل أو تأكيد الملكية. إذا كانت لديك عمليات سابقة، تحقق من الشهر المحدد.</string>
+    <string name="beta_setup_continue">إكمال الإعداد</string>
+    <string name="beta_setup_import_action">استيراد رسائل البنك</string>
+    <string name="beta_setup_assets_action">تأكيد حساباتي وبطاقاتي</string>
+    <string name="beta_setup_manual_action">إضافة حساب أو بطاقة يدويًا</string>
+    <string name="beta_setup_approval_action">مراجعة الرسائل غير الواضحة</string>
+    <string name="beta_setup_imported">تم حفظ الرسائل. تابع لتأكيد الحسابات والبطاقات التي تخصك.</string>
+    <string name="beta_setup_assets_saved">تم حفظ %1$d من حساباتك وبطاقاتك والتزاماتك. تُعالج العمليات الواضحة تلقائيًا؛ راجع فقط الرسائل غير الواضحة المتبقية.</string>
+    <string name="beta_setup_next_assets">المتابعة إلى الحسابات والبطاقات</string>
+    <string name="beta_setup_next_approval">المتابعة إلى المراجعات المتبقية</string>
+    <string name="beta_setup_skip_import">تخطي الاستيراد الآن</string>
+    <string name="beta_setup_skip_assets">تخطي تأكيد الحسابات الآن</string>
+    <string name="beta_setup_home_help">تُضاف العمليات الواضحة تلقائيًا للحسابات والبطاقات المؤكدة. تحتاج للمراجعة فقط الرسائل التي تتضمن معلومات ناقصة أو متعارضة. يمكنك العودة من الإعدادات ← إكمال الإعداد.</string>
+    <string name="beta_setup_lab_settings">إعداد المختبر</string>
+    <string name="beta_setup_reset">مسح بيانات المختبر</string>
+    <string name="beta_setup_reset_title">حذف جميع بيانات المختبر؟</string>
+    <string name="beta_setup_reset_help">سيحذف هذا نهائيًا الرسائل المستوردة والحسابات والبطاقات والقروض والعمليات والتصحيحات والإعدادات والنسخ الاحتياطية المحلية داخل المختبر، ثم يبدأ الإعداد من جديد. لن تتأثر بيانات مصروف الأساسي أو رسائل الهاتف أو النسخ المصدّرة إلى أماكن أخرى.</string>
+    <string name="beta_history_counts">تم حفظ %1$d رسالة · %2$d تحتاج مراجعة</string>
+    <string name="beta_history_filter_review">تحتاج مراجعة</string>
+    <string name="beta_history_filter_all">كل الرسائل المحفوظة</string>
+    <string name="beta_history_no_review">لا توجد رسائل تحتاج مراجعة. تُضاف العمليات الواضحة للحسابات والبطاقات المؤكدة تلقائيًا.</string>
+    <string name="beta_history_review_action">مراجعة هذه الرسالة</string>
+    <string name="beta_history_view_action">عرض تفاصيل الرسالة</string>
+    <string name="beta_history_return">تم، العودة</string>
+    <string name="beta_setup_edit_transactions">تعديل عملية موجودة</string>
+    <string name="beta_setup_waiting_accounts">%1$d رسالة تنتظر تأكيد حساب أو بطاقة. أكّد الملكية مرة واحدة لإضافة العمليات الواضحة المرتبطة بها.</string>
+    <string name="beta_setup_no_reviews">لا توجد رسائل تحتاج مراجعة. يمكنك فتح الرئيسية.</string>
+    <string name="beta_setup_review_count">%1$d رسالة تحتاج قرارك. يمكنك مراجعتها الآن أو لاحقًا.</string>
+</resources>

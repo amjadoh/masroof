@@ -36,6 +36,7 @@ class BetaInterpretationReviewScreenTest {
         compose.setContent { MaterialTheme { BetaShell(0, false, editor = {
             BetaHistoryPanel(beta, onClose = {})
         }, onReturn = {}, onReset = {}, onBackup = {}, onRestore = {}) } }
+        compose.onNodeWithTag("history-filter-all").performScrollTo().performClick()
         compose.waitUntil(15000) { compose.onAllNodesWithTag("history-review-0").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("history-review-0").performScrollTo().performClick()
         compose.waitUntil(15000) { compose.onAllNodesWithTag("label-original").fetchSemanticsNodes().isNotEmpty() }

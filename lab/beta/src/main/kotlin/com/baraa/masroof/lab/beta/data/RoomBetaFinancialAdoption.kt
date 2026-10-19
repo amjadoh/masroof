@@ -13,8 +13,8 @@ import org.json.JSONObject
 import java.security.MessageDigest
 import java.time.*
 
-/** Explicit Beta-only adoption of the current BankEngine record. Interpretation and learning
- * labels alone never authorize money; every write revalidates the exact archive and owned assets. */
+/** Beta-only financial adoption. Automatic writes require a current validated archive and uniquely
+ * confirmed ownership; manual decisions are preserved. Learning labels never authorize money. */
 class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     init { require(database.openHelper.databaseName == BetaDatabase.NAME) { "Financial adoption requires the isolated Beta database" } }
     private val dao get() = database.financialAdoptionDao()
@@ -47,6 +47,68 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         BetaFinancialApprovalPreview(item, facts?.amount, facts?.time,
             java.util.Collections.unmodifiableList(choices.toList()), registryFingerprint(choices), pending, blocked, correctionOwned,
             display?.text("merchant"), display?.text("exchangeRate"), fee)
+    }
+
+    /** Bounded write-side sweep. Atomic batches can be replayed after process death. */
+    suspend fun automaticPage(afterId: String = "", limit: Int = 100): String? = database.withTransaction {
+        require(limit in 1..100)
+        val ids = database.evidenceDao().idsAfter(afterId, limit)
+        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val enabled = database.bankSelectionDao().all().filter { it.state == "ENABLED" }.map { it.bankId }.toSet()
+        for (id in ids) adoptAutomatic(id, registry, enabled)
+        ids.lastOrNull()
+    }
+
+    private suspend fun adoptAutomatic(id: String, registry: Map<AssetId, OwnedAsset>, enabled: Set<String>) {
+        val evidence = database.evidenceDao()
+        if (evidence.retry(id) != null || evidence.decision(id) != null || dao.retry(id) != null) return
+        if (database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null) return
+        val previous = dao.evidence(id)
+        if (previous != null && previous.approvalRequest != AUTOMATIC_AUTHORITY) return // Every manual choice wins.
+        val outcome = evidence.outcome(id) ?: return
+        if (outcome.disposition != EvidenceDisposition.INTERPRETED.name) return
+        val raw = evidence.raw(id) ?: return
+        val json = try { BetaCurrentFinancialArchive.read(outcome, raw.body) }
+            catch (_: IllegalArgumentException) { return }
+            catch (_: org.json.JSONException) { return }
+        if (json.getString("bank") !in enabled) return
+        val f = json.getJSONObject("facts")
+        if (f.getString("family") in setOf("OTP", "NON_FINANCIAL", "BALANCE_NOTICE", "STATEMENT")) return
+        // Reuse the exact financial firewall. Partial parses, unsafe execution and diagnostics cannot pass.
+        val base = try { currentInput(outcome, null, null, FinancialType.UNKNOWN, null, registry) }
+            catch (_: IllegalArgumentException) { return }
+            catch (_: org.json.JSONException) { return }
+            catch (_: java.time.DateTimeException) { return }
+        val existing = ledger.readAudit(key(id))
+        if (existing != null && previous == null) return
+        val store = RoomBetaEvidenceStore(database)
+        val proposals = store.discoveryProposals(id).map { it.copy(confirmedAssetId = store.proposalBinding(it)) }
+        val decision = BetaAutomaticPostingPolicy.decide(
+            com.baraa.masroof.lab.bank.MessageFamily.valueOf(f.getString("family")),
+            f.text("direction")?.let(com.baraa.masroof.lab.bank.MoneyDirection::valueOf),
+            f.optBoolean("salaryIncomeWording", false), f.text("loanType") != null, !f.isNull("card"), proposals, registry)
+        fun record(input: FinancialClassificationInput, status: String, reason: String) = BetaFinancialAdoptionEntity(
+            id, key(id).transactionId, rawBank(outcome), fingerprint(outcome), status, reason,
+            BetaLedgerCodec.encodeInput(input), input.revision.correction, input.revision.interpretation,
+            AUTOMATIC_AUTHORITY, input.revision.interpretation)
+        val hold = if (base.amount.amount.signum() <= 0) "INVALID_AMOUNT" else decision.hold ?: if (evidence.hasDuplicate(id, raw.sender, raw.body, raw.receivedAt)) "POSSIBLE_DUPLICATE" else null
+        if (hold != null) {
+            dao.put(record(base, "REVIEW", hold)); return
+        }
+        val input = currentInput(outcome, decision.source, decision.destination, decision.type, decision.income, registry)
+            .copy(revision = PostingRevision(0, maxOf(outcome.attempts.toLong(), previous?.observationRevision ?: 0)),
+                appliedFx = existing?.command?.appliedFx)
+        if (previous?.status == "ACTIVE" && previous.archiveFingerprint == fingerprint(outcome) &&
+            existing?.classification?.input == input) return
+        val enriched = resolveFx(input, outcome)
+        val finalInput = if (enriched is FxEnrichmentResult.Ready) input.copy(appliedFx = enriched.proposal?.appliedFx ?: input.appliedFx) else input
+        val result = ledger.post(finalInput)
+        when (result) {
+            is FinancialPostingResult.Applied, is FinancialPostingResult.AlreadyApplied -> {
+                dao.put(record(finalInput, "ACTIVE", "AUTOMATIC")); RoomBetaDashboardFacts(database).refresh(id)
+            }
+            else -> dao.put(record(finalInput, "REVIEW", "AUTOMATIC_POSTING_REVIEW"))
+        }
     }
 
     private fun registryFingerprint(assets: Collection<OwnedAsset>): String {
@@ -321,6 +383,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             if (json.has("registry")) json.getString("registry") else null)
     }
     companion object {
+        private const val AUTOMATIC_AUTHORITY = "BANK_ENGINE_AUTOMATIC_V1"
         fun key(evidenceId: String) = PostingKey(Environment.BETA, "evidence:$evidenceId")
         internal fun fingerprint(outcome: BetaEvidenceOutcomeEntity): String = MessageDigest.getInstance("SHA-256")
             .digest(("BANK_ENGINE_FINANCE_V1\n" + outcome.route + "\n" + outcome.candidateJson + "\n" + outcome.baselineJson + "\n" + outcome.attempts).toByteArray())

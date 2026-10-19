@@ -4,7 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -21,13 +22,14 @@ import com.baraa.masroof.ui.components.*
 import com.baraa.masroof.ui.theme.*
 import java.time.YearMonth
 
-/** Financial management only. Maintenance and appearance are separate developer tooling. */
+/** Financial management and explicit lab setup/reset actions. */
 @Composable
 internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit,
     banks: List<BetaBankChoice>, assets: List<OwnedAsset>, controls: BetaDashboardControls, busy: Boolean,
     onBankEnabled: (BankId, Boolean) -> Unit, onAdd: (BankId, AssetKind) -> Unit, onEdit: (OwnedAsset) -> Unit,
-    onBusyChanged: (Boolean) -> Unit, onClose: () -> Unit) {
-    BackHandler { if (!busy) { if (category == "HUB") onClose() else onCategory("HUB") } }
+    onBusyChanged: (Boolean) -> Unit, onClose: () -> Unit, onSetup: () -> Unit = {}, onReset: () -> Unit = {}) {
+    var resetConfirmation by rememberSaveable { mutableStateOf(false) }
+    BackHandler { if (!busy) { if (resetConfirmation) resetConfirmation = false else if (category == "HUB") onClose() else onCategory("HUB") } }
     Column(Modifier.testTag("beta-settings-panel"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         Text(stringResource(R.string.beta_nav_settings), style = MaterialTheme.typography.headlineSmall)
         if (category == "HUB") MasroofCard(Modifier.testTag("beta-management-settings")) {
@@ -69,9 +71,29 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
                 }
             }
         }
+        if (category == "HUB") MasroofCard {
+            Text(stringResource(R.string.beta_setup_lab_settings), style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(enabled = !busy, onClick = onSetup, modifier = Modifier.fillMaxWidth().testTag("settings-setup")) {
+                Text(stringResource(R.string.beta_setup_continue))
+            }
+            TextButton(enabled = !busy, onClick = { resetConfirmation = true }, modifier = Modifier.fillMaxWidth().testTag("settings-reset-lab")) {
+                Text(stringResource(R.string.beta_setup_reset), color = MaterialTheme.colorScheme.error)
+            }
+        }
         OutlinedButton(enabled = !busy, onClick = { if (category == "HUB") onClose() else onCategory("HUB") },
             modifier = Modifier.testTag("beta-settings-close")) { Text(stringResource(if (category == "HUB") R.string.beta_asset_cancel else R.string.beta_dash_back)) }
     }
+    if (resetConfirmation) AlertDialog(
+        onDismissRequest = { if (!busy) resetConfirmation = false },
+        title = { Text(stringResource(R.string.beta_setup_reset_title)) },
+        text = { Text(stringResource(R.string.beta_setup_reset_help)) },
+        confirmButton = { TextButton(enabled = !busy, onClick = { resetConfirmation = false; onReset() }, modifier = Modifier.testTag("settings-reset-confirm")) {
+            Text(stringResource(R.string.beta_setup_reset), color = MaterialTheme.colorScheme.error)
+        } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { resetConfirmation = false }, modifier = Modifier.testTag("settings-reset-cancel")) {
+            Text(stringResource(R.string.beta_asset_cancel))
+        } })
+
 }
 
 /** Production navigation geometry expressed with existing shared tokens and renderers. */

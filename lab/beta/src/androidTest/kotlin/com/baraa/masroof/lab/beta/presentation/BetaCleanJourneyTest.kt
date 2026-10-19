@@ -32,7 +32,7 @@ class BetaCleanJourneyTest {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("screencap -p /sdcard/beta-dashboard-screenshots/$name.png")).use { it.readBytes() }
     }
 
-    @Test fun optionalSetupPersistsAndSettingsContainOnlyFinancialManagement() {
+    @Test fun optionalSetupPersistsAndSettingsSeparateFinancialManagementFromLabActions() {
         BetaContainer.resetOffline(context)
         try {
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
@@ -75,7 +75,72 @@ class BetaCleanJourneyTest {
         } finally { drain(); BetaContainer.resetOffline(context) }
     }
 
-    @Test fun currentEngineDiscoveryAndExplicitApprovalReachHomeOnce() {
+    @Test fun emptyHomeResumesSetupWithoutDeletingEvidence() {
+        BetaContainer.resetOffline(context)
+        try {
+            BetaContainer(context).use { beta ->
+                beta.acknowledgeStart(); beta.setBankEnabled(bank, true)
+                beta.putMarker("retained", "synthetic")
+                beta.importEvidence(EvidenceRequest("setup-recovery", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(
+                    EvidenceMessage("setup-recovery", "AlJazira", "Cash withdrawal\nFrom account: 1234\nAmount: 42 SAR\nDate: 2026-10-18 12:00",
+                        Instant.parse("2026-10-18T12:00:00Z"), ReceiptTimeSource.USER_SUPPLIED)))
+            }
+            ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+                await("home-setup-help"); capture("setup-empty-home")
+                click("home-setup"); await("onboarding-IMPORT"); await("onboarding-imported")
+                scenario.recreate(); await("onboarding-IMPORT")
+                capture("setup-import-help")
+                click("onboarding-next"); await("onboarding-ASSETS")
+                click("onboarding-next"); await("onboarding-REVIEW")
+                capture("setup-approval-help")
+                click("onboarding-next"); await("home-setup")
+            }
+            drain()
+            BetaContainer(context).use { beta ->
+                assertEquals(1, beta.markerCount())
+                assertEquals(1, beta.evidencePage().size)
+                assertNull(beta.historySession())
+                assertNull(beta.financialPosting(PostingKey(Environment.BETA, "evidence:${beta.evidencePage().single().id}")))
+            }
+        } finally { drain(); BetaContainer.resetOffline(context) }
+    }
+
+    @Test fun settingsResetRequiresConfirmationAndReturnsToFreshSetup() {
+        BetaContainer.resetOffline(context)
+        val productionProbe = context.getSharedPreferences("setup-production-probe", Context.MODE_PRIVATE)
+        productionProbe.edit().putString("retained", "production sentinel").commit()
+        try {
+            BetaContainer(context).use { beta ->
+                beta.acknowledgeStart(); beta.putMarker("retained", "synthetic")
+                beta.setBankEnabled(bank, true); beta.backup()
+            }
+            ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
+                await("dash-refresh")
+                compose.onNode(hasText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_nav_settings)) and
+                    hasAnyAncestor(hasTestTag("beta-bottom-navigation"))).performClick()
+                click("settings-reset-lab"); await("settings-reset-confirm"); capture("setup-reset-confirm")
+                compose.onNodeWithTag("settings-reset-cancel").assertIsEnabled().performClick(); compose.onNodeWithTag("settings-reset-confirm").assertDoesNotExist()
+                drain(); BetaContainer(context).use { assertEquals(1, it.markerCount()); assertTrue(it.settings().backupAvailable) }
+                click("settings-reset-lab")
+                val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("input keyevent 4")).use { it.readBytes() }
+                compose.waitUntil(5000) { compose.onAllNodesWithTag("settings-reset-confirm").fetchSemanticsNodes().isEmpty() }
+                compose.onNodeWithTag("beta-management-settings").assertExists()
+                click("settings-reset-lab"); compose.onNodeWithTag("settings-reset-confirm").assertIsEnabled().performClick(); await("beta-start-continue")
+                click("beta-start-continue"); await("onboarding-BANK")
+                scenario.recreate(); await("onboarding-BANK")
+            }
+            drain()
+            BetaContainer(context).use { beta ->
+                assertEquals(0, beta.markerCount()); assertTrue(beta.assets().isEmpty()); assertTrue(beta.evidencePage().isEmpty())
+                assertFalse(beta.settings().backupAvailable); assertNull(beta.historySession())
+                assertEquals(BetaOnboardingStep.BANK, beta.onboardingStep())
+            }
+            assertEquals("production sentinel", productionProbe.getString("retained", null))
+        } finally { drain(); BetaContainer.resetOffline(context); productionProbe.edit().clear().commit() }
+    }
+
+    @Test fun currentEngineDiscoveryAutomaticallyPostsClearEvidenceOnce() {
         BetaContainer.resetOffline(context)
         lateinit var evidenceId: String
         try {
@@ -86,16 +151,21 @@ class BetaCleanJourneyTest {
                 evidenceId = (beta.importEvidence(EvidenceRequest("clean-journey", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(message)).single() as EvidenceResult.Stored).summary.id
                 assertNull(requireNotNull(beta.financialApprovalPreview(evidenceId)).blockedReason)
                 assertNull(beta.financialPosting(PostingKey(Environment.BETA, "evidence:$evidenceId")))
-                beta.advanceOnboarding(BetaOnboardingStep.IMPORT)
+                // A completed, synthetic import checkpoint. This test never reads the phone inbox.
+                com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(
+                    context.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)).save(
+                    com.baraa.masroof.lab.beta.application.history.HistorySession(at.toEpochMilli(), at.toEpochMilli() + 86_400_000,
+                        setOf(bank), scanned = 1, stored = 1, finished = true))
             }
             ActivityScenario.launch(BetaActivity::class.java).use {
-                await("onboarding-ASSETS"); click("onboarding-discovery"); click("proposal-open-0")
+                await("onboarding-IMPORT"); click("onboarding-import"); await("history-close")
+                compose.onNodeWithTag("history-review-0").assertDoesNotExist()
+                compose.onNodeWithTag("history-filter-review").assertDoesNotExist()
+                click("history-close")
+                await("onboarding-ASSETS"); capture("setup-accounts-before-messages"); click("onboarding-discovery"); click("proposal-open-0")
                 click("asset-owned-confirm"); click("asset-save"); await("proposal-close"); click("proposal-close")
-                await("onboarding-ASSETS"); click("onboarding-next"); click("onboarding-approval")
-                click("approval-item-0"); click("approval-type-CASH_WITHDRAWAL"); click("approval-source-0"); click("approval-destination-external")
-                compose.onNodeWithTag("approval-save").performScrollTo().assertIsNotEnabled()
-                click("approval-confirm"); click("approval-save"); await("approval-item-0")
-                click("approval-close"); await("onboarding-REVIEW"); click("onboarding-next"); await("dash-refresh")
+                await("onboarding-ASSETS"); click("onboarding-next")
+                await("onboarding-REVIEW"); click("onboarding-next"); await("dash-refresh")
             }
             drain()
             val key = PostingKey(Environment.BETA, "evidence:$evidenceId")

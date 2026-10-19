@@ -28,6 +28,39 @@ import org.junit.Test
 
 class BetaHistoryPanelTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun onlyUnclearMessagesRequestReviewAndAllMessagesRemainAccessible() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        BetaContainer.resetOffline(context)
+        val beta = BetaContainer(context)
+        try {
+            beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
+            val at = java.time.Instant.parse("2026-10-18T12:00:00Z")
+            val request = com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest("review-inbox", com.baraa.masroof.lab.beta.application.evidence.EvidenceOrigin.EXPLICIT_SAMPLE)
+            fun message(id: String, body: String) = com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage(id, "AlJazira", body, at,
+                com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)
+            val results = beta.importEvidence(request, listOf(
+                message("clear", "Credit card purchase\nCard: 1234\nAmount: 42 SAR\nMerchant: Synthetic Shop\nDate: 2026-10-18 12:00"),
+                message("unclear", "Synthetic unrecognized financial message")))
+            val stored = results.filterIsInstance<com.baraa.masroof.lab.beta.application.evidence.EvidenceResult.Stored>()
+            assertEquals(2, stored.size)
+            val unclear = stored.single { it.summary.processingState == com.baraa.masroof.lab.beta.application.evidence.EvidenceProcessingState.REVIEW }.summary
+            assertEquals(2, beta.evidenceInboxCounts().total)
+            assertEquals(1, beta.evidenceInboxCounts().needsReview)
+            assertEquals(listOf(unclear.id), beta.evidencePage(needsReviewOnly = true, limit = 1).map { it.id })
+            assertTrue(beta.evidencePage(afterId = unclear.id, needsReviewOnly = true).isEmpty())
+            compose.setContent { MaterialTheme { BetaShell(0, false, editor = { BetaHistoryPanel(beta, {}) },
+                onReturn = {}, onBackup = {}, onRestore = {}, onReset = {}) } }
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("history-review-0").fetchSemanticsNodes().isNotEmpty() }
+            compose.onAllNodesWithTag("history-review-1").assertCountEquals(0)
+            compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_history_review_action)).assertExists()
+            compose.onNodeWithTag("history-filter-all").performScrollTo().performClick()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("history-review-1").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_history_view_action)).assertExists()
+            assertNull(beta.historySession()) // Filtering never reads the SMS inbox or approves money.
+            assertTrue(beta.assets().isEmpty())
+        } finally { beta.close(); BetaContainer.resetOffline(context) }
+    }
+
     @Test fun busyReturnAndSystemBackStayBlockedUntilPaused() {
         var allowReturn by mutableStateOf(false)
         var returned = 0
