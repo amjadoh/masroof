@@ -63,7 +63,7 @@ internal class RoomBetaDashboardAuxFacts(private val database: BetaDatabase) {
             Money.of(it.getString("amount"), Currency.valueOf(it.getString("currency"))) }
         val family = text("family")
         val informational = json.optString("status") == "NON_FINANCIAL" && family in setOf("OTP", "NON_FINANCIAL", "BALANCE_NOTICE")
-        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         var boundInput: String? = null
         var loan: OwnedAsset? = null
         var remaining: Money? = null

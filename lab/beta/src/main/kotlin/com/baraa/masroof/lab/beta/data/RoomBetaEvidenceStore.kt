@@ -42,6 +42,15 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
         return BetaAssetDiscovery.proposals(id, route, outcome.candidateJson, body = body)
     }
 
+    suspend fun ownershipObservations(id: String): List<BetaOwnershipObservation> {
+        val outcome = dao.outcome(id) ?: return emptyList()
+        if (dao.retry(id) != null || outcome.baselineJson != "{}") return emptyList()
+        val raw = dao.raw(id) ?: return emptyList()
+        val route = try { decodeRoute(outcome.route) } catch (_: IllegalArgumentException) { return emptyList() }
+            catch (_: org.json.JSONException) { return emptyList() }
+        return BetaAssetDiscovery.observations(id, route, outcome.candidateJson, raw.body)
+    }
+
     suspend fun discoveryPage(afterId: String, limit: Int): BetaDiscoveryPage = database.withTransaction {
         val ids = dao.idsAfter(afterId, limit)
         var review = 0

@@ -13,6 +13,7 @@ data class ManualAssetDraft(
     val ownedConfirmed: Boolean = false,
     val editing: Boolean = false,
     val expectedOriginal: OwnedAsset? = null,
+    val createCreditFacility: Boolean = false,
 )
 fun interface ManualAssetStore {
     /** Atomic identity/parent validation and save; no ledger or SMS operations. */
@@ -20,6 +21,7 @@ fun interface ManualAssetStore {
 }
 class BetaManualAssetWorkflow(private val store: ManualAssetStore) {
     suspend fun save(draft: ManualAssetDraft): OwnedAsset {
+        require(!draft.createCreditFacility) { "A new facility requires the atomic container workflow" }
         require(draft.ownedConfirmed) { "Ownership must be explicitly confirmed" }
         require(draft.id.environment == Environment.BETA)
         require(BetaBankCatalog.current.contains(draft.id.bank)) { "Unsupported Beta bank" }

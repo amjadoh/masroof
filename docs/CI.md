@@ -4,9 +4,21 @@ Masroof uses GitHub Actions for continuous integration and automated slash-comma
 
 | Workflow | When | What |
 |----------|------|------|
-| **CI** (`ci.yml`) | Pull request or push → `main` | Parallel jobs: `unit-test` (`testDebugUnitTest`) and `static-analysis` (`lintDebug`, `detekt`) |
+| **CI** (`ci.yml`) | Pull request or push → `main` | Unit tests, static analysis, and two device jobs: full production instrumentation; full Beta instrumentation followed by lifecycle and signed-update checks |
 | **PR Slash Commands** (`pr-commands.yml`) | Comment on PR (`/release`, `/nightly`) | Authenticates commenter, checks PR merge status, dispatches Release |
 | **Release** (`release.yml`) | Workflow dispatch or PR slash command | Verifies green CI on target commit, builds signed APK, tags commit, publishes GitHub Release |
+
+---
+
+## Device job scheduling
+
+The existing two emulator jobs share the device workload. `emulator-smoke` runs the complete production instrumentation suite with its existing orchestrator/isolation. `emulator-lifecycle` runs the complete Beta native suite first, then the existing Beta permission/process-death, production process-death and signed-update journeys. Existing `notPackage` runner arguments keep lifecycle phases out of the complete native suites, so those phases still run once through their dedicated scripts.
+
+Both jobs assemble their required APKs before starting the emulator, avoiding compilation competing with the emulator for runner CPU/memory. Both retain the latest-stable Android image and the Pixel 2 profile needed by unfolded-window tests. No suite is sampled, no timeout/assertion is relaxed, and release does not rerun the tests.
+
+Production reports remain in `instrumentation-reports` and `m19-statement-screenshots`. Beta native reports/screenshots are in `beta-instrumentation-reports`; lifecycle diagnostics keep their existing artifact names. Screenshot collection runs even after test failure, and the wrapper preserves the original Gradle failure status. The fast `scripts/test-instrumentation-smoke.py` cases cover suite routing and failure handling.
+
+Before this redistribution, a successful PR #300 run spent about 28 minutes in the combined device-smoke job versus 15 minutes in lifecycle; Beta native cases alone occupied over six minutes before production could start. The redistribution targets that serial wait. Actual savings depend on runner/cache speed and must be measured in the resulting GitHub run.
 
 ---
 

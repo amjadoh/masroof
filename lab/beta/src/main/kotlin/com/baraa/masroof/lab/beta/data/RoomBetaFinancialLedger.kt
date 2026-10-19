@@ -79,10 +79,11 @@ class RoomBetaFinancialLedger internal constructor(
             // authority against the actual Beta registry inside the same transaction. Historical
             // snapshots remain historical; a changed registry does not rewrite posted history.
             val snapshots = listOf(input) + candidate.observations.map { it.input }
+            val owned = BetaAssetRegistry(database).owned().associateBy { it.id }
             for (snapshot in snapshots) for ((id, asset) in snapshot.assets) {
                 require(id.environment == Environment.BETA && asset.id.environment == Environment.BETA)
                 val row = database.assetDao().get(id.environment.name, id.bank.value, id.localId)
-                if (asset.id != id || row == null || row.kind != asset.kind.name || row.last4 != asset.last4 ||
+                if (owned[id] != asset || asset.id != id || row == null || row.kind != asset.kind.name || row.last4 != asset.last4 ||
                     row.parentLocalId != asset.parentId?.localId || row.creditCardRole != asset.creditCardRole?.name) {
                     return@withTransaction FinancialPostingResult.Review(setOf(ReviewReason.OWNERSHIP))
                 }
@@ -127,7 +128,7 @@ class RoomBetaFinancialLedger internal constructor(
             val current = readCurrent(key) ?: return@withTransaction null
             // Manual configuration changes must not expose stale endpoints even for older explicit
             // ledger/correction rows that predate archive adoption. Audit remains unchanged.
-            val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+            val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
             val snapshots = listOf(current.classification.input) + current.observations.map { it.input }
             if (snapshots.any { input -> financialRegistryDependencies(input).any { id -> input.assets[id] == null || registry[id] != input.assets[id] } }) null else current
         }

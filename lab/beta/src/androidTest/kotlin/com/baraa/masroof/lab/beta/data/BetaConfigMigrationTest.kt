@@ -91,7 +91,11 @@ class BetaConfigMigrationTest {
             val tables = buildList { actual.query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'beta_%' ORDER BY name").use {
                 while (it.moveToNext()) add(it.getString(0))
             } }
-            assertEquals(if (version == 10) 21 else 22, tables.size)
+            val migratedTables = buildList { migrated.query("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'beta_%' ORDER BY name").use {
+                while (it.moveToNext()) add(it.getString(0))
+            } }
+            assertTrue("The reference schema must contain Beta tables", tables.isNotEmpty())
+            assertEquals("Restored table inventory must exactly match the reference schema", tables, migratedTables)
             for (table in tables) assertEquals(table, TableInfo.read(actual, table), TableInfo.read(migrated, table))
             migrated.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
         } finally { fresh.close(); context.deleteDatabase(name) }

@@ -23,7 +23,11 @@ class BetaCleanJourneyTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val bank = BankId("BANK_ALJAZIRA")
     private fun await(tag: String) { compose.waitUntil(20000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }; compose.waitForIdle() }
-    private fun click(tag: String) { await(tag); compose.onNodeWithTag(tag).performScrollTo().assertIsEnabled().performClick() }
+    private fun click(tag: String) {
+        await(tag)
+        compose.waitUntil(20000) { runCatching { compose.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false) }
+        compose.onNodeWithTag(tag).performScrollTo().performClick()
+    }
     private fun drain() { val done = CountDownLatch(1); BetaIo.execute { done.countDown() }; assertTrue(done.await(20, TimeUnit.SECONDS)) }
 
     private fun capture(name: String) {
@@ -54,7 +58,7 @@ class BetaCleanJourneyTest {
                 await("manage-add-BANK_ALJAZIRA")
                 click("beta-settings-close"); await("beta-management-settings")
                 click("beta-settings-close"); await("onboarding-ASSETS")
-                click("onboarding-next"); await("onboarding-REVIEW")
+                click("ownership-continue"); await("onboarding-REVIEW")
                 scenario.recreate(); await("onboarding-REVIEW")
                 click("onboarding-next"); await("dash-refresh")
                 val settings = compose.onNode(hasText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_nav_settings)) and hasAnyAncestor(hasTestTag("beta-bottom-navigation")))
@@ -91,7 +95,9 @@ class BetaCleanJourneyTest {
                 scenario.recreate(); await("onboarding-IMPORT")
                 capture("setup-import-help")
                 click("onboarding-next"); await("onboarding-ASSETS")
-                click("onboarding-next"); await("onboarding-REVIEW")
+                compose.onNodeWithTag("ownership-continue").performScrollTo().assertIsNotEnabled()
+                click("ownership-BANK_ALJAZIRA-ACCOUNT-1234-external")
+                click("ownership-continue"); await("onboarding-REVIEW")
                 capture("setup-approval-help")
                 click("onboarding-next"); await("home-setup")
             }
@@ -162,9 +168,10 @@ class BetaCleanJourneyTest {
                 compose.onNodeWithTag("history-review-0").assertDoesNotExist()
                 compose.onNodeWithTag("history-filter-review").assertDoesNotExist()
                 click("history-close")
-                await("onboarding-ASSETS"); capture("setup-accounts-before-messages"); click("onboarding-discovery"); click("proposal-open-0")
-                click("asset-owned-confirm"); click("asset-save"); await("proposal-close"); click("proposal-close")
-                await("onboarding-ASSETS"); click("onboarding-next")
+                await("onboarding-ASSETS"); capture("setup-accounts-before-messages")
+                compose.onNodeWithTag("ownership-continue").performScrollTo().assertIsNotEnabled()
+                click("ownership-BANK_ALJAZIRA-ACCOUNT-1234-owned")
+                click("ownership-continue")
                 await("onboarding-REVIEW"); click("onboarding-next"); await("dash-refresh")
             }
             drain()

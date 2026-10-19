@@ -10,7 +10,7 @@ People reviewing their personal finances from Saudi banking SMS on Android, in A
 
 ## Product Purpose
 
-Turn original banking evidence into a traceable ledger, owned assets and useful financial summaries. Masroof 2 is an isolated Beta entered from production developer settings, with its own optional historical import and explicit financial approval.
+Turn original banking evidence into a traceable ledger, owned assets and useful financial summaries. Masroof 2 is an isolated Beta entered from production developer settings, with its own optional historical import, consolidated account/card ownership confirmation and automatic posting of validated clear transactions. Only unresolved cases require financial review.
 
 ## Brand Personality
 
