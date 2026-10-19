@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-// This host exists exclusively for isolated emulator update rehearsals.
+// Isolated lab hosts: synthetic update rehearsals and the standalone SMS-enabled lab.
 android {
     namespace = "com.baraa.masroof.lab.upgrade"
     compileSdk = 35
@@ -30,7 +30,7 @@ android {
     productFlavors {
         create("before") { dimension = "rehearsal"; versionCode = 1; versionName = "rehearsal-1"; signingConfig=signingConfigs.getByName("rehearsal") }
         create("after") { dimension = "rehearsal"; versionCode = 2; versionName = "rehearsal-2"; signingConfig=signingConfigs.getByName("rehearsal") }
-        create("standalone") { dimension="rehearsal"; applicationId="com.baraa.masroof.lab.standalone"; versionCode=1; versionName="lab-parity-1"; signingConfig=signingConfigs.getByName("debug") }
+        create("standalone") { dimension="rehearsal"; applicationId="com.baraa.masroof.lab.standalone"; testApplicationId="com.baraa.masroof.lab.standalone.test"; versionCode=1; versionName="lab-parity-1"; signingConfig=signingConfigs.getByName("debug") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
