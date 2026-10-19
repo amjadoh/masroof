@@ -81,7 +81,8 @@ class BetaOnboardingPermissionTest {
                     }
                     val node = compose.onNodeWithTag(tag)
                     compose.waitForIdle()
-                    compose.waitUntil(10_000) {
+                    val fixedSheetAction=tag in setOf("asset-save","asset-cancel")
+                    if(!fixedSheetAction) compose.waitUntil(10_000) {
                         var focused = false
                         scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
                         focused
@@ -89,7 +90,10 @@ class BetaOnboardingPermissionTest {
                     // Returning home hydrates the dashboard above these controls. Scroll readiness
                     // may repeat while its height settles; the actual destination click happens once.
                     compose.waitUntil(10_000) {
-                        runCatching { node.performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
+                        runCatching {
+                            if(!fixedSheetAction) node.performScrollTo()
+                            node.assertIsDisplayed().assertIsEnabled();true
+                        }.getOrDefault(false)
                     }
                     node.performClick()
                 } catch (failure: Throwable) {
