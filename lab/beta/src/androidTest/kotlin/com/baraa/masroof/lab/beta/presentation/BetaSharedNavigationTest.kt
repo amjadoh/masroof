@@ -31,8 +31,13 @@ class BetaSharedNavigationTest {
                 compose.onNodeWithTag("dash-route-TRANSACTIONS").assertIsSelected()
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
                 compose.onNodeWithTag("beta-home-hero").assertExists()
-                tab(R.string.beta_nav_review).performClick(); await("review-close")
-                compose.onNodeWithTag("review-close").performScrollTo().performClick(); await("beta-bottom-navigation")
+                tab(R.string.beta_nav_review).performClick(); await("history-no-review")
+                compose.onNodeWithTag("history-filter-review").assertIsSelected()
+                compose.onNodeWithTag("history-start").assertDoesNotExist() // Review is not the import screen.
+                compose.onNodeWithTag("review-close").assertDoesNotExist()
+                compose.onNodeWithTag("review-existing-transactions").performScrollTo().performClick(); await("review-close")
+                compose.onNodeWithTag("review-close").performScrollTo().performClick(); await("history-no-review")
+                compose.onNodeWithTag("history-close").performScrollTo().performClick(); await("dash-refresh")
                 tab(R.string.beta_nav_settings).performClick(); await("beta-settings-panel")
                 compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick(); await("beta-bottom-navigation")
                 compose.onNodeWithTag("beta-badge").assertIsDisplayed()
