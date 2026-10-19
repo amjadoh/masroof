@@ -9,7 +9,7 @@ import java.time.Clock
 import java.time.YearMonth
 import java.time.ZoneId
 
-/** Display scope only. Salary/statement dates require configured authoritative periods. */
+/** Salary display scope follows the configured/default cycle; statement dates still need evidence. */
 class BetaDashboardWorkflow(
     private val read: suspend (DashboardQuery, DashboardPeriods) -> DashboardProduction,
     private val clock: Clock = Clock.systemUTC(),
@@ -29,7 +29,7 @@ class BetaDashboardWorkflow(
     suspend fun load(month: YearMonth): DashboardProduction {
         val query = query(month)
         val calendar=java.time.YearMonth.from(query.until.minusNanos(1).atZone(zone))
-        val result = read(query, DashboardPeriods(calendar = DisplayPeriod(calendar.atDay(1).atStartOfDay(zone).toInstant(),calendar.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant(),
+        val result = read(query, DashboardPeriods(salary = DisplayPeriod(query.from,query.until,query.zone,PeriodKind.SALARY,null), calendar = DisplayPeriod(calendar.atDay(1).atStartOfDay(zone).toInstant(),calendar.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant(),
             query.zone, PeriodKind.CALENDAR_MONTH, null)))
         check(result.snapshot.query == query) { "Dashboard scope changed during read" }
         return result

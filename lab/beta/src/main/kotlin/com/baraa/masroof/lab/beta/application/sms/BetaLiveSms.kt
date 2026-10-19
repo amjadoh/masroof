@@ -9,36 +9,48 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.channels.BufferOverflow
 import java.util.concurrent.TimeUnit
 
-/** Registered only by the isolated lab host. No application or receiver hooks in the library manifest. */
+/** Lab-owned receiver/worker; the host financial receiver and database are never called. */
 object BetaLiveSms {
     const val HOST_PACKAGE="com.baraa.masroof.lab.standalone"
+    const val EMBEDDED_PACKAGE="com.baraa.masroof"
+    fun supports(context: Context) = context.packageName in setOf(HOST_PACKAGE, EMBEDDED_PACKAGE)
+    fun enabled(context: Context): Boolean = supports(context) &&
+        context.getSharedPreferences(com.baraa.masroof.lab.beta.BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString("beta_storage_generation", null) != null
     val changes=MutableSharedFlow<Unit>(extraBufferCapacity=1,onBufferOverflow=BufferOverflow.DROP_OLDEST)
     fun schedule(context: Context,id: String,generation: String) {
-        require(context.packageName==HOST_PACKAGE) { "Live intake requires the isolated lab host" }
+        require(enabled(context)) { "Live intake requires initialized lab storage" }
         val request=OneTimeWorkRequestBuilder<BetaSmsWorker>().setInputData(workDataOf("rawId" to id,"generation" to generation))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,TimeUnit.SECONDS).addTag("masroof-beta-sms").build()
         WorkManager.getInstance(context).enqueueUniqueWork("beta-live:$generation:$id",ExistingWorkPolicy.KEEP,request)
     }
     fun resume(context: Context) {
-        if(context.packageName!=HOST_PACKAGE) return
-        BetaIo.execute {
-            try { BetaContainer(context).use { beta ->
-                val generation=beta.storageGeneration() ?: return@use
-                var after=""
-                while(true) {
-                    val page=beta.pendingEvidenceIds(after)
-                    if(page.isEmpty()) break
-                    page.forEach {schedule(context,it,generation)}
-                    after=page.last()
+        if(!enabled(context)) return
+        BetaIo.execute { resumeOnIo(context) }
+    }
+    internal fun resumeOnIo(context: Context) {
+        if (!enabled(context)) return
+        try {
+            BetaContainer(context).use { beta ->
+                val generation = beta.storageGeneration() ?: return@use
+                var after = ""
+                while (true) {
+                    val page = beta.pendingEvidenceIds(after)
+                    if (page.isEmpty()) break
+                    page.forEach { schedule(context, it, generation) }
+                    after = page.last()
                 }
-            } } catch (_: Exception) { /* Durable rows remain for the next explicit retry or start. */ }
+            }
+        } catch (_: Exception) {
+            // Durable rows remain for the next explicit retry or start.
         }
     }
+
 }
 
 class BetaSmsWorker(context: Context,parameters: WorkerParameters): CoroutineWorker(context,parameters) {
     override suspend fun doWork(): Result {
-        if(applicationContext.packageName!=BetaLiveSms.HOST_PACKAGE) return Result.failure()
+        if(!BetaLiveSms.enabled(applicationContext)) return Result.success()
         val id=inputData.getString("rawId") ?: return Result.failure()
         val generation=inputData.getString("generation") ?: return Result.failure()
         return try {

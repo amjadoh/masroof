@@ -10,14 +10,14 @@ import com.baraa.masroof.lab.finance.value.*
 import java.math.BigDecimal
 import java.util.Collections
 
-enum class DashboardSection { ANALYSIS, TRENDS, MERCHANT_TOTALS, COMMITMENTS, RUNTIME_SOURCE, CURRENT_LEDGER, CONFIRMED_REGISTRY }
+enum class DashboardSection { ANALYSIS, TRENDS, MERCHANT_TOTALS, COMMITMENTS, RUNTIME_SOURCE, CURRENT_LEDGER, CONFIRMED_REGISTRY, VALUATION }
 /** Selected-period money coverage only; this is deliberately NOT the complete AnalysisSummary. */
 data class DashboardFinancialSummary(val metrics: Map<SummaryMetric, SignedAmount?>, val transactionCount: Int,
-    val reviewRequiredCount: Int, val excludedOtherCurrencyCount: Int) {
+    val reviewRequiredCount: Int?, val excludedOtherCurrencyCount: Int) {
     init {
         require(metrics.keys == SummaryMetric.entries.toSet())
         require(metrics.values.filterNotNull().all { it.currency == Currency.SAR })
-        require(transactionCount >= 0 && reviewRequiredCount >= 0 && excludedOtherCurrencyCount >= 0)
+        require(transactionCount >= 0 && (reviewRequiredCount == null || reviewRequiredCount >= 0) && excludedOtherCurrencyCount >= 0)
     }
 }
 data class DashboardProduction(val snapshot: DashboardSnapshot, val unavailableSections: Set<DashboardSection>,
@@ -121,7 +121,7 @@ object BetaDashboardBuilder {
         val accountRows = assets.filter { it.kind == AssetKind.ACCOUNT }.map { asset ->
             val fact = facts[asset.id]
             AccountSummary(asset.id, fact?.balance?.amount, fact?.label, fact?.accountCategory ?: AccountCategory.OTHER,
-                fact?.balance?.asOf, queryProjection?.let { flow(it, asset.id) })
+                fact?.balance?.asOf, queryProjection?.let { flow(it, asset.id) }, asset.last4)
         }
         val debitRows = assets.filter { it.kind == AssetKind.DEBIT_CARD }.map { asset ->
             DebitSpending(asset.id, salary?.let { debitNet(it, asset, details) }, asset.parentId,
@@ -149,7 +149,7 @@ object BetaDashboardBuilder {
                 salary?.let { loanPayment(it, loan.id) }, batch.periods.salary)
         }
         val inPeriod = rows.filter { contains(selected, it.command.time.instant) }
-        val financialSummary = if (batch.coverage.completeLedger && batch.coverage.completeRegistry && batch.coverage.reviewRequiredCount != null) {
+        val financialSummary = if (batch.coverage.completeRegistry && ((batch.coverage.completeLedger && batch.coverage.reviewRequiredCount!=null) || inPeriod.isNotEmpty())) {
             DashboardFinancialSummary(freezeMap(SummaryMetric.entries.associateWith { metric ->
                 queryProjection?.let { signed(it.sumOfMetric(metric)) }
             }), inPeriod.size, batch.coverage.reviewRequiredCount,
@@ -171,12 +171,15 @@ object BetaDashboardBuilder {
             destination?.let { id -> if (registry[id]?.kind == AssetKind.CREDIT_CARD) registry[id]?.parentId else id }
         }
         val settlementProjections = batch.settlementPeriods.mapValues { (facility, window) ->
-            ProjectionContext(batch.coverage, settlementsByFacility[facility].orEmpty(), fees, batch.feeProofKeys).period(window)
+            ProjectionContext(batch.coverage, settlementsByFacility[facility].orEmpty(), fees, batch.feeProofKeys,allowPartial=false).period(window)
         }
-        val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary, settlementProjections)
+        val valuationMissing = rows.any {PersistedSarProjection.project(it.classification.input,fees[it.command.key]) is SarRowProjection.Unavailable ||
+            (!batch.coverage.completeFeeFacts && it.command.amount.currency!=Currency.SAR && it.command.type!=FinancialType.REFUND &&
+                it.command.appliedFx?.source=="SMS" && it.command.key !in batch.feeProofKeys)}
+        val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, batch.periods.salary?.let {ProjectionContext(batch.coverage,rows,fees,batch.feeProofKeys,allowPartial=false).period(it)}, settlementProjections)
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
             commitments, analysis, freezeList(transactions), totals, batch.revision, fleet,freezeList(standalone))
-        val unavailable = (if (analysis == null) setOf(DashboardSection.ANALYSIS) else emptySet()) +
+        val unavailable = (if(valuationMissing) setOf(DashboardSection.VALUATION) else emptySet()) + (if (analysis == null) setOf(DashboardSection.ANALYSIS) else emptySet()) +
             (if (analysis == null || analysis.trends.any { it.averageDailySpending == null }) setOf(DashboardSection.TRENDS) else emptySet()) +
             (if (analysis == null || queryProjection == null || !batch.coverage.completeMerchantFacts) setOf(DashboardSection.MERCHANT_TOTALS) else emptySet()) +
             (if (commitments?.total == null) setOf(DashboardSection.COMMITMENTS) else emptySet()) +
@@ -190,6 +193,7 @@ object BetaDashboardBuilder {
         val prepared = if (stored.matchIdentity == null) FinancialPostingRules.prepare(stored.classification.input) else {
             val identity = stored.matchIdentity
             val proof = when (identity.kind) {
+                "BANK_NOTICES" -> TransferMatchProof.BankNotices(stored.command.key)
                 "BANK_REFERENCE" -> TransferMatchProof.BankReference(ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference))
                 "USER_PAIR" -> {
                     require(identity.issuer == null)
@@ -260,14 +264,17 @@ object BetaDashboardBuilder {
     }
 }
 
-private class ProjectionContext(val coverage: DashboardCoverage, val rows: List<StoredFinancialPosting>, val fees: Map<PostingKey, LinkedInternationalFee>, val feeProofKeys: Set<PostingKey>) {
+private class ProjectionContext(val coverage: DashboardCoverage, val rows: List<StoredFinancialPosting>, val fees: Map<PostingKey, LinkedInternationalFee>, val feeProofKeys: Set<PostingKey>, val allowPartial: Boolean = true) {
     fun period(period: DisplayPeriod): List<SarRowProjection.Available>? {
-        if (!coverage.completeLedger || !coverage.completeRegistry) return null
+        if (!coverage.completeRegistry || (!allowPartial && !coverage.completeLedger)) return null
         val selected = rows.filter { contains(period, it.command.time.instant) }
-        if (!coverage.completeFeeFacts && selected.any { it.command.amount.currency != Currency.SAR &&
-                it.command.type != FinancialType.REFUND && it.command.appliedFx?.source == "SMS" && it.command.key !in feeProofKeys }) return null
-        val projected = selected.map { PersistedSarProjection.project(it.classification.input, fees[it.command.key]) }
-        return if (projected.any { it is SarRowProjection.Unavailable }) null else projected.filterIsInstance<SarRowProjection.Available>()
+        if (!coverage.completeLedger && selected.isEmpty()) return null
+        val unsafeFee = selected.filter { !coverage.completeFeeFacts && it.command.amount.currency != Currency.SAR &&
+            it.command.type != FinancialType.REFUND && it.command.appliedFx?.source == "SMS" && it.command.key !in feeProofKeys }
+        val projected = selected.filterNot {it in unsafeFee}.map { PersistedSarProjection.project(it.classification.input, fees[it.command.key]) }
+        if(!allowPartial && (unsafeFee.isNotEmpty() || projected.any {it is SarRowProjection.Unavailable})) return null
+        return projected.filterIsInstance<SarRowProjection.Available>().takeIf { it.isNotEmpty() || selected.isEmpty() }
+
     }
 }
 

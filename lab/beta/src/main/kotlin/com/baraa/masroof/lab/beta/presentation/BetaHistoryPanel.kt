@@ -103,6 +103,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
     },dismissButton={TextButton(onClick={datePickerOpen=false}) {Text(stringResource(R.string.beta_asset_cancel))}}) { DatePicker(state=datePicker) }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
         if (!reviewOnly) {
+        if(onContinueSetup!=null) Text(stringResource(R.string.beta_onboarding_progress,if(running) 4 else 3,6),style=MaterialTheme.typography.bodySmall)
         Text(stringResource(R.string.beta_parity_import_date),style=MaterialTheme.typography.headlineSmall,modifier=Modifier.testTag("onboarding-IMPORT"))
         com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.entries.forEach { option ->
             val label=when(option) {
@@ -111,7 +112,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.LAST_27TH -> R.string.beta_parity_last_27
                 else -> R.string.beta_parity_custom_date
             }
-            FilterChip(selected=dateOption==option,enabled=!busy,onClick={ if(option==com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.CUSTOM) datePickerOpen=true else dateOption=option },
+            BetaChoice(selected=dateOption==option,enabled=!busy,onClick={ if(option==com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.CUSTOM) datePickerOpen=true else dateOption=option },
                 modifier=Modifier.testTag("history-date-${option.name}"),label={Text(stringResource(label))})
         }
         Text(stringResource(R.string.beta_parity_date_value,java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).format(selectedDate)))
@@ -154,9 +155,9 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 }
             }
         }
-        FilterChip(selected = needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = true },
+        BetaChoice(selected = needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = true },
             label = { Text(stringResource(R.string.beta_history_filter_review)) }, modifier = Modifier.testTag("history-filter-review"))
-        if (!reviewOnly) FilterChip(selected = !needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = false },
+        if (!reviewOnly) BetaChoice(selected = !needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = false },
             label = { Text(stringResource(R.string.beta_history_filter_all)) }, modifier = Modifier.testTag("history-filter-all"))
         Text(stringResource(if (needsReviewOnly) R.string.beta_history_filter_review else R.string.beta_history_saved), style = MaterialTheme.typography.titleMedium)
         if (needsReviewOnly && counts?.needsReview == 0) Text(stringResource(R.string.beta_history_no_review), modifier = Modifier.testTag("history-no-review"))

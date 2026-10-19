@@ -105,7 +105,7 @@ class BetaOwnershipWorkflow(private val database: BetaDatabase) {
     }
 
     /** Only an explicit, consistent account role in the same evidence can link a confirmed debit card. */
-    private suspend fun linkProvenDebitAccounts() {
+    suspend fun linkProvenDebitAccounts() = database.withTransaction {
         val current = states()
         val observations = current.flatMap { it.observations }.mapNotNull { it.proposal }.groupBy { it.evidenceId }
         val registry = BetaAssetRegistry(database)

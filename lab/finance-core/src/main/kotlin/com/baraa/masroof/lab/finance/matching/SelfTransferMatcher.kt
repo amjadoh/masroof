@@ -23,6 +23,11 @@ data class TransferObservation(
 )
 
 sealed interface TransferMatchProof {
+    /** Complete persisted pool of one notice naming both owned endpoints, or a unique
+     * complementary pair with identical endpoints/currency/amount within ten minutes.
+     * No suffix-only, amount-only or registration-order matching. */
+    data class BankNotices(val canonical: PostingKey) : TransferMatchProof
+
     data class BankReference(val reference: ConfirmedBankTransferReference) : TransferMatchProof
 
     /** Explicit pairing decision, bound to both original keys, revisions and exact evidence sets.
@@ -68,7 +73,9 @@ sealed interface TransferMatchResult {
 object SelfTransferMatcher {
     fun match(candidates: List<TransferObservation>, proof: TransferMatchProof): TransferMatchResult {
         val pool = candidates.map { it.copy(input = freezeFinancialInput(it.input)) }
+        if(proof is TransferMatchProof.BankNotices) return matchBankNotices(pool,proof.canonical)
         val selected = when (proof) {
+            is TransferMatchProof.BankNotices -> error("Handled above")
             is TransferMatchProof.BankReference -> pool.filter { it.reference == proof.reference }
             is TransferMatchProof.UserPair -> pool.filter { it.input.key == proof.outbound || it.input.key == proof.inbound }
         }
@@ -90,6 +97,7 @@ object SelfTransferMatcher {
                 candidate.input.evidenceIds.any { it in out.evidenceIds || it in incoming.evidenceIds }
             }) return review()
         val identity = when (proof) {
+            is TransferMatchProof.BankNotices -> error("Handled above")
             is TransferMatchProof.BankReference -> {
                 val source = (out.source as? FinancialEndpoint.Owned)?.id ?: return review(ReviewReason.OWNERSHIP)
                 val destination = (out.destination as? FinancialEndpoint.Owned)?.id ?: return review(ReviewReason.OWNERSHIP)
@@ -116,6 +124,28 @@ object SelfTransferMatcher {
         val merged = freezeFinancialInput(out.copy(assets = out.assets + incoming.assets,
             evidenceIds = out.evidenceIds + incoming.evidenceIds))
         return TransferMatchResult.Matched(MatchedSelfTransfer(merged, Collections.unmodifiableList(listOf(outbound, inbound)), identity))
+    }
+
+    private fun matchBankNotices(pool: List<TransferObservation>, canonical: PostingKey): TransferMatchResult {
+        fun review()=TransferMatchResult.Review(setOf(ReviewReason.AMBIGUOUS_MATCH))
+        if(pool.size !in 1..2 || pool.map {it.input.key}.distinct().size!=pool.size ||
+            pool.map {it.direction}.distinct().size!=pool.size) return review()
+        val base=pool.singleOrNull {it.input.key==canonical}?.input ?: return review()
+        val source=(base.source as? FinancialEndpoint.Owned)?.id ?: return review()
+        val destination=(base.destination as? FinancialEndpoint.Owned)?.id ?: return review()
+        if(source.bank!=destination.bank || source==destination) return review()
+        if(pool.any {p -> p.input.let {it.storedType!=FinancialType.SELF_TRANSFER || !it.validatedParse ||
+            it.key.environment!=base.key.environment || it.source!=base.source ||
+            it.destination!=base.destination || it.amount!=base.amount || it.appliedFx!=base.appliedFx ||
+            Duration.between(it.time.instant,base.time.instant).abs()>Duration.ofMinutes(10) ||
+            it.assets.any {(id,asset)->base.assets[id]?.let {it!=asset}==true} ||
+            FinancialImpactClassifier.classify(it) !is FinancialClassification.Classified}}) return review()
+        val evidence=pool.flatMap {it.input.evidenceIds}
+        if(evidence.distinct().size!=evidence.size) return review()
+        val merged=freezeFinancialInput(base.copy(evidenceIds=evidence.toSet(),
+            revision=base.revision.copy(interpretation=pool.maxOf {it.input.revision.interpretation})))
+        return TransferMatchResult.Matched(MatchedSelfTransfer(merged,Collections.unmodifiableList(pool),
+            TransferMatchIdentity(base.key.environment,"BANK_NOTICES",source.bank,canonical.transactionId)))
     }
 }
 

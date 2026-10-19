@@ -158,10 +158,11 @@ class RoomBetaCorrectionLifecycle internal constructor(private val database: Bet
         authority: CorrectionAuthority): TransferMatchResult {
         val identity = requireNotNull(stored.matchIdentity)
         val observations = stored.observations.map { observation -> observation.copy(input = observation.input.copy(assets = base.assets,
-            revision = if (observation.direction == TransferDirection.OUTBOUND) PostingRevision(correction, base.revision.interpretation) else observation.input.revision,
-            authority = if (observation.direction == TransferDirection.OUTBOUND && authority != CorrectionAuthority.NONE) authority else observation.input.authority,
+            revision = if ((stored.matchIdentity?.kind=="BANK_NOTICES" && observation.input.key==stored.command.key) || (stored.matchIdentity?.kind!="BANK_NOTICES" && observation.direction == TransferDirection.OUTBOUND)) PostingRevision(correction, base.revision.interpretation) else observation.input.revision,
+            authority = if (((stored.matchIdentity?.kind=="BANK_NOTICES" && observation.input.key==stored.command.key) || (stored.matchIdentity?.kind!="BANK_NOTICES" && observation.direction == TransferDirection.OUTBOUND)) && authority != CorrectionAuthority.NONE) authority else observation.input.authority,
             unresolved = observation.input.unresolved + base.unresolved)) }
-        val proof = if (identity.kind == "BANK_REFERENCE") TransferMatchProof.BankReference(ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference))
+        val proof = if(identity.kind=="BANK_NOTICES") TransferMatchProof.BankNotices(stored.command.key)
+        else if (identity.kind == "BANK_REFERENCE") TransferMatchProof.BankReference(ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference))
         else {
             val out = observations.single { it.direction == TransferDirection.OUTBOUND }.input
             val incoming = observations.single { it.direction == TransferDirection.INBOUND }.input

@@ -112,14 +112,14 @@ data class AnalysisSummary(
     val currency: Currency,
     val metrics: Map<SummaryMetric, SignedAmount?>,
     val transactionCount: Int,
-    val reviewRequiredCount: Int,
+    val reviewRequiredCount: Int?,
     val excludedOtherCurrencyCount: Int,
     val trends: List<SpendingTrend>,
     val merchants: List<MerchantSpending>,
 ) {
     init {
         require(metrics.keys == SummaryMetric.entries.toSet())
-        require(transactionCount >= 0 && reviewRequiredCount >= 0 && excludedOtherCurrencyCount >= 0)
+        require(transactionCount >= 0 && (reviewRequiredCount == null || reviewRequiredCount >= 0) && excludedOtherCurrencyCount >= 0)
         requireSignedCurrency(currency, *metrics.values.toTypedArray(), *merchants.map { it.net }.toTypedArray())
         require(trends.all { it.currency == currency })
         val signed = setOf(SummaryMetric.SPENDING_NET, SummaryMetric.NET_CASH_FLOW, SummaryMetric.CREDIT_PURCHASES)

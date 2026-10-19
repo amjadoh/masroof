@@ -37,34 +37,29 @@ class BetaDashboardExplorationActivityTest {
     private val key = PostingKey(Environment.BETA, "synthetic-full-activity")
     private fun waitLoaded() { compose.waitUntil(20000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() } }
     private fun route(name: String, scenario: ActivityScenario<BetaActivity>) {
-        if (compose.onAllNodesWithTag("home-shortcuts").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithTag("home-shortcuts").performScrollTo()
-            compose.onNodeWithTag("dashboard-shortcut-0").performClick()
-        }
-        val tag = "dash-route-$name"
-        try {
-            compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false }
-            compose.waitUntil(15000) {
-                compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
-                    compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+        repeat(3) {
+            if(compose.onAllNodesWithTag("beta-home-hero").fetchSemanticsNodes().isEmpty()) {
+                scenario.onActivity {it.onBackPressedDispatcher.onBackPressed()};compose.waitForIdle()
             }
-            compose.waitForIdle()
-            // A dismissed dialog may leave its Android window focused after its nodes disappear.
-            compose.waitUntil(15000) { var focused = false; scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }; focused }
-            compose.waitUntil(15000) {
-                // The route strip scrolls horizontally inside the vertically scrolling shell.
-                // Bring its row into the viewport before scrolling to a particular chip.
-                runCatching { compose.onNodeWithTag("dash-routes").performScrollTo(); compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
-            }
-            compose.onNodeWithTag(tag).performClick()
-            if (name == "OVERVIEW") compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-home-hero").fetchSemanticsNodes().isNotEmpty() }
-            else compose.waitUntil(15000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Selected) == true }
-            if (name == "CONFIGURATION") compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-configuration").fetchSemanticsNodes().isNotEmpty() }
-        } catch (failure: Throwable) {
-            runCatching { println(compose.onRoot(useUnmergedTree = true).printToString()) }
-            runCatching { screenshot("activity-route-failed-$name", false) }
-            throw failure
         }
+        compose.waitUntil(15000) {compose.onAllNodesWithTag("beta-home-hero").fetchSemanticsNodes().isNotEmpty()}
+        when(name) {
+            "OVERVIEW" -> Unit
+            "TRANSACTIONS" -> compose.onNode(hasText(context.createConfigurationContext(android.content.res.Configuration(context.resources.configuration).apply {setLocale(java.util.Locale("ar"))}).getString(com.baraa.masroof.lab.beta.R.string.beta_nav_transactions)) and hasAnyAncestor(hasTestTag("beta-bottom-navigation"))).performClick()
+            "ANALYSIS" -> compose.onNodeWithTag("home-chart-customize").performScrollTo().performClick()
+            "CONFIGURATION" -> {
+                compose.onNodeWithTag("home-configure").performScrollTo().performClick()
+                compose.onNodeWithTag("home-period-settings").performScrollTo().performClick()
+            }
+            else -> error("Unsupported test destination")
+        }
+        compose.waitUntil(15000) {compose.onAllNodesWithTag("dash-route-$name").fetchSemanticsNodes().isNotEmpty()}
+        compose.waitUntil(15000) {
+            compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodesWithTag("dash-loading").fetchSemanticsNodes().isEmpty()
+        }
+        compose.waitForIdle()
+        compose.onNodeWithTag("dash-route-$name").assertIsSelected()
     }
     private fun waitDetail() {
         compose.waitUntil(15000) { compose.onAllNodesWithTag("transaction-detail").fetchSemanticsNodes().isNotEmpty() }
@@ -113,7 +108,7 @@ class BetaDashboardExplorationActivityTest {
                 }
                 route("TRANSACTIONS", scenario)
                 compose.onNodeWithTag("dash-transaction-${key.transactionId}").performScrollTo().performClick()
-                waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText("42.35 SAR").assertExists()
+                waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists(); compose.onNodeWithText(com.baraa.masroof.ui.components.MasroofMoneyDisplay.format(java.math.BigDecimal("42.35"),"SAR","ar")).assertExists()
                 screenshot("activity-rtl-transaction-detail")
                 scenario.recreate(); waitLoaded(); waitDetail(); compose.onNodeWithTag("transaction-detail").assertExists()
                 compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
@@ -145,9 +140,9 @@ class BetaDashboardExplorationActivityTest {
             closed()
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
                 waitLoaded(); route("ANALYSIS", scenario); compose.onNodeWithTag("dash-customize").performScrollTo().performClick()
-                compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").assertIsSelected()
-                compose.onNodeWithTag("chart-category-FEES").performScrollTo().assertIsSelected()
-                compose.onNodeWithTag("chart-table").performScrollTo().assertIsSelected()
+                compose.onNodeWithTag("chart-scope-FINANCIAL_OUTFLOWS").assertIsOn()
+                compose.onNodeWithTag("chart-category-FEES").performScrollTo().assertIsOn()
+                compose.onNodeWithTag("chart-table").performScrollTo().assertIsOn()
                 compose.onNodeWithTag("dash-sheet-cancel").performClick()
                 compose.waitUntil { compose.onAllNodesWithTag("dash-sheet").fetchSemanticsNodes().isEmpty() }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()

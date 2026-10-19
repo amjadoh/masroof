@@ -104,7 +104,7 @@ class RoomBetaDashboardSource(
             val adoptionBindings = mutableMapOf<String, Triple<String, String, Long>>()
             val held = linkedSetOf<String>()
             val excluded = linkedSetOf<String>()
-            val externalEvidence = if (schema >= 13) database.query(SimpleSQLiteQuery("SELECT rawId FROM beta_ownership_exclusion WHERE rawId IN ($relevantEvidence) ORDER BY rawId LIMIT ?", arrayOf(limits.evidenceIds + 1))).use { cursor ->
+            val externalEvidence = if (schema >= 13) database.query(SimpleSQLiteQuery("SELECT rawId FROM beta_ownership_exclusion WHERE rawId IN ($relevantEvidence) UNION SELECT d.targetId AS rawId FROM beta_audit_log d WHERE d.eventKind='EVIDENCE_DECISION' AND d.operation='USER_NON_FINANCIAL' AND d.targetId IN ($relevantEvidence) AND NOT EXISTS(SELECT 1 FROM beta_audit_log n WHERE n.eventKind=d.eventKind AND n.targetId=d.targetId AND n.transition>d.transition) ORDER BY rawId LIMIT ?", arrayOf(limits.evidenceIds + 1))).use { cursor ->
                 val result = hashSetOf<String>()
                 while (cursor.moveToNext()) { check(result.size < limits.evidenceIds); result += cursor.getString(0); fingerprint(cursor.getString(0)) }
                 result

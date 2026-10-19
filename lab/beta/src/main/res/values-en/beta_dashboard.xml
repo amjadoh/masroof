@@ -43,7 +43,7 @@
     <string name="beta_dash_as_of">As of %1$s</string>
     <string name="beta_dash_refresh">Refresh</string>
     <string name="beta_dash_empty">No confirmed items in this section.</string>
-    <string name="beta_dash_unavailable_help">This section is unavailable until its authoritative information is complete.</string>
+    <string name="beta_dash_unavailable_help">The information needed for this metric is not available yet. Confirmed accounts and transactions remain available; review pending cases or complete the account or card setup if needed.</string>
     <string name="beta_dash_period_unavailable">Salary or statement period is not configured. It is not assumed to be the calendar month.</string>
     <string name="beta_dash_inflow">Inflow</string>
     <string name="beta_dash_outflow">Outflow</string>
