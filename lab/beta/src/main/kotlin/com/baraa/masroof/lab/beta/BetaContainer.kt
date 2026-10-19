@@ -83,6 +83,15 @@ class BetaContainer(
         check(preferences.edit().putString(START_KEY, START_VERSION).putString("beta_onboarding_v1", "BANK").commit())
     }
 
+    /** Explicit setup recovery preserves messages, labels, assets, ledger and backups. */
+    fun resumeOnboarding() = lock.withLock {
+        check(!closed)
+        check(startState() == BetaStartState.READY)
+        if (onboardingStep() != com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE) return@withLock
+        val step = if (bankChoices().any { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }) "IMPORT" else "BANK"
+        check(preferences.edit().putString("beta_onboarding_v1", step).commit())
+    }
+
     fun advanceOnboarding(expected: com.baraa.masroof.lab.beta.application.BetaOnboardingStep) = lock.withLock {
         check(!closed)
         val steps = com.baraa.masroof.lab.beta.application.BetaOnboardingStep.entries
@@ -112,17 +121,43 @@ class BetaContainer(
     fun importEvidence(request: com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest,
         messages: List<com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage>) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { evidenceWorkflow().importBatch(request, messages) }
     }
 
     fun reprocessEvidence(id: String) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { evidenceWorkflow().reprocess(id) }
     }
 
     fun retryEvidence(limit: Int = 100) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { evidenceWorkflow().retryPending(limit) }
+    }
+
+    private fun invalidateAutomaticProcessing() {
+        check(preferences.edit().remove("beta_auto_complete_v1").remove("beta_auto_cursor_v1").remove("beta_auto_cursor_version_v1").commit())
+    }
+
+    /** Durable, bounded write-side work. Dashboard reads never run this sweep. */
+    fun processAutomaticEvidence() = lock.withLock {
+        check(!closed)
+        if (startState() != BetaStartState.READY) return@withLock
+        val version = "v1|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
+            com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.currentSchema()).version
+        if (preferences.getString("beta_auto_complete_v1", null) == version) return@withLock
+        var cursor = if (preferences.getString("beta_auto_cursor_version_v1", null) == version) preferences.getString("beta_auto_cursor_v1", "").orEmpty() else ""
+        while (true) {
+            val next = runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).automaticPage(cursor) }
+            if (next == null) {
+                check(preferences.edit().putString("beta_auto_complete_v1", version).remove("beta_auto_cursor_v1").remove("beta_auto_cursor_version_v1").commit())
+                break
+            }
+            check(preferences.edit().putString("beta_auto_cursor_v1", next).putString("beta_auto_cursor_version_v1", version).commit())
+            cursor = next
+        }
     }
 
     fun evidenceSummary(id: String) = lock.withLock {
@@ -225,6 +260,7 @@ class BetaContainer(
 
     fun stepHistory() = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         val workflow = evidenceWorkflow()
         com.baraa.masroof.lab.beta.application.history.BetaHistoryImport(
             com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences),
@@ -233,13 +269,18 @@ class BetaContainer(
     }
 
     /** Safe bounded metadata page; no raw text enters presentation. */
-    fun evidencePage(afterId: String = "", limit: Int = 25) = lock.withLock {
+    fun evidencePage(afterId: String = "", limit: Int = 25, needsReviewOnly: Boolean = false) = lock.withLock {
         check(!closed)
         require(limit in 1..100)
         runBlocking {
             val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
-            database.evidenceDao().idsAfter(afterId, limit).map { store.summary(it) }
+            (if (needsReviewOnly) database.evidenceDao().reviewIdsAfter(afterId, limit) else database.evidenceDao().idsAfter(afterId, limit)).map { store.summary(it) }
         }
+    }
+
+    fun evidenceInboxCounts() = lock.withLock {
+        check(!closed)
+        runBlocking { database.evidenceDao().inboxCounts() }
     }
 
     fun interpretationReview(id: String) = lock.withLock {
@@ -254,6 +295,7 @@ class BetaContainer(
 
     fun confirmProposal(proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal, draft: ManualAssetDraft): OwnedAsset = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         require(draft.id == proposal.id && !draft.editing)
         require(bankChoices().any { it.bankId == proposal.id.bank && it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED })
         runBlocking { database.withTransaction {
@@ -266,6 +308,7 @@ class BetaContainer(
 
     fun linkExistingProposal(proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal, expectedAsset: OwnedAsset, ownedConfirmed: Boolean): OwnedAsset = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         require(ownedConfirmed)
         require(expectedAsset.id.environment == com.baraa.masroof.lab.finance.value.Environment.BETA && expectedAsset.id.bank == proposal.id.bank)
         runBlocking { database.withTransaction {
@@ -290,6 +333,7 @@ class BetaContainer(
 
     fun setBankEnabled(bank: BankId, enabled: Boolean) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking {
             val workflow = BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database))
             if (enabled) workflow.enable(bank) else workflow.disable(bank)
@@ -298,12 +342,14 @@ class BetaContainer(
 
     fun saveManualAsset(draft: ManualAssetDraft): OwnedAsset = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { BetaManualAssetWorkflow(BetaAssetRegistry(database)).save(draft) }
     }
 
     /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
     fun registerAsset(asset: OwnedAsset, aliases: List<BetaAssetAlias> = emptyList()) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { BetaAssetRegistry(database).register(asset, aliases) }
     }
 

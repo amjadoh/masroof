@@ -27,7 +27,7 @@ import java.time.YearMonth
 @Composable
 fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
     controls: BetaDashboardControls = UnavailableBetaDashboardControls,
-    preferences: BetaDashboardViewPreferencesWorkflow? = null, requestedRoute: String? = null, routeRequest: Int = 0, onPrimaryTabChanged: (String) -> Unit = {}, onBusyChanged: (Boolean) -> Unit = {}, onImport: () -> Unit = {}) {
+    preferences: BetaDashboardViewPreferencesWorkflow? = null, requestedRoute: String? = null, routeRequest: Int = 0, onPrimaryTabChanged: (String) -> Unit = {}, onBusyChanged: (Boolean) -> Unit = {}, onImport: () -> Unit = {}, onSetup: () -> Unit = onImport) {
     var controlsBusy by remember { mutableStateOf(false) }
     var homeLayoutOpen by rememberSaveable { mutableStateOf(false) }
     val interactive = enabled && !controlsBusy
@@ -120,7 +120,7 @@ fun BetaDashboardPanel(workflow: BetaDashboardWorkflow, enabled: Boolean = true,
                 } else when (route) {
                     "OVERVIEW" -> BetaDashboardHome(read, interactive, preferences, onRoute = { route = it },
                         onTransaction = { selectedTransaction = it }, onImport = onImport, layoutOpen = homeLayoutOpen,
-                        onLayoutClose = { homeLayoutOpen = false }, onConfiguration = { homeLayoutOpen = false; route = "CONFIGURATION" })
+                        onSetup = onSetup, onLayoutClose = { homeLayoutOpen = false }, onConfiguration = { homeLayoutOpen = false; route = "CONFIGURATION" })
                     "FLOW_IN", "FLOW_OUT" -> {
                         val incoming = route == "FLOW_IN"
                         val flow = snapshot.fleetFlow

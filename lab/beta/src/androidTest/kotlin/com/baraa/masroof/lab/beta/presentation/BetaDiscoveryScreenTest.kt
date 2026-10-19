@@ -51,6 +51,8 @@ class BetaDiscoveryScreenTest {
                 listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\n2026-10-16 12:00", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
             val facility = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "facility"), AssetKind.CREDIT_FACILITY, "", ownedConfirmed = true))
             val card = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.PRIMARY, ownedConfirmed = true))
+            // A single confirmed owner no longer needs per-message approval. A collision still needs an explicit binding.
+            beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "other-card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.SUPPLEMENTARY, ownedConfirmed = true))
             val assets = beta.assets()
             compose.setContent { MaterialTheme { BetaShell(0, false, editor = {
                 BetaDiscoveryPanel(beta, assets, onSelect = { fail("Existing choice must not open new asset") }, onClose = {})
@@ -76,6 +78,8 @@ class BetaDiscoveryScreenTest {
                 listOf(com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage("provider", "AlJazira", "POS Purchase\nCard: 1234\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\n2026-10-16 12:00", java.time.Instant.parse("2026-10-16T12:00:00Z"), com.baraa.masroof.lab.beta.application.evidence.ReceiptTimeSource.USER_SUPPLIED)))
             val facility = beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "facility"), AssetKind.CREDIT_FACILITY, "", ownedConfirmed = true))
             beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.PRIMARY, ownedConfirmed = true))
+            // A single confirmed owner no longer needs per-message approval. A collision still needs an explicit binding.
+            beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA, bank, "other-card"), AssetKind.CREDIT_CARD, "1234", facility.id, CreditCardRole.SUPPLEMENTARY, ownedConfirmed = true))
             val assets = beta.assets()
             compose.setContent { MaterialTheme { BetaShell(0, false, editor = {
                 BetaDiscoveryPanel(beta, assets, onSelect = { fail("No new asset") }, onClose = {})

@@ -49,6 +49,21 @@ object BetaOnboardingChecks {
                 assertEquals(1, beta.markerCount())
                 assertThrows(IllegalStateException::class.java) { beta.beginOnboarding() }
                 assertEquals(1, beta.markerCount())
+                beta.resumeOnboarding()
+                assertEquals(BetaOnboardingStep.BANK, beta.onboardingStep())
+                assertEquals(1, beta.markerCount())
+                beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
+                beta.advanceOnboarding(BetaOnboardingStep.BANK)
+                beta.resumeOnboarding() // In-progress setup is never rewound.
+                assertEquals(BetaOnboardingStep.IMPORT, beta.onboardingStep())
+                beta.advanceOnboarding(BetaOnboardingStep.IMPORT)
+                beta.advanceOnboarding(BetaOnboardingStep.ASSETS)
+                beta.advanceOnboarding(BetaOnboardingStep.REVIEW)
+                beta.resumeOnboarding()
+                assertEquals(BetaOnboardingStep.IMPORT, beta.onboardingStep())
+                assertEquals(1, beta.markerCount())
+                assertNull(beta.historySession())
+                assertTrue(beta.evidencePage().isEmpty())
             }
             context.getSharedPreferences(BetaEnvironment.PREFS_NAME, Context.MODE_PRIVATE).edit()
                 .putString("beta_onboarding_v1", "FUTURE_STEP").commit()

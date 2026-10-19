@@ -39,8 +39,10 @@ internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsse
         if (page == null && !failed) CircularProgressIndicator()
         page?.let { current ->
             if (current.proposals.isEmpty()) Text(stringResource(R.string.beta_discovery_empty))
-            current.proposals.forEachIndexed { index, proposal ->
+            // One visual item per observed bank/kind/suffix. This does not create ownership or merge entities.
+            current.proposals.distinctBy { Triple(it.id.bank, it.kind, it.last4) }.forEachIndexed { index, proposal ->
                 val confirmed = assets.singleOrNull { it.id == (proposal.confirmedAssetId ?: proposal.id) }
+                    ?: assets.filter { it.id.bank == proposal.id.bank && it.kind == proposal.kind && it.last4 == proposal.last4 }.singleOrNull()
                 val conflict = confirmed != null && (confirmed.kind != proposal.kind || confirmed.last4 != proposal.last4)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(BetaSpacing.screen), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {

@@ -44,9 +44,11 @@ enum class EvidenceProcessingState { RETRY, REVIEW, COMPARISON_ONLY, INTERPRETED
 enum class EvidenceStage { CAPTURED, INTERPRETATION, SAVE_OUTCOME }
 enum class CaptureState { INSERTED, EXISTING, CONFLICT }
 enum class ScopeRejection { UNRECOGNIZED, NOT_ENABLED, OUTSIDE_REQUESTED_HISTORY, UNPROVEN_HISTORY_SCOPE }
+data class EvidenceInboxCounts(val total: Int, val needsReview: Int, val needsOwnership: Int = 0)
+
 data class EvidenceSummary(val id: String, val disposition: EvidenceDisposition?, val retryStage: EvidenceStage?,
     val attempts: Int, val manualRevision: Long, val route: EvidenceRoute?, val reasonCodes: Set<String>,
-    val manualDecision: EvidenceReviewDecision? = null) {
+    val manualDecision: EvidenceReviewDecision? = null, val financialReviewReason: String? = null) {
     /** Retry always wins over a retained previous outcome. This is never financial completion. */
     val processingState: EvidenceProcessingState get() = when {
         retryStage != null -> EvidenceProcessingState.RETRY

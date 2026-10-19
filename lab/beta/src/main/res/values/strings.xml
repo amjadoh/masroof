@@ -43,7 +43,7 @@
     <string name="beta_asset_summary">%1$s • %2$s — %3$d</string>
     <string name="beta_asset_missing">الأصل لم يعد موجودًا. أغلق التكوين وأعد تحميل القائمة.</string>
     <string name="beta_history_title">استيراد رسائل إلى Beta</string>
-    <string name="beta_history_help">اختياري. اختر بنوكك أولًا، ثم الفترة والإذن. تُفسّر الأدلة وتُحفظ داخل Beta للمراجعة؛ لا تُسجل معاملات مالية ولا تتغير بيانات مصروف الأساسي.</string>
+    <string name="beta_history_help">استورد رسائل البنك ثم أكّد حساباتك وبطاقاتك. تُضاف العمليات الواضحة تلقائيًا، وتحتاج الرسائل غير الواضحة فقط للمراجعة. تبقى بيانات مصروف الأساسي مستقلة.</string>
     <string name="beta_history_scope">تُقرأ رسائل الوارد خلال الفترة المحددة لتحديد البنوك المختارة. يُحفظ المتطابق فقط في Beta. الحد ١٠٬٠٠٠ رسالة لكل استيراد. البدء مجددًا يعيد فحص الفترة دون تكرار الأدلة المحفوظة.</string>
     <string name="beta_history_days">آخر %1$d أيام</string>
     <string name="beta_history_days_selected">✓ آخر %1$d أيام</string>
@@ -56,8 +56,8 @@
     <string name="beta_history_resume">استئناف الفترة والبنوك المحفوظة</string>
     <string name="beta_history_pause">إيقاف بعد الدفعة الحالية</string>
     <string name="beta_history_retry">إعادة محاولة الأدلة المعلقة (حتى ١٠٠)</string>
-    <string name="beta_history_saved">أدلة Beta المحفوظة</string>
-    <string name="beta_history_row">الدليل %1$d: %2$s</string>
+    <string name="beta_history_saved">الرسائل المحفوظة</string>
+    <string name="beta_history_row">الرسالة %1$d: %2$s</string>
     <string name="beta_history_pending">تحتاج إعادة المحاولة</string>
     <string name="beta_history_review">تحتاج مراجعة</string>
     <string name="beta_history_compared">تفسير تاريخي يحتاج إعادة معالجة</string>
@@ -161,7 +161,7 @@
     <string name="beta_start_fresh">بدء تجربة نظيفة</string>
     <string name="beta_start_fresh_warning">سيُحذف محتوى Beta وتفضيلاته ونسخه المحلية بعد تأكيدك فقط. لا يشمل ذلك بيانات مصروف الأساسي أو رسائل الهاتف. تبقى بيانات التجربة الجديدة محفوظة عند كل فتح.</string>
     <string name="beta_start_fresh_confirm">تأكيد بدء Beta جديدة</string>
-    <string name="beta_history_interpreted">تفسير محفوظ — دون اعتماد مالي</string>
+    <string name="beta_history_interpreted">تم فهم الرسالة</string>
     <string name="beta_label_title">مراجعة تفسير الرسالة</string>
     <string name="beta_label_help">تصحيح يدوي محفوظ داخل Beta فقط. لا يغيّر نتيجة المحرك أو ينشئ حركة مالية، ولا يتم تصديره أو تدريب نموذج عليه تلقائيًا.</string>
     <string name="beta_label_unavailable">لا يوجد تفسير حالي جاهز للمراجعة. أكمل المعالجة أو أعد تفسير الرسالة أولًا.</string>

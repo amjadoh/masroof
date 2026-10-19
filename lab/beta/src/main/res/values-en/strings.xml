@@ -43,7 +43,7 @@
     <string name="beta_asset_summary">%1$s • %2$s — %3$d</string>
     <string name="beta_asset_missing">This asset no longer exists. Close setup and reload the list.</string>
     <string name="beta_history_title">Import messages into Beta</string>
-    <string name="beta_history_help">Optional. Select banks first, then a period and permission. Evidence is interpreted and saved in Beta for review; no financial transactions are posted and main Masroof data stays unchanged.</string>
+    <string name="beta_history_help">Import bank SMS, then confirm your accounts and cards. Clear transactions are added automatically; only unclear messages need review. Main Masroof data stays separate.</string>
     <string name="beta_history_scope">Inbox messages within the selected period are read to identify selected banks. Only eligible evidence is saved in Beta. Limit: 10,000 scanned messages per import. Starting again rescans the period without duplicating saved evidence.</string>
     <string name="beta_history_days">Last %1$d days</string>
     <string name="beta_history_days_selected">✓ Last %1$d days</string>
@@ -56,8 +56,8 @@
     <string name="beta_history_resume">Resume saved period and banks</string>
     <string name="beta_history_pause">Pause after current batch</string>
     <string name="beta_history_retry">Retry pending evidence (up to 100)</string>
-    <string name="beta_history_saved">Saved Beta evidence</string>
-    <string name="beta_history_row">Evidence %1$d: %2$s</string>
+    <string name="beta_history_saved">Saved messages</string>
+    <string name="beta_history_row">Message %1$d: %2$s</string>
     <string name="beta_history_pending">Needs retry</string>
     <string name="beta_history_review">Needs review</string>
     <string name="beta_history_compared">Historical interpretation; reprocess required</string>
@@ -161,7 +161,7 @@
     <string name="beta_start_fresh">Start a clean experience</string>
     <string name="beta_start_fresh_warning">Only after confirmation, Beta data, preferences and local backups will be cleared. Production and device messages are unaffected. New Beta data stays saved across launches.</string>
     <string name="beta_start_fresh_confirm">Confirm fresh Beta</string>
-    <string name="beta_history_interpreted">Interpretation saved — not financially approved</string>
+    <string name="beta_history_interpreted">Message understood</string>
     <string name="beta_label_title">Review message interpretation</string>
     <string name="beta_label_help">A manual label stored only in Beta. It does not change the engine result or create a financial transaction. No automatic export or model training.</string>
     <string name="beta_label_unavailable">No current interpretation is ready. Complete processing or explicitly reinterpret the message first.</string>
