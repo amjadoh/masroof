@@ -110,7 +110,7 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
         self.assertEqual(3, workflow.count("profile: pixel_2"))
         app = workflow.split("  emulator-app:", 1)[1].split("  emulator-smoke:", 1)[0]
         beta = workflow.split("  emulator-beta:", 1)[1].split("  emulator-lifecycle:", 1)[0]
-        lifecycle = workflow.split("  emulator-lifecycle:", 1)[1]
+        lifecycle = workflow.split("  emulator-recovery:", 1)[1].split("  emulator-lifecycle:", 1)[0]
         self.assertIn("shard: [0, 1]", app)
         self.assertIn("fail-fast: false", app)
         for job in (app, beta, lifecycle):
@@ -118,8 +118,13 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
             self.assertIn("/system-images/android-", job)
             self.assertIn("-no-snapshot", job)
         self.assertNotIn("run-instrumentation-smoke.sh beta", lifecycle)
+        recovery = (ROOT / ".github/scripts/run-lifecycle-suite.sh").read_text()
         for script in ("beta-process-death", "m13-process-death", "beta-apk-upgrade"):
-            self.assertEqual(1, workflow.count(f"bash scripts/{script}.sh"))
+            self.assertEqual(1, recovery.count(f"bash scripts/{script}.sh"))
+        self.assertIn("suite: [beta, production, upgrade]", lifecycle)
+        self.assertIn("fail-fast: false", lifecycle)
+        self.assertIn("needs: emulator-recovery", workflow)
+        self.assertIn('test "$RECOVERY_RESULT" = success', workflow)
         self.assertIn("name: beta-instrumentation-reports", beta)
         self.assertIn("name: instrumentation-reports-${{ matrix.shard }}", app)
         gate = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-beta:", 1)[0]
