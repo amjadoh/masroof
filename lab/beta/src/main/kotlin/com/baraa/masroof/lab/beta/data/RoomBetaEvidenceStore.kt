@@ -58,7 +58,20 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
         BetaDiscoveryPage(proposals, ids.lastOrNull(), review)
     }
 
-    override suspend fun find(id: String) = dao.raw(id)?.toEvidence()
+    override suspend fun find(id: String) = (dao.raw(id) ?: dao.providerAlias(id)?.let { dao.raw(it) })?.toEvidence()
+    override suspend fun resolveCaptureId(request: EvidenceRequest,message: EvidenceMessage,requestedId: String): String = database.withTransaction {
+        dao.providerAlias(requestedId)?.let { return@withTransaction it }
+        if(request.origin!=EvidenceOrigin.LIVE && (request.origin!=EvidenceOrigin.EXPLICIT_HISTORY || request.namespace!="beta-device-inbox-v1")) return@withTransaction requestedId
+        dao.deviceReceipt(message.sender,message.body,message.receivedAt.toString()).singleOrNull()?.id ?: requestedId
+    }
+    override suspend fun recordProviderAlias(requestedId: String,canonicalId: String) = database.withTransaction {
+        if(requestedId!=canonicalId) {
+            val existing=dao.providerAlias(requestedId)
+            require(existing==null || existing==canonicalId) { "Conflicting provider identity" }
+            dao.insertProviderAlias(BetaProviderAliasRecord(requestedId,canonicalId))
+            check(dao.providerAlias(requestedId)==canonicalId)
+        }
+    }
 
     override suspend fun capture(evidence: CapturedEvidence): CaptureState = database.withTransaction {
         val row = evidence.toEntity()

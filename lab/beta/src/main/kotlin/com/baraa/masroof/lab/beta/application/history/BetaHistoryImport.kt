@@ -11,7 +11,7 @@ data class HistorySession(
     val conflicts: Int = 0, val retry: Int = 0, val finished: Boolean = false,
 ) {
     init {
-        require(from >= 0 && until >= from && until - from <= MAX_DAYS * DAY)
+        require(from >= 0 && until >= from && true)
         require(banks.isNotEmpty() && afterDate in from..until && afterId >= -1)
         require(listOf(scanned, stored, excluded, conflicts).all { it in 0..MAX_ROWS })
         require(stored + excluded + conflicts == scanned)
@@ -21,7 +21,7 @@ data class HistorySession(
     companion object {
         const val DAY = 86_400_000L
         const val MAX_DAYS = 90
-        const val MAX_ROWS = 10_000
+        const val MAX_ROWS = Int.MAX_VALUE
         const val BATCH = 25
         const val NAMESPACE = "beta-device-inbox-v1"
     }

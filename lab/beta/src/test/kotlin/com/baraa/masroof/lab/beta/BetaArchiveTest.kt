@@ -46,14 +46,14 @@ class BetaArchiveTest {
         val lostKey = BetaEncryptedArchive { create -> createFlags += create; error("Synthetic lost origin key") }
         assertThrows(Exception::class.java) { BetaBackupRecovery(context).importArchive(bytes.inputStream(), password, lostKey) }; unchanged()
         assertEquals(listOf(false), createFlags)
-        assertFalse(File(context.filesDir, "beta_recovery_v1").list()!!.any { it.startsWith("archive-") })
+        assertFalse(File(context.filesDir, "beta_recovery_v2").list()!!.any { it.startsWith("archive-") })
     }
 
     @Test fun storageFailure() {
         seed()
         val broken = object : OutputStream() { var count = 0; override fun write(value: Int) { if (++count > 200) throw IOException("Synthetic ENOSPC") } }
         assertThrows(IOException::class.java) { BetaBackupRecovery(context).exportArchive(broken, password, archive) }; unchanged()
-        assertFalse(File(context.filesDir, "beta_recovery_v1").list()!!.any { it.startsWith("archive-") })
+        assertFalse(File(context.filesDir, "beta_recovery_v2").list()!!.any { it.startsWith("archive-") })
     }
 
     @Test fun deathRollback() {
@@ -117,7 +117,7 @@ class BetaArchiveTest {
             assertThrows(Exception::class.java) { BetaBackupRecovery(context).importArchive(bytes.inputStream(), password, archive) }; unchanged()
             metadata.put("environment", "BETA")
             val database = File(source, "database.db")
-            android.database.sqlite.SQLiteDatabase.openDatabase(database.absolutePath, null, 0).use { it.execSQL("DROP TABLE beta_shell_marker") }
+            android.database.sqlite.SQLiteDatabase.openDatabase(database.absolutePath, null, 0).use { it.execSQL("DROP TABLE beta_audit_log") }
             metadata.put("databaseSha256", java.security.MessageDigest.getInstance("SHA-256").digest(database.readBytes()).joinToString("") { "%02x".format(it) })
             manifest.writeText(metadata.toString())
             bytes = ByteArrayOutputStream().also { archive.write(source, it, password) }.toByteArray()

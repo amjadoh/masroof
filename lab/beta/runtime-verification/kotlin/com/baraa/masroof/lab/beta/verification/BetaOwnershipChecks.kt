@@ -21,7 +21,7 @@ object BetaOwnershipChecks {
     private inline fun isolated(context: Context, block: (BetaContainer) -> Unit) {
         BetaContainer.resetOffline(context)
         try { BetaContainer(context).use { beta -> beta.beginOnboarding(); beta.setBankEnabled(bank, true)
-            beta.advanceOnboarding(BetaOnboardingStep.BANK); block(beta) } }
+            beta.advanceOnboarding(BetaOnboardingStep.PERMISSION); block(beta) } }
         finally { BetaContainer.resetOffline(context) }
     }
     private fun finishOwnership(beta: BetaContainer) {
@@ -177,7 +177,7 @@ object BetaOwnershipChecks {
         assertNull(card.parentId); assertNull(card.creditCardRole)
         assertEquals(1, beta.ownershipSnapshot().configurationCount)
         beta.advanceOnboarding(BetaOnboardingStep.IMPORT)
-        assertThrows(IllegalStateException::class.java) { beta.advanceOnboarding(BetaOnboardingStep.ASSETS) }
+        beta.advanceOnboarding(BetaOnboardingStep.ASSETS) // Card configuration does not block setup.
         val facility = AssetId(Environment.BETA, bank, "explicit-facility")
         val draft = ManualAssetDraft(card.id, card.kind, "5678", facility, CreditCardRole.PRIMARY,
             ownedConfirmed = true, editing = true, expectedOriginal = card, createCreditFacility = true)

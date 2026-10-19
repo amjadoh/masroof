@@ -150,7 +150,7 @@ class BetaHistoryPanelTest {
             compose.onNodeWithTag("beta-badge").assertExists()
             compose.onNodeWithTag("beta-return").assertExists()
             compose.onNodeWithTag("history-resume").performScrollTo().assertIsEnabled()
-            compose.onNodeWithTag("history-days-90").performScrollTo().performClick()
+            compose.onNodeWithTag("history-date-LAST_30_DAYS").performScrollTo().performClick()
             restoration.emulateSavedInstanceStateRestore()
             compose.onNodeWithTag("history-resume").performScrollTo().assertExists()
             assertEquals(saved, beta.historySession())

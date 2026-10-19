@@ -18,7 +18,7 @@ class BetaEnvironmentTest {
         }
         BetaEnvironment.requireBetaDatabaseName(BetaEnvironment.DATABASE_NAME)
         BetaEnvironment.requireBetaPreferenceName(BetaEnvironment.PREFS_NAME)
-        assertEquals("masroof_beta.db", BetaEnvironment.DATABASE_NAME)
+        assertEquals("masroof_beta_v2.db", BetaEnvironment.DATABASE_NAME)
     }
 
     private fun assertFails(block: () -> Unit) {

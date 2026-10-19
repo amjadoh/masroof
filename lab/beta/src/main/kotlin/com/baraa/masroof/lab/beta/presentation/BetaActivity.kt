@@ -1,6 +1,9 @@
 package com.baraa.masroof.lab.beta.presentation
 
 import android.os.Bundle
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.testTag
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
@@ -46,8 +49,9 @@ class BetaActivity : ComponentActivity() {
             }
             setContent {
             var betaTheme by remember { mutableStateOf("SYSTEM") }
+            var betaLanguage by remember { mutableStateOf("SYSTEM") }
             val dark = when (betaTheme) { "DARK" -> true; "LIGHT" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
-            com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
+            BetaLocaleProvider(betaLanguage) { com.baraa.masroof.ui.theme.MasroofTheme(darkTheme = dark) {
                 val shellContainer = remember { container }
                 val scope = rememberBetaUiScope()
                 val dashboardWorkflow = remember(shellContainer) {
@@ -67,6 +71,9 @@ class BetaActivity : ComponentActivity() {
                 var onboarding by remember { mutableStateOf(BetaOnboardingStep.COMPLETE) }
                 var hasMessages by remember { mutableStateOf(false) }
                 var pendingReviewCount by remember { mutableIntStateOf(0) }
+                var ownershipPending by remember { mutableIntStateOf(Int.MAX_VALUE) }
+                var cardTasks by remember { mutableStateOf<List<com.baraa.masroof.lab.beta.application.BetaCardSetupTask>>(emptyList()) }
+                var assetMetadata by remember { mutableStateOf<Map<com.baraa.masroof.lab.finance.asset.AssetId,com.baraa.masroof.lab.beta.application.BetaAssetMetadata>>(emptyMap()) }
                 var historyBusy by remember { mutableStateOf(false) }
                 var discoveryOpen by rememberSaveable { mutableStateOf(false) }
                 var proposalId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -100,16 +107,20 @@ class BetaActivity : ComponentActivity() {
                             shellContainer.processAutomaticEvidence()
                             automaticProcessing = false
                             val inbox = shellContainer.evidenceInboxCounts()
-                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme, shellContainer.startState(), shellContainer.onboardingStep(), inbox.total > 0, inbox.needsReview)
+                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme, shellContainer.startState(), shellContainer.onboardingStep(), inbox.total > 0, inbox.needsReview, if(shellContainer.onboardingStep()==BetaOnboardingStep.ASSETS) shellContainer.ownershipSnapshot().unresolvedCount else 0, shellContainer.settings().language, shellContainer.cardSetupTasks(),shellContainer.assetMetadata())
                         }
                         markerCount = snapshot.markers
                         banks = snapshot.banks
                         assets = snapshot.assets
                         betaTheme = snapshot.theme
+                        betaLanguage = snapshot.language
                         startState = snapshot.startState
                         onboarding = snapshot.onboarding
                         hasMessages = snapshot.hasMessages
                         pendingReviewCount = snapshot.pendingReviews
+                        ownershipPending = snapshot.ownershipPending
+                        cardTasks=snapshot.cardTasks
+                        assetMetadata=snapshot.assetMetadata
                         if (snapshot.startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                             developerToolsOpen = false; settingsOpen = false; historyOpen = false; reviewOpen = false
                             approvalOpen = false; discoveryOpen = false; editBank = null; editId = null
@@ -153,6 +164,19 @@ class BetaActivity : ComponentActivity() {
                     editBank = bank.value; editId = null; proposalId = null; initialAssetKind = kind.name; ownershipEditSuffix = ""; failed = false
                 }
                 BetaLaunchedEffect(Unit) { execute { null } }
+                BetaLaunchedEffect(shellContainer) {
+                    com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.changes.collect {
+                        while(busy || historyBusy) kotlinx.coroutines.delay(50)
+                        perform {null}; dashboardRequest++
+                    }
+                }
+                androidx.compose.runtime.DisposableEffect(Unit) {
+                    val observer=androidx.lifecycle.LifecycleEventObserver { _,event ->
+                        if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME && loaded && !busy && !historyBusy) { perform {null}; dashboardRequest++ }
+                    }
+                    this@BetaActivity.lifecycle.addObserver(observer)
+                    onDispose {this@BetaActivity.lifecycle.removeObserver(observer)}
+                }
                 if (!loaded || automationFailed || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                     BetaShell(
                         markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
@@ -168,10 +192,22 @@ class BetaActivity : ComponentActivity() {
                     )
                 } else BetaShell(
                     showMaintenanceActions = false,
+                    showReturn = false,
+                    setupFooter = if(onboarding==BetaOnboardingStep.ASSETS && editBank==null && !settingsOpen && !developerToolsOpen) ({
+                        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().padding(com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal),verticalArrangement=androidx.compose.foundation.layout.Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.smallGap)) {
+                            if(ownershipPending in 1 until Int.MAX_VALUE) androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_parity_ownership_pending,ownershipPending),style=androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                            androidx.compose.material3.Button(enabled=!busy && !historyBusy && ownershipPending==0,onClick={
+                                discoveryOpen=false; perform {shellContainer.advanceOnboarding(BetaOnboardingStep.ASSETS);null}
+                            },modifier=androidx.compose.ui.Modifier.fillMaxWidth().testTag("ownership-continue")) {
+                                androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_parity_finalize))
+                            }
+                        }
+                    }) else null,
                     selectedHomeTab = when { settingsOpen -> "SETTINGS"; reviewOpen -> "REVIEW"; else -> dashboardTab },
                     onOpenHome = { openRoute("HOME") },
                     onOpenTransactions = { openRoute("TRANSACTIONS") },
-                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, requestedRoute = if (dashboardTab == "TRANSACTIONS") "TRANSACTIONS" else "OVERVIEW", routeRequest = dashboardRequest, onPrimaryTabChanged = { dashboardTab = it }, onBusyChanged = { historyBusy = it }, onImport = { openRoute("HISTORY") }, onSetup = ::resumeSetup) }),
+                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, pendingCardCount=cardTasks.size,onCards={openRoute("SETTINGS");settingsCategory="CARDS"},
+                        requestedRoute = if (dashboardTab == "TRANSACTIONS") "TRANSACTIONS" else "OVERVIEW", routeRequest = dashboardRequest, onPrimaryTabChanged = { dashboardTab = it }, onBusyChanged = { historyBusy = it }, onImport = { openRoute("HISTORY") }, onSetup = ::resumeSetup) }),
                     onOpenDiscovery = { openRoute("DISCOVERY") },
                     onOpenHistory = { openRoute("HISTORY") },
                     onOpenApproval = { openRoute("APPROVAL") },
@@ -184,12 +220,17 @@ class BetaActivity : ComponentActivity() {
                     onAddAsset = { bank -> openAsset(bank, AssetKind.ACCOUNT) },
                     onEditAsset = { asset -> if (!busy) { editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false } },
                     editor = if (settingsOpen && editBank == null && loaded) ({ BetaSettingsHubPanel(settingsCategory, { settingsCategory = it }, banks, assets, dashboardControls, busy || historyBusy,
+                        theme=betaTheme,language=betaLanguage,cardTasks=cardTasks,metadata=assetMetadata,
+                        onConfigureTask={task -> editBank=task.bank.value;editId=task.assetId?.localId;ownershipEditSuffix=task.suffix;initialAssetKind=AssetKind.DEBIT_CARD.name;proposalId=null;failed=false},
+                        onTheme={value -> perform {shellContainer.setTheme(value);null}},
+                        onLanguage={value -> perform {shellContainer.setLanguage(value);null}},
+                        onData={openRoute("DEVELOPER")},
                         onBankEnabled = { bank, enabled -> perform { shellContainer.setBankEnabled(bank, enabled); null } },
                         onAdd = ::openAsset, onEdit = { asset -> editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false },
                         onBusyChanged = { historyBusy = it }, onClose = { settingsOpen = false },
                         onSetup = ::resumeSetup, onReset = { perform { shellContainer.reset(); null } }) })
                     else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if ((discoveryOpen || onboarding == BetaOnboardingStep.ASSETS) && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
-                        onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }, parentBusy = busy,
+                        onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }, showContinue = onboarding!=BetaOnboardingStep.ASSETS, parentBusy = busy,
                         onContinue = if (onboarding == BetaOnboardingStep.ASSETS) ({
                             discoveryOpen = false
                             perform { shellContainer.advanceOnboarding(BetaOnboardingStep.ASSETS); null }
@@ -199,7 +240,7 @@ class BetaActivity : ComponentActivity() {
                             editBank = candidate.reference.bank.value; editId = candidate.asset?.id?.localId; proposalId = null
                             initialAssetKind = (candidate.asset?.kind ?: AssetKind.DEBIT_CARD).name
                             ownershipEditSuffix = candidate.reference.suffix; failed = false
-                        }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onFinancialReview = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }, onContinueSetup = if (onboarding == BetaOnboardingStep.IMPORT) ({
+                        }) }) else if ((historyOpen || onboarding==BetaOnboardingStep.IMPORT) && loaded) ({ BetaHistoryPanel(shellContainer, onClose = {if(onboarding==BetaOnboardingStep.IMPORT) finish() else closeTask()}, onBusyChanged = { historyBusy = it }, onFinancialReview = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }, onContinueSetup = if (onboarding == BetaOnboardingStep.IMPORT) ({
                             historyOpen = false
                             perform { shellContainer.advanceOnboarding(BetaOnboardingStep.IMPORT); null }
                         }) else null) }) else if (editBank != null && loaded) ({
@@ -212,6 +253,7 @@ class BetaActivity : ComponentActivity() {
                                 }
                             } else BetaAssetEditor(BankId(checkNotNull(editBank)), existing, assets, busy, failed,
                                 initialKind = AssetKind.valueOf(initialAssetKind), initialSuffix = ownershipEditSuffix,
+                                metadata=existing?.let {assetMetadata[it.id]} ?: com.baraa.masroof.lab.beta.application.BetaAssetMetadata(),
                                 onCancel = { editBank = null; editId = null; proposalId = null; failed = false },
                                 proposal = proposalId?.let { com.baraa.masroof.lab.beta.application.BetaAssetProposal(
                                     com.baraa.masroof.lab.finance.asset.AssetId(com.baraa.masroof.lab.finance.value.Environment.BETA, BankId(checkNotNull(editBank)), it),
@@ -254,6 +296,7 @@ class BetaActivity : ComponentActivity() {
                 )
             }
             }
+            }
         }
     }
 
@@ -275,4 +318,8 @@ private data class BetaScreenSnapshot(
     val onboarding: BetaOnboardingStep,
     val hasMessages: Boolean,
     val pendingReviews: Int,
+    val ownershipPending: Int,
+    val language: String,
+    val cardTasks: List<com.baraa.masroof.lab.beta.application.BetaCardSetupTask>,
+    val assetMetadata: Map<com.baraa.masroof.lab.finance.asset.AssetId,com.baraa.masroof.lab.beta.application.BetaAssetMetadata>,
 )

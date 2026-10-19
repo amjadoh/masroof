@@ -49,7 +49,7 @@ class BetaSettingsActivityTest {
     @Test fun malformedRecoveryShowsSafeRetryAndDoesNotCreateReplacementData() {
         BetaContainer.resetOffline(context)
         BetaContainer(context).use { it.putMarker("synthetic", "keep") }
-        val journal = File(context.filesDir, "beta_recovery_v1/restore_journal")
+        val journal = File(context.filesDir, "beta_recovery_v2/restore_journal")
         journal.writeText("corrupted journal")
         ActivityScenario.launch(BetaActivity::class.java).use {
             compose.waitUntil(15000) { compose.onAllNodesWithTag("beta-startup-failure").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }

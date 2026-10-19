@@ -13,7 +13,7 @@ internal data class BetaAutomaticDecision(val type: FinancialType, val source: A
 /** Consumes proven persisted identities only. Never guesses ownership, loan attribution or transfer pairing. */
 internal object BetaAutomaticPostingPolicy {
     fun decide(family: MessageFamily, direction: MoneyDirection?, salary: Boolean, financing: Boolean,
-        cardObserved: Boolean, proposals: List<BetaAssetProposal>, registry: Map<AssetId, OwnedAsset>): BetaAutomaticDecision {
+        cardObserved: Boolean, proposals: List<BetaAssetProposal>, registry: Map<AssetId, OwnedAsset>, loanId: AssetId? = null): BetaAutomaticDecision {
         fun hold(reason: String) = BetaAutomaticDecision(FinancialType.UNKNOWN, hold = reason)
         val resolved = mutableListOf<OwnedAsset>()
         for (proposal in proposals) {
@@ -33,7 +33,12 @@ internal object BetaAutomaticPostingPolicy {
             return hold("LINK_DEBIT_ACCOUNT")
         if (card != null && account != null && card.parentId != account.id && card.kind == AssetKind.DEBIT_CARD)
             return hold("CONFLICTING_ACCOUNT_LINK")
-        if (financing || family == MessageFamily.FINANCING_INSTALLMENT) return hold("CONFIRM_LOAN")
+        if (financing || family == MessageFamily.FINANCING_INSTALLMENT) {
+            val loan=loanId?.let(registry::get)?.takeIf {it.kind==AssetKind.LOAN && it.id.bank==account?.id?.bank}
+                ?: return hold("CONFIRM_LOAN")
+            if(direction!=MoneyDirection.OUTGOING) return hold("UNCLEAR_DIRECTION")
+            return BetaAutomaticDecision(FinancialType.LOAN_REPAYMENT,requireNotNull(account).id,loan.id)
+        }
         val type = when (family) {
             MessageFamily.PURCHASE -> FinancialType.EXPENSE
             MessageFamily.REFUND -> FinancialType.REFUND

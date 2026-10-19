@@ -45,9 +45,6 @@ object BetaDashboardBuilder {
         val assets = batch.assets.toList().sortedWith(compareBy({ it.id.bank.value }, { it.id.localId }))
         require(assets.all { it.id.environment == batch.query.environment })
         require(assets.map { it.id }.distinct().size == assets.size)
-        require(assets.none { it.kind == AssetKind.CREDIT_CARD && it.parentId == null }) {
-            "The existing snapshot cannot represent a credit card without a confirmed facility"
-        }
         val registry = assets.associateBy { it.id }
         assets.forEach { asset -> asset.parentId?.let { parent ->
             val expected = if (asset.kind == AssetKind.DEBIT_CARD) AssetKind.ACCOUNT else AssetKind.CREDIT_FACILITY
@@ -130,18 +127,20 @@ object BetaDashboardBuilder {
             DebitSpending(asset.id, salary?.let { debitNet(it, asset, details) }, asset.parentId,
                 facts[asset.id]?.label, asset.last4, facts[asset.id]?.network, batch.periods.salary)
         }
-        val facilities = assets.filter { it.kind == AssetKind.CREDIT_FACILITY }.map { facility ->
-            val statement = facts[facility.id]?.statement
-            val members = assets.filter { it.kind == AssetKind.CREDIT_CARD && it.parentId == facility.id }.map { card ->
-                val fact = facts[card.id]
-                CreditCardSummary(card.id, card.creditCardRole, fact?.label, card.last4,
-                    batch.periods.calendar?.let { PeriodSpending(it, calendar?.let { projection -> creditNet(projection, card) }) },
-                    batch.periods.salary?.let { PeriodSpending(it, salary?.let { projection -> creditNet(projection, card) }) },
-                    statements[facility.id]?.let { PeriodSpending(it, statementProjections[facility.id]?.let { projection -> creditNet(projection, card) }) },
-                    fact?.balance?.amount, fact?.balance?.asOf)
-            }
-            FacilitySummary(facility.id, statement?.due, statement?.dueDate, statement?.issuedAt,
-                salary?.let { facilityNet(it, facility.id) }, statementProjections[facility.id]?.let { facilityNet(it, facility.id) }, freezeList(members))
+        fun creditCard(card: OwnedAsset): CreditCardSummary {
+            val fact=facts[card.id]
+            return CreditCardSummary(card.id,card.creditCardRole,fact?.label,card.last4,
+                batch.periods.calendar?.let {PeriodSpending(it,calendar?.let {projection -> creditNet(projection,card)})},
+                batch.periods.salary?.let {PeriodSpending(it,salary?.let {projection -> creditNet(projection,card)})},
+                card.parentId?.let(statements::get)?.let {period -> PeriodSpending(period,statementProjections[card.parentId]?.let {projection -> creditNet(projection,card)})},
+                fact?.balance?.amount,fact?.balance?.asOf)
+        }
+        val standalone=assets.filter {it.kind==AssetKind.CREDIT_CARD && it.parentId==null}.map(::creditCard)
+        val facilities=assets.filter {it.kind==AssetKind.CREDIT_FACILITY}.map {facility ->
+            val statement=facts[facility.id]?.statement
+            val members=assets.filter {it.kind==AssetKind.CREDIT_CARD && it.parentId==facility.id}.map(::creditCard)
+            FacilitySummary(facility.id,statement?.due,statement?.dueDate,statement?.issuedAt,
+                salary?.let {facilityNet(it,facility.id)},statementProjections[facility.id]?.let {facilityNet(it,facility.id)},freezeList(members))
         }
         val loans = assets.filter { it.kind == AssetKind.LOAN }.map { loan ->
             val fact = facts[loan.id]
@@ -161,7 +160,7 @@ object BetaDashboardBuilder {
         val completeRegistry = batch.coverage.completeRegistry
         val totals = PortfolioTotals(Currency.SAR, fleet?.externalIn, fleet?.externalOut, fleet?.cashPosition, fleet?.remaining,
             if (completeRegistry && assets.none { it.kind == AssetKind.CREDIT_CARD && it.parentId == null }) sumKnownMoney(facilities.map { it.statementDue }) else null,
-            salary?.let { sumKnownSigned(facilities.map { it.salarySpending }) },
+            salary?.let { sumKnownSigned(facilities.map { it.salarySpending } + standalone.map {it.salarySpending?.net}) },
             salary?.let { sumKnownSigned(debitRows.map { it.spending }) },
             if (completeRegistry) sumKnownMoney(loans.map { it.remaining }) else null,
             salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
@@ -176,7 +175,7 @@ object BetaDashboardBuilder {
         }
         val commitments = BetaAnalysisBuilder.commitments(batch, facilities, loans, salary, settlementProjections)
         val snapshot = DashboardSnapshot(batch.query, freezeList(accountRows), freezeList(debitRows), freezeList(facilities), freezeList(loans),
-            commitments, analysis, freezeList(transactions), totals, batch.revision, fleet)
+            commitments, analysis, freezeList(transactions), totals, batch.revision, fleet,freezeList(standalone))
         val unavailable = (if (analysis == null) setOf(DashboardSection.ANALYSIS) else emptySet()) +
             (if (analysis == null || analysis.trends.any { it.averageDailySpending == null }) setOf(DashboardSection.TRENDS) else emptySet()) +
             (if (analysis == null || queryProjection == null || !batch.coverage.completeMerchantFacts) setOf(DashboardSection.MERCHANT_TOTALS) else emptySet()) +

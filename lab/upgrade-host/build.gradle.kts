@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-// This host exists exclusively for isolated emulator update rehearsals.
+// Isolated lab hosts: synthetic update rehearsals and the standalone SMS-enabled lab.
 android {
     namespace = "com.baraa.masroof.lab.upgrade"
     compileSdk = 35
@@ -24,11 +24,13 @@ android {
             keyPassword = "synthetic-test-only"
         }
     }
-    buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("rehearsal")
+    // Flavor signing keeps rehearsal identities isolated and the standalone debug identity stable.
+    buildTypes.getByName("debug").signingConfig = null
     flavorDimensions += "rehearsal"
     productFlavors {
-        create("before") { dimension = "rehearsal"; versionCode = 1; versionName = "rehearsal-1" }
-        create("after") { dimension = "rehearsal"; versionCode = 2; versionName = "rehearsal-2" }
+        create("before") { dimension = "rehearsal"; versionCode = 1; versionName = "rehearsal-1"; signingConfig=signingConfigs.getByName("rehearsal") }
+        create("after") { dimension = "rehearsal"; versionCode = 2; versionName = "rehearsal-2"; signingConfig=signingConfigs.getByName("rehearsal") }
+        create("standalone") { dimension="rehearsal"; applicationId="com.baraa.masroof.lab.standalone"; testApplicationId="com.baraa.masroof.lab.standalone.test"; versionCode=1; versionName="lab-parity-1"; signingConfig=signingConfigs.getByName("debug") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,7 +40,7 @@ android {
     buildFeatures { buildConfig = true }
     sourceSets.getByName("androidTest").java.srcDir("../beta/verification/kotlin")
 }
-androidComponents.beforeVariants(androidComponents.selector().withBuildType("release")) { it.enable = false }
+androidComponents.beforeVariants(androidComponents.selector().withBuildType("release")) {it.enable=false}
 
 // An ephemeral, dedicated test certificate; never the app's release or default debug key.
 val rehearsalKey = layout.buildDirectory.file("rehearsal-signing/test-only.jks")
@@ -62,8 +64,11 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.work.runtime.ktx)
     androidTestImplementation(project(":lab:finance-core"))
     androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

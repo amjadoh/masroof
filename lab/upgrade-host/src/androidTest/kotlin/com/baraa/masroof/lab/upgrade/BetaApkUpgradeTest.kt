@@ -109,7 +109,7 @@ class BetaApkUpgradeTest {
             val queries = mapOf(
                 "facts" to "SELECT f.* FROM beta_dashboard_evidence_facts f ORDER BY f.evidenceId LIMIT 10001",
                 "auxiliary" to "SELECT * FROM beta_dashboard_aux_facts ORDER BY evidenceId LIMIT 10001",
-                "current" to "SELECT l.transactionId,l.correction,l.interpretation,l.payload,c.correction,c.interpretation,c.transition,c.activity,c.payload FROM beta_ledger_current l LEFT JOIN beta_correction_current c ON c.environment=l.environment AND c.transactionId=l.transactionId WHERE l.environment='BETA' ORDER BY l.transactionId LIMIT 10001",
+                "current" to "SELECT l.transactionId,l.correction,l.interpretation,l.payload,c.correction,c.interpretation,c.transition,c.activity,c.payload FROM beta_financial_transaction l LEFT JOIN beta_correction_current c ON c.environment=l.environment AND c.transactionId=l.transactionId WHERE l.environment='BETA' ORDER BY l.transactionId LIMIT 10001",
             )
             queries.forEach { (name, sql) -> db.rawQuery("EXPLAIN QUERY PLAN $sql", null).use { rows ->
                 val lines = JSONArray(); while (rows.moveToNext()) lines.put(rows.getString(3)); check(lines.length() > 0)

@@ -81,7 +81,8 @@ class BetaOnboardingPermissionTest {
                     }
                     val node = compose.onNodeWithTag(tag)
                     compose.waitForIdle()
-                    compose.waitUntil(10_000) {
+                    val fixedSheetAction=tag in setOf("asset-save","asset-cancel")
+                    if(!fixedSheetAction) compose.waitUntil(10_000) {
                         var focused = false
                         scenario.onActivity { focused = it.window.decorView.hasWindowFocus() }
                         focused
@@ -89,7 +90,10 @@ class BetaOnboardingPermissionTest {
                     // Returning home hydrates the dashboard above these controls. Scroll readiness
                     // may repeat while its height settles; the actual destination click happens once.
                     compose.waitUntil(10_000) {
-                        runCatching { node.performScrollTo().assertIsDisplayed().assertIsEnabled(); true }.getOrDefault(false)
+                        runCatching {
+                            if(!fixedSheetAction) node.performScrollTo()
+                            node.assertIsDisplayed().assertIsEnabled();true
+                        }.getOrDefault(false)
                     }
                     node.performClick()
                 } catch (failure: Throwable) {
@@ -112,8 +116,8 @@ class BetaOnboardingPermissionTest {
             compose.onNodeWithTag("beta-badge").assertExists()
             awaitEnabled("beta-history")
             clickWhenReady("beta-history")
-            awaitEnabled("history-days-7")
-            clickWhenReady("history-days-7")
+            awaitEnabled("history-date-LAST_30_DAYS")
+            clickWhenReady("history-date-LAST_30_DAYS")
             awaitEnabled("history-start")
             clickWhenReady("history-start")
             systemClick("permission_deny_button")
@@ -128,23 +132,23 @@ class BetaOnboardingPermissionTest {
             clickWhenReady("asset-add-BANK_ALJAZIRA")
             awaitEnabled("asset-last4")
             compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
-            compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+            compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
             awaitEnabled("asset-cancel")
             clickWhenReady("asset-cancel")
             awaitEnabled("beta-history")
             clickWhenReady("beta-history")
-            awaitEnabled("history-days-7")
-            clickWhenReady("history-days-7")
+            awaitEnabled("history-date-LAST_30_DAYS")
+            clickWhenReady("history-date-LAST_30_DAYS")
             awaitEnabled("history-start")
             clickWhenReady("history-start")
             systemClick("permission_allow_button")
             compose.waitUntil(15_000) { runCatching { compose.onNodeWithTag("history-close").assertIsEnabled(); compose.onNodeWithTag("history-progress").assertExists(); true }.getOrDefault(false) }
             assertEquals(PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_SMS))
             // Grant follows this explicit Start; nothing was read on welcome, denial, or recreation.
-            BetaContainer(context).use { assertNotNull(it.historySession()); assertEquals(7L * 86_400_000L, it.historySession()!!.until - it.historySession()!!.from) }
+            BetaContainer(context).use { assertNotNull(it.historySession()); assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Riyadh")).minusDays(30), java.time.Instant.ofEpochMilli(it.historySession()!!.from).atZone(java.time.ZoneId.of("Asia/Riyadh")).toLocalDate()) }
             awaitEnabled("history-close")
             clickWhenReady("history-close")
-            compose.onNodeWithTag("beta-return").assertIsEnabled()
+            compose.onNodeWithTag("beta-bottom-navigation").assertExists()
         }
         kotlinx.coroutines.runBlocking { kotlinx.coroutines.withContext(com.baraa.masroof.lab.beta.BetaIo.dispatcher) {} }
         BetaContainer.resetOffline(context)

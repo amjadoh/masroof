@@ -58,7 +58,7 @@ class RoomBetaDashboardSource(
             fingerprint("BETA_DASHBOARD_CURRENT_1")
             fingerprint(query.toString())
             val schema = database.openHelper.readableDatabase.version
-            check(schema in 6..BetaDatabase.VERSION) { "Unsupported Beta dashboard schema" }
+            check(schema == BetaDatabase.VERSION) { "Unsupported Beta dashboard schema" }
             fingerprint(schema.toString())
             val configuration = if (schema >= 10) RoomBetaDashboardConfiguration(database).current() else null
             val configured = configuration?.takeIf { it.revision > 0 }?.let { BetaConfiguredPeriods.periods(it.draft, query, readAt) } ?: DashboardPeriods()
@@ -69,8 +69,21 @@ class RoomBetaDashboardSource(
             require(windows.all { it.zone == query.zone })
             fingerprint(configuration.toString()); fingerprint(frozenPeriods.toString())
             val paymentCutoff = readAt.plusNanos(1)
+            val from=windows.minOf { it.from }.toEpochMilli()
+            val until=windows.maxOf { it.until }.toEpochMilli()
+            val cutoff=minOf(readAt.toEpochMilli(),query.until.toEpochMilli()-1)
+            fun moneyTime(column: String)="($column >= $from AND $column < $until)"
+            val rawMoney="SELECT r.id FROM beta_raw_evidence r LEFT JOIN beta_parsed_event p ON p.rawId=r.id WHERE "+moneyTime("COALESCE(p.occurredAtEpochMillis,r.receivedAtEpochMillis)")
+            fun latest(prefix: String,asset: String): String = "SELECT p.rawId FROM beta_parsed_event p JOIN (SELECT ${prefix}_bankId AS bank,${prefix}_${asset} AS asset,MAX(${prefix}_epochMillis) AS at FROM beta_parsed_event WHERE ${prefix}_present=1 AND ${prefix}_${asset} IS NOT NULL AND ${prefix}_epochMillis <= $cutoff GROUP BY ${prefix}_bankId,${prefix}_${asset}) last ON p.${prefix}_bankId=last.bank AND p.${prefix}_${asset}=last.asset AND p.${prefix}_epochMillis=last.at WHERE p.${prefix}_present=1"
+            val factScope="SELECT rawId FROM beta_parsed_event WHERE f_present=1 AND "+moneyTime("f_epochMillis")+" UNION "+latest("f","balanceAsset")
+            val auxScope="SELECT rawId FROM beta_parsed_event WHERE a_present=1 AND (rawId IN ($rawMoney) OR "+moneyTime("a_epochMillis")+") UNION "+latest("a","balanceAsset")+" UNION "+latest("a","facilityAsset")+" UNION "+latest("a","loanAsset")
+            val relevantEvidence="$rawMoney UNION $factScope UNION $auxScope"
+            val moneyLedger="SELECT transactionId FROM beta_financial_transaction WHERE environment='BETA' AND ("+moneyTime("occurredAtEpochMillis")+" OR (financialType='CREDIT_CARD_PAYMENT' AND occurredAtEpochMillis < ${paymentCutoff.toEpochMilli()}))"
+            val relevantLedger="$moneyLedger UNION SELECT f_transactionId FROM beta_parsed_event WHERE rawId IN ($factScope) AND f_transactionId IS NOT NULL"
+            val heldInMoney=linkedSetOf<String>()
+
             val capabilities = database.query(SimpleSQLiteQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts','beta_dashboard_aux_facts')",
+                "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name IN ('beta_financial_adoption','beta_financial_approval_retry','beta_dashboard_evidence_facts','beta_dashboard_aux_facts')",
             )).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
             val hasAdoption = "beta_financial_adoption" in capabilities
             val hasApprovalRetry = "beta_financial_approval_retry" in capabilities
@@ -79,19 +92,19 @@ class RoomBetaDashboardSource(
             check(schema < 8 || hasFacts) { "Missing Beta persisted dashboard facts" }
             val hasAux = "beta_dashboard_aux_facts" in capabilities
             check(schema < 9 || hasAux) { "Missing Beta auxiliary dashboard facts" }
-            val auxiliary = if (hasAux) database.dashboardAuxFactsDao().all(limits.evidenceIds + 1) else emptyList()
+            val auxiliary = if (hasAux) database.dashboardAuxFactsDao().scoped(SimpleSQLiteQuery("SELECT * FROM beta_dashboard_aux_facts WHERE evidenceId IN ($auxScope) ORDER BY evidenceId LIMIT ?",arrayOf(limits.evidenceIds+1))) else emptyList()
             if (auxiliary.size > limits.evidenceIds) throw BetaDashboardReadLimitExceeded("auxiliary facts", limits.evidenceIds)
             val auxByEvidence = auxiliary.associateBy { it.evidenceId }
             val currentAux = hashSetOf<String>()
             val informationalAux = hashSetOf<String>()
-            val factRows = if (hasFacts) database.dashboardFactsDao().all(limits.currentRows + 1) else emptyList()
+            val factRows = if (hasFacts) database.dashboardFactsDao().scoped(SimpleSQLiteQuery("SELECT * FROM beta_dashboard_evidence_facts WHERE evidenceId IN ($factScope) ORDER BY evidenceId LIMIT ?",arrayOf(limits.currentRows+1))) else emptyList()
             if (factRows.size > limits.currentRows) throw BetaDashboardReadLimitExceeded("persisted facts", limits.currentRows)
             val persistedFacts = factRows.associateBy { it.transactionId }
             val projectedEvidence = factRows.mapTo(hashSetOf()) { it.evidenceId }
             val adoptionBindings = mutableMapOf<String, Triple<String, String, Long>>()
             val held = linkedSetOf<String>()
             val excluded = linkedSetOf<String>()
-            val externalEvidence = if (schema >= 13) database.query(SimpleSQLiteQuery("SELECT rawId FROM beta_ownership_exclusion ORDER BY rawId LIMIT ?", arrayOf(limits.evidenceIds + 1))).use { cursor ->
+            val externalEvidence = if (schema >= 13) database.query(SimpleSQLiteQuery("SELECT rawId FROM beta_ownership_exclusion WHERE rawId IN ($relevantEvidence) ORDER BY rawId LIMIT ?", arrayOf(limits.evidenceIds + 1))).use { cursor ->
                 val result = hashSetOf<String>()
                 while (cursor.moveToNext()) { check(result.size < limits.evidenceIds); result += cursor.getString(0); fingerprint(cursor.getString(0)) }
                 result
@@ -100,7 +113,7 @@ class RoomBetaDashboardSource(
                 database.query(SimpleSQLiteQuery(
                     "SELECT a.transactionId,a.status,a.archiveFingerprint,a.observationRevision,a.bankId," +
                         (if (hasApprovalRetry) "EXISTS(SELECT 1 FROM beta_financial_approval_retry r WHERE r.evidenceId=a.evidenceId)" else "0") +
-                        ",a.evidenceId FROM beta_financial_adoption a ORDER BY a.evidenceId LIMIT ?",
+                        ",a.evidenceId,CASE WHEN a.evidenceId IN ($rawMoney) OR a.transactionId IN ($moneyLedger) THEN 1 ELSE 0 END FROM beta_financial_adoption a WHERE a.evidenceId IN ($relevantEvidence) OR a.transactionId IN ($relevantLedger) ORDER BY a.evidenceId LIMIT ?",
                     arrayOf(limits.currentRows + 1),
                 )).use { cursor ->
                     var count = 0
@@ -112,23 +125,23 @@ class RoomBetaDashboardSource(
                         adoptionBindings[id] = Triple(cursor.getString(4), cursor.getString(2), cursor.getLong(3)); fingerprint(cursor.getString(4))
                         fingerprint(cursor.getInt(5).toString())
                         if (status == "EXCLUDED" && cursor.getString(6) in externalEvidence && cursor.getInt(5) == 0) excluded += id
-                        if (status != "ACTIVE" || cursor.getInt(5) != 0) held += id
+                        if (status != "ACTIVE" || cursor.getInt(5) != 0) { held += id; if(cursor.getInt(7)==1) heldInMoney += id }
                     }
                 }
             }
             // A safety hold is not an intentional non-financial dismissal. Neither a durable
             // retry nor a review-only correction may turn an incomplete period into known zero.
             var completeLedger = database.query(SimpleSQLiteQuery(
-                "SELECT EXISTS(SELECT 1 FROM beta_correction_current WHERE environment=? AND activity='REVIEW') " +
-                    "OR EXISTS(SELECT 1 FROM beta_evidence_retry)" +
-                    (if (hasApprovalRetry) " OR EXISTS(SELECT 1 FROM beta_financial_approval_retry)" else ""), arrayOf(Environment.BETA.name),
+                "SELECT EXISTS(SELECT 1 FROM beta_correction_current WHERE environment=? AND activity='REVIEW' AND (occurredAtEpochMillis IS NULL OR ${moneyTime("occurredAtEpochMillis")})) " +
+                    "OR EXISTS(SELECT 1 FROM beta_evidence_retry WHERE rawId IN ($rawMoney))" +
+                    (if (hasApprovalRetry) " OR EXISTS(SELECT 1 FROM beta_financial_approval_retry WHERE evidenceId IN ($rawMoney))" else ""), arrayOf(Environment.BETA.name),
             )).use { it.moveToFirst(); it.getInt(0) == 0 }
-            if ((held - excluded).isNotEmpty()) completeLedger = false
+            if ((heldInMoney - excluded).isNotEmpty()) completeLedger = false
             fingerprint(completeLedger.toString())
             val unhandledEvidence = linkedSetOf<String>()
             val evidenceOwners = mutableMapOf<String, String>()
             val reviewKeys = linkedSetOf<String>()
-            if (hasFacts) database.query(SimpleSQLiteQuery("SELECT transactionId FROM beta_correction_current WHERE environment=? AND activity='REVIEW' ORDER BY transactionId LIMIT ?",
+            if (hasFacts) database.query(SimpleSQLiteQuery("SELECT transactionId FROM beta_correction_current WHERE environment=? AND activity='REVIEW' AND (occurredAtEpochMillis IS NULL OR ${moneyTime("occurredAtEpochMillis")}) ORDER BY transactionId LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.currentRows + 1))).use { cursor ->
                 while (cursor.moveToNext()) {
                     if (reviewKeys.size == limits.currentRows) throw BetaDashboardReadLimitExceeded("review identities", limits.currentRows)
@@ -137,11 +150,11 @@ class RoomBetaDashboardSource(
             }
             database.query(SimpleSQLiteQuery(
                 "SELECT r.id,c.transactionId,c.correction,c.interpretation,c.transition,c.activity,c.payload,o.attempts,o.updatedAt," +
-                    "EXISTS(SELECT 1 FROM beta_evidence_retry retry WHERE retry.rawId=r.id) " +
+                    "EXISTS(SELECT 1 FROM beta_evidence_retry retry WHERE retry.rawId=r.id),CASE WHEN r.id IN ($rawMoney) THEN 1 ELSE 0 END " +
                     "FROM beta_raw_evidence r LEFT JOIN beta_correction_evidence_claim x ON x.environment=? AND x.evidenceId=r.id " +
                     "LEFT JOIN beta_correction_current c ON c.environment=x.environment AND c.transactionId=x.transactionId " +
                     "LEFT JOIN beta_evidence_outcome o ON o.rawId=r.id " +
-                    "ORDER BY r.id LIMIT ?",
+                    "WHERE r.id IN ($relevantEvidence) ORDER BY r.id LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.evidenceIds + 1),
             )).use { cursor ->
                 var count = 0
@@ -155,7 +168,7 @@ class RoomBetaDashboardSource(
                         correction.overlay.correctionRevision == cursor.getLong(2) && correction.overlay.interpretationRevision == cursor.getLong(3) &&
                         correction.transition == cursor.getLong(4) && correction.activity.name == cursor.getString(5)) { "Inconsistent evidence correction state" }
                     else check(cursor.isNull(5)) { "Missing evidence correction payload" }
-                    if (correction?.activity != BetaLedgerActivity.SUPPRESSED && "evidence:$id" !in excluded && id !in externalEvidence) unhandledEvidence += id
+                    if (cursor.getInt(10)==1 && correction?.activity != BetaLedgerActivity.SUPPRESSED && "evidence:$id" !in excluded && id !in externalEvidence) unhandledEvidence += id
                     val aux = auxByEvidence[id]
                     if (aux != null && id !in externalEvidence) {
                         // No archive decoding: the write-side binds a completed outcome generation.
@@ -187,16 +200,18 @@ class RoomBetaDashboardSource(
                 }
                 result
             } else emptySet()
+            val assetMetadata=mutableMapOf<AssetId,com.baraa.masroof.lab.beta.application.BetaAssetMetadata>()
             val assets = com.baraa.masroof.lab.beta.application.ownedBetaAssets(database.query(SimpleSQLiteQuery(
-                "SELECT environment,bankId,localId,kind,last4,parentLocalId,creditCardRole FROM beta_asset " +
+                "SELECT environment,bankId,localId,kind,last4,parentLocalId,creditCardRole,displayName,network,accountType,loanType FROM beta_asset " +
                     "WHERE environment=? ORDER BY bankId,localId LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.assets + 1),
             )).use { cursor ->
                 val result = mutableListOf<OwnedAsset>()
                 while (cursor.moveToNext()) {
                     if (result.size == limits.assets) throw BetaDashboardReadLimitExceeded("confirmed assets", limits.assets)
-                    repeat(7) { fingerprint(cursor.optional(it)) }
+                    repeat(11) { fingerprint(cursor.optional(it)) }
                     val id = AssetId(Environment.valueOf(cursor.getString(0)), BankId(cursor.getString(1)), cursor.getString(2))
+                    assetMetadata[id]=com.baraa.masroof.lab.beta.application.BetaAssetMetadata(cursor.optional(7),cursor.optional(8),cursor.optional(9),cursor.optional(10))
                     result += OwnedAsset(id, AssetKind.valueOf(cursor.getString(3)), cursor.optional(4),
                         cursor.optional(5)?.let { AssetId(id.environment, id.bank, it) }, cursor.optional(6)?.let(CreditCardRole::valueOf))
                 }
@@ -236,10 +251,10 @@ class RoomBetaDashboardSource(
             var completeMerchantFacts = hasFacts
             database.query(SimpleSQLiteQuery(
                 "SELECT l.transactionId,l.correction,l.interpretation,l.payload," +
-                    "c.correction,c.interpretation,c.transition,c.activity,c.payload " +
-                    "FROM beta_ledger_current l LEFT JOIN beta_correction_current c " +
+                    "c.correction,c.interpretation,c.transition,c.activity,c.payload,l.occurredAtEpochMillis " +
+                    "FROM beta_financial_transaction l LEFT JOIN beta_correction_current c " +
                     "ON c.environment=l.environment AND c.transactionId=l.transactionId " +
-                    "WHERE l.environment=? ORDER BY l.transactionId LIMIT ?",
+                    "WHERE l.environment=? AND l.transactionId IN ($relevantLedger) ORDER BY l.transactionId LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.currentRows + 1),
             )).use { cursor ->
                 var count = 0
@@ -266,7 +281,7 @@ class RoomBetaDashboardSource(
                     }
                     if (id in excluded) continue // Explicitly external evidence has no current financial effect.
                     val active = id !in held && (correction == null || correction.activity == BetaLedgerActivity.ACTIVE)
-                    if (id in held || correction?.activity == BetaLedgerActivity.REVIEW) { completeLedger = false; reviewKeys += id }
+                    if ((id in heldInMoney || correction?.activity == BetaLedgerActivity.REVIEW) && (cursor.isNull(9) || (cursor.getLong(9)>=from && cursor.getLong(9)<until))) { completeLedger = false; reviewKeys += id }
                     if (!active && persisted != null) observations += Observation(persisted, false)
                     if (!active) continue // Audit snapshots are never decoded/projected as current financial rows.
                     if (correction != null) check(revision == PostingRevision(correction.overlay.correctionRevision,
@@ -314,7 +329,7 @@ class RoomBetaDashboardSource(
             // One unresolved identity per stable financial transaction; overlapping retries,
             // adoption holds and correction holds do not multiply the global review count.
             reviewKeys += unhandledEvidence.map { evidenceOwners.getValue(it) }
-            reviewKeys += (held - excluded)
+            reviewKeys += (heldInMoney - excluded)
             val reviewCount = if (hasFacts && unhandledEvidence.all { it in projectedEvidence }) reviewKeys.size else null
             val assetFacts = mutableListOf<DashboardAssetFacts>()
             val observed = observations.filter { Instant.parse(it.row.observedAt).let { at -> at <= readAt && at < query.until } }
@@ -362,8 +377,11 @@ class RoomBetaDashboardSource(
                 // outstanding columns (even newer or held purchases) cannot supply or block one.
                 val statementFact = auxDue?.takeIf { it.dueAmount != null && it.dueCurrency == Currency.SAR.name }?.let {
                         ObservedStatement(Money.of(it.dueAmount!!, Currency.SAR), Instant.parse(it.observedAt), it.dueDate?.let(LocalDate::parse)) }
-                if (balanceFact != null || statementFact != null || loan != null) assetFacts += DashboardAssetFacts(asset.id,
-                    balance = balanceFact, statement = statementFact, loanType = loan?.loanType,
+                val meta=assetMetadata[asset.id]
+                if (balanceFact != null || statementFact != null || loan != null || meta?.displayName!=null || meta?.network!=null || meta?.accountType!=null || meta?.loanType!=null) assetFacts += DashboardAssetFacts(asset.id,
+                    label=meta?.displayName,network=meta?.network,
+                    accountCategory=if(asset.kind==AssetKind.ACCOUNT) AccountCategory.entries.firstOrNull {it.name==meta?.accountType} ?: AccountCategory.CURRENT else null,
+                    balance = balanceFact, statement = statementFact, loanType = loan?.loanType ?: meta?.loanType.takeIf {asset.kind==AssetKind.LOAN},
                     loanRemaining = loan?.takeIf { it.loanRemaining != null && it.loanRemainingCurrency == Currency.SAR.name }?.let {
                         ObservedMoney(Money.of(it.loanRemaining!!, Currency.SAR), Instant.parse(it.observedAt)) },
                     loanInstallment = loan?.takeIf { it.loanInstallment != null && it.loanInstallmentCurrency == Currency.SAR.name }?.let {

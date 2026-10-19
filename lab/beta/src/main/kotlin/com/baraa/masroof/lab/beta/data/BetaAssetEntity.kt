@@ -5,17 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 
 /** Registry identity is independent of a suffix. Parent references cannot cross bank or environment. */
-@Entity(
-    tableName = "beta_asset",
-    primaryKeys = ["environment", "bankId", "localId"],
-    foreignKeys = [ForeignKey(
-        entity = BetaAssetEntity::class,
-        parentColumns = ["environment", "bankId", "localId"],
-        childColumns = ["environment", "bankId", "parentLocalId"],
-        onDelete = ForeignKey.RESTRICT,
-    )],
-    indices = [Index(value = ["environment", "bankId", "parentLocalId"])],
-)
+@androidx.room.DatabaseView(viewName="beta_asset", value="SELECT environment,bankId,localId,'ACCOUNT' AS kind,last4,NULL AS parentLocalId,NULL AS creditCardRole,displayName,network,accountType,loanType,metadataRevision FROM beta_account_registry UNION ALL SELECT environment,bankId,localId,kind,last4,parentLocalId,creditCardRole,displayName,network,accountType,loanType,metadataRevision FROM beta_card_registry UNION ALL SELECT environment,bankId,localId,'CREDIT_FACILITY' AS kind,last4,NULL AS parentLocalId,NULL AS creditCardRole,displayName,network,accountType,loanType,metadataRevision FROM beta_credit_facility UNION ALL SELECT environment,bankId,localId,'LOAN' AS kind,last4,NULL AS parentLocalId,NULL AS creditCardRole,displayName,network,accountType,loanType,metadataRevision FROM beta_loan_registry")
 data class BetaAssetEntity(
     val environment: String,
     val bankId: String,
@@ -24,23 +14,10 @@ data class BetaAssetEntity(
     val last4: String?,
     val parentLocalId: String?,
     val creditCardRole: String?,
+    val displayName: String?=null,val network: String?=null,val accountType: String?=null,val loanType: String?=null,val metadataRevision: Long=0,
 )
 
 /** Aliases are evidence, deliberately non-unique across assets (including within one bank). */
-@Entity(
-    tableName = "beta_asset_alias",
-    primaryKeys = ["environment", "bankId", "assetLocalId", "kind", "value", "evidenceId"],
-    foreignKeys = [ForeignKey(
-        entity = BetaAssetEntity::class,
-        parentColumns = ["environment", "bankId", "localId"],
-        childColumns = ["environment", "bankId", "assetLocalId"],
-        onDelete = ForeignKey.CASCADE,
-    )],
-    indices = [
-        Index(value = ["environment", "bankId", "assetLocalId"]),
-        Index(value = ["environment", "bankId", "kind", "value"]),
-    ],
-)
 data class BetaAssetAliasEntity(
     val environment: String,
     val bankId: String,

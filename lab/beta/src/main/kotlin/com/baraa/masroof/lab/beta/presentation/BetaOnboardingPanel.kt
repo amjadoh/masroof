@@ -16,6 +16,18 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankChoice>, busy: Boolean, failed: Boolean, hasMessages: Boolean, ownedAssetCount: Int, pendingReviewCount: Int,
     onChooseBank: (BankId) -> Unit, onNext: () -> Unit, onHistory: () -> Unit, onDiscovery: () -> Unit,
     onManage: () -> Unit, onApproval: () -> Unit) {
+    if(step==BetaOnboardingStep.PERMISSION) { BetaPermissionPanel(busy,onNext); return }
+    if(step==BetaOnboardingStep.REVIEW) {
+        Column(Modifier.testTag("onboarding-REVIEW"),verticalArrangement=Arrangement.spacedBy(MasroofSpacing.sectionGap),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
+            com.baraa.masroof.ui.components.MasroofLogo(size=com.baraa.masroof.ui.theme.MasroofSizes.size64)
+            Text(stringResource(R.string.beta_parity_done_title),style=MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.beta_parity_done_counts,ownedAssetCount,pendingReviewCount))
+            Text(stringResource(R.string.beta_parity_done_help))
+            SetupAction(true,!busy,onNext,"onboarding-next",R.string.beta_onboarding_finish)
+            if(failed) Text(stringResource(R.string.beta_action_failed),color=MaterialTheme.colorScheme.error)
+        }
+        return
+    }
     Column(Modifier.testTag("onboarding-${step.name}"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         Text(stringResource(R.string.beta_onboarding_progress, step.ordinal + 1, 4), style = MaterialTheme.typography.labelLarge)
         val title = when (step) {
@@ -63,7 +75,7 @@ internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankC
             }
             BetaOnboardingStep.REVIEW -> if (pendingReviewCount > 0)
                 SetupAction(true, !busy, onApproval, "onboarding-approval", R.string.beta_setup_approval_action)
-            BetaOnboardingStep.COMPLETE -> Unit
+            BetaOnboardingStep.PERMISSION, BetaOnboardingStep.COMPLETE -> Unit
         }
         if (!nextIsPrimary && step != BetaOnboardingStep.BANK && step != BetaOnboardingStep.COMPLETE)
             SetupAction(false, !busy, onNext, "onboarding-next", nextLabel)
