@@ -64,27 +64,27 @@ internal fun BetaReviewInboxPanel(container: BetaContainer, onClose: () -> Unit,
             Text(betaDate(row.receivedAt),style=MaterialTheme.typography.bodySmall)
             Text(stringResource(approvalReason(row.reason.orEmpty())),color=MaterialTheme.colorScheme.onSurfaceVariant)
             MasroofCard {Text(row.body)}
-            if(row.canApprove) Button(onClick={onApprove(row.id)},modifier=Modifier.fillMaxWidth().testTag("history-review-0")) {
+            if(row.canApprove) Button(enabled=!busy,onClick={onApprove(row.id)},modifier=Modifier.fillMaxWidth().testTag("history-review-0")) {
                 Text(stringResource(R.string.beta_history_review_action))
             } else if(!ignored) {
                 Text(stringResource(R.string.beta_fix_unknown_message))
-                OutlinedButton(onClick=onConfirmAccounts,modifier=Modifier.fillMaxWidth()) {Text(stringResource(R.string.beta_setup_assets_action))}
+                OutlinedButton(enabled=!busy,onClick=onConfirmAccounts,modifier=Modifier.fillMaxWidth()) {Text(stringResource(R.string.beta_setup_assets_action))}
             }
             if(failed) Text(stringResource(R.string.beta_review_failed),color=MaterialTheme.colorScheme.error)
             if(row.dismissed) OutlinedButton(onClick={resolve(true)},enabled=!busy,modifier=Modifier.testTag("review-restore")) {Text(stringResource(R.string.beta_fix_restore))}
-            else if(!ignored) TextButton(onClick={confirmDismiss=true},enabled=!busy,modifier=Modifier.testTag("review-dismiss")) {Text(stringResource(R.string.beta_fix_dismiss))}
+            else if(!ignored && row.reason!="FINANCIAL_APPROVAL_PENDING") TextButton(onClick={confirmDismiss=true},enabled=!busy,modifier=Modifier.testTag("review-dismiss")) {Text(stringResource(R.string.beta_fix_dismiss))}
             // Learning remains available explicitly, never as the default financial review action.
-            TextButton(onClick={learning=true}) {Text(stringResource(R.string.beta_fix_advanced_learning))}
-            OutlinedButton(onClick={selected=null;generation++}) {Text(stringResource(R.string.beta_dash_back))}
+            TextButton(enabled=!busy,onClick={learning=true}) {Text(stringResource(R.string.beta_fix_advanced_learning))}
+            OutlinedButton(enabled=!busy,onClick={selected=null;generation++}) {Text(stringResource(R.string.beta_dash_back))}
             return@Column
         }
         Row(horizontalArrangement=Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-            BetaChoice(modifier=Modifier.testTag("review-filter-pending"),selected=!ignored,onClick={ignored=false;after=""},label={Text(stringResource(R.string.beta_fix_review_pending))})
-            BetaChoice(modifier=Modifier.testTag("review-filter-ignored"),selected=ignored,onClick={ignored=true;after=""},label={Text(stringResource(R.string.beta_fix_review_informational))})
+            BetaChoice(modifier=Modifier.testTag("review-filter-pending"),enabled=!busy,selected=!ignored,onClick={ignored=false;after=""},label={Text(stringResource(R.string.beta_fix_review_pending))})
+            BetaChoice(modifier=Modifier.testTag("review-filter-ignored"),enabled=!busy,selected=ignored,onClick={ignored=true;after=""},label={Text(stringResource(R.string.beta_fix_review_informational))})
         }
         if(failed) {
             Text(stringResource(R.string.beta_review_failed),color=MaterialTheme.colorScheme.error)
-            OutlinedButton(onClick={generation++}) {Text(stringResource(R.string.beta_retry))}
+            OutlinedButton(enabled=!busy,onClick={generation++}) {Text(stringResource(R.string.beta_retry))}
         } else if(page==null) LinearProgressIndicator(Modifier.fillMaxWidth())
         page?.let { current ->
             if(current.processing>0) MasroofCard {
@@ -106,12 +106,12 @@ internal fun BetaReviewInboxPanel(container: BetaContainer, onClose: () -> Unit,
                     row.amount?.let {Text(betaMoney(it,row.currency),style=MaterialTheme.typography.titleLarge)}
                     Text(betaDate(row.receivedAt),style=MaterialTheme.typography.bodySmall)
                     if(!ignored) Text(stringResource(approvalReason(row.reason.orEmpty())),style=MaterialTheme.typography.bodySmall)
-                    MasroofTextButton(onClick={selected=row},modifier=Modifier.testTag("history-review-$index")) {Text(stringResource(R.string.beta_dash_details))}
+                    MasroofTextButton(enabled=!busy,onClick={selected=row},modifier=Modifier.testTag("history-review-$index")) {Text(stringResource(R.string.beta_dash_details))}
                 }
             }
-            if(current.next!=null) OutlinedButton(onClick={after=current.next}) {Text(stringResource(R.string.beta_history_next))}
-            if(after.isNotEmpty()) TextButton(onClick={after=""}) {Text(stringResource(R.string.beta_history_first))}
+            if(current.next!=null) OutlinedButton(enabled=!busy,onClick={after=current.next}) {Text(stringResource(R.string.beta_history_next))}
+            if(after.isNotEmpty()) TextButton(enabled=!busy,onClick={after=""}) {Text(stringResource(R.string.beta_history_first))}
         }
-        OutlinedButton(onClick={corrections=true},modifier=Modifier.testTag("review-existing-transactions")) {Text(stringResource(R.string.beta_setup_edit_transactions))}
+        OutlinedButton(enabled=!busy,onClick={corrections=true},modifier=Modifier.testTag("review-existing-transactions")) {Text(stringResource(R.string.beta_setup_edit_transactions))}
     }
 }

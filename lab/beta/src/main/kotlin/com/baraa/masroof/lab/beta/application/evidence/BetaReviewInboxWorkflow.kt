@@ -54,7 +54,7 @@ class BetaReviewInboxWorkflow(private val database: BetaDatabase) {
                 rows+=BetaInboxRow(id,raw.sender,Instant.parse(raw.receivedAt),archive?.optString("bank"),family,
                     money?.optString("amount")?.takeIf {it.toBigDecimalOrNull()!=null},money?.optString("currency")?.takeIf {code -> com.baraa.masroof.lab.finance.value.Currency.entries.any {it.name==code}},
                     facts?.optString("merchant")?.takeUnless {it in setOf("","null")} ?: facts?.optString("counterparty")?.takeUnless {it in setOf("","null")},
-                    reason, !dismissed && !informational && archive?.optString("status")=="SUCCESS" && summary.financialReviewReason!=null,raw.body,dismissed)
+                    reason, !dismissed && !informational && (summary.financialReviewReason=="FINANCIAL_APPROVAL_PENDING" || (archive?.optString("status")=="SUCCESS" && summary.financialReviewReason!=null)),raw.body,dismissed)
             }
             if(ids.size<25) more=false
         }
