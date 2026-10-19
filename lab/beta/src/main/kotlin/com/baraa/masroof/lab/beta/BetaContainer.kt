@@ -157,9 +157,10 @@ class BetaContainer(
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.PERMISSION,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.IMPORT,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)) return@withLock
-        val version = "v2-ownership|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
+        val version = "v3-automatic-transfers|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
             com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.currentSchema()).version
         if (preferences.getString("beta_auto_complete_v1", null) == version) return@withLock
+        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).linkProvenDebitAccounts() }
         var cursor = if (preferences.getString("beta_auto_cursor_version_v1", null) == version) preferences.getString("beta_auto_cursor_v1", "").orEmpty() else ""
         while (true) {
             val next = runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).automaticPage(cursor) }
@@ -366,6 +367,17 @@ class BetaContainer(
             val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
             (if (needsReviewOnly) database.evidenceDao().reviewIdsAfter(afterId, limit) else database.evidenceDao().idsAfter(afterId, limit)).map { store.summary(it) }
         }
+    }
+
+    fun resolveReviewAsNonFinancial(id: String, restore: Boolean = false) = lock.withLock {
+        check(!closed)
+        runBlocking {com.baraa.masroof.lab.beta.application.evidence.BetaReviewInboxWorkflow(database).resolveNonFinancial(id,restore)}
+        invalidateAutomaticProcessing()
+    }
+
+    fun reviewInboxPage(after: String = "", ignored: Boolean = false) = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.application.evidence.BetaReviewInboxWorkflow(database).page(after, ignored) }
     }
 
     fun evidenceInboxCounts() = lock.withLock {

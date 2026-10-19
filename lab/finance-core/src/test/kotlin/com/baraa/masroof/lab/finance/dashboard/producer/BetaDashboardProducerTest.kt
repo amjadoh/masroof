@@ -265,12 +265,13 @@ class BetaDashboardProducerTest {
         assertThrows(IllegalArgumentException::class.java) { build(batch(listOf(foreign)).copy(fees = listOf(fee.copy(evidenceId = "different")))) }
     }
 
-    @Test fun missingFxOrUnknownFeeCoverageNeverBecomesPartialSarOrZero() {
+    @Test fun missingFxKeepsConfirmedSarVisibleButNeverInventsForeignValuation() {
         val foreign = posting(input("foreign", currency = Currency.USD))
         val result = build(batch(listOf(posting(), foreign)))
-        assertTrue(result.financialSummary!!.metrics.values.all { it == null })
-        assertNull(result.snapshot.fleetFlow)
-        assertEquals(1, result.financialSummary.excludedOtherCurrencyCount)
+        equal("10",metric(result,SummaryMetric.SPENDING_GROSS))
+        equal("10",result.snapshot.fleetFlow!!.externalOut.amount)
+        assertTrue(DashboardSection.VALUATION in result.unavailableSections)
+        assertEquals(1, result.financialSummary!!.excludedOtherCurrencyCount)
         assertNull(result.snapshot.transactions.first { it.key == foreign.command.key }.sarEquivalent)
         val rated = posting(foreign.classification.input.copy(appliedFx = AppliedFx(BigDecimal("3.75"), "SMS")))
         val unknownFee = build(batch(listOf(rated)).copy(coverage = DashboardCoverage(true, true, false, 0)))

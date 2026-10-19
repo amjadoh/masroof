@@ -29,7 +29,7 @@ internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankC
         return
     }
     Column(Modifier.testTag("onboarding-${step.name}"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        Text(stringResource(R.string.beta_onboarding_progress, step.ordinal + 1, 4), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.beta_onboarding_progress, when(step) {BetaOnboardingStep.BANK -> 1;BetaOnboardingStep.PERMISSION -> 2;BetaOnboardingStep.IMPORT -> 3;BetaOnboardingStep.ASSETS -> 5;else -> 6}, 6), style = MaterialTheme.typography.labelLarge)
         val title = when (step) {
             BetaOnboardingStep.BANK -> R.string.beta_onboarding_bank
             BetaOnboardingStep.IMPORT -> R.string.beta_onboarding_import

@@ -123,6 +123,7 @@ object CorrectionSnapshots {
             FinancialPostingRules.prepare(posting.classification.input)
         } else {
             val proof = when (identity.kind) {
+                "BANK_NOTICES" -> TransferMatchProof.BankNotices(posting.command.key)
                 "BANK_REFERENCE" -> TransferMatchProof.BankReference(ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference))
                 "USER_PAIR" -> {
                     require(identity.issuer == null)
@@ -155,7 +156,11 @@ object CorrectionSnapshots {
         require((identity == null) == posting.observations.isEmpty())
         if (identity != null) {
             require(identity.environment == input.key.environment && identity.reference.isNotBlank())
-            require((identity.kind == "USER_PAIR" && identity.issuer == null) || (identity.kind == "BANK_REFERENCE" && identity.issuer != null))
+            require((identity.kind == "USER_PAIR" && identity.issuer == null) || (identity.kind in setOf("BANK_REFERENCE","BANK_NOTICES") && identity.issuer != null))
+            if(identity.kind=="BANK_NOTICES") {
+                val matched=SelfTransferMatcher.match(posting.observations,TransferMatchProof.BankNotices(input.key))
+                require(matched is TransferMatchResult.Matched && matched.transfer.input==input && matched.transfer.identity==identity)
+            } else {
             val out = posting.observations.single { it.direction == TransferDirection.OUTBOUND }.input
             val incoming = posting.observations.single { it.direction == TransferDirection.INBOUND }.input
             require(posting.observations.size == 2 && out.key != incoming.key && out.key.environment == incoming.key.environment &&
@@ -166,6 +171,7 @@ object CorrectionSnapshots {
             if (identity.kind == "BANK_REFERENCE") require(posting.observations.all {
                 it.reference == ConfirmedBankTransferReference(requireNotNull(identity.issuer), identity.reference)
             })
+            }
         }
         fun freeze(value: FinancialClassificationInput) = value.copy(assets = Collections.unmodifiableMap(LinkedHashMap(value.assets)),
             evidenceIds = Collections.unmodifiableSet(LinkedHashSet(value.evidenceIds)), unresolved = Collections.unmodifiableSet(LinkedHashSet(value.unresolved)))

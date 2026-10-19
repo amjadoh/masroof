@@ -118,7 +118,7 @@ private fun AccountDetail(snapshot: DashboardSnapshot, account: AccountSummary, 
             DetailRow(stringResource(R.string.beta_detail_observed_balance), formatMoney(account.balance, unavailable))
             DetailRow(stringResource(R.string.beta_detail_balance_date), day(account.balanceAsOf, snapshot.query.zone) ?: unavailable, divider = false)
         }
-        AssetTrend(snapshot, account.id, MasroofHeroRole.Account, enabled)
+        BetaSectionTrend(snapshot, account.id, MasroofHeroRole.Account, enabled)
         AssetTransactions(snapshot, account.id, stringResource(R.string.beta_detail_account_movements), enabled, onTransaction, ledgerComplete)
     }
 }
@@ -144,7 +144,7 @@ private fun DebitDetail(snapshot: DashboardSnapshot, debit: DebitSpending, enabl
             DetailRow(stringResource(R.string.beta_detail_salary_period),
                 if (debit.salaryPeriod == null) stringResource(R.string.beta_dash_period_unavailable) else period(checkNotNull(debit.salaryPeriod)), divider = false)
         }
-        AssetTrend(snapshot, debit.cardId, MasroofHeroRole.Card, enabled)
+        BetaSectionTrend(snapshot, debit.cardId, MasroofHeroRole.Card, enabled)
         AssetTransactions(snapshot, debit.cardId, stringResource(R.string.beta_detail_card_movements), enabled, onTransaction, ledgerComplete)
     }
 }
@@ -203,7 +203,7 @@ private fun CreditDetail(snapshot: DashboardSnapshot, card: CreditCardSummary, e
             SpendingRow(R.string.beta_dash_salary_spending, card.salarySpending, amounts[2], unavailable)
             SpendingRow(R.string.beta_dash_statement_spending, card.statementSpending, amounts[3], unavailable, divider = false)
         }
-        AssetTrend(snapshot, card.cardId, MasroofHeroRole.Card, enabled)
+        BetaSectionTrend(snapshot, card.cardId, MasroofHeroRole.Card, enabled)
         AssetTransactions(snapshot, card.cardId, stringResource(R.string.beta_detail_card_movements), enabled, onTransaction, ledgerComplete)
     }
 }
@@ -284,10 +284,10 @@ private fun DetailRow(label: String, value: String, valueColor: Color = Material
 }
 
 @Composable
-private fun AssetTrend(snapshot: DashboardSnapshot, asset: AssetId, role: MasroofHeroRole, enabled: Boolean) {
-    val trend = BetaDashboardExplorer.trend(snapshot, BetaChartChoice(TrendScope.ASSET, asset = asset))
+internal fun BetaSectionTrend(snapshot: DashboardSnapshot, asset: AssetId?, role: MasroofHeroRole, enabled: Boolean, scope: TrendScope = TrendScope.ASSET) {
+    val trend = BetaDashboardExplorer.trend(snapshot, BetaChartChoice(scope, asset = asset))
     val visual = trend?.let(BetaDashboardVisualMapper::trend)
-    var selectedDate by rememberSaveable(asset.bank.value, asset.localId, snapshot.query.from.toString()) { mutableStateOf<String?>(null) }
+    var selectedDate by rememberSaveable(asset?.bank?.value, asset?.localId, scope.name, snapshot.query.from.toString()) { mutableStateOf<String?>(null) }
     val locale = LocalConfiguration.current.locales[0]
     DashboardSectionHeading(stringResource(R.string.beta_detail_daily), MasroofOutlineIcons.ChartLine)
     MasroofCard(Modifier.testTag("asset-trend")) {

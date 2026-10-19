@@ -53,6 +53,7 @@ internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsse
         }
     }
     Column(Modifier.testTag("ownership-list"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        if(onContinue!=null) Text(stringResource(R.string.beta_onboarding_progress,5,6),style=MaterialTheme.typography.bodySmall)
         Text(stringResource(R.string.beta_ownership_title), style = MaterialTheme.typography.titleLarge,
             modifier = if (onContinue != null) Modifier.testTag("onboarding-ASSETS") else Modifier)
         if (snapshot == null && !failed) CircularProgressIndicator()
@@ -112,7 +113,7 @@ private fun OwnershipCandidateCard(candidate: BetaOwnershipCandidate, busy: Bool
             if (candidate.choices.size > 1) {
                 Text(stringResource(R.string.beta_ownership_collision))
                 candidate.choices.forEachIndexed { index, asset ->
-                    FilterChip(selected = selected == asset.id, enabled = !busy, onClick = { selected = asset.id },
+                    BetaChoice(selected = selected == asset.id, enabled = !busy, onClick = { selected = asset.id },
                         modifier = Modifier.testTag("$tag-choice-$index"), label = {
                             Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(asset.kind)), asset.last4.orEmpty(), index + 1))
                         })

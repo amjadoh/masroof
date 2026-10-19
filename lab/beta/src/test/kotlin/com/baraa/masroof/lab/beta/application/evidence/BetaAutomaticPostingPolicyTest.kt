@@ -39,12 +39,12 @@ class BetaAutomaticPostingPolicyTest {
         assertEquals(credit.id, decide(MessageFamily.PURCHASE, assets = listOf(credit, other,facility), proposals = listOf(proposal(credit, credit.id))).source)
         assertNotNull(decide(MessageFamily.PURCHASE, assets = listOf(credit.copy(id = credit.id.copy(bank = BankId("OTHER")),parentId=facility.id.copy(bank=BankId("OTHER"))))).hold)
     }
-    @Test fun salaryIsKnownIncomeWhileUnpairedTransfersAndLoanAttributionStayReviewable() {
+    @Test fun salaryAndClearExternalTransfersPostWhileLoanAttributionStaysReviewable() {
         val salary = decide(MessageFamily.TRANSFER_IN, MoneyDirection.INCOMING, proposals = listOf(proposal(account)), card = false, salary = true)
         assertEquals(FinancialType.INCOME, salary.type); assertEquals(IncomeAttribution.SALARY, salary.income)
         assertEquals(account.id, salary.destination); assertNull(salary.hold)
-        assertNotNull(decide(MessageFamily.TRANSFER_IN, MoneyDirection.INCOMING, proposals = listOf(proposal(account)), card = false).hold)
-        assertNotNull(decide(MessageFamily.TRANSFER_OUT, proposals = listOf(proposal(account)), card = false).hold)
+        assertEquals(FinancialType.EXTERNAL_TRANSFER_IN,decide(MessageFamily.TRANSFER_IN, MoneyDirection.INCOMING, proposals = listOf(proposal(account)), card = false).type)
+        assertEquals(FinancialType.EXTERNAL_TRANSFER_OUT,decide(MessageFamily.TRANSFER_OUT, proposals = listOf(proposal(account)), card = false).type)
         assertNotNull(decide(MessageFamily.FEE, proposals = listOf(proposal(account)), card = false, financing = true).hold)
     }
     @Test fun cardSettlementRequiresBothExplicitOwnedEndpoints() {

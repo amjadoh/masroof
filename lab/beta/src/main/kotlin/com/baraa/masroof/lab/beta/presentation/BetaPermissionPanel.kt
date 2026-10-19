@@ -20,7 +20,7 @@ import com.baraa.masroof.ui.theme.*
 internal fun BetaPermissionPanel(busy: Boolean, onGranted: () -> Unit) {
     val context=LocalContext.current
     var denied by remember { mutableStateOf(false) }
-    val permissions=if(context.packageName==com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.HOST_PACKAGE) arrayOf(Manifest.permission.READ_SMS,Manifest.permission.RECEIVE_SMS) else arrayOf(Manifest.permission.READ_SMS)
+    val permissions=if(com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.supports(context)) arrayOf(Manifest.permission.READ_SMS,Manifest.permission.RECEIVE_SMS) else arrayOf(Manifest.permission.READ_SMS)
     fun granted()=permissions.all { ContextCompat.checkSelfPermission(context,it)==PackageManager.PERMISSION_GRANTED }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         val allowed=permissions.all { result[it]==true }; denied=!allowed; if(allowed) onGranted()
@@ -36,6 +36,7 @@ internal fun BetaPermissionPanel(busy: Boolean, onGranted: () -> Unit) {
         onDispose {activity?.lifecycle?.removeObserver(observer)}
     }
     Column(Modifier.fillMaxWidth().testTag("onboarding-PERMISSION"),verticalArrangement=Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        Text(stringResource(R.string.beta_onboarding_progress,2,6),style=MaterialTheme.typography.bodySmall)
         MasroofLogo(size=MasroofSizes.size64)
         Text(stringResource(R.string.beta_parity_permission_title),style=MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.beta_parity_permission_body))

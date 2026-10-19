@@ -18,13 +18,14 @@ class BetaDashboardWorkflowTest {
         assertEquals(configured.query(configured.currentMonth()),configured.load(configured.currentMonth()).snapshot.query)
         assertEquals(27,workflow.periodStartDay)
     }
-    @Test fun riyadhMonthIsHalfOpenAndDoesNotInventSalaryOrStatementPeriods() = runBlocking {
+    @Test fun riyadhMonthIsHalfOpenAndUsesItsSalaryCycleWithoutInventingStatementPeriods() = runBlocking {
         var calls = 0
         val workflow = BetaDashboardWorkflow({ query, periods ->
             calls++; assertEquals(Instant.parse("2026-09-30T21:00:00Z"), query.from)
             assertEquals(Instant.parse("2026-10-31T21:00:00Z"), query.until)
             assertEquals(PeriodKind.CALENDAR_MONTH, periods.calendar!!.kind)
-            assertNull(periods.salary); assertTrue(periods.statements.isEmpty())
+            assertEquals(DisplayPeriod(query.from,query.until,query.zone,PeriodKind.SALARY,null),periods.salary)
+            assertTrue(periods.statements.isEmpty())
             DashboardProduction(DashboardSnapshot(query, emptyList(), emptyList(), emptyList()), emptySet(), null)
         }, Clock.fixed(Instant.parse("2026-09-30T22:00:00Z"), ZoneOffset.UTC),periodStartDay=1)
         assertEquals(YearMonth.of(2026, 10), workflow.currentMonth())

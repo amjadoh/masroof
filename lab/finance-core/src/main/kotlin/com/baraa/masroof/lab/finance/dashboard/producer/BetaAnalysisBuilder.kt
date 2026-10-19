@@ -117,7 +117,7 @@ internal object BetaAnalysisBuilder {
         fun merchantKey(value: String) = Normalizer.normalize(value, Normalizer.Form.NFC).trim()
             .replace(Regex("\\s+"), " ").replace(Regex("\\s*([,،._-])\\s*"), "$1").lowercase(Locale.ROOT)
         val merchants = if (!batch.coverage.completeMerchantFacts || projected == null) emptyList() else transactions
-            .filter { it.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.REFUND) && !it.merchant.isNullOrBlank() }
+            .filter { it.key in byKey.orEmpty() && it.effectiveType in setOf(FinancialType.EXPENSE, FinancialType.REFUND) && !it.merchant.isNullOrBlank() }
             .groupBy { merchantKey(requireNotNull(it.merchant)) }.filterKeys { it.isNotEmpty() }
             .values.filter { group -> group.count { it.effectiveType == FinancialType.EXPENSE } >= 2 }.map { group ->
                 val label = group.groupingBy { requireNotNull(it.merchant).trim() }.eachCount().entries

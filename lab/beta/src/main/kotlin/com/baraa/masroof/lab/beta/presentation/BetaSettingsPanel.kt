@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
 
 /** A settings route for Beta-owned preferences and local snapshots only. */
 @Composable
-fun BetaSettingsPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onChanged: () -> Unit = {}) {
+fun BetaSettingsPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onChanged: () -> Unit = {}, showMaintenance: Boolean = true) {
     val context = LocalContext.current
     val scope = rememberBetaUiScope()
     var archivePassword by remember { mutableStateOf("") }
@@ -87,15 +87,17 @@ fun BetaSettingsPanel(container: BetaContainer, onClose: () -> Unit, onBusyChang
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section), modifier = Modifier.testTag("beta-settings-panel")) {
         Text(stringResource(R.string.beta_settings_title), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.beta_settings_isolation))
+        if(showMaintenance) {
         Text(stringResource(R.string.beta_settings_theme), style = MaterialTheme.typography.titleMedium)
         listOf("SYSTEM" to R.string.beta_theme_system, "LIGHT" to R.string.beta_theme_light, "DARK" to R.string.beta_theme_dark).forEach { (value, label) ->
             OutlinedButton(enabled = !busy && !picking && theme != value, onClick = { perform { container.setTheme(value); true } }, modifier = Modifier.fillMaxWidth().testTag("beta-theme-$value")) { Text(stringResource(label)) }
+        }
         }
         Text(stringResource(if (backupAvailable) R.string.beta_settings_backup_available else R.string.beta_settings_backup_missing))
         Text(stringResource(R.string.beta_settings_backup_help))
         OutlinedButton(enabled = !busy && !picking, onClick = { perform { container.backup(); true } }, modifier = Modifier.fillMaxWidth().testTag("beta-settings-backup")) { Text(stringResource(R.string.beta_backup)) }
         OutlinedButton(enabled = !busy && !picking && backupAvailable, onClick = { confirmation = "RESTORE" }, modifier = Modifier.fillMaxWidth().testTag("beta-settings-restore")) { Text(stringResource(R.string.beta_restore)) }
-        OutlinedButton(enabled = !busy && !picking, onClick = { confirmation = "RESET" }, modifier = Modifier.fillMaxWidth().testTag("beta-settings-reset")) { Text(stringResource(R.string.beta_reset)) }
+        if(showMaintenance) OutlinedButton(enabled = !busy && !picking, onClick = { confirmation = "RESET" }, modifier = Modifier.fillMaxWidth().testTag("beta-settings-reset")) { Text(stringResource(R.string.beta_reset)) }
         Text(stringResource(R.string.beta_archive_boundary))
         OutlinedButton(enabled = !busy && !picking, onClick = { archivePassword = ""; passwordRepeat = ""; confirmation = "EXPORT" }, modifier = Modifier.fillMaxWidth().testTag("beta-archive-export")) { Text(stringResource(R.string.beta_archive_export)) }
         OutlinedButton(enabled = !busy && !picking, onClick = { archivePassword = ""; passwordRepeat = ""; confirmation = "IMPORT" }, modifier = Modifier.fillMaxWidth().testTag("beta-archive-import")) { Text(stringResource(R.string.beta_archive_import)) }

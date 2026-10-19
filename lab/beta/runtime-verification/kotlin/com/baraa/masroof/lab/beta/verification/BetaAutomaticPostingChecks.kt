@@ -95,6 +95,8 @@ object BetaAutomaticPostingChecks {
         assertEquals(0, beta.evidenceInboxCounts().needsOwnership)
         assertEquals(id, beta.evidencePage(needsReviewOnly = true).single().id)
         assertEquals("FINANCIAL_APPROVAL_PENDING", beta.evidenceSummary(id).financialReviewReason)
+        assertEquals(id, beta.reviewInboxPage().rows.single().id)
+        assertTrue(beta.reviewInboxPage().rows.single().canApprove)
     }
 
     fun duplicateCapturedMessagesStayInReview(context: Context) = isolated(context) { beta ->

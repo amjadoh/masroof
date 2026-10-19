@@ -84,12 +84,18 @@ class BetaDashboardScreenTest {
         compose.waitForIdle()
     }
     private fun route(value: String) {
-        if (compose.onAllNodesWithTag("home-shortcuts").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithTag("home-shortcuts").performScrollTo()
-            compose.onNodeWithTag("dashboard-shortcut-0").performClick()
+        if(compose.onAllNodesWithTag("dash-detail-back").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+        if(compose.onAllNodesWithTag("dash-overview").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("dash-overview").performScrollTo().performClick()
+        when(value) {
+            "ACCOUNTS","CARDS","LOANS","COMMITMENTS" -> {
+                compose.onNodeWithTag("home-shortcuts").performScrollTo()
+                val index=listOf("ACCOUNTS","CARDS","LOANS","COMMITMENTS").indexOf(value)
+                compose.onNodeWithTag("dashboard-shortcut-$index").performClick()
+            }
+            "ANALYSIS" -> compose.onNodeWithTag("home-chart-customize").performScrollTo().performClick()
+            else -> error("Unsupported test destination")
         }
-        compose.onNodeWithTag("dash-routes").performScrollTo()
-        compose.onNodeWithTag("dash-route-$value").performScrollTo().performClick()
+        compose.onNodeWithTag("dash-route-$value").assertIsSelected()
     }
     private fun screenshot(name: String) {
         compose.waitForIdle()
@@ -320,7 +326,7 @@ class BetaDashboardScreenTest {
         compose.setContent { MaterialTheme { Column(Modifier.verticalScroll(rememberScrollState())) { BetaDashboardPanel(workflow) } } }
         waitLoaded(); route("CARDS")
         val due = MasroofMoneyDisplay.format(BigDecimal("2694.32"), "SAR", context.resources.configuration.locales[0].toLanguageTag())
-        compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(1)
+        compose.onAllNodesWithText(due).assertCountEquals(1)
         compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-statement-facility").performScrollTo().performClick()
         compose.onAllNodesWithText(due).assertCountEquals(1)
         compose.onAllNodesWithText("2694.32 SAR").assertCountEquals(0)
