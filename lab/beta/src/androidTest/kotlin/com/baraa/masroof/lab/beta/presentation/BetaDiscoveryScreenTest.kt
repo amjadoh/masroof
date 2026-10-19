@@ -56,14 +56,21 @@ class BetaDiscoveryScreenTest {
             val arabic = context.createConfigurationContext(android.content.res.Configuration(context.resources.configuration).apply {
                 setLocale(java.util.Locale.forLanguageTag("ar")); setLayoutDirection(java.util.Locale.forLanguageTag("ar"))
             })
+            val isRtl = java.util.concurrent.atomic.AtomicBoolean(false)
             val restoration = StateRestorationTester(compose)
-            restoration.setContent { CompositionLocalProvider(androidx.compose.ui.platform.LocalContext provides arabic, LocalLayoutDirection provides LayoutDirection.Rtl) {
-                com.baraa.masroof.ui.theme.MasroofTheme { BetaShell(0, false, editor = {
+            restoration.setContent { CompositionLocalProvider(androidx.compose.ui.platform.LocalContext provides arabic,
+                androidx.compose.ui.platform.LocalConfiguration provides arabic.resources.configuration, LocalLayoutDirection provides LayoutDirection.Rtl) {
+                com.baraa.masroof.ui.theme.MasroofTheme {
+                    val direction = LocalLayoutDirection.current
+                    androidx.compose.runtime.SideEffect { isRtl.set(direction == LayoutDirection.Rtl) }
+                    BetaShell(0, false, editor = {
                 BetaDiscoveryPanel(beta, beta.assets(), onClose = {}, onBusyChanged = { panelBusy.set(it) })
             }, onReturn = {}, onReset = {}, onBackup = {}, onRestore = {}) } } }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1 }
+            compose.runOnIdle { assertTrue("Arabic ownership must use RTL inside the shared theme", isRtl.get()) }
             compose.onNodeWithTag("proposal-next").assertDoesNotExist()
             compose.onNodeWithTag("asset-save").assertDoesNotExist()
+            compose.waitForIdle()
             val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
             android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("screencap -p /sdcard/beta-dashboard-screenshots/ownership-ar.png")).use { it.readBytes() }
             compose.onNodeWithTag("$tag-external").performScrollTo().performClick()
