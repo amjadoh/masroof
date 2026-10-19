@@ -44,7 +44,7 @@ enum class EvidenceProcessingState { RETRY, REVIEW, COMPARISON_ONLY, INTERPRETED
 enum class EvidenceStage { CAPTURED, INTERPRETATION, SAVE_OUTCOME, RECONCILIATION }
 enum class CaptureState { INSERTED, EXISTING, CONFLICT }
 enum class ScopeRejection { UNRECOGNIZED, NOT_ENABLED, OUTSIDE_REQUESTED_HISTORY, UNPROVEN_HISTORY_SCOPE }
-data class EvidenceInboxCounts(val total: Int, val needsReview: Int, val needsOwnership: Int = 0)
+data class EvidenceInboxCounts(val total: Int, val needsReview: Int, val needsOwnership: Int = 0, val processing: Int = 0)
 
 data class EvidenceSummary(val id: String, val disposition: EvidenceDisposition?, val retryStage: EvidenceStage?,
     val attempts: Int, val manualRevision: Long, val route: EvidenceRoute?, val reasonCodes: Set<String>,
@@ -65,7 +65,7 @@ sealed interface EvidenceResult {
 }
 
 /** Review acknowledgement only, never a financial override or a guessed bank choice. */
-enum class EvidenceReviewDecision { KEEP_FOR_REVIEW, ACKNOWLEDGE_COMPARISON }
+enum class EvidenceReviewDecision { KEEP_FOR_REVIEW, ACKNOWLEDGE_COMPARISON, USER_NON_FINANCIAL, RESTORE_AUTOMATIC }
 
 /** Safe metadata only in summaries. Full archival interpretation JSON stays inside Beta storage. */
 data class EvidenceComparison(val disposition: EvidenceDisposition, val reasons: Set<String>,

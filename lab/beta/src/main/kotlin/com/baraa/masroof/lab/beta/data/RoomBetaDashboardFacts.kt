@@ -39,7 +39,7 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         val correction = readBetaCorrectionState(database, key)
         if (correction != null && correction.activity != BetaLedgerActivity.ACTIVE) return false
         val posting = RoomBetaFinancialLedger(database).readAudit(key) ?: return false
-        if (posting.matchIdentity != null || posting.command.evidenceIds != setOf(id)) return false
+        if (posting.matchIdentity?.kind != "BANK_NOTICES" && (posting.matchIdentity != null || posting.command.evidenceIds != setOf(id))) return false
         val input = posting.classification.input
         val baseline = RoomBetaFinancialAdoption(database).observation(key)?.input ?: return false
         val registry = BetaAssetRegistry(database).owned().associateBy { it.id }

@@ -43,7 +43,7 @@
     <string name="beta_dash_as_of">آخر تحديث: %1$s</string>
     <string name="beta_dash_refresh">تحديث البيانات</string>
     <string name="beta_dash_empty">لا توجد عناصر مؤكدة في هذا القسم.</string>
-    <string name="beta_dash_unavailable_help">هذا القسم غير متاح حتى تكتمل بياناته المعتمدة.</string>
+    <string name="beta_dash_unavailable_help">المعلومات اللازمة لهذا المؤشر غير متوفرة بعد. تظل الحسابات والحركات المعتمدة متاحة؛ راجع الحالات المعلّقة أو أكمل إعداد الأصل عند الحاجة.</string>
     <string name="beta_dash_period_unavailable">فترة الراتب أو الكشف غير محددة. لم نفترض أنها الشهر التقويمي.</string>
     <string name="beta_dash_inflow">الوارد</string>
     <string name="beta_dash_outflow">الصادر</string>

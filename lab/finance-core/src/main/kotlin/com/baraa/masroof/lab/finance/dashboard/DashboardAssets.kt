@@ -17,6 +17,7 @@ data class AccountSummary(
     val category: AccountCategory = AccountCategory.CURRENT,
     val balanceAsOf: Instant? = null,
     val flow: AccountFlow? = null,
+    val last4: String? = null,
 ) {
     init { require(balanceAsOf == null || balance != null) }
 }

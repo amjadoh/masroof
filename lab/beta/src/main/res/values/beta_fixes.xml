@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="beta_fix_unknown_message">صيغة الرسالة غير واضحة أو تحتوي معلومات متعارضة. لن تُحسب حتى يتحدد القرار الصحيح. الرسائل المعروفة الواضحة تُحسب تلقائيًا.</string>
+    <string name="beta_fix_advanced_learning">متقدم: تعليم الاستخراج</string>
+    <string name="beta_fix_review_pending">بانتظار المراجعة</string>
+    <string name="beta_fix_review_informational">المتجاهلة</string>
+    <string name="beta_fix_processing">توجد رسائل قيد المعالجة أو إعادة المحاولة. لا تحتاج إلى إعادة تعريفها.</string>
+    <string name="beta_fix_ownership_reason">تحتاج العملية إلى تأكيد الحساب أو إعداد البطاقة وربطها.</string>
+    <string name="beta_fix_transfer_reason">تحتاج أطراف الحوالة أو مطابقتها إلى مراجعة.</string>
+    <string name="beta_fix_duplicate_reason">قد تكون هذه نسخة أخرى من عملية محفوظة. تحقق قبل اعتمادها.</string>
+    <string name="beta_fix_confirmed_only">توجد حالات معلّقة. الأرقام والحركات المعروضة تخص العمليات المعتمدة فقط وليست إجماليًا نهائيًا للفترة.</string>
+    <string name="beta_fix_commitments_unknown">بعض معلومات الاستحقاق أو السداد غير متوفرة. يمكنك عرض التفاصيل المعروفة وإكمال بيانات الالتزامات من الإعدادات.</string>
+    <string name="beta_fix_search">البحث في العمليات</string>
+    <string name="beta_fix_all">الكل</string>
+    <string name="beta_fix_filters">تصفية العمليات</string>
+    <string name="beta_fix_filter_account">الحساب أو البطاقة</string>
+    <string name="beta_fix_no_matches">لا توجد عمليات تطابق البحث والفلاتر.</string>
+    <string name="beta_fix_not_recorded">غير متوفر في الرسائل</string>
+    <string name="beta_fix_account_remaining">المتبقي من حركة الحساب</string>
+    <string name="beta_fix_inflow">الوارد</string>
+    <string name="beta_fix_outflow">المنصرف</string>
+<string name="beta_fix_dismiss">تجاهل كرسالة غير مالية</string>
+<string name="beta_fix_dismiss_help">أكد أن هذه الرسالة لا تمثل عملية مالية. سيُحفظ القرار ويمكنك إعادتها للمراجعة لاحقًا.</string>
+<string name="beta_fix_restore">إعادة للمراجعة والمعالجة</string>
+<string name="beta_fix_saved_decision">قرارك محفوظ؛ يحتاج تطبيقه إلى إعادة المحاولة أو مراجعة تغيّر البيانات.</string>
+</resources>

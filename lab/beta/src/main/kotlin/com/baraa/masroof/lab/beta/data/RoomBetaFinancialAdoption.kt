@@ -8,6 +8,7 @@ import com.baraa.masroof.lab.finance.classification.*
 import com.baraa.masroof.lab.finance.corrections.*
 import com.baraa.masroof.lab.finance.fx.*
 import com.baraa.masroof.lab.finance.posting.*
+import com.baraa.masroof.lab.finance.matching.*
 import com.baraa.masroof.lab.finance.value.*
 import org.json.JSONObject
 import java.security.MessageDigest
@@ -71,10 +72,12 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             val external = observations.isNotEmpty() && observations.all { observation -> observation.reference.let {
                 ownership[Triple(it.bank.value, it.kind.name, it.suffix)]?.status == "EXTERNAL" } }
             val previous = dao.evidence(id)
-            val manual = database.evidenceDao().decision(id) != null || dao.retry(id) != null ||
+            val manual = database.evidenceDao().decision(id)?.decision.let {it!=null && it!="RESTORE_AUTOMATIC"} || dao.retry(id) != null ||
                 database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null ||
                 (previous != null && previous.approvalRequest != AUTOMATIC_AUTHORITY)
-            if (external && !manual) database.ownershipDao().exclude(BetaOwnershipExclusionEntity(id))
+            val matchedNotice = previous?.reason=="MATCHED_TRANSFER_NOTICE" &&
+                database.ledgerDao().evidenceOwner(Environment.BETA.name,id)?.let { owner -> dao.transaction(owner)?.status=="ACTIVE" }==true
+            if ((external && !manual) || matchedNotice) database.ownershipDao().exclude(BetaOwnershipExclusionEntity(id))
             else database.ownershipDao().clearExclusion(id)
             adoptAutomatic(id, registry, enabled, ownership, external && !manual,loanTypes)
             RoomBetaDashboardFacts(database).refresh(id)
@@ -84,11 +87,19 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     private suspend fun adoptAutomatic(id: String, registry: Map<AssetId, OwnedAsset>, enabled: Set<String>,
         ownership: Map<Triple<String, String, String>, BetaOwnershipDecisionEntity>, externallyExcluded: Boolean,loanTypes: Map<AssetId,String>) {
         val evidence = database.evidenceDao()
-        if (evidence.retry(id) != null || evidence.decision(id) != null || dao.retry(id) != null) return
+        if (evidence.retry(id) != null || evidence.decision(id)?.decision.let {it!=null && it!="RESTORE_AUTOMATIC"} || dao.retry(id) != null) return
         if (database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null) return
         val previous = dao.evidence(id)
         if (previous != null && previous.approvalRequest != AUTOMATIC_AUTHORITY) return // Every manual choice wins.
         val outcome = evidence.outcome(id) ?: return
+        if(previous?.reason=="AMBIGUOUS_TRANSFER_NOTICES" && previous.archiveFingerprint==fingerprint(outcome)) return
+        val claimedOwner=database.ledgerDao().evidenceOwner(Environment.BETA.name,id)
+        if(claimedOwner!=null && claimedOwner!=key(id).transactionId && dao.transaction(claimedOwner)?.status!="ACTIVE") {
+            if(previous!=null) dao.hold(id,"AMBIGUOUS_TRANSFER_NOTICES")
+            return
+        }
+        if(previous?.reason=="MATCHED_TRANSFER_NOTICE" && previous.archiveFingerprint==fingerprint(outcome) &&
+            database.ledgerDao().evidenceOwner(Environment.BETA.name,id)?.let {owner -> dao.transaction(owner)?.status=="ACTIVE"}==true) return
         if (outcome.disposition != EvidenceDisposition.INTERPRETED.name) return
         val raw = evidence.raw(id) ?: return
         val json = try { BetaCurrentFinancialArchive.read(outcome, raw.body) }
@@ -128,11 +139,22 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             ownership[Triple(it.bank.value, it.kind.name, it.suffix)] } }
         val excluded = ownershipRows.any { it.status == "EXTERNAL" }
         val conflictingOwnership = excluded && ownershipRows.any { it.status == "OWNED" }
+        var ambiguousTransferOwner=false
+        fun transferOwner(field: String): AssetId? {
+            if (f.isNull(field)) return null
+            val reference = f.getJSONObject(field)
+            val bank = reference.text("bank") ?: return null
+            val suffix = reference.text("number") ?: return null
+            val candidates = registry.values.filter { it.kind == AssetKind.ACCOUNT && it.id.bank.value == bank && it.last4 == suffix }
+            val selected = ownership[Triple(bank, "ACCOUNT", suffix)]?.takeIf {it.status=="OWNED"}?.assetLocalId
+            if(selected==null && candidates.size>1) ambiguousTransferOwner=true
+            return if(selected!=null) candidates.singleOrNull {it.id.localId==selected}?.id else candidates.singleOrNull()?.id
+        }
         val decision = BetaAutomaticPostingPolicy.decide(
             com.baraa.masroof.lab.bank.MessageFamily.valueOf(f.getString("family")),
             f.text("direction")?.let(com.baraa.masroof.lab.bank.MoneyDirection::valueOf),
             f.optBoolean("salaryIncomeWording", false), f.text("loanType") != null, !f.isNull("card"), proposals, registry,
-            loanTypes.filter { (id,type) -> id in registry && id.bank.value==rawBank(outcome) && type==f.text("loanType") }.keys.singleOrNull())
+            loanTypes.filter { (id,type) -> id in registry && id.bank.value==rawBank(outcome) && type==f.text("loanType") }.keys.singleOrNull(), transferOwner("sourceAccount"), transferOwner("destinationAccount"))
         fun record(input: FinancialClassificationInput, status: String, reason: String) = BetaFinancialAdoptionEntity(
             id, key(id).transactionId, rawBank(outcome), fingerprint(outcome), status, reason,
             BetaLedgerCodec.encodeInput(input), input.revision.correction, input.revision.interpretation,
@@ -140,19 +162,26 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         if (externallyExcluded) {
             dao.put(record(base, "EXCLUDED", "EXTERNAL_OWNERSHIP")); return
         }
-        val hold = if (ownershipRows.any { it.status == "REVIEW" }) "OWNERSHIP_CONFLICT" else if (conflictingOwnership) "CONFLICTING_OWNERSHIP" else if (base.amount.amount.signum() <= 0) "INVALID_AMOUNT" else (decision.hold?.let { reason ->
+        val hold = if(ambiguousTransferOwner) "AMBIGUOUS_OWNER" else if (ownershipRows.any { it.status == "REVIEW" }) "OWNERSHIP_CONFLICT" else if (conflictingOwnership) "CONFLICTING_OWNERSHIP" else if (base.amount.amount.signum() <= 0) "INVALID_AMOUNT" else (decision.hold?.let { reason ->
             if (reason in setOf("CONFIRM_CARD", "LINK_DEBIT_ACCOUNT") && ownershipRows.any { it.kind == "CARD" && it.status == "OWNED" }) "CONFIGURE_CARD" else reason
         }) ?: if (evidence.hasDuplicate(id, raw.sender, raw.body, raw.receivedAt)) "POSSIBLE_DUPLICATE" else null
         if (hold != null) {
             dao.put(record(base, "REVIEW", hold)); return
         }
-        val input = currentInput(outcome, decision.source, decision.destination, decision.type, decision.income, registry)
+        var input = currentInput(outcome, decision.source, decision.destination, decision.type, decision.income, registry)
             .copy(revision = PostingRevision(0, maxOf(outcome.attempts.toLong(), previous?.observationRevision ?: 0)),
                 appliedFx = existing?.command?.appliedFx)
+        if(input.storedType!=FinancialType.SELF_TRANSFER && existing!=null &&
+            input.copy(revision=existing.command.revision)!=existing.classification.input)
+            input=input.copy(revision=PostingRevision(existing.command.revision.correction,maxOf(input.revision.interpretation,existing.command.revision.interpretation+1)))
         if (previous?.status == "ACTIVE" && previous.archiveFingerprint == fingerprint(outcome) &&
             existing?.classification?.input == input) return
         val enriched = resolveFx(input, outcome)
         val finalInput = if (enriched is FxEnrichmentResult.Ready) input.copy(appliedFx = enriched.proposal?.appliedFx ?: input.appliedFx) else input
+        if(finalInput.storedType==FinancialType.SELF_TRANSFER) {
+            postAutomaticSelfTransfer(finalInput,id,outcome)
+            return
+        }
         val result = ledger.post(finalInput)
         when (result) {
             is FinancialPostingResult.Applied, is FinancialPostingResult.AlreadyApplied -> {
@@ -160,6 +189,51 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             }
             else -> dao.put(record(finalInput, "REVIEW", "AUTOMATIC_POSTING_REVIEW"))
         }
+    }
+
+    /** Complete current candidate pool; neither amount nor a suffix alone chooses a pair. */
+    private suspend fun postAutomaticSelfTransfer(input: FinancialClassificationInput, id: String, outcome: BetaEvidenceOutcomeEntity) {
+        fun observation(value: FinancialClassificationInput, family: String)=TransferObservation(value,
+            if(family=="TRANSFER_OUT") TransferDirection.OUTBOUND else TransferDirection.INBOUND)
+        val family=currentArchive(outcome).getJSONObject("facts").getString("family")
+        val nearby=dao.bank(rawBank(outcome)).filter { it.approvalRequest==AUTOMATIC_AUTHORITY && it.status=="ACTIVE" && it.transactionId!=input.key.transactionId }
+            .mapNotNull {row -> ledger.readAudit(PostingKey(Environment.BETA,row.transactionId))?.takeIf {posting ->
+                posting.matchIdentity?.kind=="BANK_NOTICES" && posting.command.source==(input.source as? FinancialEndpoint.Owned)?.id &&
+                posting.command.destination==(input.destination as? FinancialEndpoint.Owned)?.id && posting.command.amount==input.amount &&
+                Duration.between(posting.command.time.instant,input.time.instant).abs()<=Duration.ofMinutes(10)
+            } }
+        val own=ledger.readAudit(input.key)?.takeIf {it.matchIdentity?.kind=="BANK_NOTICES"}
+        val existing=own ?: nearby.singleOrNull()
+        val pool=(existing?.observations.orEmpty().filter {it.input.key!=input.key} + observation(input,family))
+        val canonical=existing?.command?.key ?: input.key
+        val result=if(nearby.size>1) TransferMatchResult.Review(setOf(ReviewReason.AMBIGUOUS_MATCH))
+            else SelfTransferMatcher.match(pool,TransferMatchProof.BankNotices(canonical))
+        if(result !is TransferMatchResult.Matched) {
+            dao.put(BetaFinancialAdoptionEntity(id,input.key.transactionId,rawBank(outcome),fingerprint(outcome),"REVIEW","AMBIGUOUS_TRANSFER_NOTICES",
+                BetaLedgerCodec.encodeInput(input),input.revision.correction,input.revision.interpretation,AUTOMATIC_AUTHORITY,input.revision.interpretation))
+            (nearby+listOfNotNull(own)).forEach {p -> dao.transaction(p.command.key.transactionId)?.let {dao.hold(it.evidenceId,"AMBIGUOUS_TRANSFER_NOTICES")} }
+            return
+        }
+        // A new notice extends the existing stable transaction; repeating a sweep is idempotent.
+        val changed=existing!=null && (existing.observations.toSet()!=pool.toSet())
+        val revision=if(changed) PostingRevision(existing!!.command.revision.correction,existing.command.revision.interpretation+1) else existing?.command?.revision ?: input.revision
+        val revised=pool.map {o -> if(o.input.key==canonical) o.copy(input=o.input.copy(revision=revision)) else o}
+        val matched=SelfTransferMatcher.match(revised,TransferMatchProof.BankNotices(canonical)) as? TransferMatchResult.Matched ?: return
+        val posted=ledger.post(matched.transfer)
+        if(posted !is FinancialPostingResult.Applied && posted !is FinancialPostingResult.AlreadyApplied) {
+            error("Automatic self-transfer write incomplete")
+        }
+        val canonicalId=canonical.transactionId.removePrefix("evidence:")
+        val canonicalOutcome=requireNotNull(database.evidenceDao().outcome(canonicalId))
+        val merged=matched.transfer.input
+        dao.put(BetaFinancialAdoptionEntity(canonicalId,canonical.transactionId,rawBank(canonicalOutcome),fingerprint(canonicalOutcome),"ACTIVE","AUTOMATIC",
+            BetaLedgerCodec.encodeInput(merged),merged.revision.correction,merged.revision.interpretation,AUTOMATIC_AUTHORITY,merged.revision.interpretation))
+        if(id!=canonicalId) {
+            dao.put(BetaFinancialAdoptionEntity(id,input.key.transactionId,rawBank(outcome),fingerprint(outcome),"EXCLUDED","MATCHED_TRANSFER_NOTICE",
+                BetaLedgerCodec.encodeInput(input),input.revision.correction,input.revision.interpretation,AUTOMATIC_AUTHORITY,input.revision.interpretation))
+            database.ownershipDao().exclude(BetaOwnershipExclusionEntity(id))
+        }
+        RoomBetaDashboardFacts(database).refresh(canonicalId)
     }
 
     private fun registryFingerprint(assets: Collection<OwnedAsset>): String {

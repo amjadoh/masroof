@@ -115,41 +115,68 @@ internal fun BetaDashboardAnalysisPanel(snapshot: DashboardSnapshot, enabled: Bo
             }
         }) {
         Text(stringResource(R.string.beta_chart_scope), style = MaterialTheme.typography.titleMedium)
-        TrendScope.entries.forEach { scope ->
-            FilterChip(selected = draftScope == scope.name, onClick = { draftScope = scope.name; draftCategory = null; draftBank = null; draftAsset = null },
-                label = { Text(stringResource(trendScopeLabel(scope))) }, modifier = Modifier.testTag("chart-scope-${scope.name}"))
+        MasroofSheetChoices(TrendScope.entries.toList(),TrendScope.entries.filter {it.name==draftScope}.toSet(),{stringResource(trendScopeLabel(it))},
+            {draftScope=it.name;draftCategory=null;draftBank=null;draftAsset=null},{"chart-scope-${it.name}"},enabled=!preferenceBusy)
+        if(draftScope==TrendScope.ASSET.name) {
+            val choices=assets.filterKeys {id -> snapshot.analysis?.trends?.any {it.assetId==id}==true}.keys.toList()
+            MasroofSheetChoices(choices,choices.filter {it.bank.value==draftBank && it.localId==draftAsset}.toSet(),{assets[it].orEmpty()},
+                {draftBank=it.bank.value;draftAsset=it.localId},{"chart-asset-${it.bank.value}-${it.localId}"},enabled=!preferenceBusy)
         }
-        if (draftScope == TrendScope.ASSET.name) assets.filterKeys { id -> snapshot.analysis?.trends?.any { it.assetId == id } == true }.forEach { (id, label) ->
-            FilterChip(selected = id.bank.value == draftBank && id.localId == draftAsset, onClick = { draftBank = id.bank.value; draftAsset = id.localId },
-                label = { Text(label) }, modifier = Modifier.testTag("chart-asset-${id.bank.value}-${id.localId}"))
-        }
-        Text(stringResource(R.string.beta_chart_category), style = MaterialTheme.typography.titleMedium)
-        FilterChip(selected = draftCategory == null, onClick = { draftCategory = null }, label = { Text(stringResource(R.string.beta_chart_all_categories)) }, modifier = Modifier.testTag("chart-category-ALL"))
-        ChartCategory.entries.forEach { category ->
-            FilterChip(selected = draftCategory == category.name, onClick = { draftScope = TrendScope.FINANCIAL_OUTFLOWS.name; draftCategory = category.name; draftBank = null; draftAsset = null }, label = { Text(stringResource(categoryLabel(category))) }, modifier = Modifier.testTag("chart-category-${category.name}"))
-        }
-        FilterChip(selected = draftBars, onClick = { draftBars = true }, label = { Text(stringResource(R.string.beta_chart_bars)) }, modifier = Modifier.testTag("chart-bars"))
-        FilterChip(selected = !draftBars, onClick = { draftBars = false }, label = { Text(stringResource(R.string.beta_chart_table)) }, modifier = Modifier.testTag("chart-table"))
+        Text(stringResource(R.string.beta_chart_category),style=MaterialTheme.typography.titleMedium)
+        val categories=listOf<ChartCategory?>(null)+ChartCategory.entries
+        MasroofSheetChoices(categories,categories.filter {it?.name==draftCategory}.toSet(),{value -> if(value==null) stringResource(R.string.beta_chart_all_categories) else stringResource(categoryLabel(value))},
+            {value -> draftCategory=value?.name;if(value!=null) {draftScope=TrendScope.FINANCIAL_OUTFLOWS.name;draftBank=null;draftAsset=null}},
+            {"chart-category-${it?.name ?: "ALL"}"},enabled=!preferenceBusy)
+        MasroofSheetChoices(listOf(true,false),setOf(draftBars),{stringResource(if(it) R.string.beta_chart_bars else R.string.beta_chart_table)},
+            {draftBars=it},{if(it) "chart-bars" else "chart-table"},enabled=!preferenceBusy)
+
     }
 }
 
 @Composable
 internal fun BetaDashboardTransactions(snapshot: DashboardSnapshot, rows: List<TransactionFacts> = snapshot.transactions,
     enabled: Boolean, onTransaction: (PostingKey) -> Unit, complete: Boolean = true) {
-    var limit by rememberSaveable(snapshot.query.from.toString(), rows.map { it.key }.hashCode()) { mutableIntStateOf(20) }
-    Text(stringResource(R.string.beta_transaction_title), style = MaterialTheme.typography.titleLarge)
-    Text(stringResource(R.string.beta_transaction_scope_help), style = MaterialTheme.typography.bodySmall)
-    if (!complete) Text(stringResource(R.string.beta_dash_unavailable_help), modifier = Modifier.testTag("transactions-unavailable"))
-    else if (rows.isEmpty()) Text(stringResource(R.string.beta_dash_empty), modifier = Modifier.testTag("transactions-empty"))
-    rows.take(limit).forEach { row ->
-        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(BetaSpacing.screen), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
-            Text(row.merchant ?: row.counterparty ?: stringResource(financialTypeLabel(row.effectiveType)))
-            Text("${row.amount.amount.toPlainString()} ${row.amount.currency.name}")
-            Text(row.time.instant.atZone(row.time.zone).toLocalDateTime().toString())
-            OutlinedButton(enabled = enabled, onClick = { onTransaction(row.key) }, modifier = Modifier.testTag("dash-transaction-${row.key.transactionId}")) { Text(stringResource(R.string.beta_dash_details)) }
-        } }
+    var limit by rememberSaveable(snapshot.query.from.toString()) { mutableIntStateOf(20) }
+    var search by rememberSaveable {mutableStateOf("")}
+    var type by rememberSaveable {mutableStateOf<String?>(null)}
+    var assetBank by rememberSaveable {mutableStateOf<String?>(null)}
+    var assetLocal by rememberSaveable {mutableStateOf<String?>(null)}
+    var filters by rememberSaveable {mutableStateOf(false)}
+    val labels=dashboardAssetLabels(snapshot)
+    val asset=labels.keys.singleOrNull {it.bank.value==assetBank && it.localId==assetLocal}
+    val filtered=remember(rows,search,type,asset) {BetaDashboardExplorer.filterTransactions(rows,search,type,asset)}
+    Text(stringResource(R.string.beta_transaction_title),style=MaterialTheme.typography.headlineSmall)
+    OutlinedTextField(search,{search=it;limit=20},label={Text(stringResource(R.string.beta_fix_search))},
+        singleLine=true,modifier=Modifier.fillMaxWidth().testTag("transactions-search"))
+    TextButton(onClick={filters=true},enabled=enabled,modifier=Modifier.testTag("transactions-filters")) {Text(stringResource(R.string.beta_fix_filters))}
+    if(filters) {
+        var draftType by remember {mutableStateOf(type)}
+        var draftAsset by remember {mutableStateOf(asset)}
+        BetaBottomSheet(stringResource(R.string.beta_fix_filters),false,{filters=false},{type=draftType;assetBank=draftAsset?.bank?.value;assetLocal=draftAsset?.localId;limit=20;filters=false}) {
+            val types=listOf<String?>(null)+rows.map {it.effectiveType.name}.distinct()
+            MasroofSheetChoices(types,setOf(draftType),{value -> if(value==null) stringResource(R.string.beta_fix_all) else stringResource(financialTypeLabel(com.baraa.masroof.lab.finance.posting.FinancialType.valueOf(value)))},
+                {draftType=it},{"transaction-type-${it ?: "all"}"})
+            Text(stringResource(R.string.beta_fix_filter_account))
+            val choices=listOf<AssetId?>(null)+labels.keys.toList()
+            MasroofSheetChoices(choices,setOf(draftAsset),{value -> value?.let {labels[it]}.orEmpty().ifEmpty {stringResource(R.string.beta_fix_all)}},
+                {draftAsset=it},{"transaction-asset-${it?.bank?.value}-${it?.localId}"})
+        }
     }
-    if (rows.size > limit) OutlinedButton(onClick = { limit += 20 }, modifier = Modifier.testTag("transactions-more")) { Text(stringResource(R.string.beta_dash_more)) }
+    if(!complete) Text(stringResource(R.string.beta_fix_confirmed_only),Modifier.testTag("transactions-unavailable"))
+    if(filtered.isEmpty()) Text(stringResource(if(rows.isEmpty()) R.string.beta_dash_empty else R.string.beta_fix_no_matches),Modifier.testTag("transactions-empty"))
+    com.baraa.masroof.ui.components.MasroofCard {
+        filtered.take(limit).forEach {row ->
+            com.baraa.masroof.ui.dashboard.DashboardTransactionRow(
+                row.merchant ?: row.counterparty ?: stringResource(financialTypeLabel(row.effectiveType)),
+                stringResource(financialTypeLabel(row.effectiveType)) + row.primaryCardLast4?.let {" · •• $it"}.orEmpty(),
+                betaMoney(row.amount.amount.toPlainString(),row.amount.currency.name),betaDate(row.time.instant,row.time.zone),
+                com.baraa.masroof.ui.components.MasroofOutlineIcons.List,
+                MaterialTheme.colorScheme.primary,MaterialTheme.colorScheme.secondaryContainer,
+                Modifier.testTag("dash-transaction-${row.key.transactionId}"),onClick=if(enabled) ({onTransaction(row.key)}) else null)
+        }
+    }
+    if(filtered.size>limit) OutlinedButton(onClick={limit+=20},modifier=Modifier.testTag("transactions-more")) {Text(stringResource(R.string.beta_dash_more))}
+
 }
 
 @Composable
@@ -161,12 +188,12 @@ internal fun BetaDashboardTransactionDetail(snapshot: DashboardSnapshot, transac
         Text(stringResource(R.string.beta_transaction_details), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(financialTypeLabel(tx.effectiveType)))
         if (tx.storedType != tx.effectiveType) Text(stringResource(R.string.beta_transaction_original_type) + ": " + stringResource(financialTypeLabel(tx.storedType)))
-        Text("${tx.amount.amount.toPlainString()} ${tx.amount.currency.name}")
-        Text(tx.time.instant.atZone(tx.time.zone).toLocalDateTime().toString()); Text(tx.time.zone.id)
+        Text(betaMoney(tx.amount.amount.toPlainString(),tx.amount.currency.name))
+        Text(betaDate(tx.time.instant,tx.time.zone))
         tx.merchant?.let { Text(stringResource(R.string.beta_transaction_merchant) + ": " + it) }
         tx.counterparty?.let { Text(stringResource(R.string.beta_transaction_counterparty) + ": " + it) }
-        Text(stringResource(R.string.beta_transaction_sar_free)); Text(tx.sarEquivalent?.let { "${it.amount.toPlainString()} ${it.currency.name}" } ?: stringResource(R.string.beta_dash_unavailable))
-        Text(stringResource(R.string.beta_transaction_fee)); Text(tx.internationalFee?.let { "${it.amount.toPlainString()} ${it.currency.name}" } ?: stringResource(R.string.beta_dash_unavailable))
+        Text(stringResource(R.string.beta_transaction_sar_free)); Text(tx.sarEquivalent?.let { betaMoney(it.amount.toPlainString(),it.currency.name) } ?: stringResource(R.string.beta_dash_unavailable))
+        Text(stringResource(R.string.beta_transaction_fee)); Text(tx.internationalFee?.let { betaMoney(it.amount.toPlainString(),it.currency.name) } ?: stringResource(R.string.beta_dash_unavailable))
         Text(stringResource(R.string.beta_transaction_fx)); Text(tx.appliedFx?.rateToSar?.toPlainString() ?: stringResource(R.string.beta_dash_unavailable))
         Text(stringResource(R.string.beta_transaction_source)); Text(tx.source?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
         Text(stringResource(R.string.beta_transaction_destination)); Text(tx.destination?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
@@ -175,10 +202,10 @@ internal fun BetaDashboardTransactionDetail(snapshot: DashboardSnapshot, transac
     }
 }
 
-@Composable private fun dashboardAmount(value: SignedAmount?) = value?.let { "${it.amount.toPlainString()} ${it.currency.name}" } ?: stringResource(R.string.beta_dash_unavailable)
+@Composable private fun dashboardAmount(value: SignedAmount?) = value?.let { betaMoney(it.amount.toPlainString(),it.currency.name) } ?: stringResource(R.string.beta_dash_unavailable)
 
 @Composable internal fun dashboardAssetLabels(snapshot: DashboardSnapshot): Map<AssetId, String> = buildMap {
-    snapshot.accounts.forEachIndexed { index, row -> put(row.id, (row.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_dash_account_number, index + 1)) + " · " + stringResource(if (row.id.bank.value == "BANK_ALJAZIRA") R.string.beta_bank_aljazira else R.string.beta_bank_title)) }
+    snapshot.accounts.forEachIndexed { index, row -> put(row.id, (row.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_dash_account_number, index + 1)) + row.last4?.let {" · •• $it"}.orEmpty() + " · " + stringResource(if (row.id.bank.value == "BANK_ALJAZIRA") R.string.beta_bank_aljazira else R.string.beta_bank_title)) }
     snapshot.debitCards.forEach { put(it.cardId, (it.label?.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_debit)) + " · " + it.last4.orEmpty()) }
     snapshot.creditFacilities.forEachIndexed { index, row ->
         put(row.facilityId, stringResource(R.string.beta_controls_facility_number, index + 1))

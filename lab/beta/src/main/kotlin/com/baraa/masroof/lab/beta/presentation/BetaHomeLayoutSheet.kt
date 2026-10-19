@@ -37,9 +37,9 @@ internal fun BetaHomeLayoutSheet(saved: BetaHomeLayout, preferences: BetaDashboa
                 onMoveDown = { draft = draft.move(entry.section, 1) }, enabled = !busy,
                 modifier = Modifier.testTag("home-layout-${entry.section.name}"))
         }
-        FilterChip(draft.expensesVisible, { draft = draft.copy(expensesVisible = !draft.expensesVisible) },
+        BetaChoice(draft.expensesVisible, { draft = draft.copy(expensesVisible = !draft.expensesVisible) },
             enabled = !busy, label = { Text(stringResource(R.string.beta_home_expenses)) })
-        FilterChip(draft.averageVisible, { draft = draft.copy(averageVisible = !draft.averageVisible) },
+        BetaChoice(draft.averageVisible, { draft = draft.copy(averageVisible = !draft.averageVisible) },
             enabled = !busy, label = { Text(stringResource(R.string.beta_home_daily_average)) })
         OutlinedButton(enabled = !busy, onClick = onConfiguration, modifier = Modifier.testTag("home-period-settings")) { Text(stringResource(R.string.beta_controls_title)) }
         if (failed) Text(stringResource(R.string.beta_chart_save_error), color = MaterialTheme.colorScheme.error)

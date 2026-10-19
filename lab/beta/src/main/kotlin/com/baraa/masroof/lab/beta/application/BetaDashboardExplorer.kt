@@ -36,6 +36,15 @@ object BetaDashboardExplorer {
         }.sortedWith(compareByDescending<TransactionFacts> { it.time.instant }.thenBy { it.key.transactionId })
     }
 
+    fun filterTransactions(rows: List<TransactionFacts>, search: String, type: String?, asset: AssetId?): List<TransactionFacts> {
+        val text=search.trim()
+        return rows.filter {tx ->
+            (type==null || tx.effectiveType.name==type) &&
+            (asset==null || asset in tx.accounts || asset in tx.cards || asset in tx.debitSpendingCards || asset in tx.loans || tx.source==asset || tx.destination==asset) &&
+            (text.isEmpty() || listOfNotNull(tx.merchant,tx.counterparty,tx.primaryCardLast4,tx.amount.amount.toPlainString()).any {it.contains(text,true)})
+        }.sortedWith(compareByDescending<TransactionFacts> {it.time.instant}.thenBy {it.key.transactionId})
+    }
+
     fun transaction(snapshot: DashboardSnapshot, key: PostingKey): TransactionFacts? = snapshot.transactions.singleOrNull { it.key == key }
 
     /** Comparison-window provenance may be outside the selected-month transaction read. */
