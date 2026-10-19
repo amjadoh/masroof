@@ -19,10 +19,10 @@ import kotlinx.coroutines.withContext
 
 /** Opening a queue or preview never grants financial authority. Every action is explicit. */
 @Composable
-internal fun BetaFinancialApprovalPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
+internal fun BetaFinancialApprovalPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, initialEvidenceId: String? = null) {
     val scope = rememberBetaUiScope()
     var after by rememberSaveable { mutableStateOf("") }
-    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    var selected by rememberSaveable { mutableStateOf(initialEvidenceId) }
     var rows by remember { mutableStateOf<List<BetaFinancialReviewItem>?>(null) }
     var preview by remember { mutableStateOf<BetaFinancialApprovalPreview?>(null) }
     var busy by remember { mutableStateOf(false) }

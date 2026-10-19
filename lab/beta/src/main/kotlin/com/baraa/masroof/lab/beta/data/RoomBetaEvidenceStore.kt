@@ -74,7 +74,9 @@ internal class RoomBetaEvidenceStore(private val database: BetaDatabase) : BetaE
             retry?.stage?.let(EvidenceStage::valueOf), retry?.attempts ?: outcome?.attempts ?: 0,
             decision?.revision ?: 0, decodeRoute(outcome?.route ?: raw.captureRoute),
             outcome?.reasons?.let(::strings)?.toSet().orEmpty() + listOfNotNull(retry?.code),
-            decision?.decision?.let(EvidenceReviewDecision::valueOf))
+            decision?.decision?.let(EvidenceReviewDecision::valueOf),
+            if (database.financialAdoptionDao().retry(id) != null) "FINANCIAL_APPROVAL_PENDING"
+            else database.financialAdoptionDao().evidence(id)?.takeIf { it.status == "REVIEW" }?.reason)
     }
 
     override suspend fun begin(id: String, at: Instant) = database.withTransaction {

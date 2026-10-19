@@ -62,8 +62,11 @@ class BetaActivity : ComponentActivity() {
                 var banks by remember { mutableStateOf<List<BetaBankChoice>>(emptyList()) }
                 var assets by remember { mutableStateOf<List<OwnedAsset>>(emptyList()) }
                 var loaded by remember { mutableStateOf(false) }
+                var automationFailed by remember { mutableStateOf(false) }
                 var startState by remember { mutableStateOf<com.baraa.masroof.lab.beta.application.BetaStartState?>(null) }
                 var onboarding by remember { mutableStateOf(BetaOnboardingStep.COMPLETE) }
+                var hasMessages by remember { mutableStateOf(false) }
+                var pendingReviewCount by remember { mutableIntStateOf(0) }
                 var historyBusy by remember { mutableStateOf(false) }
                 var discoveryOpen by rememberSaveable { mutableStateOf(false) }
                 var proposalId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -72,6 +75,7 @@ class BetaActivity : ComponentActivity() {
                 var proposalRevision by rememberSaveable { mutableStateOf<String?>(null) }
                 var proposalKind by rememberSaveable { mutableStateOf<String?>(null) }
                 var approvalOpen by rememberSaveable { mutableStateOf(false) }
+                var approvalEvidenceId by rememberSaveable { mutableStateOf<String?>(null) }
                 var reviewOpen by rememberSaveable { mutableStateOf(false) }
                 var settingsOpen by rememberSaveable { mutableStateOf(false) }
                 var developerToolsOpen by rememberSaveable { mutableStateOf(false) }
@@ -86,10 +90,16 @@ class BetaActivity : ComponentActivity() {
                 var failed by remember { mutableStateOf(false) }
                 suspend fun execute(action: () -> Boolean?): Boolean {
                     failed = false
+                    automationFailed = false
+                    var automaticProcessing = false
                     try {
                         val snapshot = withContext(BetaIo.dispatcher) {
                             val restored = action()
-                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme, shellContainer.startState(), shellContainer.onboardingStep())
+                            automaticProcessing = true
+                            shellContainer.processAutomaticEvidence()
+                            automaticProcessing = false
+                            val inbox = shellContainer.evidenceInboxCounts()
+                            BetaScreenSnapshot(shellContainer.markerCount(), shellContainer.bankChoices(), shellContainer.assets(), restored, shellContainer.settings().theme, shellContainer.startState(), shellContainer.onboardingStep(), inbox.total > 0, inbox.needsReview)
                         }
                         markerCount = snapshot.markers
                         banks = snapshot.banks
@@ -97,6 +107,8 @@ class BetaActivity : ComponentActivity() {
                         betaTheme = snapshot.theme
                         startState = snapshot.startState
                         onboarding = snapshot.onboarding
+                        hasMessages = snapshot.hasMessages
+                        pendingReviewCount = snapshot.pendingReviews
                         if (snapshot.startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                             developerToolsOpen = false; settingsOpen = false; historyOpen = false; reviewOpen = false
                             approvalOpen = false; discoveryOpen = false; editBank = null; editId = null
@@ -108,6 +120,7 @@ class BetaActivity : ComponentActivity() {
                         throw cancelled
                     } catch (_: Exception) {
                         banks = emptyList()
+                        automationFailed = automaticProcessing
                         failed = true
                         return false
                     } finally { busy = false }
@@ -121,20 +134,30 @@ class BetaActivity : ComponentActivity() {
                     if (busy || historyBusy) return
                     historyOpen = route == "HISTORY"; reviewOpen = route == "REVIEW"; approvalOpen = route == "APPROVAL"
                     discoveryOpen = route == "DISCOVERY"; settingsOpen = route == "SETTINGS"; developerToolsOpen = route == "DEVELOPER"
-                    editBank = null; editId = null; proposalId = null
+                    editBank = null; editId = null; proposalId = null; approvalEvidenceId = null
                     if (route == "HOME" || route == "TRANSACTIONS") { dashboardTab = route; dashboardRequest++ }
+                }
+                fun resumeSetup() {
+                    if (busy || historyBusy) return
+                    openRoute("HOME")
+                    settingsCategory = "HUB"
+                    perform { shellContainer.resumeOnboarding(); null }
+                }
+                fun closeTask() {
+                    historyOpen = false; discoveryOpen = false; approvalOpen = false; reviewOpen = false
+                    perform { null }
                 }
                 fun openAsset(bank: BankId, kind: AssetKind) {
                     if (busy || historyBusy) return
                     editBank = bank.value; editId = null; proposalId = null; initialAssetKind = kind.name; failed = false
                 }
                 BetaLaunchedEffect(Unit) { execute { null } }
-                if (!loaded || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
+                if (!loaded || automationFailed || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
                     BetaShell(
                         markerCount = 0, restoreMissing = false, showMaintenanceActions = false,
                         returnEnabled = !busy || !loaded, onReturn = { finish() }, onReset = {}, onBackup = {}, onRestore = {},
                         editor = {
-                            if (!loaded) {
+                            if (!loaded || automationFailed) {
                                 if (failed) BetaStartupFailure(onRetry = { perform { null } }, onReturn = { finish() })
                                 else androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_start_loading))
                             } else BetaStartPanel(checkNotNull(startState), busy, failed,
@@ -147,7 +170,7 @@ class BetaActivity : ComponentActivity() {
                     selectedHomeTab = when { settingsOpen -> "SETTINGS"; reviewOpen -> "REVIEW"; else -> dashboardTab },
                     onOpenHome = { openRoute("HOME") },
                     onOpenTransactions = { openRoute("TRANSACTIONS") },
-                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, requestedRoute = if (dashboardTab == "TRANSACTIONS") "TRANSACTIONS" else "OVERVIEW", routeRequest = dashboardRequest, onPrimaryTabChanged = { dashboardTab = it }, onBusyChanged = { historyBusy = it }, onImport = { openRoute("HISTORY") }) }),
+                    dashboard = if (onboarding != BetaOnboardingStep.COMPLETE) null else ({ BetaDashboardPanel(dashboardWorkflow, enabled = !busy && !historyBusy, controls = dashboardControls, preferences = dashboardPreferences, requestedRoute = if (dashboardTab == "TRANSACTIONS") "TRANSACTIONS" else "OVERVIEW", routeRequest = dashboardRequest, onPrimaryTabChanged = { dashboardTab = it }, onBusyChanged = { historyBusy = it }, onImport = { openRoute("HISTORY") }, onSetup = ::resumeSetup) }),
                     onOpenDiscovery = { openRoute("DISCOVERY") },
                     onOpenHistory = { openRoute("HISTORY") },
                     onOpenApproval = { openRoute("APPROVAL") },
@@ -162,10 +185,14 @@ class BetaActivity : ComponentActivity() {
                     editor = if (settingsOpen && editBank == null && loaded) ({ BetaSettingsHubPanel(settingsCategory, { settingsCategory = it }, banks, assets, dashboardControls, busy || historyBusy,
                         onBankEnabled = { bank, enabled -> perform { shellContainer.setBankEnabled(bank, enabled); null } },
                         onAdd = ::openAsset, onEdit = { asset -> editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false },
-                        onBusyChanged = { historyBusy = it }, onClose = { settingsOpen = false }) })
-                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, onClose = { approvalOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewPanel(shellContainer, onClose = { reviewOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
+                        onBusyChanged = { historyBusy = it }, onClose = { settingsOpen = false },
+                        onSetup = ::resumeSetup, onReset = { perform { shellContainer.reset(); null } }) })
+                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
                         onSelect = { proposal -> editBank = proposal.id.bank.value; editId = null; proposalId = proposal.id.localId; proposalSuffix = proposal.last4; proposalKind = proposal.kind.name; proposalEvidence = proposal.evidenceId; proposalRevision = proposal.revision },
-                        onClose = { discoveryOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = { historyOpen = false }, onBusyChanged = { historyBusy = it }) }) else if (editBank != null && loaded) ({
+                        onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onFinancialReview = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }, onContinueSetup = if (onboarding == BetaOnboardingStep.IMPORT) ({
+                            historyOpen = false
+                            perform { shellContainer.advanceOnboarding(BetaOnboardingStep.IMPORT); null }
+                        }) else null) }) else if (editBank != null && loaded) ({
                         key(editBank, editId) {
                             val existing = editId?.let { id -> assets.singleOrNull { it.id.bank.value == editBank && it.id.localId == id } }
                             if (editId != null && existing == null) {
@@ -196,11 +223,11 @@ class BetaActivity : ComponentActivity() {
                                 })
                         }
                     }) else if (onboarding != BetaOnboardingStep.COMPLETE) ({
-                        BetaOnboardingPanel(onboarding, banks, busy || historyBusy, failed,
+                        BetaOnboardingPanel(onboarding, banks, busy || historyBusy, failed, hasMessages, assets.size, pendingReviewCount,
                             onChooseBank = { bank -> perform { shellContainer.setBankEnabled(bank, true); shellContainer.advanceOnboarding(BetaOnboardingStep.BANK); null } },
                             onNext = { perform { shellContainer.advanceOnboarding(onboarding); null } },
                             onHistory = { openRoute("HISTORY") }, onDiscovery = { openRoute("DISCOVERY") },
-                            onManage = { openRoute("SETTINGS") }, onApproval = { openRoute("APPROVAL") }, onFinancialReview = { openRoute("REVIEW") })
+                            onManage = { openRoute("SETTINGS") }, onApproval = { openRoute("REVIEW") })
                     }) else null,
                     banks = banks,
                     busy = busy || historyBusy,
@@ -236,4 +263,6 @@ private data class BetaScreenSnapshot(
     val theme: String,
     val startState: com.baraa.masroof.lab.beta.application.BetaStartState,
     val onboarding: BetaOnboardingStep,
+    val hasMessages: Boolean,
+    val pendingReviews: Int,
 )
