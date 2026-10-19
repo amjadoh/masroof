@@ -66,35 +66,31 @@ internal fun BetaAssetEditor(
             network.takeIf { kind in setOf(AssetKind.CREDIT_CARD,AssetKind.DEBIT_CARD) },accountType.takeIf {kind==AssetKind.ACCOUNT},loanType.takeIf {kind==AssetKind.LOAN},metadata.revision))) }
     BetaBottomSheet(stringResource(if(existing==null) R.string.beta_asset_add else R.string.beta_asset_edit),busy,onCancel,::save,
         canApply=valid,applyTag="asset-save",cancelTag="asset-cancel",applyLabel=stringResource(R.string.beta_asset_save)) {
-        Text(stringResource(if (existing == null) R.string.beta_asset_add else R.string.beta_asset_edit), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(bankName(bank)), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.beta_asset_manual_help), style = MaterialTheme.typography.bodyMedium)
         val kinds = if (existing == null) listOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD, AssetKind.LOAN)
             else if (existing.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD)) listOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) else listOf(existing.kind)
-        kinds.forEach { choice ->
-            FilterChip(selected = kind == choice, enabled = !busy, modifier = Modifier.testTag("asset-kind-${choice.name}"),
-                onClick = { kindName = choice.name; parentLocalId = null; createFacility = false }, label = { Text(stringResource(assetKindLabel(choice))) })
-        }
+        MasroofSheetChoices(kinds,setOf(kind),{stringResource(assetKindLabel(it))},
+            {kindName=it.name;parentLocalId=null;createFacility=false},{"asset-kind-${it.name}"},enabled=!busy)
         OutlinedTextField(value=displayName,onValueChange={if(it.length<=120) displayName=it},enabled=!busy,singleLine=true,
             label={Text(stringResource(R.string.beta_parity_display_name))},modifier=Modifier.fillMaxWidth().testTag("asset-display-name"))
         if(kind in setOf(AssetKind.DEBIT_CARD,AssetKind.CREDIT_CARD)) {
             Text(stringResource(R.string.beta_parity_network))
-            listOf("MADA" to "مدى","VISA" to "Visa","MASTERCARD" to "Mastercard").forEach { (value,label) ->
-                FilterChip(selected=network==value,enabled=!busy,onClick={network=value;if(value=="MADA") {kindName=AssetKind.DEBIT_CARD.name;parentLocalId=null}},
-                    modifier=Modifier.testTag("asset-network-$value"),label={Text(if(value=="MADA") stringResource(R.string.beta_parity_mada) else label)})
-            }
+            val networks=listOf("MADA","VISA","MASTERCARD")
+            MasroofSheetChoices(networks,setOfNotNull(network),{if(it=="MADA") stringResource(R.string.beta_parity_mada) else if(it=="VISA") "Visa" else "Mastercard"},
+                {network=it;if(it=="MADA") {kindName=AssetKind.DEBIT_CARD.name;parentLocalId=null}},{"asset-network-$it"},enabled=!busy)
         }
         if(kind==AssetKind.ACCOUNT) {
             Text(stringResource(R.string.beta_parity_account_type))
-            listOf("CURRENT" to R.string.beta_parity_current,"SAVINGS" to R.string.beta_parity_savings,"INVESTMENT" to R.string.beta_parity_investment).forEach { (value,label) ->
-                FilterChip(selected=accountType==value,enabled=!busy,onClick={accountType=value},modifier=Modifier.testTag("asset-account-type-$value"),label={Text(stringResource(label))})
-            }
+            val types=listOf("CURRENT" to R.string.beta_parity_current,"SAVINGS" to R.string.beta_parity_savings,"INVESTMENT" to R.string.beta_parity_investment)
+            MasroofSheetChoices(types,types.filter {it.first==accountType}.toSet(),{stringResource(it.second)},
+                {accountType=it.first},{"asset-account-type-${it.first}"},enabled=!busy)
         }
         if(kind==AssetKind.LOAN) {
             Text(stringResource(R.string.beta_parity_loan_type))
-            listOf("PERSONAL" to R.string.beta_parity_personal,"AUTO" to R.string.beta_parity_auto,"MORTGAGE" to R.string.beta_parity_mortgage).forEach { (value,label) ->
-                FilterChip(selected=loanType==value,enabled=!busy,onClick={loanType=value},modifier=Modifier.testTag("asset-loan-type-$value"),label={Text(stringResource(label))})
-            }
+            val types=listOf("PERSONAL" to R.string.beta_parity_personal,"AUTO" to R.string.beta_parity_auto,"MORTGAGE" to R.string.beta_parity_mortgage)
+            MasroofSheetChoices(types,types.filter {it.first==loanType}.toSet(),{stringResource(it.second)},
+                {loanType=it.first},{"asset-loan-type-${it.first}"},enabled=!busy)
         }
         OutlinedTextField(value = suffix, enabled = !busy,
             onValueChange = { value -> normalizeManualAssetSuffix(value)?.let { suffix = it } },
@@ -102,22 +98,21 @@ internal fun BetaAssetEditor(
             modifier = Modifier.fillMaxWidth().testTag("asset-last4"))
         if (kind==AssetKind.DEBIT_CARD) {
             Text(stringResource(R.string.beta_asset_link_account))
-            FilterChip(selected=selectedParent==null,enabled=!busy,onClick={parentLocalId=null},label={Text(stringResource(R.string.beta_parity_optional_link))},modifier=Modifier.testTag("asset-parent-none"))
-            parents.forEach { parent -> FilterChip(selected=selectedParent?.id==parent.id,enabled=!busy,
-                onClick={parentLocalId=parent.id.localId},modifier=Modifier.testTag("asset-parent-${parent.id.localId}"),label={Text("•• "+parent.last4.orEmpty())}) }
+            val options=listOf<String?>(null)+parents.map {it.id.localId}
+            MasroofSheetChoices(options,setOf(selectedParent?.id?.localId),{id -> if(id==null) stringResource(R.string.beta_parity_optional_link) else "•• "+parents.single {it.id.localId==id}.last4.orEmpty()},
+                {parentLocalId=it},{"asset-parent-${it ?: "none"}"},enabled=!busy)
         }
         if (kind == AssetKind.CREDIT_CARD) {
-            CreditCardRole.entries.forEach { role ->
-                FilterChip(selected = role.name == roleName, enabled = !busy, modifier = Modifier.testTag("asset-role-${role.name}"),
-                    onClick = { roleName = role.name; parentLocalId=null }, label = { Text(stringResource(if (role == CreditCardRole.PRIMARY) R.string.beta_asset_primary else R.string.beta_asset_supplementary)) })
-            }
+            MasroofSheetChoices(CreditCardRole.entries.toList(),CreditCardRole.entries.filter {it.name==roleName}.toSet(),
+                {stringResource(if(it==CreditCardRole.PRIMARY) R.string.beta_asset_primary else R.string.beta_asset_supplementary)},
+                {roleName=it.name;parentLocalId=null},{"asset-role-${it.name}"},enabled=!busy)
             Text(stringResource(R.string.beta_asset_shared_facility), style = MaterialTheme.typography.bodySmall)
         }
         if(kind==AssetKind.CREDIT_CARD && roleName==CreditCardRole.SUPPLEMENTARY.name) {
             val primaries=assets.filter { it.id.bank==bank && it.kind==AssetKind.CREDIT_CARD && it.creditCardRole==CreditCardRole.PRIMARY && it.parentId!=null && it.id!=stableId }
             if(primaries.isEmpty()) Text(stringResource(R.string.beta_asset_no_parent))
-            primaries.forEach { primary -> FilterChip(selected=primary.parentId==selectedParent?.id,enabled=!busy,
-                onClick={parentLocalId=primary.parentId?.localId},modifier=Modifier.testTag("asset-primary-${primary.id.localId}"),label={Text("•• "+primary.last4.orEmpty())}) }
+            MasroofSheetChoices(primaries,primaries.filter {it.parentId==selectedParent?.id}.toSet(),{"•• "+it.last4.orEmpty()},
+                {parentLocalId=it.parentId?.localId},{"asset-primary-${it.id.localId}"},enabled=!busy)
         }
         Row {
             Checkbox(checked = confirmed, enabled = !busy, onCheckedChange = { confirmed = it }, modifier = Modifier.testTag("asset-owned-confirm"))
