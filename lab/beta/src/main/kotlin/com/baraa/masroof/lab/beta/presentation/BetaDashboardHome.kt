@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
     preferences: BetaDashboardViewPreferencesWorkflow?, onRoute: (String) -> Unit,
     onTransaction: (String) -> Unit, onImport: () -> Unit, layoutOpen: Boolean = false,
-    onLayoutClose: () -> Unit = {}, onConfiguration: () -> Unit = {}) {
+    onSetup: () -> Unit = onImport, onLayoutClose: () -> Unit = {}, onConfiguration: () -> Unit = {}) {
     val snapshot = read.snapshot
     val unavailable = stringResource(R.string.beta_dash_unavailable)
     val language = LocalConfiguration.current.locales[0].toLanguageTag()
@@ -45,6 +45,16 @@ internal fun BetaDashboardHome(read: DashboardProduction, enabled: Boolean,
     if (layoutError) Text(stringResource(R.string.beta_chart_save_error), color = MaterialTheme.colorScheme.error)
     if (layoutOpen && layoutLoaded) BetaHomeLayoutSheet(layout, preferences, onClose = onLayoutClose,
         onSaved = { layout = it; onLayoutClose() }, onConfiguration = onConfiguration)
+    // Keep recovery outside customizable sections, even when Recent transactions is hidden.
+    if (snapshot.transactions.isEmpty()) {
+        MasroofCard(Modifier.testTag("home-setup-help")) {
+            Text(stringResource(R.string.beta_setup_empty_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.beta_setup_empty_help), style = MaterialTheme.typography.bodyMedium)
+            Button(enabled = enabled, onClick = onSetup, modifier = Modifier.fillMaxWidth().testTag("home-setup")) {
+                Text(stringResource(R.string.beta_setup_continue))
+            }
+        }
+    }
     layout.sections.filter { it.visible }.forEach { entry -> key(entry.section) {
         when (entry.section) {
             BetaHomeSection.HERO -> {

@@ -13,9 +13,9 @@ import com.baraa.masroof.ui.components.MasroofCard
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
-internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankChoice>, busy: Boolean, failed: Boolean,
+internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankChoice>, busy: Boolean, failed: Boolean, hasMessages: Boolean, ownedAssetCount: Int, pendingReviewCount: Int,
     onChooseBank: (BankId) -> Unit, onNext: () -> Unit, onHistory: () -> Unit, onDiscovery: () -> Unit,
-    onManage: () -> Unit, onApproval: () -> Unit, onFinancialReview: () -> Unit) {
+    onManage: () -> Unit, onApproval: () -> Unit) {
     Column(Modifier.testTag("onboarding-${step.name}"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         Text(stringResource(R.string.beta_onboarding_progress, step.ordinal + 1, 4), style = MaterialTheme.typography.labelLarge)
         val title = when (step) {
@@ -33,29 +33,47 @@ internal fun BetaOnboardingPanel(step: BetaOnboardingStep, banks: List<BetaBankC
                 else -> R.string.beta_onboarding_review_help
             }))
         }
+        val nextIsPrimary = when (step) {
+            BetaOnboardingStep.IMPORT -> hasMessages
+            BetaOnboardingStep.ASSETS -> ownedAssetCount > 0
+            BetaOnboardingStep.REVIEW -> pendingReviewCount == 0
+            else -> false
+        }
+        if (step == BetaOnboardingStep.IMPORT && hasMessages)
+            Text(stringResource(R.string.beta_setup_imported), modifier = Modifier.testTag("onboarding-imported"))
+        if (step == BetaOnboardingStep.ASSETS && ownedAssetCount > 0)
+            Text(stringResource(R.string.beta_setup_assets_saved, ownedAssetCount), modifier = Modifier.testTag("onboarding-assets-saved"))
+        if (step == BetaOnboardingStep.REVIEW) {
+            Text(stringResource(if (pendingReviewCount == 0) R.string.beta_setup_no_reviews else R.string.beta_setup_review_count, pendingReviewCount))
+        }
+        val nextLabel = when (step) {
+            BetaOnboardingStep.IMPORT -> if (hasMessages) R.string.beta_setup_next_assets else R.string.beta_setup_skip_import
+            BetaOnboardingStep.ASSETS -> if (ownedAssetCount > 0) R.string.beta_setup_next_approval else R.string.beta_setup_skip_assets
+            else -> R.string.beta_onboarding_finish
+        }
+        if (nextIsPrimary) SetupAction(true, !busy, onNext, "onboarding-next", nextLabel)
         when (step) {
             BetaOnboardingStep.BANK -> banks.forEach { bank ->
-                Button(enabled = !busy, onClick = { onChooseBank(bank.bankId) }, modifier = Modifier.fillMaxWidth().testTag("onboarding-bank-${bank.bankId.value}")) {
-                    Text(stringResource(bankName(bank.bankId)))
-                }
+                SetupAction(true, !busy, { onChooseBank(bank.bankId) }, "onboarding-bank-${bank.bankId.value}", bankName(bank.bankId))
             }
-            BetaOnboardingStep.IMPORT -> OutlinedButton(enabled = !busy, onClick = onHistory, modifier = Modifier.fillMaxWidth().testTag("onboarding-import")) {
-                Text(stringResource(R.string.beta_history_title))
-            }
+            BetaOnboardingStep.IMPORT -> SetupAction(!nextIsPrimary, !busy, onHistory, "onboarding-import", R.string.beta_setup_import_action)
             BetaOnboardingStep.ASSETS -> {
-                OutlinedButton(enabled = !busy, onClick = onDiscovery, modifier = Modifier.fillMaxWidth().testTag("onboarding-discovery")) { Text(stringResource(R.string.beta_discovery_title)) }
-                OutlinedButton(enabled = !busy, onClick = onManage, modifier = Modifier.fillMaxWidth().testTag("onboarding-manage")) { Text(stringResource(R.string.beta_manage_title)) }
+                SetupAction(!nextIsPrimary, !busy, onDiscovery, "onboarding-discovery", R.string.beta_setup_assets_action)
+                SetupAction(false, !busy, onManage, "onboarding-manage", R.string.beta_setup_manual_action)
             }
-            BetaOnboardingStep.REVIEW -> {
-                OutlinedButton(enabled = !busy, onClick = onHistory, modifier = Modifier.fillMaxWidth().testTag("onboarding-labels")) { Text(stringResource(R.string.beta_label_title)) }
-                OutlinedButton(enabled = !busy, onClick = onApproval, modifier = Modifier.fillMaxWidth().testTag("onboarding-approval")) { Text(stringResource(R.string.beta_approval_title)) }
-                OutlinedButton(enabled = !busy, onClick = onFinancialReview, modifier = Modifier.fillMaxWidth().testTag("onboarding-review")) { Text(stringResource(R.string.beta_review_title)) }
-            }
+            BetaOnboardingStep.REVIEW -> if (pendingReviewCount > 0)
+                SetupAction(true, !busy, onApproval, "onboarding-approval", R.string.beta_setup_approval_action)
             BetaOnboardingStep.COMPLETE -> Unit
         }
-        if (step != BetaOnboardingStep.BANK) Button(enabled = !busy, onClick = onNext, modifier = Modifier.fillMaxWidth().testTag("onboarding-next")) {
-            Text(stringResource(if (step == BetaOnboardingStep.REVIEW) R.string.beta_onboarding_finish else R.string.beta_onboarding_next))
-        }
+        if (!nextIsPrimary && step != BetaOnboardingStep.BANK && step != BetaOnboardingStep.COMPLETE)
+            SetupAction(false, !busy, onNext, "onboarding-next", nextLabel)
         if (failed) Text(stringResource(R.string.beta_action_failed), color = MaterialTheme.colorScheme.error)
     }
+}
+
+@Composable
+private fun SetupAction(primary: Boolean, enabled: Boolean, onClick: () -> Unit, tag: String, label: Int) {
+    val modifier = Modifier.fillMaxWidth().testTag(tag)
+    if (primary) Button(enabled = enabled, onClick = onClick, modifier = modifier) { Text(stringResource(label)) }
+    else OutlinedButton(enabled = enabled, onClick = onClick, modifier = modifier) { Text(stringResource(label)) }
 }

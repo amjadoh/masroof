@@ -25,7 +25,7 @@ import kotlinx.coroutines.*
 
 /** Explicit optional import. No reads, jobs or automatic resume on entering this screen. */
 @Composable
-internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}) {
+internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onFinancialReview: ((String) -> Unit)? = null, reviewOnly: Boolean = false, onConfirmAccounts: (() -> Unit)? = null, onContinueSetup: (() -> Unit)? = null) {
     var selectedEvidence by rememberSaveable { mutableStateOf<String?>(null) }
     selectedEvidence?.let { id ->
         BetaInterpretationReviewPanel(container, id, onClose = { selectedEvidence = null }, onBusyChanged = onBusyChanged)
@@ -35,6 +35,8 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
     val scope = rememberBetaUiScope()
     var session by remember { mutableStateOf<HistorySession?>(null) }
     var page by remember { mutableStateOf<List<EvidenceSummary>>(emptyList()) }
+    var needsReviewOnly by rememberSaveable { mutableStateOf(true) }
+    var counts by remember { mutableStateOf<EvidenceInboxCounts?>(null) }
     var after by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf(false) }
@@ -43,9 +45,10 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
     var days by rememberSaveable { mutableIntStateOf(30) }
     var pendingDays by rememberSaveable { mutableStateOf<Int?>(null) }
     suspend fun refresh() {
-        val snapshot = withContext(BetaIo.dispatcher) { container.historySession() to container.evidencePage(after) }
+        val snapshot = withContext(BetaIo.dispatcher) { Triple(container.historySession(), container.evidencePage(after, needsReviewOnly = needsReviewOnly), container.evidenceInboxCounts()) }
         session = snapshot.first
         page = snapshot.second
+        counts = snapshot.third
     }
     SideEffect { onBusyChanged(busy) }
     DisposableEffect(Unit) { onDispose { onBusyChanged(false) } }
@@ -83,10 +86,11 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         // A grant does not authorize an automatic restarted import; user explicitly resumes/starts.
         if (granted && requested != null) scan(requested.takeIf { it != 0 })
     }
-    BetaLaunchedEffect(Unit) {
+    BetaLaunchedEffect(needsReviewOnly) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed = true }
     }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
+        if (!reviewOnly) {
         Text(stringResource(R.string.beta_history_title), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.beta_history_help))
         Text(stringResource(R.string.beta_history_scope))
@@ -123,7 +127,23 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         OutlinedButton(enabled = !busy, onClick = { action { withContext(BetaIo.dispatcher) { container.retryEvidence(100) } } }, modifier = Modifier.testTag("history-retry")) {
             Text(stringResource(R.string.beta_history_retry))
         }
-        Text(stringResource(R.string.beta_history_saved), style = MaterialTheme.typography.titleMedium)
+        }
+        if (onContinueSetup == null) {
+        counts?.let {
+            Text(stringResource(R.string.beta_history_counts, it.total, it.needsReview), modifier = Modifier.testTag("history-counts"))
+            if (it.needsOwnership > 0) {
+                Text(stringResource(R.string.beta_setup_waiting_accounts, it.needsOwnership), modifier = Modifier.testTag("history-needs-ownership"))
+                if (onConfirmAccounts != null) Button(enabled = !busy, onClick = onConfirmAccounts, modifier = Modifier.testTag("history-confirm-accounts")) {
+                    Text(stringResource(R.string.beta_setup_assets_action))
+                }
+            }
+        }
+        FilterChip(selected = needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = true },
+            label = { Text(stringResource(R.string.beta_history_filter_review)) }, modifier = Modifier.testTag("history-filter-review"))
+        if (!reviewOnly) FilterChip(selected = !needsReviewOnly, enabled = !busy, onClick = { after = ""; needsReviewOnly = false },
+            label = { Text(stringResource(R.string.beta_history_filter_all)) }, modifier = Modifier.testTag("history-filter-all"))
+        Text(stringResource(if (needsReviewOnly) R.string.beta_history_filter_review else R.string.beta_history_saved), style = MaterialTheme.typography.titleMedium)
+        if (needsReviewOnly && counts?.needsReview == 0) Text(stringResource(R.string.beta_history_no_review), modifier = Modifier.testTag("history-no-review"))
         page.forEachIndexed { index, summary ->
             Text(stringResource(R.string.beta_history_row, index + 1, stringResource(when (summary.processingState) {
                 EvidenceProcessingState.RETRY -> R.string.beta_history_pending
@@ -131,8 +151,8 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
                 EvidenceProcessingState.COMPARISON_ONLY -> R.string.beta_history_compared
                 EvidenceProcessingState.INTERPRETED -> R.string.beta_history_interpreted
             })))
-            OutlinedButton(enabled = !busy, onClick = { selectedEvidence = summary.id }, modifier = Modifier.testTag("history-review-$index")) {
-                Text(stringResource(R.string.beta_label_title))
+            OutlinedButton(enabled = !busy, onClick = { if (summary.processingState == EvidenceProcessingState.INTERPRETED && summary.financialReviewReason != null && onFinancialReview != null) onFinancialReview(summary.id) else selectedEvidence = summary.id }, modifier = Modifier.testTag("history-review-$index")) {
+                Text(stringResource(if (summary.processingState == EvidenceProcessingState.REVIEW || summary.processingState == EvidenceProcessingState.RETRY || summary.processingState == EvidenceProcessingState.COMPARISON_ONLY || summary.financialReviewReason != null) R.string.beta_history_review_action else R.string.beta_history_view_action))
             }
             OutlinedButton(enabled = !busy, onClick = { action { withContext(BetaIo.dispatcher) { container.reprocessEvidence(summary.id) } } }, modifier = Modifier.testTag("history-reparse-$index")) {
                 Text(stringResource(R.string.beta_history_reparse))
@@ -140,6 +160,9 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         }
         if (page.isNotEmpty()) OutlinedButton(enabled = !busy, onClick = { after = page.last().id; action {} }) { Text(stringResource(R.string.beta_history_next)) }
         if (after.isNotEmpty()) OutlinedButton(enabled = !busy, onClick = { after = ""; action {} }) { Text(stringResource(R.string.beta_history_first)) }
-        OutlinedButton(enabled = !busy, onClick = onClose, modifier = Modifier.testTag("history-close")) { Text(stringResource(R.string.beta_asset_cancel)) }
+        }
+        Button(enabled = !busy, onClick = { if (onContinueSetup != null && session?.finished == true) onContinueSetup() else onClose() }, modifier = Modifier.testTag("history-close")) {
+            Text(stringResource(if (onContinueSetup != null && session?.finished == true) R.string.beta_setup_next_assets else R.string.beta_history_return))
+        }
     }
 }

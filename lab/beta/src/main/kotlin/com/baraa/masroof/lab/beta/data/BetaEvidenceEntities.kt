@@ -29,6 +29,26 @@ internal data class BetaEvidenceDecisionEntity(@PrimaryKey val rawId: String, va
 
 @Dao
 internal interface BetaEvidenceDao {
+    @Query("""SELECT raw.id FROM beta_raw_evidence raw
+        LEFT JOIN beta_evidence_outcome outcome ON outcome.rawId = raw.id
+        LEFT JOIN beta_evidence_retry retry ON retry.rawId = raw.id
+        LEFT JOIN beta_financial_adoption adoption ON adoption.evidenceId = raw.id
+        LEFT JOIN beta_financial_approval_retry approvalRetry ON approvalRetry.evidenceId = raw.id
+        WHERE raw.id > :afterId AND (retry.rawId IS NOT NULL OR approvalRetry.evidenceId IS NOT NULL OR outcome.rawId IS NULL OR outcome.disposition != 'INTERPRETED' OR (adoption.status = 'REVIEW' AND adoption.reason NOT IN ('CONFIRM_OWNERSHIP', 'LINK_DEBIT_ACCOUNT', 'CONFIRM_CARD')))
+        ORDER BY raw.id LIMIT :limit""")
+    suspend fun reviewIdsAfter(afterId: String, limit: Int): List<String>
+
+    @Query("""SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN retry.rawId IS NOT NULL OR approvalRetry.evidenceId IS NOT NULL OR outcome.rawId IS NULL OR outcome.disposition != 'INTERPRETED' OR (adoption.status = 'REVIEW' AND adoption.reason NOT IN ('CONFIRM_OWNERSHIP', 'LINK_DEBIT_ACCOUNT', 'CONFIRM_CARD')) THEN 1 ELSE 0 END), 0) AS needsReview,
+        COALESCE(SUM(CASE WHEN retry.rawId IS NULL AND approvalRetry.evidenceId IS NULL AND outcome.disposition = 'INTERPRETED' AND adoption.status = 'REVIEW' AND adoption.reason IN ('CONFIRM_OWNERSHIP', 'LINK_DEBIT_ACCOUNT', 'CONFIRM_CARD') THEN 1 ELSE 0 END), 0) AS needsOwnership
+        FROM beta_raw_evidence raw
+        LEFT JOIN beta_evidence_outcome outcome ON outcome.rawId = raw.id
+        LEFT JOIN beta_evidence_retry retry ON retry.rawId = raw.id
+        LEFT JOIN beta_financial_adoption adoption ON adoption.evidenceId = raw.id
+        LEFT JOIN beta_financial_approval_retry approvalRetry ON approvalRetry.evidenceId = raw.id""")
+    suspend fun inboxCounts(): com.baraa.masroof.lab.beta.application.evidence.EvidenceInboxCounts
+
+    @Query("SELECT EXISTS(SELECT 1 FROM beta_raw_evidence WHERE id != :id AND sender = :sender AND body = :body AND receivedAt = :receivedAt)")
+    suspend fun hasDuplicate(id: String, sender: String, body: String, receivedAt: String): Boolean
     @Query("SELECT id FROM beta_raw_evidence WHERE id > :afterId ORDER BY id LIMIT :limit") suspend fun idsAfter(afterId: String, limit: Int): List<String>
     @Query("SELECT * FROM beta_raw_evidence WHERE id=:id") suspend fun raw(id: String): BetaRawEvidenceEntity?
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertRaw(raw: BetaRawEvidenceEntity): Long
