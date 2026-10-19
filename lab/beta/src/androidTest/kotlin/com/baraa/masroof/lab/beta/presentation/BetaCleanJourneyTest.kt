@@ -58,6 +58,8 @@ class BetaCleanJourneyTest {
                 click("manage-ACCOUNTS"); click("manage-add-BANK_ALJAZIRA")
                 compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
                 compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
+                compose.onNodeWithTag("asset-last4").performImeAction()
+                compose.waitForIdle()
                 click("asset-owned-confirm"); click("asset-save")
                 await("manage-add-BANK_ALJAZIRA")
                 click("beta-settings-close"); await("beta-management-settings")
@@ -128,6 +130,7 @@ class BetaCleanJourneyTest {
                 await("dash-refresh")
                 compose.onNode(hasText(context.getString(com.baraa.masroof.lab.beta.R.string.beta_nav_settings)) and
                     hasAnyAncestor(hasTestTag("beta-bottom-navigation"))).performClick()
+                click("manage-ABOUT")
                 click("settings-reset-lab"); await("settings-reset-confirm"); capture("setup-reset-confirm")
                 compose.onNodeWithTag("settings-reset-cancel").assertIsEnabled().performClick(); compose.onNodeWithTag("settings-reset-confirm").assertDoesNotExist()
                 drain(); BetaContainer(context).use { assertEquals(1, it.markerCount()); assertTrue(it.settings().backupAvailable) }
@@ -135,7 +138,7 @@ class BetaCleanJourneyTest {
                 val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("input keyevent 4")).use { it.readBytes() }
                 compose.waitUntil(5000) { compose.onAllNodesWithTag("settings-reset-confirm").fetchSemanticsNodes().isEmpty() }
-                compose.onNodeWithTag("beta-management-settings").assertExists()
+                compose.onNodeWithTag("settings-reset-lab").assertExists()
                 click("settings-reset-lab"); compose.onNodeWithTag("settings-reset-confirm").assertIsEnabled().performClick(); await("beta-start-continue")
                 click("beta-start-continue"); await("onboarding-IMPORT")
                 scenario.recreate(); await("onboarding-IMPORT")

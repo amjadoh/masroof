@@ -35,8 +35,7 @@ class BetaSharedNavigationTest {
                 compose.onNodeWithTag("review-filter-pending").assertIsSelected()
                 compose.onNodeWithTag("history-start").assertDoesNotExist() // Review is not the import screen.
                 compose.onNodeWithTag("review-close").assertDoesNotExist()
-                compose.onNodeWithTag("review-existing-transactions").performScrollTo().performClick(); await("review-close")
-                compose.onNodeWithTag("review-close").performScrollTo().performClick(); await("review-empty")
+                compose.onNodeWithTag("review-existing-transactions").assertDoesNotExist()
                 compose.onNodeWithTag("beta-page-back").performClick(); await("dash-refresh")
                 tab(R.string.beta_nav_settings).performClick(); await("beta-settings-panel")
                 compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick(); await("beta-bottom-navigation")

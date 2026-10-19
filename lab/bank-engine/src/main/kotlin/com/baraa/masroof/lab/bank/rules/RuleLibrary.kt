@@ -14,7 +14,7 @@ object RuleLibrary {
     ))
 
     /** One interpreter, versioned literal profiles. Bank aliases remain caller-owned identity data. */
-    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 5,
+    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 6,
         network = NetworkRules(sourceBankLabels = listOf("source bank", "from bank", "بنك المرسل", "البنك المرسل"),
             destinationBankLabels = listOf("destination bank", "to bank", "بنك المستفيد"),
             networkLabels = listOf("bank network", "network", "شبكة الحوالة")),
@@ -60,6 +60,7 @@ object RuleLibrary {
                     put("card.debit", listOf("debit", "debit card", "مدى"))
                     put("card.statement", listOf("statement", "كشف"))
                     put("card.available_balance", listOf("available balance", "الرصيد المتاح"))
+                    put("card.credit_balance", listOf("available balance", "الرصيد المتاح"))
                 }
                 if (rule.family == MessageFamily.PURCHASE) {
                     put("purchase.pos", listOf("pos", "نقاط البيع")); put("purchase.online", listOf("online", "internet", "عبر الانترنت"))

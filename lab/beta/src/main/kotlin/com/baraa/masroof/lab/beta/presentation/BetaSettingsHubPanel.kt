@@ -23,12 +23,13 @@ import com.baraa.masroof.ui.theme.*
 import java.time.YearMonth
 
 /** Financial management and explicit lab setup/reset actions. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit,
     banks: List<BetaBankChoice>, assets: List<OwnedAsset>, controls: BetaDashboardControls, busy: Boolean,
     onBankEnabled: (BankId, Boolean) -> Unit, onAdd: (BankId, AssetKind) -> Unit, onEdit: (OwnedAsset) -> Unit,
     onBusyChanged: (Boolean) -> Unit, onClose: () -> Unit,
-    theme: String = "SYSTEM", language: String = "SYSTEM", cardTasks: List<BetaCardSetupTask> = emptyList(), metadata: Map<AssetId,BetaAssetMetadata> = emptyMap(), onConfigureTask: (BetaCardSetupTask) -> Unit = {}, onTheme: (String) -> Unit = {}, onLanguage: (String) -> Unit = {}, onData: () -> Unit = {}, onSetup: () -> Unit = {}, onReset: () -> Unit = {}) {
+    theme: String = "SYSTEM", language: String = "SYSTEM", cardTasks: List<BetaCardSetupTask> = emptyList(), metadata: Map<AssetId,BetaAssetMetadata> = emptyMap(), onConfigureTask: (BetaCardSetupTask) -> Unit = {}, onTheme: (String) -> Unit = {}, onLanguage: (String) -> Unit = {}, onData: () -> Unit = {}, onSetup: () -> Unit = {}, onReset: () -> Unit = {}, onDeveloper: () -> Unit = {},onHistory: () -> Unit = {}) {
     var resetConfirmation by rememberSaveable { mutableStateOf(false) }
     BackHandler { if (!busy) { if (resetConfirmation) resetConfirmation = false else if (category == "HUB") onClose() else onCategory("HUB") } }
     Column(Modifier.testTag("beta-settings-panel"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
@@ -37,26 +38,58 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
             val groups = listOf("ACCOUNTS" to R.string.beta_home_accounts, "CARDS" to R.string.beta_home_cards,
                 "LOANS" to R.string.beta_home_loans, "COMMITMENTS" to R.string.beta_home_commitments_shortcut)
             groups.forEachIndexed { index, (key, label) ->
-                BetaManagementRow(stringResource(label), stringResource(R.string.beta_manage_open), when (key) {
+                BetaManagementRow(stringResource(label), stringResource(R.string.beta_complete_asset_count,assets.count {a -> when(key) {"ACCOUNTS"->a.kind==AssetKind.ACCOUNT;"LOANS"->a.kind==AssetKind.LOAN;"CARDS"->a.kind in setOf(AssetKind.CREDIT_CARD,AssetKind.DEBIT_CARD);else->false}}), when (key) {
                     "ACCOUNTS" -> MasroofOutlineIcons.Landmark; "CARDS" -> MasroofOutlineIcons.CreditCard
                     "LOANS" -> MasroofOutlineIcons.HandCoins; else -> MasroofOutlineIcons.CalendarCheck
                 }, enabled = !busy, onClick = { onCategory(key) }, modifier = Modifier.testTag("manage-$key"), divider = index != groups.lastIndex)
             }
-            BetaManagementRow(stringResource(R.string.beta_parity_app_settings),"",MasroofOutlineIcons.Settings,!busy,{onCategory("APP")},modifier=Modifier.testTag("manage-APP"))
-            BetaManagementRow(stringResource(R.string.beta_parity_data_settings),"",MasroofOutlineIcons.DatabaseBackup,!busy,onData,modifier=Modifier.testTag("manage-DATA"),divider=false)
+
+        }
+        if(category=="HUB") MasroofCard {
+            Text(stringResource(R.string.beta_complete_app_section),style=MaterialTheme.typography.titleMedium)
+            BetaManagementRow(stringResource(R.string.beta_complete_preferences),"",MasroofOutlineIcons.Settings,!busy,{onCategory("APP")},modifier=Modifier.testTag("manage-APP"))
+            BetaManagementRow(stringResource(R.string.beta_parity_data_settings),"",MasroofOutlineIcons.DatabaseBackup,!busy,onData,modifier=Modifier.testTag("manage-DATA"))
+            BetaManagementRow(stringResource(R.string.beta_complete_about),"",MasroofOutlineIcons.CircleAlert,!busy,{onCategory("ABOUT")},modifier=Modifier.testTag("manage-ABOUT"),divider=false)
         } else if(category=="APP") {
             MasroofCard {
                 Text(stringResource(R.string.beta_parity_theme),style=MaterialTheme.typography.titleMedium)
-                val themes=listOf("LIGHT" to R.string.beta_parity_light,"DARK" to R.string.beta_parity_dark,"SYSTEM" to R.string.beta_parity_system)
-                MasroofSheetChoices(themes,themes.filter {it.first==theme}.toSet(),{stringResource(it.second)},
-                    {onTheme(it.first)},{"settings-theme-${it.first}"},enabled=!busy)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement=Arrangement.spacedBy(MasroofReference.shortcutGap),verticalArrangement=Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
+                    listOf(Triple("LIGHT",R.string.beta_parity_light,MasroofOutlineIcons.Sun),Triple("DARK",R.string.beta_parity_dark,MasroofOutlineIcons.Moon),Triple("SYSTEM",R.string.beta_parity_system,MasroofOutlineIcons.Monitor)).forEach {(value,label,icon) ->
+                        BetaChoice(theme==value,{onTheme(value)},Modifier.testTag("settings-theme-$value"),!busy) {
+                            Row(horizontalArrangement=Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),verticalAlignment=Alignment.CenterVertically) {
+                                Icon(icon,null,Modifier.size(MasroofIconSizes.sm));Text(stringResource(label))
+                            }
+                        }
+                    }
+                }
             }
             MasroofCard {
                 Text(stringResource(R.string.beta_parity_language),style=MaterialTheme.typography.titleMedium)
-                val languages=listOf("ar" to "العربية","en" to "English","SYSTEM" to stringResource(R.string.beta_parity_system))
-                MasroofSheetChoices(languages,languages.filter {it.first==language}.toSet(),{it.second},
-                    {onLanguage(it.first)},{"settings-language-${it.first}"},enabled=!busy)
+                val resolved=if(language=="SYSTEM") androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language else language
+                listOf("ar" to "العربية","en" to "English").forEach {(tag,label) ->
+                    Row(Modifier.fillMaxWidth().clickable(enabled=!busy) {onLanguage(tag)}.padding(vertical=MasroofReference.rowVertical).testTag("settings-language-$tag"),
+                        horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
+                        Text(label,style=MasroofReference.pair)
+                        Surface(color=if(resolved==tag) MasroofThemeExtras.extendedColors.inflowSoft else MaterialTheme.colorScheme.surface,shape=MasroofShapes.small) {
+                            Text(stringResource(if(resolved==tag) R.string.beta_complete_current_language else R.string.beta_complete_available_language),Modifier.padding(MasroofSpacing.sectionHeaderGap),style=MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    HorizontalDivider(color=MasroofThemeExtras.extendedColors.cardBorder)
+                }
             }
+            MasroofCard {
+                Text(stringResource(R.string.beta_complete_color_meanings),style=MaterialTheme.typography.titleMedium)
+                val colors=MasroofThemeExtras.extendedColors
+                listOf(Triple(R.string.beta_fix_inflow,MasroofOutlineIcons.ArrowDownLeft,colors.inflow),Triple(R.string.beta_home_expenses,MasroofOutlineIcons.ArrowUpRight,colors.outflow),Triple(R.string.beta_asset_credit,MasroofOutlineIcons.CreditCard,colors.card),Triple(R.string.beta_dash_commitments,MasroofOutlineIcons.CalendarCheck,colors.liability)).forEach {(label,icon,color) ->
+                    Row(Modifier.padding(top=MasroofSpacing.sectionGap),horizontalArrangement=Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(icon,null,Modifier.size(MasroofIconSizes.md),tint=color);Text(stringResource(label),style=MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        } else if(category=="ABOUT") {
+            MasroofCard {Text(stringResource(R.string.beta_home_brand),style=MaterialTheme.typography.titleLarge);Text(stringResource(R.string.beta_complete_about_body))}
+            BetaManagementRow(stringResource(R.string.beta_complete_import_messages),"",MasroofOutlineIcons.MessageSquare,!busy,onHistory,modifier=Modifier.testTag("settings-import-sms"))
+            BetaManagementRow(stringResource(R.string.beta_complete_developer),"",MasroofOutlineIcons.SlidersHorizontal,!busy,onDeveloper,modifier=Modifier.testTag("settings-developer-tools"))
         } else if (category == "COMMITMENTS") {
             BetaDashboardConfigurationPanel(controls, emptyList(), YearMonth.now(java.time.ZoneId.of("Asia/Riyadh")), !busy,
                 onBusyChanged, onSaved = {}, commitmentsOnly = true)
@@ -89,7 +122,7 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
                 }
             }
         }
-        if (category == "HUB") MasroofCard {
+        if (category == "ABOUT") MasroofCard {
             Text(stringResource(R.string.beta_setup_lab_settings), style = MaterialTheme.typography.titleMedium)
             OutlinedButton(enabled = !busy, onClick = onSetup, modifier = Modifier.fillMaxWidth().testTag("settings-setup")) {
                 Text(stringResource(R.string.beta_setup_continue))
@@ -116,7 +149,7 @@ internal fun BetaSettingsHubPanel(category: String, onCategory: (String) -> Unit
 
 /** Production navigation geometry expressed with existing shared tokens and renderers. */
 @Composable
-private fun BetaManagementRow(title: String, subtitle: String, icon: ImageVector, enabled: Boolean, onClick: () -> Unit,
+internal fun BetaManagementRow(title: String, subtitle: String, icon: ImageVector, enabled: Boolean, onClick: () -> Unit,
     modifier: Modifier = Modifier, divider: Boolean = true) {
     Column(modifier.fillMaxWidth().clickable(enabled = enabled, role = Role.Button, onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(top = MasroofReference.rowVertical,

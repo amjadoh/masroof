@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 class BetaDashboardActivityTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
-    @Test fun actualBetaActivityPreservesDashboardSelectionAcrossSettingsAndRecreation() {
+    @Test fun actualBetaActivityPreservesDashboardDetailAcrossRecreationAndUsesTheSharedBackButton() {
         BetaContainer.resetOffline(context)
         BetaContainer(context).use { beta ->
             val bank = BankId("BANK_ALJAZIRA")
@@ -34,19 +34,14 @@ class BetaDashboardActivityTest {
             compose.onNodeWithTag("home-shortcuts").performScrollTo()
             compose.onNodeWithTag("dashboard-shortcut-0").performClick()
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-activity").performScrollTo().performClick()
-            compose.onNodeWithTag("dash-detail-back").assertExists()
-            compose.onNodeWithTag("beta-tools").performClick()
-            compose.onNodeWithTag("beta-settings").performScrollTo().performClick()
-            compose.onNodeWithTag("beta-settings-panel").assertExists()
-            compose.onNodeWithTag("beta-settings-close").performScrollTo().performClick()
-            compose.onNodeWithTag("beta-tools").performClick()
-            compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-detail-back").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("beta-page-back").assertExists()
+            compose.onNodeWithTag("beta-tools").assertDoesNotExist()
             scenario.recreate()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("dash-detail-back").assertExists()
+            compose.onNodeWithTag("beta-page-back").assertExists()
             compose.onNodeWithTag("beta-badge").assertIsDisplayed()
             compose.onNodeWithTag("beta-bottom-navigation").assertIsDisplayed()
-            compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
+            compose.onNodeWithTag("beta-page-back").performClick()
             compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
         }
         val closed = CountDownLatch(1); BetaIo.execute { closed.countDown() }; assertTrue(closed.await(15, TimeUnit.SECONDS))

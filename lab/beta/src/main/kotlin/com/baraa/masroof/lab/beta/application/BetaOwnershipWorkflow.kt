@@ -104,6 +104,16 @@ class BetaOwnershipWorkflow(private val database: BetaDatabase) {
         linkProvenDebitAccounts()
     }
 
+    /** A saved "mine" decision remains authoritative when a later message proves the kind. */
+    suspend fun materializeConfirmedReferences() = database.withTransaction {
+        val decisions=database.ownershipDao().all().filter {it.status=="OWNED" && it.assetLocalId==null}
+        for(decision in decisions) {
+            val state=states().singleOrNull {it.candidate.reference.let {ref -> ref.bank.value==decision.bankId && ref.kind.name==decision.kind && ref.suffix==decision.suffix}} ?: continue
+            if(state.candidate.conflictingKinds || state.candidate.choices.isNotEmpty()) continue
+            if(state.observations.mapNotNull {it.proposal?.kind}.distinct().size==1) decide(state.candidate,true)
+        }
+    }
+
     /** Only an explicit, consistent account role in the same evidence can link a confirmed debit card. */
     suspend fun linkProvenDebitAccounts() = database.withTransaction {
         val current = states()

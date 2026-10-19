@@ -149,6 +149,30 @@ class BetaContainer(
         check(preferences.edit().remove("beta_auto_complete_v1").remove("beta_auto_cursor_v1").remove("beta_auto_cursor_version_v1").commit())
     }
 
+    /** Versioned replay of immutable lab evidence, checkpointed before automatic adoption.
+     * User decisions/corrections remain separate; historical comparison archives stay inert. */
+    private fun refreshStoredInterpretations(version: String) {
+        if(preferences.getString("beta_reinterpret_complete",null)==version) return
+        var cursor=if(preferences.getString("beta_reinterpret_version",null)==version)
+            preferences.getString("beta_reinterpret_cursor","").orEmpty() else ""
+        while(true) {
+            val ids=runBlocking {database.evidenceDao().idsAfter(cursor,100)}
+            if(ids.isEmpty()) break
+            for(id in ids) runBlocking {
+                val outcome=database.evidenceDao().outcome(id) ?: return@runBlocking
+                if(outcome.baselineJson!="{}") return@runBlocking
+                val archive=runCatching {org.json.JSONObject(outcome.candidateJson)}.getOrNull() ?: return@runBlocking
+                if(archive.optString("authority")!="BANK_ENGINE" ||
+                    com.baraa.masroof.lab.beta.application.evidence.InterpretationArchive.isCurrent(archive)) return@runBlocking
+                val result=evidenceWorkflow().reprocess(id)
+                check(result.retryStage==null) {"Lab interpretation upgrade remains retryable"}
+            }
+            cursor=ids.last()
+            check(preferences.edit().putString("beta_reinterpret_version",version).putString("beta_reinterpret_cursor",cursor).commit())
+        }
+        check(preferences.edit().putString("beta_reinterpret_complete",version).remove("beta_reinterpret_cursor").commit())
+    }
+
     /** Durable, bounded write-side work. Dashboard reads never run this sweep. */
     fun processAutomaticEvidence() = lock.withLock {
         check(!closed)
@@ -157,10 +181,11 @@ class BetaContainer(
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.PERMISSION,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.IMPORT,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)) return@withLock
-        val version = "v3-automatic-transfers|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
+        val version = "v4-owned-loan-discovery|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
             com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.currentSchema()).version
         if (preferences.getString("beta_auto_complete_v1", null) == version) return@withLock
-        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).linkProvenDebitAccounts() }
+        refreshStoredInterpretations(version)
+        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).let {it.materializeConfirmedReferences();it.linkProvenDebitAccounts()} }
         var cursor = if (preferences.getString("beta_auto_cursor_version_v1", null) == version) preferences.getString("beta_auto_cursor_v1", "").orEmpty() else ""
         while (true) {
             val next = runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).automaticPage(cursor) }
@@ -378,6 +403,20 @@ class BetaContainer(
     fun reviewInboxPage(after: String = "", ignored: Boolean = false) = lock.withLock {
         check(!closed)
         runBlocking { com.baraa.masroof.lab.beta.application.evidence.BetaReviewInboxWorkflow(database).page(after, ignored) }
+    }
+
+    fun reviewDetail(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking {com.baraa.masroof.lab.beta.application.evidence.BetaReviewResolutionWorkflow(database).detail(id)}
+    }
+
+    fun transactionActionDetail(id: String) = lock.withLock {
+        check(!closed)
+        runBlocking {com.baraa.masroof.lab.beta.application.corrections.BetaTransactionDetailWorkflow(database).detail(com.baraa.masroof.lab.finance.posting.PostingKey(com.baraa.masroof.lab.finance.value.Environment.BETA,id))}
+    }
+    fun reclassifyTransaction(token: com.baraa.masroof.lab.beta.application.corrections.BetaReviewToken,decisionId: String,type: com.baraa.masroof.lab.finance.posting.FinancialType) = lock.withLock {
+        check(!closed)
+        runBlocking {com.baraa.masroof.lab.beta.application.corrections.BetaTransactionDetailWorkflow(database).resolve(token,decisionId,type)}
     }
 
     fun evidenceInboxCounts() = lock.withLock {
