@@ -20,7 +20,17 @@ object BetaAssetDiscovery {
         if (route.kind != RouteKind.MATCHED) emptyList() else decode(id, route.candidates.single(), JSONObject(archive), body)
     } catch (_: Exception) { emptyList() } // Unsupported/malformed archives remain in evidence review.
 
-    private fun decode(id: String, bank: BankId, json: JSONObject, body: String?): List<BetaAssetProposal> {
+    fun observations(id: String, route: EvidenceRoute, archive: String, body: String): List<BetaOwnershipObservation> = try {
+        if (route.kind != RouteKind.MATCHED) emptyList() else {
+            val unknown = mutableListOf<BetaOwnershipObservation>()
+            val proposals = decode(id, route.candidates.single(), JSONObject(archive), body, unknown)
+            proposals.map { BetaOwnershipObservation(BetaOwnershipReference(it.id.bank,
+                if (it.kind == AssetKind.ACCOUNT) BetaOwnershipKind.ACCOUNT else BetaOwnershipKind.CARD, it.last4), it) } + unknown
+        }
+    } catch (_: IllegalArgumentException) { emptyList() } catch (_: org.json.JSONException) { emptyList() }
+
+    private fun decode(id: String, bank: BankId, json: JSONObject, body: String?,
+        unknown: MutableList<BetaOwnershipObservation>? = null): List<BetaAssetProposal> {
         require(json.get("archiveVersion") == 1 && json.get("contractVersion") == InterpretationVersion.CURRENT_CONTRACT)
         require(json.getString("evidenceId") == id && json.getString("bank") == bank.value)
         require(BetaBankCatalog.current.contains(bank))
@@ -34,7 +44,7 @@ object BetaAssetDiscovery {
                 val code = diagnostics.getJSONObject(it).getString("code")
                 code.contains("SECURITY") || code.contains("OTP") || code.contains("UNEXECUTED") || code.contains("CONFLICT")
             }) return emptyList()
-        val amountOnlyCodes = setOf("AMOUNT_REQUIRED", "MISSING_AMOUNT", "MISSING_CURRENCY")
+        val amountOnlyCodes = setOf("AMOUNT_REQUIRED", "MISSING_AMOUNT", "MISSING_CURRENCY", "MISSING_POSITIVE_PRINCIPAL")
         if (blockers.length() > 0 && (diagnostics.length() == 0 || (0 until diagnostics.length()).any {
                 diagnostics.getJSONObject(it).getString("code") !in amountOnlyCodes })) return emptyList()
         val spans = json.getJSONArray("evidence")
@@ -88,6 +98,10 @@ object BetaAssetDiscovery {
                     "STATEMENT" -> proven("card.statement") && ("card.debit" !in fields)
                     else -> false
                 }
+                if (kind == null && proven("card") && card.text("bank") == bank.value)
+                    suffix(card.text("number"))?.takeIf { provenSuffix(it, "card") }?.let {
+                        unknown?.add(BetaOwnershipObservation(BetaOwnershipReference(bank, BetaOwnershipKind.CARD, it), evidenceRevision = "$id|" + java.security.MessageDigest.getInstance("SHA-256").digest(json.toString().toByteArray(Charsets.UTF_8)).joinToString("") { byte -> "%02x".format(byte) }))
+                    }
                 if (kind != null && proven("card") && channelProven && card.text("bank") == bank.value) suffix(card.text("number"))?.takeIf { provenSuffix(it, "card") }?.let { add(proposal("card", kind, it)) }
             }
         }

@@ -80,6 +80,7 @@ class BetaActivity : ComponentActivity() {
                 var settingsOpen by rememberSaveable { mutableStateOf(false) }
                 var developerToolsOpen by rememberSaveable { mutableStateOf(false) }
                 var settingsCategory by rememberSaveable { mutableStateOf("HUB") }
+                var ownershipEditSuffix by rememberSaveable { mutableStateOf("") }
                 var initialAssetKind by rememberSaveable { mutableStateOf(AssetKind.ACCOUNT.name) }
                 var dashboardTab by rememberSaveable { mutableStateOf("HOME") }
                 var dashboardRequest by rememberSaveable { mutableIntStateOf(0) }
@@ -149,7 +150,7 @@ class BetaActivity : ComponentActivity() {
                 }
                 fun openAsset(bank: BankId, kind: AssetKind) {
                     if (busy || historyBusy) return
-                    editBank = bank.value; editId = null; proposalId = null; initialAssetKind = kind.name; failed = false
+                    editBank = bank.value; editId = null; proposalId = null; initialAssetKind = kind.name; ownershipEditSuffix = ""; failed = false
                 }
                 BetaLaunchedEffect(Unit) { execute { null } }
                 if (!loaded || automationFailed || startState != com.baraa.masroof.lab.beta.application.BetaStartState.READY) {
@@ -187,9 +188,18 @@ class BetaActivity : ComponentActivity() {
                         onAdd = ::openAsset, onEdit = { asset -> editBank = asset.id.bank.value; editId = asset.id.localId; proposalId = null; failed = false },
                         onBusyChanged = { historyBusy = it }, onClose = { settingsOpen = false },
                         onSetup = ::resumeSetup, onReset = { perform { shellContainer.reset(); null } }) })
-                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if (discoveryOpen && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
-                        onSelect = { proposal -> editBank = proposal.id.bank.value; editId = null; proposalId = proposal.id.localId; proposalSuffix = proposal.last4; proposalKind = proposal.kind.name; proposalEvidence = proposal.evidenceId; proposalRevision = proposal.revision },
-                        onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onFinancialReview = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }, onContinueSetup = if (onboarding == BetaOnboardingStep.IMPORT) ({
+                    else if (developerToolsOpen && loaded) ({ BetaSettingsPanel(shellContainer, onClose = { developerToolsOpen = false }, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }) }) else if (approvalOpen && loaded) ({ BetaFinancialApprovalPanel(shellContainer, initialEvidenceId = approvalEvidenceId, onClose = ::closeTask, onBusyChanged = { historyBusy = it }) }) else if (reviewOpen && loaded) ({ BetaReviewInboxPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onApprove = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }) }) else if ((discoveryOpen || onboarding == BetaOnboardingStep.ASSETS) && editBank == null && loaded) ({ BetaDiscoveryPanel(shellContainer, assets,
+                        onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onChanged = { perform { null } }, parentBusy = busy,
+                        onContinue = if (onboarding == BetaOnboardingStep.ASSETS) ({
+                            discoveryOpen = false
+                            perform { shellContainer.advanceOnboarding(BetaOnboardingStep.ASSETS); null }
+                        }) else null,
+                        onManage = { openRoute("SETTINGS") },
+                        onConfigure = { candidate ->
+                            editBank = candidate.reference.bank.value; editId = candidate.asset?.id?.localId; proposalId = null
+                            initialAssetKind = (candidate.asset?.kind ?: AssetKind.DEBIT_CARD).name
+                            ownershipEditSuffix = candidate.reference.suffix; failed = false
+                        }) }) else if (historyOpen && loaded) ({ BetaHistoryPanel(shellContainer, onClose = ::closeTask, onBusyChanged = { historyBusy = it }, onFinancialReview = { id -> openRoute("APPROVAL"); approvalEvidenceId = id }, onConfirmAccounts = { openRoute("DISCOVERY") }, onContinueSetup = if (onboarding == BetaOnboardingStep.IMPORT) ({
                             historyOpen = false
                             perform { shellContainer.advanceOnboarding(BetaOnboardingStep.IMPORT); null }
                         }) else null) }) else if (editBank != null && loaded) ({
@@ -201,7 +211,7 @@ class BetaActivity : ComponentActivity() {
                                     androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(com.baraa.masroof.lab.beta.R.string.beta_asset_cancel))
                                 }
                             } else BetaAssetEditor(BankId(checkNotNull(editBank)), existing, assets, busy, failed,
-                                initialKind = AssetKind.valueOf(initialAssetKind),
+                                initialKind = AssetKind.valueOf(initialAssetKind), initialSuffix = ownershipEditSuffix,
                                 onCancel = { editBank = null; editId = null; proposalId = null; failed = false },
                                 proposal = proposalId?.let { com.baraa.masroof.lab.beta.application.BetaAssetProposal(
                                     com.baraa.masroof.lab.finance.asset.AssetId(com.baraa.masroof.lab.finance.value.Environment.BETA, BankId(checkNotNull(editBank)), it),

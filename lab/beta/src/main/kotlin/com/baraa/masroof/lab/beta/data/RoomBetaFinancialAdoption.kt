@@ -25,7 +25,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val outcome = database.evidenceDao().outcome(id)
         val adopted = dao.evidence(id)
         val pending = dao.retry(id)?.let { decodeRequest(it.request) }
-        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         val bank = outcome?.let { runCatching { rawBank(it) }.getOrNull() }
         val choices = registry.values.filter { it.id.bank.value == bank }.sortedBy { it.id.localId }
         val facts = outcome?.let { runCatching { currentInput(it, null, null, FinancialType.EXPENSE, null, registry) }.getOrNull() }
@@ -53,13 +53,28 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     suspend fun automaticPage(afterId: String = "", limit: Int = 100): String? = database.withTransaction {
         require(limit in 1..100)
         val ids = database.evidenceDao().idsAfter(afterId, limit)
-        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         val enabled = database.bankSelectionDao().all().filter { it.state == "ENABLED" }.map { it.bankId }.toSet()
-        for (id in ids) adoptAutomatic(id, registry, enabled)
+        val ownership = database.ownershipDao().all().associateBy { Triple(it.bankId, it.kind, it.suffix) }
+        val store = RoomBetaEvidenceStore(database)
+        for (id in ids) {
+            val observations = store.ownershipObservations(id)
+            val external = observations.isNotEmpty() && observations.all { observation -> observation.reference.let {
+                ownership[Triple(it.bank.value, it.kind.name, it.suffix)]?.status == "EXTERNAL" } }
+            val previous = dao.evidence(id)
+            val manual = database.evidenceDao().decision(id) != null || dao.retry(id) != null ||
+                database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null ||
+                (previous != null && previous.approvalRequest != AUTOMATIC_AUTHORITY)
+            if (external && !manual) database.ownershipDao().exclude(BetaOwnershipExclusionEntity(id))
+            else database.ownershipDao().clearExclusion(id)
+            adoptAutomatic(id, registry, enabled, ownership, external && !manual)
+            RoomBetaDashboardFacts(database).refresh(id)
+        }
         ids.lastOrNull()
     }
 
-    private suspend fun adoptAutomatic(id: String, registry: Map<AssetId, OwnedAsset>, enabled: Set<String>) {
+    private suspend fun adoptAutomatic(id: String, registry: Map<AssetId, OwnedAsset>, enabled: Set<String>,
+        ownership: Map<Triple<String, String, String>, BetaOwnershipDecisionEntity>, externallyExcluded: Boolean) {
         val evidence = database.evidenceDao()
         if (evidence.retry(id) != null || evidence.decision(id) != null || dao.retry(id) != null) return
         if (database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null) return
@@ -82,7 +97,29 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val existing = ledger.readAudit(key(id))
         if (existing != null && previous == null) return
         val store = RoomBetaEvidenceStore(database)
-        val proposals = store.discoveryProposals(id).map { it.copy(confirmedAssetId = store.proposalBinding(it)) }
+        val identityObservations = store.ownershipObservations(id)
+        val proposals = store.discoveryProposals(id).map { proposal ->
+            val binding = store.proposalBinding(proposal)
+            val referenceKind = if (proposal.kind == AssetKind.ACCOUNT) "ACCOUNT" else "CARD"
+            val decision = ownership[Triple(proposal.id.bank.value, referenceKind, proposal.last4)]
+            val selected = decision?.takeIf { it.status == "OWNED" }?.assetLocalId?.let {
+                AssetId(Environment.BETA, proposal.id.bank, it)
+            }
+            proposal.copy(confirmedAssetId = binding ?: selected)
+        }.toMutableList()
+        // An explicitly configured owned card can resolve an unknown observed card kind.
+        for (observation in identityObservations.filter { it.reference.kind == com.baraa.masroof.lab.beta.application.BetaOwnershipKind.CARD && it.proposal == null }) {
+            val ref = observation.reference
+            val decision = ownership[Triple(ref.bank.value, ref.kind.name, ref.suffix)]
+            val matches = registry.values.filter { it.id.bank == ref.bank && it.last4 == ref.suffix && it.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) }
+            val card = if (decision?.assetLocalId != null) matches.singleOrNull { it.id.localId == decision.assetLocalId } else matches.singleOrNull()
+            if (decision?.status == "OWNED" && card != null) proposals += com.baraa.masroof.lab.beta.application.BetaAssetProposal(
+                card.id, card.kind, ref.suffix, id, fingerprint(outcome), card.id)
+        }
+        val ownershipRows = identityObservations.mapNotNull { observation -> observation.reference.let {
+            ownership[Triple(it.bank.value, it.kind.name, it.suffix)] } }
+        val excluded = ownershipRows.any { it.status == "EXTERNAL" }
+        val conflictingOwnership = excluded && ownershipRows.any { it.status == "OWNED" }
         val decision = BetaAutomaticPostingPolicy.decide(
             com.baraa.masroof.lab.bank.MessageFamily.valueOf(f.getString("family")),
             f.text("direction")?.let(com.baraa.masroof.lab.bank.MoneyDirection::valueOf),
@@ -91,7 +128,12 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             id, key(id).transactionId, rawBank(outcome), fingerprint(outcome), status, reason,
             BetaLedgerCodec.encodeInput(input), input.revision.correction, input.revision.interpretation,
             AUTOMATIC_AUTHORITY, input.revision.interpretation)
-        val hold = if (base.amount.amount.signum() <= 0) "INVALID_AMOUNT" else decision.hold ?: if (evidence.hasDuplicate(id, raw.sender, raw.body, raw.receivedAt)) "POSSIBLE_DUPLICATE" else null
+        if (externallyExcluded) {
+            dao.put(record(base, "EXCLUDED", "EXTERNAL_OWNERSHIP")); return
+        }
+        val hold = if (ownershipRows.any { it.status == "REVIEW" }) "OWNERSHIP_CONFLICT" else if (conflictingOwnership) "CONFLICTING_OWNERSHIP" else if (base.amount.amount.signum() <= 0) "INVALID_AMOUNT" else (decision.hold?.let { reason ->
+            if (reason in setOf("CONFIRM_CARD", "LINK_DEBIT_ACCOUNT") && ownershipRows.any { it.kind == "CARD" && it.status == "OWNED" }) "CONFIGURE_CARD" else reason
+        }) ?: if (evidence.hasDuplicate(id, raw.sender, raw.body, raw.receivedAt)) "POSSIBLE_DUPLICATE" else null
         if (hold != null) {
             dao.put(record(base, "REVIEW", hold)); return
         }
@@ -105,7 +147,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val result = ledger.post(finalInput)
         when (result) {
             is FinancialPostingResult.Applied, is FinancialPostingResult.AlreadyApplied -> {
-                dao.put(record(finalInput, "ACTIVE", "AUTOMATIC")); RoomBetaDashboardFacts(database).refresh(id)
+                dao.put(record(finalInput, "ACTIVE", "AUTOMATIC"))
             }
             else -> dao.put(record(finalInput, "REVIEW", "AUTOMATIC_POSTING_REVIEW"))
         }
@@ -139,6 +181,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         // the same bound request, never infer approval from comparison or a background parser.
         database.withTransaction {
             requireNotNull(database.evidenceDao().raw(request.evidenceId))
+            database.ownershipDao().clearExclusion(request.evidenceId)
             dao.retry(BetaFinancialApprovalRetryEntity(request.evidenceId, encodeRequest(request)))
         }
         val result = approveAtomic(request)
@@ -190,7 +233,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
             return@withTransaction BetaFinancialAdoptionResult.Posted(FinancialPostingResult.AlreadyApplied(existing))
         if (existing != null && adopted == null) return@withTransaction review("UNOWNED_EXISTING_POSTING")
         val raw = requireNotNull(database.evidenceDao().raw(request.evidenceId))
-        val allAssets = BetaAssetRegistry(database).all().associateBy { it.id }
+        val allAssets = BetaAssetRegistry(database).owned().associateBy { it.id }
         if (request.expectedRegistryRevision != null && request.expectedRegistryRevision !=
             registryFingerprint(allAssets.values.filter { it.id.bank.value == rawBank(outcome) }))
             return@withTransaction review("STALE_REGISTRY")
@@ -236,7 +279,7 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val previous = ledger.readAudit(key)?.classification?.input ?: BetaLedgerCodec.decodeInput(adopted.approvedInput)
         try { CorrectionObservation(currentInput(outcome, (previous.source as? FinancialEndpoint.Owned)?.id,
             (previous.destination as? FinancialEndpoint.Owned)?.id, previous.storedType, previous.incomeAttribution,
-            BetaAssetRegistry(database).all().associateBy { it.id }).let { it.copy(revision = PostingRevision(0,
+            BetaAssetRegistry(database).owned().associateBy { it.id }).let { it.copy(revision = PostingRevision(0,
                 maxOf(it.revision.interpretation, adopted.observationRevision))) }, ObservationSafety.ORDINARY) }
         catch (_: Exception) { null } // Security, informational and malformed archives remain held.
     }

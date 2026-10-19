@@ -96,6 +96,10 @@ class BetaContainer(
         check(!closed)
         val steps = com.baraa.masroof.lab.beta.application.BetaOnboardingStep.entries
         require(expected != com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE)
+        if (expected == com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)
+            check(runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).snapshot().let { it.unresolvedCount == 0 && it.configurationCount == 0 } }) {
+                "Resolve discovered account and card ownership first"
+            }
         val next = steps[expected.ordinal + 1]
         val current = onboardingStep()
         if (current == next) return@withLock // Idempotent retry of this exact transition.
@@ -145,7 +149,10 @@ class BetaContainer(
     fun processAutomaticEvidence() = lock.withLock {
         check(!closed)
         if (startState() != BetaStartState.READY) return@withLock
-        val version = "v1|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
+        if (onboardingStep() in setOf(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.BANK,
+                com.baraa.masroof.lab.beta.application.BetaOnboardingStep.IMPORT,
+                com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)) return@withLock
+        val version = "v2-ownership|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
             com.baraa.masroof.lab.beta.application.interpretation.BetaInterpretationService.currentSchema()).version
         if (preferences.getString("beta_auto_complete_v1", null) == version) return@withLock
         var cursor = if (preferences.getString("beta_auto_cursor_version_v1", null) == version) preferences.getString("beta_auto_cursor_v1", "").orEmpty() else ""
@@ -202,16 +209,19 @@ class BetaContainer(
 
     fun approveEvidenceFinancial(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).approve(request) }
     }
 
     fun retryFinancialApproval(id: String, expected: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval? = null) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).retryApproval(id, expected) }
     }
 
     fun cancelFinancialApproval(request: com.baraa.masroof.lab.beta.application.evidence.BetaFinancialApproval) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).cancelApproval(request) }
     }
 
@@ -234,6 +244,7 @@ class BetaContainer(
     fun decideEvidence(id: String, expectedRevision: Long,
         decision: com.baraa.masroof.lab.beta.application.evidence.EvidenceReviewDecision) = lock.withLock {
         check(!closed)
+        invalidateAutomaticProcessing()
         runBlocking { evidenceWorkflow().decide(id, expectedRevision, decision) }
     }
 
@@ -302,7 +313,7 @@ class BetaContainer(
             val store = com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
             require(proposal.copy(confirmedAssetId = null) in store.discoveryProposals(proposal.evidenceId)) { "Stale proposal" }
             require(store.proposalBinding(proposal).let { it == null || it == draft.id }) { "Already bound to another asset" }
-            BetaManualAssetWorkflow(BetaAssetRegistry(database)).save(draft).also { store.recordProposalConfirmation(proposal) }
+            saveAssetDraft(draft).also { store.recordProposalConfirmation(proposal) }
         } }
     }
 
@@ -320,6 +331,24 @@ class BetaContainer(
             store.recordProposalConfirmation(proposal, expectedAsset.id)
             expectedAsset
         } }
+    }
+
+    fun ownershipSnapshot() = lock.withLock {
+        check(!closed)
+        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).snapshot() }
+    }
+
+    fun deferOwnership(candidate: com.baraa.masroof.lab.beta.application.BetaOwnershipCandidate) = lock.withLock {
+        check(!closed)
+        invalidateAutomaticProcessing()
+        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).defer(candidate) }
+    }
+
+    fun decideOwnership(candidate: com.baraa.masroof.lab.beta.application.BetaOwnershipCandidate, owned: Boolean,
+        selected: com.baraa.masroof.lab.finance.asset.AssetId? = null) = lock.withLock {
+        check(!closed)
+        invalidateAutomaticProcessing()
+        runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).decide(candidate, owned, selected) }
     }
 
     fun discoveryPage(afterId: String = "", limit: Int = 25) = lock.withLock {
@@ -343,7 +372,23 @@ class BetaContainer(
     fun saveManualAsset(draft: ManualAssetDraft): OwnedAsset = lock.withLock {
         check(!closed)
         invalidateAutomaticProcessing()
-        runBlocking { BetaManualAssetWorkflow(BetaAssetRegistry(database)).save(draft) }
+        runBlocking { database.withTransaction { saveAssetDraft(draft) } }
+    }
+
+    private suspend fun saveAssetDraft(draft: ManualAssetDraft): OwnedAsset {
+        val workflow = BetaManualAssetWorkflow(BetaAssetRegistry(database))
+        if (draft.createCreditFacility) {
+            require(draft.kind == com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_CARD &&
+                draft.role == com.baraa.masroof.lab.finance.asset.CreditCardRole.PRIMARY && draft.parentId != null && draft.ownedConfirmed)
+            val all = BetaAssetRegistry(database).all()
+            val parent = all.singleOrNull { it.id == draft.parentId }
+            if (parent == null) workflow.save(ManualAssetDraft(requireNotNull(draft.parentId), com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_FACILITY,
+                "", ownedConfirmed = true))
+            else check(parent.kind == com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_FACILITY && all.singleOrNull { it.id == draft.id }?.let {
+                it.kind == draft.kind && it.last4 == draft.last4 && it.parentId == draft.parentId && it.creditCardRole == draft.role
+            } == true) { "Facility already exists; reopen" }
+        }
+        return workflow.save(draft.copy(createCreditFacility = false))
     }
 
     /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
@@ -355,7 +400,7 @@ class BetaContainer(
 
     fun assets(): List<OwnedAsset> = lock.withLock {
         check(!closed)
-        runBlocking { BetaAssetRegistry(database).all() }
+        runBlocking { BetaAssetRegistry(database).owned() }
     }
 
     /** Explicit resolved Beta input only. Evidence import/comparison never calls this API. */
@@ -403,7 +448,9 @@ class BetaContainer(
     }
     fun saveReview(token: com.baraa.masroof.lab.beta.application.corrections.BetaReviewToken, decisionId: String,
         decision: com.baraa.masroof.lab.finance.corrections.FinancialDecision, metadata: Map<String, String> = emptyMap()) = lock.withLock {
-        check(!closed); runBlocking { com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow(database).save(token, decisionId, decision, metadata) }
+        check(!closed)
+        invalidateAutomaticProcessing()
+        runBlocking { com.baraa.masroof.lab.beta.application.corrections.BetaReviewWorkflow(database).save(token, decisionId, decision, metadata) }
     }
 
     fun correctionHistory(key: com.baraa.masroof.lab.finance.posting.PostingKey) = lock.withLock {

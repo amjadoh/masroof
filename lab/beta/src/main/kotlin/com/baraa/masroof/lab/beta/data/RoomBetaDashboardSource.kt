@@ -90,21 +90,28 @@ class RoomBetaDashboardSource(
             val projectedEvidence = factRows.mapTo(hashSetOf()) { it.evidenceId }
             val adoptionBindings = mutableMapOf<String, Triple<String, String, Long>>()
             val held = linkedSetOf<String>()
+            val excluded = linkedSetOf<String>()
+            val externalEvidence = if (schema >= 13) database.query(SimpleSQLiteQuery("SELECT rawId FROM beta_ownership_exclusion ORDER BY rawId LIMIT ?", arrayOf(limits.evidenceIds + 1))).use { cursor ->
+                val result = hashSetOf<String>()
+                while (cursor.moveToNext()) { check(result.size < limits.evidenceIds); result += cursor.getString(0); fingerprint(cursor.getString(0)) }
+                result
+            } else emptySet()
             if (hasAdoption) {
                 database.query(SimpleSQLiteQuery(
                     "SELECT a.transactionId,a.status,a.archiveFingerprint,a.observationRevision,a.bankId," +
                         (if (hasApprovalRetry) "EXISTS(SELECT 1 FROM beta_financial_approval_retry r WHERE r.evidenceId=a.evidenceId)" else "0") +
-                        " FROM beta_financial_adoption a ORDER BY a.evidenceId LIMIT ?",
+                        ",a.evidenceId FROM beta_financial_adoption a ORDER BY a.evidenceId LIMIT ?",
                     arrayOf(limits.currentRows + 1),
                 )).use { cursor ->
                     var count = 0
                     while (cursor.moveToNext()) {
                         if (++count > limits.currentRows) throw BetaDashboardReadLimitExceeded("adoption rows", limits.currentRows)
                         val id = cursor.getString(0); val status = cursor.getString(1)
-                        check(id.isNotBlank() && status in setOf("ACTIVE", "REVIEW")) { "Invalid Beta adoption state" }
+                        check(id.isNotBlank() && status in setOf("ACTIVE", "REVIEW", "EXCLUDED")) { "Invalid Beta adoption state" }
                         fingerprint(id); fingerprint(status); fingerprint(cursor.getString(2)); fingerprint(cursor.getLong(3).toString())
                         adoptionBindings[id] = Triple(cursor.getString(4), cursor.getString(2), cursor.getLong(3)); fingerprint(cursor.getString(4))
                         fingerprint(cursor.getInt(5).toString())
+                        if (status == "EXCLUDED" && cursor.getString(6) in externalEvidence && cursor.getInt(5) == 0) excluded += id
                         if (status != "ACTIVE" || cursor.getInt(5) != 0) held += id
                     }
                 }
@@ -116,7 +123,7 @@ class RoomBetaDashboardSource(
                     "OR EXISTS(SELECT 1 FROM beta_evidence_retry)" +
                     (if (hasApprovalRetry) " OR EXISTS(SELECT 1 FROM beta_financial_approval_retry)" else ""), arrayOf(Environment.BETA.name),
             )).use { it.moveToFirst(); it.getInt(0) == 0 }
-            if (held.isNotEmpty()) completeLedger = false
+            if ((held - excluded).isNotEmpty()) completeLedger = false
             fingerprint(completeLedger.toString())
             val unhandledEvidence = linkedSetOf<String>()
             val evidenceOwners = mutableMapOf<String, String>()
@@ -148,9 +155,9 @@ class RoomBetaDashboardSource(
                         correction.overlay.correctionRevision == cursor.getLong(2) && correction.overlay.interpretationRevision == cursor.getLong(3) &&
                         correction.transition == cursor.getLong(4) && correction.activity.name == cursor.getString(5)) { "Inconsistent evidence correction state" }
                     else check(cursor.isNull(5)) { "Missing evidence correction payload" }
-                    if (correction?.activity != BetaLedgerActivity.SUPPRESSED) unhandledEvidence += id
+                    if (correction?.activity != BetaLedgerActivity.SUPPRESSED && "evidence:$id" !in excluded && id !in externalEvidence) unhandledEvidence += id
                     val aux = auxByEvidence[id]
-                    if (aux != null) {
+                    if (aux != null && id !in externalEvidence) {
                         // No archive decoding: the write-side binds a completed outcome generation.
                         listOf(aux.evidenceId, aux.bankId, aux.archiveFingerprint, aux.outcomeAttempt.toString(), aux.outcomeAt,
                             aux.nonFinancial.toString(), aux.registryBinding, aux.boundInput, aux.observedAt, aux.balanceAsset,
@@ -168,7 +175,19 @@ class RoomBetaDashboardSource(
                     }
                 }
             }
-            val assets = database.query(SimpleSQLiteQuery(
+            val externalReferences = if (schema >= 13) database.query(SimpleSQLiteQuery(
+                "SELECT bankId,kind,suffix,status,assetLocalId,revision FROM beta_ownership_decision ORDER BY bankId,kind,suffix LIMIT ?", arrayOf(limits.evidenceIds * 2 + 1))).use { cursor ->
+                val result = hashSetOf<com.baraa.masroof.lab.beta.application.BetaOwnershipReference>()
+                var count = 0
+                while (cursor.moveToNext()) {
+                    if (++count > limits.evidenceIds * 2) throw BetaDashboardReadLimitExceeded("ownership decisions", limits.evidenceIds * 2)
+                    repeat(6) { fingerprint(cursor.optional(it)) }
+                    if (cursor.getString(3) == "EXTERNAL") result += com.baraa.masroof.lab.beta.application.BetaOwnershipReference(BankId(cursor.getString(0)),
+                        com.baraa.masroof.lab.beta.application.BetaOwnershipKind.valueOf(cursor.getString(1)), cursor.getString(2))
+                }
+                result
+            } else emptySet()
+            val assets = com.baraa.masroof.lab.beta.application.ownedBetaAssets(database.query(SimpleSQLiteQuery(
                 "SELECT environment,bankId,localId,kind,last4,parentLocalId,creditCardRole FROM beta_asset " +
                     "WHERE environment=? ORDER BY bankId,localId LIMIT ?",
                 arrayOf(Environment.BETA.name, limits.assets + 1),
@@ -182,7 +201,7 @@ class RoomBetaDashboardSource(
                         cursor.optional(5)?.let { AssetId(id.environment, id.bank, it) }, cursor.optional(6)?.let(CreditCardRole::valueOf))
                 }
                 result
-            }
+            }, externalReferences)
             val registry = assets.associateBy { it.id }
             val registryBinding = dashboardRegistryBinding(assets)
             val unavailableObligations = linkedSetOf<AssetId>()
@@ -245,6 +264,7 @@ class RoomBetaDashboardSource(
                             persisted.merchant, persisted.counterparty, persisted.debitCardAsset, persisted.debitCardLast4, persisted.debitCardParent,
                             persisted.messageFamily).forEach(::fingerprint)
                     }
+                    if (id in excluded) continue // Explicitly external evidence has no current financial effect.
                     val active = id !in held && (correction == null || correction.activity == BetaLedgerActivity.ACTIVE)
                     if (id in held || correction?.activity == BetaLedgerActivity.REVIEW) { completeLedger = false; reviewKeys += id }
                     if (!active && persisted != null) observations += Observation(persisted, false)
@@ -294,7 +314,7 @@ class RoomBetaDashboardSource(
             // One unresolved identity per stable financial transaction; overlapping retries,
             // adoption holds and correction holds do not multiply the global review count.
             reviewKeys += unhandledEvidence.map { evidenceOwners.getValue(it) }
-            reviewKeys += held
+            reviewKeys += (held - excluded)
             val reviewCount = if (hasFacts && unhandledEvidence.all { it in projectedEvidence }) reviewKeys.size else null
             val assetFacts = mutableListOf<DashboardAssetFacts>()
             val observed = observations.filter { Instant.parse(it.row.observedAt).let { at -> at <= readAt && at < query.until } }
