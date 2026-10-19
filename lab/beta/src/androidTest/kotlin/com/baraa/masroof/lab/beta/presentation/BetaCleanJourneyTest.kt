@@ -17,12 +17,15 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
-/** All evidence/storage is synthetic in the isolated test APK. No production/inbox reads. */
+/** Synthetic isolated emulator data only; the empty-inbox setup exercises the Android provider. */
 class BetaCleanJourneyTest {
     @get:Rule val compose = createEmptyComposeRule()
     @org.junit.Before fun allowSyntheticInbox() {
-        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
-            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().packageName,android.Manifest.permission.READ_SMS)
+        val automation=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+        val packageName=context.packageName
+        automation.grantRuntimePermission(packageName,android.Manifest.permission.READ_SMS)
+        // A permission grant does not clear a UID-level deny left by an AppOps denial test.
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("appops set --uid $packageName READ_SMS allow")).use {it.readBytes()}
     }
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val bank = BankId("BANK_ALJAZIRA")
