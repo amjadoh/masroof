@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Test stable-image selection
         run: python3 scripts/test-latest-stable-android.py
+      - name: Test device-suite routing and failure reporting
+        run: python3 scripts/test-instrumentation-smoke.py
       - name: Resolve latest stable Android emulator image
         id: android
         run: python3 scripts/latest-stable-android.py
@@ -93,8 +95,8 @@ jobs:
       - name: Lint and detekt
         run: ./gradlew lintDebug detekt :lab:upgrade-host:lintAfterDebug --stacktrace
 
-  # Device smoke for the hardening journeys. JVM unit tests stay the fast PR gate.
-  # This job is isolated so an emulator failure does not rewrite production behavior.
+  # The full production suite runs here; the full Beta suite shares the lifecycle
+  # emulator below. This balances the existing two runners without dropping tests.
   emulator-smoke:
     needs: android-version
     runs-on: ubuntu-latest
@@ -114,6 +116,16 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Configure local SDK path
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
+
+      # Compile without a running emulator competing for runner CPU and memory.
+      - name: Assemble production device tests
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.users.rules
@@ -132,7 +144,7 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
-            bash .github/scripts/run-beta-instrumentation-smoke.sh
+            bash .github/scripts/run-instrumentation-smoke.sh app
 
       - name: Upload statement reconciliation screenshots
         if: always()
@@ -150,13 +162,11 @@ jobs:
           path: |
             app/build/reports/androidTests/connected/debug/
             app/build/outputs/androidTest-results/connected/debug/
-            lab/beta/build/reports/androidTests/connected/debug/
-            lab/beta/build/outputs/androidTest-results/connected/debug/
-            beta-dashboard-screenshots/
           if-no-files-found: warn
 
-  # Separate from emulator-smoke so clearPackageData=true cannot wipe the database
-  # between the halt and the restarted process. Both jobs use the same stable API.
+  # Beta smoke finishes before lifecycle seeding. Subsequent process-death phases
+  # still use direct instrumentation, with no orchestrator between halt and resume.
+  # Both existing emulators use the same resolved latest-stable API.
   emulator-lifecycle:
     needs: android-version
     runs-on: ubuntu-latest
@@ -176,6 +186,18 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Configure local SDK path
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
+
+      - name: Assemble lifecycle and Beta device tests
+        run: >-
+          ./gradlew :lab:beta:assembleDebugAndroidTest :app:assembleDebug :app:assembleDebugAndroidTest
+          :lab:upgrade-host:assembleBeforeDebug :lab:upgrade-host:assembleAfterDebug
+          :lab:upgrade-host:assembleBeforeDebugAndroidTest :lab:upgrade-host:assembleAfterDebugAndroidTest --stacktrace
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.users.rules
@@ -188,21 +210,32 @@ jobs:
           api-level: ${{ needs.android-version.outputs.api-level }}
           target: google_apis
           arch: x86_64
+          # Beta's complete suite includes the same unfolded-window checks as smoke.
+          profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
             echo "sdk.dir=${SDK_DIR}" > local.properties
-            # Run the independent Beta permission/lifecycle gate first; each journey still runs once.
-            ./gradlew :lab:beta:assembleDebugAndroidTest --stacktrace
+            # Run all Beta native cases once, then reset/seed the independent lifecycle journeys.
+            bash .github/scripts/run-instrumentation-smoke.sh beta
             adb install -r -t lab/beta/build/outputs/apk/androidTest/debug/beta-debug-androidTest.apk
             bash scripts/beta-process-death.sh
             ./gradlew :app:installDebug :app:installDebugAndroidTest --stacktrace
             # RestoreConcurrencyTest already runs in emulator-smoke.
             bash scripts/m13-process-death.sh
-            ./gradlew :lab:upgrade-host:assembleBeforeDebug :lab:upgrade-host:assembleAfterDebug :lab:upgrade-host:assembleBeforeDebugAndroidTest :lab:upgrade-host:assembleAfterDebugAndroidTest --stacktrace
             bash scripts/beta-apk-upgrade.sh
+      - name: Upload Beta instrumentation reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-instrumentation-reports
+          path: |
+            lab/beta/build/reports/androidTests/connected/debug/
+            lab/beta/build/outputs/androidTest-results/connected/debug/
+            beta-dashboard-screenshots/
+          if-no-files-found: warn
       - name: Upload synthetic signed-update and performance diagnostics
         if: always()
         uses: actions/upload-artifact@v4

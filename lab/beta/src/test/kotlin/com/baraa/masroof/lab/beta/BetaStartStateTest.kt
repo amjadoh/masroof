@@ -140,7 +140,8 @@ class BetaStartStateTest {
             val names = sql.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table') ORDER BY name").use { c ->
                 buildList { while (c.moveToNext()) add(c.getString(0)) }
             }
-            assertEquals(22, names.size)
+            assertEquals(24, names.size)
+            assertTrue(names.containsAll(listOf("beta_ownership_decision", "beta_ownership_exclusion")))
             return names.associateWith { table -> sql.query("SELECT * FROM \"$table\"").use { c ->
                 buildList { while (c.moveToNext()) add((0 until c.columnCount).map { i -> if (c.isNull(i)) null else c.getString(i) }) }.sortedBy { it.toString() }
             } }

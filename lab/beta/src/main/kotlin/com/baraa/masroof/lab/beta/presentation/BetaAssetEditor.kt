@@ -27,6 +27,7 @@ internal fun BetaAssetEditor(
     onCancel: () -> Unit,
     proposal: com.baraa.masroof.lab.beta.application.BetaAssetProposal? = null,
     initialKind: AssetKind = AssetKind.ACCOUNT,
+    initialSuffix: String = "",
 ) {
     val localId = rememberSaveable { existing?.id?.localId ?: proposal?.id?.localId ?: UUID.randomUUID().toString() }
     val originalKind by rememberSaveable { mutableStateOf(existing?.kind?.name) }
@@ -37,17 +38,20 @@ internal fun BetaAssetEditor(
     val original = originalKind?.let { OwnedAsset(stableId, AssetKind.valueOf(it), originalSuffix,
         originalParent?.let { parent -> AssetId(Environment.BETA, bank, parent) }, originalRole?.let(CreditCardRole::valueOf)) }
     var kindName by rememberSaveable { mutableStateOf((existing?.kind ?: proposal?.kind ?: initialKind).name) }
-    var suffix by rememberSaveable { mutableStateOf((existing?.last4 ?: proposal?.last4).orEmpty()) }
+    var suffix by rememberSaveable { mutableStateOf((existing?.last4 ?: proposal?.last4 ?: initialSuffix)) }
     var parentLocalId by rememberSaveable { mutableStateOf(existing?.parentId?.localId) }
     var roleName by rememberSaveable { mutableStateOf((existing?.creditCardRole ?: CreditCardRole.PRIMARY).name) }
     // Even an edit needs a fresh affirmative confirmation; opening a form never writes ownership.
+    var createFacility by rememberSaveable { mutableStateOf(false) }
+    val newFacilityId = rememberSaveable { UUID.randomUUID().toString() }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     val kind = AssetKind.valueOf(kindName)
     val parentKind = when (kind) { AssetKind.DEBIT_CARD -> AssetKind.ACCOUNT; AssetKind.CREDIT_CARD -> AssetKind.CREDIT_FACILITY; else -> null }
     val parents = assets.filter { it.id.bank == bank && it.kind == parentKind && it.id.localId != localId }
     val selectedParent = parents.singleOrNull { it.id.localId == parentLocalId }
     val suffixValid = suffix.matches(Regex("[0-9]{4}")) || (kind == AssetKind.CREDIT_FACILITY && suffix.isEmpty())
-    val valid = confirmed && suffixValid && (parentKind == null || selectedParent != null)
+    val newFacility = kind == AssetKind.CREDIT_CARD && createFacility && roleName == CreditCardRole.PRIMARY.name
+    val valid = confirmed && suffixValid && (parentKind == null || selectedParent != null || newFacility)
     BackHandler { if (!busy) onCancel() }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
         Text(stringResource(if (existing == null) R.string.beta_asset_add else R.string.beta_asset_edit), style = MaterialTheme.typography.titleLarge)
@@ -57,7 +61,7 @@ internal fun BetaAssetEditor(
             else if (existing.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD)) listOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) else listOf(existing.kind)
         kinds.forEach { choice ->
             FilterChip(selected = kind == choice, enabled = !busy, modifier = Modifier.testTag("asset-kind-${choice.name}"),
-                onClick = { kindName = choice.name; parentLocalId = null }, label = { Text(stringResource(assetKindLabel(choice))) })
+                onClick = { kindName = choice.name; parentLocalId = null; createFacility = false }, label = { Text(stringResource(assetKindLabel(choice))) })
         }
         OutlinedTextField(value = suffix, enabled = !busy,
             onValueChange = { value -> normalizeManualAssetSuffix(value)?.let { suffix = it } },
@@ -65,11 +69,11 @@ internal fun BetaAssetEditor(
             modifier = Modifier.fillMaxWidth().testTag("asset-last4"))
         if (parentKind != null) {
             Text(stringResource(if (kind == AssetKind.DEBIT_CARD) R.string.beta_asset_link_account else R.string.beta_asset_link_facility))
-            if (parents.isEmpty()) Text(stringResource(R.string.beta_asset_no_parent), color = MaterialTheme.colorScheme.error)
+            if (parents.isEmpty() && !newFacility) Text(stringResource(R.string.beta_asset_no_parent), color = MaterialTheme.colorScheme.error)
             parents.forEachIndexed { index, parent ->
                 FilterChip(selected = selectedParent?.id == parent.id, enabled = !busy,
                     modifier = Modifier.testTag("asset-parent-${parent.id.localId}"),
-                    onClick = { parentLocalId = parent.id.localId },
+                    onClick = { parentLocalId = parent.id.localId; createFacility = false },
                     label = { Text(stringResource(R.string.beta_asset_summary, stringResource(assetKindLabel(parent.kind)), parent.last4.orEmpty(), index + 1)) })
             }
         }
@@ -80,6 +84,11 @@ internal fun BetaAssetEditor(
             }
             Text(stringResource(R.string.beta_asset_shared_facility), style = MaterialTheme.typography.bodySmall)
         }
+        if (kind == AssetKind.CREDIT_CARD && roleName == CreditCardRole.PRIMARY.name) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Checkbox(checked = createFacility, enabled = !busy, onCheckedChange = { createFacility = it; if (it) parentLocalId = null },
+                modifier = Modifier.testTag("asset-create-facility"))
+            Text(stringResource(R.string.beta_ownership_new_facility))
+        }
         Row {
             Checkbox(checked = confirmed, enabled = !busy, onCheckedChange = { confirmed = it }, modifier = Modifier.testTag("asset-owned-confirm"))
             Text(stringResource(R.string.beta_asset_owned_confirm), style = MaterialTheme.typography.bodyMedium)
@@ -87,8 +96,8 @@ internal fun BetaAssetEditor(
         if (failed) Text(stringResource(R.string.beta_asset_save_failed), color = MaterialTheme.colorScheme.error)
         Button(enabled = !busy && valid, modifier = Modifier.testTag("asset-save"), onClick = {
             onSave(ManualAssetDraft(AssetId(Environment.BETA, bank, localId), kind, suffix,
-                selectedParent?.id, if (kind == AssetKind.CREDIT_CARD) CreditCardRole.valueOf(roleName) else null,
-                ownedConfirmed = confirmed, editing = existing != null, expectedOriginal = original))
+                (if (newFacility) AssetId(Environment.BETA, bank, newFacilityId) else selectedParent?.id), if (kind == AssetKind.CREDIT_CARD) CreditCardRole.valueOf(roleName) else null,
+                ownedConfirmed = confirmed, editing = existing != null, expectedOriginal = original, createCreditFacility = newFacility))
         }) { Text(stringResource(R.string.beta_asset_save)) }
         OutlinedButton(enabled = !busy, onClick = onCancel, modifier = Modifier.testTag("asset-cancel")) {
             Text(stringResource(R.string.beta_asset_cancel))

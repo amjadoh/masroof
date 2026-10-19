@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="beta_ownership_title">Confirm account and card ownership</string>
+  <string name="beta_ownership_must_resolve">Set ownership for discovered accounts and cards to continue.</string>
+  <string name="beta_ownership_accounts">Discovered accounts</string>
+  <string name="beta_ownership_cards">Discovered cards</string>
+  <string name="beta_ownership_account_suffix">Account ending in %1$s</string>
+  <string name="beta_ownership_card_suffix">Card ending in %1$s</string>
+  <string name="beta_ownership_my_account">My account</string>
+  <string name="beta_ownership_my_card">My card</string>
+  <string name="beta_ownership_not_mine">Not mine</string>
+  <string name="beta_ownership_status_owned">Ownership: mine</string>
+  <string name="beta_ownership_status_external">Ownership: not mine</string>
+  <string name="beta_ownership_status_unknown">Ownership: unset</string>
+  <string name="beta_ownership_continue">Continue and process transactions</string>
+  <string name="beta_ownership_empty">No accounts or cards were found in the imported messages. Continue or return to import.</string>
+  <string name="beta_ownership_kind_conflict">Conflicting card types need review before confirmation.</string>
+  <string name="beta_ownership_collision">Several registered assets share these digits. Select the actual asset before confirming ownership.</string>
+  <string name="beta_ownership_configure_card">Configure card type and link</string>
+<string name="beta_ownership_status_review">Ownership: needs review</string>
+<string name="beta_ownership_defer">Review conflict later</string>
+<string name="beta_ownership_new_facility">Create a separate credit facility for this primary card</string>
+<string name="beta_ownership_configuration_required">Configure card types and link debit cards to accounts and credit cards to their facilities to continue.</string>
+</resources>

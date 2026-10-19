@@ -42,7 +42,7 @@ class RoomBetaDashboardFacts(private val database: BetaDatabase) {
         if (posting.matchIdentity != null || posting.command.evidenceIds != setOf(id)) return false
         val input = posting.classification.input
         val baseline = RoomBetaFinancialAdoption(database).observation(key)?.input ?: return false
-        val registry = BetaAssetRegistry(database).all().associateBy { it.id }
+        val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         if (financialRegistryDependencies(input).any { input.assets[it] != registry[it] }) return false
         val facts = BetaCurrentFinancialArchive.read(outcome, requireNotNull(database.evidenceDao().raw(id)).body).getJSONObject("facts")
         fun text(name: String): String? = if (facts.isNull(name)) null else facts.getString(name)
