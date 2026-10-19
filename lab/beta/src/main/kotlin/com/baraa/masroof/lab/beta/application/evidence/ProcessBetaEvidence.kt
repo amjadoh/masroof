@@ -19,9 +19,11 @@ class ProcessBetaEvidence(
         val frozenMessages = messages.toList()
         val selected = selections.all().toList()
         return frozenMessages.map { message ->
-            val id = identity(request.namespace, message.providerId)
+            val requestedId = identity(request.namespace,message.providerId)
+            val id=store.resolveCaptureId(frozenRequest,message,requestedId)
             val existing = store.find(id)
-            if (existing != null && (existing.message != message || existing.request.origin != frozenRequest.origin)) {
+            val sameReceipt=existing?.message?.let { it.sender==message.sender && it.body==message.body && it.receivedAt==message.receivedAt } == true
+            if (existing != null && (if(id!=requestedId) !sameReceipt else (existing.message != message || existing.request.origin != frozenRequest.origin))) {
                 EvidenceResult.IdentityConflict
             } else {
                 val routed = router.route(message) // Full catalog first, never selection-filtered.
@@ -39,6 +41,7 @@ class ProcessBetaEvidence(
                 }
                 if (rejection != null) EvidenceResult.NotCaptured(rejection)
                 else if (existing != null) {
+                    store.recordProviderAlias(requestedId,id)
                     // Replaying saved evidence is intake too: scope precedes any implicit retry.
                     if (store.summary(id).retryStage != null) process(existing)
                     EvidenceResult.Stored(store.summary(id))

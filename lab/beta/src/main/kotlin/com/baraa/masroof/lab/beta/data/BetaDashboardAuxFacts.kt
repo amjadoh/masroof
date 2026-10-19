@@ -10,10 +10,9 @@ import java.time.*
 import org.json.JSONObject
 
 /** Non-financial disposition is separate from approval. Only typed observation fields are read. */
-@Entity(tableName = "beta_dashboard_aux_facts", foreignKeys = [ForeignKey(entity = BetaRawEvidenceEntity::class,
-    parentColumns = ["id"], childColumns = ["evidenceId"], onDelete = ForeignKey.RESTRICT)])
+@DatabaseView(viewName = "beta_dashboard_aux_facts", value = "SELECT rawId AS evidenceId, a_bankId AS bankId, a_archiveFingerprint AS archiveFingerprint, a_outcomeAttempt AS outcomeAttempt, a_outcomeAt AS outcomeAt, a_nonFinancial AS nonFinancial, a_registryBinding AS registryBinding, a_boundInput AS boundInput, a_observedAt AS observedAt, a_balanceAsset AS balanceAsset, a_balanceAmount AS balanceAmount, a_balanceCurrency AS balanceCurrency, a_facilityAsset AS facilityAsset, a_dueAmount AS dueAmount, a_dueCurrency AS dueCurrency, a_dueDate AS dueDate, a_loanAsset AS loanAsset, a_loanType AS loanType, a_loanRemaining AS loanRemaining, a_loanRemainingCurrency AS loanRemainingCurrency, a_loanInstallment AS loanInstallment, a_loanInstallmentCurrency AS loanInstallmentCurrency, a_statementProved AS statementProved FROM beta_parsed_event WHERE a_present = 1")
 internal data class BetaDashboardAuxFactsEntity(
-    @PrimaryKey val evidenceId: String, val bankId: String, val archiveFingerprint: String,
+    val evidenceId: String, val bankId: String, val archiveFingerprint: String,
     val outcomeAttempt: Int, val outcomeAt: String, val nonFinancial: Boolean,
     val registryBinding: String, val boundInput: String?, val observedAt: String?,
     val balanceAsset: String?, val balanceAmount: String?, val balanceCurrency: String?,
@@ -24,7 +23,10 @@ internal data class BetaDashboardAuxFactsEntity(
 ) { override fun toString() = "BetaDashboardAuxFactsEntity(redacted)" }
 
 @Dao internal interface BetaDashboardAuxFactsDao {
-    @Upsert suspend fun put(row: BetaDashboardAuxFactsEntity)
+    @Query("UPDATE beta_parsed_event SET a_present=1, a_epochMillis=:epoch, a_bankId=:bankId, a_archiveFingerprint=:archiveFingerprint, a_outcomeAttempt=:outcomeAttempt, a_outcomeAt=:outcomeAt, a_nonFinancial=:nonFinancial, a_registryBinding=:registryBinding, a_boundInput=:boundInput, a_observedAt=:observedAt, a_balanceAsset=:balanceAsset, a_balanceAmount=:balanceAmount, a_balanceCurrency=:balanceCurrency, a_facilityAsset=:facilityAsset, a_dueAmount=:dueAmount, a_dueCurrency=:dueCurrency, a_dueDate=:dueDate, a_loanAsset=:loanAsset, a_loanType=:loanType, a_loanRemaining=:loanRemaining, a_loanRemainingCurrency=:loanRemainingCurrency, a_loanInstallment=:loanInstallment, a_loanInstallmentCurrency=:loanInstallmentCurrency, a_statementProved=:statementProved WHERE rawId=:id")
+    suspend fun save(id: String, epoch: Long?, bankId: String, archiveFingerprint: String, outcomeAttempt: Int, outcomeAt: String, nonFinancial: Boolean, registryBinding: String, boundInput: String?, observedAt: String?, balanceAsset: String?, balanceAmount: String?, balanceCurrency: String?, facilityAsset: String?, dueAmount: String?, dueCurrency: String?, dueDate: String?, loanAsset: String?, loanType: String?, loanRemaining: String?, loanRemainingCurrency: String?, loanInstallment: String?, loanInstallmentCurrency: String?, statementProved: Boolean): Int
+    suspend fun put(row: BetaDashboardAuxFactsEntity) { check(save(row.evidenceId, row.observedAt?.let { java.time.Instant.parse(it).toEpochMilli() }, row.bankId, row.archiveFingerprint, row.outcomeAttempt, row.outcomeAt, row.nonFinancial, row.registryBinding, row.boundInput, row.observedAt, row.balanceAsset, row.balanceAmount, row.balanceCurrency, row.facilityAsset, row.dueAmount, row.dueCurrency, row.dueDate, row.loanAsset, row.loanType, row.loanRemaining, row.loanRemainingCurrency, row.loanInstallment, row.loanInstallmentCurrency, row.statementProved) == 1) }
+    @RawQuery suspend fun scoped(query: androidx.sqlite.db.SupportSQLiteQuery): List<BetaDashboardAuxFactsEntity>
     @Query("SELECT * FROM beta_dashboard_aux_facts WHERE evidenceId=:id") suspend fun evidence(id: String): BetaDashboardAuxFactsEntity?
     @Query("SELECT f.* FROM beta_dashboard_aux_facts f ORDER BY f.evidenceId LIMIT :limit")
     suspend fun all(limit: Int): List<BetaDashboardAuxFactsEntity>

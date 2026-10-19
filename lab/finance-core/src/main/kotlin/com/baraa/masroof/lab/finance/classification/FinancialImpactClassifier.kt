@@ -200,6 +200,9 @@ object FinancialImpactClassifier {
         if (asset == null) return null
         if (asset.kind == AssetKind.ACCOUNT) return asset
         if (asset.kind !in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD)) return null
+        // A known owned credit card proves its own spending and balance. A missing facility
+        // prevents shared statement attribution, not the independent purchase/refund itself.
+        if(asset.kind==AssetKind.CREDIT_CARD && asset.parentId==null) return null
         val parent = asset.parentId?.let { input.assets[it] }
         val expected = if (asset.kind == AssetKind.DEBIT_CARD) AssetKind.ACCOUNT else AssetKind.CREDIT_FACILITY
         if (parent == null || parent.id != asset.parentId || parent.kind != expected ||

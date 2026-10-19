@@ -190,7 +190,7 @@ private fun CreditDetail(snapshot: DashboardSnapshot, card: CreditCardSummary, e
             } ?: ""),
             MasroofHeroRole.Card, icon = MasroofOutlineIcons.CreditCard)
         FactCard(stringResource(R.string.beta_detail_card_data)) {
-            Text(stringResource(R.string.beta_detail_due_once), style = MaterialTheme.typography.bodySmall,
+            Text(stringResource(if(facility==null) R.string.beta_parity_unlinked_credit else R.string.beta_detail_due_once), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             card.last4?.let { DetailRow(stringResource(R.string.beta_detail_last4), it) }
             DetailRow(stringResource(R.string.beta_detail_card_type), stringResource(when (card.role) {

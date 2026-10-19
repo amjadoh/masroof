@@ -260,7 +260,7 @@ class RoomBetaFinancialLedgerTest {
         room.post(request)
         val original = db.ledgerDao().current("BETA", "transaction")!!
         for (payload in listOf(original.payload.replace("BETA_LEDGER_1", "BETA_LEDGER_999"), original.payload.dropLast(1) + "X")) {
-            db.ledgerDao().writeCurrent(original.copy(payload = payload))
+            db.ledgerDao().saveCurrent(original.copy(payload = payload))
             try { room.read(request.key); fail("Expected corruption rejection") } catch (_: IllegalStateException) { }
             try { room.post(request.copy(revision = PostingRevision(0, 1))); fail("Expected corruption rejection") } catch (_: IllegalStateException) { }
             assertEquals(payload, db.ledgerDao().current("BETA", "transaction")!!.payload)

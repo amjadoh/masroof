@@ -5,8 +5,8 @@ import com.baraa.masroof.lab.beta.application.UserBankSelection
 import com.baraa.masroof.lab.finance.value.BankId
 import java.time.Instant
 
-enum class EvidenceOrigin { EXPLICIT_SAMPLE, EXPLICIT_HISTORY }
-enum class ReceiptTimeSource { PROVIDER_TIMESTAMP, USER_SUPPLIED, DEVICE_FALLBACK }
+enum class EvidenceOrigin { EXPLICIT_SAMPLE, EXPLICIT_HISTORY, LIVE }
+enum class ReceiptTimeSource { PROVIDER_TIMESTAMP, USER_SUPPLIED, DEVICE_FALLBACK, SERVICE_CENTER_TIMESTAMP }
 enum class RouteKind { MATCHED, AMBIGUOUS, SUSPECTED, UNRECOGNIZED }
 data class EvidenceRoute(val kind: RouteKind, val candidates: Set<BankId>, val routerVersion: String) {
     init {
@@ -41,7 +41,7 @@ data class CapturedEvidence(val id: String, val request: EvidenceRequest, val me
 
 enum class EvidenceDisposition { REVIEW, COMPARISON_ONLY, INTERPRETED }
 enum class EvidenceProcessingState { RETRY, REVIEW, COMPARISON_ONLY, INTERPRETED }
-enum class EvidenceStage { CAPTURED, INTERPRETATION, SAVE_OUTCOME }
+enum class EvidenceStage { CAPTURED, INTERPRETATION, SAVE_OUTCOME, RECONCILIATION }
 enum class CaptureState { INSERTED, EXISTING, CONFLICT }
 enum class ScopeRejection { UNRECOGNIZED, NOT_ENABLED, OUTSIDE_REQUESTED_HISTORY, UNPROVEN_HISTORY_SCOPE }
 data class EvidenceInboxCounts(val total: Int, val needsReview: Int, val needsOwnership: Int = 0)
@@ -75,6 +75,9 @@ data class EvidenceComparison(val disposition: EvidenceDisposition, val reasons:
 }
 
 interface BetaEvidenceStore {
+    suspend fun resolveCaptureId(request: EvidenceRequest,message: EvidenceMessage,requestedId: String): String = requestedId
+    suspend fun recordProviderAlias(requestedId: String,canonicalId: String) {}
+
     suspend fun find(id: String): CapturedEvidence?
     /** Atomically inserts immutable raw evidence and CAPTURED retry marker. */
     suspend fun capture(evidence: CapturedEvidence): CaptureState

@@ -59,7 +59,8 @@ class BetaStartStateTest {
             assertEquals(BetaStartState.READY, beta.startState())
             assertTrue(beta.bankChoices().all { it.state == null }); assertNull(beta.historySession())
         }
-        assertEquals(mapOf(BetaContainer.START_KEY to "acknowledged-v1"), prefs.all)
+        assertEquals(mapOf(BetaContainer.START_KEY to "acknowledged-v1"), prefs.all.filterKeys { it!="beta_storage_generation" })
+        assertFalse(prefs.getString("beta_storage_generation",null).isNullOrBlank())
         assertTrue(snapshot().values.all { it.isEmpty() })
     }
 
@@ -86,7 +87,7 @@ class BetaStartStateTest {
             assertEquals(listOf(asset), beta.assets())
         }
         assertEquals(before, snapshot())
-        assertEquals(beforePrefs + (BetaContainer.START_KEY to "acknowledged-v1"), prefs.all)
+        assertEquals(beforePrefs + (BetaContainer.START_KEY to "acknowledged-v1"), prefs.all.filterKeys { it!="beta_storage_generation" })
     }
 
     @Test fun preferenceOnlyAndMarkerOnlyHistoryAreNotFresh() {
@@ -140,8 +141,8 @@ class BetaStartStateTest {
             val names = sql.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table') ORDER BY name").use { c ->
                 buildList { while (c.moveToNext()) add(c.getString(0)) }
             }
-            assertEquals(24, names.size)
-            assertTrue(names.containsAll(listOf("beta_ownership_decision", "beta_ownership_exclusion")))
+            assertEquals(16, names.size)
+            assertTrue(names.containsAll(listOf("beta_review_item", "beta_parsed_event", "beta_audit_log")))
             return names.associateWith { table -> sql.query("SELECT * FROM \"$table\"").use { c ->
                 buildList { while (c.moveToNext()) add((0 until c.columnCount).map { i -> if (c.isNull(i)) null else c.getString(i) }) }.sortedBy { it.toString() }
             } }

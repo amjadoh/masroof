@@ -31,12 +31,12 @@ class BetaDiscoveryScreenTest {
             }
         }
         compose.onNodeWithTag("asset-last4").performScrollTo().assertTextContains("1234")
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
         assertNull(saved)
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         assertEquals(proposal.id, saved!!.id)
         assertTrue(saved!!.ownedConfirmed)
         assertNull(saved!!.parentId)
@@ -122,10 +122,8 @@ class BetaDiscoveryScreenTest {
             BetaAssetEditor(bank, null, emptyList(), false, false, onSave = { saved = it }, onCancel = {}, proposal = proposal)
         }, onReturn = {}, onReset = {}, onBackup = {}, onRestore = {}) } }
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
-        assertNull(saved)
-        compose.onNodeWithTag("asset-create-facility").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsEnabled().performClick()
+        assertNull(saved) // Opening or checking ownership alone never creates the structural facility.
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsEnabled().performClick()
         assertTrue(requireNotNull(saved).createCreditFacility)
         assertEquals(CreditCardRole.PRIMARY, requireNotNull(saved).role)
         assertNotNull(requireNotNull(saved).parentId)

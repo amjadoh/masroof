@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="replace" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <application android:name="com.baraa.masroof.lab.upgrade.StandaloneLabApplication" android:testOnly="false" android:theme="@style/Theme.Masroof.Lab" android:icon="@drawable/masroof_approved_logo" android:fullBackupContent="false" android:dataExtractionRules="@xml/lab_data_extraction_rules" android:label="مصروف ٢ المختبر" tools:replace="android:testOnly,android:label">
+        <activity android:name="com.baraa.masroof.lab.beta.presentation.BetaActivity" android:exported="true" tools:replace="android:exported">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <receiver android:name="com.baraa.masroof.lab.beta.application.sms.BetaLiveSmsReceiver" android:exported="true" android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter><action android:name="android.provider.Telephony.SMS_RECEIVED" /></intent-filter>
+        </receiver>
+    </application>
+</manifest>

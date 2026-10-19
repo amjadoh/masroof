@@ -14,6 +14,7 @@ data class ManualAssetDraft(
     val editing: Boolean = false,
     val expectedOriginal: OwnedAsset? = null,
     val createCreditFacility: Boolean = false,
+    val metadata: BetaAssetMetadata? = null,
 )
 fun interface ManualAssetStore {
     /** Atomic identity/parent validation and save; no ledger or SMS operations. */
@@ -30,8 +31,7 @@ class BetaManualAssetWorkflow(private val store: ManualAssetStore) {
             "Enter at most four decimal digits"
         }.takeIf { it.isNotEmpty() }
         require(draft.kind == AssetKind.CREDIT_FACILITY || suffix != null) { "Last four digits are required" }
-        require(draft.kind != AssetKind.DEBIT_CARD || draft.parentId != null) { "A debit card needs its account" }
-        require(draft.kind != AssetKind.CREDIT_CARD || (draft.parentId != null && draft.role != null)) {
+        require(draft.kind != AssetKind.CREDIT_CARD || draft.role != null) {
             "A credit card needs its facility and role"
         }
         require(!draft.editing || draft.expectedOriginal?.id == draft.id) { "Editing requires the original stable identity" }

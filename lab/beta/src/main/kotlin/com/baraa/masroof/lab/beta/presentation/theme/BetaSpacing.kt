@@ -4,8 +4,8 @@ import androidx.compose.ui.unit.dp
 
 /** Neutral spacing mirrors MasroofSpacing; Beta cannot depend on the production UI module. */
 internal object BetaSpacing {
-    val screen = 16.dp
-    val section = 12.dp
-    val badgeHorizontal = 8.dp
-    val badgeVertical = 4.dp
+    val screen = com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal
+    val section = com.baraa.masroof.ui.theme.MasroofSpacing.bottomSheetSectionGap
+    val badgeHorizontal = com.baraa.masroof.ui.theme.MasroofSpacing.badgeHorizontalPadding
+    val badgeVertical = com.baraa.masroof.ui.theme.MasroofSpacing.badgeVerticalPadding
 }

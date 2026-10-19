@@ -22,6 +22,10 @@ import org.junit.Assert.*
 /** Synthetic instrumentation package on CI emulator only; never resets a user installation. */
 class BetaStartActivityTest {
     @get:Rule val compose = createEmptyComposeRule()
+    @org.junit.Before fun allowSyntheticInbox() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
+            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().packageName,android.Manifest.permission.READ_SMS)
+    }
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private var originalLocales: android.os.LocaleList? = null
     private fun isolatedEmulator() = context.packageName == "com.baraa.masroof.lab.beta.test" &&
@@ -58,14 +62,14 @@ class BetaStartActivityTest {
         BetaContainer(context).use { assertEquals(BetaStartState.NEW, it.startState()); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession()) }
         ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
             await("beta-start-new"); compose.onNodeWithTag("beta-start-continue").performClick()
-            await("onboarding-BANK"); compose.onNodeWithTag("beta-start-new").assertDoesNotExist()
-            scenario.recreate(); await("onboarding-BANK")
-            compose.onNodeWithTag("beta-return").performClick()
+            await("onboarding-IMPORT"); compose.onNodeWithTag("beta-start-new").assertDoesNotExist()
+            scenario.recreate(); await("onboarding-IMPORT")
+            compose.onNodeWithTag("beta-return").assertDoesNotExist()
         }
         drain()
         BetaContainer(context).use {
             assertEquals(BetaStartState.READY, it.startState()); assertTrue(it.assets().isEmpty())
-            assertTrue(it.bankChoices().all { choice -> choice.state == null }); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession())
+            assertTrue(it.bankChoices().all { choice -> choice.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }); assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession())
         }
         assertEquals(before, protected.map(::hash)); assertProtectedPreferences()
     }
@@ -134,14 +138,14 @@ class BetaStartActivityTest {
             await("beta-start-existing"); compose.onNodeWithTag("beta-start-fresh").performClick()
             compose.onNodeWithTag("beta-start-fresh-confirm").performClick()
             await("beta-start-new"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist()
-            compose.onNodeWithTag("beta-start-continue").performClick(); await("onboarding-BANK")
+            compose.onNodeWithTag("beta-start-continue").performClick(); await("onboarding-IMPORT")
         }
         drain()
         BetaContainer(context).use {
             assertEquals(0, it.markerCount()); assertNull(it.preferenceProbe())
             it.putMarker("new-experience", "keep"); it.putPreferenceProbe("new")
         }
-        ActivityScenario.launch(BetaActivity::class.java).use { await("onboarding-BANK"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").performClick() }
+        ActivityScenario.launch(BetaActivity::class.java).use { await("onboarding-IMPORT"); compose.onNodeWithTag("beta-start-fresh").assertDoesNotExist(); compose.onNodeWithTag("beta-return").assertDoesNotExist() }
         drain()
         BetaContainer(context).use { assertEquals(BetaStartState.READY, it.startState()); assertEquals(1, it.markerCount()); assertEquals("new", it.preferenceProbe()) }
         assertEquals(hashes, protected.map(::hash)); assertProtectedPreferences()

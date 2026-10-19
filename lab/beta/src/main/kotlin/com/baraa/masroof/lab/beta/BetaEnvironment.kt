@@ -8,15 +8,16 @@ package com.baraa.masroof.lab.beta
  * this shell does not open that file either.
  */
 object BetaEnvironment {
-    const val DATABASE_NAME: String = "masroof_beta.db"
+    const val DATABASE_NAME: String = "masroof_beta_v2.db"
     const val MIGRATION_STAGING_DATABASE_NAME: String = "masroof_beta_migration_test.db"
-    const val PREFS_NAME: String = "masroof_beta_prefs"
-    const val BACKUP_DATABASE_FILE_NAME: String = "masroof_beta_backup.db"
-    const val BACKUP_PREFS_FILE_NAME: String = "masroof_beta_prefs_backup.txt"
+    const val PREFS_NAME: String = "masroof_beta_v2_prefs"
+    const val BACKUP_DATABASE_FILE_NAME: String = "masroof_beta_v2_backup.db"
+    const val BACKUP_PREFS_FILE_NAME: String = "masroof_beta_v2_prefs_backup.txt"
     const val PRODUCTION_DATABASE_NAME: String = "masroof.db"
     const val PARSING_LAB_DATABASE_NAME: String = "masroof_parsing_lab.db"
 
     val forbiddenDatabaseNames: Set<String> = setOf(
+        "masroof_beta.db",
         PRODUCTION_DATABASE_NAME,
         PARSING_LAB_DATABASE_NAME,
         MIGRATION_STAGING_DATABASE_NAME,
@@ -27,6 +28,7 @@ object BetaEnvironment {
      * does not import production packages.
      */
     val forbiddenPreferenceNames: Set<String> = setOf(
+        "masroof_beta_prefs",
         "onboarding_prefs",
         "app_locale_prefs",
         "theme_prefs",

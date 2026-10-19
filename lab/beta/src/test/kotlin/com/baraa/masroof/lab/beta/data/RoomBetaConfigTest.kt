@@ -61,7 +61,7 @@ class RoomBetaConfigTest {
         assertEquals(Money.of("100", Currency.SAR), result.snapshot.commitments!!.paid)
         assertEquals(Money.of("0", Currency.SAR), result.snapshot.commitments!!.remaining)
         assertTrue(batch.rows.isEmpty())
-        assertEquals(1, sql.count { it.startsWith("SELECT", true) && it.contains("beta_dashboard_configuration") })
+        assertEquals(1, sql.count { it.startsWith("SELECT", true) && it.contains("FINANCIAL_CONFIGURATION") })
         assertFalse(sql.any { it.trimStart().matches(Regex("(?is)(INSERT|UPDATE|DELETE|ALTER|CREATE|REPLACE).*")) })
         assertFalse(sql.any { it.contains("baselineJson") || it.contains("candidateJson") || it.contains("body") || it.contains("beta_ledger_history") })
         val changed = controls().save(1, BetaDashboardConfigurationDraft(BetaSalaryCycle(27))) as BetaDashboardConfigurationWrite.Saved

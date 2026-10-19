@@ -185,7 +185,7 @@ class RoomBetaFinancialAdoptionTest {
 
     @Test fun failedInitialSqlWriteRollsBackAllFinancialStateButRetainsExactExplicitRetry() = runBlocking {
         capture(); val request = request()
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_initial_post BEFORE INSERT ON beta_ledger_history BEGIN SELECT RAISE(ABORT, 'synthetic-fault'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_initial_post BEFORE INSERT ON beta_audit_log WHEN NEW.eventKind='LEDGER_REVISION' BEGIN SELECT RAISE(ABORT, 'synthetic-fault'); END")
         try { RoomBetaFinancialAdoption(db).approve(request); fail("Expected the injected write failure") }
         catch (_: android.database.sqlite.SQLiteException) { /* The explicit request was committed first. */ }
         assertNotNull(db.financialAdoptionDao().retry("one"))

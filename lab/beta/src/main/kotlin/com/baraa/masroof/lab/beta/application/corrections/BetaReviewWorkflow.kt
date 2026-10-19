@@ -22,7 +22,7 @@ class BetaReviewWorkflow(private val database: BetaDatabase) {
         return database.withTransaction {
             val ids = mutableListOf<String>()
             database.openHelper.writableDatabase.query(
-                "SELECT transactionId FROM beta_ledger_current WHERE environment='BETA' AND transactionId > ? UNION SELECT transactionId FROM beta_correction_current WHERE environment='BETA' AND transactionId > ? ORDER BY transactionId LIMIT ?",
+                "SELECT transactionId FROM beta_financial_transaction WHERE environment='BETA' AND transactionId > ? UNION SELECT transactionId FROM beta_correction_current WHERE environment='BETA' AND transactionId > ? ORDER BY transactionId LIMIT ?",
                 arrayOf(afterId, afterId, limit)).use { cursor -> while (cursor.moveToNext()) ids += cursor.getString(0) }
             ids.map { id -> val key = PostingKey(Environment.BETA, id); val view = RoomBetaCorrectionLifecycle(database).read(key)
                 if (adoptionHeld(key)) BetaReviewItem(key, BetaLedgerActivity.REVIEW, setOf(ReviewReason.INCOMPLETE_WRITE))
@@ -92,7 +92,7 @@ class BetaReviewWorkflow(private val database: BetaDatabase) {
      * Schema 6 remains standalone; unknown statuses and incompatible capability schemas fail closed.
      */
     private fun table(name: String): Boolean = database.openHelper.writableDatabase.query(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(name)).use { it.moveToFirst() }
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?", arrayOf(name)).use { it.moveToFirst() }
 
     private fun adoptionHeld(key: PostingKey): Boolean {
         val version = database.openHelper.writableDatabase.query("PRAGMA user_version").use { check(it.moveToFirst()); it.getInt(0) }

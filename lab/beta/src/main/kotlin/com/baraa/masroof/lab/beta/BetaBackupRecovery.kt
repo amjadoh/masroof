@@ -21,7 +21,7 @@ internal class BetaBackupRecovery(
 ) {
     enum class Stage { BACKUP_STAGED, BACKUP_PUBLISHED, RESTORE_VALIDATED, JOURNALED, DATABASE_INSTALLED, PREFERENCES_INSTALLED, COMMITTED }
     private val context = context.applicationContext
-    private val root = File(this.context.filesDir, "beta_recovery_v1").also { check(it.isDirectory || it.mkdirs()) }
+    private val root = File(this.context.filesDir, "beta_recovery_v2").also { check(it.isDirectory || it.mkdirs()) }
     private val pointer = AtomicFile(File(root, "backup_pointer"))
     private val journal = AtomicFile(File(root, "restore_journal"))
     private val live get() = context.getDatabasePath(BetaEnvironment.DATABASE_NAME)
@@ -121,7 +121,12 @@ internal class BetaBackupRecovery(
             fault(Stage.JOURNALED)
             installDatabase(File(transaction, TARGET_DB))
             fault(Stage.DATABASE_INSTALLED)
-            applyPreferences(readPreferences(File(transaction, TARGET_PREFS)))
+            val targetPreferences=readPreferences(File(transaction, TARGET_PREFS)).toMutableMap()
+            // A restored snapshot is a new storage generation. Queued workers from either
+            // side of the restore must not apply an old request to the restored ledger.
+            if(targetPreferences.containsKey("beta_storage_generation"))
+                targetPreferences["beta_storage_generation"]=java.util.UUID.randomUUID().toString()
+            applyPreferences(targetPreferences)
             fault(Stage.PREFERENCES_INSTALLED)
             atomicWrite(journal, JSONObject().put("folder", transaction.name).put("state", "COMMITTED")
                 .put("hadDatabase", File(transaction, ORIGINAL_DB).exists()).put("originalHashes", originalHashes)
@@ -198,7 +203,7 @@ internal class BetaBackupRecovery(
         require(metadata.keys().asSequence().toSet() == setOf("format", "environment", "database", "schema", "databaseSha256", "preferencesSha256"))
         require(metadata.getInt("format") == 1 && metadata.getString("environment") == "BETA")
         BetaEnvironment.requireBetaDatabaseName(metadata.getString("database"))
-        require(metadata.getInt("schema") in 1..BetaDatabase.VERSION)
+        require(metadata.getInt("schema") == BetaDatabase.VERSION)
         require(sha(File(folder, DB)) == metadata.getString("databaseSha256")) { "Beta database checksum mismatch" }
         require(sha(File(folder, PREFS)) == metadata.getString("preferencesSha256")) { "Beta preferences checksum mismatch" }
         require(inspectSqlite(File(folder, DB)) == metadata.getInt("schema"))
@@ -219,6 +224,10 @@ internal class BetaBackupRecovery(
             ).use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getString(0)) } }
             val names = tables(expected)
             require(tables(actual) == names) { "Beta archive tables differ from the current schema" }
+            fun views(db: androidx.sqlite.db.SupportSQLiteDatabase): Set<String> = db.query("SELECT name FROM sqlite_master WHERE type='view'").use { cursor ->
+                buildSet {while(cursor.moveToNext()) add(cursor.getString(0))} }
+            require(views(actual)==views(expected)) {"Beta archive read projections differ"}
+            views(expected).forEach { name -> require(androidx.room.util.ViewInfo.read(actual,name)==androidx.room.util.ViewInfo.read(expected,name)) {"Beta archive read projection differs"} }
             names.forEach { table ->
                 require(androidx.room.util.TableInfo.read(actual, table) == androidx.room.util.TableInfo.read(expected, table)) {
                     "Beta archive schema differs from the generated Room schema"
@@ -233,7 +242,7 @@ internal class BetaBackupRecovery(
         return SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("PRAGMA integrity_check", null).use { require(it.moveToFirst() && it.getString(0) == "ok" && !it.moveToNext()) }
             db.rawQuery("PRAGMA foreign_key_check", null).use { require(!it.moveToFirst()) { "Broken Beta foreign keys" } }
-            require(db.version in 1..BetaDatabase.VERSION) { "Unsupported Beta schema" }
+            require(db.version == BetaDatabase.VERSION) { "Unsupported Beta schema" }
             db.rawQuery("SELECT identity_hash FROM room_master_table WHERE id=42", null).use { require(it.moveToFirst() && it.getString(0).isNotBlank()) }
             db.version
         }

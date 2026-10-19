@@ -154,7 +154,7 @@ class RoomBetaAuxFactsTest {
 
     @Test fun boundedBackfill() = runBlocking {
         capture("one")
-        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_dashboard_aux_facts")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_parsed_event SET a_present=0")
         assertFalse(source().load(query).coverage.completeLedger)
         val refresh = RoomBetaDashboardFacts(db).refreshPage(limit = 1)
         assertEquals(1, refresh.refreshed)
@@ -194,7 +194,7 @@ class RoomBetaAuxFactsTest {
     }
 
     @Test fun atomicAuxCompletion() = runBlocking {
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER aux_fault BEFORE INSERT ON beta_dashboard_aux_facts BEGIN SELECT RAISE(ABORT, 'synthetic auxiliary fault'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER aux_fault BEFORE UPDATE ON beta_parsed_event WHEN NEW.a_present=1 BEGIN SELECT RAISE(ABORT, 'synthetic auxiliary fault'); END")
         try { capture("fault"); fail("Expected auxiliary write failure") } catch (_: android.database.sqlite.SQLiteException) { }
         assertNull(db.evidenceDao().outcome("fault")); assertNotNull(db.evidenceDao().retry("fault"))
         assertNull(db.dashboardAuxFactsDao().evidence("fault")); assertFalse(source().load(query).coverage.completeLedger)
