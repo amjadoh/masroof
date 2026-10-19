@@ -185,7 +185,7 @@ class ProcessBetaEvidenceTest {
         w.importBatch(request, listOf(message()))
         w.decide(id(), 0, EvidenceReviewDecision.KEEP_FOR_REVIEW)
         val firstOutcome = db.evidenceDao().outcome(id())
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_outcome BEFORE INSERT ON beta_evidence_outcome BEGIN SELECT RAISE(ABORT,'injected'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_outcome BEFORE INSERT ON beta_parsed_event BEGIN SELECT RAISE(ABORT,'injected'); END")
         val failed = w.reprocess(id())
         assertEquals(EvidenceStage.SAVE_OUTCOME, failed.retryStage)
         assertEquals(EvidenceDisposition.COMPARISON_ONLY, failed.disposition)
@@ -205,7 +205,7 @@ class ProcessBetaEvidenceTest {
         val w = workflow()
         w.importBatch(request, listOf(message()))
         val first = db.evidenceDao().outcome(id())
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_clear BEFORE DELETE ON beta_evidence_retry BEGIN SELECT RAISE(ABORT,'injected'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_clear BEFORE DELETE ON beta_processing_retry BEGIN SELECT RAISE(ABORT,'injected'); END")
         val failed = w.reprocess(id())
         assertEquals(EvidenceStage.SAVE_OUTCOME, failed.retryStage)
         assertEquals(first, db.evidenceDao().outcome(id()))
@@ -224,7 +224,7 @@ class ProcessBetaEvidenceTest {
     }
 
     @Test fun captureTransactionFailureDoesNotLeaveAnOrphanRawRow() = runBlocking {
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_capture BEFORE INSERT ON beta_evidence_retry BEGIN SELECT RAISE(ABORT,'injected'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_capture BEFORE INSERT ON beta_processing_retry BEGIN SELECT RAISE(ABORT,'injected'); END")
         try { workflow().importBatch(request, listOf(message())); fail("Capture must fail") } catch (_: android.database.sqlite.SQLiteException) { }
         assertNull(db.evidenceDao().raw(id()))
         assertEquals(0, calls)

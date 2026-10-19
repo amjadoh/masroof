@@ -248,7 +248,7 @@ class RoomBetaCorrectionLifecycleTest {
         val first = base(); store().submit(first, command(first))
         val original = db.correctionDao().current("BETA", first.input.key.transactionId)!!
         for (payload in listOf(original.payload.replace("BETA_CORRECTION_1", "BETA_CORRECTION_999"), original.payload.replace("checksum", "wrong-checksum"))) {
-            db.correctionDao().current(original.copy(payload = payload))
+            db.correctionDao().saveCurrent(original.copy(payload = payload))
             try { ledger().read(first.input.key); fail() } catch (_: IllegalStateException) { }
             try { store().rebase(base(interpretation = 1), 1); fail() } catch (_: IllegalStateException) { }
             assertEquals(1, store().history(first.input.key).size)
@@ -298,7 +298,7 @@ class RoomBetaCorrectionLifecycleTest {
     @Test fun reviewSaveRejectsChangedConfirmedRegistryWithoutPartialDecision() = runBlocking {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val shown = workflow.detail(first.input.key)!!
-        db.openHelper.writableDatabase.execSQL("UPDATE beta_asset SET last4='9999' WHERE localId='account'")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_account_registry SET last4='9999' WHERE localId='account'")
         assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(shown.token, "stale-asset", FinancialDecision.Keep))
         assertEquals(1, store().history(first.input.key).size)
     }
@@ -313,24 +313,18 @@ class RoomBetaCorrectionLifecycleTest {
             capturedAt, EvidenceRoute(RouteKind.MATCHED, setOf(bank), "review-fixture"), emptyList()))
         db.evidenceDao().clearRetry("evidence-transaction")
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_adoption(evidenceId TEXT PRIMARY KEY, transactionId TEXT UNIQUE, status TEXT)")
-        val columns = mutableListOf<String>()
-        db.openHelper.writableDatabase.query("PRAGMA table_info(beta_financial_adoption)").use { while (it.moveToNext()) columns += it.getString(1) }
-        val values: Map<String, Any> = mapOf("evidenceId" to "evidence-transaction", "transactionId" to "transaction", "status" to "REVIEW",
-            "bankId" to bank.value, "archiveFingerprint" to "fixture", "reason" to "SECURITY", "approvedInput" to "{}",
-            "correction" to 0L, "interpretation" to 0L, "approvalRequest" to "{}", "observationRevision" to 0L)
-        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption (${columns.joinToString()}) VALUES (${columns.joinToString { "?" }})",
-            columns.map { values.getValue(it) }.toTypedArray())
+        db.financialAdoptionDao().put(BetaFinancialAdoptionEntity("evidence-transaction","transaction",bank.value,"fixture","REVIEW","SECURITY","{}",0,0,"{}",0))
         assertNull(workflow.detail(first.input.key))
         assertEquals(BetaLedgerActivity.REVIEW, workflow.page().single().activity)
         assertEquals(BetaCorrectionResult.Rejected(CorrectionRejection.STALE), workflow.save(token, "held", FinancialDecision.ResolveFinancialType(FinancialType.EXPENSE)))
-        db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='ACTIVE'")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_review_item SET status='ACTIVE'")
         assertNotNull(workflow.detail(first.input.key))
         db.evidenceDao().retry(BetaEvidenceRetryEntity("evidence-transaction", "INTERPRETATION", 1, "PENDING", capturedAt.toString()))
         assertNull(workflow.detail(first.input.key))
         db.evidenceDao().clearRetry("evidence-transaction")
         assertNotNull(workflow.detail(first.input.key))
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_approval_retry(evidenceId TEXT PRIMARY KEY, request TEXT)")
-        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_approval_retry VALUES('evidence-transaction','pending')")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_processing_retry(rawId,kind,stage,attempts,code,updatedAt,request) VALUES ('evidence-transaction','APPROVAL','',0,'','','pending')")
         assertNull(workflow.detail(first.input.key))
         assertEquals(1, store().history(first.input.key).size)
     }
@@ -339,7 +333,7 @@ class RoomBetaCorrectionLifecycleTest {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val token = workflow.detail(first.input.key)!!.token
         val hasApprovalRetry = db.openHelper.writableDatabase.query("SELECT 1 FROM sqlite_master WHERE name='beta_financial_approval_retry'").use { it.moveToFirst() }
-        if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("ALTER TABLE beta_financial_approval_retry RENAME TO review_test_hidden_retry")
+        if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("DROP VIEW beta_financial_approval_retry")
         try {
             for (version in listOf(7, 999)) {
                 db.openHelper.writableDatabase.execSQL("PRAGMA user_version=$version")
@@ -348,14 +342,14 @@ class RoomBetaCorrectionLifecycleTest {
             }
         } finally {
             db.openHelper.writableDatabase.execSQL("PRAGMA user_version=${BetaDatabase.VERSION}")
-            if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("ALTER TABLE review_test_hidden_retry RENAME TO beta_financial_approval_retry")
+            if (hasApprovalRetry) db.openHelper.writableDatabase.execSQL("CREATE VIEW beta_financial_approval_retry AS SELECT rawId AS evidenceId,request FROM beta_processing_retry WHERE kind='APPROVAL'")
         }
     }
 
     @Test fun unrelatedRegistryEditDoesNotBlockAnOtherwiseCurrentReviewDecision() = runBlocking {
         val first = base(); store().submit(first, command(first))
         val workflow = BetaReviewWorkflow(db); val shown = workflow.detail(first.input.key)!!
-        db.openHelper.writableDatabase.execSQL("UPDATE beta_asset SET last4='9999' WHERE localId='other'")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_account_registry SET last4='9999' WHERE localId='other'")
         assertTrue(workflow.save(shown.token, "unrelated-asset-note", FinancialDecision.Keep, mapOf("note" to "still current")) is BetaCorrectionResult.Applied)
         assertEquals("still current", store().read(first.input.key)!!.overlay.metadata["note"])
     }

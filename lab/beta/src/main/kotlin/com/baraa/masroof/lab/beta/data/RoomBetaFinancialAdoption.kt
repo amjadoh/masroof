@@ -53,10 +53,19 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
     suspend fun automaticPage(afterId: String = "", limit: Int = 100): String? = database.withTransaction {
         require(limit in 1..100)
         val ids = database.evidenceDao().idsAfter(afterId, limit)
+        automaticIds(ids)
+        ids.lastOrNull()
+    }
+
+    suspend fun automaticEvidence(id: String) = database.withTransaction { automaticIds(listOf(id)) }
+
+    private suspend fun automaticIds(ids: List<String>) {
         val registry = BetaAssetRegistry(database).owned().associateBy { it.id }
         val enabled = database.bankSelectionDao().all().filter { it.state == "ENABLED" }.map { it.bankId }.toSet()
         val ownership = database.ownershipDao().all().associateBy { Triple(it.bankId, it.kind, it.suffix) }
         val store = RoomBetaEvidenceStore(database)
+        val loanTypes=database.assetDao().all().filter {it.kind=="LOAN" && it.loanType!=null}.associate {
+            AssetId(Environment.valueOf(it.environment),BankId(it.bankId),it.localId) to requireNotNull(it.loanType) }
         for (id in ids) {
             val observations = store.ownershipObservations(id)
             val external = observations.isNotEmpty() && observations.all { observation -> observation.reference.let {
@@ -67,14 +76,13 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
                 (previous != null && previous.approvalRequest != AUTOMATIC_AUTHORITY)
             if (external && !manual) database.ownershipDao().exclude(BetaOwnershipExclusionEntity(id))
             else database.ownershipDao().clearExclusion(id)
-            adoptAutomatic(id, registry, enabled, ownership, external && !manual)
+            adoptAutomatic(id, registry, enabled, ownership, external && !manual,loanTypes)
             RoomBetaDashboardFacts(database).refresh(id)
         }
-        ids.lastOrNull()
     }
 
     private suspend fun adoptAutomatic(id: String, registry: Map<AssetId, OwnedAsset>, enabled: Set<String>,
-        ownership: Map<Triple<String, String, String>, BetaOwnershipDecisionEntity>, externallyExcluded: Boolean) {
+        ownership: Map<Triple<String, String, String>, BetaOwnershipDecisionEntity>, externallyExcluded: Boolean,loanTypes: Map<AssetId,String>) {
         val evidence = database.evidenceDao()
         if (evidence.retry(id) != null || evidence.decision(id) != null || dao.retry(id) != null) return
         if (database.correctionDao().current(Environment.BETA.name, key(id).transactionId) != null) return
@@ -123,7 +131,8 @@ class RoomBetaFinancialAdoption(private val database: BetaDatabase) {
         val decision = BetaAutomaticPostingPolicy.decide(
             com.baraa.masroof.lab.bank.MessageFamily.valueOf(f.getString("family")),
             f.text("direction")?.let(com.baraa.masroof.lab.bank.MoneyDirection::valueOf),
-            f.optBoolean("salaryIncomeWording", false), f.text("loanType") != null, !f.isNull("card"), proposals, registry)
+            f.optBoolean("salaryIncomeWording", false), f.text("loanType") != null, !f.isNull("card"), proposals, registry,
+            loanTypes.filter { (id,type) -> id in registry && id.bank.value==rawBank(outcome) && type==f.text("loanType") }.keys.singleOrNull())
         fun record(input: FinancialClassificationInput, status: String, reason: String) = BetaFinancialAdoptionEntity(
             id, key(id).transactionId, rawBank(outcome), fingerprint(outcome), status, reason,
             BetaLedgerCodec.encodeInput(input), input.revision.correction, input.revision.interpretation,

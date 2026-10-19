@@ -62,7 +62,7 @@ class BetaAssetRegistryTest {
         val supplementary = asset("supplementary", AssetKind.CREDIT_CARD, "facility", CreditCardRole.SUPPLEMENTARY)
         listOf(account, facility, debit, primary, supplementary).forEach { r.register(it) }
         assertEquals(setOf(account, facility, debit, primary, supplementary), r.all().toSet())
-        expectFailure { db.openHelper.writableDatabase.execSQL("DELETE FROM beta_asset WHERE localId = 'facility'") }
+        expectFailure { db.openHelper.writableDatabase.execSQL("DELETE FROM beta_credit_facility WHERE localId = 'facility'") }
         assertEquals(5, r.all().size)
     }
 

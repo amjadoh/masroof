@@ -30,7 +30,7 @@ class BetaDashboardActivityTest {
             compose.onNodeWithTag("beta-start-continue").performClick()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("beta-badge").assertIsDisplayed()
-            compose.onNodeWithTag("beta-return").assertIsDisplayed()
+            compose.onNodeWithTag("beta-bottom-navigation").assertIsDisplayed()
             compose.onNodeWithTag("home-shortcuts").performScrollTo()
             compose.onNodeWithTag("dashboard-shortcut-0").performClick()
             compose.onNodeWithTag("dash-asset-BANK_ALJAZIRA-synthetic-activity").performScrollTo().performClick()
@@ -45,7 +45,7 @@ class BetaDashboardActivityTest {
             compose.waitUntil(15000) { compose.onAllNodesWithTag("dash-refresh").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("dash-detail-back").assertExists()
             compose.onNodeWithTag("beta-badge").assertIsDisplayed()
-            compose.onNodeWithTag("beta-return").assertIsDisplayed()
+            compose.onNodeWithTag("beta-bottom-navigation").assertIsDisplayed()
             compose.onNodeWithTag("dash-detail-back").performScrollTo().performClick()
             compose.onNodeWithTag("dash-route-ACCOUNTS").assertIsSelected()
         }

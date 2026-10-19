@@ -38,7 +38,7 @@ object BetaStorageChecks {
             // Cover existing data from before entry acknowledgement as well as acknowledged history.
             if (includeSidecars) assertTrue(prefs.edit().remove(BetaContainer.START_KEY).commit())
             val beforePrefs = prefs.all.toMap()
-            val recovery = File(context.filesDir, "beta_recovery_v1")
+            val recovery = File(context.filesDir, "beta_recovery_v2")
             val beforeRecovery = hashes(recovery)
             val live = context.getDatabasePath(BetaEnvironment.DATABASE_NAME)
             assertTrue(live.delete()) // Simulated interruption, in isolated fixture only.

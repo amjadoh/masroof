@@ -11,11 +11,30 @@ import java.time.ZoneId
 import java.util.Collections
 
 /** One bounded configuration snapshot participates in the same database transaction as the ledger. */
-@Entity(tableName = "beta_dashboard_configuration")
-internal data class BetaDashboardConfigurationEntity(@PrimaryKey val id: Int, val revision: Long, val payload: String)
-@Dao internal interface BetaDashboardConfigurationDao {
-    @Query("SELECT * FROM beta_dashboard_configuration ORDER BY id LIMIT 2") suspend fun all(): List<BetaDashboardConfigurationEntity>
-    @Upsert suspend fun put(row: BetaDashboardConfigurationEntity)
+internal data class BetaDashboardConfigurationEntity(val id: Int,val revision: Long,val payload: String)
+@Dao internal interface BetaDashboardConfigurationDao : BetaAuditWriter {
+    @Query("SELECT 1 AS id,transition AS revision,payload FROM beta_audit_log WHERE eventKind='FINANCIAL_CONFIGURATION' ORDER BY transition DESC LIMIT 1")
+    suspend fun latest(): List<BetaDashboardConfigurationEntity>
+    @Query("SELECT * FROM beta_commitment ORDER BY id") suspend fun commitments(): List<BetaCommitmentRecord>
+    @Query("DELETE FROM beta_commitment") suspend fun clearCommitments()
+    @Insert suspend fun saveCommitments(rows: List<BetaCommitmentRecord>)
+    suspend fun all(): List<BetaDashboardConfigurationEntity> = latest().map { row ->
+        val j=JSONObject(row.payload)
+        j.put("commitments",JSONArray().also { array -> commitments().forEach { c ->
+            array.put(JSONObject().put("id",c.id).put("label",c.label).put("amount",c.amountDecimal).put("currency",c.amountCurrency)
+                .put("day",c.dueDay).put("starts",c.starts).put("ends",c.ends ?: JSONObject.NULL).put("paid",JSONArray(c.paidMonths)))
+        } })
+        row.copy(payload=j.toString())
+    }
+    suspend fun put(row: BetaDashboardConfigurationEntity) {
+        val j=JSONObject(row.payload); val array=j.getJSONArray("commitments")
+        val commitments=(0 until array.length()).map { index -> val c=array.getJSONObject(index)
+            BetaCommitmentRecord(c.getString("id"),c.getString("label"),c.getString("amount"),c.optString("currency","SAR"),
+                c.getInt("day"),c.getString("starts"),if(c.isNull("ends")) null else c.getString("ends"),paidMonths=c.getJSONArray("paid").toString()) }
+        clearCommitments(); saveCommitments(commitments)
+        j.remove("commitments")
+        appendAudit(BetaAuditRecord(auditId("FINANCIAL_CONFIGURATION",row.revision),"FINANCIAL_CONFIGURATION",targetId="periods",transition=row.revision,payload=j.toString()))
+    }
 }
 
 internal class RoomBetaDashboardConfiguration(private val database: BetaDatabase) : BetaDashboardControls {

@@ -64,14 +64,14 @@ class BetaHistoryImportTest {
         }
     }
     @Test fun limitDoesNotClaimCompleteAndNeverReadsAgain() {
-        val store = Sessions(initial.copy(scanned = 10_000, excluded = 10_000))
+        val store = Sessions(initial.copy(scanned = HistorySession.MAX_ROWS, excluded = HistorySession.MAX_ROWS))
         val workflow = BetaHistoryImport(store, { _, _ -> error("limit reached") }, { _, _ -> error("limit reached") })
         assertTrue(workflow.step().limited)
         assertFalse(store.value.finished)
     }
     @Test fun invalidMetadataAndRawLoggingRejected() {
         assertThrows(IllegalArgumentException::class.java) { initial.copy(stored = -1, excluded = 1) }
-        assertThrows(IllegalArgumentException::class.java) { initial.copy(until = HistorySession.MAX_DAYS * HistorySession.DAY + 1) }
+        assertThrows(IllegalArgumentException::class.java) { initial.copy(until = -1) }
         assertThrows(IllegalArgumentException::class.java) { initial.copy(banks = emptySet()) }
         assertFalse(row(1).toString().contains("synthetic"))
     }

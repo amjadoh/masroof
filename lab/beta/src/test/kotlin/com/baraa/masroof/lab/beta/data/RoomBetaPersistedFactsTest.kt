@@ -142,7 +142,7 @@ class RoomBetaPersistedFactsTest {
 
     @Test fun missingProjectionNeedsExplicitIdempotentWriteSideBackfill() = runBlocking {
         capture("one"); approve("one")
-        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_dashboard_evidence_facts")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_parsed_event SET f_present=0")
         assertFalse(source().load(query).coverage.completeFeeFacts)
         assertEquals(1, RoomBetaDashboardFacts(db).refreshPage(limit = 1).refreshed)
         val expected = source().load(query)
@@ -202,7 +202,7 @@ class RoomBetaPersistedFactsTest {
 
     @Test fun factsWriteFailureRollsBackTheFinancialApprovalAndCanRetryExactDurableIntent() = runBlocking {
         capture("fault")
-        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_facts BEFORE INSERT ON beta_dashboard_evidence_facts BEGIN SELECT RAISE(ABORT, 'synthetic fault'); END")
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER fail_facts BEFORE UPDATE ON beta_parsed_event WHEN NEW.f_present=1 BEGIN SELECT RAISE(ABORT, 'synthetic fault'); END")
         try { approve("fault"); fail("Expected facts persistence failure") }
         catch (_: android.database.sqlite.SQLiteException) { }
         assertNull(RoomBetaFinancialLedger(db).readAudit(RoomBetaFinancialAdoption.key("fault")))

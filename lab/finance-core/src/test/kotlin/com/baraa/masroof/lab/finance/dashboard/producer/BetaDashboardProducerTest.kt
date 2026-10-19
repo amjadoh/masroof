@@ -147,12 +147,24 @@ class BetaDashboardProducerTest {
         assertThrows(IllegalArgumentException::class.java) { build(batch(listOf(first, second))) }
     }
 
-    @Test fun staleHistoricalRegistryAndUnlinkedCreditAreNotGuessedOrSilentlyOmitted() {
+    @Test fun staleHistoricalRegistryAndInvalidRelationshipsAreRejected() {
         assertThrows(IllegalArgumentException::class.java) { build(batch().copy(assets = listOf(account.copy(last4 = "9999")))) }
-        assertThrows(IllegalArgumentException::class.java) { build(batch(emptyList(), listOf(credit.copy(parentId = null)))) }
         assertThrows(IllegalArgumentException::class.java) { build(batch(emptyList(), listOf(debit))) }
         assertThrows(IllegalArgumentException::class.java) { build(batch(emptyList(), listOf(account, account))) }
         assertThrows(IllegalArgumentException::class.java) { build(batch(emptyList(), listOf(account.copy(id = account.id.copy(environment = Environment.MIGRATION_REHEARSAL))))) }
+    }
+
+    @Test fun independentlyOwnedCreditCardKeepsSpendingWithoutInventingSharedDues() {
+        val independent=credit.copy(parentId=null,creditCardRole=null)
+        val assets=listOf(independent)
+        val purchase=posting(input("independent",source=independent,registry=assets))
+        val refund=posting(input("refund",FinancialType.REFUND,"3",source=null,destination=independent,registry=assets))
+        val result=build(batch(listOf(purchase,refund),assets))
+        assertTrue(result.snapshot.creditFacilities.isEmpty())
+        assertEquals(independent.id,result.snapshot.standaloneCreditCards.single().cardId)
+        equal("7",metric(result,SummaryMetric.CREDIT_PURCHASES))
+        equal("7",metric(result,SummaryMetric.SPENDING_NET))
+        assertNull(result.snapshot.totals!!.facilityDue)
     }
 
     @Test fun explicitSalaryCalendarAndStatementWindowsStaySeparateFromSelectedQuery() {

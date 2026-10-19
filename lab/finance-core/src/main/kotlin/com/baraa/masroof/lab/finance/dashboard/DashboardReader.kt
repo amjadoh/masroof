@@ -35,9 +35,10 @@ data class DashboardSnapshot(
     val revision: ReadRevision? = null,
     /** Full precomputed fleet buckets; UI must not derive them by summing account rows. */
     val fleetFlow: AccountFlow? = null,
+    val standaloneCreditCards: List<CreditCardSummary> = emptyList(),
 ) {
     init {
-        val cards = creditFacilities.flatMap { it.cards }
+        val cards = creditFacilities.flatMap { it.cards } + standaloneCreditCards
         val ids = accounts.map { it.id } + debitCards.map { it.cardId } +
             creditFacilities.map { it.facilityId } + cards.map { it.cardId } + loans.map { it.id }
         require(ids.all { it.environment == query.environment })

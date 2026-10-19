@@ -45,8 +45,8 @@ class BetaManualAssetScreenTest {
         var canceled = 0
         showEditor(onCancel = { canceled++ })
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithTag("asset-cancel").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithTag("asset-cancel").assertIsDisplayed().performClick()
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         assertEquals(2, canceled)
         assertTrue(beta.assets().isEmpty())
@@ -56,7 +56,7 @@ class BetaManualAssetScreenTest {
         showEditor(onSaved = { saved = true })
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("١٢٣٤")
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         assertTrue(saved)
         val original = beta.assets().single()
         beta.close()
@@ -78,9 +78,9 @@ class BetaManualAssetScreenTest {
         }
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         assertEquals(2, savedIds.size)
         assertEquals(savedIds.first(), savedIds.last())
         assertEquals(1, beta.assets().size)
@@ -92,10 +92,10 @@ class BetaManualAssetScreenTest {
         val debit = beta.saveManualAsset(ManualAssetDraft(id("debit"), AssetKind.DEBIT_CARD, "3333", id("account"), ownedConfirmed = true))
         showEditor(debit)
         compose.onNodeWithTag("asset-kind-CREDIT_CARD").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-parent-facility").performScrollTo().performClick()
         compose.onNodeWithTag("asset-role-SUPPLEMENTARY").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-primary-primary").performScrollTo().performClick()
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         val changed = beta.assets().single { it.id == debit.id }
         assertEquals(AssetKind.CREDIT_CARD, changed.kind)
         assertEquals(CreditCardRole.SUPPLEMENTARY, changed.creditCardRole)
@@ -115,10 +115,10 @@ class BetaManualAssetScreenTest {
         showEditor(onSaved = { saved = true })
         compose.onNodeWithTag("asset-kind-LOAN").performScrollTo().performClick()
         compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("١٢٣٤")
-        compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
         assertTrue(beta.assets().isEmpty())
         compose.onNodeWithTag("asset-owned-confirm").performScrollTo().performClick()
-        compose.onNodeWithTag("asset-save").performScrollTo().performClick()
+        compose.onNodeWithTag("asset-save").assertIsDisplayed().performClick()
         assertTrue(saved)
         val original = beta.assets().single()
         assertEquals(AssetKind.LOAN, original.kind)
@@ -130,7 +130,7 @@ class BetaManualAssetScreenTest {
         val db = androidx.room.Room.databaseBuilder(context, com.baraa.masroof.lab.beta.data.BetaDatabase::class.java,
             com.baraa.masroof.lab.beta.data.BetaDatabase.NAME).build()
         try {
-            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_ledger_current").use {
+            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_financial_transaction").use {
                 assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0))
             }
         } finally { db.close() }

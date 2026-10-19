@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsset>,
     onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onChanged: () -> Unit = {},
-    onContinue: (() -> Unit)? = null, parentBusy: Boolean = false, onManage: (() -> Unit)? = null, onConfigure: (BetaOwnershipCandidate) -> Unit = {}) {
+    onContinue: (() -> Unit)? = null, showContinue: Boolean = true, parentBusy: Boolean = false, onManage: (() -> Unit)? = null, onConfigure: (BetaOwnershipCandidate) -> Unit = {}) {
     val scope = rememberBetaUiScope()
     var snapshot by remember { mutableStateOf<BetaOwnershipSnapshot?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -74,8 +74,8 @@ internal fun BetaDiscoveryPanel(container: BetaContainer, assets: List<OwnedAsse
                     }
                 }
             }
-            if (onContinue != null) OwnershipButton(onContinue, stringResource(R.string.beta_ownership_continue), MasroofOutlineIcons.CircleCheck,
-                !locked && current.unresolvedCount == 0 && current.configurationCount == 0, Modifier.fillMaxWidth().testTag("ownership-continue"))
+            if (onContinue != null && showContinue) OwnershipButton(onContinue, stringResource(R.string.beta_ownership_continue), MasroofOutlineIcons.CircleCheck,
+                !locked && current.unresolvedCount == 0, Modifier.fillMaxWidth().testTag("ownership-continue"))
         }
         onManage?.let { manage -> OutlinedButton(manage, enabled = !locked, modifier = Modifier.testTag("onboarding-manage")) {
             Text(stringResource(R.string.beta_setup_manual_action))

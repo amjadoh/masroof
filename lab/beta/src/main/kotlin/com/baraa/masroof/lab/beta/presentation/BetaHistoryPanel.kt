@@ -23,7 +23,8 @@ import com.baraa.masroof.lab.beta.application.history.HistorySession
 import com.baraa.masroof.lab.beta.presentation.theme.BetaSpacing
 import kotlinx.coroutines.*
 
-/** Explicit optional import. No reads, jobs or automatic resume on entering this screen. */
+/** Explicit date-scoped import. No reads, jobs or automatic resume on entering this screen. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onBusyChanged: (Boolean) -> Unit = {}, onFinancialReview: ((String) -> Unit)? = null, reviewOnly: Boolean = false, onConfirmAccounts: (() -> Unit)? = null, onContinueSetup: (() -> Unit)? = null) {
     var selectedEvidence by rememberSaveable { mutableStateOf<String?>(null) }
@@ -42,8 +43,13 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
     var running by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var denied by rememberSaveable { mutableStateOf(false) }
-    var days by rememberSaveable { mutableIntStateOf(30) }
-    var pendingDays by rememberSaveable { mutableStateOf<Int?>(null) }
+    var dateOption by rememberSaveable { mutableStateOf(com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.LAST_27TH) }
+    var customEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var datePickerOpen by rememberSaveable { mutableStateOf(false) }
+    val today=java.time.LocalDate.now(com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.zone)
+    val selectedDate=com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.date(dateOption,today,customEpochDay?.let(java.time.LocalDate::ofEpochDay) ?: today)
+    val datePicker=rememberDatePickerState(initialSelectedDateMillis=selectedDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli())
+    var pendingDate by rememberSaveable { mutableStateOf<Long?>(null) }
     suspend fun refresh() {
         val snapshot = withContext(BetaIo.dispatcher) { Triple(container.historySession(), container.evidencePage(after, needsReviewOnly = needsReviewOnly), container.evidenceInboxCounts()) }
         session = snapshot.first
@@ -70,8 +76,8 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
             finally { busy = false; running = false }
         }
     }
-    fun scan(newDays: Int?) = action {
-        if (newDays != null) session = withContext(BetaIo.dispatcher) { container.startHistory(newDays) }
+    fun scan(newDate: java.time.LocalDate?) = action {
+        if (newDate != null) session = withContext(BetaIo.dispatcher) { container.startHistoryFrom(newDate) }
         running = true
         do {
             val current = withContext(BetaIo.dispatcher) { container.stepHistory() }
@@ -80,30 +86,40 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         } while (running && !current.finished && !current.limited)
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val requested = pendingDays
-        pendingDays = null
+        val requested = pendingDate
+        pendingDate = null
         denied = !granted
         // A grant does not authorize an automatic restarted import; user explicitly resumes/starts.
-        if (granted && requested != null) scan(requested.takeIf { it != 0 })
+        if (granted && requested != null) scan(requested.takeIf { it != Long.MIN_VALUE }?.let(java.time.LocalDate::ofEpochDay))
     }
     BetaLaunchedEffect(needsReviewOnly) {
         try { refresh() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed = true }
     }
+    if(datePickerOpen) DatePickerDialog(onDismissRequest={datePickerOpen=false},confirmButton={
+        TextButton(onClick={datePicker.selectedDateMillis?.let { millis ->
+            val date=java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+            if(!date.isAfter(today)) { customEpochDay=date.toEpochDay();dateOption=com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.CUSTOM;datePickerOpen=false }
+        }}) { Text(stringResource(R.string.beta_asset_save)) }
+    },dismissButton={TextButton(onClick={datePickerOpen=false}) {Text(stringResource(R.string.beta_asset_cancel))}}) { DatePicker(state=datePicker) }
     Column(verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
         if (!reviewOnly) {
-        Text(stringResource(R.string.beta_history_title), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.beta_history_help))
-        Text(stringResource(R.string.beta_history_scope))
-        listOf(7, 30, 90).forEach { value ->
-            OutlinedButton(enabled = !busy, onClick = { days = value }, modifier = Modifier.testTag("history-days-$value")) {
-                Text(stringResource(if (days == value) R.string.beta_history_days_selected else R.string.beta_history_days, value))
+        Text(stringResource(R.string.beta_parity_import_date),style=MaterialTheme.typography.headlineSmall,modifier=Modifier.testTag("onboarding-IMPORT"))
+        com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.entries.forEach { option ->
+            val label=when(option) {
+                com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.CURRENT_MONTH_START -> R.string.beta_parity_month_start
+                com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.LAST_30_DAYS -> R.string.beta_parity_last_30
+                com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.LAST_27TH -> R.string.beta_parity_last_27
+                else -> R.string.beta_parity_custom_date
             }
+            FilterChip(selected=dateOption==option,enabled=!busy,onClick={ if(option==com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.CUSTOM) datePickerOpen=true else dateOption=option },
+                modifier=Modifier.testTag("history-date-${option.name}"),label={Text(stringResource(label))})
         }
+        Text(stringResource(R.string.beta_parity_date_value,java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).format(selectedDate)))
         if (denied) Text(stringResource(R.string.beta_history_denied), modifier = Modifier.testTag("history-denied"))
         if (failed) Text(stringResource(R.string.beta_action_failed), color = MaterialTheme.colorScheme.error)
         Button(enabled = !busy, onClick = {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) scan(days)
-            else { pendingDays = days; permission.launch(Manifest.permission.READ_SMS) }
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) scan(selectedDate)
+            else { pendingDate = selectedDate.toEpochDay(); permission.launch(Manifest.permission.READ_SMS) }
         }, modifier = Modifier.testTag("history-start")) { Text(stringResource(R.string.beta_history_start)) }
         session?.let { current ->
             val formatter = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
@@ -115,7 +131,7 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
             Text(stringResource(when { current.finished -> R.string.beta_history_done; current.limited -> R.string.beta_history_limited; else -> R.string.beta_history_paused }))
             if (!current.finished && !current.limited) OutlinedButton(enabled = !busy, onClick = {
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) scan(null)
-                else { denied = true; pendingDays = 0; permission.launch(Manifest.permission.READ_SMS) }
+                else { denied = true; pendingDate = Long.MIN_VALUE; permission.launch(Manifest.permission.READ_SMS) }
             }, modifier = Modifier.testTag("history-resume")) { Text(stringResource(R.string.beta_history_resume)) }
         }
         if (busy) {
@@ -161,8 +177,9 @@ internal fun BetaHistoryPanel(container: BetaContainer, onClose: () -> Unit, onB
         if (page.isNotEmpty()) OutlinedButton(enabled = !busy, onClick = { after = page.last().id; action {} }) { Text(stringResource(R.string.beta_history_next)) }
         if (after.isNotEmpty()) OutlinedButton(enabled = !busy, onClick = { after = ""; action {} }) { Text(stringResource(R.string.beta_history_first)) }
         }
-        Button(enabled = !busy, onClick = { if (onContinueSetup != null && session?.finished == true) onContinueSetup() else onClose() }, modifier = Modifier.testTag("history-close")) {
-            Text(stringResource(if (onContinueSetup != null && session?.finished == true) R.string.beta_setup_next_assets else R.string.beta_history_return))
+        val setupCanContinue=session?.finished==true || (session==null && (counts?.total ?: 0)>0)
+        if(onContinueSetup==null || setupCanContinue) Button(enabled = !busy, onClick = { if (onContinueSetup != null && setupCanContinue) onContinueSetup() else onClose() }, modifier = Modifier.testTag("history-close")) {
+            Text(stringResource(if (onContinueSetup != null && setupCanContinue) R.string.beta_setup_next_assets else R.string.beta_history_return))
         }
     }
 }

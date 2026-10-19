@@ -28,6 +28,20 @@ class BetaManualAssetWorkflowTest {
         BetaContainer(context).use { beta -> beta.setBankEnabled(bank, true); block(beta) }
         BetaContainer.resetOffline(context)
     }
+    @Test fun displayMetadataPersistsWithoutChangingIdentityAndRejectsStaleEdits() = withBeta { beta ->
+        val original=beta.saveManualAsset(draft("named").copy(metadata=BetaAssetMetadata(displayName="Salary account",accountType="CURRENT")))
+        val first=beta.assetMetadata().getValue(original.id)
+        val editing=edit(beta,draft("named")).copy(metadata=first.copy(displayName="Daily account"))
+        assertEquals(original,beta.saveManualAsset(editing))
+        val updated=beta.assetMetadata().getValue(original.id)
+        assertEquals("Daily account",updated.displayName)
+        assertTrue(updated.revision>first.revision)
+        expectFailure {beta.saveManualAsset(editing.copy(metadata=first.copy(displayName="Stale name")))}
+        assertEquals(updated,beta.assetMetadata().getValue(original.id))
+        beta.backup();assertTrue(beta.restore())
+        assertEquals(updated,beta.assetMetadata().getValue(original.id))
+        assertEquals(listOf(original),beta.assets())
+    }
     @Test fun arabicAndPersianSuffixesNormalizeWithoutTruncation() = withBeta { beta ->
         assertEquals("1234", normalizeManualAssetSuffix("١٢٣٤"))
         assertEquals("1234", normalizeManualAssetSuffix("۱۲۳۴"))
@@ -82,12 +96,13 @@ class BetaManualAssetWorkflowTest {
         assertEquals(before, beta.assets())
     }
     @Test fun missingRoleOrParentAndUnsafeSuffixAreRejected() = withBeta { beta ->
-        expectFailure { beta.saveManualAsset(draft("no-parent", AssetKind.DEBIT_CARD)) }
+        val unlinked=beta.saveManualAsset(draft("no-parent", AssetKind.DEBIT_CARD))
+        assertNull(unlinked.parentId)
         expectFailure { beta.saveManualAsset(draft("no-role", AssetKind.CREDIT_CARD)) }
         expectFailure { beta.saveManualAsset(draft("full-number", suffix = "12345678")) }
         expectFailure { beta.saveManualAsset(draft("unknown-bank").copy(id = AssetId(Environment.BETA, BankId("other"), "unknown-bank"))) }
         expectFailure { beta.saveManualAsset(draft("staging").copy(id = AssetId(Environment.MIGRATION_REHEARSAL, bank, "staging"))) }
-        assertTrue(beta.assets().isEmpty())
+        assertEquals(listOf(unlinked),beta.assets())
     }
     @Test fun oldUnrelatedRegistryRecordsDoNotBlockManualAccount() = withBeta { beta ->
         beta.registerAsset(OwnedAsset(id("old-facility"), AssetKind.CREDIT_FACILITY))
@@ -174,7 +189,7 @@ class BetaManualAssetWorkflowTest {
         val db = androidx.room.Room.databaseBuilder(context, com.baraa.masroof.lab.beta.data.BetaDatabase::class.java,
             com.baraa.masroof.lab.beta.data.BetaDatabase.NAME).build()
         try {
-            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_ledger_current").use {
+            db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM beta_financial_transaction").use {
                 assertTrue(it.moveToFirst()); assertEquals(0, it.getInt(0))
             }
         } finally { db.close() }

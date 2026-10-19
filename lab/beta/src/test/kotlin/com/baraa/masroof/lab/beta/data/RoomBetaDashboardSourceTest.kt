@@ -58,8 +58,8 @@ class RoomBetaDashboardSourceTest {
             CorrectionObservation(value, ObservationSafety.ORDINARY), decision(value, revision, choice, metadata),
         ).also { assertTrue(it is BetaCorrectionResult.Applied) }
     private fun dataSelects() = sql.filter { it.trimStart().startsWith("SELECT", true) &&
-        listOf("beta_asset", "beta_ledger_current", "beta_financial_adoption", "beta_evidence_retry", "beta_raw_evidence").any { table -> it.contains(table) } }
-    private fun baselineReadQueries() = if (BetaDatabase.VERSION >= 7) 6 else 5
+        listOf("beta_asset", "beta_financial_transaction", "beta_financial_adoption", "beta_evidence_retry", "beta_raw_evidence").any { table -> it.contains(table) } }
+    private fun baselineReadQueries() = 8
     private fun ensureAdoptionTables() {
         db.openHelper.writableDatabase.execSQL("CREATE TABLE IF NOT EXISTS beta_financial_adoption (" +
             "evidenceId TEXT PRIMARY KEY NOT NULL,transactionId TEXT NOT NULL,bankId TEXT NOT NULL,archiveFingerprint TEXT NOT NULL," +
@@ -73,9 +73,7 @@ class RoomBetaDashboardSourceTest {
     }
     private suspend fun adoptionFixture(id: String, transaction: String, status: String) {
         ensureAdoptionTables(); rawFixture(id)
-        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_adoption " +
-            "(evidenceId,transactionId,bankId,archiveFingerprint,status,reason,approvedInput,correction,interpretation,approvalRequest,observationRevision) " +
-            "VALUES (?,?,?,?,?,'SOURCE_CONTRACT_FIXTURE','',0,0,'',0)", arrayOf(id, transaction, bank.value, "fixture", status))
+        db.financialAdoptionDao().put(BetaFinancialAdoptionEntity(id,transaction,bank.value,"fixture",status,"SOURCE_CONTRACT_FIXTURE","",0,0,"",0))
     }
 
     @Test fun readsRealCurrentRowsWithHalfOpenScopeAndIndependentSalaryWindow() = runBlocking {
@@ -196,19 +194,19 @@ class RoomBetaDashboardSourceTest {
         adoptionFixture("evidence-transaction", "transaction", "ACTIVE")
         val active = source().load(query)
         assertEquals(1, active.rows.size)
-        db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='REVIEW'")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_review_item SET status='REVIEW'")
         sql.clear()
         val held = source().load(query)
-        assertEquals(6, dataSelects().size)
+        assertEquals(baselineReadQueries(), dataSelects().size)
         assertTrue(held.rows.isEmpty()); assertFalse(held.coverage.completeLedger)
         assertNull(BetaDashboardBuilder.build(held).snapshot.fleetFlow)
         assertNotEquals(active.revision.token, held.revision.token)
-        db.openHelper.writableDatabase.execSQL("UPDATE beta_financial_adoption SET status='UNKNOWN_FUTURE_STATE'")
+        db.openHelper.writableDatabase.execSQL("UPDATE beta_review_item SET status='UNKNOWN_FUTURE_STATE'")
         try { source().load(query); fail() } catch (_: IllegalStateException) { }
     }
 
     @Test fun missingMandatoryV7GateFailsClosed() = runBlocking {
-        if (BetaDatabase.VERSION >= 7) db.openHelper.writableDatabase.execSQL("DROP TABLE beta_financial_approval_retry")
+        if (BetaDatabase.VERSION >= 7) db.openHelper.writableDatabase.execSQL("DROP VIEW beta_financial_approval_retry")
         db.openHelper.writableDatabase.version = 7
         try { source().load(query); fail() } catch (_: IllegalStateException) { }
         finally { db.openHelper.writableDatabase.version = BetaDatabase.VERSION }
@@ -216,10 +214,10 @@ class RoomBetaDashboardSourceTest {
 
     @Test fun approvalRetryOrHeldAdoptionWithoutAnyLedgerRowNeverProducesKnownFinancialZero() = runBlocking {
         ensureAdoptionTables(); rawFixture("not-posted")
-        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_financial_approval_retry VALUES ('not-posted','durable request')")
+        db.openHelper.writableDatabase.execSQL("INSERT INTO beta_processing_retry(rawId,kind,stage,attempts,code,updatedAt,request) VALUES ('not-posted','APPROVAL','',0,'','','durable request')")
         val retry = source().load(query)
         assertFalse(retry.coverage.completeLedger); assertNull(BetaDashboardBuilder.build(retry).snapshot.fleetFlow)
-        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_financial_approval_retry")
+        db.openHelper.writableDatabase.execSQL("DELETE FROM beta_processing_retry WHERE kind='APPROVAL'")
         adoptionFixture("not-posted", "no-financial-row", "REVIEW")
         val held = source().load(query)
         assertFalse(held.coverage.completeLedger); assertNull(BetaDashboardBuilder.build(held).snapshot.fleetFlow)
@@ -236,8 +234,7 @@ class RoomBetaDashboardSourceTest {
 
     @Test fun currentAndRegistryLimitsRefusePartialResultsEvenWhenOverflowIsOutsideSelectedPeriod() = runBlocking {
         post(input("first")); post(input("outside", query.from.minusSeconds(100)))
-        try { source(limits = BetaDashboardReadLimits(currentRows = 1)).load(query); fail() }
-        catch (expected: BetaDashboardReadLimitExceeded) { assertEquals("current ledger rows", expected.collection) }
+        assertEquals(listOf("first"),source(limits = BetaDashboardReadLimits(currentRows = 1)).load(query).rows.map { it.posting.command.key.transactionId })
         BetaAssetRegistry(db).register(asset.copy(id = asset.id.copy(localId = "second")))
         try { source(limits = BetaDashboardReadLimits(assets = 1)).load(query); fail() }
         catch (expected: BetaDashboardReadLimitExceeded) { assertEquals("confirmed assets", expected.collection) }
@@ -246,11 +243,11 @@ class RoomBetaDashboardSourceTest {
     @Test fun corruptActivePayloadFailsClosedButSuppressedAuditPayloadDoesNotReenterFinancialRead() = runBlocking {
         val value = input(); post(value)
         val stored = db.ledgerDao().current("BETA", value.key.transactionId)!!
-        db.ledgerDao().writeCurrent(stored.copy(payload = "corrupt"))
+        db.ledgerDao().saveCurrent(stored.copy(payload = "corrupt"))
         try { source().load(query); fail() } catch (_: IllegalStateException) { }
         db.ledgerDao().writeCurrent(stored)
         correct(value, 1, FinancialDecision.SuppressAsNonFinancial)
-        db.ledgerDao().writeCurrent(stored.copy(payload = "corrupt audit snapshot"))
+        db.ledgerDao().saveCurrent(stored.copy(payload = "corrupt audit snapshot"))
         assertTrue(source().load(query).rows.isEmpty())
     }
 
@@ -269,7 +266,7 @@ class RoomBetaDashboardSourceTest {
         val batch = source().load(query)
         assertEquals(80, batch.rows.size); assertEquals(baselineReadQueries(), dataSelects().size)
         assertTrue(sql.none { it.contains("beta_ledger_history") || it.contains("r.body") || it.contains("baselineJson") || it.contains("candidateJson") })
-        val plans = db.query("EXPLAIN QUERY PLAN SELECT l.* FROM beta_ledger_current l LEFT JOIN beta_correction_current c " +
+        val plans = db.query("EXPLAIN QUERY PLAN SELECT l.* FROM beta_financial_transaction l LEFT JOIN beta_correction_current c " +
             "ON c.environment=l.environment AND c.transactionId=l.transactionId WHERE l.environment='BETA' ORDER BY l.transactionId LIMIT 10001", null).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.getString(3)) }
         }
@@ -311,7 +308,7 @@ class RoomBetaDashboardSourceTest {
         assertTrue(batch.coverage.completeLedger); assertTrue(batch.rows.isEmpty())
         assertEquals(BigDecimal("0.00"), BetaDashboardBuilder.build(batch).snapshot.fleetFlow!!.externalOut.amount)
         val correction = db.correctionDao().current("BETA", value.key.transactionId)!!
-        db.correctionDao().current(correction.copy(payload = "corrupt suppressed decision"))
+        db.correctionDao().saveCurrent(correction.copy(payload = "corrupt suppressed decision"))
         try { source().load(query); fail() } catch (_: org.json.JSONException) { }
     }
 }

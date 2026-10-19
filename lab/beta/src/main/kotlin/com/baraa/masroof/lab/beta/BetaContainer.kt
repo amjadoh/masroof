@@ -66,7 +66,7 @@ class BetaContainer(
     fun acknowledgeStart() = lock.withLock {
         check(!closed)
         startState() // Reject unknown future state or unreadable database rather than replacing it.
-        check(preferences.edit().putString(START_KEY, START_VERSION).commit()) { "Could not save Beta entry state" }
+        check(preferences.edit().putString(START_KEY, START_VERSION).putString("beta_storage_generation",preferences.getString("beta_storage_generation",null) ?: java.util.UUID.randomUUID().toString()).commit()) { "Could not save Beta entry state" }
     }
 
     fun onboardingStep(): com.baraa.masroof.lab.beta.application.BetaOnboardingStep = lock.withLock {
@@ -80,7 +80,11 @@ class BetaContainer(
     fun beginOnboarding() = lock.withLock {
         check(!closed)
         check(startState() == BetaStartState.NEW)
-        check(preferences.edit().putString(START_KEY, START_VERSION).putString("beta_onboarding_v1", "BANK").commit())
+        runBlocking { val workflow=BetaBankSelectionWorkflow(RoomBetaBankSelectionStore(database))
+            com.baraa.masroof.lab.beta.application.BetaBankCatalog.current.supported.forEach { workflow.enable(it.id) }
+            com.baraa.masroof.lab.beta.data.RoomBetaDashboardConfiguration(database).save(0,
+                com.baraa.masroof.lab.beta.application.BetaDashboardConfigurationDraft(com.baraa.masroof.lab.beta.application.BetaSalaryCycle(27))) }
+        check(preferences.edit().putString(START_KEY, START_VERSION).putString("beta_onboarding_v1", "PERMISSION").putString("beta_storage_generation",preferences.getString("beta_storage_generation",null) ?: java.util.UUID.randomUUID().toString()).commit())
     }
 
     /** Explicit setup recovery preserves messages, labels, assets, ledger and backups. */
@@ -88,7 +92,7 @@ class BetaContainer(
         check(!closed)
         check(startState() == BetaStartState.READY)
         if (onboardingStep() != com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE) return@withLock
-        val step = if (bankChoices().any { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }) "IMPORT" else "BANK"
+        val step = if (bankChoices().any { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }) "IMPORT" else "PERMISSION"
         check(preferences.edit().putString("beta_onboarding_v1", step).commit())
     }
 
@@ -97,7 +101,7 @@ class BetaContainer(
         val steps = com.baraa.masroof.lab.beta.application.BetaOnboardingStep.entries
         require(expected != com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE)
         if (expected == com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)
-            check(runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).snapshot().let { it.unresolvedCount == 0 && it.configurationCount == 0 } }) {
+            check(runBlocking { com.baraa.masroof.lab.beta.application.BetaOwnershipWorkflow(database).snapshot().let { it.unresolvedCount == 0 } }) {
                 "Resolve discovered account and card ownership first"
             }
         val next = steps[expected.ordinal + 1]
@@ -150,6 +154,7 @@ class BetaContainer(
         check(!closed)
         if (startState() != BetaStartState.READY) return@withLock
         if (onboardingStep() in setOf(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.BANK,
+                com.baraa.masroof.lab.beta.application.BetaOnboardingStep.PERMISSION,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.IMPORT,
                 com.baraa.masroof.lab.beta.application.BetaOnboardingStep.ASSETS)) return@withLock
         val version = "v2-ownership|" + com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(
@@ -165,6 +170,56 @@ class BetaContainer(
             check(preferences.edit().putString("beta_auto_cursor_v1", next).putString("beta_auto_cursor_version_v1", version).commit())
             cursor = next
         }
+    }
+
+    fun storageGeneration(): String? = lock.withLock { preferences.getString("beta_storage_generation",null) }
+
+    /** Capture only. The caller schedules processing after this durable transaction. */
+    fun captureLive(message: com.baraa.masroof.lab.beta.application.evidence.EvidenceMessage): String? = lock.withLock {
+        check(!closed)
+        if(startState()!=BetaStartState.READY || storageGeneration()==null) return@withLock null
+        runBlocking { database.withTransaction {
+            val router=com.baraa.masroof.lab.beta.application.evidence.LabEvidenceRouter()
+            val route=router.route(message)
+            val selections=RoomBetaBankSelectionStore(database).all()
+            val enabled=selections.filter { it.state==com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }.map { it.bankId }.toSet()
+            if(route.kind==com.baraa.masroof.lab.beta.application.evidence.RouteKind.UNRECOGNIZED || enabled.isEmpty() ||
+                (route.candidates.isNotEmpty() && route.candidates.none { it in enabled })) return@withTransaction null
+            val request=com.baraa.masroof.lab.beta.application.evidence.EvidenceRequest("beta-live-sms-v1",com.baraa.masroof.lab.beta.application.evidence.EvidenceOrigin.LIVE)
+            val requested=com.baraa.masroof.lab.beta.application.evidence.ProcessBetaEvidence.identity(request.namespace,message.providerId)
+            val store=com.baraa.masroof.lab.beta.data.RoomBetaEvidenceStore(database)
+            val id=store.resolveCaptureId(request,message,requested)
+            val existing=store.find(id)
+            if(existing!=null) {
+                check(existing.message.sender==message.sender && existing.message.body==message.body && existing.message.receivedAt==message.receivedAt)
+                store.recordProviderAlias(requested,id)
+            } else {
+                check(store.capture(com.baraa.masroof.lab.beta.application.evidence.CapturedEvidence(id,request,message,java.time.Instant.now(),route,selections))!=com.baraa.masroof.lab.beta.application.evidence.CaptureState.CONFLICT)
+            }
+            id
+        } }
+    }
+
+    fun pendingEvidenceIds(): List<String> = lock.withLock { check(!closed); runBlocking { database.evidenceDao().pending() } }
+
+    fun processLive(id: String,generation: String): Boolean = lock.withLock {
+        check(!closed)
+        if(storageGeneration()!=generation) return@withLock true
+        val raw=runBlocking {database.evidenceDao().raw(id)} ?: return@withLock true
+        val summary=runBlocking {database.evidenceDao().retry(id)}
+        if(summary!=null) runBlocking {evidenceWorkflow().reprocess(raw.id)}
+        if(runBlocking {database.evidenceDao().retry(id)}!=null) return@withLock false
+        if(onboardingStep() in setOf(com.baraa.masroof.lab.beta.application.BetaOnboardingStep.REVIEW,com.baraa.masroof.lab.beta.application.BetaOnboardingStep.COMPLETE)) {
+            invalidateAutomaticProcessing()
+            try { runBlocking {com.baraa.masroof.lab.beta.data.RoomBetaFinancialAdoption(database).automaticEvidence(id)} }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                runBlocking {database.evidenceDao().retry(com.baraa.masroof.lab.beta.data.BetaEvidenceRetryEntity(
+                    id,"RECONCILIATION",Math.addExact(summary?.attempts ?: 0,1),"AUTOMATIC_POST_FAILED",java.time.Instant.now().toString()))}
+                return@withLock false
+            }
+        }
+        true
     }
 
     fun evidenceSummary(id: String) = lock.withLock {
@@ -260,13 +315,34 @@ class BetaContainer(
 
     fun startHistory(days: Int, now: Long = System.currentTimeMillis()) = lock.withLock {
         check(!closed)
-        require(days in listOf(7, 30, 90))
+        require(days > 0)
         val banks = bankChoices().filter { it.state == com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }.map { it.bankId }.toSet()
         require(banks.isNotEmpty())
         val session = com.baraa.masroof.lab.beta.application.history.HistorySession(
             maxOf(0, now - days * com.baraa.masroof.lab.beta.application.history.HistorySession.DAY), now, banks)
         com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences).save(session)
         session
+    }
+
+    fun startHistoryFrom(date: java.time.LocalDate, now: Long = System.currentTimeMillis()) = lock.withLock {
+        check(!closed)
+        val zone=com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.zone
+        val from=date.atStartOfDay(zone).toInstant().toEpochMilli()
+        require(from in 0..now) { "Choose a past import date" }
+        val banks=bankChoices().filter { it.state==com.baraa.masroof.lab.beta.application.BankSelectionState.ENABLED }.map { it.bankId }.toSet()
+        require(banks.isNotEmpty())
+        check(preferences.edit().putString("beta_import_from",from.toString()).commit())
+        com.baraa.masroof.lab.beta.application.history.HistorySession(from,now,banks).also {
+            com.baraa.masroof.lab.beta.data.PreferenceHistorySessionStore(preferences).save(it)
+        }
+    }
+
+    fun restartSavedHistory(now: Long = System.currentTimeMillis()) = lock.withLock {
+        val from=preferences.getString("beta_import_from",null)?.toLongOrNull()
+        val date=from?.let { java.time.Instant.ofEpochMilli(it).atZone(com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.zone).toLocalDate() }
+            ?: com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.date(com.baraa.masroof.lab.beta.application.history.BetaImportDateOption.LAST_27TH,
+                java.time.Instant.ofEpochMilli(now).atZone(com.baraa.masroof.lab.beta.application.history.BetaImportDatePolicy.zone).toLocalDate())
+        startHistoryFrom(date,now)
     }
 
     fun stepHistory() = lock.withLock {
@@ -377,6 +453,17 @@ class BetaContainer(
 
     private suspend fun saveAssetDraft(draft: ManualAssetDraft): OwnedAsset {
         val workflow = BetaManualAssetWorkflow(BetaAssetRegistry(database))
+        val metadata=draft.metadata
+        val metadataRow=database.assetDao().get(draft.id.environment.name,draft.id.bank.value,draft.id.localId)
+        val oldMetadata=metadataRow?.let { com.baraa.masroof.lab.beta.application.BetaAssetMetadata(it.displayName,it.network,it.accountType,it.loanType,it.metadataRevision) } ?: com.baraa.masroof.lab.beta.application.BetaAssetMetadata()
+        if(metadata!=null) {
+            require(metadata.displayName==null || (metadata.displayName.isNotBlank() && metadata.displayName.length<=120))
+            require(metadata.network==null || metadata.network in setOf("MADA","VISA","MASTERCARD","UNKNOWN"))
+            require(metadata.network!="MADA" || draft.kind==com.baraa.masroof.lab.finance.asset.AssetKind.DEBIT_CARD)
+            require(metadata.accountType==null || metadata.accountType in setOf("CURRENT","SAVINGS","INVESTMENT","OTHER"))
+            require(metadata.loanType==null || metadata.loanType in setOf("PERSONAL","AUTO","MORTGAGE"))
+            check(metadata.revision==oldMetadata.revision || metadata.copy(revision=0)==oldMetadata.copy(revision=0)) { "Registry details changed; reopen" }
+        }
         if (draft.createCreditFacility) {
             require(draft.kind == com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_CARD &&
                 draft.role == com.baraa.masroof.lab.finance.asset.CreditCardRole.PRIMARY && draft.parentId != null && draft.ownedConfirmed)
@@ -388,7 +475,26 @@ class BetaContainer(
                 it.kind == draft.kind && it.last4 == draft.last4 && it.parentId == draft.parentId && it.creditCardRole == draft.role
             } == true) { "Facility already exists; reopen" }
         }
-        return workflow.save(draft.copy(createCreditFacility = false))
+        val saved=workflow.save(draft.copy(createCreditFacility = false))
+        if(metadata!=null && metadata.copy(revision=0)!=oldMetadata.copy(revision=0)) {
+            val dao=database.assetDao();val id=draft.id
+            val count=when(saved.kind) {
+                com.baraa.masroof.lab.finance.asset.AssetKind.ACCOUNT -> dao.metadataAccount(id.environment.name,id.bank.value,id.localId,metadata.displayName,null,metadata.accountType,null,oldMetadata.revision)
+                com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_CARD,com.baraa.masroof.lab.finance.asset.AssetKind.DEBIT_CARD -> dao.metadataCard(id.environment.name,id.bank.value,id.localId,metadata.displayName,metadata.network,null,null,oldMetadata.revision)
+                com.baraa.masroof.lab.finance.asset.AssetKind.LOAN -> dao.metadataLoan(id.environment.name,id.bank.value,id.localId,metadata.displayName,null,null,metadata.loanType,oldMetadata.revision)
+                else -> dao.metadataFacility(id.environment.name,id.bank.value,id.localId,metadata.displayName,null,null,null,oldMetadata.revision)
+            }
+            check(count==1) { "Registry details changed; reopen" }
+            dao.appendAudit(com.baraa.masroof.lab.beta.data.BetaAuditRecord(
+                java.util.UUID.randomUUID().toString(),"REGISTRY_METADATA",id.environment.name,id.localId,
+                transition=oldMetadata.revision+1,bankId=id.bank.value,
+                payload=org.json.JSONObject().put("displayName",metadata.displayName).put("network",metadata.network).put("accountType",metadata.accountType).put("loanType",metadata.loanType).toString()))
+            if(metadata.loanType!=oldMetadata.loanType) database.financialAdoptionDao().bank(id.bank.value).forEach { adoption ->
+                if(id in com.baraa.masroof.lab.beta.data.financialRegistryDependencies(com.baraa.masroof.lab.beta.data.BetaLedgerCodec.decodeInput(adoption.approvedInput)))
+                    database.financialAdoptionDao().hold(adoption.evidenceId,"REGISTRY_CHANGED")
+            }
+        }
+        return saved
     }
 
     /** Explicit Beta ownership registration; shares the backup/reset lifetime lock. */
@@ -396,6 +502,26 @@ class BetaContainer(
         check(!closed)
         invalidateAutomaticProcessing()
         runBlocking { BetaAssetRegistry(database).register(asset, aliases) }
+    }
+
+    fun assetMetadata(): Map<com.baraa.masroof.lab.finance.asset.AssetId,com.baraa.masroof.lab.beta.application.BetaAssetMetadata> = lock.withLock {
+        check(!closed)
+        runBlocking { database.assetDao().all().associate { row ->
+            com.baraa.masroof.lab.finance.asset.AssetId(com.baraa.masroof.lab.finance.value.Environment.valueOf(row.environment),BankId(row.bankId),row.localId) to
+                com.baraa.masroof.lab.beta.application.BetaAssetMetadata(row.displayName,row.network,row.accountType,row.loanType,row.metadataRevision)
+        } }
+    }
+
+    fun cardSetupTasks(): List<com.baraa.masroof.lab.beta.application.BetaCardSetupTask> = lock.withLock {
+        check(!closed)
+        runBlocking {
+            val assets=BetaAssetRegistry(database).owned()
+            val cards=assets.filter { it.kind in setOf(com.baraa.masroof.lab.finance.asset.AssetKind.DEBIT_CARD,com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_CARD) }
+            val tasks=cards.filter { it.parentId==null || (it.kind==com.baraa.masroof.lab.finance.asset.AssetKind.CREDIT_CARD && it.creditCardRole==null) }.map {
+                com.baraa.masroof.lab.beta.application.BetaCardSetupTask(it.id.bank,it.last4.orEmpty(),it.id) }
+            tasks+database.ownershipDao().all().filter { it.kind=="CARD" && it.status=="OWNED" && cards.none { card -> card.id.bank.value==it.bankId && card.last4==it.suffix } }.map {
+                com.baraa.masroof.lab.beta.application.BetaCardSetupTask(BankId(it.bankId),it.suffix,null) }
+        }
     }
 
     fun assets(): List<OwnedAsset> = lock.withLock {
@@ -533,7 +659,12 @@ class BetaContainer(
 
     fun settings(): BetaSettings = lock.withLock {
         check(!closed)
-        BetaSettings(preferences.getString("beta_ui_theme", "SYSTEM") ?: "SYSTEM", recovery.hasBackup())
+        BetaSettings(preferences.getString("beta_ui_theme", "SYSTEM") ?: "SYSTEM", recovery.hasBackup(), preferences.getString("beta_ui_language", "SYSTEM") ?: "SYSTEM")
+    }
+
+    fun setLanguage(language: String) = lock.withLock {
+        check(!closed); require(language in setOf("SYSTEM","ar","en"))
+        check(preferences.edit().putString("beta_ui_language",language).commit())
     }
 
     fun setTheme(theme: String) = lock.withLock {
@@ -648,4 +779,4 @@ class BetaContainer(
     }
 }
 
-data class BetaSettings(val theme: String, val backupAvailable: Boolean)
+data class BetaSettings(val theme: String, val backupAvailable: Boolean, val language: String = "SYSTEM")

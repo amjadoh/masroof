@@ -20,13 +20,17 @@ import org.junit.Test
 /** All evidence/storage is synthetic in the isolated test APK. No production/inbox reads. */
 class BetaCleanJourneyTest {
     @get:Rule val compose = createEmptyComposeRule()
+    @org.junit.Before fun allowSyntheticInbox() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
+            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().packageName,android.Manifest.permission.READ_SMS)
+    }
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val bank = BankId("BANK_ALJAZIRA")
     private fun await(tag: String) { compose.waitUntil(20000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }; compose.waitForIdle() }
     private fun click(tag: String) {
         await(tag)
         compose.waitUntil(20000) { runCatching { compose.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false) }
-        compose.onNodeWithTag(tag).performScrollTo().performClick()
+        val node=compose.onNodeWithTag(tag); if(tag in setOf("asset-save","asset-cancel","ownership-continue")) node.assertIsDisplayed().performClick() else node.performScrollTo().performClick()
     }
     private fun drain() { val done = CountDownLatch(1); BetaIo.execute { done.countDown() }; assertTrue(done.await(20, TimeUnit.SECONDS)) }
 
@@ -40,20 +44,17 @@ class BetaCleanJourneyTest {
         BetaContainer.resetOffline(context)
         try {
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
-                click("beta-start-continue"); await("onboarding-BANK")
+                click("beta-start-continue"); await("onboarding-IMPORT")
                 capture("m10-bank-step")
-                scenario.recreate(); await("onboarding-BANK")
-                click("onboarding-bank-BANK_ALJAZIRA"); await("onboarding-IMPORT")
-                click("onboarding-import"); await("history-start")
-                scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-                await("onboarding-IMPORT")
-                click("onboarding-next"); await("onboarding-ASSETS")
+                scenario.recreate(); await("onboarding-IMPORT")
+                await("history-start")
+                click("history-start"); click("history-close"); await("onboarding-ASSETS")
                 click("onboarding-manage"); await("beta-management-settings")
                 compose.onNodeWithTag("beta-theme-DARK").assertDoesNotExist()
                 compose.onNodeWithTag("beta-settings-reset").assertDoesNotExist()
                 click("manage-ACCOUNTS"); click("manage-add-BANK_ALJAZIRA")
                 compose.onNodeWithTag("asset-last4").performScrollTo().performTextInput("1234")
-                compose.onNodeWithTag("asset-save").performScrollTo().assertIsNotEnabled()
+                compose.onNodeWithTag("asset-save").assertIsDisplayed().assertIsNotEnabled()
                 click("asset-owned-confirm"); click("asset-save")
                 await("manage-add-BANK_ALJAZIRA")
                 click("beta-settings-close"); await("beta-management-settings")
@@ -73,9 +74,9 @@ class BetaCleanJourneyTest {
             BetaContainer(context).use {
                 assertEquals(BetaOnboardingStep.COMPLETE, it.onboardingStep())
                 assertEquals(1, it.assets().size)
-                assertTrue(it.evidencePage().isEmpty()); assertNull(it.historySession())
+                assertTrue(it.evidencePage().isEmpty()); assertEquals(true,it.historySession()?.finished)
             }
-            ActivityScenario.launch(BetaActivity::class.java).use { await("dash-refresh"); compose.onNodeWithTag("onboarding-BANK").assertDoesNotExist() }
+            ActivityScenario.launch(BetaActivity::class.java).use { await("dash-refresh"); compose.onNodeWithTag("onboarding-IMPORT").assertDoesNotExist() }
         } finally { drain(); BetaContainer.resetOffline(context) }
     }
 
@@ -91,11 +92,11 @@ class BetaCleanJourneyTest {
             }
             ActivityScenario.launch(BetaActivity::class.java).use { scenario ->
                 await("home-setup-help"); capture("setup-empty-home")
-                click("home-setup"); await("onboarding-IMPORT"); await("onboarding-imported")
+                click("home-setup"); await("onboarding-IMPORT"); await("history-start")
                 scenario.recreate(); await("onboarding-IMPORT")
                 capture("setup-import-help")
-                click("onboarding-next"); await("onboarding-ASSETS")
-                compose.onNodeWithTag("ownership-continue").performScrollTo().assertIsNotEnabled()
+                click("history-close"); await("onboarding-ASSETS")
+                compose.onNodeWithTag("ownership-continue").assertIsDisplayed().assertIsNotEnabled()
                 click("ownership-BANK_ALJAZIRA-ACCOUNT-1234-external")
                 click("ownership-continue"); await("onboarding-REVIEW")
                 capture("setup-approval-help")
@@ -133,14 +134,14 @@ class BetaCleanJourneyTest {
                 compose.waitUntil(5000) { compose.onAllNodesWithTag("settings-reset-confirm").fetchSemanticsNodes().isEmpty() }
                 compose.onNodeWithTag("beta-management-settings").assertExists()
                 click("settings-reset-lab"); compose.onNodeWithTag("settings-reset-confirm").assertIsEnabled().performClick(); await("beta-start-continue")
-                click("beta-start-continue"); await("onboarding-BANK")
-                scenario.recreate(); await("onboarding-BANK")
+                click("beta-start-continue"); await("onboarding-IMPORT")
+                scenario.recreate(); await("onboarding-IMPORT")
             }
             drain()
             BetaContainer(context).use { beta ->
                 assertEquals(0, beta.markerCount()); assertTrue(beta.assets().isEmpty()); assertTrue(beta.evidencePage().isEmpty())
                 assertFalse(beta.settings().backupAvailable); assertNull(beta.historySession())
-                assertEquals(BetaOnboardingStep.BANK, beta.onboardingStep())
+                assertEquals(BetaOnboardingStep.IMPORT, beta.onboardingStep())
             }
             assertEquals("production sentinel", productionProbe.getString("retained", null))
         } finally { drain(); BetaContainer.resetOffline(context); productionProbe.edit().clear().commit() }
@@ -151,7 +152,7 @@ class BetaCleanJourneyTest {
         lateinit var evidenceId: String
         try {
             BetaContainer(context).use { beta ->
-                beta.beginOnboarding(); beta.setBankEnabled(bank, true); beta.advanceOnboarding(BetaOnboardingStep.BANK)
+                beta.beginOnboarding(); beta.setBankEnabled(bank, true); beta.advanceOnboarding(BetaOnboardingStep.PERMISSION)
                 val at = Instant.parse("2026-10-18T12:00:00Z")
                 val message = EvidenceMessage("clean-journey", "AlJazira", "Cash withdrawal\nFrom account: 1234\nAmount: 42 SAR\nDate: 2026-10-18 12:00", at, ReceiptTimeSource.USER_SUPPLIED)
                 evidenceId = (beta.importEvidence(EvidenceRequest("clean-journey", EvidenceOrigin.EXPLICIT_SAMPLE), listOf(message)).single() as EvidenceResult.Stored).summary.id
@@ -164,12 +165,12 @@ class BetaCleanJourneyTest {
                         setOf(bank), scanned = 1, stored = 1, finished = true))
             }
             ActivityScenario.launch(BetaActivity::class.java).use {
-                await("onboarding-IMPORT"); click("onboarding-import"); await("history-close")
+                await("onboarding-IMPORT"); await("history-close")
                 compose.onNodeWithTag("history-review-0").assertDoesNotExist()
                 compose.onNodeWithTag("history-filter-review").assertDoesNotExist()
                 click("history-close")
                 await("onboarding-ASSETS"); capture("setup-accounts-before-messages")
-                compose.onNodeWithTag("ownership-continue").performScrollTo().assertIsNotEnabled()
+                compose.onNodeWithTag("ownership-continue").assertIsDisplayed().assertIsNotEnabled()
                 click("ownership-BANK_ALJAZIRA-ACCOUNT-1234-owned")
                 click("ownership-continue")
                 await("onboarding-REVIEW"); click("onboarding-next"); await("dash-refresh")

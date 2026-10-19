@@ -13,11 +13,10 @@ object BetaOnboardingChecks {
             BetaContainer(context).use { beta ->
                 assertEquals(BetaStartState.NEW, beta.startState())
                 beta.beginOnboarding()
-                assertEquals(BetaOnboardingStep.BANK, beta.onboardingStep())
-                assertThrows(IllegalStateException::class.java) { beta.advanceOnboarding(BetaOnboardingStep.BANK) }
+                assertEquals(BetaOnboardingStep.PERMISSION, beta.onboardingStep())
                 beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
-                beta.advanceOnboarding(BetaOnboardingStep.BANK)
-                beta.advanceOnboarding(BetaOnboardingStep.BANK) // Same committed action is idempotent.
+                beta.advanceOnboarding(BetaOnboardingStep.PERMISSION)
+                beta.advanceOnboarding(BetaOnboardingStep.PERMISSION) // Same committed action is idempotent.
                 assertEquals(BetaOnboardingStep.IMPORT, beta.onboardingStep())
                 assertNull(beta.historySession()); assertTrue(beta.evidencePage().isEmpty()); assertTrue(beta.assets().isEmpty())
                 beta.backup()
@@ -50,10 +49,10 @@ object BetaOnboardingChecks {
                 assertThrows(IllegalStateException::class.java) { beta.beginOnboarding() }
                 assertEquals(1, beta.markerCount())
                 beta.resumeOnboarding()
-                assertEquals(BetaOnboardingStep.BANK, beta.onboardingStep())
+                assertEquals(BetaOnboardingStep.PERMISSION, beta.onboardingStep())
                 assertEquals(1, beta.markerCount())
                 beta.setBankEnabled(BankId("BANK_ALJAZIRA"), true)
-                beta.advanceOnboarding(BetaOnboardingStep.BANK)
+                beta.advanceOnboarding(BetaOnboardingStep.PERMISSION)
                 beta.resumeOnboarding() // In-progress setup is never rewound.
                 assertEquals(BetaOnboardingStep.IMPORT, beta.onboardingStep())
                 beta.advanceOnboarding(BetaOnboardingStep.IMPORT)

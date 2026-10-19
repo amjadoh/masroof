@@ -58,6 +58,8 @@ fun BetaShell(
     onReset: () -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
+    showReturn: Boolean = true,
+    setupFooter: (@Composable () -> Unit)? = null,
 ) {
     var workspaceOpen by rememberSaveable { mutableStateOf(false) }
     val homeState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -98,7 +100,8 @@ fun BetaShell(
                 }, enabled = returnEnabled && !busy)
                 }
             }
-            Button(onClick = onReturn, enabled = returnEnabled, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
+            setupFooter?.invoke()
+            if(showReturn) Button(onClick = onReturn, enabled = returnEnabled, modifier = Modifier.fillMaxWidth().padding(BetaSpacing.screen).testTag("beta-return")) {
                 Text(stringResource(R.string.beta_return))
             }
             }
