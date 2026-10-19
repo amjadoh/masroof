@@ -24,7 +24,13 @@ object BetaLiveSms {
         BetaIo.execute {
             try { BetaContainer(context).use { beta ->
                 val generation=beta.storageGeneration() ?: return@use
-                beta.pendingEvidenceIds().forEach { schedule(context,it,generation) }
+                var after=""
+                while(true) {
+                    val page=beta.pendingEvidenceIds(after)
+                    if(page.isEmpty()) break
+                    page.forEach {schedule(context,it,generation)}
+                    after=page.last()
+                }
             } } catch (_: Exception) { /* Durable rows remain for the next explicit retry or start. */ }
         }
     }

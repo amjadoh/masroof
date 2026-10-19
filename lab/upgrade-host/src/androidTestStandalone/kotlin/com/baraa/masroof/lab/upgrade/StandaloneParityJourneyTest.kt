@@ -56,9 +56,12 @@ class StandaloneParityJourneyTest {
             BetaContainer(context).use {beta -> beta.importEvidence(EvidenceRequest("standalone-journey",EvidenceOrigin.EXPLICIT_SAMPLE),listOf(
                 EvidenceMessage("purchase","AlJazira","POS Purchase\nCard: 5678\nCard type: credit\nAmount: 42 SAR\nAvailable balance: 100 SAR\nDate: $date",receipt,ReceiptTimeSource.USER_SUPPLIED))) }
             scenario.recreate();await("onboarding-IMPORT");click("history-close");await("onboarding-ASSETS")
-            click("ownership-BANK_ALJAZIRA-CARD-5678-owned");capture("ownership")
+            click("ownership-BANK_ALJAZIRA-CARD-5678-owned")
+            compose.waitUntil(20000) {runCatching {compose.onNodeWithTag("ownership-continue").assertIsEnabled();true}.getOrDefault(false)}
+            compose.waitForIdle();capture("ownership")
             click("ownership-continue");await("onboarding-REVIEW");capture("complete")
             click("onboarding-next");await("beta-home-hero");capture("home")
+            compose.onNodeWithTag("dash-summary-spending").performScrollTo().assertIsDisplayed();capture("spending")
             compose.onNodeWithTag("asset-create-facility").assertDoesNotExist()
             BetaContainer(context).use {beta ->
                 assertEquals(BetaOnboardingStep.COMPLETE,beta.onboardingStep())
@@ -68,6 +71,23 @@ class StandaloneParityJourneyTest {
                 assertEquals("42.00",requireNotNull(beta.financialPosting(PostingKey(Environment.BETA,"evidence:$id"))).command.amount.amount.toPlainString())
             }
         }
+    }
+    @Test fun restoreResumesPendingLiveEvidenceWithANewGeneration() {
+        val receipt=Instant.now()
+        lateinit var id: String;lateinit var oldGeneration: String;lateinit var generation: String
+        BetaContainer(context).use {beta ->
+            beta.beginOnboarding();beta.advanceOnboarding(BetaOnboardingStep.PERMISSION);beta.advanceOnboarding(BetaOnboardingStep.IMPORT)
+            beta.advanceOnboarding(BetaOnboardingStep.ASSETS);beta.advanceOnboarding(BetaOnboardingStep.REVIEW)
+            beta.saveManualAsset(ManualAssetDraft(AssetId(Environment.BETA,bank,"account"),AssetKind.ACCOUNT,"1234",ownedConfirmed=true))
+            id=requireNotNull(beta.captureLive(EvidenceMessage("restore-native","AlJazira","Cash withdrawal\nFrom account: 1234\nAmount: 17 SAR\nDate: 2026-10-19 12:00",receipt,ReceiptTimeSource.SERVICE_CENTER_TIMESTAMP)))
+            oldGeneration=requireNotNull(beta.storageGeneration())
+            beta.backup();assertTrue(beta.restore());generation=requireNotNull(beta.storageGeneration())
+            assertNotEquals(oldGeneration,generation)
+            assertTrue(beta.processLive(id,oldGeneration))
+        }
+        val manager=WorkManager.getInstance(context)
+        compose.waitUntil(30000) {manager.getWorkInfosForUniqueWork("beta-live:$generation:$id").get(3,TimeUnit.SECONDS).singleOrNull()?.state==WorkInfo.State.SUCCEEDED}
+        BetaContainer(context).use {beta ->assertNotNull(beta.financialPosting(PostingKey(Environment.BETA,"evidence:$id")));assertEquals(1,beta.financialHistory(PostingKey(Environment.BETA,"evidence:$id")).size)}
     }
     @Test fun realWorkManagerConsumesOnlyDurableIdsAndPostsOnce() {
         val receipt=Instant.now();val date=receipt.atZone(ZoneId.of("Asia/Riyadh")).toLocalDateTime().withSecond(0).withNano(0)

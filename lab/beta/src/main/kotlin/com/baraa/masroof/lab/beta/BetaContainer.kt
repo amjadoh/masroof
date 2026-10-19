@@ -200,7 +200,10 @@ class BetaContainer(
         } }
     }
 
-    fun pendingEvidenceIds(): List<String> = lock.withLock { check(!closed); runBlocking { database.evidenceDao().pending() } }
+    fun pendingEvidenceIds(afterId: String="",limit: Int=1000): List<String> = lock.withLock {
+        check(!closed);require(limit in 1..1000)
+        runBlocking {database.evidenceDao().pendingAfter(afterId,limit)}
+    }
 
     fun processLive(id: String,generation: String): Boolean = lock.withLock {
         check(!closed)
@@ -625,11 +628,13 @@ class BetaContainer(
     fun restore(): Boolean = lock.withLock {
         check(!closed)
         database.close()
-        try {
+        val restored=try {
             restoreOffline(appContext)
         } finally {
             database = openDatabase()
         }
+        if(restored) com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.resume(appContext)
+        restored
     }
 
     /** The caller owns streams and erases the ephemeral password after return. */
@@ -642,7 +647,9 @@ class BetaContainer(
     fun importArchive(input: java.io.InputStream, password: CharArray): Boolean = lock.withLock {
         check(!closed)
         database.close()
-        try { recovery.importArchive(input, password) } finally { database = openDatabase() }
+        val restored=try { recovery.importArchive(input, password) } finally { database = openDatabase() }
+        if(restored) com.baraa.masroof.lab.beta.application.sms.BetaLiveSms.resume(appContext)
+        restored
     }
 
     fun reset() = lock.withLock {

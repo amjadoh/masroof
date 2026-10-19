@@ -85,6 +85,8 @@ internal interface BetaEvidenceDao : BetaAuditWriter {
     suspend fun retry(retry: BetaEvidenceRetryEntity) = retryRecord(BetaRetryRecord(retry.rawId,"INTERPRETATION",retry.stage,retry.attempts,retry.code,retry.updatedAt))
     @Query("DELETE FROM beta_processing_retry WHERE rawId=:id AND kind='INTERPRETATION'") suspend fun clearRetry(id: String)
     @Query("SELECT rawId FROM beta_evidence_retry ORDER BY updatedAt,rawId LIMIT 1000") suspend fun pending(): List<String>
+    @Query("SELECT rawId FROM beta_evidence_retry WHERE rawId>:afterId ORDER BY rawId LIMIT :limit")
+    suspend fun pendingAfter(afterId: String,limit: Int): List<String>
     @Query("SELECT targetId AS rawId,transition AS revision,operation AS decision,createdAt AS updatedAt FROM beta_audit_log WHERE eventKind='EVIDENCE_DECISION' AND targetId=:id ORDER BY transition DESC LIMIT 1") suspend fun decision(id: String): BetaEvidenceDecisionEntity?
     suspend fun decision(decision: BetaEvidenceDecisionEntity) = appendAudit(BetaAuditRecord(
         auditId("EVIDENCE_DECISION",decision.rawId,decision.revision),"EVIDENCE_DECISION",targetId=decision.rawId,transition=decision.revision,operation=decision.decision,createdAt=decision.updatedAt))

@@ -91,6 +91,13 @@ object BetaParityChecks {
         beta.reset();beta.beginOnboarding()
         assertNotEquals(generation,beta.storageGeneration())
         assertTrue(beta.processLive(id,generation));assertTrue(beta.evidencePage().isEmpty())
+        val pending=(1..6).map {n -> requireNotNull(beta.captureLive(message.copy(providerId="pending-$n",receivedAt=at.plusSeconds(n.toLong()))))}.toSet()
+        val first=beta.pendingEvidenceIds(limit=2)
+        val second=beta.pendingEvidenceIds(first.last(),2)
+        val third=beta.pendingEvidenceIds(second.last(),2)
+        assertEquals(pending,(first+second+third).toSet())
+        assertEquals(6,(first+second+third).size)
+        assertTrue(beta.pendingEvidenceIds(third.last(),2).isEmpty())
     }
     fun oldHistoryDoesNotConsumeTheSelectedPeriodReadBudget(context: Context) = isolated(context) { _ -> runBlocking {
         val db=Room.databaseBuilder(context,BetaDatabase::class.java,BetaDatabase.NAME).build()
