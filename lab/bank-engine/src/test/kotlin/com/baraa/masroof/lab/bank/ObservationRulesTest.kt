@@ -37,7 +37,7 @@ class ObservationRulesTest {
         val salary = parse("$incoming\nIncome type: salary")
         assertEquals(ParseStatus.SUCCESS, salary.status); assertEquals(true, salary.facts.salaryIncomeWording)
         assertEquals(true, parse(incoming.replace("Incoming transfer", "Salary credited")).facts.salaryIncomeWording)
-        assertNull(parse(incoming).facts.salaryIncomeWording)
+        assertEquals(false, parse(incoming).facts.salaryIncomeWording)
         assertNull(parse(loan).facts.loanType)
     }
 
@@ -46,7 +46,7 @@ class ObservationRulesTest {
         assertEquals(ParseStatus.SUCCESS, r.status)
         assertNull(r.facts.cardChannel); assertNull(r.facts.purchaseChannel); assertNull(r.facts.salaryIncomeWording); assertNull(r.facts.loanType)
         assertNull(parse("$loan\nNote: Loan type: auto").facts.loanType)
-        assertNull(parse("$incoming\nCounterparty: Salary Corporation").facts.salaryIncomeWording)
+        assertEquals(false, parse("$incoming\nCounterparty: Salary Corporation").facts.salaryIncomeWording)
     }
 
     @Test fun unknownConflictingAndWrongFamilyRolesCannotBeSuccessful() {

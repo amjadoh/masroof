@@ -35,9 +35,10 @@ android {
     sourceSets {
         getByName("main").java.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin"))
         getByName("main").res.setSrcDirs(listOf("src/replica/res", "build/generated/productionReplica/res"))
-        getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin"))
+        getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin"))
+        getByName("androidTest").assets.srcDir("build/generated/productionReplica/fixtures")
         getByName("androidTest").manifest.srcFile("src/replicaAndroidTest/AndroidManifest.xml")
-        getByName("androidTest").java.setSrcDirs(listOf("src/replicaAndroidTest/kotlin"))
+        getByName("androidTest").java.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "build/generated/productionReplica/referenceKotlin"))
     }
 }
 
@@ -94,8 +95,10 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
 
 val generateProductionReplica by tasks.registering(Exec::class) {
     inputs.dir(rootProject.file("app/src/main"))
+    inputs.dir(rootProject.file("app/src/test/resources/testdata/bank_aljazira"))
     inputs.file("PRODUCTION_REPLICA_SOURCES.json")
     inputs.dir("replica-overlays")
+    inputs.dir("testdata/reported")
     inputs.file("tools/generate_production_replica.py")
     outputs.dir(layout.buildDirectory.dir("generated/productionReplica"))
     commandLine("python3", "$projectDir/tools/generate_production_replica.py")
@@ -104,6 +107,6 @@ tasks.named("preBuild").configure { dependsOn(generateProductionReplica) }
 
 kotlin.sourceSets {
     named("main") { kotlin.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin")) }
-    named("test") { kotlin.setSrcDirs(listOf("src/replicaTest/kotlin")) }
-    named("androidTest") { kotlin.setSrcDirs(listOf("src/replicaAndroidTest/kotlin")) }
+    named("test") { kotlin.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin")) }
+    named("androidTest") { kotlin.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "build/generated/productionReplica/referenceKotlin")) }
 }

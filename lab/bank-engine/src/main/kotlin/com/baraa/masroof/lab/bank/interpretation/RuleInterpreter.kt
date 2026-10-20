@@ -16,14 +16,21 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         network = schema.network.copy(bankAliases = schema.network.bankAliases.mapValues { it.value.toList() },
             sourceBankLabels = schema.network.sourceBankLabels.toList(),
             destinationBankLabels = schema.network.destinationBankLabels.toList(),
-            networkLabels = schema.network.networkLabels.toList()))
+            networkLabels = schema.network.networkLabels.toList(),
+            unidentifiedExternalBankMarkers = schema.network.unidentifiedExternalBankMarkers.toList()))
     // Content identity prevents changing literals under an unchanged declared revision.
     val version = InterpretationVersion(1, VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}-" +
         MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) })
 
-    override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation {
-        val banks = catalog.candidates(input.sender)
+    override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation =
+        interpretWithBanks(input, catalog.candidates(input.sender))
+
+    /** Router-selected bank: never re-detect a sender after an explicit/stored bank choice. */
+    fun interpretRouted(input: MessageInput, bank: com.baraa.masroof.lab.finance.value.BankId): Interpretation =
+        interpretWithBanks(input, setOf(bank))
+
+    private fun interpretWithBanks(input: MessageInput, banks: Set<com.baraa.masroof.lab.finance.value.BankId>): Interpretation {
         val blockers = linkedSetOf<Blocker>()
         val diagnostics = mutableListOf<InterpretationDiagnostic>()
         val evidence = mutableListOf<Evidence>()
@@ -53,7 +60,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val validSchema = runCatching { snapshot.validate() }.isSuccess
         // Validate every configured literal before executing the closed grammar.
         val networkTerms = snapshot.network.bankAliases.values.flatten() + snapshot.network.sourceBankLabels +
-            snapshot.network.destinationBankLabels + snapshot.network.networkLabels
+            snapshot.network.destinationBankLabels + snapshot.network.networkLabels + snapshot.network.unidentifiedExternalBankMarkers
         if (!validSchema || "UNKNOWN" in snapshot.network.bankAliases || networkTerms.any { SourceText(it).text.none(Char::isLetterOrDigit) } || snapshot.rules.any {
                     (it.phrases + it.excludes + it.labels.values.flatten() + it.detailLabels.values.flatten() + it.observations.values.flatten()).any { term -> SourceText(term).text.none(Char::isLetterOrDigit) }
             }) {
@@ -128,7 +135,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
 
         fun labels(field: ExtractionField) = matching.flatMap { it.labels[field].orEmpty() }.distinct()
         data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
-        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels).read()
+        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
         val secondaryRanges = details.reserved.toMutableList()
         fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
         // Reserve all known secondary roles even when the selected rule does not expose them.
@@ -229,13 +236,14 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val roleEvidence = evidence.filter { it.field != "family" && !it.field.startsWith("observation.") }
         if (roleEvidence.any { a -> roleEvidence.any { b -> a.field != b.field && a.start < b.end && b.start < a.end } })
             problem("FIELD_ROLE_CONFLICT", Blocker.CONFLICTING_FACTS)
-        val facts = Facts(family, amount, if (family in INFORMATIONAL) null else direction,
+        val familyCollision = diagnostics.any { it.code in setOf("FAMILY_CONTEXT_CONFLICT", "MOVEMENT_NOTICE_CONFLICT", "TRANSFER_CONTEXT_CONFLICT", "STATEMENT_CHANNEL_IN_MOVEMENT") }
+        val facts = Facts(if (familyCollision) MessageFamily.UNKNOWN else family, amount, if (family in INFORMATIONAL) null else direction,
             sourceAccount = account?.let { AccountReference(sourceBank, it) },
             destinationAccount = destination?.let { AccountReference(destinationBank, it) },
             card = card?.let { CardReference(banks.single(), it) }, merchant = merchants.singleOrNull(),
             availableBalance = balance, occurredAtLocal = times.singleOrNull(),
             occurredAt = input.receivedAt.takeIf {receiptTime && family !in INFORMATIONAL}, outstandingBalance = details.due,
-            labeledForeignAmount = details.foreign, internationalFee = details.fee, exchangeRate = details.rate,
+            labeledForeignAmount = details.foreign ?: amount?.takeIf { it.currency != com.baraa.masroof.lab.finance.value.Currency.SAR }, internationalFee = details.fee?.takeIf { family in setOf(MessageFamily.PURCHASE,MessageFamily.REFUND) }, exchangeRate = details.rate,
             paymentDueDate = details.dueDate, transactionReference = details.reference, counterparty = details.counterparty,
             biller = details.biller, billerCode = details.billerCode, bankNetwork = network.kind,
             cardChannel = observed.card, purchaseChannel = observed.purchase, loanType = observed.loan,
@@ -250,7 +258,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v8"
+        const val VERSION = "bank-rules-independent-v10"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")

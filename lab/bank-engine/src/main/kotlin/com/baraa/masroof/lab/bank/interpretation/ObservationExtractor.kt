@@ -28,7 +28,7 @@ internal class ObservationExtractor(
 
     fun read(): ObservedFacts {
         val reader = RoleLineReader(source, headers, evidence)
-        val physical = evidence.filter { it.field in setOf("CARD", "AVAILABLE_BALANCE", "counterparty") }.toList()
+        val physical = evidence.filter { it.field in setOf("CARD", "SOURCE_ACCOUNT", "AVAILABLE_BALANCE", "counterparty") }.toList()
         val first = source.text.indexOfFirst(Char::isLetterOrDigit)
         val titleStart = if (first < 0) -1 else source.text.lastIndexOf('\n', first).let { it + 1 }
         fun scoped(range: IntRange, boundField: String?): Boolean {
@@ -93,6 +93,12 @@ internal class ObservationExtractor(
         if(creditBalance) physical.firstOrNull {it.field=="CARD"}?.let {
             evidence += it.copy(ruleId="extract.observation.credit_balance",field="observation.card.credit")
         }
-        return ObservedFacts(card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan, salary, balance)
+        val debitSource = configured["card.debit_source"].orEmpty().any { phrase ->
+            source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "SOURCE_ACCOUNT") }.onEach {
+                evidence += source.evidence("extract.observation.debit_source", "observation.card.debit", it.range)
+            }.toList().isNotEmpty()
+        }
+        return ObservedFacts(if (debitSource) CardChannel.DEBIT else card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan,
+            salary ?: false.takeIf { family == MessageFamily.TRANSFER_IN }, balance)
     }
 }
