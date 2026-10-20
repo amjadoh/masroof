@@ -1,0 +1,7 @@
+<resources>
+<string name="lab_return">Return to Masroof</string>
+<string name="lab_reset">Reset Lab</string>
+<string name="lab_reset_explanation">Delete Lab data, settings and local learning only. Your main Masroof data stays preserved.</string>
+<string name="lab_open_failed">Lab data could not be opened. Your files are preserved. Retry or reset Lab from the LAB menu.</string>
+<string name="lab_reset_failed">Lab reset did not complete. Retry. Main Masroof data was not changed.</string>
+</resources>
