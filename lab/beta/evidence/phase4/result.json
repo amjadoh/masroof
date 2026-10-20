@@ -48,7 +48,7 @@
     "financialRows": 40,
     "failures": 0
   },
-  "pythonContracts": 19,
+  "pythonContracts": 20,
   "trainingReproducibility": "passed",
   "apkBuild": "passed",
   "lintAndDetekt": "passed",
@@ -58,5 +58,11 @@
   "recording": {
     "duration": "27.310089",
     "size": "1118610"
+  },
+  "exactCiDeviceWrapper": {
+    "result": "passed",
+    "nativeTests": 11,
+    "publishedScreenshots": 12,
+    "collectionAfterUninstall": true
   }
 }
