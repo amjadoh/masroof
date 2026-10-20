@@ -6,7 +6,8 @@ import org.json.JSONObject
 /** One read boundary for money and persisted observations. Historical comparisons remain on disk,
  * but cannot become new financial authority. Reads never invoke an interpreter or change data. */
 internal object BetaCurrentFinancialArchive {
-    fun read(outcome: BetaEvidenceOutcomeEntity, body: String, financial: Boolean = true): JSONObject {
+    fun read(outcome: BetaEvidenceOutcomeEntity, body: String, financial: Boolean = true,
+        durableReceipt: java.time.Instant? = null): JSONObject {
         require(outcome.baselineJson == "{}")
         val json = JSONObject(outcome.candidateJson)
         require(InterpretationArchive.isCurrent(json) && json.getString("evidenceId") == outcome.rawId)
@@ -26,8 +27,16 @@ internal object BetaCurrentFinancialArchive {
         require("family" in fields)
         if (financial) {
             require(json.getString("status") == "SUCCESS")
-            require("AMOUNT" in fields && "occurredAtLocal" in fields)
+            val receiptBound = durableReceipt != null && json.getJSONObject("facts").optString("occurredAt")==durableReceipt.toString() &&
+                json.getJSONArray("diagnostics").let {d -> (0 until d.length()).any {
+                    d.getJSONObject(it).optString("code")=="DURABLE_RECEIPT_TIME" && d.getJSONObject(it).optString("severity")=="INFO"}}
+            require("AMOUNT" in fields && ("occurredAtLocal" in fields || receiptBound))
         }
         return json
     }
 }
+
+/** A user-supplied sample date cannot acquire durable SMS authority by matching JSON. */
+internal fun BetaRawEvidenceEntity.durableReceiptTime(): java.time.Instant? =
+    if(origin in setOf("LIVE","EXPLICIT_HISTORY") && timeSource in setOf("PROVIDER_TIMESTAMP","SERVICE_CENTER_TIMESTAMP","DEVICE_FALLBACK"))
+        java.time.Instant.parse(receivedAt) else null

@@ -37,11 +37,12 @@ data class PortfolioTotals(
     val debitSalarySpending: SignedAmount?,
     val loanRemaining: Money?,
     val loanSalaryPayment: SignedAmount?,
+    val creditStatementSpending: SignedAmount? = null,
 ) {
     init {
         requireCurrency(currency, accountInflow, accountOutflow, facilityDue, loanRemaining)
         requireSignedCurrency(currency, accountRemaining, externalRemaining, creditSalarySpending,
-            debitSalarySpending, loanSalaryPayment)
+            debitSalarySpending, loanSalaryPayment,creditStatementSpending)
     }
 }
 

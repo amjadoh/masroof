@@ -107,6 +107,7 @@ private fun AccountDetail(snapshot: DashboardSnapshot, account: AccountSummary, 
                 Text(stringResource(R.string.beta_dash_outflow), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        BetaSectionTrend(snapshot, account.id, MasroofHeroRole.Account, enabled)
         if (flow == null) Text(stringResource(R.string.beta_dash_unavailable_help), Modifier.testTag("account-flow-unavailable"))
         else {
             FlowGroup(R.string.beta_detail_inflow_group, BetaAssetDetailFacts.lines(flow, BetaAssetDetailFacts.externalIn), colors.inflow)
@@ -114,11 +115,6 @@ private fun AccountDetail(snapshot: DashboardSnapshot, account: AccountSummary, 
             FlowGroup(R.string.beta_detail_internal_group, BetaAssetDetailFacts.lines(flow, BetaAssetDetailFacts.internal), colors.account,
                 stringResource(R.string.beta_detail_internal_help))
         }
-        FactCard(stringResource(R.string.beta_detail_observed_balance)) {
-            DetailRow(stringResource(R.string.beta_detail_observed_balance), formatMoney(account.balance, unavailable))
-            DetailRow(stringResource(R.string.beta_detail_balance_date), day(account.balanceAsOf, snapshot.query.zone) ?: unavailable, divider = false)
-        }
-        BetaSectionTrend(snapshot, account.id, MasroofHeroRole.Account, enabled)
         AssetTransactions(snapshot, account.id, stringResource(R.string.beta_detail_account_movements), enabled, onTransaction, ledgerComplete)
     }
 }
@@ -198,6 +194,10 @@ private fun CreditDetail(snapshot: DashboardSnapshot, card: CreditCardSummary, e
                 CreditCardRole.SUPPLEMENTARY -> R.string.beta_detail_supplementary
                 null -> R.string.beta_detail_credit_type
             }))
+            if (card.role == CreditCardRole.PRIMARY && facility != null) {
+                DetailRow(stringResource(R.string.beta_dash_due), formatMoney(facility.statementDue, unavailable))
+                DetailRow(stringResource(R.string.beta_detail_due_date), facility.dueDate?.let { day(it) } ?: unavailable)
+            }
             DetailRow(stringResource(R.string.beta_detail_balance_date), day(card.balanceAsOf, snapshot.query.zone) ?: unavailable)
             SpendingRow(R.string.beta_dash_calendar_spending, card.calendarSpending, amounts[1], unavailable)
             SpendingRow(R.string.beta_dash_salary_spending, card.salarySpending, amounts[2], unavailable)
@@ -212,7 +212,7 @@ private fun CreditDetail(snapshot: DashboardSnapshot, card: CreditCardSummary, e
 private fun LoanDetail(snapshot: DashboardSnapshot, loan: LoanSummary, enabled: Boolean,
     onTransaction: (String) -> Unit, ledgerComplete: Boolean) {
     val unavailable = stringResource(R.string.beta_dash_unavailable)
-    val label = loan.label.takeIf(String::isNotBlank) ?: stringResource(R.string.beta_asset_loan)
+    val label = loan.label.takeIf(String::isNotBlank) ?: loanLabel(loan.type)
     val installmentDate = day(loan.installmentAsOf, snapshot.query.zone)
     Column(Modifier.testTag("beta-loan-detail"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofHeroCard(label + " · " + stringResource(R.string.beta_dash_loan_remaining),
@@ -226,12 +226,10 @@ private fun LoanDetail(snapshot: DashboardSnapshot, loan: LoanSummary, enabled: 
                     else -> R.string.beta_detail_loan_mortgage
                 })
             } ?: unavailable)
-            DetailRow(stringResource(R.string.beta_dash_installment) + (installmentDate?.let { " · $it" } ?: ""),
+            DetailRow(stringResource(R.string.beta_complete_last_installment),
                 formatMoney(loan.latestInstallment, unavailable), MasroofThemeExtras.extendedColors.liability)
-            DetailRow(stringResource(R.string.beta_detail_balance_date), day(loan.remainingAsOf, snapshot.query.zone) ?: unavailable)
-            DetailRow(stringResource(R.string.beta_dash_salary_payment), formatMoney(loan.salaryPayment, unavailable))
-            DetailRow(stringResource(R.string.beta_detail_salary_period),
-                if (loan.salaryPeriod == null) stringResource(R.string.beta_dash_period_unavailable) else period(checkNotNull(loan.salaryPeriod)), divider = false)
+            DetailRow(stringResource(R.string.beta_complete_installment_date), installmentDate ?: unavailable)
+            DetailRow(stringResource(R.string.beta_detail_balance_date), day(loan.remainingAsOf, snapshot.query.zone) ?: unavailable, divider = false)
         }
         AssetTransactions(snapshot, loan.id, stringResource(R.string.beta_detail_loan_movements), enabled, onTransaction, ledgerComplete)
     }

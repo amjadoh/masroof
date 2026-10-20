@@ -29,6 +29,7 @@ internal fun BetaAssetEditor(
     initialKind: AssetKind = AssetKind.ACCOUNT,
     initialSuffix: String = "",
     metadata: com.baraa.masroof.lab.beta.application.BetaAssetMetadata = com.baraa.masroof.lab.beta.application.BetaAssetMetadata(),
+    allowedKinds: Set<AssetKind>? = null,
 ) {
     val localId = rememberSaveable { existing?.id?.localId ?: proposal?.id?.localId ?: UUID.randomUUID().toString() }
     val originalKind by rememberSaveable { mutableStateOf(existing?.kind?.name) }
@@ -54,7 +55,7 @@ internal fun BetaAssetEditor(
     val parentKind = when (kind) { AssetKind.DEBIT_CARD -> AssetKind.ACCOUNT; AssetKind.CREDIT_CARD -> AssetKind.CREDIT_FACILITY; else -> null }
     val parents = assets.filter { it.id.bank == bank && it.kind == parentKind && it.id.localId != localId }
     val selectedParent = parents.singleOrNull { it.id.localId == parentLocalId }
-    val suffixValid = suffix.matches(Regex("[0-9]{4}")) || (kind == AssetKind.CREDIT_FACILITY && suffix.isEmpty())
+    val suffixValid = suffix.matches(Regex("[0-9]{4}")) || (kind in setOf(AssetKind.CREDIT_FACILITY,AssetKind.LOAN) && suffix.isEmpty())
     val newFacility = kind == AssetKind.CREDIT_CARD && selectedParent == null && roleName == CreditCardRole.PRIMARY.name
     val valid = confirmed && suffixValid && (network!="MADA" || kind!=AssetKind.CREDIT_CARD) && (kind != AssetKind.CREDIT_CARD || roleName != CreditCardRole.SUPPLEMENTARY.name || selectedParent != null)
     BackHandler { if (!busy) onCancel() }
@@ -68,7 +69,7 @@ internal fun BetaAssetEditor(
         canApply=valid,applyTag="asset-save",cancelTag="asset-cancel",applyLabel=stringResource(R.string.beta_asset_save)) {
         Text(stringResource(bankName(bank)), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.beta_asset_manual_help), style = MaterialTheme.typography.bodyMedium)
-        val kinds = if (existing == null) listOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD, AssetKind.LOAN)
+        val kinds = if (existing == null) (allowedKinds?.toList() ?: listOf(AssetKind.ACCOUNT, AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD, AssetKind.LOAN))
             else if (existing.kind in setOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD)) listOf(AssetKind.DEBIT_CARD, AssetKind.CREDIT_CARD) else listOf(existing.kind)
         MasroofSheetChoices(kinds,setOf(kind),{stringResource(assetKindLabel(it))},
             {kindName=it.name;parentLocalId=null;createFacility=false},{"asset-kind-${it.name}"},enabled=!busy)
@@ -95,6 +96,7 @@ internal fun BetaAssetEditor(
         OutlinedTextField(value = suffix, enabled = !busy,
             onValueChange = { value -> normalizeManualAssetSuffix(value)?.let { suffix = it } },
             label = { Text(stringResource(R.string.beta_asset_suffix)) }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number,imeAction=androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth().testTag("asset-last4"))
         if (kind==AssetKind.DEBIT_CARD) {
             Text(stringResource(R.string.beta_asset_link_account))

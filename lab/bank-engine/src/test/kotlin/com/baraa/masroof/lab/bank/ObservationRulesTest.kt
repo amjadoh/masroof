@@ -15,7 +15,7 @@ class ObservationRulesTest {
     private fun input(body: String) = MessageInput("observation-fixture", "Synthetic", body, Instant.parse("2026-10-18T10:00:00Z"))
     private fun parse(body: String, schema: BankRuleSchema = RuleLibrary.current()) = RuleInterpreter(schema).interpret(input(body), catalog)
 
-    @Test fun cardAndPurchaseChannelsNeedExplicitRoleOrTitleWording() {
+    @Test fun cardChannelsUseTypedRolesAndConfiguredCreditBalanceProof() {
         val r = parse("$purchase\nCard type: credit\nPurchase channel: online")
         assertEquals(ParseStatus.SUCCESS, r.status); assertEquals(CardChannel.CREDIT, r.facts.cardChannel)
         assertEquals(PurchaseChannel.ONLINE, r.facts.purchaseChannel)
@@ -23,7 +23,7 @@ class ObservationRulesTest {
         assertEquals(ParseStatus.SUCCESS, title.status); assertEquals(CardChannel.DEBIT, title.facts.cardChannel)
         assertEquals(PurchaseChannel.POS, title.facts.purchaseChannel)
         val balance = parse("$purchase\nAvailable balance: SAR 500")
-        assertEquals(ParseStatus.SUCCESS, balance.status); assertNull(balance.facts.cardChannel)
+        assertEquals(ParseStatus.SUCCESS, balance.status); assertEquals(CardChannel.CREDIT,balance.facts.cardChannel)
         assertNull(balance.facts.purchaseChannel)
         assertTrue(balance.evidence.any { it.field == "observation.card.available_balance" })
         assertEquals(CardChannel.STATEMENT, parse("Balance notification\nCard type: statement").facts.cardChannel)

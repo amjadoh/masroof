@@ -163,7 +163,8 @@ object BetaDashboardBuilder {
             salary?.let { sumKnownSigned(facilities.map { it.salarySpending } + standalone.map {it.salarySpending?.net}) },
             salary?.let { sumKnownSigned(debitRows.map { it.spending }) },
             if (completeRegistry) sumKnownMoney(loans.map { it.remaining }) else null,
-            salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) })
+            salary?.let { projection -> signed(loans.fold(BigDecimal.ZERO) { sum, loan -> sum + loanPayment(projection, loan.id).amount }) },
+            sumKnownSigned(facilities.map {it.statementSpending}+standalone.map {it.statementSpending?.net}))
         val transactions = inPeriod.map { row -> transaction(row, details[row.command.key], fees[row.command.key], registry) }
         val analysis = financialSummary?.let { BetaAnalysisBuilder.build(batch.copy(assets = assets), it, transactions, queryProjection) }
         val settlementsByFacility = rows.filter { it.classification.effectiveType == FinancialType.CREDIT_CARD_PAYMENT }.groupBy {
