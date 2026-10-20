@@ -84,7 +84,7 @@ object BetaAssetDiscovery {
         return buildList {
             // Incoming source and outgoing destination are counterparties, even for intra-bank transfers.
             if (family != MessageFamily.TRANSFER_IN) reference("sourceAccount")?.let { add(proposal("sourceAccount", AssetKind.ACCOUNT, it)) }
-            if (family == MessageFamily.TRANSFER_IN) reference("destinationAccount")?.let { add(proposal("destinationAccount", AssetKind.ACCOUNT, it)) }
+            if (family in setOf(MessageFamily.TRANSFER_IN,MessageFamily.REFUND)) reference("destinationAccount")?.let { add(proposal("destinationAccount", AssetKind.ACCOUNT, it)) }
             suffix(f.text("debitSourceAccountLast4"))?.takeIf { provenSuffix(it, "source", "debitSourceAccountLast4") && family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL) }
                 ?.let { if (none { p -> p.kind == AssetKind.ACCOUNT && p.last4 == it }) add(proposal("debitSourceAccount", AssetKind.ACCOUNT, it)) }
             if (!f.isNull("card")) {

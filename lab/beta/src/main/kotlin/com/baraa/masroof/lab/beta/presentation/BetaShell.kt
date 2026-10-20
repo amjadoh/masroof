@@ -62,8 +62,12 @@ fun BetaShell(
     setupFooter: (@Composable () -> Unit)? = null,
     secondaryTitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
+    onOpenDashboardSettings: (() -> Unit)? = null,
+    developerWorkspaceRequest: Int = 0,
 ) {
     var workspaceOpen by rememberSaveable { mutableStateOf(false) }
+    var lastDeveloperRequest by rememberSaveable {mutableIntStateOf(0)}
+    LaunchedEffect(developerWorkspaceRequest) {if(developerWorkspaceRequest!=lastDeveloperRequest) {lastDeveloperRequest=developerWorkspaceRequest;workspaceOpen=true}}
     val homeState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     BackHandler { if (returnEnabled) { if (workspaceOpen && editor == null) workspaceOpen = false else onReturn() } }
     Scaffold(
@@ -79,8 +83,8 @@ fun BetaShell(
                     }
                 }) else null,
                 actions = {
-                    if (dashboard != null && editor == null) androidx.compose.material3.IconButton(
-                        enabled = !busy, onClick = { workspaceOpen = !workspaceOpen }, modifier = Modifier.testTag("beta-tools")) {
+                    if (dashboard != null && editor == null && secondaryTitle==null) androidx.compose.material3.IconButton(
+                        enabled = !busy, onClick = {if(onOpenDashboardSettings!=null && !workspaceOpen) onOpenDashboardSettings() else workspaceOpen = !workspaceOpen}, modifier = Modifier.testTag("beta-tools")) {
                         androidx.compose.material3.Icon(com.baraa.masroof.ui.components.MasroofOutlineIcons.SlidersHorizontal,
                             stringResource(R.string.beta_home_tools))
                     }
@@ -118,7 +122,7 @@ fun BetaShell(
         },
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(BetaSpacing.screen),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberSaveable(secondaryTitle,selectedHomeTab,workspaceOpen,saver=androidx.compose.foundation.ScrollState.Saver) {androidx.compose.foundation.ScrollState(0)}).padding(BetaSpacing.screen),
             verticalArrangement = Arrangement.spacedBy(BetaSpacing.section),
         ) {
             if (editor != null) {

@@ -6,7 +6,7 @@ import com.baraa.masroof.lab.finance.value.Money
 import java.security.MessageDigest
 import java.time.LocalDateTime
 
-/** Independent M6 rules-only implementation. No legacy, persistence, clock fallback or posting. */
+/** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
 class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
         phrases = it.phrases.toList(), excludes = it.excludes.toList(),
@@ -196,10 +196,14 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             DateGrammar.time(match.value).also { if (it == null) problem("INVALID_TIME") }
         }.distinct().toList()
         if (times.size > 1) problem("CONFLICTING_TIME", Blocker.CONFLICTING_FACTS)
+        val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {
+            it.code in setOf("INVALID_TIME", "UNBOUND_TIME_ROLE", "CONFLICTING_TIME") }
+        if(receiptTime && family !in INFORMATIONAL) diagnostics += InterpretationDiagnostic(
+            "DURABLE_RECEIPT_TIME", "Transaction time uses the persisted SMS receipt", DiagnosticSeverity.INFO)
         if (family !in INFORMATIONAL) {
             if (amount == null || amount.amount.signum() <= 0) problem("MISSING_POSITIVE_PRINCIPAL")
-            if (times.size != 1) problem("MISSING_TRANSACTION_TIME")
-            if (family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) && card == null) problem("MISSING_CARD_ROLE")
+            if (times.size != 1 && !receiptTime) problem("MISSING_TRANSACTION_TIME")
+            if (family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) && card == null && account == null && destination == null) problem("MISSING_CARD_ROLE")
             if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) && account == null) problem("MISSING_SOURCE_ROLE")
         }
         if (family == MessageFamily.CARD_PAYMENT && card == null) problem("MISSING_CARD_ROLE")
@@ -229,7 +233,8 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             sourceAccount = account?.let { AccountReference(sourceBank, it) },
             destinationAccount = destination?.let { AccountReference(destinationBank, it) },
             card = card?.let { CardReference(banks.single(), it) }, merchant = merchants.singleOrNull(),
-            availableBalance = balance, occurredAtLocal = times.singleOrNull(), outstandingBalance = details.due,
+            availableBalance = balance, occurredAtLocal = times.singleOrNull(),
+            occurredAt = input.receivedAt.takeIf {receiptTime && family !in INFORMATIONAL}, outstandingBalance = details.due,
             labeledForeignAmount = details.foreign, internationalFee = details.fee, exchangeRate = details.rate,
             paymentDueDate = details.dueDate, transactionReference = details.reference, counterparty = details.counterparty,
             biller = details.biller, billerCode = details.billerCode, bankNetwork = network.kind,
@@ -245,7 +250,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v7"
+        const val VERSION = "bank-rules-independent-v8"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")

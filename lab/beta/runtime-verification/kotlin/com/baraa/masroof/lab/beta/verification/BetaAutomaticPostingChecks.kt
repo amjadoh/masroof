@@ -33,7 +33,7 @@ object BetaAutomaticPostingChecks {
             beta.processAutomaticEvidence()
             assertNull(beta.financialPosting(key(id)))
             assertEquals(1, beta.evidenceInboxCounts().needsOwnership)
-            assertEquals(0, beta.evidenceInboxCounts().needsReview)
+            assertEquals(1, beta.evidenceInboxCounts().needsReview)
             beta.registerAsset(owner)
             beta.processAutomaticEvidence()
             val row = requireNotNull(beta.financialPosting(key(id)))

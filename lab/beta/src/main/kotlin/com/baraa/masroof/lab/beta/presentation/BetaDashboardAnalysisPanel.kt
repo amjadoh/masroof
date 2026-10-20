@@ -184,21 +184,26 @@ internal fun BetaDashboardTransactionDetail(snapshot: DashboardSnapshot, transac
     val tx = snapshot.transactions.singleOrNull { it.key.transactionId == transactionId }
     if (tx == null) { Text(stringResource(R.string.beta_dash_missing), modifier = Modifier.testTag("transaction-missing")); return }
     val assets = dashboardAssetLabels(snapshot)
-    Column(Modifier.testTag("transaction-detail"), verticalArrangement = Arrangement.spacedBy(BetaSpacing.section)) {
-        Text(stringResource(R.string.beta_transaction_details), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(financialTypeLabel(tx.effectiveType)))
-        if (tx.storedType != tx.effectiveType) Text(stringResource(R.string.beta_transaction_original_type) + ": " + stringResource(financialTypeLabel(tx.storedType)))
-        Text(betaMoney(tx.amount.amount.toPlainString(),tx.amount.currency.name))
-        Text(betaDate(tx.time.instant,tx.time.zone))
-        tx.merchant?.let { Text(stringResource(R.string.beta_transaction_merchant) + ": " + it) }
-        tx.counterparty?.let { Text(stringResource(R.string.beta_transaction_counterparty) + ": " + it) }
-        Text(stringResource(R.string.beta_transaction_sar_free)); Text(tx.sarEquivalent?.let { betaMoney(it.amount.toPlainString(),it.currency.name) } ?: stringResource(R.string.beta_dash_unavailable))
-        Text(stringResource(R.string.beta_transaction_fee)); Text(tx.internationalFee?.let { betaMoney(it.amount.toPlainString(),it.currency.name) } ?: stringResource(R.string.beta_dash_unavailable))
-        Text(stringResource(R.string.beta_transaction_fx)); Text(tx.appliedFx?.rateToSar?.toPlainString() ?: stringResource(R.string.beta_dash_unavailable))
-        Text(stringResource(R.string.beta_transaction_source)); Text(tx.source?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
-        Text(stringResource(R.string.beta_transaction_destination)); Text(tx.destination?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
-        tx.categories.forEach { Text(stringResource(categoryLabel(it))) }
-        Text(stringResource(R.string.beta_transaction_readonly), style = MaterialTheme.typography.bodySmall)
+    Column(Modifier.testTag("transaction-detail"),verticalArrangement=Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
+        com.baraa.masroof.ui.components.MasroofHeroCard(
+            tx.merchant ?: tx.counterparty ?: stringResource(financialTypeLabel(tx.effectiveType)),
+            betaMoney(tx.amount.amount.toPlainString(),tx.amount.currency.name),
+            subtitle=stringResource(financialTypeLabel(tx.effectiveType)),role=com.baraa.masroof.ui.theme.MasroofHeroRole.Account,
+            icon=reviewTypeIcon(tx.effectiveType))
+        com.baraa.masroof.ui.components.MasroofCard {
+            Text(stringResource(R.string.beta_complete_transactions_data),style=MaterialTheme.typography.titleMedium)
+            BetaFinancialDetailRow(stringResource(R.string.beta_review_type),stringResource(financialTypeLabel(tx.effectiveType)))
+            BetaFinancialDetailRow(stringResource(R.string.beta_complete_review_date,betaDate(tx.time.instant,tx.time.zone)),"")
+            tx.merchant?.let {BetaFinancialDetailRow(stringResource(R.string.beta_transaction_merchant),it)}
+            tx.counterparty?.let {BetaFinancialDetailRow(stringResource(R.string.beta_transaction_counterparty),it)}
+            BetaFinancialDetailRow(stringResource(R.string.beta_transaction_source),tx.source?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
+            BetaFinancialDetailRow(stringResource(R.string.beta_transaction_destination),tx.destination?.let(assets::get) ?: stringResource(R.string.beta_transaction_external_unknown))
+            if(tx.amount.currency!=com.baraa.masroof.lab.finance.value.Currency.SAR) {
+                BetaFinancialDetailRow(stringResource(R.string.beta_transaction_sar_free),betaSummaryMoney(tx.sarEquivalent))
+                BetaFinancialDetailRow(stringResource(R.string.beta_transaction_fx),tx.appliedFx?.rateToSar?.toPlainString() ?: stringResource(R.string.beta_dash_unavailable))
+            }
+            tx.internationalFee?.let {BetaFinancialDetailRow(stringResource(R.string.beta_transaction_fee),betaSummaryMoney(it))}
+        }
     }
 }
 

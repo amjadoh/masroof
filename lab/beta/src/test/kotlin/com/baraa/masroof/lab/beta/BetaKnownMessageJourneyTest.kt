@@ -10,6 +10,12 @@ import org.junit.Test
 class BetaKnownMessageJourneyTest {
     private fun verify(block: (BetaKnownMessageJourneyChecks)->Unit) =
         BetaKnownMessageJourneyChecks(ApplicationProvider.getApplicationContext<Context>()).use(block)
+    @Test fun aSavedMineDecisionIsReusedWhenALaterMessageProvesCardKind() = verify {it.aSavedMineDecisionIsReusedWhenALaterMessageProvesCardKind()}
+    @Test fun repeatedOwnershipReviewsAreGroupedAndOneConfirmationPostsAllMessages() = verify {it.repeatedOwnershipReviewsAreGroupedAndOneConfirmationPostsAllMessages()}
+    @Test fun transactionClassificationAndIgnoredRestoreKeepOneLedgerRowAndCorrectDirection() = verify {it.transactionClassificationAndIgnoredRestoreKeepOneLedgerRowAndCorrectDirection()}
+    @Test fun knownLoanInstallmentsCreateOneOwnedLoanPerBankAndType() = verify {it.knownLoanInstallmentsCreateOneOwnedLoanPerBankAndType()}
+    @Test fun loansNeedOwnedSourceAndAnUnambiguousType() = verify {it.loansNeedOwnedSourceAndAnUnambiguousType()}
+    @Test fun durableSmsReceiptIsUsedOnlyWhenBankTimeIsAbsent() = verify {it.durableSmsReceiptIsUsedOnlyWhenBankTimeIsAbsent()}
     @Test fun capturedUnprocessedEvidenceIsOperationalWorkRatherThanHumanReview() = verify {it.capturedUnprocessedEvidenceIsOperationalWorkRatherThanHumanReview()}
     @Test fun clearExternalTransfersAndSalaryReachAccountAndDashboardWithoutApproval() = verify {it.clearExternalTransfersAndSalaryReachAccountAndDashboardWithoutApproval()}
     @Test fun aPendingUnknownMessageDoesNotHideConfirmedAccountMovements() = verify {it.aPendingUnknownMessageDoesNotHideConfirmedAccountMovements()}

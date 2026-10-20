@@ -8,7 +8,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /** Durable captured message reference; engines do not open databases or the device inbox. */
-data class MessageInput(val evidenceId: String, val sender: String, val body: String, val receivedAt: Instant) {
+data class MessageInput(val evidenceId: String, val sender: String, val body: String, val receivedAt: Instant,
+    val durableSmsReceipt: Boolean = false) {
     init { require(evidenceId.isNotBlank()) }
 }
 

@@ -87,6 +87,12 @@ internal class ObservationExtractor(
             }.toList().isNotEmpty()
         }
         if (balance && family !in cards) fail("UNRELATED_BALANCE_OBSERVATION")
-        return ObservedFacts(card, purchase, loan, salary, balance)
+        val creditBalance = card==null && balance && physical.any {it.field=="CARD"} &&
+            configured["card.credit_balance"].orEmpty().any {phrase ->
+                source.phrase(phrase).findAll(source.text).any {scoped(it.range,"AVAILABLE_BALANCE")}}
+        if(creditBalance) physical.firstOrNull {it.field=="CARD"}?.let {
+            evidence += it.copy(ruleId="extract.observation.credit_balance",field="observation.card.credit")
+        }
+        return ObservedFacts(card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan, salary, balance)
     }
 }
