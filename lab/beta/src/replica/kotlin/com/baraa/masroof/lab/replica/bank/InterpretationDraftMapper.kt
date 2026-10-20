@@ -42,7 +42,8 @@ class InterpretationDraftMapper {
             cardRef = facts.card?.let { CardReference(bank(it.bank),it.last4) }, merchant = facts.merchant,counterparty = facts.counterparty,
             occurredAt = facts.occurredAt,bankNetworkType = facts.bankNetwork?.let { BankNetworkType.valueOf(it.name) },
             confidence = Confidence(if (automatic) interpretation.confidence?.score ?: 1.0 else 0.0,
-                listOf("engine:${interpretation.version.engine}","rules:${interpretation.version.rules}")+blockers),
+                listOf("engine:${interpretation.version.engine}","rules:${interpretation.version.rules}")+
+                    interpretation.familyInference?.let {listOf("family_origin:${it.origin}","model:${it.modelVersion}")}.orEmpty()+blockers),
             parseStatus = if (automatic) ParseStatus.SUCCESS else ParseStatus.REVIEW_REQUIRED,
             details = details,amountCandidates = listOfNotNull(selected),selectedAmount = selected)
         val validator = object : ParsedEventValidator {

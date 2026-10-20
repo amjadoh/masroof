@@ -12,6 +12,7 @@ object LabResetWorkflow {
         try {
             val work = WorkManager.getInstance(host)
             work.cancelAllWorkByTag("lab-replica:live-sms-processing").result.get()
+            work.cancelAllWorkByTag("lab-replica:model-refresh").result.get()
             work.cancelAllWorkByTag("lab-replica:exchange-rate-enrichment").result.get()
             listOf(LabRecoveryWorker.NAME, "lab-replica:historical-derived-recovery", "lab-replica:parsed-event-facts-backfill", "lab-replica:masroof_update_check").forEach { work.cancelUniqueWork(it).result.get() }
             suspend fun erase() {
@@ -22,7 +23,7 @@ object LabResetWorkflow {
                 index.getStringSet("names", emptySet())!!.toSet().forEach { check(host.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit()) }
                 check(index.edit().clear().commit())
                 listOf(scoped.filesDir, scoped.cacheDir, scoped.noBackupFilesDir).forEach { check(it.deleteRecursively()) }
-                java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.let {
+                if (java.security.Security.getProvider("AndroidKeyStore")!=null) java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.let {
                     if (it.containsAlias("lab_replica.github_update_token")) it.deleteEntry("lab_replica.github_update_token")
                 }
             }

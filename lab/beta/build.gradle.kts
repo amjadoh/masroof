@@ -33,6 +33,7 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
     sourceSets {
+        getByName("main").assets.srcDir("src/replica/assets")
         getByName("main").java.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin"))
         getByName("main").res.setSrcDirs(listOf("src/replica/res", "build/generated/productionReplica/res"))
         getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin"))

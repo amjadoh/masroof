@@ -67,7 +67,7 @@ internal class ObservationExtractor(
                 typed.size <= 1 && "card.statement" in found && "card.debit" !in found) found.remove("card.credit")
             if (found.size > 1) fail("CONFLICTING_$header")
             if (found.isNotEmpty() && family !in allowed) fail("UNRELATED_$header")
-            return found.singleOrNull()?.takeIf { family in allowed }
+            return found.singleOrNull()?.takeIf { family in allowed || family==MessageFamily.UNKNOWN }
         }
         val cards = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT,
             MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
