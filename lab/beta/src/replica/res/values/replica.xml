@@ -1,0 +1,7 @@
+<resources>
+<string name="lab_return">العودة إلى مصروف</string>
+<string name="lab_reset">تصفير المختبر</string>
+<string name="lab_reset_explanation">سيتم حذف بيانات المختبر وإعداداته والتعلم المحلي فقط. بيانات مصروف الفعلي تبقى محفوظة.</string>
+<string name="lab_open_failed">تعذر فتح بيانات المختبر. ملفاتك محفوظة. أعد المحاولة أو صفّر المختبر من قائمة LAB.</string>
+<string name="lab_reset_failed">لم يكتمل تصفير المختبر. أعد المحاولة. لم يتم تعديل بيانات مصروف الفعلي.</string>
+</resources>

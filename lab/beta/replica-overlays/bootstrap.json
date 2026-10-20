@@ -1,0 +1,142 @@
+{
+  "kotlin/com/baraa/masroof/MainActivity.kt": [
+    {
+      "old": "(application as MasroofApplication).container",
+      "new": "com.baraa.masroof.lab.beta.replica.LabRuntime.container(this)",
+      "count": 1
+    },
+    {
+      "old": "AppLocaleContext.wrap(newBase, AppLocaleContext.readStoredLanguageTag(newBase))",
+      "new": "AppLocaleContext.wrap(com.baraa.masroof.lab.beta.replica.LabRuntime.context(newBase), AppLocaleContext.readStoredLanguageTag(com.baraa.masroof.lab.beta.replica.LabRuntime.context(newBase)))",
+      "count": 1
+    },
+    {
+      "old": "                                Text(\n                                    text = stringResource(R.string.startup_maintenance_blocked),",
+      "new": "                                com.baraa.masroof.lab.beta.replica.LabControls()\n                                Text(\n                                    text = stringResource(R.string.startup_maintenance_blocked),"
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/AppContainer.kt": [
+    {
+      "old": "private val parsedEventFactsBackfillCoordinator:",
+      "new": "internal val parsedEventFactsBackfillCoordinator:",
+      "count": 1
+    },
+    {
+      "old": "appVersionName = BuildConfig.VERSION_NAME,\n            appLogService = appLogService,",
+      "new": "appVersionName = BuildConfig.VERSION_NAME,\n            appLogService = appLogService,\n            restartProcess = { com.baraa.masroof.lab.beta.replica.LabRuntime.restart(appContext) },\n            beforeValidatedInstall = { com.baraa.masroof.lab.beta.replica.LabRuntime.beforeRestore() },",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/update/UpdateCheckWorker.kt": [
+    {
+      "old": "import com.baraa.masroof.MasroofApplication\n",
+      "new": "",
+      "count": 1
+    },
+    {
+      "old": "(applicationContext as MasroofApplication).container",
+      "new": "com.baraa.masroof.lab.beta.replica.LabRuntime.container(applicationContext)",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/sms/receiver/IncomingSmsReceiver.kt": [
+    {
+      "old": "import com.baraa.masroof.MasroofApplication\n",
+      "new": "",
+      "count": 1
+    },
+    {
+      "old": "val app = context.applicationContext as? MasroofApplication\n        if (app == null) {\n            return\n        }",
+      "new": "if (!com.baraa.masroof.lab.beta.replica.LabRuntime.liveEnabled(context)) return\n        val container = com.baraa.masroof.lab.beta.replica.LabRuntime.container(context)",
+      "count": 1
+    },
+    {
+      "old": "app.container.",
+      "new": "container.",
+      "count": 3
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/sms/LiveSmsProcessingWorker.kt": [
+    {
+      "old": "class LiveSmsProcessingWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val processStoredSms: ProcessStoredSmsUseCase,\n    private val appLogService: AppLogService? = null,\n) : CoroutineWorker(appContext, params) {",
+      "new": "class LiveSmsProcessingWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val processStoredSms: ProcessStoredSmsUseCase,\n    private val appLogService: AppLogService? = null,\n) : CoroutineWorker(appContext, params) {\n    constructor(context: Context, params: WorkerParameters) : this(com.baraa.masroof.lab.beta.replica.LabRuntime.context(context), params, com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).processStoredSmsUseCase, com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).appLogService)\n",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/sms/HistoricalDerivedRecoveryWorker.kt": [
+    {
+      "old": "class HistoricalDerivedRecoveryWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val recovery: HistoricalDerivedRecovery,\n    private val appLogService: AppLogService? = null,\n) : CoroutineWorker(appContext, params) {",
+      "new": "class HistoricalDerivedRecoveryWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val recovery: HistoricalDerivedRecovery,\n    private val appLogService: AppLogService? = null,\n) : CoroutineWorker(appContext, params) {\n    constructor(context: Context, params: WorkerParameters) : this(com.baraa.masroof.lab.beta.replica.LabRuntime.context(context), params, com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).historicalDerivedRecovery, com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).appLogService)\n",
+      "count": 1
+    },
+    {
+      "old": "\"historical-derived-recovery\"",
+      "new": "\"lab-replica:historical-derived-recovery\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/maintenance/ParsedEventFactsBackfillWorker.kt": [
+    {
+      "old": "class ParsedEventFactsBackfillWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val coordinator: ParsedEventFactsBackfillCoordinator,\n) : CoroutineWorker(appContext, params) {",
+      "new": "class ParsedEventFactsBackfillWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val coordinator: ParsedEventFactsBackfillCoordinator,\n) : CoroutineWorker(appContext, params) {\n    constructor(context: Context, params: WorkerParameters) : this(com.baraa.masroof.lab.beta.replica.LabRuntime.context(context), params, com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).parsedEventFactsBackfillCoordinator)\n",
+      "count": 1
+    },
+    {
+      "old": "\"parsed-event-facts-backfill\"",
+      "new": "\"lab-replica:parsed-event-facts-backfill\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/sms/ExchangeRateEnrichmentScheduler.kt": [
+    {
+      "old": "class ExchangeRateEnrichmentWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val enricher: PendingExchangeRateEnricher,\n) : CoroutineWorker(appContext, params) {",
+      "new": "class ExchangeRateEnrichmentWorker(\n    appContext: Context,\n    params: WorkerParameters,\n    private val enricher: PendingExchangeRateEnricher,\n) : CoroutineWorker(appContext, params) {\n    constructor(context: Context, params: WorkerParameters) : this(com.baraa.masroof.lab.beta.replica.LabRuntime.context(context), params, PendingExchangeRateEnricher { com.baraa.masroof.lab.beta.replica.LabRuntime.container(context).exchangeRateEnrichmentWorkflow.enrichPending() })\n",
+      "count": 1
+    },
+    {
+      "old": "\"exchange-rate-enrichment\"",
+      "new": "\"lab-replica:exchange-rate-enrichment\"",
+      "count": 2
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/sms/LiveSmsWorkScheduler.kt": [
+    {
+      "old": "\"live-sms:\"",
+      "new": "\"lab-replica:live-sms:\"",
+      "count": 1
+    },
+    {
+      "old": "\"live-sms-processing\"",
+      "new": "\"lab-replica:live-sms-processing\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/update/UpdateCheckScheduler.kt": [
+    {
+      "old": "\"masroof_update_check\"",
+      "new": "\"lab-replica:masroof_update_check\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/data/preferences/AndroidKeystoreGitHubTokenEncryptor.kt": [
+    {
+      "old": "\"masroof.github_update_token\"",
+      "new": "\"lab_replica.github_update_token\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/update/ApkInstaller.kt": [
+    {
+      "old": "\"${context.packageName}.fileprovider\"",
+      "new": "\"${context.packageName}.lab.fileprovider\"",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/navigation/MasroofRoot.kt": [
+    {
+      "old": "MasroofAppBar(title = stringResource(R.string.app_name)) {",
+      "new": "MasroofAppBar(title = stringResource(R.string.app_name)) {\n                com.baraa.masroof.lab.beta.replica.LabControls()",
+      "count": 1
+    }
+  ]
+}
