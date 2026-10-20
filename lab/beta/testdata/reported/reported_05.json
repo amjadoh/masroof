@@ -1,0 +1,12 @@
+{
+  "id": "reported_05",
+  "sender": "AlJazira",
+  "body": "خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 3,036.11\nالمبلغ المتبقي: SAR 30,361.14\nلـ: تمويل شخصي\nفي: 00:40 27-09-2026",
+  "expected": {
+    "bank": "BANK_ALJAZIRA",
+    "messageFamily": "FINANCING_INSTALLMENT",
+    "amount": "3036.11",
+    "currency": "SAR",
+    "parseStatus": "SUCCESS"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "refund_ar_cc_hamza_001": {
+    "details.availableBalance": {
+      "production": "null",
+      "engine": "Money(amount=11303.00, currency=SAR)",
+      "reason": "The new engine preserves the credit refund's explicitly labelled SAR balance, which the production parser omitted."
+    }
+  },
+  "transfer_out_inter_ar_001": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=0593)",
+      "engine": "AccountReference(bank=Bank(id=BANK_ANB), maskedNumber=0593)",
+      "reason": "An explicit Arab National Bank label qualifies the external destination; it does not confer ownership."
+    }
+  },
+  "transfer_out_inter_ar_002": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=0107)",
+      "engine": "AccountReference(bank=Bank(id=BANK_SNB), maskedNumber=0107)",
+      "reason": "An explicit Saudi National Bank label qualifies the external destination; it does not confer ownership."
+    }
+  },
+  "reported_01": {
+    "details.outstandingBalance": {
+      "production": "null",
+      "engine": "Money(amount=6705.18, currency=SAR)",
+      "reason": "Preserves the explicitly labelled total outstanding in the purchase SMS. The unchanged production dashboard still takes statement due only from statement SMS."
+    }
+  },
+  "reported_02": {
+    "details.outstandingBalance": {
+      "production": "null",
+      "engine": "Money(amount=6705.18, currency=SAR)",
+      "reason": "Preserves the explicitly labelled total outstanding in the purchase SMS. The unchanged production dashboard still takes statement due only from statement SMS."
+    }
+  },
+  "case6_outgoing_external_transfer": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=0593)",
+      "engine": "AccountReference(bank=Bank(id=BANK_ANB), maskedNumber=0593)",
+      "reason": "An explicit Arab National Bank label qualifies the external destination; it does not confer ownership."
+    }
+  },
+  "case8_outgoing_external_transfer_variant": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=0107)",
+      "engine": "AccountReference(bank=Bank(id=BANK_SNB), maskedNumber=0107)",
+      "reason": "An explicit Saudi National Bank label qualifies the external destination; it does not confer ownership."
+    }
+  }
+}

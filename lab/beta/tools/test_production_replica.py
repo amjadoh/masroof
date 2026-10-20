@@ -28,6 +28,9 @@ class ReplicaContractTest(unittest.TestCase):
             def files(out): return {str(p.relative_to(out)):replica.digest(p) for p in out.rglob('*') if p.is_file()}
             self.assertEqual(files(a),files(b))
             self.assertFalse(list(a.rglob('MasroofApplication.kt')))
+            self.assertFalse(list((a/'kotlin').rglob('AlJaziraMessageParser.kt')))
+            self.assertTrue(list((a/'referenceKotlin').rglob('AlJaziraMessageParser.kt')))
+            self.assertTrue(list((a/'kotlin').rglob('AlJaziraBankDetector.kt')))
             self.assertIn('com.baraa.masroof.lab.beta.replica.LabRuntime', next(a.rglob('MainActivity.kt')).read_text())
         self.assertEqual(before,replica.inventory())
 if __name__ == '__main__': unittest.main()

@@ -580,7 +580,30 @@
     "app/src/main/res/xml/locales_config.xml": "ad4f906a39489d001647b995221ca4aef2262f75dbf818a9077c05a63b4f8ce0"
   },
   "excluded": [
-    "kotlin/com/baraa/masroof/MasroofApplication.kt"
+    "kotlin/com/baraa/masroof/MasroofApplication.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/AlJaziraLoanTypeMapper.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/AlJaziraMessageParser.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParsingPipeline.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/AlJaziraSalaryIncomeHeuristics.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/AlJaziraSmsAdapter.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/CreditCardMessageHeuristics.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/CreditCardStatementHeuristics.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/classification/AlJaziraClassificationResolver.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/classification/AlJaziraClassificationRule.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/classification/AlJaziraMessageClassifier.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/AccountExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/AmountExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/BalanceExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/BillerExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/CardExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/CounterpartyExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/DateTimeExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/DueDateExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/InternationalPurchaseFactsExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/LoanLabelExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/MerchantExtractor.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/MoneyTokens.kt",
+    "kotlin/com/baraa/masroof/bank/aljazira/extraction/ReferenceExtractor.kt"
   ],
-  "bootstrapSha256": "5feedcf805a43cdad2f9847a66b8993e98d96ce02484a54bcefcbbb746968982"
+  "bootstrapSha256": "613f8c17745a35e79d3efc437e044b2637dc3b8ae54e40ea20d9cf21d7f64e0b"
 }

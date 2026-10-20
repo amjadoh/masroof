@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--output', type=pathlib.Path, default=BETA / 'build/generated/productionReplica')
     args = parser.parse_args()
     bootstrap = BETA / 'replica-overlays/bootstrap.json'; specs = json.loads(bootstrap.read_text())
-    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'], 'bootstrapSha256': digest(bootstrap)}
+    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(str(p.relative_to(SOURCE)) for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap)}
     if args.lock: LOCK.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + '\n')
     if not LOCK.exists() or json.loads(LOCK.read_text()) != actual: raise SystemExit('Production or bootstrap drift. Review and explicitly update the replica lock.')
     if args.check:
@@ -41,7 +41,12 @@ def main():
     symbols = {(kind, old.replace('.', '_')): new.replace('.', '_') for (kind, old), new in resources.items()}
     for rel in actual['files']:
         path = ROOT / rel; source_rel = str(path.relative_to(SOURCE))
-        if source_rel in actual['excluded']: continue
+        if source_rel in actual['excluded']:
+            if '/bank/aljazira/' in source_rel:
+                text = relocate(path.read_text()).replace(PACKAGE + '.bank.aljazira', 'com.baraa.masroof.lab.reference.bank.aljazira')
+                dest = out / 'referenceKotlin' / source_rel.removeprefix('kotlin/')
+                dest.parent.mkdir(parents=True,exist_ok=True); dest.write_text(text)
+            continue
         if path.suffix == '.kt':
             text = path.read_text()
             for op in specs.get(source_rel, []):
@@ -63,5 +68,14 @@ def main():
                 text = re.sub(r'(<(?:string|style|color|dimen|bool|integer|plurals|string-array|integer-array|array)\b[^>]*\bname=")([^"]+)(")', lambda m: m[1]+PREFIX+m[2]+m[3],text)
             text = re.sub(r'@([a-z]+)/([\w.]+)',lambda m: '@'+m[1]+'/'+resources.get((m[1],m[2]),m[2]),text)
         dest.parent.mkdir(parents=True,exist_ok=True); dest.write_text(text)
+        if source_rel.endswith('/bank/aljazira/AlJaziraBankDetector.kt'):
+            ref = out / 'referenceKotlin' / source_rel.removeprefix('kotlin/')
+            ref.parent.mkdir(parents=True,exist_ok=True)
+            ref.write_text(text.replace(PACKAGE + '.bank.aljazira', 'com.baraa.masroof.lab.reference.bank.aljazira'))
+    fixtures = ROOT / 'app/src/test/resources/testdata/bank_aljazira'
+    for fixture in sorted([*fixtures.rglob('*.json'), *BETA.joinpath('testdata/reported').rglob('*.json')]):
+        if 'expected' not in json.loads(fixture.read_text()): continue
+        dest = out / 'fixtures/bank-fixtures' / fixture.name
+        dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(fixture,dest)
     print(f'Generated production replica in {out}')
 if __name__ == '__main__': main()

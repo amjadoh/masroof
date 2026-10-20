@@ -1,0 +1,10 @@
+
+com.baraa.masroof.lab.beta.replica.ReplicaSetupJourneyTest:.
+com.baraa.masroof.lab.beta.replica.ReplicaFinancialParityTest:..
+com.baraa.masroof.lab.beta.replica.ReplicaEntryTest:..
+
+Time: 8.878
+
+OK (5 tests)
+
+

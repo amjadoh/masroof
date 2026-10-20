@@ -25,6 +25,30 @@
       "old": "appVersionName = BuildConfig.VERSION_NAME,\n            appLogService = appLogService,",
       "new": "appVersionName = BuildConfig.VERSION_NAME,\n            appLogService = appLogService,\n            restartProcess = { com.baraa.masroof.lab.beta.replica.LabRuntime.restart(appContext) },\n            beforeValidatedInstall = { com.baraa.masroof.lab.beta.replica.LabRuntime.beforeRestore() },",
       "count": 1
+    },
+    {
+      "old": "import com.baraa.masroof.bank.aljazira.AlJaziraBankDetector\n",
+      "new": ""
+    },
+    {
+      "old": "import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline\n",
+      "new": ""
+    },
+    {
+      "old": "import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter\n",
+      "new": ""
+    },
+    {
+      "old": "    private val alJaziraSmsAdapter: AlJaziraSmsAdapter =\n        AlJaziraSmsAdapter(\n            detector = AlJaziraBankDetector(),\n            pipeline = AlJaziraParsingPipeline(),\n        )",
+      "new": "    private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =\n        bankAdapterOverride ?: com.baraa.masroof.lab.replica.bank.NewEngineSmsAdapter(\n            com.baraa.masroof.lab.replica.application.interpretation.LabInterpretationService(appContext)::interpret,\n        )"
+    },
+    {
+      "old": "class AppContainer(\n    context: Context,\n)",
+      "new": "class AppContainer(\n    context: Context,\n    bankAdapterOverride: com.baraa.masroof.bank.BankSmsAdapter? = null,\n    smsDataSourceOverride: com.baraa.masroof.sms.datasource.SmsDataSource? = null,\n)"
+    },
+    {
+      "old": "        AndroidSmsDataSource(appContext.contentResolver)",
+      "new": "        smsDataSourceOverride ?: AndroidSmsDataSource(appContext.contentResolver)"
     }
   ],
   "kotlin/com/baraa/masroof/application/update/UpdateCheckWorker.kt": [
