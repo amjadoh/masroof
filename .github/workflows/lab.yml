@@ -45,3 +45,14 @@ jobs:
           path: |
             lab/finance-core/build/reports/tests/
             lab/bank-engine/build/reports/tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lab-acceptance-evidence
+          path: |
+            lab/beta/PRODUCTION_REPLICA_REPORT_AR.html
+            lab/beta/PRODUCTION_REPLICA_SOURCES.json
+            lab/beta/FINAL_FILE_MANIFEST.json
+            lab/beta/ENGINE_PARITY_DIFFERENCES.json
+            lab/beta/ML_SEED_EVALUATION.json
+            lab/beta/replica-overlays/
+            lab/beta/evidence/

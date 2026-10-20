@@ -4,5 +4,3 @@ com.baraa.masroof.lab.beta.replica.ReplicaSetupJourneyTest:.
 Time: 6.588
 
 OK (1 test)
-
-

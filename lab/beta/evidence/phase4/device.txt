@@ -9,5 +9,3 @@ com.baraa.masroof.lab.beta.replica.ReplicaStorageRecoveryTest:..
 Time: 18.447
 
 OK (11 tests)
-
-

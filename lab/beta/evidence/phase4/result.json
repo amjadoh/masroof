@@ -53,6 +53,10 @@
   "apkBuild": "passed",
   "lintAndDetekt": "passed",
   "recordedUiJourney": "passed",
-  "githubCi": "pending PR publication",
-  "physicalPhoneTest": false
+  "githubCi": "Tracked by replacement PR checks; local acceptance does not substitute for GitHub CI",
+  "physicalPhoneTest": false,
+  "recording": {
+    "duration": "27.310089",
+    "size": "1118610"
+  }
 }
