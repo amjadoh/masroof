@@ -15,7 +15,7 @@ class LabLearningStore(private val context: Context) : AutoCloseable {
     fun loadSeed() = FamilyModelCodec.seed(context.assets.open("ml/family-seed.json").bufferedReader().use {it.readText()})
     fun cached(seed: FamilyModelCodec.Seed): List<HumanFamilyLabel> = if (cacheFile.exists()) FamilyModelCodec.cachedLabels(cacheFile.readText(),seed) else emptyList()
     suspend fun record(row: EngineInterpretationRow) = database.learning().record(row)
-    suspend fun saveLabels(rows: List<LearningLabelRow>) { if (rows.isNotEmpty()) database.learning().labels(rows) }
+    suspend fun saveLabels(rows: List<LearningLabelRow>) { database.learning().replaceLabels(rows) }
     suspend fun labels() = database.learning().labels().filter {it.featuresVersion==FamilyFeatures.VERSION}.map { row ->
         HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,com.baraa.masroof.lab.bank.MessageFamily.valueOf(row.family),row.template,
             FamilyModelCodec.terms(Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance)

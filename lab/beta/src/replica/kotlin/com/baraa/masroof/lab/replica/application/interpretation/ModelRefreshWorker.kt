@@ -11,6 +11,7 @@ class ModelRefreshWorker(context: Context,params: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
       return try {
         val container=LabRuntime.container(applicationContext)
+        if (container.awaitStartupMaintenance()!=com.baraa.masroof.lab.replica.application.maintenance.StartupMaintenanceOutcome.READY) return Result.retry()
         val service=container.labInterpretationService?:return Result.success()
         if (inputData.getString("modelVersion")!=service.modelVersion) return Result.success()
         val pending=container.reviewRepository.listRequired().filter {

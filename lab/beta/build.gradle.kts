@@ -6,16 +6,24 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Read the protected host defaults; changes to their declaration fail visibly instead of drifting.
+val hostBuild = rootProject.file("app/build.gradle.kts").readText()
+fun hostDefault(pattern: String): String = requireNotNull(Regex(pattern).find(hostBuild)) { "Host BuildConfig declaration changed" }.groupValues[1]
+val hostVersionName = providers.gradleProperty("appVersionName").orElse(hostDefault("(?s)val appVersionName =.*?\\?: \"([^\"]+)\""))
+val hostVersionCode = providers.gradleProperty("appVersionCode").orElse(hostDefault("(?s)val appVersionCode =.*?\\?: ([0-9]+)"))
+val hostGithubOwner = hostDefault("val githubOwner = \"([^\"]+)\"")
+val hostGithubRepo = hostDefault("val githubRepo = \"([^\"]+)\"")
+
 android {
     namespace = "com.baraa.masroof.lab.beta"
     compileSdk = 35
     defaultConfig {
         minSdk = 26
-        buildConfigField("String", "VERSION_NAME", "\"${providers.gradleProperty("appVersionName").orElse("0.3.18").get()}\"")
-        buildConfigField("int", "VERSION_CODE", providers.gradleProperty("appVersionCode").orElse("71").get())
+        buildConfigField("String", "VERSION_NAME", "\"${hostVersionName.get()}\"")
+        buildConfigField("int", "VERSION_CODE", hostVersionCode.get())
         buildConfigField("String", "APPLICATION_ID", "\"com.baraa.masroof\"")
-        buildConfigField("String", "GITHUB_OWNER", "\"bakhshb\"")
-        buildConfigField("String", "GITHUB_REPO", "\"Masroof\"")
+        buildConfigField("String", "GITHUB_OWNER", "\"$hostGithubOwner\"")
+        buildConfigField("String", "GITHUB_REPO", "\"$hostGithubRepo\"")
         buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", "false")
         buildConfigField("boolean", "ENABLE_MASROOF_BETA", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -26,6 +34,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    buildTypes.getByName("debug").buildConfigField("String", "VERSION_NAME", "\"${hostVersionName.get()}-debug\"")
     buildFeatures { compose = true; buildConfig = true }
     testOptions {
         // Exercise the host app's runtime-permission behavior, not the library minSdk default.
@@ -39,7 +48,7 @@ android {
         getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin"))
         getByName("androidTest").assets.srcDir("build/generated/productionReplica/fixtures")
         getByName("androidTest").manifest.srcFile("src/replicaAndroidTest/AndroidManifest.xml")
-        getByName("androidTest").java.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "build/generated/productionReplica/referenceKotlin"))
+        getByName("androidTest").java.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "replica-verification/kotlin", "build/generated/productionReplica/referenceKotlin"))
     }
 }
 
@@ -109,5 +118,5 @@ tasks.named("preBuild").configure { dependsOn(generateProductionReplica) }
 kotlin.sourceSets {
     named("main") { kotlin.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin")) }
     named("test") { kotlin.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin")) }
-    named("androidTest") { kotlin.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "build/generated/productionReplica/referenceKotlin")) }
+    named("androidTest") { kotlin.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "replica-verification/kotlin", "build/generated/productionReplica/referenceKotlin")) }
 }

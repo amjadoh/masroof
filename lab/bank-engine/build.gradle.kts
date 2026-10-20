@@ -11,7 +11,7 @@ dependencies {
 tasks.test {
     inputs.files(rootProject.fileTree("lab") {
         include("*/build.gradle.kts", "bank-engine/src/main/kotlin/**/*.kt",
-            "finance-core/src/main/kotlin/**/*.kt", "beta/src/main/kotlin/**/*.kt")
+            "finance-core/src/main/kotlin/**/*.kt", "beta/src/main/kotlin/**/*.kt", "beta/src/replica/kotlin/**/*.kt")
     }, rootProject.file("app/build.gradle.kts")).withPathSensitivity(PathSensitivity.RELATIVE)
 }
 

@@ -57,7 +57,7 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
         result = self.run_suite("beta")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual([":lab:beta:connectedDebugAndroidTest", "--no-parallel", "--stacktrace"], self.gradle_args())
-        self.assertEqual([["pull", "/sdcard/beta-dashboard-screenshots/.", "beta-dashboard-screenshots"]], self.captures())
+        self.assertEqual([["pull", "/sdcard/Android/data/com.baraa.masroof.lab.beta.test/files/replica-journey/.", "beta-dashboard-screenshots"]], self.captures())
 
     def test_gradle_failure_is_preserved_after_screenshot_collection(self):
         for suite in ("app", "beta"):

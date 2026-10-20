@@ -53,7 +53,7 @@ class ModuleBoundaryTest {
 
     @Test fun betaHasNoDirectProductionImports() {
         val imports = Regex("(?m)^import (com\\.baraa\\.masroof\\.[^\\s]+)")
-        File(root, "lab/beta/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.forEach { file ->
+        File(root, "lab/beta/src/replica/kotlin").walkTopDown().filter { it.extension == "kt" }.forEach { file ->
             imports.findAll(file.readText()).forEach { match ->
                 assertTrue("${file.name} imports production ${match.groupValues[1]}",
                     match.groupValues[1].startsWith("com.baraa.masroof.lab.") ||

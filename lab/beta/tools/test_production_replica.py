@@ -11,7 +11,7 @@ class ReplicaContractTest(unittest.TestCase):
         self.assertEqual(lock['bootstrapSha256'], replica.digest(replica.BETA/'replica-overlays/bootstrap.json'))
     def test_no_financial_or_screen_body_overlay(self):
         specs = json.loads((replica.BETA/'replica-overlays/bootstrap.json').read_text())
-        allowed = {'MainActivity.kt','application/AppContainer.kt','application/update/UpdateCheckWorker.kt',
+        allowed = {'MainActivity.kt','application/AppContainer.kt','application/locale/AppLocaleContextFactory.kt','application/update/UpdateCheckWorker.kt',
                    'sms/receiver/IncomingSmsReceiver.kt','application/sms/LiveSmsProcessingWorker.kt',
                    'application/sms/HistoricalDerivedRecoveryWorker.kt','application/maintenance/ParsedEventFactsBackfillWorker.kt',
                    'application/sms/ExchangeRateEnrichmentScheduler.kt','application/sms/LiveSmsWorkScheduler.kt',
@@ -19,6 +19,17 @@ class ReplicaContractTest(unittest.TestCase):
                    'application/update/ApkInstaller.kt','presentation/navigation/MasroofRoot.kt'}
         self.assertEqual(allowed, {p.removeprefix('kotlin/com/baraa/masroof/') for p in specs})
         self.assertFalse(any('/dashboard/' in p or '/review/' in p or '/domain/' in p or '/room/' in p for p in specs))
+    def test_only_value_contracts_remain_from_the_parallel_financial_core(self):
+        sources = list((replica.ROOT/'lab/finance-core/src/main').rglob('*.kt'))
+        self.assertEqual(['Values.kt'], [p.name for p in sources])
+        beta = replica.BETA/'src/main/kotlin'
+        self.assertEqual(['BetaDatabase.kt'], [p.name for p in beta.rglob('*.kt')])
+        self.assertNotIn('@Database', next(beta.rglob('*.kt')).read_text())
+    def test_financial_schema_and_learning_schema_remain_separate(self):
+        source = json.loads((replica.ROOT/'app/schemas/com.baraa.masroof.data.room.MasroofDatabase/18.json').read_text())['database']
+        sidecar = json.loads((replica.BETA/'replica-schemas/com.baraa.masroof.lab.replica.data.learning.LearningDatabase/1.json').read_text())['database']
+        self.assertEqual(14, len(source['entities']))
+        self.assertEqual({'engine_interpretation','learning_label'}, {row['tableName'] for row in sidecar['entities']})
     def test_generation_is_deterministic_and_preserves_source(self):
         before = replica.inventory()
         with tempfile.TemporaryDirectory() as temp:

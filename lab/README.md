@@ -1,13 +1,20 @@
-# Masroof 2 Beta
+# Masroof Lab: production UI, new interpretation engine
 
-The lab now contains only the independent BankEngine, Finance Core, Beta app and isolated upgrade test host. Open Beta through Settings → App → About → Developer settings → Masroof 2.
+Enter through the existing APK: Settings → Developer settings → Masroof 2. No separate APK or upgrade-host installation is needed.
 
-The copied legacy parser, old Parsing Lab app, comparison adapters, old-engine tests and benchmark reports have been removed under explicit user authorization. This iteration starts fresh in `masroof_beta_v2.db` with isolated `masroof_beta_v2_prefs`. No old lab or production data is migrated, opened or deleted. Current-schema encrypted backups preserve labels, decisions and audit history. Production parsing, financial code and data are unchanged.
+The build generates the existing app's UI, ViewModels, application workflows and Room schema into a separate package. Only reviewed bootstrap overlays change wiring. Financial posting, ownership, review, dashboards, backup and setup remain the original implementation. The original `app/` and `ui-kit/` sources are read-only. The old parallel Lab UI and financial calculators have been removed.
 
-Use `:lab:bank-engine:test`, `:lab:finance-core:test`, `:lab:beta:testDebugUnitTest` and the existing latest-stable Android native/lifecycle CI checks. Clear transactions use one validated current interpretation and uniquely confirmed owned accounts/cards. Partial, unsafe, ambiguous and unexecuted records remain unposted; security and informational messages never become transactions. Manual corrections and approvals keep authority.
+- Financial data: `lab_replica_masroof.db`, the production v18 schema with fourteen tables.
+- Learning/provenance: `lab_replica_learning.db`, two advisory tables; no duplicated ledger.
+- Model: scoped `files/lab_replica/learning/family-model.json`, seeded from the reproducible trained asset.
+- Preferences, files, work names, keystore alias and provider are scoped to Lab. Reset affects this namespace only. Old `masroof_beta*.db` files are preserved and never migrated or opened.
 
-All 42 fixture files from the removed parser module were byte-identical to the retained canonical `app/src/test/resources/testdata/bank_aljazira` corpus. Their only copies under the removed module were redundant; canonical inputs and expectations were not edited. Human learning labels and original messages are stored in the independent current Beta database. Production migration/release remain out of scope. See [the implemented lab parity report](beta/PRODUCTION_PARITY_RESULT_AR.html) for schema and lifecycle details.
+`BankEngine` supplies validated parsed facts through the original bank-adapter contract. Known rules run first. A local multinomial Naive Bayes model can assist new titles only for evaluated enabled families (currently incoming transfers). Explicit unambiguous review decisions teach templates for later messages and trigger one batch refresh of unresolved unknowns. ML never supplies financial amounts, ownership or transaction approval. Ambiguous/conflicting/unsupported evidence remains reviewable.
 
-Offline Python training, benchmark tools and their sample training annotations were removed at the user’s request. Human corrections stored in Beta remain intact; ML training and runtime integration are still pending.
+Build: `./gradlew :app:assembleDebug`. Verify: `python3 lab/beta/tools/test_production_replica.py`, `./gradlew testDebugUnitTest :lab:bank-engine:test :lab:finance-core:test`, and native/lifecycle CI. Reproduce training: `python3 lab/bank-engine/tools/train_family_model.py --check` with JDK 17 and the Android SDK configured.
 
-Build the separate SMS-enabled lab host with `./gradlew :lab:upgrade-host:assembleStandaloneDebug`. Its package is `com.baraa.masroof.lab.standalone`; live intake is registered only in this flavor. Production sources and its manifest are unchanged. The normal embedded Beta entry retains historical import.
+Source changes require reviewing the bootstrap allowlist and explicitly updating `PRODUCTION_REPLICA_SOURCES.json` with `python3 lab/beta/tools/generate_production_replica.py --lock`. There are no hand-maintained screen copies. The test-only reference parser never ships in the runtime. `finance-core` retains only BankEngine money/bank value contracts; the original production financial workflows own all calculations.
+
+`upgrade-host` is CI-only: two synthetic signed versions verify update preservation and the original encrypted backup service. Historical M0 host isolation tests retain a tiny deprecated diagnostic facade and a retired schema path marker; neither implements a second financial engine or product screen.
+
+See [the HTML implementation and acceptance report](beta/PRODUCTION_REPLICA_REPORT_AR.html), [engine differences](beta/ENGINE_PARITY_DIFFERENCES.json), and [ML evaluation](beta/ML_SEED_EVALUATION.json). Native evidence is from an Android 16 emulator, not a user's phone.
