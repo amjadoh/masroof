@@ -32,7 +32,7 @@ if [ "$1" = app ]; then
   adb pull /sdcard/m19-statement-screenshots/. m19-statement-screenshots || true
 else
   mkdir -p beta-dashboard-screenshots
-  adb pull /sdcard/beta-dashboard-screenshots/. beta-dashboard-screenshots || true
+  adb pull /sdcard/Android/data/com.baraa.masroof.lab.beta.test/files/replica-journey/. beta-dashboard-screenshots || true
 fi
 if [ "$smoke_status" -ne 0 ]; then exit "$smoke_status"; fi
 if [ "$1" = app ] && [ "$smoke_sharded" = false ]; then

@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-// Isolated lab hosts: synthetic update rehearsals and the standalone SMS-enabled lab.
+// CI-only synthetic signed update rehearsal; users enter Lab from the existing app.
 android {
     namespace = "com.baraa.masroof.lab.upgrade"
     compileSdk = 35
@@ -24,13 +24,12 @@ android {
             keyPassword = "synthetic-test-only"
         }
     }
-    // Flavor signing keeps rehearsal identities isolated and the standalone debug identity stable.
+    // Both versions share an ephemeral dedicated test certificate.
     buildTypes.getByName("debug").signingConfig = null
     flavorDimensions += "rehearsal"
     productFlavors {
         create("before") { dimension = "rehearsal"; versionCode = 1; versionName = "rehearsal-1"; signingConfig=signingConfigs.getByName("rehearsal") }
         create("after") { dimension = "rehearsal"; versionCode = 2; versionName = "rehearsal-2"; signingConfig=signingConfigs.getByName("rehearsal") }
-        create("standalone") { dimension="rehearsal"; applicationId="com.baraa.masroof.lab.standalone"; testApplicationId="com.baraa.masroof.lab.standalone.test"; versionCode=1; versionName="lab-parity-1"; signingConfig=signingConfigs.getByName("debug") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,7 +37,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { buildConfig = true }
-    sourceSets.getByName("androidTest").java.srcDir("../beta/verification/kotlin")
+    sourceSets.getByName("androidTest").java.srcDir("../beta/replica-verification/kotlin")
 }
 androidComponents.beforeVariants(androidComponents.selector().withBuildType("release")) {it.enable=false}
 
@@ -67,6 +66,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.work.runtime.ktx)
     androidTestImplementation(project(":lab:finance-core"))
+    androidTestImplementation(libs.kotlinx.coroutines.android)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.core)

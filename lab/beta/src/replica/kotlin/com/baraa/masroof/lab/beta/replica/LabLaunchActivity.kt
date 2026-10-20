@@ -26,7 +26,7 @@ class LabLaunchActivity : ComponentActivity() {
             var failed by remember { mutableStateOf(false) }
             LaunchedEffect(attempt) {
                 failed = false
-                val opened = withContext(Dispatchers.IO) { runCatching { LabRuntime.container(this@LabLaunchActivity) }.isSuccess }
+                val opened = withContext(Dispatchers.IO) { runCatching { LabRuntime.awaitReset(); LabRuntime.container(this@LabLaunchActivity) }.isSuccess }
                 if (opened) {
                     LabRuntime.enableLive(this@LabLaunchActivity)
                     startActivity(Intent(this@LabLaunchActivity, MainActivity::class.java))

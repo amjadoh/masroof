@@ -98,6 +98,22 @@ class ReplicaSetupJourneyTest {
             screenshot("08-dashboard-with-loan")
             click(R.string.lab_replica_approved_nav_review)
             screenshot("09-review-after-ownership")
+            // A genuinely new title stays in the original review flow, not the cards settings.
+            val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 23\nالمبلغ المتبقي: SAR 298\nلـ: تمويل شخصي\nفي: "+java.time.LocalDateTime.now().minusMinutes(2).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+            runBlocking {container.processRawSmsUseCase.ingest(RawSms("ui-unknown-loan","AlJazira",body,java.time.Instant.now(),"ui-unknown-loan",com.baraa.masroof.lab.replica.sms.hash.SmsBodyHasher.sha256Hex(body)))}
+            compose.runOnUiThread {review.refresh()}
+            compose.waitUntil(20_000) {review.uiState.value.items.size==1}
+            compose.onNodeWithText(text(R.string.lab_replica_reference_review_evidence)).performScrollTo().performClick()
+            compose.waitUntil(20_000) {review.uiState.value.selectedDetail!=null}
+            screenshot("10-original-review-detail")
+            val action=compose.onNodeWithTag(reviewResolveTypeTestTag(FinancialTransactionType.LOAN_REPAYMENT))
+            action.performScrollTo()
+            screenshot("10b-original-classification-actions")
+            action.performClick()
+            compose.waitUntil(20_000) {review.uiState.value.selectedDetail==null && review.uiState.value.items.isEmpty()}
+            compose.onNodeWithText(text(R.string.lab_replica_review_empty)).assertExists()
+            screenshot("11-review-resolved-in-place")
+
         } finally {
             compose.runOnUiThread { store.clear() }
             container.close()

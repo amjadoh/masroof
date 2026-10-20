@@ -58,6 +58,15 @@ class FamilyLearningTest {
         val conflict=label.copy(rawId="raw-two",decisionId="human-two",family=MessageFamily.FEE)
         assertNull(FamilyClassifier(seed.model,listOf(label,conflict)).suggest(bank.value,body,f.title))
     }
+    @Test fun aLaterHumanIgnoreRevokesTheFinancialTemplateWithoutAutoIgnoringNewMessages() {
+        val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
+        val f=FamilyFeatures.extract(body)
+        val earlier=HumanFamilyLabel(bank.value,"raw","loan",MessageFamily.FINANCING_INSTALLMENT,f.template,f.terms,1L,"USER_EVENT_KIND")
+        val ignored=earlier.copy(decisionId="ignored",family=MessageFamily.NON_FINANCIAL,at=2L,provenance="USER_NON_FINANCIAL")
+        val actual=parse(body,FamilyModelCodec.checked(seed,listOf(earlier,ignored)))
+        assertEquals(MessageFamily.UNKNOWN,actual.facts.family)
+        assertNotEquals(ParseStatus.SUCCESS,actual.status)
+    }
     @Test fun corruptedModelsAreRejectedAndCannotLeakAcrossBanks() {
         assertThrows(IllegalArgumentException::class.java) {seed.model.copy(documents=seed.model.documents.mapValues {-1L})}
         val c=FamilyClassifier(seed.model)

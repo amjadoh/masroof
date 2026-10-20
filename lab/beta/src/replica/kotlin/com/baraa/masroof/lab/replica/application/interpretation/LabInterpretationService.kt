@@ -77,12 +77,17 @@ class LabInterpretationService(
         val decisions=mutableListOf<Decision>()
         val ids=raw.listIdsByReceivedAt()
         corrections.listForRawSmsIds(ids).forEach { correction ->
-            correction.correctedType?.takeIf {it.name!="UNKNOWN"}?.let {family ->
+            correction.correctedType?.let {family ->
                 decisions += Decision("correction:${correction.id}",correction.targetRawSmsId,MessageFamily.valueOf(family.name),correction.createdAt.toEpochMilli(),"USER_MESSAGE_FAMILY")
             }
         }
         val reviewRows=reviews.listAll()
-        for (review in reviewRows.filter {it.status==ReviewStatus.RESOLVED && it.resolutionKind==ReviewResolutionKind.USER_FINANCIAL_TYPE}) {
+        for (review in reviewRows.filter {it.status==ReviewStatus.RESOLVED && it.resolutionKind in setOf(ReviewResolutionKind.USER_FINANCIAL_TYPE,ReviewResolutionKind.USER_NON_FINANCIAL)}) {
+            if (review.resolutionKind==ReviewResolutionKind.USER_NON_FINANCIAL) {
+                val at=review.resolvedAt?.toEpochMilli()?:continue
+                decisions += Decision("ignored:${review.id}:$at",review.rawSmsId,MessageFamily.NON_FINANCIAL,at,"USER_NON_FINANCIAL")
+                continue
+            }
             val transaction=review.resolvedTransactionId?.let {transactions.getById(it)}?:continue
             val family=eventKindFamily(transaction.type)?:continue
             val at=review.resolvedAt?.toEpochMilli()?:continue

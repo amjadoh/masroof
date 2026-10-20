@@ -33,6 +33,16 @@ class LabStorageContextTest {
         assertEquals("lab",lab.createConfigurationContext(Configuration()).getSharedPreferences("theme",0).getString("value",null))
         assertTrue(lab.filesDir.canonicalPath.startsWith(host.filesDir.canonicalPath + "/lab_replica"))
     }
+    @Test fun choosingLabLanguageDoesNotChangeTheHostsProcessLocale() {
+        val before=java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.US)
+            val wrapped=com.baraa.masroof.lab.replica.application.locale.AppLocaleContextFactory.wrap(LabStorageContext(host),"ar")
+            assertEquals("ar",wrapped.resources.configuration.locales[0].language)
+            assertEquals(java.util.Locale.US,java.util.Locale.getDefault())
+            assertTrue(wrapped.applicationContext is LabStorageContext)
+        } finally {java.util.Locale.setDefault(before)}
+    }
     @Test fun databaseCannotOpenAnAbsoluteProductionPath() {
         val lab = LabStorageContext(host)
         assertThrows(IllegalArgumentException::class.java) { lab.getDatabasePath(host.getDatabasePath("masroof.db").path) }

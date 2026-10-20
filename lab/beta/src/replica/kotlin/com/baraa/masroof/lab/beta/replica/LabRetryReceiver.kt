@@ -25,8 +25,10 @@ class LabRetryReceiver : BroadcastReceiver() {
 class LabRecoveryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = try {
         val container = LabRuntime.container(applicationContext)
-        container.awaitPostStartupBackgroundWorkForTesting()
-        if (container.awaitStartupMaintenance() == StartupMaintenanceOutcome.READY) Result.success() else Result.retry()
+        if (container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) Result.retry() else {
+            container.liveSmsIntake.schedulePendingProcessing()
+            Result.success()
+        }
     } catch (e: CancellationException) { throw e }
       catch (_: Exception) { Result.retry() }
     companion object { const val NAME = "lab-replica:startup-recovery" }

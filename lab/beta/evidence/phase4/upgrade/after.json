@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "uid": 10251,
+  "pid": 22215,
+  "snapshot": {
+    "schema": 18,
+    "financialRows": 40,
+    "fingerprint": "c30512049a31b60ac21ff68cd0c4476844e7e1fa24a31af0c8361227a1f5547e"
+  },
+  "performance": {
+    "definition": "production dashboard load over 40 synthetic transactions",
+    "warmup": 2,
+    "samplesMs": [
+      27.430781,
+      28.679452,
+      29.022988,
+      31.403919,
+      31.90426
+    ],
+    "p50Ms": 29.022988,
+    "p95Ms": 31.90426,
+    "api": 36,
+    "device": "sdk_gphone64_x86_64",
+    "acceptanceBudget": null
+  },
+  "encryptedRestoreAcrossUpdate": true,
+  "wrongPasswordPreservedCurrent": true,
+  "tamperingPreservedCurrent": true,
+  "schemaTransition": "same production-replica v18 schema; no legacy lab migration"
+}

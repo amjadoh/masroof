@@ -24,9 +24,9 @@ class LabStorageContext(context: Context, private val prefix: String = PREFIX) :
         return baseContext.getDatabasePath(if (name.startsWith(prefix)) name else prefix + name)
     }
     override fun openOrCreateDatabase(name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?): SQLiteDatabase =
-        baseContext.openOrCreateDatabase(getDatabasePath(name).absolutePath, mode, factory)
+        baseContext.openOrCreateDatabase(getDatabasePath(name).absolutePath, mode, factory, PRESERVE_CORRUPT)
     override fun openOrCreateDatabase(name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?, errorHandler: DatabaseErrorHandler?): SQLiteDatabase =
-        baseContext.openOrCreateDatabase(getDatabasePath(name).absolutePath, mode, factory, errorHandler)
+        baseContext.openOrCreateDatabase(getDatabasePath(name).absolutePath, mode, factory, PRESERVE_CORRUPT)
     override fun deleteDatabase(name: String): Boolean = baseContext.deleteDatabase(getDatabasePath(name).absolutePath)
     override fun databaseList(): Array<String> = baseContext.databaseList().filter { it.startsWith(prefix) }.toTypedArray()
     override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
@@ -49,12 +49,14 @@ class LabStorageContext(context: Context, private val prefix: String = PREFIX) :
         require('/' !in name && '\\' !in name); return directory(filesDir, name)
     }
     override fun getExternalFilesDir(type: String?): File? = baseContext.getExternalFilesDir(type)?.let { directory(it) }
-    override fun getExternalFilesDirs(type: String?): Array<File> = baseContext.getExternalFilesDirs(type).map { directory(it) }.toTypedArray()
+    override fun getExternalFilesDirs(type: String?): Array<File> = baseContext.getExternalFilesDirs(type).mapNotNull { item -> item?.let { directory(it) } }.toTypedArray()
     override fun getExternalCacheDir(): File? = baseContext.externalCacheDir?.let { directory(it) }
-    override fun getExternalCacheDirs(): Array<File> = baseContext.externalCacheDirs.map { directory(it) }.toTypedArray()
+    override fun getExternalCacheDirs(): Array<File> = baseContext.externalCacheDirs.mapNotNull { item -> item?.let { directory(it) } }.toTypedArray()
     companion object {
         const val PREFIX = "lab_replica_"
         internal const val INDEX = "lab_replica_storage_index"
         private val PREF_LOCK = Any()
+        // Android's default corruption handler deletes the file before the recovery UI can open.
+        private val PRESERVE_CORRUPT = DatabaseErrorHandler { throw android.database.sqlite.SQLiteDatabaseCorruptException("Lab database preserved for explicit recovery") }
     }
 }

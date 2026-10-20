@@ -28,6 +28,10 @@ jobs:
       # Pure JVM modules have separate test tasks and run only here.
       - name: Test lab JVM engines and domain contracts
         run: ./gradlew :lab:finance-core:test :lab:bank-engine:test --stacktrace
+      - name: Verify replica source contract and reproducible trained model
+        run: |
+          python3 lab/beta/tools/test_production_replica.py
+          python3 lab/bank-engine/tools/train_family_model.py --check --skip-export
       - name: Build Masroof with integrated lab
         run: ./gradlew :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
@@ -40,5 +44,4 @@ jobs:
           name: lab-test-reports
           path: |
             lab/finance-core/build/reports/tests/
-            lab/finance-core/build/reports/m8-parity/
             lab/bank-engine/build/reports/tests/

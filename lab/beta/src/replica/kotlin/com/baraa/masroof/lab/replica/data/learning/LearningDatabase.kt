@@ -18,6 +18,8 @@ data class LearningLabelRow(
 interface LearningDao {
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun record(row: EngineInterpretationRow)
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun labels(rows: List<LearningLabelRow>)
+    @Query("DELETE FROM learning_label") suspend fun clearLabels()
+    @Transaction suspend fun replaceLabels(rows: List<LearningLabelRow>) {clearLabels();if(rows.isNotEmpty()) labels(rows)}
     @Query("SELECT * FROM learning_label ORDER BY sourceAt,decisionId") suspend fun labels(): List<LearningLabelRow>
     @Query("SELECT * FROM engine_interpretation WHERE rawId=:rawId ORDER BY interpretedAt") suspend fun history(rawId: String): List<EngineInterpretationRow>
 }
