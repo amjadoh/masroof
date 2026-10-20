@@ -94,6 +94,7 @@ data class Interpretation(
     val evidence: List<Evidence>,
     val blockers: Set<Blocker>,
     val diagnostics: List<InterpretationDiagnostic> = emptyList(),
+    val familyInference: com.baraa.masroof.lab.bank.interpretation.FamilySuggestion? = null,
 ) {
     init {
         require(evidenceId.isNotBlank())

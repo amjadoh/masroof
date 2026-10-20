@@ -38,7 +38,7 @@ object LabRuntime {
         return current
     }
     @Synchronized internal fun endReset() { resetting = false }
-    fun beforeRestore() { /* Learning caches are invalidated by the restore hook in the learning phase. */ }
+    fun beforeRestore() { current?.labInterpretationService?.invalidateForRestore() }
     fun restart(context: Context) {
         close()
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))

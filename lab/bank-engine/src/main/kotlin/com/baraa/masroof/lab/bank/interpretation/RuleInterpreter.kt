@@ -7,7 +7,7 @@ import java.security.MessageDigest
 import java.time.LocalDateTime
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
-class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
+class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAssist? = null) : BankInterpreter {
     private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
         phrases = it.phrases.toList(), excludes = it.excludes.toList(),
         labels = it.labels.mapValues { entry -> entry.value.toList() },
@@ -34,6 +34,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val blockers = linkedSetOf<Blocker>()
         val diagnostics = mutableListOf<InterpretationDiagnostic>()
         val evidence = mutableListOf<Evidence>()
+        var inference: FamilySuggestion? = null
         fun problem(code: String, blocker: Blocker = Blocker.VALIDATION_ERROR) {
             blockers += blocker
             diagnostics += InterpretationDiagnostic(code, code, DiagnosticSeverity.WARNING)
@@ -41,7 +42,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         fun result(facts: Facts = Facts(MessageFamily.UNKNOWN), status: ParseStatus = ParseStatus.REVIEW_REQUIRED): Interpretation {
             if (facts.family == MessageFamily.UNKNOWN) blockers += Blocker.UNKNOWN_FAMILY
             return Interpretation(input.evidenceId, version, banks.singleOrNull(), facts, status,
-                null, evidence.toList(), blockers.toSet(), diagnostics.toList())
+                inference?.let { Confidence(it.score,listOf("family_origin:${it.origin}","model:${it.modelVersion}")) }, evidence.toList(), blockers.toSet(), diagnostics.toList(), inference)
         }
         if (banks.size != 1) {
             problem("SENDER_NOT_UNIQUE", if (banks.isEmpty()) Blocker.UNKNOWN_BANK else Blocker.AMBIGUOUS_BANK)
@@ -86,7 +87,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val candidates = snapshot.rules.filter { rule -> rule.phrases.any { titleMatches(it).isNotEmpty() } && rule.excludes.none(::contains) }
         // A configured compound title (e.g. refund of a purchase) consumes its nested literal,
         // but independent movement cues on another span still conflict.
-        val matching = candidates.filter { rule ->
+        var matching = candidates.filter { rule ->
             val spans = rule.phrases.flatMap(::titleMatches).map { it.range }
             spans.any { span -> candidates.filter { it.family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE }.none { other ->
                 other.phrases.flatMap(::titleMatches).any { it.range.first <= span.first && it.range.last >= span.last && it.range != span }
@@ -95,12 +96,25 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         matching.forEach { rule -> rule.phrases.forEach { phrase -> titleMatches(phrase).forEach { match ->
             evidence += source.evidence(rule.id, "family", (lineStart + leading + match.range.first)..(lineStart + leading + match.range.last))
         } } }
-        if (matching.isEmpty()) return result()
-        if (matching.map { it.family to it.direction }.distinct().size != 1) {
+        if (matching.isNotEmpty() && matching.map { it.family to it.direction }.distinct().size != 1) {
             problem("FAMILY_OR_DIRECTION_CONFLICT", Blocker.CONFLICTING_FACTS); return result()
         }
-        val family = matching.first().family
-        val direction = matching.first().direction
+        if (matching.isEmpty()) {
+            val suggestion = familyAssist?.suggest(input,title)
+            val supported = suggestion?.let { candidate -> snapshot.rules.filter {it.family==candidate.family} }.orEmpty()
+            if (suggestion!=null && supported.isNotEmpty() && suggestion.family in com.baraa.masroof.lab.bank.learning.FamilyModel.FINANCIAL) {
+                inference = suggestion
+                matching = supported
+                if (lineEnd>lineStart+leading) evidence += source.evidence("family.${suggestion.origin.name.lowercase()}","family",(lineStart+leading)..(lineEnd-1))
+            }
+        }
+        val family = matching.firstOrNull()?.family ?: MessageFamily.UNKNOWN
+        val direction = matching.firstOrNull()?.direction ?: MoneyDirection.UNKNOWN
+        if (family==MessageFamily.UNKNOWN) {
+            problem("UNKNOWN_FAMILY",Blocker.UNKNOWN_FAMILY)
+            matching = snapshot.rules // Review-only extraction of labelled facts; never automatic authority.
+        }
+        val familyPhrases = matching.flatMap {it.phrases} + listOfNotNull(title.takeIf {inference!=null})
         // A second bare movement cue still conflicts; moving it into a party field does not.
         snapshot.rules.filter { it.family != family && it.excludes.none(::contains) }.forEach { rule ->
             rule.phrases.forEach { phrase -> source.phrase(phrase).findAll(source.text).forEach { match ->
@@ -133,7 +147,14 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
         if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
-        fun labels(field: ExtractionField) = matching.flatMap { it.labels[field].orEmpty() }.distinct()
+        fun labels(field: ExtractionField): List<String> {
+            val sets=matching.map {it.labels[field].orEmpty()}
+            // Unknown messages retain only unambiguous merchant labels. A loan/account "from"
+            // role must not become a merchant merely because a refund profile also uses it.
+            return if (family==MessageFamily.UNKNOWN && field==ExtractionField.MERCHANT)
+                sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
+            else sets.flatten().distinct()
+        }
         data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
         val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
         val secondaryRanges = details.reserved.toMutableList()
@@ -220,8 +241,8 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             problem("CONFLICTING_FOREIGN_PRINCIPAL", Blocker.CONFLICTING_FACTS)
         val observations = matching.flatMap { it.observations.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }
         val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem)
-            .resolve(family, banks.single(), matching.flatMap { it.phrases }, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
-        val observed = ObservationExtractor(source, observations, family, matching.flatMap { it.phrases }, evidence, ::problem).read()
+            .resolve(family, banks.single(), familyPhrases, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
+        val observed = ObservationExtractor(source, observations, family, familyPhrases, evidence, ::problem).read()
         if (observed.card == CardChannel.STATEMENT && family !in INFORMATIONAL) problem("STATEMENT_CHANNEL_IN_MOVEMENT", Blocker.CONFLICTING_FACTS)
         if (observed.balanceMarker && balance == null) problem("MISSING_OBSERVED_BALANCE")
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
@@ -237,7 +258,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         if (roleEvidence.any { a -> roleEvidence.any { b -> a.field != b.field && a.start < b.end && b.start < a.end } })
             problem("FIELD_ROLE_CONFLICT", Blocker.CONFLICTING_FACTS)
         val familyCollision = diagnostics.any { it.code in setOf("FAMILY_CONTEXT_CONFLICT", "MOVEMENT_NOTICE_CONFLICT", "TRANSFER_CONTEXT_CONFLICT", "STATEMENT_CHANNEL_IN_MOVEMENT") }
-        val facts = Facts(if (familyCollision) MessageFamily.UNKNOWN else family, amount, if (family in INFORMATIONAL) null else direction,
+        val facts = Facts(if (familyCollision) MessageFamily.UNKNOWN else family, amount, if (family in INFORMATIONAL || family==MessageFamily.UNKNOWN) null else direction,
             sourceAccount = account?.let { AccountReference(sourceBank, it) },
             destinationAccount = destination?.let { AccountReference(destinationBank, it) },
             card = card?.let { CardReference(banks.single(), it) }, merchant = merchants.singleOrNull(),
@@ -258,7 +279,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v10"
+        const val VERSION = "bank-rules-independent-v11"
         private const val MAX_BODY = 16000
         private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")

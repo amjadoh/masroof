@@ -40,7 +40,7 @@
     },
     {
       "old": "    private val alJaziraSmsAdapter: AlJaziraSmsAdapter =\n        AlJaziraSmsAdapter(\n            detector = AlJaziraBankDetector(),\n            pipeline = AlJaziraParsingPipeline(),\n        )",
-      "new": "    private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =\n        bankAdapterOverride ?: com.baraa.masroof.lab.replica.bank.NewEngineSmsAdapter(\n            com.baraa.masroof.lab.replica.application.interpretation.LabInterpretationService(appContext)::interpret,\n        )"
+      "new": "    val labInterpretationService = if (bankAdapterOverride==null)\n        com.baraa.masroof.lab.replica.application.interpretation.LabInterpretationService(appContext,rawSmsRepository,parsedEventRepository,\n            userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService) else null\n    private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =\n        bankAdapterOverride ?: com.baraa.masroof.lab.replica.bank.NewEngineSmsAdapter(requireNotNull(labInterpretationService)::interpret)"
     },
     {
       "old": "class AppContainer(\n    context: Context,\n)",
@@ -49,6 +49,18 @@
     {
       "old": "        AndroidSmsDataSource(appContext.contentResolver)",
       "new": "        smsDataSourceOverride ?: AndroidSmsDataSource(appContext.contentResolver)"
+    },
+    {
+      "old": "    private val appContext = context.applicationContext",
+      "new": "    private val appContext = com.baraa.masroof.lab.beta.replica.LabRuntime.context(context.applicationContext)"
+    },
+    {
+      "old": "    fun runStartupMaintenance() {",
+      "new": "    fun runStartupMaintenance() {\n        labInterpretationService?.startLearning(database.invalidationTracker)"
+    },
+    {
+      "old": "        applicationScope.cancel()\n        databaseAccessGate.retire()",
+      "new": "        applicationScope.cancel()\n        labInterpretationService?.close()\n        databaseAccessGate.retire()"
     }
   ],
   "kotlin/com/baraa/masroof/application/update/UpdateCheckWorker.kt": [
