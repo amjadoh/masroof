@@ -31,6 +31,8 @@ class ReplicaSetupJourneyTest {
     @get:Rule val compose = createComposeRule()
     private val host = InstrumentationRegistry.getInstrumentation().targetContext
     @Test fun setupProvidesFinishButtonThenDisplaysFinancialDataAndOriginalNavigation() {
+        require(host.packageName=="com.baraa.masroof.lab.beta.test")
+        shell("rm -rf /sdcard/beta-dashboard-screenshots")
         runBlocking { LabResetWorkflow.reset(host) }
         val container = AppContainer(LabStorageContext(host),smsDataSourceOverride = ReferenceHistory.source(host))
         container.appLocaleRepository.setLanguageTag("en")
@@ -132,5 +134,17 @@ class ReplicaSetupJourneyTest {
     private fun screenshot(name: String) {
         val file = File(host.getExternalFilesDir(null),"replica-journey/$name.png").apply { parentFile!!.mkdirs() }
         file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+        // connectedDebugAndroidTest uninstalls its test UID before the shell can collect evidence.
+        // Publish via the shell identity, as production's native screenshot tests do.
+        require(name.matches(Regex("[a-z0-9-]+")))
+        val target="/sdcard/beta-dashboard-screenshots/$name.png"
+        shell("mkdir -p /sdcard/beta-dashboard-screenshots")
+        shell("cp ${file.absolutePath} $target")
+        val listing=shell("ls -l $target")
+        assertTrue("Screenshot was not published as a regular file: $name",listing.trimStart().startsWith("-") && listing.contains("$name.png"))
+    }
+    private fun shell(command: String): String {
+        val descriptor=InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+        return android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use {it.readText()}
     }
 }

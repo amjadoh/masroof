@@ -26,7 +26,7 @@ class ReplicaResetRecreationTest {
         val lease=scope.launch {c.databaseAccessGate.withAccess {entered.complete(Unit);release.await()}}
         val scenario=ActivityScenario.launch(MainActivity::class.java)
         try {
-            compose.waitUntil(15_000) {compose.onAllNodesWithText("LAB").fetchSemanticsNodes().isNotEmpty()}
+            compose.waitUntil(15_000) {compose.onAllNodesWithText("LAB").fetchSemanticsNodes(atLeastOneRootRequired=false).isNotEmpty()}
             entered.await()
             val reset=scope.async {LabResetWorkflow.reset(host)}
             withTimeout(10_000) {while(!LabRuntime.isResetting) delay(10)}
@@ -41,7 +41,7 @@ class ReplicaResetRecreationTest {
             release.complete(Unit);lease.join();reset.await()
             val scoped=LabStorageContext(host)
             val localeContext=com.baraa.masroof.lab.replica.presentation.locale.AppLocaleContext.wrap(scoped,com.baraa.masroof.lab.replica.presentation.locale.AppLocaleContext.readStoredLanguageTag(scoped))
-            compose.waitUntil(20_000) {compose.onAllNodesWithText(localeContext.getString(R.string.lab_replica_onboarding_welcome_title)).fetchSemanticsNodes().isNotEmpty()}
+            compose.waitUntil(20_000) {compose.onAllNodesWithText(localeContext.getString(R.string.lab_replica_onboarding_welcome_title)).fetchSemanticsNodes(atLeastOneRootRequired=false).isNotEmpty()}
             assertFalse(LabRuntime.isResetting)
             assertTrue(LabRuntime.container(host).financialTransactionRepository.listAll().isEmpty())
         } finally {
