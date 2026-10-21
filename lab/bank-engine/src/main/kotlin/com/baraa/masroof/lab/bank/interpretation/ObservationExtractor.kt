@@ -80,6 +80,15 @@ internal class ObservationExtractor(
         val loan = when (choose(listOf("loan.personal", "loan.auto", "loan.mortgage"), "observation.loanType", setOf(MessageFamily.FINANCING_INSTALLMENT), "counterparty")) {
             "loan.personal" -> LoanType.PERSONAL; "loan.auto" -> LoanType.AUTO; "loan.mortgage" -> LoanType.MORTGAGE; else -> null
         }
+        // Match production's generic financing default only after specific product observations.
+        // A conflicting explicit product remains blocked; it must not become a generic personal loan.
+        val genericLoan = if (loan == null && family == MessageFamily.FINANCING_INSTALLMENT &&
+            evidence.none { it.field in setOf("observation.loan.personal", "observation.loan.auto", "observation.loan.mortgage") }) {
+            configured["loan.generic"].orEmpty().flatMap { phrase -> source.phrase(phrase).findAll(source.text).toList() }
+                .filter { scoped(it.range, "counterparty") }.onEach {
+                    evidence += source.evidence("extract.observation.financing_default", "observation.loan.personal", it.range)
+                }.takeIf { it.isNotEmpty() }?.let { LoanType.PERSONAL }
+        } else null
         val salary = choose(listOf("income.salary"), "observation.incomeType", setOf(MessageFamily.TRANSFER_IN))?.let { true }
         val balance = configured["card.available_balance"].orEmpty().any { phrase ->
             source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "AVAILABLE_BALANCE") }.onEach {
@@ -98,7 +107,7 @@ internal class ObservationExtractor(
                 evidence += source.evidence("extract.observation.debit_source", "observation.card.debit", it.range)
             }.toList().isNotEmpty()
         }
-        return ObservedFacts(if (debitSource) CardChannel.DEBIT else card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan,
+        return ObservedFacts(if (debitSource) CardChannel.DEBIT else card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan ?: genericLoan,
             salary ?: false.takeIf { family == MessageFamily.TRANSFER_IN }, balance)
     }
 }

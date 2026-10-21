@@ -36,7 +36,7 @@ class FamilyFeatureExportTest {
         val families = listOf("TRANSFER_OUT","TRANSFER_IN","TRANSFER_IN","PURCHASE","PURCHASE","TRANSFER_OUT","PURCHASE","TRANSFER_OUT","TRANSFER_IN","FINANCING_INSTALLMENT")
         reference.forEachIndexed { index,element -> val row=element.jsonObject; add(row.getValue("id").jsonPrimitive.content,row.getValue("body").jsonPrimitive.content,families[index]) }
         val output = buildJsonObject { put("cleaningVersion",FamilyInputCleaner.VERSION);put("featuresVersion",FamilyInputCleaner.FEATURES_VERSION);put("bankId","BANK_ALJAZIRA");put("rows",JsonArray(rows.sortedBy {it.getValue("id").jsonPrimitive.content}));put("rejected",JsonArray(rejected)) }
-        File("build/model-training/features.json").apply {parentFile.mkdirs();writeText(output.toString())}
+        File("build/model-training/features.json").apply {parentFile!!.mkdirs();writeText(output.toString())}
         assertEquals(50,rows.size+rejected.size)
     }
 }

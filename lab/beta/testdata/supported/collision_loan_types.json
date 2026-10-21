@@ -1,0 +1,9 @@
+{
+  "id": "collision_loan_types",
+  "sender": "AlJazira",
+  "body": "خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 321.99\nلـ: تمويل شخصي وتمويل سيارة\nفي: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "FINANCING_INSTALLMENT",
+    "parseStatus": "REVIEW_REQUIRED"
+  }
+}

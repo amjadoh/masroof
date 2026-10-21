@@ -1,0 +1,14 @@
+Final local verification: all succeeded, no skipped tests.
+
+JAVA_HOME=/tmp/masroof-jdk17 ANDROID_HOME=/home/debian/Android/sdk ./gradlew testDebugUnitTest :lab:finance-core:test :lab:bank-engine:test :lab:ml-assist:test :app:assembleDebug :lab:beta:assembleDebugAndroidTest lintDebug detekt :lab:upgrade-host:lintAfterDebug --no-daemon -Dorg.gradle.jvmargs=-Xmx1536m -Pkotlin.compiler.execution.strategy=in-process --max-workers=1 --no-parallel --console=plain
+
+./gradlew :lab:beta:connectedDebugAndroidTest (same environment and flags)
+python3 lab/beta/tools/test_production_replica.py
+python3 lab/ml-assist/tools/test_training.py
+python3 lab/ml-assist/tools/train_family_model.py --check --skip-export (uses freshly exported features from the full unit run)
+python3 scripts/test-instrumentation-smoke.py
+python3 scripts/test-lifecycle-suite.py
+python3 scripts/test-latest-stable-android.py
+apkanalyzer dex packages --defined-only app/build/outputs/apk/debug/app-debug.apk
+
+Report rendered and visually inspected in Chrome headless; native source cards inspected from actual device captures. CI results belong to the current PR head and are linked separately.

@@ -6,16 +6,18 @@ import com.baraa.masroof.lab.beta.replica.LabRuntime
 import com.baraa.masroof.lab.replica.application.ingestion.SmsIngestionResult
 import kotlinx.coroutines.CancellationException
 
-/** Refresh unresolved unknowns in one parse batch, then one production derived pass. */
+/** Refresh unresolved interpretations after a rule/model change in one parse batch, then one production derived pass. */
 class ModelRefreshWorker(context: Context,params: WorkerParameters) : CoroutineWorker(context,params) {
     override suspend fun doWork(): Result {
       return try {
         val container=LabRuntime.container(applicationContext)
         if (container.awaitStartupMaintenance()!=com.baraa.masroof.lab.replica.application.maintenance.StartupMaintenanceOutcome.READY) return Result.retry()
         val service=container.labInterpretationService?:return Result.success()
-        if (inputData.getString("modelVersion")!=service.modelVersion) return Result.success()
+        val expected = inputData.getString("interpretationVersion")
+        if (expected != null && expected != service.refreshVersion) return Result.success()
+        if (expected == null && inputData.getString("modelVersion") != service.modelVersion) return Result.success()
         val pending=container.reviewRepository.listRequired().filter {
-            container.parsedEventRepository.findByRawSmsId(it.rawSmsId)?.event?.messageFamily?.name=="UNKNOWN"
+            container.parsedEventRepository.findByRawSmsId(it.rawSmsId)?.let(service::needsRefresh) == true
         }
         var failed=false
         for (review in pending) {
@@ -36,7 +38,7 @@ class ModelRefreshWorker(context: Context,params: WorkerParameters) : CoroutineW
         const val TAG="lab-replica:model-refresh"
         fun enqueue(context: Context,version: String) {
             WorkManager.getInstance(LabRuntime.host(context)).enqueueUniqueWork("$TAG:$version",ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<ModelRefreshWorker>().setInputData(workDataOf("modelVersion" to version)).addTag(TAG).build()).result.get()
+                OneTimeWorkRequestBuilder<ModelRefreshWorker>().setInputData(workDataOf("interpretationVersion" to version)).addTag(TAG).build()).result.get()
         }
     }
 }

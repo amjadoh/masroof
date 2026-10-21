@@ -1,0 +1,65 @@
+{
+  "baseCommit": "0d86c5d3a209bc31c72bc63cd05775d471310afa",
+  "productionDiff": [],
+  "unitTests": {
+    "app": {
+      "tests": 1764,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui-kit": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/beta": {
+      "tests": 133,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/bank-engine": {
+      "tests": 55,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/ml-assist": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/finance-core": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "unitTotal": 1976,
+  "android": {
+    "tests": "14",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "24.429"
+  },
+  "pythonChecks": 29,
+  "financialSchemaVersion": 18,
+  "financialTables": 14,
+  "learningSchemaVersion": 1,
+  "learningTables": 2,
+  "modelVersion": "family-nb-v2-3e5e3449be7831ba",
+  "apkSha256": "ceb39ed5ae1ad842d78917c4116093b9e343c5a28fdb2b437dbcba26245790a7",
+  "apkChecks": {
+    "oneClassifier": true,
+    "oneSeed": true,
+    "noRetiredLearningOrRoutingClasses": true,
+    "noReferenceParser": true
+  },
+  "sourceFixtureCases": 70,
+  "productionRegressionTests": 41
+}

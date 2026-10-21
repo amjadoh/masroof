@@ -46,6 +46,7 @@ class LabInterpretationService(
         override fun onInvalidated(tables: Set<String>) { changes.trySend(Unit) }
     }
     val modelVersion: String? get() = classifier?.version
+    val refreshVersion: String get() = "${engine.version}|${modelVersion ?: "rules-only"}"
     fun interpret(input: MessageInput): Interpretation {
         val activeModel = classifier?.version
         val result = engine.interpretRouted(input,BankId(BANK))
@@ -74,7 +75,7 @@ class LabInterpretationService(
         changes.trySend(Unit)
     }
     suspend fun synchronizeFeedback(): String? = mutex.withLock {
-        val seed=seed?:return@withLock null
+        val seed=seed?:run { schedulePendingRefresh(); return@withLock null }
         val decisions=mutableListOf<Decision>()
         val ids=raw.listIdsByReceivedAt()
         corrections.listForRawSmsIds(ids).forEach { correction ->
@@ -110,17 +111,23 @@ class LabInterpretationService(
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
         val updated=FamilyModelCodec.checked(seed,learned)
         store.saveLabels(labels)
-        val changed=classifier?.version!=updated.version
         store.persist(seed,updated)
         classifier=updated
-        val prefs=context.getSharedPreferences("learning_runtime",Context.MODE_PRIVATE)
-        if (changed || prefs.getString("scheduled_model",null)!=updated.version) {
-            val pending=reviewRows.any {it.status==ReviewStatus.REQUIRED && parsed.findByRawSmsId(it.rawSmsId)?.event?.messageFamily?.name=="UNKNOWN"}
-            if (pending) ModelRefreshWorker.enqueue(context,updated.version)
-            check(prefs.edit().putString("scheduled_model",updated.version).commit())
-        }
+        schedulePendingRefresh()
         updated.version
     }
+    private suspend fun schedulePendingRefresh() {
+        val prefs = context.getSharedPreferences("learning_runtime", Context.MODE_PRIVATE)
+        val version = refreshVersion
+        if (prefs.getString("scheduled_interpretation", null) == version) return
+        val required = reviews.listRequired()
+        val pending = parsed.listByRawSmsIds(required.map { it.rawSmsId }).any { needsRefresh(it) }
+        if (pending) ModelRefreshWorker.enqueue(context, version)
+        check(prefs.edit().putString("scheduled_interpretation", version).commit())
+    }
+    fun needsRefresh(record: com.baraa.masroof.lab.replica.parsing.repository.ParsedEventRecord): Boolean =
+        record.event.messageFamily.name == "UNKNOWN" ||
+            (record.event.parseStatus.name != "SUCCESS" && "rules:${engine.version.rules}" !in record.event.confidence.reasons)
     private data class Decision(val id: String,val rawId: String,val family: MessageFamily,val at: Long,val provenance: String)
     private fun eventKindFamily(type: FinancialTransactionType): MessageFamily? = when(type) {
         FinancialTransactionType.INCOME,FinancialTransactionType.EXTERNAL_TRANSFER_IN -> MessageFamily.TRANSFER_IN

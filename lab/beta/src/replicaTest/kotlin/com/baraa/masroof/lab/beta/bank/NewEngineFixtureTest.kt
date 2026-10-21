@@ -34,30 +34,13 @@ class NewEngineFixtureTest(private val file: File) {
         if (expected.getValue("messageFamily").jsonPrimitive.content != e.messageFamily.name) errors += "family expected=${expected["messageFamily"]} actual=${e.messageFamily}"
         if (e.parseStatus.name == "SUCCESS") {
             val p = event(production)!!
-            val fields = mutableMapOf("family" to (p.messageFamily to e.messageFamily), "status" to (p.parseStatus to e.parseStatus), "amount" to (p.amount to e.amount),"direction" to (p.direction to e.direction),
-                "source" to (p.sourceAccountRef to e.sourceAccountRef),"destination" to (p.destinationAccountRef to e.destinationAccountRef),
-                "card" to (p.cardRef to e.cardRef),"merchant" to (p.merchant to e.merchant),"counterparty" to (p.counterparty to e.counterparty),
-                "purchaseChannel" to (p.purchaseChannel to e.purchaseChannel),"network" to (p.bankNetworkType to e.bankNetworkType),
-                "occurredAt" to (p.occurredAt to e.occurredAt))
-            fun addDetails(d: ParsedEventDetails?) = mapOf("transactionReference" to d?.transactionReference,"availableBalance" to d?.availableBalance,
-                "outstandingBalance" to d?.outstandingBalance,"biller" to d?.biller,"billerCode" to d?.billerCode,"occurredAtLocal" to d?.occurredAtLocal,
-                "cardSmsChannel" to d?.cardSmsChannel,"paymentDueDate" to d?.paymentDueDate,"exchangeRate" to d?.exchangeRate,"internationalFee" to d?.internationalFee,
-                "labeledForeignAmount" to d?.labeledForeignAmount,"loanType" to d?.loanType,"debitSourceAccountLast4" to d?.debitSourceAccountLast4,"salaryIncomeWording" to d?.salaryIncomeWording)
-            val pd = addDetails(details(production)); val ad = addDetails(details(actual))
-            pd.forEach { (k,v) -> fields["details.$k"] = v to ad[k] }
-            val approved = Json.parseToJsonElement(File("ENGINE_PARITY_DIFFERENCES.json").readText()).jsonObject[input.rawSmsId]?.jsonObject
-            fun equivalent(a: Any?, b: Any?) = if (a is java.math.BigDecimal && b is java.math.BigDecimal) a.compareTo(b)==0 else a==b
-            fields.filterValues { !equivalent(it.first,it.second) }.forEach { (name,values) ->
-                val change = approved?.get(name)?.jsonObject
-                if (change == null || change["production"]?.jsonPrimitive?.content != values.first.toString() || change["engine"]?.jsonPrimitive?.content != values.second.toString())
-                    errors += "$name production=${values.first} engine=${values.second}"
-            }
+            errors += productionParityErrors(input.rawSmsId,p,e,details(production),details(actual))
         }
         assertTrue("${file.name}:\n${errors.joinToString("\n")}\nresult=$actual",errors.isEmpty())
     }
     companion object {
         @JvmStatic @Parameterized.Parameters(name="{0}") fun cases(): List<Array<File>> {
-            val canonical = listOf(File("../../app/src/test/resources/testdata/bank_aljazira"),File("testdata/reported")).asSequence()
+            val canonical = listOf(File("../../app/src/test/resources/testdata/bank_aljazira"),File("testdata/reported"), File("testdata/supported")).asSequence()
                 .flatMap { it.walkTopDown() }.filter { it.extension=="json" && it.name!="jazira_sms_bodies.json" }.toList()
             val reference = Json.parseToJsonElement(File("../../app/src/test/resources/testdata/bank_aljazira/reference/jazira_sms_bodies.json").readText()).jsonObject.getValue("messages").jsonArray
             val families = listOf("TRANSFER_OUT","TRANSFER_IN","TRANSFER_IN","PURCHASE","PURCHASE","TRANSFER_OUT","PURCHASE","TRANSFER_OUT","TRANSFER_IN","FINANCING_INSTALLMENT")
@@ -69,7 +52,7 @@ class NewEngineFixtureTest(private val file: File) {
                     put("id",id);put("sender","AlJazira");put("body",row.getValue("body"))
                     put("expected",buildJsonObject { put("messageFamily",families[index]);put("parseStatus","SUCCESS") })
                 }
-                File("build/generated/reference-fixtures/$id.json").apply { parentFile.mkdirs();writeText(fixture.toString()) }
+                File("build/generated/reference-fixtures/$id.json").apply { parentFile!!.mkdirs();writeText(fixture.toString()) }
             }
             return (canonical+generated).sortedBy { it.name }.map { arrayOf(it) }.also { check(it.size>=55) }
         }

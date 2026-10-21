@@ -116,12 +116,58 @@ class ReplicaSetupJourneyTest {
             compose.onNodeWithText(text(R.string.lab_replica_review_empty)).assertExists()
             screenshot("11-review-resolved-in-place")
 
+            // The manual decision itself is never labelled as a model decision.
+            assertNull(runBlocking { container.interpretationProvenanceWorkflow.load("ui-unknown-loan") })
+            runBlocking {
+                requireNotNull(container.labInterpretationService).synchronizeFeedback()
+                val future = body.replace("SAR 23", "SAR 243.21")
+                container.processRawSmsUseCase.ingest(raw("ui-learned-loan",future))
+            }
+            click(R.string.lab_replica_approved_nav_home)
+            fun openAmount(amount: String) {
+                compose.runOnUiThread { dashboard.refresh() }
+                compose.waitUntil(20_000) { !dashboard.uiState.value.loading && dashboard.uiState.value.allTransactions.any { it.amount.amount.toPlainString() == amount } }
+                val tx = runBlocking { container.financialTransactionRepository.listAll().single { it.amount.amount.toPlainString() == amount } }
+                compose.runOnUiThread { dashboard.openTransactionDetail(tx.id) }
+                compose.waitUntil(20_000) { !dashboard.uiState.value.selectedTransactionSmsLoading }
+            }
+            openAmount("243.21")
+            compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_template_source)).assertExists()
+            screenshot("12-learned-template-source")
+            compose.runOnUiThread { dashboard.closeTransactionDetail() }
+
+            val incoming = "حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: " +
+                java.time.LocalDateTime.now().minusMinutes(2).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+            runBlocking { container.processRawSmsUseCase.ingest(raw("ui-model-income",incoming)) }
+            openAmount("2000.00")
+            compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_ml_source)).assertExists()
+            compose.onNodeWithText(text(R.string.lab_inference_pending)).assertDoesNotExist()
+            screenshot("13-ml-source-transaction")
+            compose.runOnUiThread { dashboard.closeTransactionDetail() }
+
+            // Zero principal keeps the actual family proposal but cannot pass the financial gate.
+            runBlocking { container.processRawSmsUseCase.ingest(raw("ui-model-blocked",incoming.replace("2000.00","0.00"))) }
+            click(R.string.lab_replica_approved_nav_review)
+            compose.runOnUiThread { review.refresh() }
+            compose.waitUntil(20_000) { review.uiState.value.items.size == 1 }
+            compose.onNodeWithText(text(R.string.lab_replica_reference_review_evidence)).performScrollTo().performClick()
+            compose.waitUntil(20_000) { review.uiState.value.selectedDetail != null }
+            compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_inference_pending)).assertExists()
+            screenshot("14-unapproved-ml-review")
+            compose.runOnUiThread { review.closeDetail() }
+            assertEquals(0,runBlocking { container.financialTransactionRepository.listAll().count { it.amount.amount.signum() == 0 } })
+
         } finally {
             compose.runOnUiThread { store.clear() }
             container.close()
             runBlocking { LabResetWorkflow.reset(host) }
         }
     }
+    private fun raw(id: String,body: String) = RawSms(id,"AlJazira",body,java.time.Instant.now(),id,
+        com.baraa.masroof.lab.replica.sms.hash.SmsBodyHasher.sha256Hex(body))
     private fun selectOwnership(entityLabel: String, action: Int) {
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(entityLabel))
         val label = compose.onNodeWithText(entityLabel).fetchSemanticsNode().boundsInRoot

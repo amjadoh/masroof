@@ -1,0 +1,74 @@
+package com.baraa.masroof.lab.beta.learning
+
+import com.baraa.masroof.lab.bank.interpretation.RuleInterpreter
+import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
+import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.lab.replica.application.interpretation.*
+import com.baraa.masroof.lab.replica.bank.NewEngineSmsAdapter
+import com.baraa.masroof.lab.replica.domain.model.*
+import com.baraa.masroof.lab.replica.parsing.model.*
+import com.baraa.masroof.lab.replica.parsing.repository.ParsedEventRecord
+import com.baraa.masroof.lab.replica.parsing.repository.ParsedEventRepository
+import com.baraa.masroof.lab.replica.domain.repository.ReviewRepository
+import com.baraa.masroof.lab.replica.domain.repository.UserCorrectionRepository
+import com.baraa.masroof.lab.replica.application.review.EffectiveParsedEventProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+import java.time.Instant
+
+class InterpretationProvenanceTest {
+    private fun record(origin: String? = "ML", status: ParseStatus = ParseStatus.SUCCESS): ParsedEventRecord {
+        val engine = RuleInterpreter(AlJaziraRuleProfile.current())
+        val result = NewEngineSmsAdapter { engine.interpretRouted(it, BankId("BANK_ALJAZIRA")) }.parse(
+            SmsParseInput("provenance", "AlJazira", "شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nمبلغ: SAR 60.99\nلدى: TEST\nفي: 2026-10-06 13:57", Instant.parse("2026-10-06T12:00:00Z"))) as ParseResult.Success
+        return ParsedEventRecord(result.event.copy(parseStatus = status, confidence = Confidence(0.99,
+            listOf("engine:current", "rules:current") + origin?.let { listOf("family_origin:$it", "model:test-model") }.orEmpty())), result.details)
+    }
+    @Test fun currentOriginSelectsTheExplanationWithoutUsingConfidenceOrActiveModel() {
+        assertEquals(InterpretationOrigin.ML, InterpretationProvenanceWorkflow.project(record())!!.origin)
+        assertEquals(InterpretationOrigin.HUMAN_TEMPLATE, InterpretationProvenanceWorkflow.project(record("HUMAN_TEMPLATE"))!!.origin)
+        assertNull(InterpretationProvenanceWorkflow.project(record(null)))
+        assertNull(InterpretationProvenanceWorkflow.project(record("RULES")))
+        val base = record()
+        assertEquals(InterpretationProvenanceWorkflow.project(base), InterpretationProvenanceWorkflow.project(
+            base.copy(event = base.event.copy(confidence = base.event.confidence.copy(score = 0.01)))))
+    }
+    @Test fun incompleteInferenceIsPresentedAsAnUnapprovedSuggestion() {
+        assertTrue(InterpretationProvenanceWorkflow.project(record(status = ParseStatus.REVIEW_REQUIRED))!!.pendingReview)
+        assertTrue(InterpretationProvenanceWorkflow.project(record(), requiredReview = true)!!.pendingReview)
+        assertFalse(InterpretationProvenanceWorkflow.project(record())!!.pendingReview)
+    }
+    @Test fun supersededOrUnreliableInferenceIsHidden() {
+        val base = record()
+        for (resolution in listOf(ReviewResolutionKind.USER_FINANCIAL_TYPE, ReviewResolutionKind.USER_CORRECTION, ReviewResolutionKind.USER_NON_FINANCIAL))
+            assertNull(InterpretationProvenanceWorkflow.project(base, resolution))
+        assertNull(InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true, automationConfirmed = true)))
+        // A merchant-only correction leaves the original family inference intact.
+        assertNotNull(InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true)))
+        for (reasons in listOf(listOf("model:active"), listOf("family_origin:ML"), listOf("family_origin:ML", "model:"),
+            listOf("family_origin:ML", "family_origin:HUMAN_TEMPLATE", "model:x"))) {
+            assertNull(InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(confidence = Confidence(0.9, reasons)))))
+        }
+        assertNull(InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(messageFamily = MessageFamily.UNKNOWN))))
+    }
+    @Test fun optionalMetadataFailureHidesOnlyTheExplanationAndCancellationPropagates() {
+        fun workflow(failure: RuntimeException): InterpretationProvenanceWorkflow {
+            fun <T> port(type: Class<T>, answer: (String) -> Any?): T = type.cast(java.lang.reflect.Proxy.newProxyInstance(
+                type.classLoader, arrayOf(type)) { _, method, _ -> answer(method.name) })
+            val parsed = port(ParsedEventRepository::class.java) { name ->
+                check(name == "findByRawSmsId"); record()
+            }
+            val corrections = port(UserCorrectionRepository::class.java) { name ->
+                check(name == "listForRawSmsId"); emptyList<UserCorrection>()
+            }
+            val reviews = port(ReviewRepository::class.java) { throw failure }
+            return InterpretationProvenanceWorkflow(EffectiveParsedEventProvider(parsed,corrections),reviews)
+        }
+        assertNull(runBlocking { workflow(IllegalStateException("unavailable")).load("provenance") })
+        assertThrows(CancellationException::class.java) {
+            runBlocking { workflow(CancellationException("screen closed")).load("provenance") }
+        }
+    }
+}
