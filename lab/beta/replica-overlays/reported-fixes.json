@@ -1,0 +1,42 @@
+{
+  "kotlin/com/baraa/masroof/presentation/review/ReviewModels.kt": [
+    {
+      "old": "/** Compose test tag for a review-detail financial-type action. Stable across locales. */",
+      "new": "val REVIEW_RESOLUTION_TYPE_ACTIONS = listOf(\n    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,\n    FinancialTransactionType.EXTERNAL_TRANSFER_IN,\n    FinancialTransactionType.SELF_TRANSFER,\n) + REVIEW_FINANCIAL_TYPE_ACTIONS\n\n/** Compose test tag for a review-detail financial-type action. Stable across locales. */",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewScreen.kt": [
+    {
+      "old": "                REVIEW_FINANCIAL_TYPE_ACTIONS.forEach { type ->\n                    IconTextButton(\n                        onClick = { onResolveType(type) },",
+      "new": "                REVIEW_RESOLUTION_TYPE_ACTIONS.forEach { type ->\n                    IconTextButton(\n                        onClick = { onResolveType(type) },",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/review/ReviewWorkflowService.kt": [
+    {
+      "old": "        val ALLOWED_MANUAL_SINGLE_TYPES: Set<FinancialTransactionType> = setOf(\n",
+      "new": "        val ALLOWED_MANUAL_SINGLE_TYPES: Set<FinancialTransactionType> = setOf(\n    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,\n    FinancialTransactionType.EXTERNAL_TRANSFER_IN,\n    FinancialTransactionType.SELF_TRANSFER,\n",
+      "count": 1
+    },
+    {
+      "old": "        val (sourceId, destId) = when (type) {\n            FinancialTransactionType.EXPENSE ->",
+      "new": "        // An explicit type may repair an unknown family; it cannot invent an owned endpoint.\n        if (type in setOf(FinancialTransactionType.EXTERNAL_TRANSFER_OUT,\n                FinancialTransactionType.EXTERNAL_TRANSFER_IN, FinancialTransactionType.SELF_TRANSFER)) {\n            if (amount.amount.signum() <= 0) return ReviewWorkflowResult.Rejected(\"missing_amount\")\n            val sourceOwned = event.sourceAccountRef?.let { ownershipResolver.resolveAccount(it) == OwnershipStatus.OWNED } == true\n            val destinationOwned = event.destinationAccountRef?.let { ownershipResolver.resolveAccount(it) == OwnershipStatus.OWNED } == true\n            if (type != FinancialTransactionType.EXTERNAL_TRANSFER_IN && (sourceAccountId == null || !sourceOwned))\n                return ReviewWorkflowResult.Rejected(if (sourceAccountId == null) \"missing_source\" else \"source_not_owned\")\n            if (type != FinancialTransactionType.EXTERNAL_TRANSFER_OUT && (destAccountId == null || !destinationOwned))\n                return ReviewWorkflowResult.Rejected(if (destAccountId == null) \"missing_destination\" else \"destination_not_owned\")\n            if ((type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT && destinationOwned) ||\n                (type == FinancialTransactionType.EXTERNAL_TRANSFER_IN && sourceOwned))\n                return ReviewWorkflowResult.Rejected(\"owned_transfer_requires_self_type\")\n            if (type == FinancialTransactionType.SELF_TRANSFER && sourceAccountId == destAccountId)\n                return ReviewWorkflowResult.Rejected(\"same_transfer_account\")\n        }\n        val (sourceId, destId) = when (type) {\n            FinancialTransactionType.EXTERNAL_TRANSFER_OUT,\n            FinancialTransactionType.EXTERNAL_TRANSFER_IN,\n            FinancialTransactionType.SELF_TRANSFER -> sourceAccountId to destAccountId\n            FinancialTransactionType.EXPENSE ->",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/common/MasroofLayoutComponents.kt": [
+    {
+      "old": "    ) {\n        content()\n    }\n}",
+      "new": "    ) {\n        androidx.compose.runtime.CompositionLocalProvider(\n            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground,\n        ) { content() }\n    }\n}",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewReasonLabels.kt": [
+    {
+      "old": "            \"not_a_transfer\" -> R.string.review_error_not_transfer",
+      "new": "            \"owned_transfer_requires_self_type\" -> com.baraa.masroof.lab.beta.R.string.lab_owned_transfer_requires_self\n            \"same_transfer_account\" -> com.baraa.masroof.lab.beta.R.string.lab_same_transfer_account\n            \"not_a_transfer\" -> R.string.review_error_not_transfer",
+      "count": 1
+    }
+  ]
+}

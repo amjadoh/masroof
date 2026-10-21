@@ -78,7 +78,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val rolePrefixes = roleLabels.map { Regex("^" + source.phrase(it).pattern) }
         fun roleEnd(text: String) = rolePrefixes.mapNotNull { it.find(text)?.range?.last?.plus(1) }.maxOrNull() ?: 0
         val roleEnd = roleEnd(title)
-        fun titleMatches(phrase: String) = source.phrase(phrase).findAll(title).filter { roleEnd == 0 || (it.range.first == 0 && it.range.last + 1 > roleEnd) }.toList()
+        // Arabic conjunctions may join two independent family cues; never hide that collision.
+        fun titleMatches(phrase: String) = (if (phrase.firstOrNull() in '\u0600'..'\u06ff') listOf(phrase, "و$phrase") else listOf(phrase))
+            .flatMap { source.phrase(it).findAll(title).toList() }
+            .filter { roleEnd == 0 || (it.range.first == 0 && it.range.last + 1 > roleEnd) }
         if (Regex("^ *اسم المستفيد *: *[^\\n]+\\n+ *الاسم المختصر *: *[^\\n]+\\n+ *حالة *: *(?:غير نشط|نشط) *(?:\\n+ *(?:حساب|بنك|في) *: *[^\\n]+)*$").matches(source.text.trim())) {
             evidence += source.evidence("notice.beneficiary.directory", "family", 0..(source.text.length - 1))
             return result(Facts(MessageFamily.NON_FINANCIAL), ParseStatus.NON_FINANCIAL)
@@ -154,6 +157,11 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
                 sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
             else sets.flatten().distinct()
         }
+        val currencies = RoleLineReader(source, mapOf("principalCurrency" to listOf("العملة", "currency")), evidence, roleLabels)
+            .read("principalCurrency")
+        val currency = currencies.map { it.normalized }.distinct().singleOrNull()
+        if (currencies.isNotEmpty() && (currency == null || MoneyGrammar.withCurrency("1", currency) == null))
+            problem("INVALID_OR_CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
         data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
         val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
         val secondaryRanges = details.reserved.toMutableList()
@@ -166,13 +174,19 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             val hits = labels(field).flatMap { label ->
                 val pattern = Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
                 val matches = pattern.findAll(source.text).toList()
+                val separate = if (field == ExtractionField.AMOUNT && currency != null) {
+                    Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*([^\\n\\r]+)$")
+                        .findAll(source.text).mapNotNull { row ->
+                            MoneyGrammar.withCurrency(row.groupValues[1].trim(), currency)?.let { Hit(it, row.range, field) }
+                        }.filterNot { overlaps(it.range) }.toList()
+                } else emptyList()
                 Regex("(?m)^ *" + source.phrase(label).pattern).findAll(source.text).forEach { mention ->
                     val longerRole = labels(field).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
                         Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
-                    if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first })
+                    if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first } && separate.none { it.range.first == mention.range.first })
                         problem("MALFORMED_${field.name}")
                 }
-                matches.mapNotNull { match ->
+                separate + matches.mapNotNull { match ->
                     if (field == ExtractionField.AMOUNT && overlaps(match.range)) return@mapNotNull null
                     val value = MoneyGrammar.read(match)
                     if (value == null) { problem("INVALID_MONEY"); null }
@@ -180,6 +194,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
                 }
             }
             hits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
+            if (field == ExtractionField.AMOUNT && currency != null && hits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
+                problem("CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
             if (hits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
             return hits.firstOrNull()?.value
         }
@@ -278,9 +294,9 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v12"
+        const val VERSION = "bank-rules-independent-v13"
         private const val MAX_BODY = 16000
-        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
+        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية", "التاريخ")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")

@@ -79,7 +79,7 @@ class ReplicaMachineLearningTest {
             assertEquals("22.00",parsed.event.amount!!.amount.toPlainString())
             assertTrue(parsed.event.confidence.reasons.toString(),parsed.event.confidence.reasons.any {it=="family_origin:HUMAN_TEMPLATE"})
             assertEquals(InterpretationOrigin.HUMAN_TEMPLATE,c.interpretationProvenanceWorkflow.load("ml-loan-next")!!.origin)
-            assertNull(c.interpretationProvenanceWorkflow.load("ml-loan-one"))
+            assertEquals(InterpretationOrigin.MANUAL,c.interpretationProvenanceWorkflow.load("ml-loan-one").origin)
             val dashboard=c.dashboardService.loadCurrentOverview()
             assertEquals("298.00",dashboard.loansOverview!!.loans.single().remainingBalance!!.amount.toPlainString())
             File(host.getExternalFilesDir(null),"ml-feedback.txt").writeText("First two messages: UNKNOWN and review required.\nOne real production manual loan decision.\nPending message automatically reparsed and posted.\nModel: $version\nCold reopen preserved learning.\nNext amount extracted fresh: ${parsed.event.amount}\nLatest remaining balance: ${dashboard.loansOverview!!.loans.single().remainingBalance}\nNo repeated review.\n")
@@ -165,7 +165,7 @@ class ReplicaMachineLearningTest {
             assertEquals(MessageFamily.NON_FINANCIAL,c.parsedEventRepository.findByRawSmsId("rule-old-loyalty")!!.event.messageFamily)
             assertEquals(before,c.financialTransactionRepository.listAll())
             assertEquals(posted,c.parsedEventRepository.findByRawSmsId("rule-posted"))
-            assertNull(c.interpretationProvenanceWorkflow.load("rule-old-loyalty"))
+            assertEquals(InterpretationOrigin.RULES,c.interpretationProvenanceWorkflow.load("rule-old-loyalty").origin)
         } finally { LabResetWorkflow.reset(host) }
     }
 }

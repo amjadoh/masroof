@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Checks the replica contract without changing tracked source or fixtures."""
-import importlib.util, json, pathlib, subprocess, tempfile, unittest
+import importlib.util, json, pathlib, subprocess, tempfile, unittest, sys
 HERE = pathlib.Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('replica', HERE / 'generate_production_replica.py')
 replica = importlib.util.module_from_spec(spec); spec.loader.exec_module(replica)
@@ -10,6 +10,17 @@ class ReplicaContractTest(unittest.TestCase):
         self.assertEqual(lock['files'], replica.inventory())
         self.assertEqual(lock['bootstrapSha256'], replica.digest(replica.BETA/'replica-overlays/bootstrap.json'))
         self.assertEqual(lock['provenanceSha256'], replica.digest(replica.BETA/'replica-overlays/provenance.json'))
+        self.assertEqual(lock['reportedFixesSha256'], replica.digest(replica.BETA/'replica-overlays/reported-fixes.json'))
+
+    def test_reported_fixes_are_narrow_locked_lab_overlays(self):
+        specs=json.loads((replica.BETA/'replica-overlays/reported-fixes.json').read_text())
+        self.assertEqual({
+            'presentation/review/ReviewModels.kt':1,
+            'presentation/review/ReviewScreen.kt':1,
+            'application/review/ReviewWorkflowService.kt':2,
+            'presentation/common/MasroofLayoutComponents.kt':1,
+            'presentation/review/ReviewReasonLabels.kt':1,
+        }, {p.removeprefix('kotlin/com/baraa/masroof/'):len(ops) for p,ops in specs.items()})
     def test_ml_hooks_are_additive_evidence_only(self):
         specs = json.loads((replica.BETA/'replica-overlays/provenance.json').read_text())
         allowed = {'application/AppContainer.kt': 1, 'application/dashboard/TransactionSmsEvidenceLoader.kt': 3,
@@ -52,7 +63,7 @@ class ReplicaContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             a,b = pathlib.Path(temp)/'a', pathlib.Path(temp)/'b'
             for out in (a,b):
-                subprocess.run(['python3',str(HERE/'generate_production_replica.py'),'--output',str(out)],check=True,capture_output=True)
+                subprocess.run([sys.executable,str(HERE/'generate_production_replica.py'),'--output',str(out)],check=True,capture_output=True)
             def files(out): return {str(p.relative_to(out)):replica.digest(p) for p in out.rglob('*') if p.is_file()}
             self.assertEqual(files(a),files(b))
             self.assertFalse(list(a.rglob('MasroofApplication.kt')))
