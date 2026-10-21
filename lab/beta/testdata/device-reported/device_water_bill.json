@@ -1,0 +1,10 @@
+{
+  "id": "device_water_bill",
+  "sender": "AlJazira",
+  "body": "سداد فاتورة\nمن: 3001\nمبلغ: SAR 16.23\nمفوتر: 138\nالخدمة: شركة المياه الوطنية\nرقم الفاتورة: 8714347961\nفي: 05-10-2026 07:58",
+  "expected": {
+    "messageFamily": "BILL_PAYMENT",
+    "parseStatus": "SUCCESS",
+    "amount": "16.23"
+  }
+}

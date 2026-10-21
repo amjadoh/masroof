@@ -13,6 +13,10 @@ internal object MoneyGrammar {
 
     fun parse(value: String): Money? = entire.matchEntire(value)?.let(::read)
 
+    /** Only explicitly labelled principal currency may complete a bare positive magnitude. */
+    fun withCurrency(magnitude: String, currency: String): Money? =
+        magnitude.takeIf { it.matches(Regex(NUMBER)) }?.let { parse("$currency $it") }
+
     fun read(match: MatchResult): Money? {
         val number = (match.groups["n1"] ?: match.groups["n2"])?.value ?: return null
         if (number.length > 18) return null

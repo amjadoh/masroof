@@ -14,9 +14,9 @@ object RuleLibrary {
     ))
 
     /** One interpreter, versioned literal profiles. Bank aliases remain caller-owned identity data. */
-    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 10,
+    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 11,
         network = NetworkRules(sourceBankLabels = listOf("source bank", "from bank", "بنك المرسل", "البنك المرسل"),
-            destinationBankLabels = listOf("destination bank", "to bank", "بنك المستفيد"),
+            destinationBankLabels = listOf("destination bank", "to bank", "بنك المستفيد", "البنك المستفيد"),
             networkLabels = listOf("bank network", "network", "شبكة الحوالة")),
         rules = (previous.rules + listOf(
             rule("card.payment", MessageFamily.CARD_PAYMENT, listOf("سداد بطاقة", "card payment", "بطاقة ائتمانية: تسديد")),
@@ -41,20 +41,20 @@ object RuleLibrary {
                 MessageFamily.TRANSFER_OUT -> listOf("اسم المستفيد", "الى")
                 else -> emptyList()
             },
-            "transactionReference" to listOf("رقم المعاملة", "transaction reference"),
-            "biller" to listOf("المفوتر", "biller"),
-            "billerCode" to listOf("رمز المفوتر", "biller code"),
+            "transactionReference" to listOf("رقم المعاملة", "transaction reference") + if(rule.family == MessageFamily.BILL_PAYMENT) listOf("رقم الفاتورة") else emptyList(),
+            "biller" to listOf("المفوتر", "biller") + if(rule.family == MessageFamily.BILL_PAYMENT) listOf("الخدمة") else emptyList(),
+            "billerCode" to listOf("رمز المفوتر", "biller code") + if(rule.family == MessageFamily.BILL_PAYMENT) listOf("مفوتر") else emptyList(),
             "paymentDueDate" to listOf("تاريخ الاستحقاق", "payment due date"),
         ), labels = rule.labels + mapOf(
-            ExtractionField.CARD to listOf("بطاقة", "card", "credit card", "debit card", "بطاقة ائتمانية", "بطاقة مدى"),
+            ExtractionField.CARD to listOf("بطاقة", "card", "credit card", "debit card", "بطاقة ائتمانية", "بطاقة مدى", "بطاقة مدى رقم", "بطاقة ائتمانية رقم"),
             ExtractionField.AMOUNT to listOf("مبلغ العملية", "بمبلغ", "مبلغ", "amount", "of", "القيمة", "value") + if(rule.family == MessageFamily.FINANCING_INSTALLMENT) listOf("القسط") else emptyList(),
             ExtractionField.AVAILABLE_BALANCE to listOf("الرصيد المتاح", "رصيد", "available balance", "available balance is"),
             ExtractionField.MERCHANT to listOf("لدى", "merchant", "at") + if(rule.family == MessageFamily.REFUND) listOf("من", "from") else emptyList(),
             ExtractionField.SOURCE_ACCOUNT to listOf("من حساب", "from account", "رقم حساب المرسل") +
                 (if(rule.family != MessageFamily.TRANSFER_IN) listOf("خصمت من حساب") else emptyList()) +
-                (if(rule.family in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_OUT, MessageFamily.TRANSFER_IN)) listOf("من") else emptyList()) +
+                (if(rule.family in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_OUT, MessageFamily.TRANSFER_IN)) listOf("من") else emptyList()) +
                 (if(rule.family == MessageFamily.WITHDRAWAL) listOf("حساب رقم", "account number") else emptyList()),
-            ExtractionField.DESTINATION_ACCOUNT to listOf("الى حساب", "to account", "اودعت الى حساب", "deposited to account") + if(rule.family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)) listOf("الى", "المعرف البديل \\الايبان") else emptyList(),
+            ExtractionField.DESTINATION_ACCOUNT to listOf("الى حساب", "to account", "اودعت الى حساب", "deposited to account") + if(rule.family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)) listOf("الى", "المعرف البديل \\الايبان", "رقم حساب/معرف المستفيد") else emptyList(),
         ),
             observations = buildMap {
                 put("card.debit_source", listOf("خصمت من حساب"))
@@ -81,8 +81,8 @@ object RuleLibrary {
             }) } + rule("loyalty", MessageFamily.NON_FINANCIAL, listOf("مكافاتي", "رصيد نقاطك", "برنامج مكاف")).copy(labels = emptyMap()))
     }
 
-    internal fun incomingTransferPhrases() = listOf("حوالة واردة", "حوالة مالية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
-    internal fun outgoingTransferPhrases() = listOf("حوالة صادرة", "حوالة مالية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
+    internal fun incomingTransferPhrases() = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
+    internal fun outgoingTransferPhrases() = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
 
     private fun rule(id: String, family: MessageFamily, phrases: List<String>,
         direction: MoneyDirection = MoneyDirection.OUTGOING) = BankRule("bank.$id", family, phrases,
