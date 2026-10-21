@@ -1,0 +1,1538 @@
+[
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.HistoricalExchangeRateIndexTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.StartupMaintenanceTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.GitHubReleaseClientAuthTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.parsing.model.ParseResultSemanticsTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ownership.OwnershipDiscoveryServiceTest",
+    "tests": 14,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.UntypedMadaDebitOverviewTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.rules.TransactionClassifierTest",
+    "tests": 16,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.OwnedAccountsBadgeFormatterTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.contract.BankSmsRegistryMultiAdapterContractTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.ingestion.ProcessRawSmsUseCaseTest",
+    "tests": 41,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.IntraBankSelfTransferIngestionTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CardTransactionInvolvementResolverTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.TransactionSmsEvidenceLoaderTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ids.FinancialContainerIdFactoryTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.model.DomainModelInvariantTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.TransactionReconstructionFixtureTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.IntraBankSelfTransferReconciliationTest",
+    "tests": 27,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.parsing.fixtures.AlJaziraFixtureCorpusTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.ReleaseAssetsTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.ScopedReconciliationTest",
+    "tests": 11,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.TransactionDisplayEnricherTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.assembly.BankTransactionTimePolicyTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DebitCardScopeFactoryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.core.money.MoneyTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.ForeignPurchaseSarConverterTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration10To11Test",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.preferences.SharedPrefsGitHubTokenRepositoryTest",
+    "tests": 12,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.TransactionReconciliationServiceTest",
+    "tests": 60,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.ParsedEventFactsBackfillWorkerTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.SpendingAmountsTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.SalaryIncomeHeuristicsTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.MadaDebitCardsDashboardVisibilityTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.architecture.PackageDependencyRulesTest",
+    "tests": 19,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.parsing.normalizer.MessageNormalizerTest",
+    "tests": 12,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.BackupArchiveValidatorTest",
+    "tests": 15,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.review.ReviewWorkflowServiceTest",
+    "tests": 27,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.review.ReviewDetailLoaderTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.logging.AppLogRedactorTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.ParsedEventFactsBackfillCoordinatorTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.navigation.AppNavigationTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardViewModelTest",
+    "tests": 22,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.MadaGooglePayPosReproTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardRegistryLabelsTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.SchemaFactsBackfillPolicyTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.statement.StatementReconciliationServiceTest",
+    "tests": 21,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.classification.AlJaziraClassificationResolverTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.AccountFlowValueObjectsTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.preferences.SharedPrefsChartDataPreferencesRepositoryTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.notification.NotificationCenterStateMapperTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.AccountTransactionPresentationTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.extraction.DueDateExtractorTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.common.MasroofBarChartTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.AlJaziraParserRegressionTest",
+    "tests": 41,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.TransactionReclassificationServiceTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.ingestion.ProcessStoredSmsUseCaseTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.theme.ThemePreferencesRepositoryTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.integrity.DeterministicProcessingFaultMatrixTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.MasroofDatabasePersistenceTest",
+    "tests": 15,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.settings.SettingsLogPresentationTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.locale.AppDigitsBoundaryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.RecognizedSmsOutcomeInvariantTest",
+    "tests": 11,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.commitment.CommitmentFromTransactionServiceTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.TransactionShareTextTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.onboarding.OnboardingBackupRestoreTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration1To2Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration9To10Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.ReconciliationCompletionPolicyTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.AlJaziraFixtureParserTest",
+    "tests": 200,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.ui.theme.MasroofColorContrastTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.LoanRepaymentAttributionTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.SharedMoneyFormattingParityTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ownership.FinancingInstallmentDiscoveryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardRedesignResourcesTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.TransactionListFilterEngineTest",
+    "tests": 20,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.HistoricalMerchantRateCorrectionWorkflowTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.AppliedExchangeRateSyncerTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.AppContainerStartupMaintenanceTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.HistoricalDerivedRecoveryTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.common.MasroofGuidanceBoundaryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.matching.TransactionMatcherTest",
+    "tests": 11,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DailySpendingTrendBuilderTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration12To13Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.TransactionIgnoreServiceTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration14To16PopulatedTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.parsing.validator.DefaultParsedEventValidatorTest",
+    "tests": 15,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.TransferIntegrityRepairCoordinatorTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.MonthlyFinancialSummaryCalculatorTest",
+    "tests": 16,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.baseline.M0DashboardReadBenchmarkTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.locale.AppLocaleWindowConfigurationTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.UpdateCheckPreferencesRepositoryTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.settings.RegistryCategorySubtitleTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.UpdateCheckerTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.statement.StatementReconciliationViewModelTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.baseline.M0ProductionBaselineTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.sms.mapper.AndroidSmsMapperTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.locale.AppDigitsTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.ProcessingCompletionFailureMatrixTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.AlJaziraLoanTypeMapperTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.settings.SettingsViewModelTest",
+    "tests": 23,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.onboarding.HistoricalImportOutcomeTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.RoomCardRegistryRepositoryTest",
+    "tests": 19,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.model.DomainPackagePurityTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardSummaryMetricCardTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.LoanOverviewAggregatesTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.BankHierarchyBuilderTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.ProcessingRetryRepositoryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.CoreEvidenceRepositoryContractTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ownership.OwnershipResolverAndScenariosTest",
+    "tests": 15,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CardRegistryDebitClassifierTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ids.FinancialContainerIdParserTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ownership.DiscoverFromStoredEventsTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.BackupPackageCodecTest",
+    "tests": 12,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.LiveSmsProcessingWorkerTest",
+    "tests": 26,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CreditCardOverviewBuilderTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.loan.FinancingInstallmentAssemblyTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.AccountFlowClassifierTest",
+    "tests": 16,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.period.FinancialPeriodPolicyTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.BackupEnvelopeTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CreditCardsOverviewDueTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.DashboardEvidenceQueriesTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.assembly.TransactionAssemblerTest",
+    "tests": 20,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.locale.AppLocaleBootstrapTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardServiceTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.baseline.BetaBridgeEntryPointTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.ConsistentBackupSnapshotTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.dao.ReviewItemDaoMarkResolvedTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.AccountTransactionInvolvementResolverTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.ChartDataWorkflowTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.contract.BankSmsAdapterContractTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.MoneyUiFormatterTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardLayoutPreferencesTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.RoomLoanRegistryRepositoryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration11To12Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.SelfTransferDeduplicatorTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.review.IngestionReviewServiceTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.DatabaseAccessGateTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardProjectionBuilderTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CommitmentsOverviewBuilderTest",
+    "tests": 25,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.rules.TransferOwnershipResolverTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.sms.receiver.LiveReceiptTimestampTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration16To17Test",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.BoundedZipImportTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.review.ScopedMutationReconciliationTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.mapper.PersistenceMapperTest",
+    "tests": 12,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.FinancialTransactionPeriodQueryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.classification.AlJaziraMessageClassifierTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration13To14Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.GitHubRequestExceptionTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.logging.AppLogServiceTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.integrity.FinancialInvariantPropertyTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.ExchangeRateEnrichmentSchedulerTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DebitLinkedAccountInferrerTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.rules.InformationalMessagePolicyTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.model.ExplicitBankSelectionTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.common.MasroofGuidancePositionTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.sms.hash.SmsBodyHasherTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration8To9Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.ParsedEventDetailsFactsCharacterizationTest",
+    "tests": 11,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DebitCardOverviewBuilderTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.UpdateManifestSelectorTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.BankSmsRegistryTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.DatabaseBackupImportMigrationTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.OwnedAccountsFlowSummaryTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.ingestion.CaptureBankSmsUseCaseTest",
+    "tests": 27,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CurrentAccountSummaryCalculatorTest",
+    "tests": 23,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.AccountFlowTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.extraction.InternationalPurchaseFactsExtractorTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.CreditCardMessageHeuristicsTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflowTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration17To18Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.notification.NotificationCenterServiceTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.LiveSmsWorkSchedulerTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.extraction.MoneyTokensTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.ManualReviewResolutionAtomicityTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.UpdateCheckCoordinatorTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.settings.SettingsImportConfirmTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.review.EffectiveParsedEventProviderTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.onboarding.OnboardingViewModelTest",
+    "tests": 32,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.ReconciliationCharacterizationFixtureTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration15To16Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.ReplaceExclusiveStaleLinksTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.ui.theme.MasroofExtendedColorsTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.commitment.CommitmentPauseTransitionsTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.review.ReviewDismissRulesTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardSummaryTransactionFilterTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.baseline.BetaProductionIsolationTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.HistoricalBatchDurabilityTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.preferences.SharedPrefsDashboardLayoutPreferencesRepositoryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.statement.CanonicalCsvStatementParserTest",
+    "tests": 15,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.logging.IngestionLoggingPrivacyTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.review.ReviewListRefreshTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardParsedFactsClassificationTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.sms.receiver.MultipartSmsAssemblyTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.DatabaseBackupEncryptionTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.ui.theme.MasroofDesignTokensTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardCardFiltersTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.locale.AppLocaleTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.update.InstalledBuildInfoTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.SensitiveFileCleanupTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.OwnedAccountTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.MerchantSpendingOverviewBuilderTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.AppContainerDatabaseGateTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.integrity.ManualDecisionReplayTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.backup.DatabaseRestoreRecoveryTest",
+    "tests": 30,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.locale.AppDigitsVisualTransformationTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.TransactionEffectiveTypeTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.HistoricalSmsBatchProcessorTest",
+    "tests": 12,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.navigation.SettingsDestinationNavigationTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.extraction.CardExtractorTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.common.CardDisplayFormatterTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.DebugProcessHaltTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.transaction.TransactionRestoreServiceTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.settings.CommitmentRecordBuilderTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardTypographyTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.TransactionSarEquivalentResolverTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.repository.RoomRawSmsRepositoryTest",
+    "tests": 9,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardEvidenceScopeTest",
+    "tests": 3,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.settings.CommitmentHistoryBuilderTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.presentation.dashboard.DashboardSummaryHeroSpecsTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardTransactionFactsTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.LoanOverviewBuilderTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CurrentAccountFlowDetailGrouperTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.GoldenLedgerOracleTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.CreditFacilityOverviewBuilderTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardFixtureCharacterizationTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.sms.HistoricalSmsScannerTest",
+    "tests": 13,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.data.room.Migration14To15Test",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.maintenance.StoredSmsReprocessorTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.LoanTotalsCompletenessTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.domain.ownership.AccountCardRegistryTest",
+    "tests": 18,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.ui.theme.ApprovedDesignBoundaryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.bank.aljazira.AlJaziraBankDetectorTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "app",
+    "suite": "com.baraa.masroof.application.dashboard.DashboardSpendingTrendsTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "ui-kit",
+    "suite": "com.baraa.masroof.ui.components.MasroofLineChartTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "ui-kit",
+    "suite": "com.baraa.masroof.ui.theme.ApprovedColorContrastTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "ui-kit",
+    "suite": "com.baraa.masroof.ui.UiKitBoundaryTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.learning.FamilyFeatureExportTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.replica.LabStorageContextTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.learning.FamilyLearningTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.bank.NewEngineFixtureTest",
+    "tests": 55,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.learning.LearningPersistenceTest",
+    "tests": 1,
+    "failures": 0
+  },
+  {
+    "module": "lab/beta",
+    "suite": "com.baraa.masroof.lab.beta.bank.NewEngineGateTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.IndependentRuleInterpreterTest",
+    "tests": 8,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.ModuleBoundaryTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.RoleBoundDetailsTest",
+    "tests": 11,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.SenderRouterTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.ObservationRulesTest",
+    "tests": 6,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.TransferNetworkTest",
+    "tests": 10,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.M8StatementAuthorityTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.MessageLayoutCoverageTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.LearningTokenizationTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.InterpretationContractTest",
+    "tests": 7,
+    "failures": 0
+  },
+  {
+    "module": "lab/bank-engine",
+    "suite": "com.baraa.masroof.lab.bank.RuleSchemaTest",
+    "tests": 2,
+    "failures": 0
+  },
+  {
+    "module": "lab/ml-assist",
+    "suite": "com.baraa.masroof.lab.ml.family.FamilyClassifierTest",
+    "tests": 4,
+    "failures": 0
+  },
+  {
+    "module": "lab/ml-assist",
+    "suite": "com.baraa.masroof.lab.ml.family.FamilyInputCleanerTest",
+    "tests": 5,
+    "failures": 0
+  },
+  {
+    "module": "lab/finance-core",
+    "suite": "com.baraa.masroof.lab.finance.ValueContractTest",
+    "tests": 2,
+    "failures": 0
+  }
+]

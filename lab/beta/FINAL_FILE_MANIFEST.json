@@ -608,6 +608,7 @@
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabRuntime.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabStorageContext.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabWork.kt",
+    "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/LabFamilyAssist.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/LabInterpretationService.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/ModelRefreshWorker.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/bank/InterpretationDraftMapper.kt",
@@ -727,7 +728,6 @@
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/BetaOwnershipVisibility.kt",
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/BetaOwnershipWorkflow.kt",
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/BetaSalaryPeriodPolicy.kt",
-    "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/BetaStartState.kt",
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/corrections/BetaCorrectionLifecycle.kt",
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/corrections/BetaReviewWorkflow.kt",
     "lab/beta/src/main/kotlin/com/baraa/masroof/lab/beta/application/corrections/BetaTransactionDetailWorkflow.kt",
@@ -918,5 +918,31 @@
     "lab/upgrade-host/src/standalone/kotlin/com/baraa/masroof/lab/upgrade/StandaloneLabApplication.kt",
     "lab/upgrade-host/src/standalone/res/values/themes.xml",
     "lab/upgrade-host/src/standalone/res/xml/lab_data_extraction_rules.xml"
+  ],
+  "mlAssistRuntimeFiles": [
+    "lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/catalog/ModelManifest.kt",
+    "lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyClassifier.kt",
+    "lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyContracts.kt",
+    "lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyInputCleaner.kt",
+    "lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyModel.kt"
+  ],
+  "bankEngineRuntimeFiles": [
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/Interpretation.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/NetworkRules.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/RuleSchema.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/DateGrammar.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/DetailExtractor.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyAssist.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyTextPreparation.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/LearningTokenization.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/MoneyGrammar.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/ObservationExtractor.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RoleLineReader.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RuleInterpreter.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SenderRouter.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SourceText.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/TransferNetworkResolver.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/AlJaziraRuleProfile.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/RuleLibrary.kt"
   ]
 }

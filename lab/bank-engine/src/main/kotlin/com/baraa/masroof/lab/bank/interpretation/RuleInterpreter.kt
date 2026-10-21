@@ -102,7 +102,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         if (matching.isEmpty()) {
             val suggestion = familyAssist?.suggest(input,title)
             val supported = suggestion?.let { candidate -> snapshot.rules.filter {it.family==candidate.family} }.orEmpty()
-            if (suggestion!=null && supported.isNotEmpty() && suggestion.family in com.baraa.masroof.lab.bank.learning.FamilyModel.FINANCIAL) {
+            if (suggestion!=null && supported.isNotEmpty() && suggestion.family in assistFinancialFamilies) {
                 inference = suggestion
                 matching = supported
                 if (lineEnd>lineStart+leading) evidence += source.evidence("family.${suggestion.origin.name.lowercase()}","family",(lineStart+leading)..(lineEnd-1))

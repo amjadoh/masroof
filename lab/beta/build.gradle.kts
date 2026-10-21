@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":ui-kit"))
     implementation(project(":lab:finance-core"))
     implementation(project(":lab:bank-engine"))
+    implementation(project(":lab:ml-assist"))
     implementation(libs.okhttp)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.serialization.json)
@@ -95,6 +96,8 @@ dependencies {
 
 // Corpus checks read frozen source fixtures without executing Production parsers.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    inputs.dir("testdata/reported")
+    outputs.dir(layout.buildDirectory.dir("model-training"))
     inputs.files(rootProject.fileTree("app/src/test") {
         include("kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
             "kotlin/com/baraa/masroof/bank/aljazira/CreditCardMessageHeuristicsTest.kt",

@@ -11,13 +11,6 @@ dependencies {
 tasks.test {
     inputs.files(rootProject.fileTree("lab") {
         include("*/build.gradle.kts", "bank-engine/src/main/kotlin/**/*.kt",
-            "finance-core/src/main/kotlin/**/*.kt", "beta/src/main/kotlin/**/*.kt", "beta/src/replica/kotlin/**/*.kt")
+            "finance-core/src/main/kotlin/**/*.kt", "ml-assist/src/main/kotlin/**/*.kt", "beta/src/main/kotlin/**/*.kt", "beta/src/replica/kotlin/**/*.kt")
     }, rootProject.file("app/build.gradle.kts")).withPathSensitivity(PathSensitivity.RELATIVE)
-}
-
-tasks.test {
-    inputs.dir(rootProject.file("app/src/test/resources/testdata/bank_aljazira"))
-    inputs.dir(rootProject.file("lab/beta/testdata/reported"))
-    inputs.files(rootProject.fileTree("lab/beta/src/replica/assets/ml") { include("*.json") })
-    outputs.dir(layout.buildDirectory.dir("model-training"))
 }

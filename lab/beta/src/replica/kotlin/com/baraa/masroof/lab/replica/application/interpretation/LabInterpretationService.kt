@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.InvalidationTracker
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.bank.interpretation.*
-import com.baraa.masroof.lab.bank.learning.*
+import com.baraa.masroof.lab.ml.family.*
 import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.lab.replica.application.logging.AppLogService
@@ -36,7 +36,7 @@ class LabInterpretationService(
         val labels = runCatching {store.cached(model)}.getOrElse {log.warn("ML","Cached model rejected: ${it.javaClass.simpleName}");emptyList()}
         FamilyModelCodec.checked(model,labels)
     }
-    private val engine = RuleInterpreter(AlJaziraRuleProfile.current(),FamilyAssist { input,title -> classifier?.suggest(BANK,input.body,title) })
+    private val engine = RuleInterpreter(AlJaziraRuleProfile.current(),FamilyAssist { input,title -> LabFamilyAssist.suggest(classifier,BANK,input.body,title) })
     private val mutex = Mutex()
     private val changes = Channel<Unit>(Channel.CONFLATED)
     private var job: Job? = null
@@ -51,10 +51,10 @@ class LabInterpretationService(
         // Advisory audit writes never decide whether a transaction may be posted.
         scope.launch {
             try {
-                val key=FamilyFeatures.sha256("${input.evidenceId}|${result.version}|${result.familyInference?.modelVersion?:activeModel}")
+                val key=FamilyInputCleaner.sha256("${input.evidenceId}|${result.version}|${result.familyInference?.modelVersion?:activeModel}")
                 store.record(EngineInterpretationRow(key,input.evidenceId,result.bank?.value,result.version.engine,result.version.rules,
                     result.familyInference?.modelVersion?:activeModel,result.familyInference?.origin?.name?:"RULES",result.facts.family.name,result.status.name,
-                    result.blockers.joinToString(",") {it.name},FamilyFeatures.sha256(input.body),input.receivedAt.toEpochMilli(),System.currentTimeMillis()))
+                    result.blockers.joinToString(",") {it.name},FamilyInputCleaner.sha256(input.body),input.receivedAt.toEpochMilli(),System.currentTimeMillis()))
             } catch (e: CancellationException) { throw e }
               catch (e: Exception) { log.warn("ML","Interpretation audit pending: ${e.javaClass.simpleName}") }
         }
@@ -96,19 +96,21 @@ class LabInterpretationService(
         val wanted=decisions.map {it.rawId}.toSet()
         val evidence=raw.getByIds(wanted).associateBy {it.id}
         val events=parsed.listByRawSmsIds(wanted).associateBy {it.event.rawSmsId}
-        val labels=decisions.mapNotNull { decision ->
+        val labels=decisions.filter {it.family!=MessageFamily.UNKNOWN}.mapNotNull { decision ->
             val message=evidence[decision.rawId]?:return@mapNotNull null
             val bank=events[decision.rawId]?.event?.bank?.id?:return@mapNotNull null
             if (bank!=BANK) return@mapNotNull null
-            val features=FamilyFeatures.extract(message.body)
+            val features=LabFamilyAssist.clean(message.body).features?:return@mapNotNull null
             LearningLabelRow(decision.id,decision.rawId,bank,decision.family.name,features.template,FamilyModelCodec.termsJson(features.terms).toString(),
-                FamilyFeatures.VERSION,decision.at,decision.provenance,message.bodyHash)
+                FamilyInputCleaner.FEATURES_VERSION,decision.at,decision.provenance,message.bodyHash)
         }
-        store.saveLabels(labels)
-        val learned=store.labels()
+        // Build/validate everything before atomically replacing advisory labels. Original decisions stay untouched.
+        val learned=labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
+            row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
         val updated=FamilyModelCodec.checked(seed,learned)
+        store.saveLabels(labels)
         val changed=classifier?.version!=updated.version
-        store.persist(seed,learned,updated)
+        store.persist(seed,updated)
         classifier=updated
         val prefs=context.getSharedPreferences("learning_runtime",Context.MODE_PRIVATE)
         if (changed || prefs.getString("scheduled_model",null)!=updated.version) {
