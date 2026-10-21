@@ -14,6 +14,7 @@ import com.baraa.masroof.lab.replica.parsing.repository.ParsedEventRepository
 import com.baraa.masroof.lab.replica.domain.model.ReviewResolutionKind
 import com.baraa.masroof.lab.replica.domain.model.ReviewStatus
 import com.baraa.masroof.lab.replica.domain.model.FinancialTransactionType
+import com.baraa.masroof.lab.replica.sms.hash.SmsBodyHasher
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
@@ -51,10 +52,10 @@ class LabInterpretationService(
         // Advisory audit writes never decide whether a transaction may be posted.
         scope.launch {
             try {
-                val key=FamilyInputCleaner.sha256("${input.evidenceId}|${result.version}|${result.familyInference?.modelVersion?:activeModel}")
+                val key=SmsBodyHasher.sha256Hex("${input.evidenceId}|${result.version}|${result.familyInference?.modelVersion?:activeModel}")
                 store.record(EngineInterpretationRow(key,input.evidenceId,result.bank?.value,result.version.engine,result.version.rules,
                     result.familyInference?.modelVersion?:activeModel,result.familyInference?.origin?.name?:"RULES",result.facts.family.name,result.status.name,
-                    result.blockers.joinToString(",") {it.name},FamilyInputCleaner.sha256(input.body),input.receivedAt.toEpochMilli(),System.currentTimeMillis()))
+                    result.blockers.joinToString(",") {it.name},SmsBodyHasher.sha256Hex(input.body),input.receivedAt.toEpochMilli(),System.currentTimeMillis()))
             } catch (e: CancellationException) { throw e }
               catch (e: Exception) { log.warn("ML","Interpretation audit pending: ${e.javaClass.simpleName}") }
         }
@@ -101,7 +102,7 @@ class LabInterpretationService(
             val bank=events[decision.rawId]?.event?.bank?.id?:return@mapNotNull null
             if (bank!=BANK) return@mapNotNull null
             val features=LabFamilyAssist.clean(message.body).features?:return@mapNotNull null
-            LearningLabelRow(decision.id,decision.rawId,bank,decision.family.name,features.template,FamilyModelCodec.termsJson(features.terms).toString(),
+            LearningLabelRow(decision.id,decision.rawId,bank,LabFamilyAssist.toModel(decision.family).name,features.template,FamilyModelCodec.termsJson(features.terms).toString(),
                 FamilyInputCleaner.FEATURES_VERSION,decision.at,decision.provenance,message.bodyHash)
         }
         // Build/validate everything before atomically replacing advisory labels. Original decisions stay untouched.
