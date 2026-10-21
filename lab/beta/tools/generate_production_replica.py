@@ -8,9 +8,13 @@ PREFIX = 'lab_replica_'
 PACKAGE = 'com.baraa.masroof.lab.replica'
 LOCK = BETA / 'PRODUCTION_REPLICA_SOURCES.json'
 REGRESSION = ROOT / 'app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt'
-def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+def digest(p):
+    data = p.read_bytes()
+    if p.suffix in ('.kt', '.xml', '.json', '.py'):
+        data = data.replace(b'\r\n', b'\n')
+    return hashlib.sha256(data).hexdigest()
 def inventory():
-    return {str(p.relative_to(ROOT)): digest(p) for p in sorted([*SOURCE.joinpath('kotlin').rglob('*.kt'), *SOURCE.joinpath('res').rglob('*')]) if p.is_file()}
+    return {p.relative_to(ROOT).as_posix(): digest(p) for p in sorted([*SOURCE.joinpath('kotlin').rglob('*.kt'), *SOURCE.joinpath('res').rglob('*')], key=lambda p:p.relative_to(ROOT).parts) if p.is_file()}
 def resource_names():
     names = {}
     for p in SOURCE.joinpath('res').rglob('*'):
@@ -34,7 +38,10 @@ def main():
     provenance = BETA / 'replica-overlays/provenance.json'
     for path, ops in json.loads(provenance.read_text()).items():
         specs.setdefault(path, []).extend(ops)
-    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(str(p.relative_to(SOURCE)) for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap), 'provenanceSha256': digest(provenance)}
+    fixes = BETA / 'replica-overlays/reported-fixes.json'
+    for path, ops in json.loads(fixes.read_text()).items():
+        specs.setdefault(path, []).extend(ops)
+    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(p.relative_to(SOURCE).as_posix() for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap), 'provenanceSha256': digest(provenance), 'reportedFixesSha256': digest(fixes)}
     actual['regressionSha256'] = digest(REGRESSION)
     if args.lock: LOCK.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + '\n')
     if not LOCK.exists() or json.loads(LOCK.read_text()) != actual: raise SystemExit('Production or bootstrap drift. Review and explicitly update the replica lock.')
@@ -45,7 +52,7 @@ def main():
     resources = resource_names()
     symbols = {(kind, old.replace('.', '_')): new.replace('.', '_') for (kind, old), new in resources.items()}
     for rel in actual['files']:
-        path = ROOT / rel; source_rel = str(path.relative_to(SOURCE))
+        path = ROOT / rel; source_rel = path.relative_to(SOURCE).as_posix()
         if source_rel in actual['excluded']:
             if '/bank/aljazira/' in source_rel:
                 text = relocate(path.read_text()).replace(PACKAGE + '.bank.aljazira', 'com.baraa.masroof.lab.reference.bank.aljazira')
@@ -86,7 +93,7 @@ def main():
     dest = out / 'regressionKotlin/com/baraa/masroof/lab/reference/bank/aljazira/ProductionRegressionReplayTest.kt'
     dest.parent.mkdir(parents=True, exist_ok=True); dest.write_text(regression)
     fixtures = ROOT / 'app/src/test/resources/testdata/bank_aljazira'
-    for fixture in sorted([*fixtures.rglob('*.json'), *BETA.joinpath('testdata/reported').rglob('*.json'), *BETA.joinpath('testdata/supported').rglob('*.json')]):
+    for fixture in sorted([*fixtures.rglob('*.json'), *BETA.joinpath('testdata/reported').rglob('*.json'), *BETA.joinpath('testdata/supported').rglob('*.json'), *BETA.joinpath('testdata/device-reported').rglob('*.json')]):
         if 'expected' not in json.loads(fixture.read_text()): continue
         dest = out / 'fixtures/bank-fixtures' / fixture.name
         dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(fixture,dest)

@@ -1,0 +1,10 @@
+{
+  "id": "device_google_pay",
+  "sender": "AlJazira",
+  "body": "شراء عبر نقاط البيع (Google Pay)\nلدى: Test trading com\nبمبلغ: SAR 300.00\nفي: 06-10-2026 17:43\nبطاقة مدى رقم: 8219",
+  "expected": {
+    "messageFamily": "PURCHASE",
+    "parseStatus": "SUCCESS",
+    "amount": "300.00"
+  }
+}

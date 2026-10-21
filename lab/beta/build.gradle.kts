@@ -98,6 +98,7 @@ dependencies {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     inputs.dir("testdata/reported")
     inputs.dir("testdata/supported")
+    inputs.dir("testdata/device-reported")
     outputs.dir(layout.buildDirectory.dir("model-training"))
     inputs.files(rootProject.fileTree("app/src/test") {
         include("kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
@@ -114,10 +115,11 @@ val generateProductionReplica by tasks.registering(Exec::class) {
     inputs.dir("replica-overlays")
     inputs.dir("testdata/reported")
     inputs.dir("testdata/supported")
+    inputs.dir("testdata/device-reported")
     inputs.file("tools/generate_production_replica.py")
     inputs.file(rootProject.file("app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt"))
     outputs.dir(layout.buildDirectory.dir("generated/productionReplica"))
-    commandLine("python3", "$projectDir/tools/generate_production_replica.py")
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3", "$projectDir/tools/generate_production_replica.py")
 }
 tasks.named("preBuild").configure { dependsOn(generateProductionReplica) }
 
