@@ -24,6 +24,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import androidx.compose.runtime.*
+import com.baraa.masroof.lab.replica.presentation.analytics.LocalLabAnalyticsCardsEnabled
 
 /** Real source UI + real ViewModels + scanner + Room; only the device inbox is a fixture. */
 @RunWith(AndroidJUnit4::class)
@@ -45,6 +47,7 @@ class ReplicaSetupJourneyTest {
         lateinit var settings: SettingsViewModel
         lateinit var statement: StatementReconciliationViewModel
         lateinit var notifications: NotificationCenterViewModel
+        var analyticsVisible by mutableStateOf(true)
         try {
             compose.runOnUiThread {
                 onboarding = ViewModelProvider(store,OnboardingViewModelFactory(container,container.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]
@@ -54,10 +57,10 @@ class ReplicaSetupJourneyTest {
                 statement = ViewModelProvider(store,StatementReconciliationViewModelFactory(container.statementReconciliationWorkflow))[StatementReconciliationViewModel::class.java]
                 notifications = ViewModelProvider(store,NotificationCenterViewModelFactory(container,{true}))[NotificationCenterViewModel::class.java]
             }
-            compose.setContent { MasroofTheme {
+            compose.setContent { CompositionLocalProvider(LocalLabAnalyticsCardsEnabled provides analyticsVisible) { MasroofTheme {
                 MasroofRoot(onboarding,dashboard,review,settings,statement,notifications,
                     onRequestPermissions = {},onOpenAppSettings = {},onLocaleChanged = {},onRequestExport = {},onRequestImport = {},onRequestExportLogs = {},onRequestRestoreBackup = {})
-            } }
+            } } }
             click(R.string.lab_replica_reference_start_setup)
             click(R.string.lab_replica_onboarding_start_import)
             compose.waitUntil(30_000) { onboarding.uiState.value.step == OnboardingStep.OWNERSHIP }
@@ -83,6 +86,33 @@ class ReplicaSetupJourneyTest {
             assertTrue(dashboard.uiState.value.ownedAccounts.isNotEmpty())
             assertTrue(dashboard.uiState.value.creditFacilities?.hasContent == true)
             screenshot("03-dashboard-with-data")
+            val before = mutableListOf<Long>(); val after = mutableListOf<Long>()
+            repeat(8) { iteration ->
+                for (enabled in listOf(false, true)) {
+                    val start = System.nanoTime()
+                    compose.runOnUiThread { analyticsVisible = enabled }
+                    compose.waitForIdle()
+                    if (iteration >= 2) (if (enabled) after else before).add((System.nanoTime() - start) / 1_000_000)
+                }
+            }
+            File(host.getExternalFilesDir(null),"analytics-home-render-times.txt").writeText(
+                "Same device, same persisted data, same generated Home. Two warmups; six samples per case.\n" +
+                "Baseline without additive forecast card (ms): $before\nWith forecast card (ms): $after\n" +
+                "Measures recomposition through Compose idle, including test synchronization; not startup latency. Training is independent background work.\n")
+            compose.onNodeWithTag("lab-forecast-entry").performScrollTo()
+            screenshot("03b-dashboard-forecast-entry")
+            compose.onNodeWithTag("lab-forecast-entry").performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_title)).assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(host.getString(R.string.lab_replica_guidance_about,
+                text(R.string.lab_analysis_insufficient))).performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertIsDisplayed()
+            androidx.test.espresso.Espresso.pressBack()
+            compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.lab_analysis_insufficient)).assertIsDisplayed()
+            screenshot("03c-analysis-opened-from-home")
+            androidx.test.espresso.Espresso.pressBack()
+            compose.onNodeWithTag("lab-forecast-entry").performScrollTo().assertIsDisplayed()
             click(R.string.lab_replica_approved_nav_transactions)
             screenshot("04-transactions")
             click(R.string.lab_replica_approved_nav_review)

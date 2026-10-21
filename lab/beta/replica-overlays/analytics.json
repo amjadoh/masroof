@@ -1,0 +1,204 @@
+{
+  "kotlin/com/baraa/masroof/application/AppContainer.kt": [
+    {
+      "old": "private val database: MasroofDatabase",
+      "new": "internal val database: MasroofDatabase",
+      "count": 1
+    },
+    {
+      "old": "    fun runStartupMaintenance() {",
+      "new": "    private val analyticsDelegate = lazy { com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsWorkflow(this, appContext) }\n    val labAnalytics get() = analyticsDelegate.value\n    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) labAnalytics.close() }\n    fun runStartupMaintenance() {\n        labAnalytics.start()",
+      "count": 1
+    },
+    {
+      "old": "        applicationScope.cancel()\n",
+      "new": "        stopLabAnalytics()\n        applicationScope.cancel()\n",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/sms/HistoricalSmsScanner.kt": [
+    {
+      "old": "        scanOnDispatcher(receivedAfter)",
+      "new": "        com.baraa.masroof.lab.replica.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter) }",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/dashboard/DashboardService.kt": [
+    {
+      "old": "    val isCurrentPeriod: Boolean,",
+      "new": "    val isCurrentPeriod: Boolean,\n    val labSarEquivalents: Map<String, com.baraa.masroof.core.money.Money> = emptyMap(),",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/dashboard/DashboardProjection.kt": [
+    {
+      "old": "    val meta: DashboardMeta,",
+      "new": "    val meta: DashboardMeta,\n    val labSarEquivalents: Map<String, com.baraa.masroof.core.money.Money> = emptyMap(),",
+      "count": 1
+    },
+    {
+      "old": "            isCurrentPeriod = isCurrentPeriod,",
+      "new": "            isCurrentPeriod = isCurrentPeriod,\n            labSarEquivalents = labSarEquivalents,",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/dashboard/DashboardProjectionBuilder.kt": [
+    {
+      "old": "            transactions = context.transactions,\n            transactionFacts",
+      "new": "            transactions = context.transactions,\n            labSarEquivalents = context.sarEquivalents,\n            transactionFacts",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/backup/BackupPackageFormat.kt": [
+    {
+      "old": "    val themeMode: String,\n)",
+      "new": "    val themeMode: String,\n    val labAnalysis: String? = null,\n)",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/backup/BackupPackageCodec.kt": [
+    {
+      "old": "        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw)",
+      "new": "        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw).also { com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.validate(it.labAnalysis) }",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/backup/DatabaseBackupService.kt": [
+    {
+      "old": "        return BackupPreferencesSnapshot(",
+      "new": "        return BackupPreferencesSnapshot(\n            labAnalysis = com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.capture(appContext),",
+      "count": 1
+    },
+    {
+      "old": "                    writeEncryptedPackage(staging, destination, secret)",
+      "new": "                    com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.validateExportSize(staging, archiveLimits)\n                    writeEncryptedPackage(staging, destination, secret)",
+      "count": 1
+    },
+    {
+      "old": "    private fun restorePreferences(snapshot: BackupPreferencesSnapshot) {",
+      "new": "    private fun restorePreferences(snapshot: BackupPreferencesSnapshot) {\n        com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.restore(appContext, snapshot.labAnalysis)",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/backup/DatabaseRestoreRecovery.kt": [
+    {
+      "old": "        val transferIntegrityRepairVersion: Int?,\n",
+      "new": "        val transferIntegrityRepairVersion: Int?,\n        val labAnalysis: String? = null,\n",
+      "count": 1
+    },
+    {
+      "old": "        return PreferenceSnapshot(\n            onboardingStarted = onboarding.getBoolean",
+      "new": "        return PreferenceSnapshot(\n            labAnalysis = com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.capture(context),\n            onboardingStarted = onboarding.getBoolean",
+      "count": 1
+    },
+    {
+      "old": "            transferIntegrityRepairVersion = null,",
+      "new": "            transferIntegrityRepairVersion = null,\n            labAnalysis = snapshot.labAnalysis,",
+      "count": 1
+    },
+    {
+      "old": "    private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot) {",
+      "new": "    private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot) {\n        com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsBackup.restore(context, snapshot.labAnalysis)",
+      "count": 1
+    },
+    {
+      "old": "            transferIntegrityRepairVersion = values[\"transferIntegrityRepairVersion\"]?.toIntOrNull(),",
+      "new": "            transferIntegrityRepairVersion = values[\"transferIntegrityRepairVersion\"]?.toIntOrNull(),\n            labAnalysis = values[\"labAnalysis\"]?.takeIf { it.isNotEmpty() }?.let { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) },",
+      "count": 1
+    },
+    {
+      "old": "        appendLine(\"onboardingStarted=${snapshot.onboardingStarted}\")",
+      "new": "        appendLine(\"labAnalysis=${snapshot.labAnalysis?.let { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) } ?: \"\"}\")\n        appendLine(\"onboardingStarted=${snapshot.onboardingStarted}\")",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardScreen.kt": [
+    {
+      "old": "    var flowDetailMode by rememberSaveable",
+      "new": "    var labAnalysisOpen by rememberSaveable { mutableStateOf(false) }\n    val labDestination by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.target.collectAsState()\n    LaunchedEffect(labDestination) { if (labDestination != null) labAnalysisOpen = true }\n    if (labAnalysisOpen) {\n        com.baraa.masroof.lab.replica.presentation.analytics.LabAnalyticsRoute(\n            onBack = { labAnalysisOpen = false; com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.clear() },\n            onOpenTransaction = onOpenTransaction,\n        )\n        return\n    }\n    var flowDetailMode by rememberSaveable",
+      "count": 1
+    },
+    {
+      "old": "                                onRescan = onRescan,",
+      "new": "                                onRescan = onRescan,\n                                onOpenAnalytics = { labAnalysisOpen = true },",
+      "count": 1
+    },
+    {
+      "old": "    onRescan: () -> Unit,\n) {\n    state.currentAccount",
+      "new": "    onRescan: () -> Unit,\n    onOpenAnalytics: () -> Unit,\n) {\n    state.currentAccount",
+      "count": 1
+    },
+    {
+      "old": "                        showIncome = layout.quickIncomeVisible,\n                    )",
+      "new": "                        showIncome = layout.quickIncomeVisible,\n                    )\n                    if (state.isCurrentPeriod) {\n                        androidx.compose.foundation.layout.Spacer(Modifier.height(MasroofSpacing.sectionGap))\n                        com.baraa.masroof.lab.replica.presentation.analytics.LabForecastCard(onOpenAnalytics)\n                    }",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModel.kt": [
+    {
+      "old": ") : ViewModel() {",
+      "new": "    val labAnalytics: com.baraa.masroof.lab.replica.application.analytics.LabAnalyticsWorkflow? = null,\n) : ViewModel() {",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModelFactory.kt": [
+    {
+      "old": "            overviewLoader = container.dashboardService,",
+      "new": "            overviewLoader = container.dashboardService,\n            labAnalytics = container.labAnalytics,",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/navigation/MasroofRoot.kt": [
+    {
+      "old": "LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow) {",
+      "new": "LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow,\n        com.baraa.masroof.lab.replica.presentation.analytics.LocalLabAnalyticsWorkflow provides dashboardViewModel.labAnalytics) {",
+      "count": 1
+    },
+    {
+      "old": "reviewCount = notifications.unreadCount,",
+      "new": "reviewCount = notifications.unreadCount + com.baraa.masroof.lab.replica.presentation.analytics.labUnreadAlerts(dashboardViewModel.labAnalytics),",
+      "count": 1
+    },
+    {
+      "old": "    var consumedNavigationGeneration by rememberSaveable",
+      "new": "    val labTarget by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.target.collectAsState()\n    LaunchedEffect(labTarget) { if (labTarget != null) homeDestination = HomeDestination.Dashboard }\n    var consumedNavigationGeneration by rememberSaveable",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/notification/NotificationCenterScreen.kt": [
+    {
+      "old": "    ) { contentModifier ->\n        when {",
+      "new": "    ) { originalModifier ->\n        Column(originalModifier) {\n        com.baraa.masroof.lab.replica.presentation.analytics.LabAlertsCard()\n        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {\n        val contentModifier = androidx.compose.ui.Modifier.fillMaxSize()\n        when {",
+      "count": 1
+    },
+    {
+      "old": "\n    }\n}\n\n@Composable\nprivate fun NotificationCenterRow",
+      "new": "\n        }\n        }\n    }\n}\n\n@Composable\nprivate fun NotificationCenterRow",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/settings/SettingsCommitmentEditorScreen.kt": [
+    {
+      "old": "    onDelete: () -> Unit,\n)",
+      "new": "    onDelete: () -> Unit,\n    newSuggestion: Boolean = false,\n)",
+      "count": 1
+    },
+    {
+      "old": "            OutlinedButton(\n                onClick = onToggleActive,",
+      "new": "            if (!newSuggestion) OutlinedButton(\n                onClick = onToggleActive,",
+      "count": 1
+    },
+    {
+      "old": "            OutlinedButton(\n                onClick = { showDeleteConfirm = true },",
+      "new": "            if (!newSuggestion) OutlinedButton(\n                onClick = { showDeleteConfirm = true },",
+      "count": 1
+    }
+  ],
+  "kotlin/com/baraa/masroof/MainActivity.kt": [
+    {
+      "old": "        super.onCreate(savedInstanceState)\n",
+      "new": "        super.onCreate(savedInstanceState)\n        intent?.getStringExtra(\"lab_analysis_alert\")?.let { com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.open(it) }\n",
+      "count": 1
+    }
+  ]
+}
