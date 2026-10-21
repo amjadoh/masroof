@@ -1,0 +1,10 @@
+{
+  "id": "device_instant_transfer",
+  "sender": "AlJazira",
+  "body": "نوع العملية: حوالة فورية صادرة\nمبلغ العملية: 100.00\nالعملة: SAR\nرقم المعاملة: 20261005410870\nرقم حساب المرسل: 3001\nاسم المستفيد: TEST BENEFICIARY\nرقم حساب/معرف المستفيد: 9466\nالبنك المستفيد: بنك اس تي سي\nالحالة: مقبولة\nالتاريخ: 05-10-2026 20:04",
+  "expected": {
+    "messageFamily": "TRANSFER_OUT",
+    "parseStatus": "SUCCESS",
+    "amount": "100.00"
+  }
+}

@@ -117,7 +117,7 @@ class ReplicaSetupJourneyTest {
             screenshot("11-review-resolved-in-place")
 
             // The manual decision itself is never labelled as a model decision.
-            assertNull(runBlocking { container.interpretationProvenanceWorkflow.load("ui-unknown-loan") })
+            assertEquals(com.baraa.masroof.lab.replica.application.interpretation.InterpretationOrigin.MANUAL, runBlocking { container.interpretationProvenanceWorkflow.load("ui-unknown-loan") }.origin)
             runBlocking {
                 requireNotNull(container.labInterpretationService).synchronizeFeedback()
                 val future = body.replace("SAR 23", "SAR 243.21")

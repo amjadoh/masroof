@@ -29,8 +29,8 @@ class InterpretationProvenanceTest {
     @Test fun currentOriginSelectsTheExplanationWithoutUsingConfidenceOrActiveModel() {
         assertEquals(InterpretationOrigin.ML, InterpretationProvenanceWorkflow.project(record())!!.origin)
         assertEquals(InterpretationOrigin.HUMAN_TEMPLATE, InterpretationProvenanceWorkflow.project(record("HUMAN_TEMPLATE"))!!.origin)
-        assertNull(InterpretationProvenanceWorkflow.project(record(null)))
-        assertNull(InterpretationProvenanceWorkflow.project(record("RULES")))
+        assertEquals(InterpretationOrigin.RULES, InterpretationProvenanceWorkflow.project(record(null)).origin)
+        assertEquals(InterpretationOrigin.UNAVAILABLE, InterpretationProvenanceWorkflow.project(record("RULES")).origin)
         val base = record()
         assertEquals(InterpretationProvenanceWorkflow.project(base), InterpretationProvenanceWorkflow.project(
             base.copy(event = base.event.copy(confidence = base.event.confidence.copy(score = 0.01)))))
@@ -40,20 +40,20 @@ class InterpretationProvenanceTest {
         assertTrue(InterpretationProvenanceWorkflow.project(record(), requiredReview = true)!!.pendingReview)
         assertFalse(InterpretationProvenanceWorkflow.project(record())!!.pendingReview)
     }
-    @Test fun supersededOrUnreliableInferenceIsHidden() {
+    @Test fun manualAndUnavailableSourcesNeverClaimCurrentMlParticipation() {
         val base = record()
         for (resolution in listOf(ReviewResolutionKind.USER_FINANCIAL_TYPE, ReviewResolutionKind.USER_CORRECTION, ReviewResolutionKind.USER_NON_FINANCIAL))
-            assertNull(InterpretationProvenanceWorkflow.project(base, resolution))
-        assertNull(InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true, automationConfirmed = true)))
+            assertEquals(InterpretationOrigin.MANUAL, InterpretationProvenanceWorkflow.project(base, resolution).origin)
+        assertEquals(InterpretationOrigin.MANUAL, InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true, automationConfirmed = true)).origin)
         // A merchant-only correction leaves the original family inference intact.
         assertNotNull(InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true)))
         for (reasons in listOf(listOf("model:active"), listOf("family_origin:ML"), listOf("family_origin:ML", "model:"),
             listOf("family_origin:ML", "family_origin:HUMAN_TEMPLATE", "model:x"))) {
-            assertNull(InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(confidence = Confidence(0.9, reasons)))))
+            assertEquals(InterpretationOrigin.UNAVAILABLE, InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(confidence = Confidence(0.9, reasons)))).origin)
         }
-        assertNull(InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(messageFamily = MessageFamily.UNKNOWN))))
+        assertEquals(InterpretationOrigin.UNRESOLVED, InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(messageFamily = MessageFamily.UNKNOWN))).origin)
     }
-    @Test fun optionalMetadataFailureHidesOnlyTheExplanationAndCancellationPropagates() {
+    @Test fun metadataFailureIsExplicitAndCancellationPropagates() {
         fun workflow(failure: RuntimeException): InterpretationProvenanceWorkflow {
             fun <T> port(type: Class<T>, answer: (String) -> Any?): T = type.cast(java.lang.reflect.Proxy.newProxyInstance(
                 type.classLoader, arrayOf(type)) { _, method, _ -> answer(method.name) })
@@ -66,7 +66,7 @@ class InterpretationProvenanceTest {
             val reviews = port(ReviewRepository::class.java) { throw failure }
             return InterpretationProvenanceWorkflow(EffectiveParsedEventProvider(parsed,corrections),reviews)
         }
-        assertNull(runBlocking { workflow(IllegalStateException("unavailable")).load("provenance") })
+        assertEquals(InterpretationOrigin.UNAVAILABLE, runBlocking { workflow(IllegalStateException("unavailable")).load("provenance") }.origin)
         assertThrows(CancellationException::class.java) {
             runBlocking { workflow(CancellationException("screen closed")).load("provenance") }
         }

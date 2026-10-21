@@ -31,7 +31,7 @@ class LabStorageContextTest {
         lab.getSharedPreferences("theme",0).edit().putString("value","lab").commit()
         assertEquals("production",host.getSharedPreferences("theme",0).getString("value",null))
         assertEquals("lab",lab.createConfigurationContext(Configuration()).getSharedPreferences("theme",0).getString("value",null))
-        assertTrue(lab.filesDir.canonicalPath.startsWith(host.filesDir.canonicalPath + "/lab_replica"))
+        assertEquals(java.io.File(host.filesDir,"lab_replica").canonicalFile,lab.filesDir.canonicalFile)
     }
     @Test fun choosingLabLanguageDoesNotChangeTheHostsProcessLocale() {
         val before=java.util.Locale.getDefault()
