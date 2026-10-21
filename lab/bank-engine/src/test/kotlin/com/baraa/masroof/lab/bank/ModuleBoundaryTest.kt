@@ -9,9 +9,16 @@ class ModuleBoundaryTest {
     private val root = File("../..").canonicalFile
     private val projectDependency = Regex("project\\(\"([^\"]+)\"\\)")
 
+    @Test fun removedMlImplementationCannotReturnToTheBankEngine() {
+        val old = File(root, "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/learning")
+        assertFalse("Duplicate ML implementation in bank-engine", old.walkTopDown().any { it.extension == "kt" })
+        assertFalse("Duplicate training command", File(root, "lab/bank-engine/tools/train_family_model.py").exists())
+    }
+
     @Test fun pureCoresImportOnlyJdkKotlinAndTheirOwnedContracts() {
         val common = listOf("java.", "kotlin.")
         mapOf(
+            "ml-assist" to common + "com.baraa.masroof.lab.ml.",
             "finance-core" to common + "com.baraa.masroof.lab.finance.",
             "bank-engine" to common + listOf("com.baraa.masroof.lab.bank.", "com.baraa.masroof.lab.finance.value."),
         ).forEach { (module, allowed) ->
@@ -24,6 +31,8 @@ class ModuleBoundaryTest {
                 }
                 assertFalse("Fully qualified Android API in ${file.name}",
                     Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()))
+                if (module == "bank-engine") assertFalse("ML implementation leaked into engine: ${file.name}",
+                    Regex("com\\.baraa\\.masroof\\.lab\\.(ml|bank\\.learning)\\.").containsMatchIn(file.readText()))
                 assertFalse("Legacy interpreter reference in ${file.name}",
                     Regex("com\\.baraa\\.masroof\\.lab\\.(engine|copy)\\.").containsMatchIn(file.readText()))
             }
@@ -41,9 +50,10 @@ class ModuleBoundaryTest {
             assertFalse("$module depends on production", ":app" in deps)
         }
         assertFalse("Removed legacy modules must not return", graph.keys.any { it in setOf(":lab:engine", ":lab:android") })
+        assertEquals(emptySet<String>(), graph[":lab:ml-assist"])
         assertEquals(emptySet<String>(), graph[":lab:finance-core"])
         assertEquals(setOf(":lab:finance-core"), graph[":lab:bank-engine"])
-        assertEquals(setOf(":ui-kit", ":lab:finance-core", ":lab:bank-engine"), graph[":lab:beta"])
+        assertEquals(setOf(":ui-kit", ":lab:finance-core", ":lab:bank-engine", ":lab:ml-assist"), graph[":lab:beta"])
         fun visit(module: String, ancestors: Set<String>) {
             assertFalse("Dependency cycle: $ancestors -> $module", module in ancestors)
             graph[module].orEmpty().forEach { visit(it, ancestors + module) }

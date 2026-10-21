@@ -7,6 +7,10 @@ import com.baraa.masroof.lab.replica.application.AppContainer
 import com.baraa.masroof.lab.replica.application.review.ReviewWorkflowResult
 import com.baraa.masroof.lab.replica.domain.model.*
 import com.baraa.masroof.lab.replica.sms.hash.SmsBodyHasher
+import com.baraa.masroof.lab.replica.data.learning.LearningDatabase
+import com.baraa.masroof.lab.replica.data.learning.LearningLabelRow
+import com.baraa.masroof.lab.ml.family.FamilyInputCleaner
+import androidx.room.Room
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -95,6 +99,44 @@ class ReplicaMachineLearningTest {
             val parsed=requireNotNull(c.parsedEventRepository.findByRawSmsId("ml-known-two"))
             assertEquals(ParseStatus.SUCCESS,parsed.event.parseStatus)
             assertFalse(parsed.event.confidence.reasons.any {it.startsWith("model:")})
+        } finally {LabResetWorkflow.reset(host)}
+    }
+
+    @Test fun oldFeatureCacheIsRebuiltFromHumanDecisionsWithoutChangingPostedHistory() = runBlocking {
+        var c=fresh()
+        fun body(amount: Int)="سداد تمويل خاص\nمن: 3001\nالقسط: SAR $amount\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: ${at()}"
+        try {
+            c.processRawSmsUseCase.ingest(evidence("old-model-human",body(20)))
+            val review=requireNotNull(c.reviewRepository.findByRawSmsId("old-model-human"))
+            assertTrue(c.reviewWorkflowService.resolveAsFinancialType(review.id,FinancialTransactionType.LOAN_REPAYMENT) is ReviewWorkflowResult.Success)
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            val before=c.financialTransactionRepository.listAll()
+            LabRuntime.close()
+            val scoped=LabStorageContext(host)
+            val legacy=Room.databaseBuilder(scoped,LearningDatabase::class.java,"learning.db").build()
+            try {
+                legacy.learning().replaceLabels(listOf(LearningLabelRow("legacy","old-model-human","BANK_ALJAZIRA",
+                    "FINANCING_INSTALLMENT","old-template","{\"w:private_person\":1}","bank-family-title-v1",1L,"USER_EVENT_KIND","hash")))
+            } finally {legacy.close()}
+            File(scoped.filesDir,"learning/family-model.json").writeText("{\"schema\":1,\"featuresVersion\":\"bank-family-title-v1\"}")
+            c=LabRuntime.container(host)
+            c.awaitPostStartupBackgroundWorkForTesting()
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            assertEquals(before,c.financialTransactionRepository.listAll())
+            val rebuilt=Room.databaseBuilder(scoped,LearningDatabase::class.java,"learning.db").build()
+            try {
+                val rows=rebuilt.learning().labels()
+                assertEquals(1,rows.size)
+                assertEquals(FamilyInputCleaner.FEATURES_VERSION,rows.single().featuresVersion)
+                assertFalse(rows.single().featuresJson.contains("private_person"))
+            } finally {rebuilt.close()}
+            assertTrue(File(scoped.filesDir,"learning/family-model.json").readText().contains(FamilyInputCleaner.VERSION))
+            assertEquals(ReviewStatus.RESOLVED,c.reviewRepository.findByRawSmsId("old-model-human")!!.status)
+            c.processRawSmsUseCase.ingest(evidence("old-model-next",body(21)))
+            assertEquals(2,c.financialTransactionRepository.listAll().size)
+            assertTrue(c.reviewRepository.listRequired().isEmpty())
+            File(host.getExternalFilesDir(null),"ml-cleaning-upgrade.txt").writeText(
+                "Old feature cache rejected.\nHuman decision rebuilt using ${FamilyInputCleaner.VERSION}.\nPosted history unchanged across reopen.\nFuture amount 21 SAR extracted fresh; no repeated review.\n")
         } finally {LabResetWorkflow.reset(host)}
     }
 }

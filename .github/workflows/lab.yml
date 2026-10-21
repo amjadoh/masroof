@@ -27,11 +27,12 @@ jobs:
       # CI's root testDebugUnitTest task covers app and lab/beta.
       # Pure JVM modules have separate test tasks and run only here.
       - name: Test lab JVM engines and domain contracts
-        run: ./gradlew :lab:finance-core:test :lab:bank-engine:test --stacktrace
+        run: ./gradlew :lab:finance-core:test :lab:bank-engine:test :lab:ml-assist:test --stacktrace
       - name: Verify replica source contract and reproducible trained model
         run: |
           python3 lab/beta/tools/test_production_replica.py
-          python3 lab/bank-engine/tools/train_family_model.py --check --skip-export
+          python3 lab/ml-assist/tools/train_family_model.py --check
+          python3 lab/ml-assist/tools/test_training.py
       - name: Build Masroof with integrated lab
         run: ./gradlew :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
@@ -45,6 +46,7 @@ jobs:
           path: |
             lab/finance-core/build/reports/tests/
             lab/bank-engine/build/reports/tests/
+            lab/ml-assist/build/reports/tests/
       - uses: actions/upload-artifact@v4
         with:
           name: lab-acceptance-evidence
@@ -53,6 +55,10 @@ jobs:
             lab/beta/PRODUCTION_REPLICA_SOURCES.json
             lab/beta/FINAL_FILE_MANIFEST.json
             lab/beta/ENGINE_PARITY_DIFFERENCES.json
-            lab/beta/ML_SEED_EVALUATION.json
+            lab/ml-assist/ML_SEED_EVALUATION.json
+            lab/ml-assist/SEPARATION_REPORT_AR.html
+            lab/ml-assist/tools/baseline-evaluation.json
+            lab/ml-assist/tools/corpus-splits.json
+            lab/ml-assist/evidence/
             lab/beta/replica-overlays/
             lab/beta/evidence/
