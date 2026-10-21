@@ -1,0 +1,163 @@
+package com.baraa.masroof.lab.beta.analytics
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.lab.beta.replica.LabStorageContext
+import com.baraa.masroof.lab.replica.application.analytics.*
+import com.baraa.masroof.lab.replica.application.backup.*
+import com.baraa.masroof.lab.replica.data.analytics.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.After
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class) @Config(sdk = [28])
+class AnalyticsPersistenceTest {
+    private val directories = mutableListOf<java.io.File>()
+    // sqlite4java's Windows build cannot open the long nested integrity-check
+    // path in Robolectric's default application directory. Use real short files.
+    private fun context(): LabStorageContext {
+        val directory = java.nio.file.Files.createTempDirectory("ma").toFile().also { directories += it }
+        return LabStorageContext(object : android.content.ContextWrapper(ApplicationProvider.getApplicationContext<Context>()) {
+            override fun getDatabasePath(name: String) = java.io.File(name).takeIf { it.isAbsolute } ?: java.io.File(directory, name)
+        })
+    }
+    @After fun cleanup() { directories.forEach { it.deleteRecursively() } }
+    @Test fun sidecarReopensAndArchiveRoundTripsWithoutCopyingLedger() = runBlocking {
+        val c = context(); c.deleteDatabase(AnalyticsDatabase.NAME)
+        val db = AnalyticsDatabase.open(c)
+        val snapshot = snapshot()
+        val row = AnalysisSnapshotRow("published", snapshot.sourceHash, snapshot.issuedAt, AnalyticsJson.format.encodeToString(snapshot))
+        val prefs = AnalysisPreferencesRow(budget = 45000, enabledAt = 1)
+        val alert = AnalysisAlertRow("one", "DUE", "Utility", 900, 1, 2, read = true, snoozedUntil = 300)
+        try {
+            db.analytics().snapshot(row); db.analytics().preferences(prefs); db.analytics().alerts(listOf(alert))
+            val raw = AnalyticsArchiveStore.export(db)
+            LabAnalyticsBackup.validate(raw)
+            AnalyticsArchiveStore.restore(db, null)
+            assertNull(db.analytics().latest())
+            AnalyticsArchiveStore.restore(db, raw)
+            assertEquals(row, db.analytics().latest()); assertEquals(prefs, db.analytics().preferences())
+            assertEquals(listOf(alert), db.analytics().alerts())
+            db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'room_%' AND name NOT LIKE 'android_%' AND name NOT LIKE 'sqlite_%'").use { assertEquals(5, it.count) }
+        } finally { db.close() }
+        val reopened = AnalyticsDatabase.open(c)
+        try { assertEquals(row, reopened.analytics().latest()) } finally { reopened.close() }
+        assertTrue(c.getDatabasePath(AnalyticsDatabase.NAME).name == "lab_replica_analytics.db")
+        assertFalse(ApplicationProvider.getApplicationContext<Context>().getDatabasePath("analytics.db").exists())
+    }
+    @Test fun oldPreferencesRemainReadableAndCorruptAnalyticsRejectedBeforeInstall() {
+        val original = BackupPreferencesSnapshot(true, true, 1, true, "ar", "DARK")
+        val raw = BackupPackageCodec.encodePreferences(original)
+        assertNull(BackupPackageCodec.decodePreferences(raw.replace(",\"labAnalysis\":null", "")).labAnalysis)
+        val archive = AnalyticsJson.format.encodeToString(AnalyticsArchive(snapshots = listOf(AnalysisSnapshotRow("bad", "a".repeat(64), 1, "{}"))))
+        val corrupt = BackupPackageCodec.encodePreferences(original.copy(labAnalysis = archive))
+        assertTrue(runCatching { BackupPackageCodec.decodePreferences(corrupt) }.isFailure)
+    }
+    @Test fun restoreJournalReplaysAnalysisAndRetainsOldBackupCompatibility() = runBlocking {
+        val c = context(); c.deleteDatabase(AnalyticsDatabase.NAME)
+        val db = AnalyticsDatabase.open(c)
+        try { db.analytics().preferences(AnalysisPreferencesRow(budget = 78900, phone = true, enabledAt = 1)) } finally { db.close() }
+        val captured = DatabaseRestoreRecovery.capturePreferences(c)
+        assertNotNull(captured.labAnalysis)
+        val incoming = DatabaseRestoreRecovery.incomingPreferences(BackupPreferencesSnapshot(true, true, null, true, "ar", "LIGHT"))
+        assertNull(incoming.labAnalysis)
+        LabAnalyticsBackup.restore(c, null)
+        LabAnalyticsBackup.restore(c, captured.labAnalysis)
+        val restored = AnalyticsDatabase.open(c)
+        try { assertEquals(78900L, restored.analytics().preferences()!!.budget) } finally { restored.close() }
+    }
+    @Test fun predictedAlertRequiresTwoFreshObservationsSixHoursApartAndSurvivesReadSnooze() {
+        val prefs = AnalysisPreferencesRow(budget = 10000)
+        val first = AnalysisAlertPolicy.evaluate(snapshot(), emptyList(), emptyList(), prefs, 10).single()
+        assertFalse(first.confirmed)
+        val early = AnalysisAlertPolicy.evaluate(snapshot(1 + 5 * HOUR), emptyList(), listOf(first), prefs, 10).single()
+        assertFalse(early.confirmed)
+        val second = AnalysisAlertPolicy.evaluate(snapshot(1 + 6 * HOUR), emptyList(), listOf(early.copy(read = true, snoozedUntil = 9 * HOUR, lastNotified = 50)), prefs, 10).single()
+        assertTrue(second.confirmed); assertTrue(second.read); assertEquals(9 * HOUR, second.snoozedUntil); assertEquals(50L, second.lastNotified)
+        val stale = AnalysisAlertPolicy.evaluate(snapshot(1 + 30 * HOUR), emptyList(), listOf(first), prefs, 10).single()
+        assertFalse(stale.confirmed)
+        val blocked = AnalysisAlertPolicy.evaluate(snapshot().copy(quality = snapshot().quality.copy(blocked = true)), emptyList(), listOf(first), prefs, 10)
+        assertTrue(blocked.single().resolved)
+        val changed = AnalysisAlertPolicy.evaluate(snapshot(), emptyList(), listOf(first), prefs.copy(budget = 30000), 10)
+        assertTrue(changed.single().resolved)
+    }
+    @Test fun interruptedRestoreRecoversMatchingFinancialFileAndAnalyticsOnCommitAndRollback() {
+        val c = context()
+        val live = DatabaseRestoreRecovery.liveDatabase(c)
+        for (commit in listOf(true, false)) {
+            c.deleteDatabase("masroof.db"); c.deleteDatabase(AnalyticsDatabase.NAME)
+            live.parentFile!!.mkdirs()
+            android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(live, null).use {
+                it.execSQL("CREATE TABLE marker (value INTEGER)"); it.execSQL("INSERT INTO marker VALUES (1)")
+            }
+            val original = AnalyticsJson.format.encodeToString(AnalyticsArchive(preferences = AnalysisPreferencesRow(budget = 10000, enabledAt = 1)))
+            val incoming = AnalyticsJson.format.encodeToString(AnalyticsArchive(preferences = AnalysisPreferencesRow(budget = 25000, enabledAt = 2)))
+            LabAnalyticsBackup.restore(c, original)
+            val old = DatabaseRestoreRecovery.capturePreferences(c)
+            val new = DatabaseRestoreRecovery.incomingPreferences(BackupPreferencesSnapshot(true, true, null, true, "en", "LIGHT", incoming))
+            DatabaseRestoreRecovery.writeSnapshots(live, old, new)
+            DatabaseRestoreRecovery.parkOriginal(live)
+            if (commit) android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(live, null).use {
+                it.execSQL("CREATE TABLE marker (value INTEGER)"); it.execSQL("INSERT INTO marker VALUES (2)")
+            }
+            DatabaseRestoreRecovery.writeJournal(live, if (commit) DatabaseRestoreRecovery.Stage.NEW_INSTALLED else DatabaseRestoreRecovery.Stage.OLD_PARKED, false)
+            // Simulate death after the independent sidecar transaction but before the durable commit marker.
+            LabAnalyticsBackup.restore(c, incoming)
+            DatabaseRestoreRecovery.recover(c)
+            DatabaseRestoreRecovery.recover(c)
+            val db = AnalyticsDatabase.open(c)
+            try { assertEquals(if (commit) 25000L else 10000L, runBlocking { db.analytics().preferences()!!.budget }) } finally { db.close() }
+            android.database.sqlite.SQLiteDatabase.openDatabase(live.path, null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY).use { db2 ->
+                db2.rawQuery("SELECT value FROM marker", null).use { it.moveToFirst(); assertEquals(if (commit) 2 else 1, it.getInt(0)) }
+            }
+        }
+    }
+    @Test fun onlyConfirmedDuesUseReminderWindowAndActualCrossingKeepsIdentity() {
+        val s = snapshot().copy(actual = 15000, dues = listOf(AnalysisDue("one", "One", 500, 13, true), AnalysisDue("estimate", "Estimate", 500, 11, false), AnalysisDue("later", "Later", 500, 14, true)))
+        val prefs = AnalysisPreferencesRow(budget = 10000)
+        val rows = AnalysisAlertPolicy.evaluate(s, emptyList(), emptyList(), prefs, 10)
+        assertEquals(setOf("ACTUAL", "DUE"), rows.map { it.kind }.toSet())
+        assertTrue(rows.all { it.confirmed })
+        assertEquals(rows.map { it.id }, AnalysisAlertPolicy.evaluate(s.copy(issuedAt = HOUR), emptyList(), rows, prefs, 10).map { it.id })
+    }
+    @Test fun phonePolicyEnforcesSevenSilentDaysSourceFreshnessAndNotificationDeduplication() {
+        val week = 7 * 24 * HOUR
+        val s = snapshot(week + 1)
+        val prefs = AnalysisPreferencesRow(phone = true, enabledAt = 1)
+        val row = AnalysisAlertRow("predicted", "BUDGET", "", 10000, 1, s.issuedAt, confirmed = true, sourceHash = s.sourceHash)
+        assertTrue(AnalysisAlertPolicy.eligibleForPhone(row, s, prefs, s.issuedAt))
+        assertFalse(AnalysisAlertPolicy.eligibleForPhone(row, s, prefs.copy(enabledAt = HOUR), s.issuedAt))
+        assertFalse(AnalysisAlertPolicy.eligibleForPhone(row, s, prefs.copy(phone = false), s.issuedAt))
+        assertFalse(AnalysisAlertPolicy.eligibleForPhone(row.copy(lastNotified = 1), s, prefs, s.issuedAt))
+        assertFalse(AnalysisAlertPolicy.eligibleForPhone(row.copy(sourceHash = "old"), s, prefs, s.issuedAt))
+        assertFalse(AnalysisAlertPolicy.eligibleForPhone(row, s, prefs, s.issuedAt + 7 * HOUR))
+    }
+    @Test fun refundsMayMakeNetActualsAndForecastsNegativeWithoutCreatingNegativeDomainMoney() {
+        val s = snapshot().copy(actual = -5000, remaining = 100, total = -4900, lower = -5000, upper = -4800)
+        val row = AnalysisSnapshotRow("refund", s.sourceHash, s.issuedAt, AnalyticsJson.format.encodeToString(s))
+        LabAnalyticsBackup.validate(AnalyticsJson.format.encodeToString(AnalyticsArchive(snapshots = listOf(row))))
+        assertEquals("-50.00", analysisAmount(s.actual).amount.toPlainString())
+        assertEquals("-49.00", analysisAmount(s.total!!).amount.toPlainString())
+    }
+    @Test fun exportChecksTheCombinedFinancialAndAnalyticsSizeBeforeOpeningTheDestination() {
+        val c = context()
+        val directory = java.io.File(c.getDatabasePath("unused").parentFile, "export").apply { mkdirs() }
+        java.io.File(directory, "masroof.db").writeText("12345678")
+        java.io.File(directory, "preferences.json").writeText("12345678")
+        java.io.File(directory, "manifest.json").writeText("1")
+        val limits = BackupArchiveLimits(3, 10, 15)
+        assertTrue(runCatching { LabAnalyticsBackup.validateExportSize(directory, limits) }.isFailure)
+        java.io.File(directory, "masroof.db").writeText("123")
+        LabAnalyticsBackup.validateExportSize(directory, limits)
+    }
+    companion object {
+        private const val HOUR = 3600_000L
+        fun snapshot(at: Long = 1) = AnalysisSnapshot(0, 30, at, "a".repeat(64), "READY", "WEEKDAY_MEDIAN", 100,
+            20000, 20100, 18000, 22000, emptyList(), AnalysisQuality(20, emptyMap(), emptyList(), 90, true, 0, false), emptyList(), emptyList(), 3)
+    }
+}

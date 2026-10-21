@@ -1,0 +1,4 @@
+Same device, same persisted data, same generated Home. Two warmups; six samples per case.
+Baseline without additive forecast card (ms): [124, 121, 104, 119, 125, 102]
+With forecast card (ms): [176, 133, 125, 110, 123, 144]
+Measures recomposition through Compose idle, including test synchronization; not startup latency. Training is independent background work.

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-21T14:40:30" hostname="LAPTOP-FH7DENM5" time="1.38">
+  <properties/>
+  <testcase name="correctionAndDeletionChangeFingerprint" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.069"/>
+  <testcase name="missingCoverageIsNotZeroHistoryAndPreventsTraining" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.005"/>
+  <testcase name="unchangedTrainingPrefixIsReusedForSevenDaysThenReevaluated" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.995"/>
+  <testcase name="weekdayBaselineAndPartialTodayNeverRecountTodaysActual" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.002"/>
+  <testcase name="robustModelHasFiniteWeightsAndNeverClaimsUnvalidatedAccuracy" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.1"/>
+  <testcase name="dailyMerchantIsNotInventedAsMonthlyCommitment" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.01"/>
+  <testcase name="oldDiscontinuedPaymentsDoNotBecomeNewDueDatesOrAmountChangeAlerts" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.001"/>
+  <testcase name="knownGapIsExcludedFromCoveredDays" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.001"/>
+  <testcase name="monthlyCadenceUsesCalendarAndAmountChangeNeedsThreePriorPayments" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.007"/>
+  <testcase name="refundsUnknownFxFutureAndScopeAreExplicitAndFinancialOutliersStay" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.001"/>
+  <testcase name="todaysLargePaymentNeverChangesTheTrainingPrefixOrDeletesActualSpending" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.186"/>
+  <testcase name="duplicatesUseIdentityAndDoNotCollapseTwoRealEqualPayments" classname="com.baraa.masroof.lab.analytics.AnalyticsEngineTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
