@@ -104,7 +104,7 @@ class ChartGuidanceInteractionTest {
             compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
             compose.onNodeWithText(message).assertIsDisplayed()
             capture("chart-guidance-$tag-$appearance")
-            pressDeviceBack()
+            pressDeviceBack(compose)
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithContentDescription(about).performClick()
             pressOutsidePopup()
@@ -112,7 +112,7 @@ class ChartGuidanceInteractionTest {
             val averageLabel = context.getString(R.string.approved_daily_average)
             compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, averageLabel)).performClick()
             compose.onNodeWithText(context.getString(R.string.approved_average_basis, 5)).assertIsDisplayed()
-            pressDeviceBack()
+            pressDeviceBack(compose)
         }
     }
 
@@ -129,7 +129,7 @@ class ChartGuidanceInteractionTest {
         compose.onNode(hasContentDescription("Action", substring = true)).performClick()
         compose.onNodeWithText("Contextual explanation").assertIsDisplayed()
         compose.runOnIdle { assertEquals(0, actions) }
-        pressDeviceBack()
+        pressDeviceBack(compose)
         compose.onNode(hasText("Action") and hasClickAction()).performClick()
         compose.runOnIdle { assertEquals(1, actions) }
     }

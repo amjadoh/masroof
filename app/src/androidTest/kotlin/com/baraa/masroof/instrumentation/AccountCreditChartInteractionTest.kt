@@ -113,7 +113,7 @@ class AccountCreditChartInteractionTest {
                 if (id in listOf("accounts", "accountDetail")) {
                     compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, title)).performClick()
                     compose.onNodeWithText(context.getString(if (id == "accounts") R.string.reference_accounts_scope else R.string.reference_account_detail_scope)).assertIsDisplayed()
-                    pressDeviceBack()
+                    pressDeviceBack(compose)
                 }
             }
     }
