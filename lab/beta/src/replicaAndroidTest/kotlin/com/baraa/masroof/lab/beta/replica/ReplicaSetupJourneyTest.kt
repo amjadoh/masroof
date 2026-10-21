@@ -103,6 +103,13 @@ class ReplicaSetupJourneyTest {
             screenshot("03b-dashboard-forecast-entry")
             compose.onNodeWithTag("lab-forecast-entry").performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_title)).assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(host.getString(R.string.lab_replica_guidance_about,
+                text(R.string.lab_analysis_insufficient))).performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertIsDisplayed()
+            androidx.test.espresso.Espresso.pressBack()
+            compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.lab_analysis_insufficient)).assertIsDisplayed()
             screenshot("03c-analysis-opened-from-home")
             androidx.test.espresso.Espresso.pressBack()
             compose.onNodeWithTag("lab-forecast-entry").performScrollTo().assertIsDisplayed()

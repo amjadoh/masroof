@@ -6,6 +6,9 @@ INSTRUMENTATION_STATUS: stream=
 com.baraa.masroof.lab.beta.analytics.AnalyticsJourneyTest:
 INSTRUMENTATION_STATUS: test=forecastsKeepLedgerParityAcrossCorrectionsAndReopenAndUiDraftsOnlySaveExplicitly
 INSTRUMENTATION_STATUS_CODE: 1
+s_glBindAttribLocation: bind attrib 0 name position
+s_glBindAttribLocation: bind attrib 1 name color
+s_glBindAttribLocation: bind attrib 2 name localCoord
 INSTRUMENTATION_STATUS: class=com.baraa.masroof.lab.beta.analytics.AnalyticsJourneyTest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
@@ -59,7 +62,7 @@ INSTRUMENTATION_STATUS: test=corruptFinancialFileIsPreservedAndOnlyExplicitLabRe
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 58.754
+Time: 75.109
 
 OK (4 tests)
 
