@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DailySpendingTrend
@@ -84,7 +83,7 @@ class DailyPurchasesPeriodInteractionTest {
             val purchasesHelp = context.getString(R.string.dashboard_purchases_trend_basis)
             compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, context.getString(R.string.dashboard_daily_purchases))).performClick()
             compose.onNodeWithText(purchasesHelp).assertIsDisplayed()
-            Espresso.pressBack()
+            pressDeviceBack(compose)
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithTag("home-chart-scope-1").performClick().assertIsSelected()
             selectDay(trends.overall, lang, first = false)
@@ -92,10 +91,10 @@ class DailyPurchasesPeriodInteractionTest {
             capture("all-expenses-$lang-$appearance")
             compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, context.getString(R.string.approved_all_expenses))).performClick()
             compose.onNodeWithText(context.getString(R.string.dashboard_all_trend_basis)).assertIsDisplayed()
-            Espresso.pressBack()
+            pressDeviceBack(compose)
             compose.onNodeWithTag("home-chart-scope-0").performClick().assertIsSelected()
             compose.runOnIdle { commitments.value = true }
-            Espresso.pressBack()
+            pressDeviceBack(compose)
             compose.onNodeWithTag("purchases-home").assertIsDisplayed()
             compose.runOnIdle { commitments.value = true }
             compose.onNodeWithContentDescription(context.getString(R.string.dashboard_flow_detail_back)).performClick()

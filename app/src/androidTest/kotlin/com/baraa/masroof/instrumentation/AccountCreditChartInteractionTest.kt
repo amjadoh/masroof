@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DailySpendingTrend
@@ -114,7 +113,7 @@ class AccountCreditChartInteractionTest {
                 if (id in listOf("accounts", "accountDetail")) {
                     compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, title)).performClick()
                     compose.onNodeWithText(context.getString(if (id == "accounts") R.string.reference_accounts_scope else R.string.reference_account_detail_scope)).assertIsDisplayed()
-                    Espresso.pressBack()
+                    pressDeviceBack(compose)
                 }
             }
     }
