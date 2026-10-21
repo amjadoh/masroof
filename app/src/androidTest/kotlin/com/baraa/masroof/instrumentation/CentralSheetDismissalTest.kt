@@ -45,10 +45,10 @@ class CentralSheetDismissalTest {
         compose.onNodeWithTag("sheet-close").assertIsNotEnabled()
         compose.onNodeWithTag("sheet-cancel").assertIsNotEnabled()
         compose.onNodeWithTag("sheet-apply").assertIsNotEnabled()
-        scrimTap(); swipe(); pressDeviceBack()
+        scrimTap(); swipe(); pressDeviceBack(compose)
         compose.onNodeWithTag("sheet-overlay").assertExists()
         compose.runOnIdle { busy.value = false }
-        pressDeviceBack()
+        pressDeviceBack(compose)
         compose.onNodeWithTag("sheet-overlay").assertDoesNotExist()
         assertEquals(0, saves)
     }

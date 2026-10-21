@@ -193,7 +193,7 @@ class FoldModalWindowJourneyTest {
         compose.activityRule.scenario.recreate()
         compose.waitUntil(30_000) { exists("sheet-overlay") }
         verify(kind, "recreated")
-        pressDeviceBack(); compose.waitUntil(10_000) { !exists("sheet-overlay") }
+        pressDeviceBack(compose); compose.waitUntil(10_000) { !exists("sheet-overlay") }
         // Re-open after returning to the folded window, without a modal present.
         val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("wm size 640x1440")
         android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
