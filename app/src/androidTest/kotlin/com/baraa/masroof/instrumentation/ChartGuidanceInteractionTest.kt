@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DailySpendingPoint
@@ -105,7 +104,7 @@ class ChartGuidanceInteractionTest {
             compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
             compose.onNodeWithText(message).assertIsDisplayed()
             capture("chart-guidance-$tag-$appearance")
-            Espresso.pressBack()
+            pressDeviceBack(compose)
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithContentDescription(about).performClick()
             pressOutsidePopup()
@@ -113,7 +112,7 @@ class ChartGuidanceInteractionTest {
             val averageLabel = context.getString(R.string.approved_daily_average)
             compose.onNodeWithContentDescription(context.getString(R.string.guidance_about, averageLabel)).performClick()
             compose.onNodeWithText(context.getString(R.string.approved_average_basis, 5)).assertIsDisplayed()
-            Espresso.pressBack()
+            pressDeviceBack(compose)
         }
     }
 
@@ -130,7 +129,7 @@ class ChartGuidanceInteractionTest {
         compose.onNode(hasContentDescription("Action", substring = true)).performClick()
         compose.onNodeWithText("Contextual explanation").assertIsDisplayed()
         compose.runOnIdle { assertEquals(0, actions) }
-        Espresso.pressBack()
+        pressDeviceBack(compose)
         compose.onNode(hasText("Action") and hasClickAction()).performClick()
         compose.runOnIdle { assertEquals(1, actions) }
     }
