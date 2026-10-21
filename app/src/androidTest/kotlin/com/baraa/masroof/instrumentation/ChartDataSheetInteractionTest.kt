@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.application.dashboard.*
 import com.baraa.masroof.R
@@ -139,7 +138,7 @@ class ChartDataSheetInteractionTest {
                 val choice = compose.onNodeWithTag("chart-category-${category.name}")
                 choice.performScrollTo().performClick()
                 // Hardware Back discards the draft and stays on the original screen.
-                Espresso.pressBack(); compose.waitForIdle()
+                pressDeviceBack(); compose.waitForIdle()
                 compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
                 assertEquals(source.categoryTrends.keys, workflow.value.categories(source, chartKey))
                 compose.onNodeWithTag("chart-customize").performScrollTo().performClick()
@@ -216,7 +215,7 @@ class ChartDataSheetInteractionTest {
                 assertEquals(setOf(FinancialTransactionType.EXPENSE), appliedFilter.value.types)
             } else {
                 val before = saves
-                Espresso.pressBack(); compose.waitForIdle()
+                pressDeviceBack(); compose.waitForIdle()
                 assertEquals(before, saves)
                 assertFalse(open.value)
             }

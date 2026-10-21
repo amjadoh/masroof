@@ -10,6 +10,7 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
@@ -263,10 +265,10 @@ class StatementReconciliationSmokeTest {
         scrollTo(hasTestTag(STATEMENT_RECONCILIATION_PICK_TAG))
         composeRule.onNodeWithTag(STATEMENT_RECONCILIATION_PICK_TAG).assertIsDisplayed()
         composeRule.waitForIdle()
-        val label = text(R.string.settings_statement_pick_file)
-        val button = device().wait(Until.findObject(By.text(label)), PICKER_TIMEOUT_MS)
-            ?: throw AssertionError(emulatorMessage("pick button '$label' was not in the window"))
-        button.click()
+        // Use the already verified Compose button for the in-app touch. Its text
+        // is not consistently exported to UiAutomator on API 36. DocumentsUI is
+        // still opened by the real launcher and driven through UiAutomator below.
+        composeRule.onNodeWithTag(STATEMENT_RECONCILIATION_PICK_TAG).performTouchInput { click(center) }
     }
 
     /**

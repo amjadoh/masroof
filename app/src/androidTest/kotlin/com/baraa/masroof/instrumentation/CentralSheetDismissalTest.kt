@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import com.baraa.masroof.presentation.common.MasroofBottomSheet
 import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.ui.theme.MasroofTheme
@@ -46,10 +45,10 @@ class CentralSheetDismissalTest {
         compose.onNodeWithTag("sheet-close").assertIsNotEnabled()
         compose.onNodeWithTag("sheet-cancel").assertIsNotEnabled()
         compose.onNodeWithTag("sheet-apply").assertIsNotEnabled()
-        scrimTap(); swipe(); Espresso.pressBack()
+        scrimTap(); swipe(); pressDeviceBack()
         compose.onNodeWithTag("sheet-overlay").assertExists()
         compose.runOnIdle { busy.value = false }
-        Espresso.pressBack()
+        pressDeviceBack()
         compose.onNodeWithTag("sheet-overlay").assertDoesNotExist()
         assertEquals(0, saves)
     }
