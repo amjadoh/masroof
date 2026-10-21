@@ -82,9 +82,20 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithTag("lab-forecast-entry").assertIsDisplayed().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_title, language)).assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-purchases")
-                compose.onNodeWithText(text(R.string.lab_analysis_why, language)).performScrollTo().performClick()
-                screen("$language-${if (isDark) "dark" else "light"}-explanation")
-                compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, language)).performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_need_data, language)).assertDoesNotExist()
+                val about = text(R.string.lab_replica_guidance_about, language).format(text(R.string.lab_analysis_initial, language))
+                compose.onNodeWithContentDescription(about).performClick()
+                compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.lab_analysis_forecast_hint, language)).assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-forecast-help")
+                androidx.test.espresso.Espresso.pressBack()
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.lab_analysis_title, language)).assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.lab_analysis_show_data, language)).performScrollTo().performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).performScrollTo().assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-data-details")
+                compose.onNodeWithText(text(R.string.lab_analysis_hide_data, language)).performScrollTo().performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).assertDoesNotExist()
                 compose.onNodeWithText(text(R.string.lab_analysis_settings, language)).performClick()
                 screen("$language-${if (isDark) "dark" else "light"}-settings")
                 compose.onNodeWithText(text(R.string.lab_analysis_cancel, language)).performScrollTo().performClick()
@@ -193,6 +204,12 @@ class AnalyticsJourneyTest {
     private fun screen(name: String) {
         compose.waitForIdle()
         val directory = File(host.getExternalFilesDir(null), "analytics-screens").apply { mkdirs() }
-        File(directory, "$name.png").outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val bitmap = if (compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isNotEmpty()) {
+            instrument.waitForIdleSync()
+            // The popup has its own Android window; wait for its first rendered frame.
+            android.os.SystemClock.sleep(200)
+            requireNotNull(instrument.uiAutomation.takeScreenshot())
+        } else compose.onRoot().captureToImage().asAndroidBitmap()
+        File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 }
