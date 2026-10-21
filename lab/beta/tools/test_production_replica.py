@@ -11,6 +11,14 @@ class ReplicaContractTest(unittest.TestCase):
         self.assertEqual(lock['bootstrapSha256'], replica.digest(replica.BETA/'replica-overlays/bootstrap.json'))
         self.assertEqual(lock['provenanceSha256'], replica.digest(replica.BETA/'replica-overlays/provenance.json'))
         self.assertEqual(lock['reportedFixesSha256'], replica.digest(replica.BETA/'replica-overlays/reported-fixes.json'))
+        self.assertEqual(lock['analyticsSha256'], replica.digest(replica.BETA/'replica-overlays/analytics.json'))
+
+    def test_analytics_engine_stays_in_ml_assist_and_financial_schema_is_unchanged(self):
+        self.assertTrue((replica.ROOT/'lab/ml-assist/src/main/kotlin/com/baraa/masroof/lab/analytics/PurchaseForecaster.kt').is_file())
+        specs = json.loads((replica.BETA/'replica-overlays/analytics.json').read_text(encoding='utf-8'))
+        self.assertFalse(any('/domain/' in p or '/data/room/' in p for p in specs))
+        for ops in specs.values():
+            for op in ops: self.assertNotEqual(op['old'], op['new'])
 
     def test_reported_fixes_are_narrow_locked_lab_overlays(self):
         specs=json.loads((replica.BETA/'replica-overlays/reported-fixes.json').read_text())

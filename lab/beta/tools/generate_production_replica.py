@@ -41,8 +41,12 @@ def main():
     fixes = BETA / 'replica-overlays/reported-fixes.json'
     for path, ops in json.loads(fixes.read_text()).items():
         specs.setdefault(path, []).extend(ops)
+    analytics = BETA / 'replica-overlays/analytics.json'
+    for path, ops in json.loads(analytics.read_text()).items():
+        specs.setdefault(path, []).extend(ops)
     actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(p.relative_to(SOURCE).as_posix() for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap), 'provenanceSha256': digest(provenance), 'reportedFixesSha256': digest(fixes)}
     actual['regressionSha256'] = digest(REGRESSION)
+    actual['analyticsSha256'] = digest(analytics)
     if args.lock: LOCK.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + '\n')
     if not LOCK.exists() or json.loads(LOCK.read_text()) != actual: raise SystemExit('Production or bootstrap drift. Review and explicitly update the replica lock.')
     if args.check:

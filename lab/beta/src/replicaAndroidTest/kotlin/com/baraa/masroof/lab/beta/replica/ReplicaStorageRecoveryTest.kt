@@ -31,6 +31,9 @@ class ReplicaStorageRecoveryTest {
         val copy=File(host.filesDir,"replica-financial-backup.mroof")
         try {
             ReplicaHistory.seed(c,4)
+            c.labAnalytics.refresh()
+            c.labAnalytics.updatePreferences(c.labAnalytics.state.value.preferences.copy(budget = 17100))
+            c.labAnalytics.refresh()
             val expected=ReplicaHistory.fingerprint(c)
             assertTrue(c.databaseBackupService.exportTo(Uri.fromFile(copy),"Synthetic backup 42".toCharArray()).isSuccess)
             c.processRawSmsUseCase.ingest(ReplicaHistory.message("after-backup",90))
@@ -40,6 +43,8 @@ class ReplicaStorageRecoveryTest {
             assertEquals(changed,ReplicaHistory.fingerprint(c))
             assertEquals(BackupImportOutcome.SuccessNeedsRestart,c.databaseBackupService.importFrom(Uri.fromFile(copy),"Synthetic backup 42".toCharArray()))
             c=LabRuntime.container(host);c.awaitPostStartupBackgroundWorkForTesting()
+            c.labAnalytics.refresh()
+            assertEquals(17100L,c.labAnalytics.state.value.preferences.budget)
             assertEquals(expected,ReplicaHistory.fingerprint(c))
             assertEquals(4,c.financialTransactionRepository.listAll().size)
             c.processRawSmsUseCase.ingest(ReplicaHistory.message("after-restore",91))

@@ -96,6 +96,7 @@ dependencies {
 
 // Corpus checks read frozen source fixtures without executing Production parsers.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(":lab:ml-assist:test")
     inputs.dir("testdata/reported")
     inputs.dir("testdata/supported")
     inputs.dir("testdata/device-reported")
