@@ -1,0 +1,156 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :lab:bank-engine:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:finance-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:finance-core:compileKotlin UP-TO-DATE
+> Task :lab:finance-core:compileJava NO-SOURCE
+> Task :lab:finance-core:processResources NO-SOURCE
+> Task :lab:finance-core:classes UP-TO-DATE
+> Task :lab:finance-core:jar UP-TO-DATE
+> Task :lab:bank-engine:compileKotlin UP-TO-DATE
+> Task :lab:bank-engine:compileJava NO-SOURCE
+> Task :lab:bank-engine:processResources NO-SOURCE
+> Task :lab:bank-engine:classes UP-TO-DATE
+> Task :lab:bank-engine:jar UP-TO-DATE
+> Task :lab:ml-assist:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:ml-assist:compileKotlin UP-TO-DATE
+> Task :lab:ml-assist:compileJava NO-SOURCE
+> Task :lab:ml-assist:processResources UP-TO-DATE
+> Task :lab:ml-assist:classes UP-TO-DATE
+> Task :lab:ml-assist:jar UP-TO-DATE
+> Task :ui-kit:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-kit:preBuild UP-TO-DATE
+> Task :ui-kit:preDebugBuild UP-TO-DATE
+> Task :ui-kit:generateDebugResValues UP-TO-DATE
+> Task :ui-kit:generateDebugResources UP-TO-DATE
+> Task :ui-kit:packageDebugResources UP-TO-DATE
+> Task :ui-kit:parseDebugLocalResources UP-TO-DATE
+> Task :ui-kit:generateDebugRFile UP-TO-DATE
+> Task :ui-kit:compileDebugKotlin UP-TO-DATE
+> Task :ui-kit:javaPreCompileDebug UP-TO-DATE
+> Task :ui-kit:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-kit:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui-kit:processDebugJavaRes UP-TO-DATE
+> Task :ui-kit:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :lab:beta:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:beta:generateProductionReplica UP-TO-DATE
+> Task :lab:beta:preBuild UP-TO-DATE
+> Task :lab:beta:preDebugBuild UP-TO-DATE
+> Task :lab:beta:generateDebugBuildConfig UP-TO-DATE
+> Task :lab:beta:generateDebugResValues UP-TO-DATE
+> Task :lab:beta:generateDebugResources UP-TO-DATE
+> Task :lab:beta:packageDebugResources UP-TO-DATE
+> Task :lab:beta:parseDebugLocalResources UP-TO-DATE
+> Task :lab:beta:generateDebugRFile UP-TO-DATE
+> Task :lab:beta:kspDebugKotlin
+
+> Task :lab:beta:compileDebugKotlin
+w: file:///home/debian/workspaces/masroof-replica/lab/beta/build/generated/productionReplica/kotlin/com/baraa/masroof/application/dashboard/DashboardSpendingTrends.kt:48:22 Condition is always 'true'.
+
+> Task :lab:beta:javaPreCompileDebug UP-TO-DATE
+> Task :lab:beta:compileDebugJavaWithJavac UP-TO-DATE
+> Task :lab:beta:bundleLibRuntimeToJarDebug
+> Task :lab:beta:bundleLibCompileToJarDebug
+> Task :ui-kit:compileDebugLibraryResources UP-TO-DATE
+> Task :ui-kit:writeDebugAarMetadata UP-TO-DATE
+> Task :lab:beta:preDebugUnitTestBuild UP-TO-DATE
+> Task :lab:beta:writeDebugAarMetadata UP-TO-DATE
+> Task :lab:beta:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :lab:beta:compileDebugLibraryResources UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestResValues UP-TO-DATE
+> Task :lab:beta:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestResources UP-TO-DATE
+> Task :lab:beta:mergeDebugUnitTestResources UP-TO-DATE
+> Task :ui-kit:extractDeepLinksDebug UP-TO-DATE
+> Task :ui-kit:processDebugManifest UP-TO-DATE
+> Task :lab:beta:extractDeepLinksDebug UP-TO-DATE
+> Task :lab:beta:processDebugManifest UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestManifest UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestResources UP-TO-DATE
+> Task :lab:beta:kspDebugUnitTestKotlin
+
+> Task :lab:beta:compileDebugUnitTestKotlin
+w: file:///home/debian/workspaces/masroof-replica/lab/beta/src/replicaTest/kotlin/com/baraa/masroof/lab/beta/bank/NewEngineFixtureTest.kt:72:77 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///home/debian/workspaces/masroof-replica/lab/beta/src/replicaTest/kotlin/com/baraa/masroof/lab/beta/learning/FamilyFeatureExportTest.kt:39:59 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :lab:beta:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :lab:beta:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-kit:mergeDebugShaders UP-TO-DATE
+> Task :ui-kit:compileDebugShaders NO-SOURCE
+> Task :ui-kit:generateDebugAssets UP-TO-DATE
+> Task :ui-kit:packageDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugShaders UP-TO-DATE
+> Task :lab:beta:compileDebugShaders NO-SOURCE
+> Task :lab:beta:generateDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugAssets UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestAssets UP-TO-DATE
+> Task :lab:beta:packageDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :lab:beta:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestConfig UP-TO-DATE
+> Task :lab:beta:processDebugJavaRes UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :lab:beta:testDebugUnitTest
+> Task :lab:bank-engine:compileTestKotlin UP-TO-DATE
+> Task :lab:bank-engine:compileTestJava NO-SOURCE
+> Task :lab:bank-engine:processTestResources NO-SOURCE
+> Task :lab:bank-engine:testClasses UP-TO-DATE
+> Task :lab:bank-engine:verifyPureJvmDependencies
+> Task :lab:bank-engine:test
+> Task :lab:ml-assist:compileTestKotlin UP-TO-DATE
+> Task :lab:ml-assist:compileTestJava NO-SOURCE
+> Task :lab:ml-assist:processTestResources NO-SOURCE
+> Task :lab:ml-assist:testClasses UP-TO-DATE
+> Task :lab:ml-assist:verifyPureJvmDependencies
+> Task :lab:ml-assist:test UP-TO-DATE
+> Task :lab:beta:preDebugAndroidTestBuild UP-TO-DATE
+> Task :lab:beta:processDebugAndroidTestManifest UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :lab:beta:checkDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :lab:beta:mapDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:processDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:kspDebugAndroidTestKotlin
+> Task :lab:beta:compileDebugAndroidTestKotlin
+> Task :lab:beta:javaPreCompileDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:compileDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestShaders UP-TO-DATE
+> Task :lab:beta:compileDebugAndroidTestShaders NO-SOURCE
+> Task :lab:beta:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:compressDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:desugarDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :lab:beta:dexBuilderDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :lab:beta:processDebugAndroidTestJavaRes UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestJavaResource UP-TO-DATE
+> Task :lab:beta:checkDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :lab:beta:mergeExtDexDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:bundleLibRuntimeToDirDebug
+> Task :ui-kit:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :lab:beta:mergeLibDexDebugAndroidTest
+> Task :lab:beta:mergeProjectDexDebugAndroidTest UP-TO-DATE
+> Task :ui-kit:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ui-kit:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-kit:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :lab:beta:mergeDebugJniLibFolders UP-TO-DATE
+> Task :lab:beta:mergeDebugNativeLibs NO-SOURCE
+> Task :lab:beta:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :lab:beta:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :lab:beta:validateSigningDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:writeDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :lab:beta:packageDebugAndroidTest
+> Task :lab:beta:createDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+
+> Task :lab:beta:connectedDebugAndroidTest
+Starting 12 tests on masroof_review_api36(AVD) - 16
+
+masroof_review_api36(AVD) - 16 Tests 9/12 completed. (0 skipped) (0 failed)
+Finished 12 tests on masroof_review_api36(AVD) - 16
+
+BUILD SUCCESSFUL in 1m 29s
+101 actionable tasks: 16 executed, 85 up-to-date
