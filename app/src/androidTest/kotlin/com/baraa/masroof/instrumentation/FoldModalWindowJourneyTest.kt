@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.MainActivity
 import com.baraa.masroof.MasroofApplication
@@ -194,7 +193,7 @@ class FoldModalWindowJourneyTest {
         compose.activityRule.scenario.recreate()
         compose.waitUntil(30_000) { exists("sheet-overlay") }
         verify(kind, "recreated")
-        Espresso.pressBack(); compose.waitUntil(10_000) { !exists("sheet-overlay") }
+        pressDeviceBack(); compose.waitUntil(10_000) { !exists("sheet-overlay") }
         // Re-open after returning to the folded window, without a modal present.
         val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("wm size 640x1440")
         android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
