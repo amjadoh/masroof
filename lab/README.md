@@ -6,6 +6,7 @@ The build generates the existing app's UI, ViewModels, application workflows and
 
 - Financial data: `lab_replica_masroof.db`, the production v18 schema with fourteen tables.
 - Learning/provenance: `lab_replica_learning.db`, two advisory tables; no duplicated ledger.
+- Analytics: `lab_replica_analytics.db`, five advisory tables; purchase/commitment forecasts and alerts. The pure engine lives inside `lab/ml-assist`, separate from SMS classification. See [the implementation and data contract](ANALYTICS_IMPLEMENTATION_AR.md).
 - Model: scoped `files/lab_replica/learning/family-model.json`, seeded from the reproducible trained asset.
 - Preferences, files, work names, keystore alias and provider are scoped to Lab. Reset affects this namespace only. Old `masroof_beta*.db` files are preserved and never migrated or opened.
 

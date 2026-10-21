@@ -36,7 +36,7 @@ object LabRuntime {
     fun liveEnabled(context: Context): Boolean = context(context).getSharedPreferences("lab_runtime", Context.MODE_PRIVATE).getBoolean("live_enabled", false)
     fun enableLive(context: Context) { context(context).getSharedPreferences("lab_runtime", Context.MODE_PRIVATE).edit().putBoolean("live_enabled", true).commit() }
     @Synchronized fun close() {
-        try { current?.close() } finally { current = null }
+        try { current?.close() } finally { current = null; com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.clear() }
     }
     @Synchronized internal fun beginReset(): AppContainer? {
         check(!isResetting) { "Lab reset in progress" }
@@ -46,6 +46,7 @@ object LabRuntime {
     @Synchronized internal fun endReset() { resetState.value = false }
     fun beforeRestore() {
         hostContext?.let { LabWork.cancel(it) }
+        current?.stopLabAnalytics()
         current?.labInterpretationService?.invalidateForRestore()
     }
     fun restart(context: Context) {
