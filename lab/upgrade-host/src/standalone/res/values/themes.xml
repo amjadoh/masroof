@@ -1,8 +1,0 @@
-<resources>
-    <!-- Same platform host geometry as production; Compose owns the shared Masroof theme. -->
-    <style name="Theme.Masroof.Lab" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
-    </style>
-</resources>

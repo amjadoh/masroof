@@ -1,0 +1,8 @@
+
+com.baraa.masroof.lab.beta.replica.ReplicaEntryTest:..
+
+Time: 1.436
+
+OK (2 tests)
+
+

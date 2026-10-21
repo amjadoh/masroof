@@ -40,3 +40,8 @@ if [ "$1" = app ] && [ "$smoke_sharded" = false ]; then
 fi
 
 # Sharded screenshots are required across the merged artifacts by emulator-smoke.
+
+if [ "$1" = beta ]; then
+  test -s beta-dashboard-screenshots/03-dashboard-with-data.png
+  test -s beta-dashboard-screenshots/10b-original-classification-actions.png
+fi

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "uid": 10251,
+  "pid": 22134,
+  "snapshot": {
+    "schema": 18,
+    "financialRows": 40,
+    "fingerprint": "c30512049a31b60ac21ff68cd0c4476844e7e1fa24a31af0c8361227a1f5547e"
+  },
+  "copySha256": "ea760650c22dd5d1ae0c0ee32937ecaa880bb69b6fc617849a6f1e6e7082bd9c",
+  "performance": {
+    "definition": "production dashboard load over 40 synthetic transactions",
+    "warmup": 2,
+    "samplesMs": [
+      31.235512,
+      31.440297,
+      33.457202,
+      34.255496,
+      34.365211
+    ],
+    "p50Ms": 33.457202,
+    "p95Ms": 34.365211,
+    "api": 36,
+    "device": "sdk_gphone64_x86_64",
+    "acceptanceBudget": null
+  }
+}

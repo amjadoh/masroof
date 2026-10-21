@@ -1,0 +1,442 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :lab:bank-engine:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:finance-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:finance-core:compileKotlin UP-TO-DATE
+> Task :lab:finance-core:compileJava NO-SOURCE
+> Task :lab:finance-core:processResources NO-SOURCE
+> Task :lab:finance-core:classes UP-TO-DATE
+> Task :lab:finance-core:jar UP-TO-DATE
+> Task :lab:bank-engine:compileKotlin UP-TO-DATE
+> Task :lab:bank-engine:compileJava NO-SOURCE
+> Task :lab:bank-engine:processResources NO-SOURCE
+> Task :lab:bank-engine:classes UP-TO-DATE
+> Task :lab:bank-engine:jar UP-TO-DATE
+> Task :ui-kit:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-kit:preBuild UP-TO-DATE
+> Task :ui-kit:preDebugBuild UP-TO-DATE
+> Task :ui-kit:generateDebugResValues UP-TO-DATE
+> Task :ui-kit:generateDebugResources UP-TO-DATE
+> Task :ui-kit:packageDebugResources UP-TO-DATE
+> Task :ui-kit:parseDebugLocalResources UP-TO-DATE
+> Task :ui-kit:generateDebugRFile UP-TO-DATE
+> Task :ui-kit:compileDebugKotlin UP-TO-DATE
+> Task :ui-kit:javaPreCompileDebug UP-TO-DATE
+> Task :ui-kit:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-kit:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui-kit:processDebugJavaRes UP-TO-DATE
+> Task :ui-kit:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :lab:beta:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :lab:beta:generateProductionReplica
+Generated production replica in /home/debian/workspaces/masroof-replica/lab/beta/build/generated/productionReplica
+
+> Task :lab:beta:preBuild
+> Task :lab:beta:preDebugBuild
+> Task :lab:beta:generateDebugBuildConfig UP-TO-DATE
+> Task :lab:beta:generateDebugResValues UP-TO-DATE
+> Task :lab:beta:generateDebugResources UP-TO-DATE
+> Task :lab:beta:packageDebugResources UP-TO-DATE
+> Task :lab:beta:parseDebugLocalResources UP-TO-DATE
+> Task :lab:beta:generateDebugRFile UP-TO-DATE
+> Task :lab:beta:kspDebugKotlin
+
+> Task :lab:beta:compileDebugKotlin
+w: file:///home/debian/workspaces/masroof-replica/lab/beta/build/generated/productionReplica/kotlin/com/baraa/masroof/application/dashboard/DashboardSpendingTrends.kt:48:22 Condition is always 'true'.
+
+> Task :lab:beta:javaPreCompileDebug UP-TO-DATE
+> Task :lab:beta:compileDebugJavaWithJavac UP-TO-DATE
+> Task :lab:beta:bundleLibRuntimeToJarDebug
+> Task :lab:beta:bundleLibCompileToJarDebug
+> Task :ui-kit:compileDebugLibraryResources UP-TO-DATE
+> Task :ui-kit:writeDebugAarMetadata UP-TO-DATE
+> Task :lab:beta:preDebugUnitTestBuild
+> Task :lab:beta:writeDebugAarMetadata UP-TO-DATE
+> Task :lab:beta:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :lab:beta:compileDebugLibraryResources UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestResValues UP-TO-DATE
+> Task :lab:beta:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestResources UP-TO-DATE
+> Task :lab:beta:mergeDebugUnitTestResources UP-TO-DATE
+> Task :ui-kit:extractDeepLinksDebug UP-TO-DATE
+> Task :ui-kit:processDebugManifest UP-TO-DATE
+> Task :lab:beta:extractDeepLinksDebug UP-TO-DATE
+> Task :lab:beta:processDebugManifest UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestManifest UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestResources UP-TO-DATE
+> Task :lab:beta:kspDebugUnitTestKotlin
+
+> Task :lab:beta:compileDebugUnitTestKotlin
+w: file:///home/debian/workspaces/masroof-replica/lab/beta/src/replicaTest/kotlin/com/baraa/masroof/lab/beta/bank/NewEngineFixtureTest.kt:72:77 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :lab:beta:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :lab:beta:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-kit:mergeDebugShaders UP-TO-DATE
+> Task :ui-kit:compileDebugShaders NO-SOURCE
+> Task :ui-kit:generateDebugAssets UP-TO-DATE
+> Task :ui-kit:packageDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugShaders UP-TO-DATE
+> Task :lab:beta:compileDebugShaders NO-SOURCE
+> Task :lab:beta:generateDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugAssets UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestAssets UP-TO-DATE
+> Task :lab:beta:packageDebugAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :lab:beta:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :lab:beta:generateDebugUnitTestConfig UP-TO-DATE
+> Task :lab:beta:processDebugJavaRes UP-TO-DATE
+> Task :lab:beta:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :lab:beta:testDebugUnitTest
+> Task :lab:beta:preDebugAndroidTestBuild
+> Task :lab:beta:processDebugAndroidTestManifest UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :lab:beta:checkDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :lab:beta:mapDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:processDebugAndroidTestResources UP-TO-DATE
+> Task :lab:beta:kspDebugAndroidTestKotlin
+> Task :lab:beta:compileDebugAndroidTestKotlin
+> Task :lab:beta:javaPreCompileDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:compileDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestShaders UP-TO-DATE
+> Task :lab:beta:compileDebugAndroidTestShaders NO-SOURCE
+> Task :lab:beta:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:compressDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:beta:desugarDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :lab:beta:dexBuilderDebugAndroidTest
+> Task :lab:beta:mergeDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :lab:beta:processDebugAndroidTestJavaRes UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestJavaResource UP-TO-DATE
+> Task :lab:beta:checkDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :lab:beta:mergeExtDexDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:bundleLibRuntimeToDirDebug
+> Task :ui-kit:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :lab:beta:mergeLibDexDebugAndroidTest
+> Task :lab:beta:mergeProjectDexDebugAndroidTest
+> Task :ui-kit:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ui-kit:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-kit:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :lab:beta:mergeDebugJniLibFolders UP-TO-DATE
+> Task :lab:beta:mergeDebugNativeLibs NO-SOURCE
+> Task :lab:beta:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :lab:beta:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :lab:beta:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :lab:beta:validateSigningDebugAndroidTest UP-TO-DATE
+> Task :lab:beta:writeDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :lab:beta:packageDebugAndroidTest
+> Task :lab:beta:createDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :lab:beta:assembleDebugAndroidTest
+> Task :lab:upgrade-host:preBuild UP-TO-DATE
+> Task :lab:upgrade-host:preBeforeDebugBuild UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugNativeDebugMetadata NO-SOURCE
+> Task :lab:upgrade-host:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lab:upgrade-host:generateBeforeDebugBuildConfig UP-TO-DATE
+> Task :lab:upgrade-host:checkBeforeDebugAarMetadata UP-TO-DATE
+> Task :lab:upgrade-host:generateBeforeDebugResValues UP-TO-DATE
+> Task :lab:upgrade-host:mapBeforeDebugSourceSetPaths UP-TO-DATE
+> Task :lab:upgrade-host:generateBeforeDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:packageBeforeDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:parseBeforeDebugLocalResources UP-TO-DATE
+> Task :lab:upgrade-host:createBeforeDebugCompatibleScreenManifests UP-TO-DATE
+> Task :lab:upgrade-host:extractDeepLinksBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugMainManifest UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugManifest UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugManifestForPackage UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugKotlin NO-SOURCE
+> Task :lab:upgrade-host:javaPreCompileBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugJavaWithJavac UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugShaders UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugShaders NO-SOURCE
+> Task :lab:upgrade-host:generateBeforeDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:compressBeforeDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:desugarBeforeDebugFileDependencies UP-TO-DATE
+> Task :lab:upgrade-host:dexBuilderBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugGlobalSynthetics UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugJavaRes NO-SOURCE
+> Task :lab:upgrade-host:mergeBeforeDebugJavaResource UP-TO-DATE
+> Task :lab:upgrade-host:checkBeforeDebugDuplicateClasses UP-TO-DATE
+> Task :lab:upgrade-host:mergeExtDexBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeLibDexBeforeDebug FROM-CACHE
+> Task :lab:upgrade-host:mergeProjectDexBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugJniLibFolders UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugNativeLibs NO-SOURCE
+> Task :lab:upgrade-host:stripBeforeDebugDebugSymbols NO-SOURCE
+> Task :lab:upgrade-host:generateRehearsalKey SKIPPED
+> Task :lab:upgrade-host:validateSigningBeforeDebug UP-TO-DATE
+> Task :lab:upgrade-host:writeBeforeDebugAppMetadata UP-TO-DATE
+> Task :lab:upgrade-host:writeBeforeDebugSigningConfigVersions UP-TO-DATE
+> Task :lab:upgrade-host:packageBeforeDebug
+> Task :lab:upgrade-host:createBeforeDebugApkListingFileRedirect UP-TO-DATE
+> Task :lab:upgrade-host:assembleBeforeDebug
+> Task :lab:upgrade-host:preAfterDebugBuild UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugNativeDebugMetadata NO-SOURCE
+> Task :lab:upgrade-host:generateAfterDebugBuildConfig UP-TO-DATE
+> Task :lab:upgrade-host:checkAfterDebugAarMetadata UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugResValues UP-TO-DATE
+> Task :lab:upgrade-host:mapAfterDebugSourceSetPaths UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:packageAfterDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:parseAfterDebugLocalResources UP-TO-DATE
+> Task :lab:upgrade-host:createAfterDebugCompatibleScreenManifests UP-TO-DATE
+> Task :lab:upgrade-host:extractDeepLinksAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugMainManifest UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugManifest UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugManifestForPackage UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugResources UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugKotlin NO-SOURCE
+> Task :lab:upgrade-host:javaPreCompileAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugJavaWithJavac UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugShaders UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugShaders NO-SOURCE
+> Task :lab:upgrade-host:generateAfterDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:compressAfterDebugAssets UP-TO-DATE
+> Task :lab:upgrade-host:desugarAfterDebugFileDependencies UP-TO-DATE
+> Task :lab:upgrade-host:dexBuilderAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugGlobalSynthetics UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugJavaRes NO-SOURCE
+> Task :lab:upgrade-host:mergeAfterDebugJavaResource UP-TO-DATE
+> Task :lab:upgrade-host:checkAfterDebugDuplicateClasses UP-TO-DATE
+> Task :lab:upgrade-host:mergeExtDexAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeLibDexAfterDebug FROM-CACHE
+> Task :lab:upgrade-host:mergeProjectDexAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugJniLibFolders UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugNativeLibs NO-SOURCE
+> Task :lab:upgrade-host:stripAfterDebugDebugSymbols NO-SOURCE
+> Task :lab:upgrade-host:validateSigningAfterDebug UP-TO-DATE
+> Task :lab:upgrade-host:writeAfterDebugAppMetadata UP-TO-DATE
+> Task :lab:upgrade-host:writeAfterDebugSigningConfigVersions UP-TO-DATE
+> Task :lab:upgrade-host:packageAfterDebug
+> Task :lab:upgrade-host:createAfterDebugApkListingFileRedirect UP-TO-DATE
+> Task :lab:upgrade-host:assembleAfterDebug
+> Task :lab:upgrade-host:bundleBeforeDebugClassesToCompileJar UP-TO-DATE
+> Task :lab:upgrade-host:preBeforeDebugAndroidTestBuild SKIPPED
+> Task :lab:upgrade-host:processBeforeDebugAndroidTestManifest UP-TO-DATE
+> Task :lab:upgrade-host:generateBeforeDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :lab:upgrade-host:checkBeforeDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :lab:upgrade-host:generateBeforeDebugAndroidTestResValues UP-TO-DATE
+> Task :lab:upgrade-host:mapBeforeDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :lab:upgrade-host:generateBeforeDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugAndroidTestKotlin
+> Task :lab:upgrade-host:javaPreCompileBeforeDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestShaders UP-TO-DATE
+> Task :lab:upgrade-host:compileBeforeDebugAndroidTestShaders NO-SOURCE
+> Task :lab:upgrade-host:generateBeforeDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:compressBeforeDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:desugarBeforeDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :lab:upgrade-host:dexBuilderBeforeDebugAndroidTest
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :lab:upgrade-host:processBeforeDebugAndroidTestJavaRes UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestJavaResource UP-TO-DATE
+> Task :lab:upgrade-host:checkBeforeDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :lab:upgrade-host:mergeExtDexBeforeDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:mergeLibDexBeforeDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:mergeProjectDexBeforeDebugAndroidTest
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :lab:upgrade-host:mergeBeforeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :lab:upgrade-host:stripBeforeDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :lab:upgrade-host:validateSigningBeforeDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:writeBeforeDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :lab:upgrade-host:packageBeforeDebugAndroidTest
+> Task :lab:upgrade-host:createBeforeDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :lab:upgrade-host:assembleBeforeDebugAndroidTest
+> Task :lab:upgrade-host:bundleAfterDebugClassesToCompileJar UP-TO-DATE
+> Task :lab:upgrade-host:preAfterDebugAndroidTestBuild SKIPPED
+> Task :lab:upgrade-host:processAfterDebugAndroidTestManifest UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :lab:upgrade-host:checkAfterDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugAndroidTestResValues UP-TO-DATE
+> Task :lab:upgrade-host:mapAfterDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugAndroidTestResources UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugAndroidTestKotlin
+> Task :lab:upgrade-host:javaPreCompileAfterDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestShaders UP-TO-DATE
+> Task :lab:upgrade-host:compileAfterDebugAndroidTestShaders NO-SOURCE
+> Task :lab:upgrade-host:generateAfterDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:compressAfterDebugAndroidTestAssets UP-TO-DATE
+> Task :lab:upgrade-host:desugarAfterDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :lab:upgrade-host:dexBuilderAfterDebugAndroidTest
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :lab:upgrade-host:processAfterDebugAndroidTestJavaRes UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestJavaResource UP-TO-DATE
+> Task :lab:upgrade-host:checkAfterDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :lab:upgrade-host:mergeExtDexAfterDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:mergeLibDexAfterDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:mergeProjectDexAfterDebugAndroidTest
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :lab:upgrade-host:mergeAfterDebugAndroidTestNativeLibs NO-SOURCE
+> Task :lab:upgrade-host:stripAfterDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :lab:upgrade-host:validateSigningAfterDebugAndroidTest UP-TO-DATE
+> Task :lab:upgrade-host:writeAfterDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :lab:upgrade-host:packageAfterDebugAndroidTest
+> Task :lab:upgrade-host:createAfterDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :lab:upgrade-host:assembleAfterDebugAndroidTest
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin
+w: file:///home/debian/workspaces/masroof-replica/app/src/main/kotlin/com/baraa/masroof/application/dashboard/DashboardSpendingTrends.kt:44:22 Condition is always 'true'.
+
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug FROM-CACHE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:kspDebugUnitTestKotlin
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///home/debian/workspaces/masroof-replica/app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt:9:8 'class BetaContainer : Closeable' is deprecated. Use LabRuntime; this facade exists only for the unchanged host isolation contract.
+w: file:///home/debian/workspaces/masroof-replica/app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt:27:9 'class BetaContainer : Closeable' is deprecated. Use LabRuntime; this facade exists only for the unchanged host isolation contract.
+w: file:///home/debian/workspaces/masroof-replica/app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt:54:9 'constructor(context: Context): BetaContainer' is deprecated. Use LabRuntime; this facade exists only for the unchanged host isolation contract.
+w: file:///home/debian/workspaces/masroof-replica/app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt:78:9 'class BetaContainer : Closeable' is deprecated. Use LabRuntime; this facade exists only for the unchanged host isolation contract.
+w: file:///home/debian/workspaces/masroof-replica/app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt:86:13 'constructor(context: Context): BetaContainer' is deprecated. Use LabRuntime; this facade exists only for the unchanged host isolation contract.
+
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+WARNING: A terminally deprecated method in java.lang.System has been called
+WARNING: System::setSecurityManager has been called by com.baraa.masroof.application.backup.BackupArchiveValidatorTest (file:/home/debian/workspaces/masroof-replica/app/build/tmp/kotlin-classes/debugUnitTest/)
+WARNING: Please consider reporting this to the maintainers of com.baraa.masroof.application.backup.BackupArchiveValidatorTest
+WARNING: System::setSecurityManager will be removed in a future release
+> Task :app:testDebugUnitTest
+> Task :ui-kit:stripDebugDebugSymbols NO-SOURCE
+> Task :ui-kit:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :ui-kit:extractDebugAnnotations UP-TO-DATE
+> Task :ui-kit:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :ui-kit:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :ui-kit:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :ui-kit:prepareDebugArtProfile UP-TO-DATE
+> Task :ui-kit:prepareLintJarForPublish UP-TO-DATE
+> Task :ui-kit:mergeDebugJavaResource UP-TO-DATE
+> Task :ui-kit:syncDebugLibJars UP-TO-DATE
+> Task :ui-kit:bundleDebugLocalLintAar UP-TO-DATE
+> Task :lab:beta:stripDebugDebugSymbols NO-SOURCE
+> Task :lab:beta:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :lab:beta:extractDebugAnnotations
+> Task :lab:beta:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :lab:beta:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :lab:beta:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :lab:beta:prepareDebugArtProfile UP-TO-DATE
+> Task :lab:beta:prepareLintJarForPublish UP-TO-DATE
+> Task :lab:beta:mergeDebugJavaResource UP-TO-DATE
+> Task :lab:beta:syncDebugLibJars
+> Task :lab:beta:bundleDebugLocalLintAar
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :ui-kit:createFullJarDebug UP-TO-DATE
+> Task :ui-kit:writeDebugLintModelMetadata UP-TO-DATE
+> Task :lab:beta:createFullJarDebug
+> Task :lab:beta:writeDebugLintModelMetadata UP-TO-DATE
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :ui-kit:extractProguardFiles UP-TO-DATE
+> Task :ui-kit:generateDebugLintModel UP-TO-DATE
+> Task :lab:beta:extractProguardFiles UP-TO-DATE
+> Task :lab:beta:generateDebugLintModel
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :ui-kit:lintAnalyzeDebug UP-TO-DATE
+> Task :lab:beta:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebugUnitTest
+> Task :ui-kit:preDebugAndroidTestBuild UP-TO-DATE
+> Task :ui-kit:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :ui-kit:generateDebugAndroidTestLintModel UP-TO-DATE
+> Task :ui-kit:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-kit:generateDebugUnitTestLintModel UP-TO-DATE
+> Task :ui-kit:lintAnalyzeDebugAndroidTest UP-TO-DATE
+> Task :ui-kit:lintAnalyzeDebugUnitTest UP-TO-DATE
+> Task :lab:beta:generateDebugAndroidTestLintModel
+> Task :lab:beta:generateDebugUnitTestLintModel
+> Task :lab:beta:lintAnalyzeDebugAndroidTest
+> Task :lab:beta:lintAnalyzeDebugUnitTest
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///home/debian/workspaces/masroof-replica/app/build/reports/lint-results-debug.html
+
+> Task :app:lintDebug
+> Task :ui-kit:generateDebugLintReportModel UP-TO-DATE
+> Task :ui-kit:lintReportDebug UP-TO-DATE
+> Task :ui-kit:lintDebug
+> Task :lab:beta:generateDebugLintReportModel
+
+> Task :lab:beta:lintReportDebug
+Wrote HTML report to file:///home/debian/workspaces/masroof-replica/lab/beta/build/reports/lint-results-debug.html
+
+> Task :lab:beta:lintDebug
+> Task :app:detekt UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugAndroidTestLintModel
+> Task :lab:upgrade-host:extractProguardFiles UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugLintReportModel
+> Task :lab:upgrade-host:preAfterDebugUnitTestBuild UP-TO-DATE
+> Task :lab:upgrade-host:generateAfterDebugUnitTestLintModel
+> Task :lab:upgrade-host:lintAnalyzeAfterDebug
+> Task :lab:upgrade-host:lintAnalyzeAfterDebugAndroidTest
+> Task :lab:upgrade-host:lintAnalyzeAfterDebugUnitTest
+
+> Task :lab:upgrade-host:lintReportAfterDebug
+Wrote HTML report to file:///home/debian/workspaces/masroof-replica/lab/upgrade-host/build/reports/lint-results-afterDebug.html
+
+> Task :lab:upgrade-host:lintAfterDebug
+
+BUILD SUCCESSFUL in 4m 40s
+325 actionable tasks: 61 executed, 3 from cache, 261 up-to-date

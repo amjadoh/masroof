@@ -1,0 +1,39 @@
+{
+  "stage": "new-engine-and-production-financial-path",
+  "complete": true,
+  "unit": {
+    "tests": 63,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "bankEngine": {
+    "tests": 58,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "deviceTests": 5,
+  "corpusCases": 55,
+  "historyCohorts": [
+    {
+      "messages": 7,
+      "transactions": 7,
+      "reviewsAfterOwnership": 0,
+      "duplicateReplay": 7
+    },
+    {
+      "messages": 5,
+      "transactions": 5,
+      "reviewsAfterOwnership": 0,
+      "duplicateReplay": 5
+    }
+  ],
+  "productionSourceUnchanged": true,
+  "loanOwnership": "original automatic confirmation from an owned debit account and explicit financing type; no separate per-message loan approval",
+  "remaining": [
+    "operational-ml",
+    "cleanup-and-full-ci-acceptance"
+  ],
+  "intentionalParserFactDifferences": "../../ENGINE_PARITY_DIFFERENCES.json"
+}

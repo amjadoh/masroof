@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="beta_archive_export">تصدير نسخة Beta مشفّرة</string>
-    <string name="beta_archive_import">استعادة نسخة Beta مشفّرة</string>
-    <string name="beta_archive_boundary">تُستعاد هذه النسخ المشفّرة داخل تثبيت Beta الحالي فقط. حذف التطبيق أو مسح بياناته من إعدادات أندرويد أو فقدان مفتاحه الآمن يمنع الاستعادة. لا تُقبل نسخ جهاز آخر أو البيئة الفعلية. إعادة ضبط Beta تحتفظ بالمفتاح.</string>
-    <string name="beta_archive_replace_confirm">سيتم استبدال بيانات وإعدادات Beta الحالية فقط بعد نجاح فحص كلمة المرور والمصدر وقاعدة البيانات.</string>
-    <string name="beta_archive_password">كلمة المرور (12–256 حرفًا)</string>
-    <string name="beta_archive_password_repeat">تأكيد كلمة المرور</string>
-</resources>

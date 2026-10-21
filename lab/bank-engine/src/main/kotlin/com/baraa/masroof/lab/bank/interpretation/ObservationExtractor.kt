@@ -28,7 +28,7 @@ internal class ObservationExtractor(
 
     fun read(): ObservedFacts {
         val reader = RoleLineReader(source, headers, evidence)
-        val physical = evidence.filter { it.field in setOf("CARD", "AVAILABLE_BALANCE", "counterparty") }.toList()
+        val physical = evidence.filter { it.field in setOf("CARD", "SOURCE_ACCOUNT", "AVAILABLE_BALANCE", "counterparty") }.toList()
         val first = source.text.indexOfFirst(Char::isLetterOrDigit)
         val titleStart = if (first < 0) -1 else source.text.lastIndexOf('\n', first).let { it + 1 }
         fun scoped(range: IntRange, boundField: String?): Boolean {
@@ -67,7 +67,7 @@ internal class ObservationExtractor(
                 typed.size <= 1 && "card.statement" in found && "card.debit" !in found) found.remove("card.credit")
             if (found.size > 1) fail("CONFLICTING_$header")
             if (found.isNotEmpty() && family !in allowed) fail("UNRELATED_$header")
-            return found.singleOrNull()?.takeIf { family in allowed }
+            return found.singleOrNull()?.takeIf { family in allowed || family==MessageFamily.UNKNOWN }
         }
         val cards = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT,
             MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
@@ -80,6 +80,15 @@ internal class ObservationExtractor(
         val loan = when (choose(listOf("loan.personal", "loan.auto", "loan.mortgage"), "observation.loanType", setOf(MessageFamily.FINANCING_INSTALLMENT), "counterparty")) {
             "loan.personal" -> LoanType.PERSONAL; "loan.auto" -> LoanType.AUTO; "loan.mortgage" -> LoanType.MORTGAGE; else -> null
         }
+        // Match production's generic financing default only after specific product observations.
+        // A conflicting explicit product remains blocked; it must not become a generic personal loan.
+        val genericLoan = if (loan == null && family == MessageFamily.FINANCING_INSTALLMENT &&
+            evidence.none { it.field in setOf("observation.loan.personal", "observation.loan.auto", "observation.loan.mortgage") }) {
+            configured["loan.generic"].orEmpty().flatMap { phrase -> source.phrase(phrase).findAll(source.text).toList() }
+                .filter { scoped(it.range, "counterparty") }.onEach {
+                    evidence += source.evidence("extract.observation.financing_default", "observation.loan.personal", it.range)
+                }.takeIf { it.isNotEmpty() }?.let { LoanType.PERSONAL }
+        } else null
         val salary = choose(listOf("income.salary"), "observation.incomeType", setOf(MessageFamily.TRANSFER_IN))?.let { true }
         val balance = configured["card.available_balance"].orEmpty().any { phrase ->
             source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "AVAILABLE_BALANCE") }.onEach {
@@ -93,6 +102,12 @@ internal class ObservationExtractor(
         if(creditBalance) physical.firstOrNull {it.field=="CARD"}?.let {
             evidence += it.copy(ruleId="extract.observation.credit_balance",field="observation.card.credit")
         }
-        return ObservedFacts(card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan, salary, balance)
+        val debitSource = configured["card.debit_source"].orEmpty().any { phrase ->
+            source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "SOURCE_ACCOUNT") }.onEach {
+                evidence += source.evidence("extract.observation.debit_source", "observation.card.debit", it.range)
+            }.toList().isNotEmpty()
+        }
+        return ObservedFacts(if (debitSource) CardChannel.DEBIT else card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan ?: genericLoan,
+            salary ?: false.takeIf { family == MessageFamily.TRANSFER_IN }, balance)
     }
 }

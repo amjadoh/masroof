@@ -1,0 +1,27 @@
+{
+  "result": "passed",
+  "versions": [
+    1,
+    2
+  ],
+  "sameUid": 10251,
+  "schema": 18,
+  "financialRows": 40,
+  "publicTestCertificateSha256": "c853e0c1b2736987671c58960611ec29f9c8b5a92f058738ad1ee8c5f68def0c",
+  "metrics": {
+    "before": {
+      "p50Ms": 33.457202,
+      "p95Ms": 34.365211,
+      "api": 36,
+      "device": "sdk_gphone64_x86_64"
+    },
+    "after": {
+      "p50Ms": 29.022988,
+      "p95Ms": 31.90426,
+      "api": 36,
+      "device": "sdk_gphone64_x86_64"
+    }
+  },
+  "acceptanceBudget": null,
+  "productionMigration": false
+}

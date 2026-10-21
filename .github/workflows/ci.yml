@@ -55,6 +55,10 @@ jobs:
       - name: Configure local SDK path
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
 
+      # Existing production query-plan test writes its diagnostic here.
+      - name: Prepare production test diagnostic directory
+        run: sudo install -d -m 0777 /opt/cursor/artifacts
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
@@ -340,12 +344,12 @@ jobs:
           name: beta-upgrade-diagnostics-${{ matrix.suite }}
           path: beta-upgrade-diagnostics/
           if-no-files-found: warn
-      - name: Upload isolated Beta permission dialog diagnostics
+      - name: Upload replica recovery diagnostics
         if: always() && matrix.suite == 'beta'
         uses: actions/upload-artifact@v4
         with:
-          name: beta-permission-dialog-diagnostics-${{ matrix.suite }}
-          path: beta-permission-diagnostics/
+          name: beta-replica-diagnostics-${{ matrix.suite }}
+          path: beta-replica-diagnostics/
           if-no-files-found: warn
 
   # Retain one required lifecycle result; any failed/cancelled suite fails it.

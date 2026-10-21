@@ -1,0 +1,179 @@
+{
+  "cleaningVersion": "sms-family-clean-v1",
+  "enabledFamilies": [
+    "TRANSFER_IN"
+  ],
+  "featuresVersion": "bank-family-title-v2",
+  "heldOutCases": [
+    {
+      "accepted": false,
+      "coverage": 0.8584905660377359,
+      "expected": "OTP",
+      "family": "PURCHASE",
+      "id": "collision_otp_online_purchase_ar_001",
+      "margin": 0.9999925340485472,
+      "partition": "validation",
+      "score": 0.9999962669297752,
+      "template": "4b51fa46ab1abddc2cdcece77c8fe79f5d857d344d8398e4ab358d3c1fe9fcee"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.3235294117647059,
+      "expected": "PURCHASE",
+      "family": "PURCHASE",
+      "id": "purchase_pos_en_credit_no_colon_001",
+      "margin": 0.9999992494409119,
+      "partition": "validation",
+      "score": 0.9999993605786218,
+      "template": "55cf377c8aa36728ac1e8de8d0cc4cee474c40b3a61df6cba63ff47ff601c683"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.92,
+      "expected": "TRANSFER_IN",
+      "family": "TRANSFER_IN",
+      "id": "case2_internal_incoming_transfer",
+      "margin": 0.6111158103879124,
+      "partition": "validation",
+      "score": 0.8055579019680946,
+      "template": "756486a9aee7c457c44ae27f35621b3ace91196346d6b8910edbbfe7e9fa06f4"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.6627906976744186,
+      "expected": "TRANSFER_OUT",
+      "family": "TRANSFER_OUT",
+      "id": "case6_outgoing_external_transfer",
+      "margin": 1.0,
+      "partition": "validation",
+      "score": 1.0,
+      "template": "7a797749066cef658006582a252aa0c891ba53fdb175307211fa78dfd1a85803"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.8846153846153846,
+      "expected": "REFUND",
+      "family": "CARD_PAYMENT",
+      "id": "refund_ar_cc_hamza_001",
+      "margin": 0.9999999999611956,
+      "partition": "validation",
+      "score": 0.9999999999805977,
+      "template": "a73957f46c789fff0ab3810f233dab3ee7cf9307d448a478ae071efc1a7529b2"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.24390243902439024,
+      "expected": "NON_FINANCIAL",
+      "family": "TRANSFER_OUT",
+      "id": "non_financial_login_ar_001",
+      "margin": 0.9999988778003118,
+      "partition": "validation",
+      "score": 0.9999993870353785,
+      "template": "b348fc9f3aa775d059fa35b134f5dd1132e4b6c6a5fc6c6b16410a585ef7e20d"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.6333333333333333,
+      "expected": "PURCHASE",
+      "family": "PURCHASE",
+      "id": "purchase_pos_en_001",
+      "margin": 0.9999980972210156,
+      "partition": "test",
+      "score": 0.9999983618732151,
+      "template": "0ab48ac9feeaf6811a5de09d14dfaf299023395fa859841f6d56e82b1ca0ed5f"
+    },
+    {
+      "accepted": false,
+      "coverage": 1.0,
+      "expected": "REFUND",
+      "family": "REFUND",
+      "id": "refund_ar_001",
+      "margin": 0.9999995951027715,
+      "partition": "test",
+      "score": 0.9999997382146818,
+      "template": "50f634225ffe9eb4a12e211aa7979a98f8ad9b4881444d71b454444f0d774cb0"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.36936936936936937,
+      "expected": "OTP",
+      "family": "PURCHASE",
+      "id": "collision_otp_online_purchase_en_001",
+      "margin": 0.9999999998901052,
+      "partition": "test",
+      "score": 0.9999999999114346,
+      "template": "8008aa3e9604f76d32b8ad5a0cd72c300625b432556c2c231c09ce181e05eb20"
+    },
+    {
+      "accepted": false,
+      "coverage": 0.8850574712643678,
+      "expected": "NON_FINANCIAL",
+      "family": "CARD_PAYMENT",
+      "id": "collision_statement_amount_ar_001",
+      "margin": 0.9999868553216127,
+      "partition": "test",
+      "score": 0.9999934276608047,
+      "template": "8c86b48bf26adcaa9f44b51bf367947262bdf32eac0dd1fd0696be084bcd9122"
+    },
+    {
+      "accepted": false,
+      "coverage": 1.0,
+      "expected": "TRANSFER_OUT",
+      "family": "TRANSFER_OUT",
+      "id": "collision_intra_generic_labels_ar_002",
+      "margin": 1.0,
+      "partition": "test",
+      "score": 1.0,
+      "template": "ad28505f3723a51ae509828ae5edd321cae1e3e9900d769a0f4174a5a696c692"
+    },
+    {
+      "accepted": true,
+      "coverage": 0.6818181818181818,
+      "expected": "TRANSFER_IN",
+      "family": "TRANSFER_IN",
+      "id": "case9_salary",
+      "margin": 0.9999092875500901,
+      "partition": "test",
+      "score": 0.9999546381152506,
+      "template": "d4a99ea250776683abe860d04929498362618cb0a8157d5e8afdaf38361c03d5"
+    }
+  ],
+  "note": "Frozen template-disjoint holdout. Test never selects model settings. Small initial corpus; NB scores are not calibrated probabilities. No universal accuracy claim.",
+  "training": {
+    "cleanRows": 50,
+    "conflicts": [],
+    "rejected": [],
+    "sourceRows": 50,
+    "sourceSha256": "0f4acdd25026f8edc9983d672a2e4b374d92076b011e1666235d9e74cfabedfa",
+    "splitVersion": "family-holdout-v1",
+    "testGroups": 6,
+    "trainGroups": 22,
+    "trainIds": [
+      "balance_notice_ar_001",
+      "beneficiary_notice_ar_001",
+      "bill_payment_ar_001",
+      "card_payment_ar_001",
+      "card_payment_ar_tasdid_001",
+      "case10_financing_installment",
+      "case1_internal_outgoing_transfer",
+      "case3_local_incoming_transfer",
+      "case4_english_inline_online_credit_card_purchase",
+      "case5_english_inline_apple_pay_online_purchase",
+      "case7_pos_samsung_pay_credit_card_purchase",
+      "collision_intra_generic_labels_ar_001",
+      "collision_refund_pos_purchase_ar_001",
+      "collision_transfer_fee_line_ar_001",
+      "fee_ar_001",
+      "otp_ar_001",
+      "purchase_online_ar_001",
+      "purchase_pos_ar_debit_001",
+      "purchase_pos_ar_debit_googlepay_001",
+      "reported_01",
+      "statement_ar_001",
+      "withdrawal_ar_001"
+    ],
+    "uniqueTemplates": 34,
+    "validationGroups": 6
+  },
+  "version": "family-nb-v2-3e5e3449be7831ba"
+}

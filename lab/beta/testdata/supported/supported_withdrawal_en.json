@@ -1,0 +1,9 @@
+{
+  "id": "supported_withdrawal_en",
+  "sender": "AlJazira",
+  "body": "Withdrawal\nمن حساب: 3001\nAmount: SAR 120.00\nOn: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "WITHDRAWAL",
+    "parseStatus": "SUCCESS"
+  }
+}
