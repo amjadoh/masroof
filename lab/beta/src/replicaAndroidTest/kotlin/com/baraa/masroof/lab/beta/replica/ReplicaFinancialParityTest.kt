@@ -25,6 +25,49 @@ class ReplicaFinancialParityTest {
     private val host = InstrumentationRegistry.getInstrumentation().targetContext
     @Test fun importsOwnershipLedgerDashboardReplayAndReopenMatchProduction() = runBlocking { exercise(ReferenceHistory.names) }
     @Test fun fiveReportedMessagesPostWithoutRepeatedReviews() = runBlocking { exercise(ReferenceHistory.reported) }
+    @Test fun supportedFormatsPostInTheImportPassWithoutLearningOrAManualRefresh() = runBlocking {
+        LabResetWorkflow.reset(host)
+        val context = LabStorageContext(host,"lab_reference_")
+        context.databaseList().forEach { context.deleteDatabase(it) }
+        val names = listOf("personal","vehicle","auto","house","mortgage","generic").map { "supported_loan_$it" } +
+            listOf("supported_withdrawal_en","supported_fee_title") +
+            listOf("same_bank_other_out","same_bank_other_in","same_bank_own","other_bank_same_suffix").map { "supported_transfer_$it" }
+        val source = ReferenceHistory.source(host,names)
+        val reference = AppContainer(context,bankAdapterOverride = AlJaziraSmsAdapter(),smsDataSourceOverride = source)
+        var actual = AppContainer(LabStorageContext(host),smsDataSourceOverride = source)
+        try {
+            for (c in listOf(reference,actual)) {
+                // Existing confirmed ownership, including the same suffix in a different bank.
+                for (suffix in listOf("3001","3002","5001")) c.onboardingOwnershipWorkflow.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA,suffix))
+                c.onboardingOwnershipWorkflow.markAccountExternal(AccountReference(Bank.BANK_ALJAZIRA,"5002"))
+                val result = c.historicalSmsScanner.scan(Instant.EPOCH)
+                assertEquals(result.toString(),0,result.failed)
+                assertTrue("The import pass itself must post every supported message", c.financialTransactionRepository.listAll().size == names.size)
+                assertTrue("No additional classification or model refresh",c.reviewRepository.listRequired().isEmpty())
+                assertTrue(c.parsedEventRepository.listAll().all { it.event.confidence.reasons.none { reason -> reason.startsWith("family_origin:") } })
+            }
+            val rows = actual.financialTransactionRepository.listAll().sortedBy { it.id }
+            val referenceRows = reference.financialTransactionRepository.listAll().sortedBy { it.id }
+            // Reviewed engine improvement: explicit external bank identity, never local suffix ownership.
+            val external = rows.single { it.amount.amount.toPlainString() == "64.00" }
+            assertEquals("account:BANK_D360:5001", external.destinationContainerId)
+            assertNull(referenceRows.single { it.id == external.id }.destinationContainerId)
+            assertEquals(referenceRows, rows.map { if (it.id == external.id) it.copy(destinationContainerId = null) else it })
+            val expectedTypes = mapOf("61.00" to FinancialTransactionType.EXTERNAL_TRANSFER_OUT,"62.00" to FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+                "63.00" to FinancialTransactionType.SELF_TRANSFER,"64.00" to FinancialTransactionType.EXTERNAL_TRANSFER_OUT)
+            expectedTypes.forEach { (amount,type) -> assertEquals(type,rows.single { it.amount.amount.toPlainString()==amount }.type) }
+            assertEquals(6,rows.count { it.type == FinancialTransactionType.LOAN_REPAYMENT })
+            val overview = reference.dashboardService.loadOverview(ReferenceHistory.period())
+            assertOverview(overview,actual.dashboardService.loadOverview(ReferenceHistory.period()))
+            val replay = actual.historicalSmsScanner.scan(Instant.EPOCH)
+            assertEquals(names.size,replay.duplicates)
+            assertEquals(rows,actual.financialTransactionRepository.listAll().sortedBy { it.id })
+            actual.close()
+            actual = AppContainer(LabStorageContext(host),smsDataSourceOverride = source)
+            assertEquals(rows,actual.financialTransactionRepository.listAll().sortedBy { it.id })
+            assertOverview(overview,actual.dashboardService.loadOverview(ReferenceHistory.period()))
+        } finally { reference.close(); actual.close(); LabResetWorkflow.reset(host) }
+    }
     private suspend fun exercise(names: List<String>) {
         LabResetWorkflow.reset(host)
         val referenceContext = LabStorageContext(host,"lab_reference_")

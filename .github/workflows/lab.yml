@@ -51,6 +51,7 @@ jobs:
         with:
           name: lab-acceptance-evidence
           path: |
+            lab/beta/ML_PROVENANCE_REPORT_AR.html
             lab/beta/PRODUCTION_REPLICA_REPORT_AR.html
             lab/beta/PRODUCTION_REPLICA_SOURCES.json
             lab/beta/FINAL_FILE_MANIFEST.json

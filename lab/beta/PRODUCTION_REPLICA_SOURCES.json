@@ -605,5 +605,7 @@
     "kotlin/com/baraa/masroof/bank/aljazira/extraction/MoneyTokens.kt",
     "kotlin/com/baraa/masroof/bank/aljazira/extraction/ReferenceExtractor.kt"
   ],
-  "bootstrapSha256": "da06011bfdc77decb491eabc26ffcab2fbb09522ad4326a9d41a16d5899d4d87"
+  "bootstrapSha256": "da06011bfdc77decb491eabc26ffcab2fbb09522ad4326a9d41a16d5899d4d87",
+  "provenanceSha256": "c6806497626984d37e879ce9606090bcb9aea647f3de1835c26221f6ac1a3d66",
+  "regressionSha256": "aa49919e57456fc48392a61eaea03535795f0c39f42026ddad8533768a41dfa6"
 }

@@ -9,6 +9,23 @@ class ReplicaContractTest(unittest.TestCase):
         lock = json.loads(replica.LOCK.read_text())
         self.assertEqual(lock['files'], replica.inventory())
         self.assertEqual(lock['bootstrapSha256'], replica.digest(replica.BETA/'replica-overlays/bootstrap.json'))
+        self.assertEqual(lock['provenanceSha256'], replica.digest(replica.BETA/'replica-overlays/provenance.json'))
+    def test_ml_hooks_are_additive_evidence_only(self):
+        specs = json.loads((replica.BETA/'replica-overlays/provenance.json').read_text())
+        allowed = {'application/AppContainer.kt': 1, 'application/dashboard/TransactionSmsEvidenceLoader.kt': 3,
+                   'application/review/ReviewDetailLoader.kt': 3, 'presentation/dashboard/DashboardModels.kt': 1,
+                   'presentation/dashboard/DashboardViewModel.kt': 1, 'presentation/dashboard/DashboardViewModelFactory.kt': 1,
+                   'presentation/dashboard/TransactionDetailScreen.kt': 1, 'presentation/review/ReviewModels.kt': 1,
+                   'presentation/review/ReviewViewModel.kt': 1, 'presentation/review/ReviewViewModelFactory.kt': 1,
+                   'presentation/review/ReviewScreen.kt': 1}
+        self.assertEqual(allowed, {p.removeprefix('kotlin/com/baraa/masroof/'):len(ops) for p,ops in specs.items()})
+        for path, ops in specs.items():
+            for op in ops:
+                self.assertNotEqual(op['old'], op['new'])
+                for forbidden in ('.save(', '.delete(', '.resolve', '.reconcile', 'Room.', 'LabRuntime', 'awaitStartup'):
+                    self.assertNotIn(forbidden, op['new'])
+                if path.endswith('Screen.kt'):
+                    self.assertEqual(op['old'], '\n'.join(line for line in op['new'].split('\n') if 'InterpretationProvenanceCard(' not in line))
     def test_no_financial_or_screen_body_overlay(self):
         specs = json.loads((replica.BETA/'replica-overlays/bootstrap.json').read_text())
         allowed = {'MainActivity.kt','application/AppContainer.kt','application/locale/AppLocaleContextFactory.kt','application/update/UpdateCheckWorker.kt',

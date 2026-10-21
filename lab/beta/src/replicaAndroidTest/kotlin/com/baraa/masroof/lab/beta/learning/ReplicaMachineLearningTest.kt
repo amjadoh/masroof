@@ -10,6 +10,7 @@ import com.baraa.masroof.lab.replica.sms.hash.SmsBodyHasher
 import com.baraa.masroof.lab.replica.data.learning.LearningDatabase
 import com.baraa.masroof.lab.replica.data.learning.LearningLabelRow
 import com.baraa.masroof.lab.ml.family.FamilyInputCleaner
+import com.baraa.masroof.lab.replica.application.interpretation.InterpretationOrigin
 import androidx.room.Room
 import kotlinx.coroutines.*
 import org.junit.Assert.*
@@ -46,6 +47,7 @@ class ReplicaMachineLearningTest {
             assertEquals(1,rows.size);assertEquals("2000.00",rows.single().amount.amount.toPlainString())
             assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_IN,rows.single().type)
             assertTrue(c.reviewRepository.listRequired().isEmpty())
+            assertEquals(InterpretationOrigin.ML,c.interpretationProvenanceWorkflow.load("ml-income")!!.origin)
             val service=requireNotNull(c.labInterpretationService)
             await {service.auditHistory("ml-income").any {it.origin=="ML"}}
             File(host.getExternalFilesDir(null),"ml-inference.txt").writeText("Engine family: ${parsed.event.messageFamily}\nAmount: ${rows.single().amount}\nModel evidence: ${parsed.event.confidence.reasons}\nFinancial type: ${rows.single().type}\nNo manual approval was requested.\n")
@@ -76,6 +78,8 @@ class ReplicaMachineLearningTest {
             assertEquals(ParseStatus.SUCCESS,parsed.event.parseStatus)
             assertEquals("22.00",parsed.event.amount!!.amount.toPlainString())
             assertTrue(parsed.event.confidence.reasons.toString(),parsed.event.confidence.reasons.any {it=="family_origin:HUMAN_TEMPLATE"})
+            assertEquals(InterpretationOrigin.HUMAN_TEMPLATE,c.interpretationProvenanceWorkflow.load("ml-loan-next")!!.origin)
+            assertNull(c.interpretationProvenanceWorkflow.load("ml-loan-one"))
             val dashboard=c.dashboardService.loadCurrentOverview()
             assertEquals("298.00",dashboard.loansOverview!!.loans.single().remainingBalance!!.amount.toPlainString())
             File(host.getExternalFilesDir(null),"ml-feedback.txt").writeText("First two messages: UNKNOWN and review required.\nOne real production manual loan decision.\nPending message automatically reparsed and posted.\nModel: $version\nCold reopen preserved learning.\nNext amount extracted fresh: ${parsed.event.amount}\nLatest remaining balance: ${dashboard.loansOverview!!.loans.single().remainingBalance}\nNo repeated review.\n")
@@ -138,5 +142,30 @@ class ReplicaMachineLearningTest {
             File(host.getExternalFilesDir(null),"ml-cleaning-upgrade.txt").writeText(
                 "Old feature cache rejected.\nHuman decision rebuilt using ${FamilyInputCleaner.VERSION}.\nPosted history unchanged across reopen.\nFuture amount 21 SAR extracted fresh; no repeated review.\n")
         } finally {LabResetWorkflow.reset(host)}
+    }
+
+    @Test fun aRuleUpgradeRefreshesUnresolvedEvidenceWithoutRewritingPostedHistory() = runBlocking {
+        var c=fresh()
+        try {
+            c.onboardingOwnershipWorkflow.confirmCardOwned(CardReference(bank,"7271"))
+            c.processRawSmsUseCase.ingest(evidence("rule-posted","شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nمبلغ: SAR 12\nلدى: TEST\nفي: ${at()}"))
+            c.processRawSmsUseCase.ingest(evidence("rule-old-loyalty","رصيد نقاطك في برنامج مكافآتي هو 99 نقطة."))
+            val old=requireNotNull(c.parsedEventRepository.findByRawSmsId("rule-old-loyalty"))
+            c.parsedEventRepository.save(old.event.copy(messageFamily=MessageFamily.UNKNOWN,parseStatus=ParseStatus.REVIEW_REQUIRED,
+                confidence=Confidence(0.0,listOf("engine:previous","rules:previous"))),old.details)
+            c.reviewRepository.upsertRequired("rule-old-loyalty",ReviewKind.NEEDS_REVIEW,listOf("unknown_or_unsupported_format"),Instant.now())
+            val before=c.financialTransactionRepository.listAll()
+            val posted=requireNotNull(c.parsedEventRepository.findByRawSmsId("rule-posted"))
+            LabRuntime.close()
+            LabStorageContext(host).getSharedPreferences("learning_runtime",0).edit().putString("scheduled_interpretation","previous").commit()
+            c=LabRuntime.container(host)
+            c.awaitPostStartupBackgroundWorkForTesting()
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            await { c.reviewRepository.listRequired().isEmpty() }
+            assertEquals(MessageFamily.NON_FINANCIAL,c.parsedEventRepository.findByRawSmsId("rule-old-loyalty")!!.event.messageFamily)
+            assertEquals(before,c.financialTransactionRepository.listAll())
+            assertEquals(posted,c.parsedEventRepository.findByRawSmsId("rule-posted"))
+            assertNull(c.interpretationProvenanceWorkflow.load("rule-old-loyalty"))
+        } finally { LabResetWorkflow.reset(host) }
     }
 }

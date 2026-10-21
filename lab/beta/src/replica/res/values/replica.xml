@@ -4,4 +4,9 @@
 <string name="lab_reset_explanation">سيتم حذف بيانات المختبر وإعداداته والتعلم المحلي فقط. بيانات مصروف الفعلي تبقى محفوظة.</string>
 <string name="lab_open_failed">تعذر فتح بيانات المختبر. ملفاتك محفوظة. أعد المحاولة أو صفّر المختبر من قائمة LAB.</string>
 <string name="lab_reset_failed">لم يكتمل تصفير المختبر. أعد المحاولة. لم يتم تعديل بيانات مصروف الفعلي.</string>
+<string name="lab_ml_source">بمساعدة تعلّم الآلة</string>
+<string name="lab_template_source">تعلّم من تصحيحك السابق</string>
+<string name="lab_inferred_family">النوع المستنتج: %1$s</string>
+<string name="lab_family_assist_role">المساهمة: تحديد نوع الرسالة. يستخرج المحرك المبلغ والحساب من نص الرسالة.</string>
+<string name="lab_inference_pending">هذا اقتراح لم يُعتمد بعد؛ اتبع سبب المراجعة والخطوات الموضحة أدناه.</string>
 </resources>

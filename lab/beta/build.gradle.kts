@@ -45,7 +45,7 @@ android {
         getByName("main").assets.srcDir("src/replica/assets")
         getByName("main").java.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin"))
         getByName("main").res.setSrcDirs(listOf("src/replica/res", "build/generated/productionReplica/res"))
-        getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin"))
+        getByName("test").java.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin", "build/generated/productionReplica/regressionKotlin"))
         getByName("androidTest").assets.srcDir("build/generated/productionReplica/fixtures")
         getByName("androidTest").manifest.srcFile("src/replicaAndroidTest/AndroidManifest.xml")
         getByName("androidTest").java.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "replica-verification/kotlin", "build/generated/productionReplica/referenceKotlin"))
@@ -53,7 +53,7 @@ android {
 }
 
 ksp {
-    arg("room.schemaLocation", "$buildDir/replica-schemas")
+    arg("room.schemaLocation", layout.buildDirectory.dir("replica-schemas").get().asFile.absolutePath)
 }
 
 dependencies {
@@ -97,6 +97,7 @@ dependencies {
 // Corpus checks read frozen source fixtures without executing Production parsers.
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     inputs.dir("testdata/reported")
+    inputs.dir("testdata/supported")
     outputs.dir(layout.buildDirectory.dir("model-training"))
     inputs.files(rootProject.fileTree("app/src/test") {
         include("kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt",
@@ -112,7 +113,9 @@ val generateProductionReplica by tasks.registering(Exec::class) {
     inputs.file("PRODUCTION_REPLICA_SOURCES.json")
     inputs.dir("replica-overlays")
     inputs.dir("testdata/reported")
+    inputs.dir("testdata/supported")
     inputs.file("tools/generate_production_replica.py")
+    inputs.file(rootProject.file("app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt"))
     outputs.dir(layout.buildDirectory.dir("generated/productionReplica"))
     commandLine("python3", "$projectDir/tools/generate_production_replica.py")
 }
@@ -120,6 +123,6 @@ tasks.named("preBuild").configure { dependsOn(generateProductionReplica) }
 
 kotlin.sourceSets {
     named("main") { kotlin.setSrcDirs(listOf("src/replica/kotlin", "build/generated/productionReplica/kotlin")) }
-    named("test") { kotlin.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin")) }
+    named("test") { kotlin.setSrcDirs(listOf("src/replicaTest/kotlin", "build/generated/productionReplica/referenceKotlin", "build/generated/productionReplica/regressionKotlin")) }
     named("androidTest") { kotlin.setSrcDirs(listOf("src/replicaAndroidTest/kotlin", "replica-verification/kotlin", "build/generated/productionReplica/referenceKotlin")) }
 }

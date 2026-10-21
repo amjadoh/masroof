@@ -47,5 +47,47 @@
       "engine": "AccountReference(bank=Bank(id=BANK_SNB), maskedNumber=0107)",
       "reason": "An explicit Saudi National Bank label qualifies the external destination; it does not confer ownership."
     }
+  },
+  "creditCardRefund_hamzaSpellingAndNumberLabel_isParsed": {
+    "details.availableBalance": {
+      "production": "null",
+      "engine": "Money(amount=11303.00, currency=SAR)",
+      "reason": "The new engine preserves the credit refund's explicitly labelled SAR balance, which the production parser omitted."
+    }
+  },
+  "transferInInter_newAcceptedFormat_depositedToAccountAndValueLabel": {
+    "details.cardSmsChannel": {
+      "production": "DEBIT",
+      "engine": "null",
+      "reason": "An external sender account debit is not a local debit card fact. The engine requires a bound local card/source role; the transfer remains incoming and posts normally."
+    }
+  },
+  "supported_transfer_other_bank_same_suffix": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=5001)",
+      "engine": "AccountReference(bank=Bank(id=BANK_D360), maskedNumber=5001)",
+      "reason": "The explicitly named D360 destination keeps its bank-qualified identity. Its suffix must never inherit ownership from an AlJazira account with the same suffix."
+    }
+  },
+  "transferInInter_externalSourceUnknown_destinationAlJazira": {
+    "source": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=8888)",
+      "engine": "AccountReference(bank=Bank(id=BANK_RIYAD), maskedNumber=8888)",
+      "reason": "Preserves the explicitly named external bank. This is identity enrichment only, never ownership inferred from an account suffix."
+    }
+  },
+  "transferOutInter_d360BeneficiaryBank_realWorldShape": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=2670)",
+      "engine": "AccountReference(bank=Bank(id=BANK_D360), maskedNumber=2670)",
+      "reason": "Preserves the explicitly named external bank. This is identity enrichment only, never ownership inferred from an account suffix."
+    }
+  },
+  "transferOutInter_sourceAlJazira_destinationUnknown": {
+    "destination": {
+      "production": "AccountReference(bank=Bank(id=UNKNOWN), maskedNumber=0593)",
+      "engine": "AccountReference(bank=Bank(id=BANK_ANB), maskedNumber=0593)",
+      "reason": "Preserves the explicitly named external bank. This is identity enrichment only, never ownership inferred from an account suffix."
+    }
   }
 }

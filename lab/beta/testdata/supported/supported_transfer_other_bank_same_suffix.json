@@ -1,0 +1,9 @@
+{
+  "id": "supported_transfer_other_bank_same_suffix",
+  "sender": "AlJazira",
+  "body": "حوالة مالية صادرة\nمن حساب: 3001\nالى: TEST_OTHER\nالمعرف البديل \\الايبان: 5001\n[بنك دال ثلاثمائة وستون]\nمبلغ العملية: SAR 64.00\nفي: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "TRANSFER_OUT",
+    "parseStatus": "SUCCESS"
+  }
+}

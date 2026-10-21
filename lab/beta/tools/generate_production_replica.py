@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a locked production replica; only reviewed bootstrap overlays may differ."""
+"""Generate a locked replica with reviewed bootstrap and additive ML evidence hooks."""
 import argparse, hashlib, json, pathlib, re, shutil, xml.etree.ElementTree as ET
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 BETA = ROOT / 'lab/beta'
@@ -7,6 +7,7 @@ SOURCE = ROOT / 'app/src/main'
 PREFIX = 'lab_replica_'
 PACKAGE = 'com.baraa.masroof.lab.replica'
 LOCK = BETA / 'PRODUCTION_REPLICA_SOURCES.json'
+REGRESSION = ROOT / 'app/src/test/kotlin/com/baraa/masroof/bank/aljazira/AlJaziraParserRegressionTest.kt'
 def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def inventory():
     return {str(p.relative_to(ROOT)): digest(p) for p in sorted([*SOURCE.joinpath('kotlin').rglob('*.kt'), *SOURCE.joinpath('res').rglob('*')]) if p.is_file()}
@@ -30,7 +31,11 @@ def main():
     parser.add_argument('--output', type=pathlib.Path, default=BETA / 'build/generated/productionReplica')
     args = parser.parse_args()
     bootstrap = BETA / 'replica-overlays/bootstrap.json'; specs = json.loads(bootstrap.read_text())
-    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(str(p.relative_to(SOURCE)) for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap)}
+    provenance = BETA / 'replica-overlays/provenance.json'
+    for path, ops in json.loads(provenance.read_text()).items():
+        specs.setdefault(path, []).extend(ops)
+    actual = {'format': 1, 'sourceCommit': '0d86c5d3a209bc31c72bc63cd05775d471310afa', 'files': inventory(), 'excluded': ['kotlin/com/baraa/masroof/MasroofApplication.kt'] + sorted(str(p.relative_to(SOURCE)) for p in SOURCE.joinpath('kotlin/com/baraa/masroof/bank/aljazira').rglob('*.kt') if p.name != 'AlJaziraBankDetector.kt'), 'bootstrapSha256': digest(bootstrap), 'provenanceSha256': digest(provenance)}
+    actual['regressionSha256'] = digest(REGRESSION)
     if args.lock: LOCK.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + '\n')
     if not LOCK.exists() or json.loads(LOCK.read_text()) != actual: raise SystemExit('Production or bootstrap drift. Review and explicitly update the replica lock.')
     if args.check:
@@ -55,7 +60,7 @@ def main():
             text = relocate(text)
             for name in ('R', 'BuildConfig'):
                 imp = f'import com.baraa.masroof.lab.beta.{name}'
-                if imp not in text: text = re.sub(r'(^package [^\n]+\n)', r'\1\n' + imp + '\n', text, count=1)
+                if imp not in text and re.search(r'(?<![.\w])' + name + r'\.', text): text = re.sub(r'(^package [^\n]+\n)', r'\1\n' + imp + '\n', text, count=1)
             text = re.sub(r'(?<!android\.)(?<![\w])R\.([a-z]+)\.([A-Za-z0-9_]+)', lambda m: 'R.'+m[1]+'.'+symbols.get((m[1],m[2]),m[2]), text)
             dest = out / 'kotlin' / source_rel.removeprefix('kotlin/')
         else:
@@ -72,8 +77,16 @@ def main():
             ref = out / 'referenceKotlin' / source_rel.removeprefix('kotlin/')
             ref.parent.mkdir(parents=True,exist_ok=True)
             ref.write_text(text.replace(PACKAGE + '.bank.aljazira', 'com.baraa.masroof.lab.reference.bank.aljazira'))
+    # Test-only production regressions replay every parse through a comparison probe.
+    # Runtime still contains no legacy parsing pipeline.
+    regression = relocate(REGRESSION.read_text()).replace(PACKAGE + '.bank.aljazira', 'com.baraa.masroof.lab.reference.bank.aljazira')
+    regression = regression.replace('class AlJaziraParserRegressionTest', 'class ProductionRegressionReplayTest')
+    regression = regression.replace('private val pipeline = AlJaziraParsingPipeline()', 'private val pipeline = ProductionRegressionProbe()')
+    regression = regression.replace('rawSmsId = "regression"', 'rawSmsId = Thread.currentThread().stackTrace.first { it.className.endsWith("ProductionRegressionReplayTest") && it.methodName != "parse" }.methodName')
+    dest = out / 'regressionKotlin/com/baraa/masroof/lab/reference/bank/aljazira/ProductionRegressionReplayTest.kt'
+    dest.parent.mkdir(parents=True, exist_ok=True); dest.write_text(regression)
     fixtures = ROOT / 'app/src/test/resources/testdata/bank_aljazira'
-    for fixture in sorted([*fixtures.rglob('*.json'), *BETA.joinpath('testdata/reported').rglob('*.json')]):
+    for fixture in sorted([*fixtures.rglob('*.json'), *BETA.joinpath('testdata/reported').rglob('*.json'), *BETA.joinpath('testdata/supported').rglob('*.json')]):
         if 'expected' not in json.loads(fixture.read_text()): continue
         dest = out / 'fixtures/bank-fixtures' / fixture.name
         dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(fixture,dest)

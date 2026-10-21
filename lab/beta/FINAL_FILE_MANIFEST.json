@@ -608,6 +608,7 @@
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabRuntime.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabStorageContext.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/beta/replica/LabWork.kt",
+    "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/InterpretationProvenanceWorkflow.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/LabFamilyAssist.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/LabInterpretationService.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/application/interpretation/ModelRefreshWorker.kt",
@@ -616,9 +617,14 @@
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/data/learning/FamilyModelCodec.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/data/learning/LabLearningStore.kt",
     "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/data/learning/LearningDatabase.kt",
-    "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/data/room/PreservingOpenHelperFactory.kt"
+    "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/data/room/PreservingOpenHelperFactory.kt",
+    "lab/beta/src/replica/kotlin/com/baraa/masroof/lab/replica/presentation/interpretation/InterpretationProvenanceCard.kt"
   ],
   "deletedPaths": [
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/LearningTokenization.kt",
+    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SenderRouter.kt",
+    "lab/bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/LearningTokenizationTest.kt",
+    "lab/bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/SenderRouterTest.kt",
     "lab/beta/CLEAN_BETA_GAP_CLOSURE.md",
     "lab/beta/COMPLETE_REVIEW_FIXES_AR.html",
     "lab/beta/FIXES_RESULT_AR.html",
@@ -934,15 +940,41 @@
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/DetailExtractor.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyAssist.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyTextPreparation.kt",
-    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/LearningTokenization.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/MoneyGrammar.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/ObservationExtractor.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RoleLineReader.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RuleInterpreter.kt",
-    "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SenderRouter.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SourceText.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/TransferNetworkResolver.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/AlJaziraRuleProfile.kt",
     "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/RuleLibrary.kt"
-  ]
+  ],
+  "provenanceOverlayFiles": [
+    "kotlin/com/baraa/masroof/application/AppContainer.kt",
+    "kotlin/com/baraa/masroof/application/dashboard/TransactionSmsEvidenceLoader.kt",
+    "kotlin/com/baraa/masroof/application/review/ReviewDetailLoader.kt",
+    "kotlin/com/baraa/masroof/presentation/dashboard/DashboardModels.kt",
+    "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModel.kt",
+    "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModelFactory.kt",
+    "kotlin/com/baraa/masroof/presentation/dashboard/TransactionDetailScreen.kt",
+    "kotlin/com/baraa/masroof/presentation/review/ReviewModels.kt",
+    "kotlin/com/baraa/masroof/presentation/review/ReviewScreen.kt",
+    "kotlin/com/baraa/masroof/presentation/review/ReviewViewModel.kt",
+    "kotlin/com/baraa/masroof/presentation/review/ReviewViewModelFactory.kt"
+  ],
+  "provenanceCleanup": {
+    "removedRuntimeFiles": [
+      "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/LearningTokenization.kt",
+      "lab/bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SenderRouter.kt"
+    ],
+    "removedSelfOnlyTests": [
+      "lab/bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/LearningTokenizationTest.kt",
+      "lab/bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/SenderRouterTest.kt"
+    ],
+    "retainedCompatibilityConsumers": [
+      "app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaProductionIsolationTest.kt",
+      "app/src/test/kotlin/com/baraa/masroof/application/baseline/BetaBridgeEntryPointTest.kt"
+    ],
+    "financialSchemaChange": false
+  }
 }

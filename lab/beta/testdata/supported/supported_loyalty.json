@@ -1,0 +1,9 @@
+{
+  "id": "supported_loyalty",
+  "sender": "AlJazira",
+  "body": "رصيد نقاطك في برنامج مكافآتي هو 9966.04 نقطة.",
+  "expected": {
+    "messageFamily": "NON_FINANCIAL",
+    "parseStatus": "NON_FINANCIAL"
+  }
+}

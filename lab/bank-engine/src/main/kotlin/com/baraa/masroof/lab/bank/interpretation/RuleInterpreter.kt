@@ -4,7 +4,6 @@ import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.bank.rules.RuleLibrary
 import com.baraa.masroof.lab.finance.value.Money
 import java.security.MessageDigest
-import java.time.LocalDateTime
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
 class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAssist? = null) : BankInterpreter {
@@ -279,9 +278,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v11"
+        const val VERSION = "bank-rules-independent-v12"
         private const val MAX_BODY = 16000
-        private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
@@ -289,7 +287,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         private val INCOMING = RuleLibrary.incomingTransferPhrases()
         private val OUTGOING = RuleLibrary.outgoingTransferPhrases()
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
-        private val SECONDARY = listOf("available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
+        private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
         private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }

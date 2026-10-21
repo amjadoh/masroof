@@ -10,7 +10,7 @@ import java.nio.file.StandardCopyOption
 class LabLearningStore(private val context: Context) : AutoCloseable {
     private val databaseLazy = lazy {Room.databaseBuilder(context,LearningDatabase::class.java,NAME).build()}
     private val database get()=databaseLazy.value
-    val cacheFile = File(context.filesDir,"learning/family-model.json")
+    private val cacheFile = File(context.filesDir,"learning/family-model.json")
     fun loadSeed() = FamilyModelCodec.seed(requireNotNull(FamilyModel::class.java.getResourceAsStream("/ml/family-seed.json")).bufferedReader().use {it.readText()})
     fun cached(seed: FamilyModelCodec.Seed): List<HumanFamilyLabel> = if (cacheFile.exists()) FamilyModelCodec.cachedLabels(cacheFile.readText(),seed) else emptyList()
     suspend fun record(row: EngineInterpretationRow) = database.learning().record(row)
