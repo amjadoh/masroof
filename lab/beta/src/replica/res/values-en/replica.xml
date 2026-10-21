@@ -1,0 +1,12 @@
+<resources>
+<string name="lab_return">Return to Masroof</string>
+<string name="lab_reset">Reset Lab</string>
+<string name="lab_reset_explanation">Delete Lab data, settings and local learning only. Your main Masroof data stays preserved.</string>
+<string name="lab_open_failed">Lab data could not be opened. Your files are preserved. Retry or reset Lab from the LAB menu.</string>
+<string name="lab_reset_failed">Lab reset did not complete. Retry. Main Masroof data was not changed.</string>
+<string name="lab_ml_source">Assisted by machine learning</string>
+<string name="lab_template_source">Learned from your previous correction</string>
+<string name="lab_inferred_family">Inferred message type: %1$s</string>
+<string name="lab_family_assist_role">Contribution: identifying the message type. The engine extracts the amount and account from the message.</string>
+<string name="lab_inference_pending">This suggestion is not approved yet. Follow the review reason and actions below.</string>
+</resources>

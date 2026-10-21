@@ -1,0 +1,11 @@
+
+com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest:...
+com.baraa.masroof.lab.beta.replica.ReplicaEntryTest:..
+com.baraa.masroof.lab.beta.replica.ReplicaFinancialParityTest:..
+com.baraa.masroof.lab.beta.replica.ReplicaResetRecreationTest:.
+com.baraa.masroof.lab.beta.replica.ReplicaSetupJourneyTest:.
+com.baraa.masroof.lab.beta.replica.ReplicaStorageRecoveryTest:..
+
+Time: 18.447
+
+OK (11 tests)

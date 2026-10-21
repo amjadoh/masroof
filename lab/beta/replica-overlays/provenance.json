@@ -1,0 +1,84 @@
+{
+  "kotlin/com/baraa/masroof/application/AppContainer.kt": [
+    {
+      "old": "    fun runStartupMaintenance() {",
+      "new": "    val interpretationProvenanceWorkflow by lazy { com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenanceWorkflow(effectiveParsedEventProvider, reviewRepository) }\n\n    fun runStartupMaintenance() {"
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/dashboard/TransactionSmsEvidenceLoader.kt": [
+    {
+      "old": "    private val rawSmsRepository: RawSmsRepository,",
+      "new": "    private val rawSmsRepository: RawSmsRepository,\n    private val provenanceWorkflow: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenanceWorkflow? = null,"
+    },
+    {
+      "old": "        val sender: String?,",
+      "new": "        val sender: String?,\n        val provenance: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenance? = null,"
+    },
+    {
+      "old": "SmsEvidence(body = raw.body, sender = raw.sender)",
+      "new": "SmsEvidence(body = raw.body, sender = raw.sender, provenance = provenanceWorkflow?.load(rawSmsId))"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModelFactory.kt": [
+    {
+      "old": "                rawSmsRepository = container.rawSmsRepository,",
+      "new": "                rawSmsRepository = container.rawSmsRepository,\n                provenanceWorkflow = container.interpretationProvenanceWorkflow,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardModels.kt": [
+    {
+      "old": "data class TransactionSmsEvidenceUi(\n    val body: String,\n    val sender: String?,",
+      "new": "data class TransactionSmsEvidenceUi(\n    val body: String,\n    val sender: String?,\n    val provenance: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenance? = null,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/DashboardViewModel.kt": [
+    {
+      "old": "TransactionSmsEvidenceUi(body = item.body, sender = item.sender)",
+      "new": "TransactionSmsEvidenceUi(body = item.body, sender = item.sender, provenance = item.provenance)"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/dashboard/TransactionDetailScreen.kt": [
+    {
+      "old": "                    MasroofCard {\n                        Text(\n                            evidence.body,",
+      "new": "                    com.baraa.masroof.lab.replica.presentation.interpretation.InterpretationProvenanceCard(evidence.provenance)\n                    MasroofCard {\n                        Text(\n                            evidence.body,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/application/review/ReviewDetailLoader.kt": [
+    {
+      "old": "    private val effectiveParsedEventProvider: EffectiveParsedEventProvider,",
+      "new": "    private val effectiveParsedEventProvider: EffectiveParsedEventProvider,\n    private val provenanceWorkflow: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenanceWorkflow? = null,"
+    },
+    {
+      "old": "        val cardRef: CardReference?,",
+      "new": "        val cardRef: CardReference?,\n        val provenance: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenance? = null,"
+    },
+    {
+      "old": "            cardRef = event?.cardRef,",
+      "new": "            cardRef = event?.cardRef,\n            provenance = provenanceWorkflow?.load(review.rawSmsId),"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewViewModelFactory.kt": [
+    {
+      "old": "            effectiveParsedEventProvider = container.effectiveParsedEventProvider,",
+      "new": "            effectiveParsedEventProvider = container.effectiveParsedEventProvider,\n            provenanceWorkflow = container.interpretationProvenanceWorkflow,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewModels.kt": [
+    {
+      "old": "    val bankChoices: List<ReviewBankChoiceUi> = emptyList(),",
+      "new": "    val bankChoices: List<ReviewBankChoiceUi> = emptyList(),\n    val provenance: com.baraa.masroof.lab.replica.application.interpretation.InterpretationProvenance? = null,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewViewModel.kt": [
+    {
+      "old": "            body = detail.body.orEmpty(),",
+      "new": "            body = detail.body.orEmpty(),\n            provenance = detail.provenance,"
+    }
+  ],
+  "kotlin/com/baraa/masroof/presentation/review/ReviewScreen.kt": [
+    {
+      "old": "            MasroofCard {\n                Text(\n                    detail.body,",
+      "new": "            com.baraa.masroof.lab.replica.presentation.interpretation.InterpretationProvenanceCard(detail.provenance)\n            MasroofCard {\n                Text(\n                    detail.body,"
+    }
+  ]
+}

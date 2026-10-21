@@ -1,0 +1,8 @@
+First two messages: UNKNOWN and review required.
+One real production manual loan decision.
+Pending message automatically reparsed and posted.
+Model: family-nb-v1-244ca8bba9635681-human-a568d16fbf939888
+Cold reopen preserved learning.
+Next amount extracted fresh: Money(amount=22.00, currency=SAR)
+Latest remaining balance: Money(amount=298.00, currency=SAR)
+No repeated review.

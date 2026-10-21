@@ -1,0 +1,9 @@
+{
+  "id": "supported_fee_title",
+  "sender": "AlJazira",
+  "body": "رسوم\nمن حساب: 3001\nمبلغ: SAR 5.00\nفي: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "FEE",
+    "parseStatus": "SUCCESS"
+  }
+}

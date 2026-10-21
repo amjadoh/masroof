@@ -1,0 +1,12 @@
+{
+  "id": "reported_03",
+  "sender": "AlJazira",
+  "body": "عملية حوالة مالية صادرة مقبولة\nخصمت من حساب: 3001\nإلى: TEST BENEFICIARY\nمبلغ العملية: 50.00 SAR\nالمعرف البديل \\الايبان: 9466\n[بنك اس تي سي]\nفي: 14:57 08-10-2026\nرقم المعاملة: TEST_REFERENCE_ONE",
+  "expected": {
+    "bank": "BANK_ALJAZIRA",
+    "messageFamily": "TRANSFER_OUT",
+    "amount": "50.00",
+    "currency": "SAR",
+    "parseStatus": "SUCCESS"
+  }
+}

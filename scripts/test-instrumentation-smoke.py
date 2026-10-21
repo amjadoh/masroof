@@ -31,6 +31,9 @@ with open("adb-calls.jsonl", "a") as output: output.write(json.dumps(sys.argv[1:
 if os.environ.get("TEST_ADB_FAILURE") == "1": sys.exit(1)
 if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == "1":
     (pathlib.Path(sys.argv[-1]) / "m19-synthetic.png").write_bytes(b"synthetic")
+if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == "1":
+    for name in ("03-dashboard-with-data.png", "10b-original-classification-actions.png"):
+        (pathlib.Path(sys.argv[-1]) / name).write_bytes(b"synthetic")
 ''')
         adb.chmod(0o755)
         self.environment = dict(os.environ, ANDROID_SDK_ROOT="/synthetic/sdk",
@@ -73,6 +76,10 @@ if "m19-statement" in sys.argv[2] and os.environ.get("TEST_SCREENSHOT", "1") == 
 
     def test_successful_app_suite_still_fails_if_screenshots_are_missing(self):
         result = self.run_suite("app", TEST_SCREENSHOT="0")
+        self.assertNotEqual(0, result.returncode)
+
+    def test_successful_beta_suite_requires_dashboard_and_classification_screenshots(self):
+        result = self.run_suite("beta", TEST_SCREENSHOT="0")
         self.assertNotEqual(0, result.returncode)
 
     def test_bad_suite_cannot_start_gradle_or_adb(self):

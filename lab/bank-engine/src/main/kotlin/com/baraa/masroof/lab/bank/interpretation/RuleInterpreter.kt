@@ -4,10 +4,9 @@ import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.bank.rules.RuleLibrary
 import com.baraa.masroof.lab.finance.value.Money
 import java.security.MessageDigest
-import java.time.LocalDateTime
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
-class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
+class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAssist? = null) : BankInterpreter {
     private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
         phrases = it.phrases.toList(), excludes = it.excludes.toList(),
         labels = it.labels.mapValues { entry -> entry.value.toList() },
@@ -16,17 +15,25 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         network = schema.network.copy(bankAliases = schema.network.bankAliases.mapValues { it.value.toList() },
             sourceBankLabels = schema.network.sourceBankLabels.toList(),
             destinationBankLabels = schema.network.destinationBankLabels.toList(),
-            networkLabels = schema.network.networkLabels.toList()))
+            networkLabels = schema.network.networkLabels.toList(),
+            unidentifiedExternalBankMarkers = schema.network.unidentifiedExternalBankMarkers.toList()))
     // Content identity prevents changing literals under an unchanged declared revision.
     val version = InterpretationVersion(1, VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}-" +
         MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) })
 
-    override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation {
-        val banks = catalog.candidates(input.sender)
+    override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation =
+        interpretWithBanks(input, catalog.candidates(input.sender))
+
+    /** Router-selected bank: never re-detect a sender after an explicit/stored bank choice. */
+    fun interpretRouted(input: MessageInput, bank: com.baraa.masroof.lab.finance.value.BankId): Interpretation =
+        interpretWithBanks(input, setOf(bank))
+
+    private fun interpretWithBanks(input: MessageInput, banks: Set<com.baraa.masroof.lab.finance.value.BankId>): Interpretation {
         val blockers = linkedSetOf<Blocker>()
         val diagnostics = mutableListOf<InterpretationDiagnostic>()
         val evidence = mutableListOf<Evidence>()
+        var inference: FamilySuggestion? = null
         fun problem(code: String, blocker: Blocker = Blocker.VALIDATION_ERROR) {
             blockers += blocker
             diagnostics += InterpretationDiagnostic(code, code, DiagnosticSeverity.WARNING)
@@ -34,7 +41,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         fun result(facts: Facts = Facts(MessageFamily.UNKNOWN), status: ParseStatus = ParseStatus.REVIEW_REQUIRED): Interpretation {
             if (facts.family == MessageFamily.UNKNOWN) blockers += Blocker.UNKNOWN_FAMILY
             return Interpretation(input.evidenceId, version, banks.singleOrNull(), facts, status,
-                null, evidence.toList(), blockers.toSet(), diagnostics.toList())
+                inference?.let { Confidence(it.score,listOf("family_origin:${it.origin}","model:${it.modelVersion}")) }, evidence.toList(), blockers.toSet(), diagnostics.toList(), inference)
         }
         if (banks.size != 1) {
             problem("SENDER_NOT_UNIQUE", if (banks.isEmpty()) Blocker.UNKNOWN_BANK else Blocker.AMBIGUOUS_BANK)
@@ -53,7 +60,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val validSchema = runCatching { snapshot.validate() }.isSuccess
         // Validate every configured literal before executing the closed grammar.
         val networkTerms = snapshot.network.bankAliases.values.flatten() + snapshot.network.sourceBankLabels +
-            snapshot.network.destinationBankLabels + snapshot.network.networkLabels
+            snapshot.network.destinationBankLabels + snapshot.network.networkLabels + snapshot.network.unidentifiedExternalBankMarkers
         if (!validSchema || "UNKNOWN" in snapshot.network.bankAliases || networkTerms.any { SourceText(it).text.none(Char::isLetterOrDigit) } || snapshot.rules.any {
                     (it.phrases + it.excludes + it.labels.values.flatten() + it.detailLabels.values.flatten() + it.observations.values.flatten()).any { term -> SourceText(term).text.none(Char::isLetterOrDigit) }
             }) {
@@ -79,7 +86,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val candidates = snapshot.rules.filter { rule -> rule.phrases.any { titleMatches(it).isNotEmpty() } && rule.excludes.none(::contains) }
         // A configured compound title (e.g. refund of a purchase) consumes its nested literal,
         // but independent movement cues on another span still conflict.
-        val matching = candidates.filter { rule ->
+        var matching = candidates.filter { rule ->
             val spans = rule.phrases.flatMap(::titleMatches).map { it.range }
             spans.any { span -> candidates.filter { it.family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE }.none { other ->
                 other.phrases.flatMap(::titleMatches).any { it.range.first <= span.first && it.range.last >= span.last && it.range != span }
@@ -88,12 +95,25 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         matching.forEach { rule -> rule.phrases.forEach { phrase -> titleMatches(phrase).forEach { match ->
             evidence += source.evidence(rule.id, "family", (lineStart + leading + match.range.first)..(lineStart + leading + match.range.last))
         } } }
-        if (matching.isEmpty()) return result()
-        if (matching.map { it.family to it.direction }.distinct().size != 1) {
+        if (matching.isNotEmpty() && matching.map { it.family to it.direction }.distinct().size != 1) {
             problem("FAMILY_OR_DIRECTION_CONFLICT", Blocker.CONFLICTING_FACTS); return result()
         }
-        val family = matching.first().family
-        val direction = matching.first().direction
+        if (matching.isEmpty()) {
+            val suggestion = familyAssist?.suggest(input,title)
+            val supported = suggestion?.let { candidate -> snapshot.rules.filter {it.family==candidate.family} }.orEmpty()
+            if (suggestion!=null && supported.isNotEmpty() && suggestion.family in assistFinancialFamilies) {
+                inference = suggestion
+                matching = supported
+                if (lineEnd>lineStart+leading) evidence += source.evidence("family.${suggestion.origin.name.lowercase()}","family",(lineStart+leading)..(lineEnd-1))
+            }
+        }
+        val family = matching.firstOrNull()?.family ?: MessageFamily.UNKNOWN
+        val direction = matching.firstOrNull()?.direction ?: MoneyDirection.UNKNOWN
+        if (family==MessageFamily.UNKNOWN) {
+            problem("UNKNOWN_FAMILY",Blocker.UNKNOWN_FAMILY)
+            matching = snapshot.rules // Review-only extraction of labelled facts; never automatic authority.
+        }
+        val familyPhrases = matching.flatMap {it.phrases} + listOfNotNull(title.takeIf {inference!=null})
         // A second bare movement cue still conflicts; moving it into a party field does not.
         snapshot.rules.filter { it.family != family && it.excludes.none(::contains) }.forEach { rule ->
             rule.phrases.forEach { phrase -> source.phrase(phrase).findAll(source.text).forEach { match ->
@@ -126,9 +146,16 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
         if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
-        fun labels(field: ExtractionField) = matching.flatMap { it.labels[field].orEmpty() }.distinct()
+        fun labels(field: ExtractionField): List<String> {
+            val sets=matching.map {it.labels[field].orEmpty()}
+            // Unknown messages retain only unambiguous merchant labels. A loan/account "from"
+            // role must not become a merchant merely because a refund profile also uses it.
+            return if (family==MessageFamily.UNKNOWN && field==ExtractionField.MERCHANT)
+                sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
+            else sets.flatten().distinct()
+        }
         data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
-        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels).read()
+        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
         val secondaryRanges = details.reserved.toMutableList()
         fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
         // Reserve all known secondary roles even when the selected rule does not expose them.
@@ -213,8 +240,8 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
             problem("CONFLICTING_FOREIGN_PRINCIPAL", Blocker.CONFLICTING_FACTS)
         val observations = matching.flatMap { it.observations.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }
         val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem)
-            .resolve(family, banks.single(), matching.flatMap { it.phrases }, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
-        val observed = ObservationExtractor(source, observations, family, matching.flatMap { it.phrases }, evidence, ::problem).read()
+            .resolve(family, banks.single(), familyPhrases, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
+        val observed = ObservationExtractor(source, observations, family, familyPhrases, evidence, ::problem).read()
         if (observed.card == CardChannel.STATEMENT && family !in INFORMATIONAL) problem("STATEMENT_CHANNEL_IN_MOVEMENT", Blocker.CONFLICTING_FACTS)
         if (observed.balanceMarker && balance == null) problem("MISSING_OBSERVED_BALANCE")
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
@@ -229,13 +256,14 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         val roleEvidence = evidence.filter { it.field != "family" && !it.field.startsWith("observation.") }
         if (roleEvidence.any { a -> roleEvidence.any { b -> a.field != b.field && a.start < b.end && b.start < a.end } })
             problem("FIELD_ROLE_CONFLICT", Blocker.CONFLICTING_FACTS)
-        val facts = Facts(family, amount, if (family in INFORMATIONAL) null else direction,
+        val familyCollision = diagnostics.any { it.code in setOf("FAMILY_CONTEXT_CONFLICT", "MOVEMENT_NOTICE_CONFLICT", "TRANSFER_CONTEXT_CONFLICT", "STATEMENT_CHANNEL_IN_MOVEMENT") }
+        val facts = Facts(if (familyCollision) MessageFamily.UNKNOWN else family, amount, if (family in INFORMATIONAL || family==MessageFamily.UNKNOWN) null else direction,
             sourceAccount = account?.let { AccountReference(sourceBank, it) },
             destinationAccount = destination?.let { AccountReference(destinationBank, it) },
             card = card?.let { CardReference(banks.single(), it) }, merchant = merchants.singleOrNull(),
             availableBalance = balance, occurredAtLocal = times.singleOrNull(),
             occurredAt = input.receivedAt.takeIf {receiptTime && family !in INFORMATIONAL}, outstandingBalance = details.due,
-            labeledForeignAmount = details.foreign, internationalFee = details.fee, exchangeRate = details.rate,
+            labeledForeignAmount = details.foreign ?: amount?.takeIf { it.currency != com.baraa.masroof.lab.finance.value.Currency.SAR }, internationalFee = details.fee?.takeIf { family in setOf(MessageFamily.PURCHASE,MessageFamily.REFUND) }, exchangeRate = details.rate,
             paymentDueDate = details.dueDate, transactionReference = details.reference, counterparty = details.counterparty,
             biller = details.biller, billerCode = details.billerCode, bankNetwork = network.kind,
             cardChannel = observed.card, purchaseChannel = observed.purchase, loanType = observed.loan,
@@ -250,9 +278,8 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v8"
+        const val VERSION = "bank-rules-independent-v12"
         private const val MAX_BODY = 16000
-        private val TIME = Regex("(?<![0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}[t ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?![0-9:])")
         private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
@@ -260,7 +287,7 @@ class RuleInterpreter(schema: BankRuleSchema) : BankInterpreter {
         private val INCOMING = RuleLibrary.incomingTransferPhrases()
         private val OUTGOING = RuleLibrary.outgoingTransferPhrases()
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
-        private val SECONDARY = listOf("available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
+        private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
         private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }

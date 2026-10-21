@@ -30,6 +30,3 @@ value class BankId(val value: String) {
         require(value.isNotBlank() && value != "UNKNOWN") { "A known bank is required" }
     }
 }
-
-/** Explicit storage namespace; callers cannot accidentally omit the environment. */
-enum class Environment { BETA, MIGRATION_REHEARSAL }

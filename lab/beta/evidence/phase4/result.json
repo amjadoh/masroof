@@ -1,0 +1,68 @@
+{
+  "localAcceptance": "passed",
+  "productionAndUiKitDiff": [],
+  "jvm": {
+    "app": {
+      "tests": 1764,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/beta": {
+      "tests": 70,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/bank-engine": {
+      "tests": 59,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lab/finance-core": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "ui-kit": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "jvmTotal": 1908,
+  "nativeSuite": {
+    "tests": 11,
+    "failures": 0
+  },
+  "processDeath": {
+    "phases": 4,
+    "journeys": 2,
+    "failures": 0
+  },
+  "signedUpgrade": {
+    "phases": 2,
+    "financialRows": 40,
+    "failures": 0
+  },
+  "pythonContracts": 20,
+  "trainingReproducibility": "passed",
+  "apkBuild": "passed",
+  "lintAndDetekt": "passed",
+  "recordedUiJourney": "passed",
+  "githubCi": "Tracked by replacement PR checks; local acceptance does not substitute for GitHub CI",
+  "physicalPhoneTest": false,
+  "recording": {
+    "duration": "27.310089",
+    "size": "1118610"
+  },
+  "exactCiDeviceWrapper": {
+    "result": "passed",
+    "nativeTests": 11,
+    "publishedScreenshots": 12,
+    "collectionAfterUninstall": true
+  }
+}

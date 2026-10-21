@@ -1,0 +1,12 @@
+{
+  "id": "reported_02",
+  "sender": "AlJazira",
+  "body": "شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nمبلغ: SAR 57.99\nلدى: Google YouTubePremium\nفي: 2026-10-06 00:29\nالدولة: USA\nرسوم العمليات الدولية: 1.33\nسعر الصرف: 1.0\nالرصيد المتاح: SAR 12109.99\nإجمالي المستحق: SAR 6705.18",
+  "expected": {
+    "bank": "BANK_ALJAZIRA",
+    "messageFamily": "PURCHASE",
+    "amount": "57.99",
+    "currency": "SAR",
+    "parseStatus": "SUCCESS"
+  }
+}

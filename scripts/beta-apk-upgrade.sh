@@ -40,6 +40,8 @@ rehearsal_serial="$(adb get-serialno | tr -d '\r')"
 case "$rehearsal_serial" in emulator-*) ;; *) echo "This rehearsal requires the isolated CI emulator" >&2; exit 1 ;; esac
 export ANDROID_SERIAL="$rehearsal_serial"
 test "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" = "1"
+# Fresh synthetic fixture before version 1; no uninstall or clear between versions.
+adb uninstall "$HOST" >/dev/null 2>&1 || true
 adb install -r -t "$before"
 adb install -r -t lab/upgrade-host/build/outputs/apk/androidTest/before/debug/upgrade-host-before-debug-androidTest.apk
 instrument seedVersionOne

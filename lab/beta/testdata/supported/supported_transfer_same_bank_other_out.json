@@ -1,0 +1,9 @@
+{
+  "id": "supported_transfer_same_bank_other_out",
+  "sender": "AlJazira",
+  "body": "حوالة صادرة: داخلية\nمن حساب: 3001\nالى حساب: 5002\nمبلغ: SAR 61.00\nفي: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "TRANSFER_OUT",
+    "parseStatus": "SUCCESS"
+  }
+}

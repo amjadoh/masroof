@@ -1,0 +1,9 @@
+{
+  "id": "supported_loan_vehicle",
+  "sender": "AlJazira",
+  "body": "خصم: قسط تمويل\nمن: 3001\nالقسط: SAR 321.99\nالمبلغ المتبقي: SAR 12000.00\nلـ: تمويل مركبة\nفي: 2026-10-06 09:00",
+  "expected": {
+    "messageFamily": "FINANCING_INSTALLMENT",
+    "parseStatus": "SUCCESS"
+  }
+}
