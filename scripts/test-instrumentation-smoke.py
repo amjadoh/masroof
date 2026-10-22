@@ -79,26 +79,32 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
         self.assertFalse((self.work / "adb-calls.jsonl").exists())
 
     def test_each_app_shard_passes_both_runner_arguments(self):
-        for shard in ("0", "1"):
-            with self.subTest(shard=shard):
-                result = self.run_suite("app", shard, "2", TEST_SCREENSHOT="0")
-                self.assertEqual(0, result.returncode, result.stderr)
-                self.assertEqual([
-                    ":app:connectedDebugAndroidTest",
-                    "-Pandroid.testInstrumentationRunnerArguments.numShards=2",
-                    f"-Pandroid.testInstrumentationRunnerArguments.shardIndex={shard}",
-                    "--no-parallel", "--stacktrace"], self.gradle_args())
+        for count in (2, 4):
+            for shard in range(count):
+                with self.subTest(count=count, shard=shard):
+                    result = self.run_suite("app", str(shard), str(count), TEST_SCREENSHOT="0")
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual([
+                        ":app:connectedDebugAndroidTest",
+                        f"-Pandroid.testInstrumentationRunnerArguments.numShards={count}",
+                        f"-Pandroid.testInstrumentationRunnerArguments.shardIndex={shard}",
+                        "--no-parallel", "--stacktrace"], self.gradle_args())
 
     def test_invalid_shards_cannot_start_tools(self):
-        for suite, args in (("app", ("2", "2")), ("app", ("0",)),
+        for suite, args in (("app", ("2", "2")), ("app", ("4", "4")),
+                            ("app", ("-1", "4")), ("app", ("00", "4")),
+                            ("app", ("0", "3")), ("app", ("0",)),
                             ("app", ("0", "0")), ("beta", ("0", "2"))):
             self.assertEqual(2, self.run_suite(suite, *args).returncode)
         self.assertFalse((self.work / "gradle-args.json").exists())
 
     def test_shard_failure_is_preserved(self):
-        self.assertEqual(17, self.run_suite("app", "1", "2",
-                         TEST_GRADLE_STATUS="17").returncode)
-        self.assertEqual(1, len(self.captures()))
+        for count in (2, 4):
+            for shard in range(count):
+                with self.subTest(count=count, shard=shard):
+                    self.assertEqual(17, self.run_suite("app", str(shard), str(count),
+                                     TEST_GRADLE_STATUS="17").returncode)
+        self.assertEqual(6, len(self.captures()))
 
     def test_workflow_keeps_complete_coverage_and_clean_devices(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
@@ -107,7 +113,8 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
         self.assertEqual(2, workflow.count("profile: pixel_2"))
         app = workflow.split("  emulator-app:", 1)[1].split("  emulator-smoke:", 1)[0]
         lifecycle = workflow.split("  emulator-recovery:", 1)[1].split("  emulator-lifecycle:", 1)[0]
-        self.assertIn("shard: [0, 1]", app)
+        self.assertIn("shard: [0, 1, 2, 3]", app)
+        self.assertIn("run-instrumentation-smoke.sh app ${{ matrix.shard }} ${{ strategy.job-total }}", app)
         self.assertIn("fail-fast: false", app)
         for job in (app, lifecycle):
             self.assertLess(job.index("- name: Assemble"), job.index("uses: reactivecircus/android-emulator-runner"))
