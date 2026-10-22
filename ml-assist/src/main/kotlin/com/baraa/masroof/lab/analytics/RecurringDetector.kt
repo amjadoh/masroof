@@ -12,8 +12,10 @@ object RecurringDetector {
     fun detect(facts: List<FinancialFact>, today: Long): List<RecurringPattern> = facts
         .filter { it.recurringEligible && it.amount != null && it.amount > 0 && !it.merchant.isNullOrBlank() }
         .groupBy { FinancialCleaner.merchantKey(it.merchant!!) }.mapNotNull { (key, rows) ->
-            val ordered = rows.distinctBy { it.id }.sortedBy { it.day }
-            if (ordered.size < 3 || ordered.map { it.day }.distinct().size != ordered.size) return@mapNotNull null
+            // A same-day pair is ambiguous evidence, not grounds to discard an entire merchant's history.
+            val ordered = rows.distinctBy { it.id }.groupBy { it.day }.values
+                .filter { it.size == 1 }.map { it.single() }.sortedBy { it.day }
+            if (ordered.size < 3) return@mapNotNull null
             val recent = ordered.takeLast(6)
             val dates = recent.map { LocalDate.ofEpochDay(it.day) }
             val gaps = recent.zipWithNext().map { (a, b) -> (b.day - a.day).toDouble() }
@@ -25,9 +27,8 @@ object RecurringDetector {
             }
             fun next(date: LocalDate): LocalDate = if (cadence == "WEEKLY") date.plusWeeks(1) else
                 date.plusMonths(1).let { if (date.dayOfMonth == date.lengthOfMonth()) it.withDayOfMonth(it.lengthOfMonth()) else it }
-            var due = next(dates.last())
+            val due = next(dates.last())
             if (today > due.toEpochDay() + if (cadence == "WEEKLY") 2 else 5) return@mapNotNull null
-            while (due.toEpochDay() < today) due = next(due)
             val amounts = recent.map { it.amount!!.toDouble() }
             var smoothed = amounts.first(); amounts.drop(1).forEach { smoothed = .3 * it + .7 * smoothed }
             val med = median(amounts); val mad = median(amounts.map { abs(it - med) })

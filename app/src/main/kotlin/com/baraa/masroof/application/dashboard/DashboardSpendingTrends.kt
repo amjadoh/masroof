@@ -12,6 +12,8 @@ data class DashboardSpendingTrends(
     val byCard: Map<String, DailySpendingTrend>,
     val debitCards: DailySpendingTrend? = null,
     val purchases: DailySpendingTrend,
+    /** Scope before FX resolution: unresolved eligible purchases are missing data, not out-of-scope rows. */
+    val purchaseScopeTransactionIds: Set<String> = purchases.transactionIdsByDate.values.flatten().toSet(),
 )
 
 object DashboardSpendingTrendsBuilder {
@@ -73,6 +75,7 @@ object DashboardSpendingTrendsBuilder {
                 outflows = key in debitKeys) },
             debitCards = configurable(debitKeys.flatMap { cardRows[it].orEmpty() }, ChartCategoryTrendsBuilder.debit, outflows = true),
             purchases = configurable(purchaseRows, ChartCategoryTrendsBuilder.purchases, outflows = true),
+            purchaseScopeTransactionIds = purchaseRows.map { it.id }.toSet(),
         )
     }
 }

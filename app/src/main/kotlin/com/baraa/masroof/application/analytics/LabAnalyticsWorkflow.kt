@@ -10,6 +10,10 @@ import com.baraa.masroof.lab.analytics.*
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.application.commitment.CommitmentCreationResult
 import com.baraa.masroof.application.dashboard.CommitmentPaymentStatus
+import com.baraa.masroof.application.dashboard.AnalysisSpendingInsights
+import com.baraa.masroof.application.dashboard.AnalysisSpendingFact
+import com.baraa.masroof.application.dashboard.AnalysisSpendingInsightsBuilder
+import com.baraa.masroof.application.dashboard.ChartDataCategory
 import com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome
 import com.baraa.masroof.application.settings.SettingsCommitmentsWorkflow
 import com.baraa.masroof.core.money.Currency
@@ -90,7 +94,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
 
     private data class Source(val clean: CleanData, val start: Long, val end: Long, val today: Long,
         val completed: Int, val dues: List<AnalysisDue>, val committed: Set<String>, val reviews: Int,
-        val blocked: Boolean, val fingerprint: String)
+        val blocked: Boolean, val fingerprint: String, val reasons: List<String>, val insights: AnalysisSpendingInsights)
 
     private suspend fun source(): Source {
             val zone = clock.zone; val today = LocalDate.now(clock); val todayDay = today.toEpochDay()
@@ -99,7 +103,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             val read = FinancialAnalysisReader.capture(container, start.atStartOfDay(zone).toInstant(), period.endDateExclusive.atStartOfDay(zone).toInstant(), zone, clock)
             val historical = read.service.loadOverview(FinancialPeriod(start, period.endDateExclusive))
             val current = read.service.loadOverview(period)
-            val included = historical.spendingTrends?.purchases?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
+            val included = historical.spendingTrends?.purchaseScopeTransactionIds.orEmpty()
             val raw = read.rows.associateBy { it.id }
             val facts = historical.transactions.map { tx ->
                 val original = raw[tx.id] ?: tx
@@ -132,22 +136,37 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             val clean = FinancialCleaner.clean(facts, start.toEpochDay(), todayDay, covered, gaps) { day ->
                 val date = LocalDate.ofEpochDay(day); (day - FinancialPeriodPolicy.periodContaining(date).startDate.toEpochDay()).toInt()
             }
-            var candidatePeriod = FinancialPeriodPolicy.periodContaining(start)
-            var completed = 0
-            while (!candidatePeriod.endDateExclusive.isAfter(today)) {
-                if (covered != null && candidatePeriod.startDate.toEpochDay() >= covered &&
-                    clean.days.filter { it.day in candidatePeriod.startDate.toEpochDay() until candidatePeriod.endDateExclusive.toEpochDay() }.all { it.covered }) completed++
-                candidatePeriod = FinancialPeriodPolicy.next(candidatePeriod)
+            val completed = completedAnalysisPeriods(clean, todayDay)
+            val categories = historical.spendingTrends?.purchases?.categoryTrends.orEmpty()
+            val cashIds = categories[ChartDataCategory.CASH_WITHDRAWALS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
+            val transferIds = categories[ChartDataCategory.EXTERNAL_TRANSFERS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
+            val invalidIds = clean.quality.excluded.filterKeys { it != "DUPLICATE_ID" }.values.flatten().toSet()
+            val insightFacts = facts.distinctBy { it.id }.filter { it.included && it.id !in invalidIds && it.amount != null }.map {
+                AnalysisSpendingFact(it.id, it.day, if (it.refund) Math.negateExact(it.amount!!) else it.amount!!,
+                    when { it.refund -> "REFUNDS"; it.id in cashIds -> "CASH"; it.id in transferIds -> "TRANSFERS"; else -> "PURCHASES" }, it.merchant)
             }
+            val previousPeriod = FinancialPeriodPolicy.previous(period)
+            val insights = AnalysisSpendingInsightsBuilder.build(insightFacts, period.startDate.toEpochDay(), todayDay,
+                previousPeriod.startDate.toEpochDay(), previousPeriod.endDateExclusive.toEpochDay(),
+                clean.days.filter { it.covered }.map { it.day }.toSet())
+            val reasons = buildList {
+                if (noPermission) add("SMS_PERMISSION")
+                if (retry) add("PROCESSING_RETRY")
+                if (!onboarding.isHistoricalImportCompleted()) add("IMPORT_PENDING")
+                if (importBusy) add("IMPORT_RUNNING")
+                if (current.summary.reviewRequiredCount > 0) add("PENDING_REVIEW")
+                if (gaps.any { it in period.startDate.toEpochDay()..todayDay }) add("COVERAGE_GAPS")
+                addAll(clean.quality.excluded.keys.filter { it !in setOf("OUTSIDE_PURCHASE_SCOPE", "DUPLICATE_ID") })
+            }.distinct()
             val dues = current.commitmentsOverview.rows.filter { it.status == CommitmentPaymentStatus.UNPAID }.mapNotNull {
                 if (it.amount.currency != Currency.SAR) null else AnalysisDue(it.key, it.displayName,
                     it.amount.amount.movePointRight(2).longValueExact(), it.expectedDate?.toEpochDay(), true)
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "presentation-v2|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "presentation-v3|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
-                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical))
+                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights)
     }
 
     suspend fun refresh() = withContext(Dispatchers.Default) { refreshOnWorker() }
@@ -159,15 +178,15 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val dao = store.analytics(); val prefs = dao.preferences() ?: AnalysisPreferencesRow(enabledAt = clock.millis())
         val latest = dao.latest()
         if (latest?.sourceHash == input.fingerprint) { loadCached(); finishUi(input); return@withLock }
-        val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
+        val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
-            { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous)
+            { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) })
         val patterns = RecurringDetector.detect(input.clean.recurring, input.today)
         val priorCandidates = dao.candidates().associateBy { it.id }
         val candidates = patterns.map { pattern ->
             AnalysisCandidate(pattern.key, pattern.name, pattern.estimate, pattern.lower, pattern.upper, pattern.nextDay,
                 pattern.cadence, pattern.sourceIds, input.clean.recurring.first { it.id == pattern.sourceIds.last() }.day,
-                pattern.latestAmount, pattern.referenceAmount, pattern.amountIncreased)
+                pattern.latestAmount, pattern.referenceAmount, pattern.amountIncreased, pattern.nextDay < input.today)
         }
         val suggested = candidates.filter { item -> item.sourceIds.none { it in input.committed } && priorCandidates[item.key]?.status !in setOf("ACCEPTED", "REJECTED") }
         val estimates = candidates.filter { item -> item.nextDay in input.today until input.end && item.sourceIds.none { it in input.committed } && priorCandidates[item.key]?.status != "REJECTED" }
@@ -175,8 +194,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val at = clock.millis()
         val quality = AnalysisQuality(input.clean.quality.used, input.clean.quality.excluded, input.clean.quality.unusualIds,
             input.clean.quality.coveredDays, input.clean.quality.coverageKnown, input.reviews,
-            input.blocked || input.reviews > 0 || input.clean.quality.excluded.keys.any { it != "OUTSIDE_PURCHASE_SCOPE" && it != "DUPLICATE_ID" },
-            input.clean.days.firstOrNull { it.covered }?.day, input.clean.days.lastOrNull { it.covered }?.day)
+            input.blocked || input.reasons.isNotEmpty(),
+            input.clean.days.firstOrNull { it.covered }?.day, input.clean.days.lastOrNull { it.covered }?.day, input.reasons)
         val todayFacts = input.clean.days.first { it.day == input.today }
         val futureDays = result.points.map { point -> AnalysisDay(point.day, null,
             if (point.day == input.today) Math.addExact(todayFacts.net, (point.gross - todayFacts.gross).coerceAtLeast(0)) else point.gross) }
@@ -185,7 +204,11 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             input.clean.days.filter { it.day >= input.start }.map { AnalysisDay(it.day, it.net, null) } + futureDays,
             quality, suggested, input.dues + estimates, input.completed,
             trainingFrom = if (result.model?.accepted == true) result.model?.trainedFrom else result.baseline?.from,
-            trainingThrough = if (result.model?.accepted == true) result.model?.trainedThrough else result.baseline?.through)
+            trainingThrough = if (result.model?.accepted == true) result.model?.trainedThrough else result.baseline?.through,
+            insights = input.insights, evaluations = result.evaluations.map { AnalysisEvaluation(it.horizon, it.count, it.mae, it.bias) },
+            modelReason = result.reason, evaluationVersion = AnalyticsVersion.EVALUATION,
+            wholeDaysFrom = (input.today + 1).takeIf { it < input.end }, wholeDaysLower = result.wholeDaysLower,
+            wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(result.actual, it) })
         // A committed source invalidation while fitting invalidates the entire result.
         if (generation.get() != version || input.fingerprint != source().fingerprint) { request(); return@withLock }
         val alerts = alerts(snapshot, candidates.filter { priorCandidates[it.key]?.status != "REJECTED" }, dao.alerts(), prefs)
