@@ -5,17 +5,23 @@ import kotlin.math.*
 data class HuberModel(val weights: List<Double>, val means: List<Double>, val scales: List<Double>,
     val trainedThrough: Long, val trainingFingerprint: String, val baselineMae: Double,
     val modelMae: Double, val errorsByHorizon: Map<Int, List<Double>>, val accepted: Boolean,
-    val featureVersion: String = AnalyticsVersion.FEATURES, val trainedFrom: Long = 0)
-data class WeekdayModel(val medians: List<Long>, val from: Long, val through: Long, val errors: Map<Int, List<Double>>)
+    val featureVersion: String = AnalyticsVersion.FEATURES, val trainedFrom: Long = 0,
+    val signedErrors: Map<Int, List<Double>> = emptyMap(), val wholeDayErrors: Map<Int, List<Double>> = emptyMap())
+data class WeekdayModel(val medians: List<Long>, val from: Long, val through: Long, val errors: Map<Int, List<Double>>,
+    val signedErrors: Map<Int, List<Double>> = emptyMap(), val wholeDayErrors: Map<Int, List<Double>> = emptyMap())
+data class HorizonEvaluation(val horizon: Int, val count: Int, val mae: Long, val bias: Long)
 data class ForecastPoint(val day: Long, val gross: Long)
 data class PurchaseForecast(val status: String, val method: String, val actual: Long,
     val remaining: Long?, val total: Long?, val lower: Long?, val upper: Long?,
-    val points: List<ForecastPoint>, val model: HuberModel?, val baseline: WeekdayModel? = null)
+    val points: List<ForecastPoint>, val model: HuberModel?, val baseline: WeekdayModel? = null,
+    val wholeDaysLower: Long? = null, val wholeDaysUpper: Long? = null,
+    val evaluations: List<HorizonEvaluation> = emptyList(), val reason: String = "INSUFFICIENT_HISTORY")
 
 /** Numeric-only engine. All transforms and evaluation fits use the training prefix. */
 object PurchaseForecaster {
     fun forecast(data: CleanData, periodStart: Long, periodEnd: Long, today: Long, completedPeriods: Int,
-        phase: (Long) -> Int, previous: HuberModel? = null): PurchaseForecast {
+        phase: (Long) -> Int, previous: HuberModel? = null,
+        completedPeriodsAt: (Long) -> Int = { completedPeriods }): PurchaseForecast {
         require(periodEnd > periodStart && today in periodStart until periodEnd)
         val actual = data.days.filter { it.day >= periodStart }.fold(0L) { sum, d -> Math.addExact(sum, d.net) }
         val history = data.days.filter { it.day < today && it.covered }
@@ -27,7 +33,7 @@ object PurchaseForecaster {
         if (training.size >= 120 && completedPeriods >= 4 && training.count { it.gross > 0 } >= 20) {
             val canReuse = previous != null && previous.featureVersion == AnalyticsVersion.FEATURES &&
                 today - previous.trainedThrough <= 7 && previous.trainingFingerprint == fingerprint(training.filter { it.day <= previous.trainedThrough })
-            model = if (canReuse) previous else runCatching { evaluateAndFit(training, phase) }.getOrNull()
+            model = if (canReuse) previous else runCatching { evaluateAndFit(training, phase, completedPeriodsAt) }.getOrNull()
         }
         val chosen = model?.takeIf { it.accepted }
         val predictions = predict(if (chosen == null) history else training, today, periodEnd - 1, phase, chosen)
@@ -35,19 +41,35 @@ object PurchaseForecaster {
         val remaining = predictions.fold(0L) { sum, point -> Math.addExact(sum,
             if (point.day == today) (point.gross - todayGross).coerceAtLeast(0) else point.gross) }
         val total = Math.addExact(actual, remaining)
-        val horizon = bucket((periodEnd - today).toInt())
-        val baseErrors = baselineErrors(history, phase)
-        val errors = if (chosen != null) chosen.errorsByHorizon[horizon].orEmpty() else baseErrors[horizon].orEmpty()
+        val horizon = (periodEnd - today - 1).toInt()
+        val baselineEvaluation = evaluate(history, phase, false, completedPeriodsAt)
+        val baseSigned = baselineEvaluation.signed
+        val baseErrors = baseSigned.mapValues { (_, errors) -> errors.map(::abs) }
+        val signed = chosen?.signedErrors ?: baseSigned
+        val errors = (chosen?.wholeDayErrors ?: baselineEvaluation.wholeDays)[horizon].orEmpty().map(::abs)
         val margin = errors.sorted().takeIf { it.size >= 8 }?.let { it[(ceil(it.size * .9).toInt() - 1).coerceIn(it.indices)].roundToLong() }
+        val wholeDays = predictions.filter { it.day > today }.fold(0L) { sum, p -> Math.addExact(sum, p.gross) }
+        val reason = when {
+            chosen != null -> "PERSONAL_MODEL"
+            training.size < 120 -> if (history.size >= 120) "COVERAGE_GAPS" else "NEEDS_HISTORY"
+            completedPeriods < 4 -> "NEEDS_PERIODS"
+            training.count { it.gross > 0 } < 20 -> "NEEDS_PURCHASE_DAYS"
+            model == null -> "MODEL_UNAVAILABLE"
+            CORE_HORIZONS.any { model.signedErrors[it].orEmpty().size < 8 } -> "NEEDS_EVALUATIONS"
+            else -> "BASELINE_BETTER"
+        }
         return PurchaseForecast("READY", if (chosen == null) "WEEKDAY_MEDIAN" else AnalyticsVersion.MODEL,
-            actual, remaining, total, margin?.let { Math.addExact(actual, (remaining - it).coerceAtLeast(0)) },
-            margin?.let { Math.addExact(total, it) }, predictions, model,
+            actual, remaining, total, null, null, predictions, model,
             WeekdayModel(weekdayMedians(history).map { it.roundToLong() },
-                history.groupBy { weekday(it.day) }.values.flatMap { it.takeLast(12) }.minOf { it.day }, history.last().day, baseErrors))
+                history.groupBy { weekday(it.day) }.values.flatMap { it.takeLast(12) }.minOf { it.day }, history.last().day, baseErrors, baseSigned, baselineEvaluation.wholeDays),
+            if (horizon == 0) 0 else margin?.let { (wholeDays - it).coerceAtLeast(0) },
+            if (horizon == 0) 0 else margin?.let { Math.addExact(wholeDays, it) },
+            CORE_HORIZONS.mapNotNull { h -> signed[h]?.takeIf { it.size >= 8 }?.let { e ->
+                HorizonEvaluation(h, e.size, e.map(::abs).average().roundToLong(), e.average().roundToLong())
+            } }, reason)
     }
 
     private fun fingerprint(days: List<PurchaseDay>) = hash(days.joinToString { "${it.day}:${it.gross}:${it.refunds}:${it.phase}" })
-    private fun bucket(days: Int) = if (days <= 7) 7 else if (days <= 14) 14 else 31
     private fun features(day: Long, phase: Int, history: List<PurchaseDay>): DoubleArray {
         fun lag(n: Int) = history.firstOrNull { it.day == day - n }?.gross?.toDouble() ?: 0.0
         fun mean(n: Int) = history.filter { it.day in (day - n) until day }.map { it.gross.toDouble() }.average().takeIf { it.isFinite() } ?: 0.0
@@ -98,34 +120,58 @@ object PurchaseForecaster {
         median(history.filter { weekday(it.day) == dow }.takeLast(12).map { it.gross.toDouble() })
     }
 
-    private fun evaluateAndFit(history: List<PurchaseDay>, phase: (Long) -> Int): HuberModel {
-        val base = mutableMapOf<Int, MutableList<Double>>(); val candidate = mutableMapOf<Int, MutableList<Double>>()
-        for (cut in (56 until history.size - 1 step 7).toList().takeLast(16)) {
-            val train = history.take(cut); val model = fit(train)
-            for (h in listOf(1, 7, 14, 28)) {
-                if (cut + h > history.size) continue
-                val actual = history.subList(cut, cut + h).sumOf { it.gross.toDouble() }
-                val from = history[cut].day; val through = history[cut + h - 1].day
-                base.getOrPut(bucket(h)) { mutableListOf() }.add(abs(actual - predict(train, from, through, phase, null).sumOf { it.gross.toDouble() }))
-                candidate.getOrPut(bucket(h)) { mutableListOf() }.add(abs(actual - predict(train, from, through, phase, model).sumOf { it.gross.toDouble() }))
-            }
-        }
-        val baselineMae = base.values.flatten().average(); val candidateMae = candidate.values.flatten().average()
-        val accepted = candidate.values.sumOf { it.size } >= 8 && baselineMae.isFinite() && baselineMae > 0 &&
-            candidateMae <= baselineMae * .9 && base.all { (h, values) -> candidate[h]!!.average() <= values.average() * 1.1 }
-        return fit(history).copy(baselineMae = baselineMae, modelMae = candidateMae, errorsByHorizon = candidate, accepted = accepted)
+    private val CORE_HORIZONS = listOf(1, 7, 14, 28)
+
+    private fun evaluateAndFit(history: List<PurchaseDay>, phase: (Long) -> Int, periods: (Long) -> Int): HuberModel {
+        val candidateEvaluation = evaluate(history, phase, true, periods)
+        val candidate = candidateEvaluation.signed
+        // Use exactly the same eligible origins for both competitors.
+        val base = evaluate(history, phase, true, periods, baseline = true).signed
+        val baseMaes = CORE_HORIZONS.map { h -> base[h].orEmpty().map(::abs).average() }
+        val modelMaes = CORE_HORIZONS.map { h -> candidate[h].orEmpty().map(::abs).average() }
+        val sufficient = CORE_HORIZONS.all { candidate[it].orEmpty().size >= 8 }
+        val ratios = baseMaes.zip(modelMaes).map { (b, m) -> if (b == 0.0) { if (m == 0.0) 1.0 else Double.POSITIVE_INFINITY } else m / b }
+        val baselineMae = baseMaes.average().takeIf { it.isFinite() } ?: 0.0
+        val candidateMae = modelMaes.average().takeIf { it.isFinite() } ?: 0.0
+        val accepted = sufficient && ratios.all { it <= 1.1 } && ratios.average() <= .9 && candidateMae <= baselineMae * .9
+        return fit(history).copy(baselineMae = baselineMae, modelMae = candidateMae,
+            errorsByHorizon = candidate.mapValues { (_, errors) -> errors.map(::abs) }, signedErrors = candidate, wholeDayErrors = candidateEvaluation.wholeDays, accepted = accepted)
     }
 
-    private fun baselineErrors(history: List<PurchaseDay>, phase: (Long) -> Int): Map<Int, List<Double>> {
+    private data class EvaluationSamples(val signed: Map<Int, List<Double>>, val wholeDays: Map<Int, List<Double>>)
+
+    /** Calendar horizons stay separate. Each validation window is fully covered; every fit uses only its prefix. */
+    private fun evaluate(history: List<PurchaseDay>, phase: (Long) -> Int, personal: Boolean,
+        periods: (Long) -> Int, baseline: Boolean = false): EvaluationSamples {
         val errors = mutableMapOf<Int, MutableList<Double>>()
-        for (cut in (28 until history.size - 1 step 3).toList().takeLast(40)) for (h in listOf(1, 7, 14, 28)) {
-            if (cut + h > history.size) continue
-            if (history[cut + h - 1].day - history[cut].day != h - 1L) continue
-            val actual = history.subList(cut, cut + h).sumOf { it.gross.toDouble() }
-            val predicted = predict(history.take(cut), history[cut].day, history[cut + h - 1].day, phase, null).sumOf { it.gross.toDouble() }
-            errors.getOrPut(bucket(h)) { mutableListOf() }.add(abs(actual - predicted))
+        val wholeDays = mutableMapOf<Int, MutableList<Double>>()
+        val minimum = if (personal) 120 else 56
+        for (cut in (minimum until history.size).step(3).toList().takeLast(40)) {
+            val train = history.take(cut)
+            val day = history[cut].day
+            if (periods(day) < if (personal) 4 else 2) continue
+            if (personal && (train.count { it.gross > 0 } < 20 || train.zipWithNext().any { (a, b) -> b.day != a.day + 1 })) continue
+            val validation = history.drop(cut).take(31).takeWhileIndexed { i, row -> row.day == day + i }
+            if (validation.isEmpty()) continue
+            val model = if (personal && !baseline) fit(train) else null
+            val predicted = predict(train, day, validation.last().day, phase, model)
+            var actualSum = 0.0; var predictedSum = 0.0
+            validation.forEachIndexed { i, row ->
+                actualSum += row.gross.toDouble(); predictedSum += predicted[i].gross.toDouble()
+                errors.getOrPut(i + 1) { mutableListOf() }.add(actualSum - predictedSum)
+                // Same origin as the live forecast: skip the unfinished first day, without
+                // pretending its eventual full amount was known when predicting later days.
+                if (i > 0) wholeDays.getOrPut(i) { mutableListOf() }.add(
+                    actualSum - validation.first().gross - predictedSum + predicted.first().gross)
+            }
         }
-        return errors
+        return EvaluationSamples(errors, wholeDays)
+    }
+
+    private inline fun <T> List<T>.takeWhileIndexed(predicate: (Int, T) -> Boolean): List<T> {
+        val result = ArrayList<T>()
+        forEachIndexed { index, value -> if (!predicate(index, value)) return result else result.add(value) }
+        return result
     }
     private fun dot(a: DoubleArray, b: DoubleArray) = a.indices.sumOf { a[it] * b[it] }
     private fun solve(a: Array<DoubleArray>, b: DoubleArray): DoubleArray {

@@ -65,6 +65,7 @@ fun DashboardRoute(
     onOpenDebitDetail: (DebitCardOverview) -> Unit = { onOpenCardsSummary() },
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
+    onOpenReview: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -90,6 +91,7 @@ fun DashboardRoute(
         onOpenDebitDetail = onOpenDebitDetail,
         onRequestSmsPermission = onRequestSmsPermission,
         onOpenAppSettings = onOpenAppSettings,
+        onOpenReview = onOpenReview,
         onDismissRescanStatus = viewModel::clearRescanStatus,
         onOpenCustomize = viewModel::openCustomizeSheet,
         onDismissCustomize = viewModel::dismissCustomizeSheet,
@@ -133,6 +135,7 @@ internal fun DashboardScreen(
     onMoveCustomizeSection: (DashboardSectionId, Int) -> Unit,
     onToggleCustomizeQuickExpense: () -> Unit,
     onToggleCustomizeQuickIncome: () -> Unit,
+    onOpenReview: () -> Unit = {},
 ) {
     var labAnalysisOpen by rememberSaveable { mutableStateOf(false) }
     val labDestination by com.baraa.masroof.application.analytics.AnalyticsNavigation.target.collectAsState()
@@ -145,6 +148,7 @@ internal fun DashboardScreen(
         com.baraa.masroof.presentation.analytics.LabAnalyticsRoute(
             onBack = { labAnalysisOpen = false; com.baraa.masroof.application.analytics.AnalyticsNavigation.finish() },
             onOpenTransaction = onOpenTransaction,
+            onOpenReview = onOpenReview, onRequestSmsPermission = onRequestSmsPermission, onRescan = onRescan,
         )
         return
     }

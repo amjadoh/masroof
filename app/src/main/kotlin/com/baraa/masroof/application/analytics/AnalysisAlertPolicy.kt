@@ -24,7 +24,7 @@ internal object AnalysisAlertPolicy {
             prefs.budget?.takeIf { prefs.budgetAlerts && snapshot.actual > it }?.let {
                 add("budget-actual:${snapshot.periodStart}:$it", "ACTUAL", "", snapshot.actual, true)
             }
-            prefs.budget?.takeIf { prefs.budgetAlerts && snapshot.lower != null && snapshot.lower > it && snapshot.actual <= it }?.let {
+            prefs.budget?.takeIf { prefs.budgetAlerts && (snapshot.budgetLower ?: snapshot.lower) != null && (snapshot.budgetLower ?: snapshot.lower)!! > it && snapshot.actual <= it }?.let {
                 add("budget:${snapshot.periodStart}:$it", "BUDGET", "", snapshot.total!!, false)
             }
             if (prefs.dueAlerts) snapshot.dues.filter { it.confirmed && it.day != null && it.day in today..(today + prefs.reminderDays) }

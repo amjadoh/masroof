@@ -8,9 +8,10 @@ import kotlin.math.abs
 
 /** Shared training/inference contract, isolated from SMS-family classification. */
 object AnalyticsVersion {
-    const val CLEANING = "financial-clean-v1"
+    const val CLEANING = "financial-clean-v2"
     const val FEATURES = "purchase-days-v1"
-    const val MODEL = "huber-l2-v1"
+    const val MODEL = "huber-l2-v2"
+    const val EVALUATION = "rolling-horizons-v2"
 }
 
 data class FinancialFact(val id: String, val day: Long, val amount: Long?, val refund: Boolean,
@@ -46,18 +47,23 @@ object FinancialCleaner {
             }
             if (fact.day > today) { exclude("FUTURE_DATE", fact.id); continue }
             if (fact.day < start) continue
+            if (!fact.included) {
+                if (fact.amount != null && fact.amount >= 0 && fact.recurringEligible && !fact.refund && !fact.merchant.isNullOrBlank()) recurring += fact
+                exclude("OUTSIDE_PURCHASE_SCOPE", fact.id); continue
+            }
             if (fact.amount == null) { exclude("MISSING_VALID_AMOUNT_OR_FX", fact.id); continue }
             if (fact.amount < 0) { exclude("INVALID_AMOUNT", fact.id); continue }
             if (fact.recurringEligible && !fact.refund && !fact.merchant.isNullOrBlank()) recurring += fact
-            if (!fact.included) { exclude("OUTSIDE_PURCHASE_SCOPE", fact.id); continue }
             accepted += fact
         }
         val grouped = accepted.groupBy { it.day }
+        // An eligible purchase with unknown money must not teach the model a zero-spending day.
+        val incompleteDays = facts.filter { it.included && (it.amount == null || it.amount < 0) }.map { it.day }.toSet()
         val days = (start..today).map { day ->
             val rows = grouped[day].orEmpty()
             PurchaseDay(day, rows.filterNot { it.refund }.fold(0L) { total, row -> Math.addExact(total, row.amount!!) },
                 rows.filter { it.refund }.fold(0L) { total, row -> Math.addExact(total, row.amount!!) }, rows.size,
-                phase(day), coveredFrom != null && day >= coveredFrom && day !in gaps)
+                phase(day), coveredFrom != null && day >= coveredFrom && day !in gaps && day !in incompleteDays)
         }
         val amounts = accepted.filterNot { it.refund }.map { it.amount!!.toDouble() }
         val median = median(amounts)

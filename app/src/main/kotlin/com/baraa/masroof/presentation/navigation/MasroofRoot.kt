@@ -153,6 +153,7 @@ private fun MasroofContent(
     var reviewReturnDestination by rememberSaveable {
         mutableStateOf(HomeDestination.Dashboard)
     }
+    var reviewReturnToAnalysis by rememberSaveable { mutableStateOf(false) }
     var pendingSettingsLaunch by remember { mutableStateOf<SettingsLaunchRequest?>(null) }
     var transactionListSeedFilter by remember { mutableStateOf<TransactionListFilterState?>(null) }
     var transactionListReturnDestination by rememberSaveable {
@@ -179,6 +180,7 @@ private fun MasroofContent(
             consumedNavigationGeneration = navigationGeneration
             settingsReturnDestination = HomeDestination.Dashboard
             reviewReturnDestination = HomeDestination.Dashboard
+            reviewReturnToAnalysis = false
             transactionListReturnDestination = HomeDestination.Dashboard
             dashboardViewModel.closeTransactionDetail()
             reviewViewModel.closeDetail()
@@ -205,6 +207,7 @@ private fun MasroofContent(
     }
 
     fun openReview(returnTo: HomeDestination) {
+        reviewReturnToAnalysis = false
         reviewReturnDestination = returnTo
         homeDestination = HomeDestination.Review
     }
@@ -267,6 +270,7 @@ private fun MasroofContent(
                         reviewViewModel.closeDetail()
                     } else {
                         homeDestination = reviewReturnDestination
+                        if (reviewReturnToAnalysis) { com.baraa.masroof.application.analytics.AnalyticsNavigation.open("resume"); reviewReturnToAnalysis = false }
                         if (reviewReturnDestination == HomeDestination.Dashboard) {
                             dashboardViewModel.refresh()
                         }
@@ -307,6 +311,7 @@ private fun MasroofContent(
                 onOpenAllTransactions = { openTransactionList() },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenSettings = { openSettings() },
+                onOpenReview = { openReview(HomeDestination.Dashboard); reviewReturnToAnalysis = true },
                 onOpenCommitments = { homeDestination = HomeDestination.CommitmentsSummary },
                 onManageCardsInSettings = {
                     openSettings(
@@ -492,6 +497,7 @@ private fun MasroofContent(
                 viewModel = reviewViewModel,
                 onBack = {
                     homeDestination = reviewReturnDestination
+                    if (reviewReturnToAnalysis) { com.baraa.masroof.application.analytics.AnalyticsNavigation.open("resume"); reviewReturnToAnalysis = false }
                     if (reviewReturnDestination == HomeDestination.Dashboard) {
                         dashboardViewModel.refresh()
                     }

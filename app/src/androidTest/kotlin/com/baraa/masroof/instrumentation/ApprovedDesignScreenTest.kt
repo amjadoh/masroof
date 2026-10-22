@@ -1,8 +1,5 @@
 package com.baraa.masroof.instrumentation
 
-import android.content.ContentValues
-import android.graphics.Bitmap
-import android.provider.MediaStore
 import android.os.SystemClock
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +16,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
+import com.baraa.masroof.testsupport.ScreenshotArtifactWriter
 import com.baraa.masroof.application.dashboard.*
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
@@ -251,16 +249,8 @@ class ApprovedDesignScreenTest {
         // Semantics can settle a frame before the compositor presents it.
         SystemClock.sleep(250)
         val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: error("Screenshot missing")
-        val resolver = instrumentation.targetContext.contentResolver
-        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, "$name.png")
-            put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/masroof-design-screenshots/")
-        }
-        val uri = resolver.insert(collection, values) ?: error("Screenshot output missing")
-        resolver.openOutputStream(uri)!!.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        bitmap.recycle()
+        try { ScreenshotArtifactWriter.publish(bitmap, "masroof-design-screenshots", name) }
+        finally { bitmap.recycle() }
     }
 
     private fun assertNoEasternDigits() {
