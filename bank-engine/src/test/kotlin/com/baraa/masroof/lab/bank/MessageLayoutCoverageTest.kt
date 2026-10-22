@@ -13,6 +13,36 @@ class MessageLayoutCoverageTest {
         MessageInput("layout", "OtherSender", body, Instant.parse("2026-10-18T00:00:00Z")),
         BankCatalog(listOf(BankDefinition(bank, setOf("OtherSender")))))
 
+    @Test fun atmWithdrawalKeepsParenthesizedMadaCardSeparateFromAccount() {
+        val body = "سحب نقدي داخلي صراف الي\nمكان السحب: JEDDAH-بنك الرياض\nبطاقة (مدى):8219 \nحساب رقم: 3001\nبمبلغ: SAR 100.00\nفي: 2026-10-22 05:26"
+        for (variant in listOf(body, body.replace("8219", "٨٢١٩").replace("3001", "٣٠٠١"),
+            body.replace("بطاقة (مدى):8219 \nحساب رقم: 3001", "حساب رقم: 3001\nبطاقة (مدى):8219"))) {
+            val r = parse(variant)
+            assertEquals(r.diagnostics.toString(), ParseStatus.SUCCESS, r.status)
+            assertEquals(MessageFamily.WITHDRAWAL, r.facts.family)
+            assertEquals(MoneyDirection.OUTGOING, r.facts.direction)
+            assertEquals("8219", r.facts.card?.last4)
+            assertEquals("3001", r.facts.sourceAccount?.maskedNumber)
+            assertEquals(bank, r.facts.sourceAccount?.bank)
+            assertEquals(CardChannel.DEBIT, r.facts.cardChannel)
+            assertEquals("100.00", r.facts.amount?.amount?.toPlainString())
+            assertEquals("2026-10-22T05:26", r.facts.occurredAtLocal.toString())
+            assertEquals(1, r.evidence.count { it.field == "CARD" })
+            assertTrue(r.evidence.filter { it.field == "CARD" }.all {
+                variant.substring(it.start, it.end) in listOf("8219", "٨٢١٩")
+            })
+        }
+        val accountOnly = parse(body.replace("بطاقة (مدى):8219 \n", ""))
+        assertEquals(ParseStatus.SUCCESS, accountOnly.status)
+        assertEquals("3001", accountOnly.facts.sourceAccount?.maskedNumber)
+        assertNull(accountOnly.facts.card)
+        assertNull(accountOnly.facts.cardChannel)
+        val conflicting = parse("$body\nبطاقة: 9999")
+        assertEquals(ParseStatus.REVIEW_REQUIRED, conflicting.status)
+        assertTrue(Blocker.CONFLICTING_FACTS in conflicting.blockers)
+        assertNull(conflicting.facts.card)
+    }
+
     @Test fun timeFirstAndInlineClausesWorkAtAnyBankWithOriginalEvidence() {
         val ar = "شراء عبر نقاط البيع\nبطاقة مدى: ٤٥٦٧\nلدى: متجر مستقل 😀\nبمبلغ: SAR ٣٢.٥٠\nخصمت من حساب: ٨٩٠١\nفي: 14:32 03-08-2026"
         val r = parse(ar)
