@@ -105,6 +105,9 @@ android {
         unitTests.all {
             it.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
             it.forkEvery = 50
+            // The feature-export test enrolls only explicitly reviewed corpus ids.
+            it.inputs.file(rootProject.file("ml-assist/tools/corpus-splits.json"))
+                .withPathSensitivity(PathSensitivity.RELATIVE)
         }
     }
 
