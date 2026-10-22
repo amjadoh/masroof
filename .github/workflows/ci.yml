@@ -107,13 +107,13 @@ jobs:
       - name: Lint and detekt
         run: ./gradlew lintDebug detekt --stacktrace
 
-  # AndroidJUnitRunner partitions the complete production suite across two devices.
-  # Keep fail-fast disabled so a failure never cancels the other half's diagnostics.
+  # AndroidJUnitRunner partitions the complete production suite across four devices.
+  # Keep fail-fast disabled so a failure never cancels another shard's diagnostics.
   emulator-app:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2, 3]
     needs: android-version
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -170,7 +170,7 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
-            bash .github/scripts/run-instrumentation-smoke.sh app ${{ matrix.shard }} 2
+            bash .github/scripts/run-instrumentation-smoke.sh app ${{ matrix.shard }} ${{ strategy.job-total }}
 
       - name: Upload statement reconciliation screenshots
         if: always()
@@ -197,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require both production shards
+      - name: Require every production shard
         env:
           SHARDS_RESULT: ${{ needs.emulator-app.result }}
         run: test "$SHARDS_RESULT" = success
