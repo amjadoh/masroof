@@ -1,0 +1,18 @@
+{
+  "id": "withdrawal_ar_mada_parenthesized_001",
+  "sender": "AlJazira",
+  "body": "سحب نقدي داخلي صراف الي\nمكان السحب: JEDDAH-بنك الرياض\nبطاقة (مدى):8219 \nحساب رقم: 3001\nبمبلغ: SAR 100.00\nفي: 2026-10-22 05:26",
+  "expected": {
+    "bank": "BANK_ALJAZIRA",
+    "messageFamily": "WITHDRAWAL",
+    "direction": "OUTGOING",
+    "amount": "100.00",
+    "currency": "SAR",
+    "sourceAccountLast4": "3001",
+    "cardLast4": "8219",
+    "cardSmsChannel": "DEBIT",
+    "occurredAt": "2026-10-22T05:26:00",
+    "parseStatus": "SUCCESS"
+  },
+  "notes": "The parenthesized Mada label identifies the card; the account number and ATM location must not become card or bank identity."
+}
