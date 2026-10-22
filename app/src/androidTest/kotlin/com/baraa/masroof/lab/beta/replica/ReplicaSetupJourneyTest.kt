@@ -209,23 +209,33 @@ class ReplicaSetupJourneyTest {
             val incoming = "حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: " +
                 java.time.LocalDateTime.now().minusMinutes(2).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
             runBlocking { container.processRawSmsUseCase.ingest(raw("ui-model-income",incoming)) }
-            openAmount("2000.00")
-            compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithText(text(R.string.lab_ml_source)).assertExists()
-            compose.onNodeWithText(text(R.string.lab_inference_pending)).assertDoesNotExist()
-            screenshot("13-ml-source-transaction")
-            compose.runOnUiThread { dashboard.closeTransactionDetail() }
-
-            // Zero principal keeps the actual family proposal but cannot pass the financial gate.
-            runBlocking { container.processRawSmsUseCase.ingest(raw("ui-model-blocked",incoming.replace("2000.00","0.00"))) }
+            assertNull(runBlocking { container.financialTransactionRepository.findByRawSmsId("ui-model-income") })
             click(R.string.approved_nav_review)
             compose.runOnUiThread { review.refresh() }
             compose.waitUntil(20_000) { review.uiState.value.items.size == 1 }
             compose.onNodeWithText(text(R.string.reference_review_evidence)).performScrollTo().performClick()
             compose.waitUntil(20_000) { review.uiState.value.selectedDetail != null }
             compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_unresolved_source)).assertExists()
+            compose.onNodeWithText(text(R.string.lab_ml_source)).assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.lab_understanding_pending)).assertExists()
+            screenshot("13-statistical-abstention-review")
+            compose.runOnUiThread { review.closeDetail() }
+
+            // A learned human template can propose a family, but zero principal
+            // still cannot pass the independent financial validation gate.
+            val blockedReviewId = runBlocking {
+                container.processRawSmsUseCase.ingest(raw("ui-model-blocked",body.replace("SAR 23","SAR 0.00")))
+                requireNotNull(container.reviewRepository.findByRawSmsId("ui-model-blocked")).id
+            }
+            compose.runOnUiThread { review.refresh() }
+            compose.waitUntil(20_000) { review.uiState.value.items.size == 2 }
+            compose.runOnUiThread { review.openDetail(blockedReviewId) }
+            compose.waitUntil(20_000) { review.uiState.value.selectedDetail != null }
+            compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_template_source)).assertExists()
             compose.onNodeWithText(text(R.string.lab_inference_pending)).assertExists()
-            screenshot("14-unapproved-ml-review")
+            screenshot("14-unapproved-template-review")
             compose.runOnUiThread { review.closeDetail() }
             assertEquals(0,runBlocking { container.financialTransactionRepository.listAll().count { it.amount.amount.signum() == 0 } })
 
