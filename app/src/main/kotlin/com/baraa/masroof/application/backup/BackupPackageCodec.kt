@@ -23,7 +23,7 @@ object BackupPackageCodec {
         json.encodeToString(BackupPreferencesSnapshot.serializer(), snapshot)
 
     fun decodePreferences(raw: String): BackupPreferencesSnapshot =
-        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw)
+        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw).also { com.baraa.masroof.application.analytics.LabAnalyticsBackup.validate(it.labAnalysis) }
 
     fun validateManifest(
         manifest: BackupManifest,

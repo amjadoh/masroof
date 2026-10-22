@@ -13,7 +13,7 @@ import com.baraa.masroof.application.maintenance.MaintenanceRequirement
 import com.baraa.masroof.application.maintenance.TransferIntegrityRepairCoordinator
 import com.baraa.masroof.application.maintenance.TransferIntegrityRepairResult
 import com.baraa.masroof.application.review.ReviewQueueUpdater
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
@@ -94,7 +94,7 @@ class IntraBankSelfTransferReconciliationTest {
     private lateinit var cards: RoomCardRegistryRepository
     private lateinit var confirmation: OwnershipConfirmationService
     private lateinit var reconciliation: TransactionReconciliationService
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
     private val zoneId = ZoneId.of("Asia/Riyadh")
 
     @Before

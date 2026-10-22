@@ -1,6 +1,0 @@
-Same input: 7 messages
-Ledger rows: 7
-Reviews after ownership: 0
-Summary: MonthlyFinancialSummary(period=FinancialPeriod(startDate=2026-09-01, endDateExclusive=2026-11-01), currency=SAR, spendingGross=Money(amount=176.99, currency=SAR), refunds=Money(amount=0.00, currency=SAR), spendingNet=SignedMoneyAmount(amount=176.99, currency=SAR), income=Money(amount=0.00, currency=SAR), externalTransfersIn=Money(amount=3191.68, currency=SAR), externalTransfersOut=Money(amount=1000.00, currency=SAR), creditCardPayments=Money(amount=802.62, currency=SAR), cashWithdrawals=Money(amount=0.00, currency=SAR), selfTransfers=Money(amount=0.00, currency=SAR), transactionCount=7, reviewRequiredCount=0, excludedOtherCurrencyCount=0)
-Replay duplicates: 7
-Reopen preserved ledger and dashboard.

@@ -391,6 +391,7 @@ private fun ReviewDetailScreen(
                 title = stringResource(R.string.review_sms_body),
                 icon = MasroofIcons.sms,
             )
+            com.baraa.masroof.presentation.interpretation.InterpretationProvenanceCard(detail.provenance)
             MasroofCard {
                 Text(
                     detail.body,
@@ -431,7 +432,7 @@ private fun ReviewDetailScreen(
                     title = stringResource(R.string.review_actions_title),
                     icon = MasroofIcons.reviewQueue,
                 )
-                REVIEW_FINANCIAL_TYPE_ACTIONS.forEach { type ->
+                REVIEW_RESOLUTION_TYPE_ACTIONS.forEach { type ->
                     IconTextButton(
                         onClick = { onResolveType(type) },
                         enabled = !resolving,

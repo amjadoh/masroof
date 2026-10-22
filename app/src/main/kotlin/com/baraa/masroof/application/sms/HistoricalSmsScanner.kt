@@ -60,7 +60,7 @@ class HistoricalSmsScanner(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun scan(receivedAfter: Instant? = null): SmsScanResult = withContext(ioDispatcher) {
-        scanOnDispatcher(receivedAfter)
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter) }
     }
 
     private suspend fun scanOnDispatcher(receivedAfter: Instant?): SmsScanResult {

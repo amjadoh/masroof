@@ -55,6 +55,7 @@ enum class TransactionDirectionUi {
 data class TransactionSmsEvidenceUi(
     val body: String,
     val sender: String?,
+    val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
 )
 
 data class TransactionPreviewUi(
@@ -102,6 +103,7 @@ data class DashboardUiState(
     val rescanStatus: SmsRescanStatus? = null,
     val reparsingStored: Boolean = false,
     val selectedTransactionId: String? = null,
+    val labSelectedTransaction: TransactionPreviewUi? = null,
     val selectedTransactionSms: List<TransactionSmsEvidenceUi> = emptyList(),
     val selectedTransactionSmsLoading: Boolean = false,
     val reclassifying: Boolean = false,

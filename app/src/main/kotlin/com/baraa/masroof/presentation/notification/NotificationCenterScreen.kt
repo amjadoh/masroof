@@ -60,47 +60,8 @@ internal fun NotificationCenterScreen(
         onBack = onBack,
         backContentDescription = stringResource(R.string.review_back),
     ) { contentModifier ->
-        when {
-            state.loading && state.items.isEmpty() -> {
-                Column(
-                    modifier = contentModifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            state.items.isEmpty() -> {
-                Column(
-                    modifier = contentModifier
-                        .fillMaxSize()
-                        .padding(MasroofSpacing.screenPaddingLarge),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        stringResource(R.string.notification_center_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-
-            else -> {
-                Column(contentModifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    com.baraa.masroof.presentation.common.MasroofCard {
-                        Text(stringResource(R.string.notification_center_title), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.notification_center_badge_count, state.unreadCount),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        state.items.forEachIndexed { index, item ->
-                            NotificationCenterRow(item, { onOpenNotification(item) }, index != state.items.lastIndex)
-                        }
-                    }
-                }
-
-            }
+        com.baraa.masroof.presentation.analytics.LabUnifiedNotificationContent(state, contentModifier) { item, divider ->
+            NotificationCenterRow(item, { onOpenNotification(item) }, divider)
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.baraa.masroof.bank.contract
 
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.domain.model.MessageFamily
 import com.baraa.masroof.domain.model.ParseStatus
 import com.baraa.masroof.parsing.fixtures.AlJaziraFixture
@@ -66,7 +66,7 @@ class BankSmsAdapterContractTest(
         }
 
         fun cases(): List<BankSmsAdapterContractCase> = listOf(
-            BankSmsAdapterContractCase(AlJaziraSmsAdapter(), alJaziraContractSamples),
+            BankSmsAdapterContractCase(engineFixtureAdapter(), alJaziraContractSamples),
             BankSmsAdapterContractCase(StubBankSmsAdapter(), StubBankSmsAdapter.contractSamples),
         )
 

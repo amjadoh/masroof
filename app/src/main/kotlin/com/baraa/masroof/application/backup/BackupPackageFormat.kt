@@ -19,6 +19,7 @@ data class BackupPreferencesSnapshot(
     val historicalImportCompleted: Boolean,
     val languageTag: String,
     val themeMode: String,
+    val labAnalysis: String? = null,
 )
 
 enum class BackupImportOutcome {

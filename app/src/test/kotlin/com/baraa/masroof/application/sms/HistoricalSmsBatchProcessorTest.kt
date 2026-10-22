@@ -14,7 +14,7 @@ import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflow
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
@@ -68,7 +68,7 @@ import java.time.Instant
 @Config(sdk = [28])
 class HistoricalSmsBatchProcessorTest {
     private val clock = InstantClock { Instant.parse("2026-08-03T12:00:00Z") }
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
 
     private lateinit var db: MasroofDatabase
     private lateinit var rawRepo: RoomRawSmsRepository

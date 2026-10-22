@@ -15,6 +15,7 @@ class ReviewViewModelFactory(
             reviewWorkflowService = container.reviewWorkflowService,
             rawSmsRepository = container.rawSmsRepository,
             effectiveParsedEventProvider = container.effectiveParsedEventProvider,
+            provenanceWorkflow = container.interpretationProvenanceWorkflow,
         )
         return ReviewViewModel(
             reviewWorkflowService = container.reviewWorkflowService,

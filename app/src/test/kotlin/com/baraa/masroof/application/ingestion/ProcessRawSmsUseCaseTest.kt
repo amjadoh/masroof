@@ -7,8 +7,8 @@ import com.baraa.masroof.application.review.ExplicitBankSelectionWorkflow
 import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
@@ -82,7 +82,7 @@ class ProcessRawSmsUseCaseTest {
         parseCalls.set(0)
         val countingGateway = SmsParseGateway { input ->
             parseCalls.incrementAndGet()
-            AlJaziraParsingPipeline().parse(input)
+            EngineFixtureParser().parse(input)
         }
         useCase = ProcessRawSmsUseCase(
             rawSmsRepository = rawRepo,
@@ -159,7 +159,7 @@ class ProcessRawSmsUseCaseTest {
     @Test
     fun nearMissSender_notPersisted() = runBlocking {
         val reviewRepo = com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao())
-        val svc = reviewingUseCase(AlJaziraParsingPipeline(), reviewRepo)
+        val svc = reviewingUseCase(EngineFixtureParser(), reviewRepo)
         val body = "شراء عبر الانترنت بمبلغ: 10.00 SAR"
         val plausible = RawSms(
             id = "android-sms-live:NotAlJazira",
@@ -713,7 +713,7 @@ class ProcessRawSmsUseCaseTest {
     @Test
     fun reviewRequiredPurchaseWithAmount_persistsEvidenceAndReview_butNoTransaction() = runBlocking {
         val reviewRequiredGateway = SmsParseGateway { input ->
-            val parsed = AlJaziraParsingPipeline().parse(input) as com.baraa.masroof.parsing.model.ParseResult.Success
+            val parsed = EngineFixtureParser().parse(input) as com.baraa.masroof.parsing.model.ParseResult.Success
             val gated = parsed.event.copy(parseStatus = ParseStatus.REVIEW_REQUIRED)
             com.baraa.masroof.parsing.model.ParseResult.ReviewRequired(
                 draft = null,
@@ -859,7 +859,7 @@ class ProcessRawSmsUseCaseTest {
     @Test
     fun nonBankSms_isNotPersistedAndCreatesNoReview() = runBlocking {
         val reviewRepo = com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao())
-        val svc = reviewingUseCase(AlJaziraParsingPipeline(), reviewRepo)
+        val svc = reviewingUseCase(EngineFixtureParser(), reviewRepo)
         val body = "شراء عبر الانترنت بمبلغ: 10.00 SAR"
         val raw = RawSms(
             id = "android-sms-live:OtherBank",
@@ -1053,10 +1053,10 @@ class ProcessRawSmsUseCaseTest {
         val parses = AtomicInteger(0)
         val registry = BankSmsRegistry(
             listOf(
-                AlJaziraSmsAdapter(
+                engineFixtureAdapter(
                     pipeline = SmsParseGateway { input ->
                         parses.incrementAndGet()
-                        AlJaziraParsingPipeline().parse(input)
+                        EngineFixtureParser().parse(input)
                     },
                 ),
             ),
@@ -1127,7 +1127,7 @@ class ProcessRawSmsUseCaseTest {
         val svc = ProcessRawSmsUseCase(
             rawSmsRepository = rawRepo,
             parsedEventRepository = parsedRepo,
-            bankSmsRegistry = BankSmsRegistry(listOf(stub, AlJaziraSmsAdapter())),
+            bankSmsRegistry = BankSmsRegistry(listOf(stub, engineFixtureAdapter())),
         )
         val raw = aljaziraPurchase(id = "android-sms:two-banks", deviceId = "two-banks")
         val result = svc.ingest(raw)
@@ -1139,7 +1139,7 @@ class ProcessRawSmsUseCaseTest {
     fun parserEventForDifferentBank_isRejectedAsProcessingError() = runBlocking {
         val reviewRepo = com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao())
         val disagreeing = SmsParseGateway { input ->
-            val ok = AlJaziraParsingPipeline().parse(input) as com.baraa.masroof.parsing.model.ParseResult.Success
+            val ok = EngineFixtureParser().parse(input) as com.baraa.masroof.parsing.model.ParseResult.Success
             ok.copy(event = ok.event.copy(bank = Bank("OTHER_BANK")))
         }
         val svc = reviewingUseCase(disagreeing, reviewRepo)
@@ -1157,7 +1157,7 @@ class ProcessRawSmsUseCaseTest {
     @Test
     fun reparseStored_routeIsAuthoritative_parserDoesNotRedetectSender() = runBlocking {
         val reviewRepo = com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao())
-        val svc = reviewingUseCase(AlJaziraParsingPipeline(), reviewRepo)
+        val svc = reviewingUseCase(EngineFixtureParser(), reviewRepo)
         val purchase = aljaziraPurchase(id = "android-sms:legacy-sender", deviceId = "legacy-sender")
         val raw = purchase.copy(sender = "LegacyAlJaziraLabel")
         rawRepo.insertIfAbsent(raw)
@@ -1193,10 +1193,10 @@ class ProcessRawSmsUseCaseTest {
         lookalike: CountingLookalikeAdapter,
     ) = BankSmsRegistry(
         listOf(
-            AlJaziraSmsAdapter(
+            engineFixtureAdapter(
                 pipeline = SmsParseGateway { input ->
                     alJaziraParses.incrementAndGet()
-                    AlJaziraParsingPipeline().parse(input)
+                    EngineFixtureParser().parse(input)
                 },
             ),
             lookalike,
@@ -1320,6 +1320,6 @@ class ProcessRawSmsUseCaseTest {
         رقم المعاملة: TEST_REFERENCE_1
     """.trimIndent()
 
-    private fun alJaziraSmsRegistry(pipeline: SmsParseGateway = AlJaziraParsingPipeline()): BankSmsRegistry =
-        BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = pipeline)))
+    private fun alJaziraSmsRegistry(pipeline: SmsParseGateway = EngineFixtureParser()): BankSmsRegistry =
+        BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = pipeline)))
 }

@@ -5,7 +5,6 @@ import com.baraa.masroof.domain.model.LoanType
 import com.baraa.masroof.parsing.model.CardSmsChannel
 import com.baraa.masroof.parsing.model.ParseResult
 import com.baraa.masroof.parsing.model.SmsParseInput
-import com.baraa.masroof.parsing.normalizer.MessageNormalizer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -16,8 +15,7 @@ import java.time.Instant
  * Locks parse-time dashboard facts on [com.baraa.masroof.parsing.model.ParsedEventDetails].
  */
 class ParsedEventDetailsFactsCharacterizationTest {
-    private val parser = AlJaziraMessageParser()
-    private val normalizer = MessageNormalizer()
+    private val parser = com.baraa.masroof.testsupport.EngineFixtureParser()
 
     @Test
     fun creditPurchase_populatesCreditChannelAndBalances() {
@@ -94,6 +92,8 @@ class ParsedEventDetailsFactsCharacterizationTest {
     @Test
     fun internationalPurchase_populatesExchangeRateAndFee() {
         val body = """
+            شراء عبر الانترنت
+            بطاقة ائتمانية: 7271
             بمبلغ: USD 23.00
             رسوم العمليات الدولية: 1.99
             سعر الصرف: 3.756957
@@ -159,7 +159,6 @@ class ParsedEventDetailsFactsCharacterizationTest {
                     body = body,
                     receivedAt = Instant.parse("2026-08-03T10:24:00Z"),
                 ),
-                normalizer.normalize(body),
             )
         ) {
             is ParseResult.Success -> result.details
