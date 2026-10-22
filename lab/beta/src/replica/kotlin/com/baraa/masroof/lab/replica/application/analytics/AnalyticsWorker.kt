@@ -39,12 +39,26 @@ class AnalyticsWorker(context: Context, params: WorkerParameters) : CoroutineWor
 object AnalyticsNavigation {
     private val mutable = MutableStateFlow<String?>(null)
     val target = mutable.asStateFlow()
-    fun open(alert: String = "") { mutable.value = alert }
+    private val visible = MutableStateFlow(false)
+    val analysisVisible = visible.asStateFlow()
+    fun setAnalysisVisible(value: Boolean) { visible.value = value }
+    private var returnToCenter = false
+    private val returns = MutableStateFlow(0L)
+    val centerReturns = returns.asStateFlow()
+    fun open(alert: String = "", fromCenter: Boolean = false) { returnToCenter = fromCenter; mutable.value = alert }
+    /** Consume the destination without losing its origin while displaying details. */
     fun clear() { mutable.value = null }
+    fun reset() { clear(); returnToCenter = false; visible.value = false }
+    fun finish() {
+        clear()
+        if (returnToCenter) returns.value += 1
+        returnToCenter = false
+    }
 }
 
 object AnalyticsNotifications {
     private const val CHANNEL = "lab_replica_analysis"
+    fun cancel(context: Context, id: String) { NotificationManagerCompat.from(context).cancel("lab-analysis", id.hashCode()) }
     fun clear(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.activeNotifications.filter { it.tag == "lab-analysis" }.forEach { manager.cancel(it.tag, it.id) }
@@ -60,7 +74,7 @@ object AnalyticsNotifications {
             if (row.resolved || row.read || row.snoozedUntil > now) manager.cancel("lab-analysis", row.id.hashCode())
             if (!AnalysisAlertPolicy.eligibleForPhone(row, snapshot, prefs, now)) continue
             val intent = Intent(context, MainActivity::class.java).putExtra("lab_analysis_alert", row.id)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val pending = PendingIntent.getActivity(context, row.id.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val title = context.getString(when (row.kind) {
                 "DUE" -> R.string.lab_analysis_due_alert
@@ -95,6 +109,10 @@ object LabAnalyticsBackup {
             java.time.LocalDate.ofEpochDay(s.periodStart); java.time.LocalDate.ofEpochDay(s.periodEnd)
             s.quality.historyFrom?.let(java.time.LocalDate::ofEpochDay)
             s.quality.historyThrough?.let(java.time.LocalDate::ofEpochDay)
+            s.trainingFrom?.let(java.time.LocalDate::ofEpochDay)
+            s.trainingThrough?.let(java.time.LocalDate::ofEpochDay)
+            require((s.trainingFrom == null) == (s.trainingThrough == null))
+            if (s.trainingFrom != null && s.trainingThrough != null) require(s.trainingFrom <= s.trainingThrough)
             require(s.periodEnd - s.periodStart in 1..35 && s.days.size <= 70)
             require(s.remaining == null || s.remaining >= 0)
             require(s.quality.used >= 0 && s.quality.coveredDays >= 0)

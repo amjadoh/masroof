@@ -99,6 +99,16 @@ class ReplicaSetupJourneyTest {
                 "Same device, same persisted data, same generated Home. Two warmups; six samples per case.\n" +
                 "Baseline without additive forecast card (ms): $before\nWith forecast card (ms): $after\n" +
                 "Measures recomposition through Compose idle, including test synchronization; not startup latency. Training is independent background work.\n")
+            runBlocking {
+                val oldDay = container.dashboardPeriodWorkflow.currentPeriod().startDate.minusDays(1)
+                val source = container.financialTransactionRepository.listAll().firstOrNull()?.sourceContainerId
+                container.database.financialTransactionDao().insertTransactionIfAbsent(com.baraa.masroof.lab.replica.data.room.entity.FinancialTransactionEntity(
+                    "analytics-prior-payment", "CREDIT_CARD_PAYMENT", "17.00", "SAR",
+                    oldDay.atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    source, null, "Previous period payment", null, null))
+                container.labAnalytics.request(); container.labAnalytics.refresh()
+            }
+            compose.waitUntil(30_000) { !container.labAnalytics.state.value.updating && container.labAnalytics.state.value.snapshot?.quality?.excluded?.values?.flatten()?.contains("analytics-prior-payment") == true }
             compose.onNodeWithTag("lab-forecast-entry").performScrollTo()
             screenshot("03b-dashboard-forecast-entry")
             compose.onNodeWithTag("lab-forecast-entry").performClick()
@@ -107,12 +117,40 @@ class ReplicaSetupJourneyTest {
             compose.onNodeWithContentDescription(host.getString(R.string.lab_replica_guidance_about,
                 text(R.string.lab_analysis_insufficient))).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertIsDisplayed()
-            androidx.test.espresso.Espresso.pressBack()
+            back()
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithText(text(R.string.lab_analysis_insufficient)).assertIsDisplayed()
             screenshot("03c-analysis-opened-from-home")
-            androidx.test.espresso.Espresso.pressBack()
+            compose.onNodeWithText(text(R.string.lab_analysis_show_data)).performScrollTo().performClick()
+            compose.onNode(hasText(text(R.string.lab_analysis_excluded_scope), substring = true) and hasClickAction()).performScrollTo().performClick()
+            val groupSize = container.labAnalytics.state.value.snapshot!!.quality.excluded["OUTSIDE_PURCHASE_SCOPE"]!!.size
+            repeat((groupSize + 19) / 20) {
+                compose.waitUntil(30_000) {
+                    compose.onAllNodesWithTag("lab-evidence-analytics-prior-payment").fetchSemanticsNodes().isNotEmpty() ||
+                        compose.onAllNodesWithText(text(R.string.lab_analysis_more)).fetchSemanticsNodes().isNotEmpty()
+                }
+                if (compose.onAllNodesWithTag("lab-evidence-analytics-prior-payment").fetchSemanticsNodes().isEmpty())
+                    compose.onNodeWithText(text(R.string.lab_analysis_more)).performScrollTo().performClick()
+            }
+            compose.onNodeWithTag("lab-evidence-analytics-prior-payment").performScrollTo().performClick()
+            compose.waitUntil(30_000) { dashboard.uiState.value.labSelectedTransaction?.id == "analytics-prior-payment" }
+            compose.onAllNodes(hasText("Previous period payment") and hasAnyAncestor(hasTestTag("lab-analytics-transaction-detail"))).onFirst().performScrollTo().assertIsDisplayed()
+            screenshot("03e-previous-period-transaction-detail")
+            back()
+            compose.onNodeWithTag("lab-analytics-transaction-detail").assertDoesNotExist()
+            compose.onNodeWithTag("lab-evidence-analytics-prior-payment").assertIsDisplayed()
+            screenshot("03f-quality-keeps-scroll-after-detail")
+            back()
             compose.onNodeWithTag("lab-forecast-entry").performScrollTo().assertIsDisplayed()
+            // Analytics settings opened from the existing center return to that center on Cancel.
+            compose.onNode(hasContentDescription("unread notification", substring = true) or
+                hasContentDescription(text(R.string.lab_replica_notification_center_title))).performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_settings)).performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_budget_section)).assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.lab_analysis_cancel)).performScrollTo().performClick()
+            compose.onAllNodesWithText(text(R.string.lab_replica_notification_center_title)).onFirst().assertIsDisplayed()
+            compose.onNodeWithTag("lab-analysis-budget").assertDoesNotExist()
+            screenshot("03d-unified-center-after-settings-cancel")
             click(R.string.lab_replica_approved_nav_transactions)
             screenshot("04-transactions")
             click(R.string.lab_replica_approved_nav_review)
@@ -205,11 +243,21 @@ class ReplicaSetupJourneyTest {
             .filter { it.boundsInRoot.center.y >= label.bottom }.minBy { it.boundsInRoot.top - label.bottom }
         compose.onNode(SemanticsMatcher("ownership action for $entityLabel") { it.id == button.id }).performScrollTo().performClick()
     }
+    private fun back() {
+        compose.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        compose.waitForIdle()
+    }
     private fun text(id: Int) = host.getString(id)
     private fun click(id: Int) { compose.waitUntil(20_000) { compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().isNotEmpty() }; compose.onNodeWithText(text(id)).performClick(); compose.waitForIdle() }
     private fun screenshot(name: String) {
         val file = File(host.getExternalFilesDir(null),"replica-journey/$name.png").apply { parentFile!!.mkdirs() }
-        file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+        compose.waitForIdle()
+        val instrument = InstrumentationRegistry.getInstrumentation()
+        instrument.waitForIdleSync()
+        android.os.SystemClock.sleep(200)
+        val bitmap = requireNotNull(instrument.uiAutomation.takeScreenshot())
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
         // connectedDebugAndroidTest uninstalls its test UID before the shell can collect evidence.
         // Publish via the shell identity, as production's native screenshot tests do.
         require(name.matches(Regex("[a-z0-9-]+")))
