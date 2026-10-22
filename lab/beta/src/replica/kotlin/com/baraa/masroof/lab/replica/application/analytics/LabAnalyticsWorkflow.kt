@@ -145,7 +145,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "presentation-v2|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
                 dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical))
     }
@@ -183,7 +183,9 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val snapshot = AnalysisSnapshot(input.start, input.end, at, input.fingerprint, result.status, result.method,
             result.actual, result.remaining, result.total, result.lower, result.upper,
             input.clean.days.filter { it.day >= input.start }.map { AnalysisDay(it.day, it.net, null) } + futureDays,
-            quality, suggested, input.dues + estimates, input.completed)
+            quality, suggested, input.dues + estimates, input.completed,
+            trainingFrom = if (result.model?.accepted == true) result.model?.trainedFrom else result.baseline?.from,
+            trainingThrough = if (result.model?.accepted == true) result.model?.trainedThrough else result.baseline?.through)
         // A committed source invalidation while fitting invalidates the entire result.
         if (generation.get() != version || input.fingerprint != source().fingerprint) { request(); return@withLock }
         val alerts = alerts(snapshot, candidates.filter { priorCandidates[it.key]?.status != "REJECTED" }, dao.alerts(), prefs)
@@ -212,7 +214,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             if (days.size.toLong() != past.periodEnd - past.periodStart || days.any { !it.covered }) null
             else past.periodStart to days.fold(0L) { sum, day -> Math.addExact(sum, day.net) }
         }.toMap()
-        mutable.update { it.copy(updating = false, unavailable = false, historyActuals = actuals) }
+        mutable.update { it.copy(updating = false, unavailable = false, historyActuals = actuals, purchasePeriods = purchasePeriodHistory(input.clean, input.start)) }
     }
 
     private fun alerts(snapshot: AnalysisSnapshot, candidates: List<AnalysisCandidate>, previous: List<AnalysisAlertRow>, prefs: AnalysisPreferencesRow) =
@@ -227,6 +229,9 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         }
         request()
     }
+    suspend fun findAlert(id: String): AnalysisAlertRow? = withContext(Dispatchers.IO) {
+        container.databaseAccessGate.withAccess { store.analytics().alerts().firstOrNull { it.id == id } }
+    }
     suspend fun markAlert(id: String, snooze: Boolean = false) = mutex.withLock {
         container.databaseAccessGate.withAccess {
             val dao = store.analytics(); val row = dao.alerts().firstOrNull { it.id == id } ?: return@withAccess
@@ -234,6 +239,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 snoozedUntil = if (snooze) clock.millis() + 24 * 3600_000 else row.snoozedUntil)))
             val alerts = dao.alerts().filterNot { row -> row.resolved }
             mutable.update { it.copy(alerts = alerts) }
+            AnalyticsNotifications.cancel(context, id)
         }
     }
     suspend fun rejectCandidate(key: String) {
@@ -260,6 +266,37 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         } }
         request(); return true
     }
+
+    /** Bounded, live read; projection and evidence enrichment happen outside the financial read transaction. */
+    suspend fun evidence(ids: List<String>): List<AnalysisEvidence> = withContext(Dispatchers.IO) {
+        require(ids.size <= 20)
+        container.databaseAccessGate.withAccess {
+            val rows = ids.distinct().mapNotNull { container.financialTransactionRepository.getById(it) }
+            val facts = if (rows.isEmpty()) emptyMap() else {
+                val from = rows.minOf { it.occurredAt }.atZone(clock.zone).toLocalDate()
+                val through = rows.maxOf { it.occurredAt }.atZone(clock.zone).toLocalDate().plusDays(1)
+                FinancialAnalysisReader.capture(container, from.atStartOfDay(clock.zone).toInstant(), through.atStartOfDay(clock.zone).toInstant(), clock.zone, clock)
+                    .service.loadOverview(FinancialPeriod(from, through)).transactionFacts
+            }
+            val byId = rows.associateBy { it.id }
+            val cards = container.cardRegistryRepository.listAll().filter { it.ownership == com.baraa.masroof.lab.replica.domain.model.OwnershipStatus.OWNED }
+            ids.distinct().sortedWith(compareByDescending<String> { byId[it]?.occurredAt }.thenBy { it })
+                .map { AnalysisEvidence(it, byId[it], facts[it], cards) }
+        }
+    }
+    suspend fun sortEvidenceIds(ids: List<String>): List<String> = withContext(Dispatchers.IO) {
+        container.databaseAccessGate.withAccess {
+            val dates = mutableMapOf<String, Long>()
+            // Only read ordering metadata for the referenced IDs, in bounded SQLite batches.
+            ids.distinct().chunked(400).forEach { batch ->
+                val placeholders = batch.joinToString(",") { "?" }
+                container.database.openHelper.readableDatabase.query(
+                    "SELECT id, occurredAtEpochMillis FROM financial_transaction WHERE id IN ($placeholders)", batch.toTypedArray()
+                ).use { cursor -> while (cursor.moveToNext()) dates[cursor.getString(0)] = cursor.getLong(1) }
+            }
+            ids.distinct().sortedWith(compareByDescending<String> { dates[it] }.thenBy { it })
+        }
+    }
     fun money(cents: Long): Money = Money(BigDecimal.valueOf(cents, 2), Currency.SAR)
     fun budgetStatus(): String {
         val s = state.value.snapshot ?: return "NONE"
@@ -274,7 +311,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
     fun editorDraft(candidate: AnalysisCandidate) = SettingsCommitmentsWorkflow.CommitmentEditorDraft(
         candidate.name, money(candidate.amount), LocalDate.ofEpochDay(candidate.latestDay),
         com.baraa.masroof.lab.replica.domain.model.CommitmentRecurrence.valueOf(candidate.cadence), LocalDate.ofEpochDay(candidate.nextDay))
-    fun parseBudget(value: String): Long? = value.trim().takeIf { it.isNotEmpty() }?.let { BigDecimal(it).setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).longValueExact().also { require(it > 0) } }
+    fun parseBudget(value: String): Long? = value.trim().takeIf { it.isNotEmpty() }?.let { BigDecimal(normalizeAnalysisNumber(it)).setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).longValueExact().also { require(it > 0) } }
     override fun close() {
         val job = scope.coroutineContext[Job]!!
         job.cancel()
