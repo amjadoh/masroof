@@ -8,9 +8,17 @@ data class ForecastPerformance(val allowPersonal: Boolean = true, val periods: I
     val personalMae: Long? = null, val baselineMae: Long? = null, val pausedAfter: Long? = null)
 
 object ForecastPerformancePolicy {
-    const val VERSION = "published-day8-v1"
+    const val VERSION = "published-first-valid-v2"
+    const val LEGACY_VERSION = "published-day8-v1"
+    fun eligibleOrigin(start: Long, end: Long, day: Long) = day >= start + 7 && day < end
+    fun originDay(row: ForecastComparisonRow): Long? = row.originDay
+        ?: (row.periodStart + 7).takeIf { row.evaluationVersion == LEGACY_VERSION && it < row.periodEnd }
+    fun supports(row: ForecastComparisonRow): Boolean = row.modelVersion == AnalyticsVersion.MODEL &&
+        row.evaluationVersion in setOf(VERSION, LEGACY_VERSION) &&
+        originDay(row)?.let { eligibleOrigin(row.periodStart, row.periodEnd, it) } == true
+    fun hasComparison(rows: List<ForecastComparisonRow>, start: Long) = rows.any { it.periodStart == start && supports(it) }
     fun evaluate(rows: List<ForecastComparisonRow>): ForecastPerformance {
-        val usable = rows.filter { it.actual != null && it.modelVersion == AnalyticsVersion.MODEL && it.evaluationVersion == VERSION }
+        val usable = rows.filter { it.actual != null && supports(it) }
             .groupBy { it.periodStart }.values.map { group -> group.minBy { it.issuedAt } }.sortedBy { it.periodStart }
         var pausedAfter: Long? = null
         for(index in 2 until usable.size) {

@@ -86,7 +86,7 @@ class ManualDecisionReplayTest {
                 providerRow("manual-ext-out", intraOut("2026-09-03 10:38"), "2026-09-03T07:38:00Z"),
             ) as SmsIngestionResult.Parsed
             val review = requireReview(world, parsed.rawSmsId)
-            val resolved = ledger.workflow.resolveTransferAsExternal(review.id)
+            val resolved = ledger.workflow.resolveTransferAsExternal(review.id, com.baraa.masroof.application.review.ExternalTransferDirection.OUTGOING)
             assertTrue("seed=$seed resolve: $resolved", resolved is ReviewWorkflowResult.Success)
             val success = resolved as ReviewWorkflowResult.Success
             assertEquals(

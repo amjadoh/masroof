@@ -27,7 +27,7 @@ class AnalysisLifecyclePolicyTest {
     }
     private fun comparison(period: Long, personal: Long=150, baseline: Long=110, actual: Long?=100) =
         ForecastComparisonRow("$period",period,period+30,period+7,"a".repeat(64),AnalyticsVersion.MODEL,
-            ForecastPerformancePolicy.VERSION,personal,baseline,actual,if(actual!=null) "b".repeat(64) else null,if(actual!=null) period+30 else null)
+            ForecastPerformancePolicy.VERSION,personal,baseline,actual,if(actual!=null) "b".repeat(64) else null,if(actual!=null) period+30 else null,originDay=period+7)
     @Test fun regressionRequiresThreePeriodsAndRecoveryRequiresThreeNewImprovingPeriods() {
         val worse = listOf(comparison(0),comparison(30),comparison(60))
         assertTrue(ForecastPerformancePolicy.evaluate(worse.take(2)).allowPersonal)
@@ -47,4 +47,22 @@ class AnalysisLifecyclePolicyTest {
         // Monetary differences are evaluated without overflowing Long arithmetic.
         assertFalse(ForecastPerformancePolicy.evaluate(huge).allowPersonal)
     }
+    @Test fun firstValidOriginsIncludeLateDaysButExcludeEarlyAndCompletedPeriods() {
+        assertFalse(ForecastPerformancePolicy.eligibleOrigin(100,130,106))
+        assertTrue(ForecastPerformancePolicy.eligibleOrigin(100,130,107))
+        assertTrue(ForecastPerformancePolicy.eligibleOrigin(100,130,111))
+        assertTrue(ForecastPerformancePolicy.eligibleOrigin(100,130,129))
+        assertFalse(ForecastPerformancePolicy.eligibleOrigin(100,130,130))
+    }
+    @Test fun legacyPairsKeepPauseHistoryAndDifferentOriginsStillCountOnlyOneVotePerPeriod() {
+        val legacy = listOf(0L,30,60).map { comparison(it).copy(evaluationVersion=ForecastPerformancePolicy.LEGACY_VERSION,originDay=null) }
+        assertFalse(ForecastPerformancePolicy.evaluate(legacy).allowPersonal)
+        assertTrue(ForecastPerformancePolicy.hasComparison(legacy,30))
+        val duplicate = comparison(60,100,110).copy(id="new-version",originDay=80,issuedAt=90)
+        assertEquals(ForecastPerformancePolicy.evaluate(legacy),ForecastPerformancePolicy.evaluate(legacy+duplicate))
+        val recovered = listOf(90L,120,150).map { comparison(it,101,110).copy(originDay=it+12) }
+        assertTrue(ForecastPerformancePolicy.evaluate(legacy+recovered).allowPersonal)
+        assertEquals(0,ForecastPerformancePolicy.evaluate(listOf(comparison(0).copy(originDay=null))).periods)
+    }
+
 }

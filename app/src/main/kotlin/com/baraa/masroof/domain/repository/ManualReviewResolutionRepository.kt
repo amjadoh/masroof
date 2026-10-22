@@ -18,6 +18,7 @@ interface ManualReviewResolutionRepository {
         reviewId: String,
         resolutionKind: ReviewResolutionKind,
         resolvedAt: Instant,
+        validateBeforeWrite: suspend () -> Boolean = { true },
     ): ManualReviewResolutionResult
 
     suspend fun persistPairResolution(

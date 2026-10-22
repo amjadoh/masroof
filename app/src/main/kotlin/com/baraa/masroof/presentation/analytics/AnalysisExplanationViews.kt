@@ -162,6 +162,10 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
         state.forecastPerformance.baselineMae?.let { Amount(stringResource(R.string.learning_forecast_baseline_error),it) }
         state.forecastComparisons.takeLast(3).forEach { comparison ->
             Text(timestamp(comparison.issuedAt),style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.application.analytics.ForecastPerformancePolicy.originDay(comparison)?.let { origin ->
+                Text(stringResource(R.string.learning_forecast_origin, day(origin), (comparison.periodEnd - origin).toInt()),
+                    style = MaterialTheme.typography.bodySmall)
+            }
             Amount(stringResource(R.string.learning_forecast_personal),comparison.personalTotal)
             Amount(stringResource(R.string.learning_forecast_baseline),comparison.baselineTotal)
             comparison.actual?.let { Amount(stringResource(R.string.lab_analysis_final_actual),it) }

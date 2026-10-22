@@ -12,6 +12,7 @@ import com.baraa.masroof.data.learning.LearningLabelRow
 import com.baraa.masroof.lab.ml.family.FamilyInputCleaner
 import com.baraa.masroof.application.interpretation.InterpretationOrigin
 import androidx.room.Room
+import androidx.room.withTransaction
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -35,6 +36,64 @@ class ReplicaMachineLearningTest {
         return c
     }
     private suspend fun await(condition: suspend ()->Boolean) = withTimeout(15_000) {while(!condition()) delay(25)}
+    @Test fun explicitExternalDirectionsTeachFromTheCommittedTypesAndSurviveColdReopen() = runBlocking {
+        var c=fresh()
+        val incoming="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_PERSON\nمبلغ العملية: SAR 20.00\nفي: ${at()}"
+        val outgoing="حوالة صادرة الى حسابك الجاري\nمن: 3001\nمبلغ: SAR 21.00\nإلى: 3999\nفي: ${at()}"
+        try {
+            val service=requireNotNull(c.labInterpretationService)
+            service.synchronizeFeedback()
+            // Seed durable pending evidence as retained from an earlier import,
+            // without running automatic reconciliation before the explicit action.
+            val engine=com.baraa.masroof.lab.bank.interpretation.RuleInterpreter(com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile.current())
+            val adapter=com.baraa.masroof.bank.NewEngineSmsAdapter {
+                engine.interpretRouted(it,com.baraa.masroof.lab.finance.value.BankId("BANK_ALJAZIRA"))
+            }
+            val parsed=adapter.parse(com.baraa.masroof.parsing.model.SmsParseInput("external-out","AlJazira",outgoing,Instant.now()))
+                as com.baraa.masroof.parsing.model.ParseResult.Success
+            c.database.withTransaction {
+                c.rawSmsRepository.insertIfAbsent(evidence("external-out",outgoing))
+                c.parsedEventRepository.save(parsed.event,parsed.details)
+                c.rawSmsRepository.insertIfAbsent(evidence("external-in",incoming))
+                c.parsedEventRepository.save(parsed.event.copy(id="legacy-external-in",rawSmsId="external-in",
+                    messageFamily=MessageFamily.TRANSFER_IN,direction=MoneyDirection.INCOMING,
+                    amount=com.baraa.masroof.core.money.Money.of(java.math.BigDecimal("20.00"),com.baraa.masroof.core.money.Currency.SAR),
+                    sourceAccountRef=null,destinationAccountRef=AccountReference(bank,"3001"),bankNetworkType=BankNetworkType.INTER_BANK),parsed.details)
+                for(id in listOf("external-in","external-out"))
+                    c.reviewRepository.upsertRequired(id,ReviewKind.PENDING_MATCH,listOf("transfer_pending_match"),Instant.now())
+            }
+            for((id,direction) in listOf("external-in" to com.baraa.masroof.application.review.ExternalTransferDirection.INCOMING,
+                "external-out" to com.baraa.masroof.application.review.ExternalTransferDirection.OUTGOING)) {
+                val review=requireNotNull(c.reviewRepository.findByRawSmsId(id)) { "Missing pending review for $id" }
+                val result=c.reviewWorkflowService.resolveTransferAsExternal(review.id,direction)
+                assertTrue(result.toString(),result is ReviewWorkflowResult.Success)
+                service.synchronizeFeedback()
+                assertEquals(com.baraa.masroof.application.interpretation.LearningFeedbackState.LEARNED,service.feedbackStatus(id)!!.state)
+                assertEquals(ReviewResolutionKind.USER_EXTERNAL_TRANSFER,c.reviewRepository.findByRawSmsId(id)!!.resolutionKind)
+                assertEquals(InterpretationOrigin.MANUAL,c.interpretationProvenanceWorkflow.load(id).origin)
+            }
+            assertEquals(setOf("TRANSFER_IN","TRANSFER_OUT"),service.learningLabels().map { it.family }.toSet())
+            val before=c.financialTransactionRepository.listAll()
+            TestRuntime.close()
+            File(TestStorageContext(host).filesDir,"learning/family-model.json").writeText("{corrupt")
+            c=TestRuntime.container(host)
+            c.awaitPostStartupBackgroundWorkForTesting()
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            assertEquals(before,c.financialTransactionRepository.listAll())
+            c.processRawSmsUseCase.ingest(evidence("external-next",incoming.replace("20.00","22.00")))
+            assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_IN,c.financialTransactionRepository.findByRawSmsId("external-next")!!.type)
+            assertEquals(InterpretationOrigin.HUMAN_TEMPLATE,c.interpretationProvenanceWorkflow.load("external-next").origin)
+            // A later contradictory financial edit supersedes the earlier external decision.
+            val original=c.financialTransactionRepository.findByRawSmsId("external-in")!!
+            assertTrue(c.transactionReclassificationService.reclassify(original.id,FinancialTransactionType.EXPENSE)
+                is com.baraa.masroof.application.transaction.ReclassificationResult.Success)
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            assertEquals(com.baraa.masroof.application.interpretation.LearningFeedbackState.BLOCKED,
+                requireNotNull(c.labInterpretationService).feedbackStatus("external-in")!!.state)
+            c.processRawSmsUseCase.ingest(evidence("external-blocked",incoming.replace("20.00","23.00")))
+            assertNull(c.financialTransactionRepository.findByRawSmsId("external-blocked"))
+        } finally { TestRuntime.reset(host) }
+    }
     @Test fun pendingCorrectionLearnsWhenEvidenceArrivesWithoutAnotherHumanEdit() = runBlocking {
         val c=fresh()
         try {

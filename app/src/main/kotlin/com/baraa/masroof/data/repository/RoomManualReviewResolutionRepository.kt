@@ -31,9 +31,11 @@ class RoomManualReviewResolutionRepository(
         reviewId: String,
         resolutionKind: ReviewResolutionKind,
         resolvedAt: Instant,
+        validateBeforeWrite: suspend () -> Boolean,
     ): ManualReviewResolutionResult = accessGate.withAccess {
         try {
             database.withTransaction {
+                if (!validateBeforeWrite()) throw ReviewResolutionRollback("transfer_evidence_changed")
                 when (
                     val save = financialTransactionRepository.save(transaction, rawSmsIds)
                 ) {

@@ -35,7 +35,7 @@ data class AnalysisCoverageRow(@PrimaryKey val id: String, val fromDay: Long, va
 data class ForecastComparisonRow(@PrimaryKey val id: String, val periodStart: Long, val periodEnd: Long,
     val issuedAt: Long, val sourceHash: String, val modelVersion: String, val evaluationVersion: String,
     val personalTotal: Long, val baselineTotal: Long, val actual: Long? = null,
-    val actualSourceHash: String? = null, val evaluatedAt: Long? = null)
+    val actualSourceHash: String? = null, val evaluatedAt: Long? = null, val originDay: Long? = null)
 
 @Dao interface AnalyticsDao {
     @Query("SELECT * FROM analysis_snapshot ORDER BY rowid DESC LIMIT 1") suspend fun latest(): AnalysisSnapshotRow?
@@ -67,7 +67,7 @@ data class ForecastComparisonRow(@PrimaryKey val id: String, val periodStart: Lo
 }
 
 @Database(entities = [AnalysisSnapshotRow::class, AnalysisModelRow::class, RecurringCandidateRow::class,
-    AnalysisAlertRow::class, AnalysisPreferencesRow::class, AnalysisCoverageRow::class, ForecastComparisonRow::class], version = 2, exportSchema = true)
+    AnalysisAlertRow::class, AnalysisPreferencesRow::class, AnalysisCoverageRow::class, ForecastComparisonRow::class], version = 3, exportSchema = true)
 abstract class AnalyticsDatabase : RoomDatabase() {
     abstract fun analytics(): AnalyticsDao
     companion object {
@@ -79,12 +79,19 @@ abstract class AnalyticsDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_analysis_forecast_comparison_periodStart ON analysis_forecast_comparison(periodStart)")
             }
         }
+        val MIGRATION_2_3 = object : Migration(2,3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE analysis_forecast_comparison ADD COLUMN originDay INTEGER")
+                // The old policy proves this date; never infer it from a device timezone.
+                db.execSQL("UPDATE analysis_forecast_comparison SET originDay = periodStart + 7 WHERE evaluationVersion = 'published-day8-v1' AND periodEnd > periodStart + 7")
+            }
+        }
         fun open(context: Context): AnalyticsDatabase = Room.databaseBuilder(context, AnalyticsDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2).openHelperFactory(PreservingOpenHelperFactory()).build()
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3).openHelperFactory(PreservingOpenHelperFactory()).build()
     }
 }
 
-@Serializable data class AnalyticsArchive(val version: Int = 2, val snapshots: List<AnalysisSnapshotRow> = emptyList(),
+@Serializable data class AnalyticsArchive(val version: Int = 3, val snapshots: List<AnalysisSnapshotRow> = emptyList(),
     val models: List<AnalysisModelRow> = emptyList(), val candidates: List<RecurringCandidateRow> = emptyList(),
     val alerts: List<AnalysisAlertRow> = emptyList(), val preferences: AnalysisPreferencesRow? = null,
     val coverage: List<AnalysisCoverageRow> = emptyList(), val comparisons: List<ForecastComparisonRow> = emptyList())
@@ -99,7 +106,7 @@ object AnalyticsArchiveStore {
         if (raw == null) return null
         require(raw.length <= 128 * 1024 * 1024) { "Analysis archive too large" }
         val archive = AnalyticsJson.format.decodeFromString<AnalyticsArchive>(raw)
-        require(archive.version in 1..2)
+        require(archive.version in 1..3)
         require(archive.snapshots.map { it.id }.distinct().size == archive.snapshots.size)
         require(archive.models.map { it.id }.distinct().size == archive.models.size)
         require(archive.candidates.map { it.id }.distinct().size == archive.candidates.size)
@@ -117,10 +124,16 @@ object AnalyticsArchiveStore {
         archive.comparisons.forEach {
             require(it.periodEnd - it.periodStart in 1..35 && it.issuedAt >= 0 && it.sourceHash.matches(Regex("[0-9a-f]{64}")))
             require(it.modelVersion.isNotBlank() && it.evaluationVersion.isNotBlank())
+            require(it.originDay == null || it.originDay in (it.periodStart + 7) until it.periodEnd)
+            if (it.evaluationVersion == "published-first-valid-v2") require(it.originDay != null)
+            if (it.evaluationVersion == "published-day8-v1") require(it.originDay == null || it.originDay == it.periodStart + 7)
             require((it.actual == null) == (it.evaluatedAt == null))
             require(it.actualSourceHash == null || it.actualSourceHash.matches(Regex("[0-9a-f]{64}")))
         }
-        return archive
+        return archive.copy(comparisons = archive.comparisons.map { row ->
+            if (row.originDay == null && row.evaluationVersion == "published-day8-v1" && row.periodEnd > row.periodStart + 7)
+                row.copy(originDay = row.periodStart + 7) else row
+        })
     }
     suspend fun export(database: AnalyticsDatabase): String = database.withTransaction {
         val dao = database.analytics()

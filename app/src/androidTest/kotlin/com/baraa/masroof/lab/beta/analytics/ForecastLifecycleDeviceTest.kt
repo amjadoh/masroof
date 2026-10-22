@@ -24,6 +24,15 @@ class ForecastLifecycleDeviceTest {
         override fun instant(): Instant = day.atTime(12,0).atZone(zone).toInstant()
     }
     @Test fun repairedCoverageRestoresHistoryAndPublishedPairsAreSettledWithoutRewritingForecasts() = runBlocking {
+        forecastJourney(7)
+    }
+    @Test fun missedDayEightWaitsForValidCoverageAndCapturesOnlyOneRealLateOrigin() = runBlocking {
+        forecastJourney(10, deferForGap = true)
+    }
+    @Test fun anExistingDayEightPairIsNotReplacedByTheNewLateOriginPolicy() = runBlocking {
+        forecastJourney(10, legacyPair = true)
+    }
+    private suspend fun forecastJourney(offset: Long, deferForGap: Boolean = false, legacyPair: Boolean = false) {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val host=instrumentation.targetContext
         android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
@@ -33,7 +42,7 @@ class ForecastLifecycleDeviceTest {
         c.stopLabAnalytics()
         val zone=ZoneId.systemDefault()
         val period=FinancialPeriodPolicy.periodContaining(LocalDate.now(zone))
-        val origin=period.startDate.plusDays(7)
+        var origin=period.startDate.plusDays(offset)
         val clock=MovingClock(origin,zone)
         val context=TestStorageContext(host)
         val workflow=LabAnalyticsWorkflow(c,context,clock)
@@ -57,12 +66,43 @@ class ForecastLifecycleDeviceTest {
             c.database.cardRegistryDao().insertFacilityIfAbsent("forecast-facility","BANK_ALJAZIRA","1234")
             c.database.cardRegistryDao().insertIfAbsent(CardRegistryEntity("forecast-card","BANK_ALJAZIRA","1234","OWNED",cardType="CREDIT",
                 cardRole="PRIMARY",creditFacilityId="forecast-facility",firstSeenRawSmsId=null,lastSeenRawSmsId=null))
-            seed(first,origin)
+            if (deferForGap) {
+                clock.day=period.startDate.plusDays(6)
+                seed(first,clock.day)
+                workflow.refresh()
+                assertTrue(sidecar.analytics().comparisons().isEmpty())
+                clock.day=origin
+                seed(period.startDate.plusDays(7),origin)
+                val missing=period.startDate.plusDays(8)
+                val prefs=sidecar.analytics().preferences()!!
+                sidecar.analytics().preferences(prefs.copy(gapDays=missing.toEpochDay().toString()))
+                workflow.refresh()
+                assertTrue(sidecar.analytics().comparisons().isEmpty())
+                origin=origin.plusDays(1)
+                clock.day=origin
+                seed(origin,origin)
+                AnalysisCoverageStore.recordScan(context,missing.atStartOfDay(zone).toInstant(),clock.instant(),zone)
+            } else seed(first,origin)
+            val legacy = if (legacyPair) com.baraa.masroof.data.analytics.ForecastComparisonRow(
+                "legacy",period.startDate.toEpochDay(),period.endDateExclusive.toEpochDay(),
+                period.startDate.plusDays(7).atTime(12,0).atZone(zone).toInstant().toEpochMilli(),"a".repeat(64),
+                com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL,ForecastPerformancePolicy.LEGACY_VERSION,200,300,
+                originDay=period.startDate.plusDays(7).toEpochDay()) else null
+            legacy?.let { sidecar.analytics().comparison(it) }
             workflow.refresh()
             val snapshot=requireNotNull(workflow.state.value.snapshot)
             assertEquals("reason=${snapshot.modelReason} used=${snapshot.quality.used} blocked=${snapshot.quality.blocked}",
                 com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL,snapshot.method)
             val original=sidecar.analytics().comparisons().single()
+            assertEquals(legacy?.originDay ?: origin.toEpochDay(),original.originDay)
+            if(legacy != null) assertEquals(legacy,original)
+            else {
+                assertEquals(clock.millis(),original.issuedAt)
+                // A cached presentation snapshot must not prevent capturing a missing pair.
+                sidecar.analytics().clearComparisons()
+                workflow.refresh()
+                assertEquals(original,sidecar.analytics().comparisons().single())
+            }
             assertEquals(com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL,workflow.state.value.snapshot!!.method)
             val gap=origin.minusDays(10)
             val prefs=sidecar.analytics().preferences()!!

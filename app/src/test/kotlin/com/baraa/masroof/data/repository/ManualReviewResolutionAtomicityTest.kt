@@ -210,6 +210,15 @@ class ManualReviewResolutionAtomicityTest {
             categoryId = null,
             linkedParsedEventIds = listOf("pe-bill"),
         )
+        val stale = store.persistSingleResolution(tx, listOf("sms-bill"), review.id,
+            ReviewResolutionKind.USER_FINANCIAL_TYPE, Instant.parse("2026-08-11T12:05:00Z"),
+            validateBeforeWrite = {
+                assertTrue("Evidence must be checked under the financial write transaction", db.inTransaction())
+                false
+            })
+        assertEquals("transfer_evidence_changed", (stale as ManualReviewResolutionResult.Failed).reason)
+        assertTrue(ftRepo.listAll().isEmpty())
+        assertEquals(ReviewStatus.REQUIRED, reviewRepo.findByRawSmsId("sms-bill")!!.status)
         val result = store.persistSingleResolution(
             transaction = tx,
             rawSmsIds = listOf("sms-bill"),

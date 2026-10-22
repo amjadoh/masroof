@@ -38,6 +38,40 @@ class AnalyticsJourneyTest {
     @get:Rule val compose = createComposeRule()
     private val instrument = InstrumentationRegistry.getInstrumentation()
     private val host = instrument.targetContext
+    @Test fun publishedComparisonShowsItsActualLateOriginAndContextualHelpInBothLanguages() {
+        val start=LocalDate.of(2026,10,1).toEpochDay()
+        val origin=start+10
+        val pair=com.baraa.masroof.data.analytics.ForecastComparisonRow("late",start,start+30,
+            LocalDate.ofEpochDay(origin).atTime(12,0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+            "a".repeat(64),com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL,
+            ForecastPerformancePolicy.VERSION,20000,21000,originDay=origin)
+        var language by mutableStateOf("ar")
+        var dark by mutableStateOf(false)
+        compose.setContent {
+            val config=Configuration(host.resources.configuration).apply { setLocale(Locale(language));fontScale=1.3f }
+            CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config),LocalConfiguration provides config) {
+                MasroofTheme(darkTheme=dark) { MasroofScreenBackground {
+                    Column(androidx.compose.ui.Modifier.verticalScroll(rememberScrollState())) {
+                        LearningAndForecastPerformance(AnalysisUiState(forecastComparisons=listOf(pair)))
+                    }
+                } }
+            }
+        }
+        for(locale in listOf("ar","en")) for(isDark in listOf(false,true)) {
+            compose.runOnUiThread { language=locale;dark=isDark }
+            val context=host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale(locale)) })
+            val date=java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale(locale)).format(LocalDate.ofEpochDay(origin))
+            val label=com.baraa.masroof.application.locale.AppDigits.display(context.getString(R.string.learning_forecast_origin,date,20))
+            compose.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.learning_forecast_hint,locale)).assertDoesNotExist()
+            val about=context.getString(R.string.guidance_about,context.getString(R.string.learning_forecast_title))
+            compose.onNodeWithContentDescription(about).performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.learning_forecast_hint,locale)).assertIsDisplayed()
+            screen("$locale-${if(isDark) "dark" else "light"}-late-origin-help")
+            instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+        }
+    }
     @Test fun forecastsKeepLedgerParityAcrossCorrectionsAndReopenAndUiDraftsOnlySaveExplicitly() {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
         runBlocking { TestRuntime.reset(host) }

@@ -197,7 +197,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "presentation-v3|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "presentation-v4|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
                 dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights)
     }
@@ -212,7 +212,9 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val comparisons = settleComparisons(input)
         val performance = ForecastPerformancePolicy.evaluate(comparisons)
         val latest = dao.latest()
-        if (latest?.sourceHash == input.fingerprint) { loadCached(); finishUi(input); return@withLock }
+        val captureMissing = ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) &&
+            !input.blocked && input.reasons.isEmpty() && !ForecastPerformancePolicy.hasComparison(comparisons,input.start)
+        if (latest?.sourceHash == input.fingerprint && !captureMissing) { loadCached(); finishUi(input); return@withLock }
         val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
             { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
@@ -249,11 +251,12 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val alerts = alerts(snapshot, candidates.filter { priorCandidates[it.key]?.status != "REJECTED" }, dao.alerts(), prefs)
         store.withTransaction {
             dao.snapshot(AnalysisSnapshotRow(hash("$at|${input.fingerprint}"), input.fingerprint, at, json.encodeToString(snapshot)))
-            if(input.today - input.start == 7L && !input.blocked && input.reasons.isEmpty() &&
-                result.personalTotal != null && result.baselineTotal != null) {
+            if(ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) && !input.blocked && input.reasons.isEmpty() &&
+                result.personalTotal != null && result.baselineTotal != null &&
+                !ForecastPerformancePolicy.hasComparison(dao.comparisons(),input.start)) {
                 dao.comparison(ForecastComparisonRow("${input.start}:${AnalyticsVersion.MODEL}:${ForecastPerformancePolicy.VERSION}",
                     input.start,input.end,at,input.fingerprint,AnalyticsVersion.MODEL,ForecastPerformancePolicy.VERSION,
-                    requireNotNull(result.personalTotal),requireNotNull(result.baselineTotal)))
+                    requireNotNull(result.personalTotal),requireNotNull(result.baselineTotal),originDay = input.today))
             }
             result.model?.let {
                 val payload = json.encodeToString(StoredHuber.from(it))

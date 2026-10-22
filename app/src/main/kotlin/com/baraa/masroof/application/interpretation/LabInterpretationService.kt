@@ -136,17 +136,24 @@ class LabInterpretationService(
             if(review.resolutionKind == ReviewResolutionKind.USER_CORRECTION) continue
             val at = review.resolvedAt?.toEpochMilli() ?: continue
             val type = review.resolvedTransactionId?.let { transactions.getById(it)?.type }
-            val financialOnly = review.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE &&
+            val financialDecision = review.resolutionKind in setOf(ReviewResolutionKind.USER_FINANCIAL_TYPE,
+                ReviewResolutionKind.USER_EXTERNAL_TRANSFER)
+            val financialOnly = financialDecision &&
                 type == null && transactions.isRawSmsLinked(review.rawSmsId)
             val family = when(review.resolutionKind) {
                 ReviewResolutionKind.USER_NON_FINANCIAL -> MessageFamily.NON_FINANCIAL
                 ReviewResolutionKind.USER_FINANCIAL_TYPE -> type?.let(FamilyFeedbackPolicy::explicitFamily)?.let { MessageFamily.valueOf(it.name) }
+                ReviewResolutionKind.USER_EXTERNAL_TRANSFER -> type?.takeIf { it in setOf(
+                    com.baraa.masroof.domain.model.FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+                    com.baraa.masroof.domain.model.FinancialTransactionType.EXTERNAL_TRANSFER_OUT) }
+                    ?.let(FamilyFeedbackPolicy::explicitFamily)?.let { MessageFamily.valueOf(it.name) }
                 else -> null
             }
             val source = if(review.resolutionKind == ReviewResolutionKind.USER_NON_FINANCIAL) "USER_NON_FINANCIAL" else "USER_EVENT_KIND"
             result += Decision("review:${review.id}:$at",review.rawSmsId,family,at,source,type,
                 when(review.resolutionKind) {
                     ReviewResolutionKind.USER_FINANCIAL_TYPE -> if(financialOnly) "FINANCIAL_ONLY" else if(type == null) "DECISION_PENDING" else null
+                    ReviewResolutionKind.USER_EXTERNAL_TRANSFER -> if(type == null) "DECISION_PENDING" else if(family == null) "CONTEXT_ONLY" else null
                     ReviewResolutionKind.USER_NON_FINANCIAL -> null
                     else -> "CONTEXT_ONLY"
                 })
