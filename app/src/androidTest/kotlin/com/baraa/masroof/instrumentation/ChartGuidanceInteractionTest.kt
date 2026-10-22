@@ -1,8 +1,5 @@
 package com.baraa.masroof.instrumentation
 
-import android.content.ContentValues
-import android.graphics.Bitmap
-import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +21,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
+import com.baraa.masroof.testsupport.ScreenshotArtifactWriter
 import com.baraa.masroof.application.dashboard.DailySpendingPoint
 import com.baraa.masroof.application.dashboard.DailySpendingTrend
 import com.baraa.masroof.application.dashboard.SignedMoneyAmount
@@ -140,15 +138,8 @@ class ChartGuidanceInteractionTest {
         instrumentation.waitForIdleSync()
         android.os.SystemClock.sleep(250)
         val screenshot = instrumentation.uiAutomation.takeScreenshot() ?: error("Screenshot missing")
-        val resolver = instrumentation.targetContext.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, "$name.png")
-            put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/masroof-chart-guidance/")
-        }
-        val uri = resolver.insert(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: error("Output missing")
-        resolver.openOutputStream(uri)!!.use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        screenshot.recycle()
+        try { ScreenshotArtifactWriter.publish(screenshot, "masroof-chart-guidance", name) }
+        finally { screenshot.recycle() }
     }
 
     private fun pressOutsidePopup() {
