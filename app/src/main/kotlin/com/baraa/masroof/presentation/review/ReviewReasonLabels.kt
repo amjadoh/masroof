@@ -41,6 +41,8 @@ object ReviewReasonLabels {
             "missing_source" -> R.string.review_reason_transfer_missing_side
             "destination_not_owned" -> R.string.review_reason_transfer_ownership
             "source_not_owned" -> R.string.review_reason_transfer_ownership
+            "owned_transfer_requires_self_type" -> com.baraa.masroof.R.string.lab_owned_transfer_requires_self
+            "same_transfer_account" -> com.baraa.masroof.R.string.lab_same_transfer_account
             "not_a_transfer" -> R.string.review_error_not_transfer
             "paired_transaction_not_supported" -> R.string.review_reason_paired_transaction_not_supported
             "delete_failed" -> R.string.transaction_detail_ignore_failed

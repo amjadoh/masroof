@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.review.IngestionReviewService
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.data.room.MasroofDatabase
 import com.baraa.masroof.domain.model.RawSms
 import com.baraa.masroof.domain.repository.RawSmsInsertResult
@@ -73,7 +73,7 @@ class RoomRawSmsRepositoryTest {
         val pendingLater = raw("sms-pending-b", "2026-08-04T10:00:00Z")
         val pendingEarlier = raw("sms-pending-a", "2026-08-03T10:00:00Z")
         listOf(parsed, reviewed, pendingLater, pendingEarlier).forEach { repo.insertIfAbsent(it) }
-        val success = AlJaziraParsingPipeline().parse(
+        val success = EngineFixtureParser().parse(
             SmsParseInput(parsed.id, parsed.sender, parsed.body, parsed.receivedAt),
         ) as ParseResult.Success
         RoomParsedEventRepository(db.parsedEventDao()).save(success.event, success.details)

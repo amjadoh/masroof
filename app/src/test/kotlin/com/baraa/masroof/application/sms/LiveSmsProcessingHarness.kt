@@ -14,8 +14,8 @@ import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflow
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.repository.RoomFinancialTransactionRepository
@@ -105,11 +105,11 @@ internal class LiveSmsProcessingHarness(context: Context) : AutoCloseable {
 
     val registry = BankSmsRegistry(
         listOf(
-            AlJaziraSmsAdapter(
+            engineFixtureAdapter(
                 pipeline = SmsParseGateway { input ->
                     parseCalls.incrementAndGet()
                     check(parserFailuresRemaining.getAndDecrement() <= 0) { "injected parser failure" }
-                    parseOverride?.invoke(input) ?: AlJaziraParsingPipeline().parse(input)
+                    parseOverride?.invoke(input) ?: EngineFixtureParser().parse(input)
                 },
             ),
         ),

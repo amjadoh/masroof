@@ -88,6 +88,7 @@ class DashboardProjectionBuilder(
             transactionLoanInvolvement = commitments.transactionLoanInvolvement,
             transactionDebitSpendInvolvement = cards.transactionDebitSpendInvolvement,
             transactions = context.transactions,
+            labSarEquivalents = context.sarEquivalents,
             transactionFacts = DashboardTransactionFactsBuilder.build(
                 transactions = context.transactions,
                 cardInvolvement = cards.transactionCardInvolvement,

@@ -6,8 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.bank.BankRoutingResult
 import com.baraa.masroof.bank.BankSmsAdapter
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomParsedEventRepository
 import com.baraa.masroof.data.repository.RoomRawSmsRepository
 import com.baraa.masroof.data.repository.RoomReviewRepository
@@ -49,7 +49,7 @@ class CaptureBankSmsUseCaseTest {
     private val parseCalls = AtomicInteger(0)
     private val countingGateway = SmsParseGateway { input ->
         parseCalls.incrementAndGet()
-        AlJaziraParsingPipeline().parse(input)
+        EngineFixtureParser().parse(input)
     }
 
     @Before
@@ -453,7 +453,7 @@ class CaptureBankSmsUseCaseTest {
 
     @Test
     fun ambiguousRoute_isCapturedWithItsRoute_andLeftForProcessing() = runBlocking {
-        val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter(), LookalikeAdapter()))
+        val registry = BankSmsRegistry(listOf(engineFixtureAdapter(), LookalikeAdapter()))
         val raw = live(PURCHASE_BODY, "2026-08-03T14:32:00Z")
 
         val result = CaptureBankSmsUseCase(rawRepo, registry).capture(raw)
@@ -480,7 +480,7 @@ class CaptureBankSmsUseCaseTest {
 
     private fun capture() = CaptureBankSmsUseCase(rawRepo, registry())
 
-    private fun registry() = BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = countingGateway)))
+    private fun registry() = BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = countingGateway)))
 
     private fun live(body: String, at: String): RawSms =
         AndroidSmsMapper.toRawSms(ProviderSmsRecord(null, "AlJazira", body, Instant.parse(at)))

@@ -31,6 +31,7 @@ class MasroofApplication : Application(), Configuration.Provider {
         DatabaseRestoreRecovery.recover(this)
         container = AppContainer(this)
         if (!isRobolectricUnitTest()) {
+            com.baraa.masroof.application.maintenance.RetiredLabWorkCleanup.schedule(this, container.applicationScope, container.appLogService)
             container.runStartupMaintenance()
             UpdateCheckScheduler.schedule(this)
         }

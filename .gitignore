@@ -31,3 +31,6 @@ release-signing.env
 node_modules/
 package-lock.json
 .package-lock.json
+
+# Local files preserved during the production cutover
+.local-preserved/

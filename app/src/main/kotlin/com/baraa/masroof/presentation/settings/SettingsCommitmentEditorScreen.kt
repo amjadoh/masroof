@@ -51,6 +51,7 @@ fun SettingsCommitmentEditorScreen(
     onSave: (SettingsCommitmentsWorkflow.CommitmentEditorDraft) -> Unit,
     onToggleActive: () -> Unit,
     onDelete: () -> Unit,
+    newSuggestion: Boolean = false,
 ) {
     var name by rememberSaveable { mutableStateOf(commitment.name) }
     var amountText by rememberSaveable { mutableStateOf(commitment.amount.amount.toPlainString()) }
@@ -226,7 +227,7 @@ fun SettingsCommitmentEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.settings_commitment_save)) }
 
-            OutlinedButton(
+            if (!newSuggestion) OutlinedButton(
                 onClick = onToggleActive,
                 enabled = !saving,
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor =
@@ -241,7 +242,7 @@ fun SettingsCommitmentEditorScreen(
                     },
                 )) }
 
-            OutlinedButton(
+            if (!newSuggestion) OutlinedButton(
                 onClick = { showDeleteConfirm = true },
                 enabled = !saving,
                 modifier = Modifier.fillMaxWidth(),

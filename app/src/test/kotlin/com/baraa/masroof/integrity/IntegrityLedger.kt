@@ -15,7 +15,7 @@ import com.baraa.masroof.application.sms.HistoricalSmsBatchProcessor
 import com.baraa.masroof.application.transaction.ReconciliationCompletionPolicy
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomManualReviewResolutionRepository
 import com.baraa.masroof.data.repository.RoomProcessingRetryRepository
 import com.baraa.masroof.data.repository.RoomUserCorrectionRepository
@@ -104,7 +104,7 @@ internal class IntegrityLedger(val world: DashboardLedgerWorld) {
     val clock: InstantClock = InstantClock { Instant.parse("2026-09-15T09:00:00Z") }
     val corrections = RoomUserCorrectionRepository(world.db.userCorrectionDao())
     val retries = RoomProcessingRetryRepository(world.db.processingRetryDao())
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
     private val discovery = OwnershipDiscoveryService(world.accounts, world.cards, world.loans)
     private val ownership = OwnershipResolver(world.accounts, world.cards, world.loans)
     private val confirmation = OwnershipConfirmationService(world.accounts, world.cards, world.loans)

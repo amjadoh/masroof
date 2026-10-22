@@ -40,6 +40,7 @@ data class DashboardProjection(
     /** Container ids of owned registry accounts, for account filtering. */
     val ownedAccountContainerIds: Set<String> = emptySet(),
     val meta: DashboardMeta,
+    val labSarEquivalents: Map<String, com.baraa.masroof.core.money.Money> = emptyMap(),
     val accountRegistry: List<AccountRegistryEntry>,
     val cardRegistry: List<CardRegistryEntry>,
 ) {
@@ -67,5 +68,6 @@ data class DashboardProjection(
             transactionFacts = transactionFacts,
             ownedAccountContainerIds = ownedAccountContainerIds,
             isCurrentPeriod = isCurrentPeriod,
+            labSarEquivalents = labSarEquivalents,
         )
 }

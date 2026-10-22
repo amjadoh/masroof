@@ -101,6 +101,7 @@ class DatabaseBackupService(
                     File(staging, BackupPackageFormat.PREFERENCES_ENTRY)
                         .writeText(BackupPackageCodec.encodePreferences(capturePreferences()))
 
+                    com.baraa.masroof.application.analytics.LabAnalyticsBackup.validateExportSize(staging, archiveLimits)
                     writeEncryptedPackage(staging, destination, secret)
                 } finally {
                     SensitiveFileCleanup.delete(staging)
@@ -615,6 +616,7 @@ class DatabaseBackupService(
             null
         }
         return BackupPreferencesSnapshot(
+            labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(appContext),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
             historicalImportStartEpochMillis = importStart,
@@ -631,6 +633,7 @@ class DatabaseBackupService(
     }
 
     private fun restorePreferences(snapshot: BackupPreferencesSnapshot) {
+        com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(appContext, snapshot.labAnalysis)
         val onboarding = appContext.getSharedPreferences(
             SharedPrefsOnboardingPreferencesRepository.PREFS_NAME,
             Context.MODE_PRIVATE,

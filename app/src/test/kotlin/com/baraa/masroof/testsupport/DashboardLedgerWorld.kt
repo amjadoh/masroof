@@ -22,7 +22,7 @@ import com.baraa.masroof.application.sms.HistoricalSmsBatchProcessor
 import com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflow
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
@@ -108,7 +108,7 @@ class DashboardLedgerWorld(context: Context) : AutoCloseable {
     }
 
     private val importClock = InstantClock { Instant.parse("2026-09-01T00:00:00Z") }
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
     private val discovery = OwnershipDiscoveryService(accounts, cards, loans)
     private val reconciliation = TransactionReconciliationService(
         parsedEventRepository = parsedRepo,

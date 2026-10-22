@@ -1,5 +1,0 @@
-Engine family: TRANSFER_IN
-Amount: Money(amount=2000.00, currency=SAR)
-Model evidence: [engine:bank-rules-independent-v11, rules:literal-v1-r9-a0d8637b1e0fd799d1268c336945fec57ca062303986b6a3d7b0efb4cb5fb5bb, family_origin:ML, model:family-nb-v1-244ca8bba9635681]
-Financial type: EXTERNAL_TRANSFER_IN
-No manual approval was requested.

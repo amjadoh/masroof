@@ -1,9 +1,0 @@
-{
-  "workload": "40 synthetic purchases through production workflows",
-  "comparison": "encrypted export versus restored database after original startup re-discovery",
-  "financial_transaction": {"before": 40, "after": 40, "columnDifferences": []},
-  "account_registry": {"before": 1, "after": 1, "columnDifferences": []},
-  "card_registry": {"before": 1, "after": 1, "columnDifferences": [{"column": "lastSeenRawSmsId", "before": "replica-synthetic-39", "after": "replica-synthetic-9"}]},
-  "explanation": "Original re-discovery iterates stored event ids lexically. The observation pointer is not a financial value or ownership decision. Shared acceptance fingerprint compares every transaction and ownership/configuration field and separately checks all observation pointers reference retained evidence.",
-  "productionCodeChanged": false
-}
