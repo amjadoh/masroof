@@ -115,6 +115,19 @@ object LabAnalyticsBackup {
             require(s.periodEnd - s.periodStart in 1..35 && s.days.size <= 70)
             require(s.remaining == null || s.remaining >= 0)
             require(s.quality.used >= 0 && s.quality.coveredDays >= 0)
+            require((s.wholeDaysLower == null) == (s.wholeDaysUpper == null))
+            require(s.budgetLower == null || (s.total != null && s.budgetLower <= s.total))
+            s.wholeDaysLower?.let { require(it >= 0 && s.wholeDaysUpper!! >= it) }
+            s.wholeDaysFrom?.let { require(it in s.periodStart until s.periodEnd) }
+            s.evaluations.forEach { require(it.horizon in 1..31 && it.count >= 8 && it.mae >= 0) }
+            require(s.evaluations.map { it.horizon }.distinct().size == s.evaluations.size)
+            s.insights?.let { insight ->
+                require(insight.components.map { it.key }.toSet() == setOf("PURCHASES", "CASH", "TRANSFERS", "REFUNDS"))
+                require(insight.components.size == 4 && insight.components.fold(0L) { sum, c -> Math.addExact(sum, c.amount) } == s.actual)
+                require(insight.merchants.size <= 5)
+                insight.comparison?.let { c -> require(c.through >= c.from && c.previousThrough - c.previousFrom == c.through - c.from &&
+                    c.delta == Math.subtractExact(c.current, c.previous) && c.changes.size <= 3) }
+            }
         }
         archive.models.forEach { row ->
             if (row.id.startsWith("baseline:")) {
@@ -127,6 +140,7 @@ object LabAnalyticsBackup {
             require(m.weights.size == 12 && m.means.size == 12 && m.scales.size == 12)
             require((m.weights + m.means + m.scales).all { it.isFinite() } && m.scales.all { it > 0 })
             require(m.baselineMae.isFinite() && m.modelMae.isFinite())
+            require((m.signedErrors + m.wholeDayErrors).all { (h, values) -> h in 1..31 && values.all { it.isFinite() } })
         }
         archive.candidates.forEach { row ->
             val c = json.decodeFromString(AnalysisCandidate.serializer(), row.payload)

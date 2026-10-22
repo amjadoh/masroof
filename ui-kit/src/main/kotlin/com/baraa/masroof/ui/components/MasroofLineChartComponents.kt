@@ -147,7 +147,7 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
     modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
     onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
     role: MasroofHeroRole = MasroofHeroRole.Brand,
-    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "", showAverage: Boolean = false, displayText: (String) -> String = { it }) {
+    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "", showAverage: Boolean = false, displayText: (String) -> String = { it }, expectedFromIndex: Int? = null) {
     if (values.isEmpty()) return
     val selected = MasroofLineChartLayout.coerceSelectedIndex(selectedPointIndex, values.size)
     val mirror = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -243,9 +243,23 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
                 MasroofReference.averageLineStroke.toPx(), pathEffect = PathEffect.dashPathEffect(
                     floatArrayOf(MasroofReference.averageDash.toPx(), MasroofReference.averageDash.toPx())))
         }
-        val path = Path()
-        values.indices.forEach { i -> val p = point(i); if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
-        drawPath(path, line, style = Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        val futureStart = expectedFromIndex?.coerceIn(0, values.size)
+        val actualPath = Path(); val expectedPath = Path()
+        values.indices.forEach { i ->
+            val p = point(i)
+            if (futureStart == null || i < futureStart) {
+                if (i == 0) actualPath.moveTo(p.x, p.y) else actualPath.lineTo(p.x, p.y)
+            } else {
+                if (i == futureStart) {
+                    val anchor = point((i - 1).coerceAtLeast(0))
+                    expectedPath.moveTo(anchor.x, anchor.y)
+                }
+                expectedPath.lineTo(p.x, p.y)
+            }
+        }
+        drawPath(actualPath, line, style = Stroke(stroke, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        if (futureStart != null) drawPath(expectedPath, line, style = Stroke(stroke, cap = StrokeCap.Round,
+            join = androidx.compose.ui.graphics.StrokeJoin.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))))
         values.indices.forEach { drawCircle(line, radius, point(it)) }
         selected?.let { index ->
             val p = point(index)

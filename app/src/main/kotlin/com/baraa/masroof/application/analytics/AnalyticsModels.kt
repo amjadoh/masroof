@@ -9,17 +9,24 @@ import kotlinx.serialization.Serializable
 @Serializable data class AnalysisDue(val id: String, val name: String, val amount: Long, val day: Long?, val confirmed: Boolean)
 @Serializable data class AnalysisCandidate(val key: String, val name: String, val amount: Long, val lower: Long,
     val upper: Long, val nextDay: Long, val cadence: String, val sourceIds: List<String>, val latestDay: Long,
-    val latestAmount: Long, val referenceAmount: Long?, val increased: Boolean)
+    val latestAmount: Long, val referenceAmount: Long?, val increased: Boolean, val overdue: Boolean = false)
 @Serializable data class AnalysisQuality(val used: Int, val excluded: Map<String, List<String>>, val unusual: List<String>,
     val coveredDays: Int, val coverageKnown: Boolean, val pendingReviews: Int, val blocked: Boolean,
-    val historyFrom: Long? = null, val historyThrough: Long? = null)
+    val historyFrom: Long? = null, val historyThrough: Long? = null,
+    val reasons: List<String> = emptyList())
+@Serializable data class AnalysisEvaluation(val horizon: Int, val count: Int, val mae: Long, val bias: Long)
 @Serializable data class AnalysisSnapshot(val periodStart: Long, val periodEnd: Long, val issuedAt: Long,
     val sourceHash: String, val status: String, val method: String, val actual: Long, val remaining: Long?,
     val total: Long?, val lower: Long?, val upper: Long?, val days: List<AnalysisDay>, val quality: AnalysisQuality,
     val candidates: List<AnalysisCandidate>, val dues: List<AnalysisDue>, val completedPeriods: Int,
     val cleaningVersion: String = AnalyticsVersion.CLEANING, val featureVersion: String = AnalyticsVersion.FEATURES,
     val engineVersion: String = AnalyticsVersion.MODEL,
-    val trainingFrom: Long? = null, val trainingThrough: Long? = null)
+    val trainingFrom: Long? = null, val trainingThrough: Long? = null,
+    val insights: com.baraa.masroof.application.dashboard.AnalysisSpendingInsights? = null,
+    val evaluations: List<AnalysisEvaluation> = emptyList(), val modelReason: String? = null,
+    val evaluationVersion: String? = null, val wholeDaysFrom: Long? = null,
+    val wholeDaysLower: Long? = null, val wholeDaysUpper: Long? = null,
+    val budgetLower: Long? = null)
 data class AnalysisUiState(val snapshot: AnalysisSnapshot? = null, val updating: Boolean = true,
     val unavailable: Boolean = false, val alerts: List<AnalysisAlertRow> = emptyList(),
     val preferences: AnalysisPreferencesRow = AnalysisPreferencesRow(), val history: List<AnalysisSnapshot> = emptyList(),
@@ -40,10 +47,12 @@ fun AnalysisSnapshot.chart(): List<AnalysisChartPoint> = days.groupBy { it.day }
 @Serializable data class StoredHuber(val weights: List<Double>, val means: List<Double>, val scales: List<Double>,
     val through: Long, val fingerprint: String, val baselineMae: Double, val modelMae: Double,
     val errors: Map<Int, List<Double>>, val accepted: Boolean, val features: String,
-    val modelVersion: String = AnalyticsVersion.MODEL, val cleaningVersion: String = AnalyticsVersion.CLEANING, val from: Long = 0) {
-    fun model() = HuberModel(weights, means, scales, through, fingerprint, baselineMae, modelMae, errors, accepted, features, from)
+    val modelVersion: String = AnalyticsVersion.MODEL, val cleaningVersion: String = AnalyticsVersion.CLEANING, val from: Long = 0,
+    val signedErrors: Map<Int, List<Double>> = emptyMap(), val wholeDayErrors: Map<Int, List<Double>> = emptyMap(), val evaluationVersion: String? = null) {
+    fun model() = HuberModel(weights, means, scales, through, fingerprint, baselineMae, modelMae, errors, accepted, features, from, signedErrors, wholeDayErrors)
     companion object { fun from(m: HuberModel) = StoredHuber(m.weights, m.means, m.scales, m.trainedThrough,
-        m.trainingFingerprint, m.baselineMae, m.modelMae, m.errorsByHorizon, m.accepted, m.featureVersion, from = m.trainedFrom) }
+        m.trainingFingerprint, m.baselineMae, m.modelMae, m.errorsByHorizon, m.accepted, m.featureVersion, from = m.trainedFrom,
+        signedErrors = m.signedErrors, wholeDayErrors = m.wholeDayErrors, evaluationVersion = AnalyticsVersion.EVALUATION) }
 }
 @Serializable data class StoredBaseline(val medians: List<Long>, val from: Long, val through: Long,
     val errors: Map<Int, List<Double>>, val kind: String = "WEEKDAY_MEDIAN",
@@ -65,8 +74,7 @@ internal fun purchasePeriodHistory(data: CleanData, currentStart: Long): List<An
         period = com.baraa.masroof.domain.period.FinancialPeriodPolicy.previous(period)
         val start = period.startDate.toEpochDay(); val end = period.endDateExclusive.toEpochDay()
         val days = data.days.filter { it.day in start until end }
-        val covered = days.count { it.covered }
-        AnalysisPeriod(start, end, if (covered == 0) null else days.fold(0L) { sum, d -> Math.addExact(sum, d.net) }, covered, (end - start).toInt())
+        com.baraa.masroof.application.dashboard.AnalysisPeriodHistoryCalculator.period(start, end, days)
     }.reversed()
 }
 
@@ -77,11 +85,36 @@ fun normalizeAnalysisNumber(value: String): String = value.trim().map { c ->
     when { c == '٫' -> '.'; c.isDigit() -> Character.digit(c, 10).toString().single(); else -> c }
 }.joinToString("")
 
-data class AnalysisHistoryView(val periods: List<AnalysisPeriod>, val available: Int, val total: Long?, val chartPeriods: List<AnalysisPeriod>)
+data class AnalysisHistoryView(val periods: List<AnalysisPeriod>, val available: Int, val total: Long?, val chartPeriods: List<AnalysisPeriod>,
+    val completeCount: Int, val average: Long?, val latestChange: Long?)
 fun AnalysisUiState.purchaseHistory(count: Int): AnalysisHistoryView {
     require(count == 3 || count == 6)
-    val periods = purchasePeriods.takeLast(count)
-    val amounts = periods.mapNotNull { it.actual }
-    return AnalysisHistoryView(periods, amounts.size, amounts.takeIf { it.isNotEmpty() }?.fold(0L, Math::addExact),
-        periods.takeLastWhile { it.complete && it.actual != null })
+    return com.baraa.masroof.application.dashboard.AnalysisPeriodHistoryCalculator.summarize(purchasePeriods.takeLast(count))
+}
+
+data class AnalysisHistoryGroup(val snapshots: List<AnalysisSnapshot>)
+fun AnalysisUiState.forecastHistoryGroups(): List<AnalysisHistoryGroup> {
+    val groups = mutableListOf<MutableList<AnalysisSnapshot>>()
+    history.forEach { value ->
+        val prior = groups.lastOrNull()?.lastOrNull()
+        if (prior != null && prior.periodStart == value.periodStart && prior.periodEnd == value.periodEnd &&
+            prior.total == value.total && prior.actual == value.actual && prior.remaining == value.remaining &&
+            prior.method == value.method && prior.status == value.status && prior.lower == value.lower && prior.upper == value.upper &&
+            prior.wholeDaysLower == value.wholeDaysLower && prior.wholeDaysUpper == value.wholeDaysUpper) groups.last().add(value)
+        else groups.add(mutableListOf(value))
+    }
+    return groups.map { AnalysisHistoryGroup(it.toList()) }
+}
+
+/** Count complete covered salary periods before an evaluation origin, never using later coverage. */
+internal fun completedAnalysisPeriods(data: CleanData, before: Long): Int {
+    val first = data.days.firstOrNull { it.covered && it.day < before }?.day ?: return 0
+    var period = com.baraa.masroof.domain.period.FinancialPeriodPolicy.periodContaining(java.time.LocalDate.ofEpochDay(first))
+    var count = 0
+    val covered = data.days.filter { it.covered && it.day < before }.map { it.day }.toSet()
+    while (period.endDateExclusive.toEpochDay() <= before) {
+        if ((period.startDate.toEpochDay() until period.endDateExclusive.toEpochDay()).all { it in covered }) count++
+        period = com.baraa.masroof.domain.period.FinancialPeriodPolicy.next(period)
+    }
+    return count
 }

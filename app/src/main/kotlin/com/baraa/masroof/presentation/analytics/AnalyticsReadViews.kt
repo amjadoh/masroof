@@ -35,6 +35,8 @@ import java.time.ZoneId
             val total = history.total
             Text(stringResource(R.string.lab_analysis_history_total))
             MasroofAmountText(formatLocalizedMoney(analysisAmount(total)), MasroofAmountRole.Card)
+            history.average?.let { Text(stringResource(R.string.lab_analysis_history_average, history.completeCount, formatLocalizedMoney(analysisAmount(it)))) }
+            history.latestChange?.let { Text(stringResource(R.string.lab_analysis_history_change, formatLocalizedMoney(analysisAmount(it)))) }
             if (periods.any { it.actual != null && !it.complete }) Text(stringResource(R.string.lab_analysis_partial), style = MaterialTheme.typography.bodySmall)
             // Never connect a line across a missing or partially covered period.
             if (history.chartPeriods.isNotEmpty()) {
@@ -63,7 +65,7 @@ import java.time.ZoneId
 }
 
 @Composable internal fun EvidenceGroup(ids: List<String>, reason: String, workflow: LabAnalyticsWorkflow,
-    source: String, onOpenTransaction: (String) -> Unit) {
+    source: String, onOpenTransaction: (String) -> Unit, tag: String? = null) {
     var expanded by rememberSaveable(reason) { mutableStateOf(false) }
     var visible by rememberSaveable(reason) { mutableIntStateOf(20) }
     var retry by remember { mutableIntStateOf(0) }
@@ -79,7 +81,7 @@ import java.time.ZoneId
         catch (_: Exception) { failed = true }
     }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-        MasroofTextButton(onClick = { expanded = !expanded }) { Text("$reason (${ids.size})") }
+        MasroofTextButton(onClick = { expanded = !expanded }, modifier = if (tag == null) Modifier else Modifier.testTag(tag)) { Text("$reason (${ids.size})") }
         if (expanded) {
             when {
                 failed -> MasroofTextButton(onClick = { retry++ }) { Text(stringResource(R.string.dashboard_retry)) }

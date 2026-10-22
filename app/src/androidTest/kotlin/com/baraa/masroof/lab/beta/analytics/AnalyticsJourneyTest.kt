@@ -4,6 +4,10 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -48,6 +52,11 @@ class AnalyticsJourneyTest {
                 val overview = container.dashboardService.loadOverview(container.dashboardPeriodWorkflow.currentPeriod())
                 val expected = overview.spendingTrends!!.purchases.totalSpending.amount.movePointRight(2).longValueExact()
                 assertEquals("Purchase scope exactly matches the current graph", expected, workflow.state.value.snapshot!!.actual)
+                val snapshot = workflow.state.value.snapshot!!
+                assertEquals(snapshot.actual, snapshot.insights!!.components.sumOf { it.amount })
+                assertNotNull(snapshot.insights!!.comparison)
+                assertTrue(snapshot.insights!!.merchants.isNotEmpty())
+                assertEquals(com.baraa.masroof.lab.analytics.AnalyticsVersion.EVALUATION, snapshot.evaluationVersion)
                 for (past in workflow.state.value.purchasePeriods.filter { it.actual != null }) {
                     val period = com.baraa.masroof.domain.period.FinancialPeriod(LocalDate.ofEpochDay(past.start), LocalDate.ofEpochDay(past.end))
                     val actual = container.dashboardService.loadOverview(period).spendingTrends!!.purchases.totalSpending.amount.movePointRight(2).longValueExact()
@@ -61,11 +70,13 @@ class AnalyticsJourneyTest {
                 workflow.request()
                 withTimeout(90_000) { while (workflow.state.value.updating || workflow.state.value.snapshot?.sourceHash == priorHash) delay(100) }
                 assertEquals(expected + 2000, workflow.state.value.snapshot!!.actual)
+                assertEquals(expected + 2000, workflow.state.value.snapshot!!.insights!!.components.sumOf { it.amount })
                 val afterCorrection = workflow.state.value.snapshot!!.sourceHash
                 container.database.openHelper.writableDatabase.execSQL("DELETE FROM financial_transaction WHERE id='cash'")
                 workflow.request()
                 withTimeout(90_000) { while (workflow.state.value.updating || workflow.state.value.snapshot?.sourceHash == afterCorrection) delay(100) }
                 assertEquals(expected - 5000, workflow.state.value.snapshot!!.actual)
+                assertEquals(expected - 5000, workflow.state.value.snapshot!!.insights!!.components.sumOf { it.amount })
                 assertEquals(rows.size - 1, container.financialTransactionRepository.listAll().size)
             }
             var locale by mutableStateOf("ar")
@@ -96,6 +107,8 @@ class AnalyticsJourneyTest {
                 compose.waitForIdle(); instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK); compose.waitForIdle()
                 compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
                 compose.onNodeWithText(text(R.string.lab_analysis_title, language)).assertIsDisplayed()
+                compose.onNodeWithTag("analysis-spending-explanation").performScrollTo().assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-spending-explanation")
                 compose.onNodeWithText(text(R.string.lab_analysis_show_data, language)).performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-data-details")
@@ -107,7 +120,7 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithText(text(R.string.lab_analysis_commitments, language), useUnmergedTree = true).performClick()
                 screen("$language-${if (isDark) "dark" else "light"}-commitments")
                 compose.onNodeWithText(text(R.string.lab_analysis_alerts, language), useUnmergedTree = true).assertDoesNotExist()
-                compose.onNodeWithText(text(R.string.lab_analysis_purchases, language), useUnmergedTree = true).performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, language), useUnmergedTree = true).performClick()
                 compose.onNodeWithTag("lab-history-3").performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_history_purchases, language)).performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-history")
@@ -152,7 +165,7 @@ class AnalyticsJourneyTest {
                     val alertId = workflow.state.value.alerts.first { it.kind == "ACTUAL" }.id
                     compose.runOnUiThread { AnalyticsNavigation.open(alertId) }
                     compose.waitForIdle()
-                    compose.onNodeWithText(text(R.string.lab_analysis_purchases, "en")).assertIsSelected()
+                    compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, "en")).assertIsSelected()
                     workflow.updatePreferences(workflow.state.value.preferences.copy(budget = 120000, phone = false))
                     workflow.refresh()
                     withTimeout(30_000) { while (workflow.state.value.updating || workflow.state.value.preferences.budget != 120000L) delay(100) }
@@ -244,7 +257,7 @@ class AnalyticsJourneyTest {
             }
             compose.runOnUiThread { language = "en"; dark = false }
             compose.onNodeWithTag("lab-alert-${alert.id}").performScrollTo().performClick()
-            compose.onNodeWithText(text(R.string.lab_analysis_purchases, "en")).assertIsSelected()
+            compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, "en")).assertIsSelected()
             compose.waitUntil(30_000) { workflow.state.value.alerts.first { it.id == alert.id }.read }
             compose.runOnUiThread { center = true }
             compose.onNode(hasText(text(R.string.lab_analysis_actions, "en")) and hasAnyAncestor(hasTestTag("lab-alert-container-${alert.id}"))).performClick()
@@ -253,6 +266,45 @@ class AnalyticsJourneyTest {
             compose.onNodeWithTag("lab-alert-${alert.id}").assertDoesNotExist()
             compose.onNodeWithText(text(R.string.lab_analysis_settings, "en")).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_budget_section, "en")).assertIsDisplayed()
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+    @Test fun qualityActionsAndSpendingEvidenceAreReachableWithoutChangingFinancialData() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var opened: String? = null
+        var review = false; var permission = false; var rescan = false
+        try {
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.labAnalytics.refresh() }
+            val workflow = c.labAnalytics
+            val original = runBlocking { c.financialTransactionRepository.listAll() }
+            val snapshot = requireNotNull(workflow.state.value.snapshot).let { it.copy(quality = it.quality.copy(
+                pendingReviews = 1, blocked = true, reasons = listOf("SMS_PERMISSION", "PROCESSING_RETRY"))) }
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")) }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config) {
+                    MasroofTheme { Column(Modifier.verticalScroll(rememberScrollState())) {
+                        AnalysisSpendingExplanation(snapshot, workflow, { opened = it })
+                        AnalysisDataQuality(snapshot, workflow, { opened = it }, { review = true }, { permission = true }, { rescan = true })
+                    } }
+                }
+            } }
+            compose.onNodeWithTag("analysis-expand-insights").performScrollTo().performClick()
+            compose.onNodeWithTag("analysis-component-PURCHASES").performScrollTo().performClick()
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("lab-evidence-today-spend").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("lab-evidence-today-spend").performScrollTo().performClick()
+            assertEquals("today-spend", opened)
+            compose.onNodeWithTag("analysis-expand-insights").performScrollTo().performClick()
+            compose.onNodeWithTag("analysis-open-review").performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_quality_permission_action, "en")).performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_quality_retry_action, "en")).performScrollTo().performClick()
+            assertTrue(review); assertTrue(permission); assertTrue(rescan)
+            assertEquals(original, runBlocking { c.financialTransactionRepository.listAll() })
+            screen("en-light-quality-actions")
         } finally {
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
             runBlocking { TestRuntime.reset(host) }
