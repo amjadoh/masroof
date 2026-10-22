@@ -60,7 +60,12 @@ jobs:
         run: sudo install -d -m 0777 /opt/cursor/artifacts
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testDebugUnitTest :bank-engine:test :finance-core:test :ml-assist:test --stacktrace
+
+      - name: Verify trained model reproducibility
+        run: |
+          python3 ml-assist/tools/train_family_model.py --check
+          python3 ml-assist/tools/test_training.py
 
       - name: Upload Android unit-test reports
         if: always()
@@ -70,8 +75,9 @@ jobs:
           path: |
             ui-kit/build/reports/tests/
             app/build/reports/tests/
-            lab/beta/build/reports/tests/
-            lab/beta/build/reports/beta-interpretation/
+            bank-engine/build/reports/tests/
+            finance-core/build/reports/tests/
+            ml-assist/build/reports/tests/
           if-no-files-found: warn
 
   static-analysis:
@@ -99,7 +105,7 @@ jobs:
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
 
       - name: Lint and detekt
-        run: ./gradlew lintDebug detekt :lab:upgrade-host:lintAfterDebug --stacktrace
+        run: ./gradlew lintDebug detekt --stacktrace
 
   # AndroidJUnitRunner partitions the complete production suite across two devices.
   # Keep fail-fast disabled so a failure never cancels the other half's diagnostics.
@@ -203,83 +209,13 @@ jobs:
       - name: Require statement screenshots
         run: find m19-statement-screenshots -name 'm19-*.png' | grep -q .
 
-  emulator-beta:
-    needs: android-version
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Configure local SDK path
-        id: sdk
-        run: |
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
-          echo "root=${ANDROID_SDK_ROOT}" >> "$GITHUB_OUTPUT"
-
-      # Cache SDK files only. Each job still boots a clean, independent AVD.
-      - name: Cache Android system image
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.api-level }}/google_apis/x86_64
-          key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.api-level }}-google_apis-x86_64
-
-      # Compile without a running emulator competing for runner CPU and memory.
-      - name: Assemble Beta device tests
-        run: ./gradlew :lab:beta:assembleDebugAndroidTest --stacktrace
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.users.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Instrumentation smoke
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ needs.android-version.outputs.api-level }}
-          target: google_apis
-          arch: x86_64
-          # The generic 320x640 AVD cannot exercise the 1600x2000 unfolded window.
-          profile: pixel_2
-          disable-animations: true
-          emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: |
-            bash .github/scripts/run-instrumentation-smoke.sh beta
-
-      - name: Upload Beta instrumentation reports and screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: beta-instrumentation-reports
-          path: |
-            lab/beta/build/reports/androidTests/connected/debug/
-            lab/beta/build/outputs/androidTest-results/connected/debug/
-            beta-dashboard-screenshots/
-          if-no-files-found: warn
-
   # Independent recovery suites run on separate devices. Never shard the phases
   # within a stateful halt/resume journey across processes or runners.
   emulator-recovery:
     strategy:
       fail-fast: false
       matrix:
-        suite: [beta, production, upgrade]
+        suite: [production, upgrade]
     needs: android-version
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -287,6 +223,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The signed-update rehearsal builds the pinned pre-cutover commit.
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -337,19 +276,12 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
-      - name: Upload synthetic signed-update and performance diagnostics
+      - name: Upload synthetic signed-update diagnostics
         if: always() && matrix.suite == 'upgrade'
         uses: actions/upload-artifact@v4
         with:
-          name: beta-upgrade-diagnostics-${{ matrix.suite }}
-          path: beta-upgrade-diagnostics/
-          if-no-files-found: warn
-      - name: Upload replica recovery diagnostics
-        if: always() && matrix.suite == 'beta'
-        uses: actions/upload-artifact@v4
-        with:
-          name: beta-replica-diagnostics-${{ matrix.suite }}
-          path: beta-replica-diagnostics/
+          name: app-upgrade-diagnostics-${{ matrix.suite }}
+          path: app/build/reports/apk-upgrade/
           if-no-files-found: warn
 
   # Retain one required lifecycle result; any failed/cancelled suite fails it.

@@ -35,7 +35,7 @@ import com.baraa.masroof.sms.mapper.AndroidSmsMapper
 import com.baraa.masroof.sms.time.InstantClock
 import com.baraa.masroof.testsupport.AlJaziraFixtureInbox
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomParsedEventRepository
 import com.baraa.masroof.data.repository.RoomRawSmsRepository
 import com.baraa.masroof.data.room.MasroofDatabase
@@ -223,7 +223,7 @@ class HistoricalSmsScannerTest {
         val exploding = SmsParseGateway { throw IllegalStateException("parse boom") }
         val svc = batchProcessor(
             RoomRawSmsRepository(db.rawSmsDao()),
-            BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = exploding))),
+            BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = exploding))),
         )
         val source = FakeSmsDataSource(
             listOf(
@@ -248,7 +248,7 @@ class HistoricalSmsScannerTest {
 
     private fun batchProcessor(
         rawSmsRepository: RawSmsRepository,
-        registry: BankSmsRegistry = BankSmsRegistry(listOf(AlJaziraSmsAdapter())),
+        registry: BankSmsRegistry = BankSmsRegistry(listOf(engineFixtureAdapter())),
     ) = HistoricalSmsBatchProcessor(
         capture = CaptureBankSmsUseCase(rawSmsRepository, registry),
         processStored = ProcessStoredSmsUseCase(
@@ -406,7 +406,7 @@ class HistoricalSmsScannerTest {
         private val accounts = RoomAccountRegistryRepository.from(db)
         private val cards = RoomCardRegistryRepository.from(db)
         private val loans = RoomLoanRegistryRepository.from(db)
-        private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+        private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
         private val discovery = OwnershipDiscoveryService(accounts, cards, loans)
         private val reconciliation = TransactionReconciliationService(
             parsedEventRepository = parsedRepo,

@@ -1,6 +1,6 @@
 package com.baraa.masroof.testsupport
 
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.parsing.fixtures.AlJaziraFixtureLoader
 import com.baraa.masroof.parsing.model.ParseResult
 import com.baraa.masroof.parsing.model.SmsParseInput
@@ -29,7 +29,7 @@ object AlJaziraFixtureInbox {
             .sortedBy { it.receivedAt }
 
     private fun occurredAtLocal(sender: String, body: String): LocalDateTime? {
-        val result = AlJaziraParsingPipeline().parse(
+        val result = EngineFixtureParser().parse(
             SmsParseInput("probe", sender, body, Instant.parse("2026-08-11T00:00:00Z")),
         )
         val details = when (result) {

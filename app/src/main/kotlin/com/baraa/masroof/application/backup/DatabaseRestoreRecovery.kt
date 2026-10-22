@@ -85,6 +85,7 @@ object DatabaseRestoreRecovery {
         val themeMode: String,
         val reparsedSchemaVersion: Int?,
         val transferIntegrityRepairVersion: Int?,
+        val labAnalysis: String? = null,
     )
 
     fun recover(context: Context) {
@@ -121,6 +122,7 @@ object DatabaseRestoreRecovery {
             null
         }
         return PreferenceSnapshot(
+            labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(context),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
             historicalImportStartEpochMillis = importStart,
@@ -147,6 +149,7 @@ object DatabaseRestoreRecovery {
             themeMode = snapshot.themeMode,
             reparsedSchemaVersion = null,
             transferIntegrityRepairVersion = null,
+            labAnalysis = snapshot.labAnalysis,
         )
 
     internal fun writeSnapshots(live: File, original: PreferenceSnapshot, incoming: PreferenceSnapshot) {
@@ -497,6 +500,7 @@ object DatabaseRestoreRecovery {
     }
 
     private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot) {
+        com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(context, snapshot.labAnalysis)
         val onboarding = prefs(context, SharedPrefsOnboardingPreferencesRepository.PREFS_NAME)
         val locale = prefs(context, SharedPrefsAppLocaleRepository.PREFS_NAME)
         val theme = prefs(context, SharedPrefsThemePreferencesRepository.PREFS_NAME)
@@ -684,10 +688,12 @@ object DatabaseRestoreRecovery {
             themeMode = values["themeMode"].orEmpty().ifBlank { ThemeMode.DEFAULT.name },
             reparsedSchemaVersion = values["reparsedSchemaVersion"]?.toIntOrNull(),
             transferIntegrityRepairVersion = values["transferIntegrityRepairVersion"]?.toIntOrNull(),
+            labAnalysis = values["labAnalysis"]?.takeIf { it.isNotEmpty() }?.let { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) },
         )
     }
 
     private fun encodePreferences(snapshot: PreferenceSnapshot): String = buildString {
+        appendLine("labAnalysis=${snapshot.labAnalysis?.let { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) } ?: ""}")
         appendLine("onboardingStarted=${snapshot.onboardingStarted}")
         appendLine("onboardingCompleted=${snapshot.onboardingCompleted}")
         appendLine("historicalImportStartEpochMillis=${snapshot.historicalImportStartEpochMillis ?: ""}")

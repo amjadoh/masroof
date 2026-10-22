@@ -39,7 +39,6 @@ android {
         buildConfigField("String", "GITHUB_OWNER", "\"$githubOwner\"")
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
         buildConfigField("boolean", "ENABLE_DESIGN_CATALOG", "false")
-        buildConfigField("boolean", "ENABLE_MASROOF_BETA", "true")
 
         testInstrumentationRunner = "com.baraa.masroof.instrumentation.MasroofAndroidTestRunner"
         // Orchestrator clears app data before each device smoke so journeys do not leak.
@@ -48,7 +47,7 @@ android {
         // invocations. clearPackageData=true would wipe that database, so the
         // orchestrated suite never runs them. scripts/m13-process-death.sh does.
         testInstrumentationRunnerArguments["notPackage"] =
-            "com.baraa.masroof.instrumentation.processdeath"
+            "com.baraa.masroof.instrumentation.processdeath,com.baraa.masroof.instrumentation.upgrade"
     }
 
     signingConfigs {
@@ -114,6 +113,7 @@ android {
     // MigrationTestHelper use — no duplicate committed copies.
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        getByName("androidTest").assets.srcDir("src/test/resources/testdata")
     }
 }
 
@@ -123,7 +123,9 @@ ksp {
 
 dependencies {
     implementation(project(":ui-kit"))
-    implementation(project(":lab:beta"))
+    implementation(project(":bank-engine"))
+    implementation(project(":finance-core"))
+    implementation(project(":ml-assist"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)

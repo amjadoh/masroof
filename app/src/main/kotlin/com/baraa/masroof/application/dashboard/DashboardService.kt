@@ -49,6 +49,7 @@ data class DashboardOverview(
     /** Container ids of owned registry accounts, for account filtering. */
     val ownedAccountContainerIds: Set<String> = emptySet(),
     val isCurrentPeriod: Boolean,
+    val labSarEquivalents: Map<String, com.baraa.masroof.core.money.Money> = emptyMap(),
 )
 
 /**

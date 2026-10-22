@@ -2,13 +2,13 @@
 
 ## Design system and theme
 
-- All UI must follow the shared theme in `presentation/theme/` — do not introduce ad-hoc colors, typography, spacing, or icon sizes.
+- All UI must follow the shared theme in `ui-kit/src/main/kotlin/com/baraa/masroof/ui/theme/` — do not introduce ad-hoc colors, typography, spacing, or icon sizes.
 - Use `MasroofTheme` / `MaterialTheme` for colors and typography; extended semantic colors live in `MasroofThemeExtras.extendedColors`.
 - Spacing and sizing tokens: `MasroofSpacing`, `MasroofIconSizes`, `MasroofElevation`, `MasroofShapes`.
 - Reuse shared components from `presentation/common/` (`MasroofCard`, `MasroofSectionHeader`, `MasroofAmountText`, `MasroofMoneyRow`, `MasroofSecondaryScaffold`, etc.) instead of one-off layouts.
 - All modal bottom sheets use `MasroofBottomSheet`; geometry and adaptive widths live in `MasroofSheetTokens`. Header/actions stay fixed and only the body scrolls. Multiple-choice rows use `MasroofSheetChoices`. Draft changes apply only on Save/Apply; Back, scrim, swipe, Close and Cancel discard them. Busy financial writes block dismissal.
 - Chart category projections and filtering live in application dashboard builders / `ChartDataWorkflow`. Chart choices never change entity balances, dues, or full-scope summary metrics. Persist keys with their bank-qualified entity identity, never translated names or only last4.
-- Do not add hardcoded `dp` values in feature screens when an existing token fits; add a new token in `presentation/theme/` only when the design truly needs a new size.
+- Do not add hardcoded `dp` values in feature screens when an existing token fits; add a new token in `ui-kit/src/main/kotlin/com/baraa/masroof/ui/theme/` only when the design truly needs a new size.
 - App navigation lives in `presentation/navigation/` (`MasroofRoot`, `HomeDestination`, `SettingsDestination`).
 - Debug builds expose a design catalog at **Settings → About → Design catalog** (`presentation/debug/DesignCatalogScreen.kt`) for previewing tokens and shared components.
 
@@ -38,7 +38,7 @@
 
 **SMS text matching:** Match on `NormalizedSms.comparisonBody` with `comparisonRegex(...)` / `containsComparison(...)` (Arabic-folded patterns); never display `comparisonBody` — slice display values with `normalizedSlice(range)`.
 
-**Classification:** Add AlJazira family wording as an `AlJaziraClassificationRule` with an explicit `AlJaziraClassificationSpecificity` tier — never rely on rule order. Competing families in the top tier must resolve to `UNKNOWN` (review); add a `collision_*` fixture for every new tie-break. An informational top tier (notice, balance, statement) must not hide a product or movement candidate: that cross-tier pair is also `UNKNOWN` with both families in the evidence. OTP stays security even when the body quotes a purchase. A refund title that names the purchase it reverses stays `REFUND`.
+**Classification:** Bank interpretation lives in `bank-engine/`, using `RuleLibrary` / `AlJaziraRuleProfile` and explicit evidence/blockers. Competing families stay UNKNOWN and reviewable. OTP security wins over quoted financial wording; refunds retain refund authority. Add regression coverage for role or classification changes. The retired AlJazira parser/classifier/extractor implementation must not return, including test-only copies. Local ML in `ml-assist/` supplies family assistance only, never money, ownership or posting authority.
 
 **Validation firewall:** Only `ParseFinalizer` may emit `ParseResult.Success`, and only when `DefaultParsedEventValidator` reports no ERROR findings. Tighten automatic use through validator rules / `AutomaticUsePolicy`, not by special-casing parsers; validators never resolve ownership or transaction type.
 
@@ -48,7 +48,9 @@
 
 **Release CI:** Full tests run in PR/main **CI** only. Do not add `testDebugUnitTest` back to `release.yml`; release verifies green CI then builds the APK.
 
-**Deep reference:** `docs/ARCHITECTURE.md`, `docs/REWRITE_DECISIONS.md`, and `docs/PRD.md` are historical rewrite records. Follow this file when they disagree.
+**Reference:** `docs/ARCHITECTURE.md` describes the current production modules; `docs/ANALYTICS.md` describes advisory analysis. Follow this file when historical records disagree.
+
+**Production cutover:** Keep `masroof.db` schema v18, preference names, Keystore alias, worker identities and the original application id. No Lab UI, generated application replica or parallel intake may ship. Pure module package names may retain their historical `lab` segment; this is not a second runtime. Engine/model refreshes must not reparse posted evidence or override human decisions.
 
 ## Dashboard calculations
 

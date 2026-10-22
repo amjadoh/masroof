@@ -67,9 +67,6 @@ import com.baraa.masroof.application.onboarding.OnboardingOwnershipWorkflow
 import com.baraa.masroof.application.onboarding.OnboardingPreferencesRepository
 import com.baraa.masroof.data.preferences.SharedPrefsAppLocaleRepository
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraBankDetector
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
 import com.baraa.masroof.data.preferences.AndroidKeystoreGitHubTokenEncryptor
 import com.baraa.masroof.data.preferences.SharedPrefsDashboardLayoutPreferencesRepository
 import com.baraa.masroof.data.preferences.SharedPrefsGitHubTokenRepository
@@ -150,6 +147,9 @@ import kotlinx.coroutines.runBlocking
  */
 class AppContainer(
     context: Context,
+    bankAdapterOverride: com.baraa.masroof.bank.BankSmsAdapter? = null,
+    smsDataSourceOverride: com.baraa.masroof.sms.datasource.SmsDataSource? = null,
+    restartAfterRestore: (() -> Unit)? = null,
 ) {
     private val appContext = context.applicationContext
 
@@ -169,13 +169,14 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val database: MasroofDatabase =
+    internal val database: MasroofDatabase =
         databaseRestoreRecovered.let {
             Room.databaseBuilder(
                 appContext,
                 MasroofDatabase::class.java,
                 MasroofDatabase.NAME,
             )
+                .openHelperFactory(com.baraa.masroof.data.room.PreservingOpenHelperFactory())
                 .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .build()
         }
@@ -496,11 +497,11 @@ class AppContainer(
             },
         )
 
-    private val alJaziraSmsAdapter: AlJaziraSmsAdapter =
-        AlJaziraSmsAdapter(
-            detector = AlJaziraBankDetector(),
-            pipeline = AlJaziraParsingPipeline(),
-        )
+    val labInterpretationService = if (bankAdapterOverride==null)
+        com.baraa.masroof.application.interpretation.LabInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
+            userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService) else null
+    private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =
+        bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(labInterpretationService)::interpret)
 
     private val bankSmsRegistry: BankSmsRegistry =
         BankSmsRegistry(
@@ -622,7 +623,7 @@ class AppContainer(
         }
 
     val smsDataSource: SmsDataSource =
-        AndroidSmsDataSource(appContext.contentResolver)
+        smsDataSourceOverride ?: AndroidSmsDataSource(appContext.contentResolver)
 
     val historicalSmsBatchProcessor: HistoricalSmsBatchProcessor = HistoricalSmsBatchProcessor(
         capture = captureBankSmsUseCase,
@@ -693,7 +694,9 @@ class AppContainer(
         runBlocking(Dispatchers.IO) {
             startupMaintenanceJob?.join()
         }
+        stopLabAnalytics()
         applicationScope.cancel()
+        labInterpretationService?.close()
         databaseAccessGate.retire()
         database.close()
     }
@@ -706,6 +709,12 @@ class AppContainer(
             databaseAccessGate = databaseAccessGate,
             appVersionName = BuildConfig.VERSION_NAME,
             appLogService = appLogService,
+            restartProcess = restartAfterRestore,
+            beforeValidatedInstall = {
+                stopLabAnalytics()
+                labInterpretationService?.invalidateForRestore()
+                com.baraa.masroof.application.analytics.AnalyticsNotifications.clear(appContext)
+            },
         )
     }
 
@@ -811,6 +820,11 @@ class AppContainer(
     /**
      * Startup releases financial UI only after correctness-blocking maintenance succeeds.
      */
+    val interpretationProvenanceWorkflow by lazy { com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow(effectiveParsedEventProvider, reviewRepository) }
+
+    private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.LabAnalyticsWorkflow(this, appContext) }
+    val labAnalytics get() = analyticsDelegate.value
+    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) labAnalytics.close() }
     fun runStartupMaintenance() {
         startupMaintenanceJob = applicationScope.launch {
             val outcome = runStartupMaintenanceAttempt()
@@ -845,6 +859,8 @@ class AppContainer(
         }
 
     private suspend fun runPostStartupBackgroundWork() {
+        labInterpretationService?.startLearning(database.invalidationTracker)
+        labAnalytics.start()
         liveSmsIntake.schedulePendingProcessing()
         enrichExchangeRatesBestEffort()
     }

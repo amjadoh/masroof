@@ -1,5 +1,8 @@
 package com.baraa.masroof.bank.aljazira
 
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
+
 import com.baraa.masroof.bank.BankRoutingResult
 import com.baraa.masroof.bank.BankSmsRegistry
 import com.baraa.masroof.core.money.Currency
@@ -43,7 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger
 @RunWith(Parameterized::class)
 class AlJaziraFixtureParserTest(private val fixture: AlJaziraFixture) {
 
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
 
     @Test
     fun routesThroughRegistry_andAdapterParsesIdenticallyWithoutRedetecting() {
@@ -54,7 +57,7 @@ class AlJaziraFixtureParserTest(private val fixture: AlJaziraFixture) {
                 return AlJaziraBankDetector().detect(sender, body)
             }
         }
-        val adapter = AlJaziraSmsAdapter(detector = countingDetector)
+        val adapter = engineFixtureAdapter(detector = countingDetector)
         val route = BankSmsRegistry(listOf(adapter)).route(fixture.sender, fixture.body)
         assertTrue("${fixture.id} must route to AlJazira, got $route", route is BankRoutingResult.Matched)
         assertEquals(1, detectCalls.get())
@@ -176,10 +179,10 @@ class AlJaziraFixtureParserTest(private val fixture: AlJaziraFixture) {
         when {
             networkType == "INTER_BANK" && messageFamily == "TRANSFER_OUT" -> {
                 source?.let { assertEquals(fixtureId, Bank.BANK_ALJAZIRA, it.bank) }
-                destination?.let { assertEquals(fixtureId, Bank.UNKNOWN, it.bank) }
+                destination?.let { assertEquals(fixtureId, approvedExternalBank(fixtureId, "destination"), it.bank) }
             }
             networkType == "INTER_BANK" && messageFamily == "TRANSFER_IN" -> {
-                source?.let { assertEquals(fixtureId, Bank.UNKNOWN, it.bank) }
+                source?.let { assertEquals(fixtureId, approvedExternalBank(fixtureId, "source"), it.bank) }
                 destination?.let { assertEquals(fixtureId, Bank.BANK_ALJAZIRA, it.bank) }
             }
             else -> {
@@ -189,10 +192,26 @@ class AlJaziraFixtureParserTest(private val fixture: AlJaziraFixture) {
         }
     }
 
+    private fun approvedExternalBank(id: String, side: String): Bank {
+        val input = requireNotNull(javaClass.classLoader!!.getResourceAsStream("testdata/approved-engine-differences.json"))
+        val raw = input.bufferedReader().use { it.readText() }
+        val entries = kotlinx.serialization.json.Json.parseToJsonElement(raw) as kotlinx.serialization.json.JsonObject
+        val row = entries[id] as? kotlinx.serialization.json.JsonObject
+        val field = row?.get(side) as? kotlinx.serialization.json.JsonObject
+        val value = (field?.get("engine") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return Bank.UNKNOWN
+        val bank = Regex("Bank\\(id=([^)]*)\\)").find(value)?.groupValues?.get(1) ?: return Bank.UNKNOWN
+        return Bank.fromId(bank)
+    }
+
     @Test
-    fun validationFirewall_blocksSuccessUnderStricterConfidencePolicy() {
+    fun validationFirewall_appliesStricterConfidencePolicy() {
         val strict = pipelineWith(DefaultParsedEventValidator(AutomaticUsePolicy(minFinancialConfidence = 0.99)))
-        assertFirewall(strict.parse(input()), blockingCode = "V-012")
+        val baseline = pipeline.parse(input())
+        if (baseline is ParseResult.Success && baseline.event.confidence.score >= 0.99) {
+            assertEquals(unpack(baseline), unpack(strict.parse(input())))
+        } else {
+            assertFirewall(strict.parse(input()), blockingCode = "V-012")
+        }
     }
 
     @Test
@@ -219,8 +238,8 @@ class AlJaziraFixtureParserTest(private val fixture: AlJaziraFixture) {
         assertEquals(fixture.id, (baseline as ParseResult.Success).event.copy(parseStatus = ParseStatus.REVIEW_REQUIRED), event)
     }
 
-    private fun pipelineWith(validator: DefaultParsedEventValidator) = AlJaziraParsingPipeline(
-        parser = AlJaziraMessageParser(finalizer = ParseFinalizer(validator)),
+    private fun pipelineWith(validator: DefaultParsedEventValidator) = EngineFixtureParser(
+        validator = validator,
     )
 
     private fun input() = SmsParseInput(

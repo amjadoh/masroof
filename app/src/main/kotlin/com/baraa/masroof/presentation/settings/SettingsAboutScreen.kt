@@ -61,7 +61,6 @@ fun SettingsAboutScreen(
     onOpenLogs: () -> Unit,
     onOpenUpdates: () -> Unit = {},
     onOpenDesignCatalog: () -> Unit = {},
-    onOpenDeveloperSettings: () -> Unit = {},
     onSaveGithubToken: (String) -> Unit,
     onClearGithubToken: () -> Unit,
     onSelectUpdateChannel: (UpdateChannel) -> Unit,
@@ -128,14 +127,6 @@ fun SettingsAboutScreen(
                 )
             }
 
-            if (BuildConfig.ENABLE_MASROOF_BETA) {
-                SettingsNavRow(
-                    icon = MasroofIcons.periodHint,
-                    title = stringResource(R.string.settings_developer_title),
-                    subtitle = stringResource(R.string.beta_entry_title),
-                    onClick = onOpenDeveloperSettings,
-                )
-            }
 
             MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_updates_title),

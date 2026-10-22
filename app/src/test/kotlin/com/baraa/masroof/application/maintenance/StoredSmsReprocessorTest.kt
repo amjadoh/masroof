@@ -10,8 +10,8 @@ import com.baraa.masroof.application.review.IngestionReviewService
 import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
@@ -107,7 +107,7 @@ class StoredSmsReprocessorTest {
         rawRepo.insertIfAbsent(raw)
         assertNull(parsedRepo.findByRawSmsId(raw.id))
 
-        val result = reprocessor(AlJaziraParsingPipeline()).reprocessAll()
+        val result = reprocessor(EngineFixtureParser()).reprocessAll()
 
         assertEquals(ReparseAllStoredEventsResult(refreshedCount = 1, failedCount = 0), result)
         val record = parsedRepo.findByRawSmsId(raw.id)!!
@@ -124,7 +124,7 @@ class StoredSmsReprocessorTest {
         assertTrue(unsupported.ingest(raw) is SmsIngestionResult.Unsupported)
         assertEquals(ReviewStatus.REQUIRED, reviewRepo.findByRawSmsId(raw.id)!!.status)
 
-        reprocessor(AlJaziraParsingPipeline()).reprocessAll()
+        reprocessor(EngineFixtureParser()).reprocessAll()
 
         assertNotNull(parsedRepo.findByRawSmsId(raw.id))
         assertEquals(1, db.rawSmsDao().count())
@@ -138,7 +138,7 @@ class StoredSmsReprocessorTest {
     fun reprocessing_isIdempotent() = runBlocking {
         rawRepo.insertIfAbsent(purchase("android-sms:a"))
         rawRepo.insertIfAbsent(purchase("android-sms:b", at = Instant.parse("2026-08-04T10:00:00Z")))
-        val reprocessor = reprocessor(AlJaziraParsingPipeline())
+        val reprocessor = reprocessor(EngineFixtureParser())
 
         val first = reprocessor.reprocessAll()
         val transactionsAfterFirst = ftRepo.listAll().sortedBy { it.id }
@@ -159,7 +159,7 @@ class StoredSmsReprocessorTest {
         var refreshCalls = 0
         val processor = StoredSmsReprocessor(
             rawSmsRepository = rawRepo,
-            processRawSms = useCase(AlJaziraParsingPipeline()),
+            processRawSms = useCase(EngineFixtureParser()),
             refreshDerivedState = {
                 refreshCalls++
                 // Parsing the backlog must not reconcile each row on the way through.
@@ -178,7 +178,7 @@ class StoredSmsReprocessorTest {
     @Test
     fun reprocessing_preservesCorrectionsAndTransactionLinks() = runBlocking {
         val raw = purchase("android-sms:linked")
-        useCase(AlJaziraParsingPipeline()).ingest(raw)
+        useCase(EngineFixtureParser()).ingest(raw)
         val linked = ftRepo.findByRawSmsId(raw.id)!!
         correctionRepo.save(
             UserCorrection(
@@ -192,7 +192,7 @@ class StoredSmsReprocessorTest {
             ),
         )
 
-        reprocessor(AlJaziraParsingPipeline()).reprocessAll()
+        reprocessor(EngineFixtureParser()).reprocessAll()
 
         val after = ftRepo.findByRawSmsId(raw.id)!!
         assertEquals(linked.id, after.id)
@@ -218,7 +218,7 @@ class StoredSmsReprocessorTest {
     private fun useCase(pipeline: SmsParseGateway) = ProcessRawSmsUseCase(
         rawSmsRepository = rawRepo,
         parsedEventRepository = parsedRepo,
-        bankSmsRegistry = BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = pipeline))),
+        bankSmsRegistry = BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = pipeline))),
         reconciliation = reconciliation,
         reviewQueueUpdater = reviewQueueUpdater,
         ingestionReviewService = ingestionReviews,

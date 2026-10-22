@@ -5,7 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.review.ReviewWorkflowService
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.bank.BankSmsRegistry
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
@@ -116,7 +116,7 @@ class IntraBankSelfTransferIngestionTest {
     ingestion = ProcessRawSmsUseCase(
       rawSmsRepository = rawRepo,
       parsedEventRepository = parsedRepo,
-      bankSmsRegistry = BankSmsRegistry(listOf(AlJaziraSmsAdapter())),
+      bankSmsRegistry = BankSmsRegistry(listOf(engineFixtureAdapter())),
       ownershipDiscovery = OwnershipDiscoveryService(accounts, cards, NoOpLoanRegistryRepository),
       reconciliation = reconciliation,
       reviewQueueUpdater = reviewQueueUpdater,

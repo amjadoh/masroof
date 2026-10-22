@@ -134,6 +134,20 @@ internal fun DashboardScreen(
     onToggleCustomizeQuickExpense: () -> Unit,
     onToggleCustomizeQuickIncome: () -> Unit,
 ) {
+    var labAnalysisOpen by rememberSaveable { mutableStateOf(false) }
+    val labDestination by com.baraa.masroof.application.analytics.AnalyticsNavigation.target.collectAsState()
+    LaunchedEffect(labDestination) { if (labDestination != null) labAnalysisOpen = true }
+    if (labAnalysisOpen) {
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            com.baraa.masroof.application.analytics.AnalyticsNavigation.setAnalysisVisible(true)
+            onDispose { com.baraa.masroof.application.analytics.AnalyticsNavigation.setAnalysisVisible(false) }
+        }
+        com.baraa.masroof.presentation.analytics.LabAnalyticsRoute(
+            onBack = { labAnalysisOpen = false; com.baraa.masroof.application.analytics.AnalyticsNavigation.finish() },
+            onOpenTransaction = onOpenTransaction,
+        )
+        return
+    }
     var flowDetailMode by rememberSaveable { mutableStateOf<DashboardFlowDetailMode?>(null) }
     val context = LocalContext.current
     val periodRangeLabel = state.period?.let {
@@ -253,6 +267,7 @@ internal fun DashboardScreen(
                                 onOpenAllTransactions = onOpenAllTransactions,
                                 onOpenTransaction = onOpenTransaction,
                                 onRescan = onRescan,
+                                onOpenAnalytics = { labAnalysisOpen = true },
                             )
 
                             if (summary.excludedOtherCurrencyCount > 0) {
@@ -287,6 +302,7 @@ private fun DashboardCustomizableSections(
     onOpenAllTransactions: () -> Unit,
     onOpenTransaction: (String) -> Unit,
     onRescan: () -> Unit,
+    onOpenAnalytics: () -> Unit,
 ) {
     state.currentAccount ?: return
     val accountsFleet = resolveDashboardAccountsFleet(
@@ -313,6 +329,10 @@ private fun DashboardCustomizableSections(
                         showExpense = layout.quickExpenseVisible,
                         showIncome = layout.quickIncomeVisible,
                     )
+                    if (state.isCurrentPeriod) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.height(MasroofSpacing.sectionGap))
+                        com.baraa.masroof.presentation.analytics.LabForecastCard(onOpenAnalytics)
+                    }
                 }
 
                 DashboardSectionId.ACCOUNTS -> DashboardShortcuts(onOpenAccountsSummary, onOpenCardsSummary, onOpenLoansSummary, onOpenCommitments)

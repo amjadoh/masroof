@@ -17,6 +17,7 @@ class DashboardViewModelFactory(
         require(modelClass.isAssignableFrom(DashboardViewModel::class.java))
         return DashboardViewModel(
             overviewLoader = container.dashboardService,
+            labAnalytics = container.labAnalytics,
             dashboardRegistryWorkflow = container.dashboardRegistryWorkflow,
             dashboardPeriodWorkflow = container.dashboardPeriodWorkflow,
             layoutPreferencesRepository = container.dashboardLayoutPreferencesRepository,
@@ -28,6 +29,7 @@ class DashboardViewModelFactory(
             smsEvidenceLoader = TransactionSmsEvidenceLoader(
                 financialTransactionRepository = container.financialTransactionRepository,
                 rawSmsRepository = container.rawSmsRepository,
+                provenanceWorkflow = container.interpretationProvenanceWorkflow,
             ),
             permissionStateProvider = permissionStateProvider,
             appContext = container.applicationContext,

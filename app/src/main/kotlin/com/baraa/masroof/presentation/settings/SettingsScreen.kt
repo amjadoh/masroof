@@ -24,7 +24,6 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.lab.beta.presentation.BetaEntry
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.debug.DesignCatalogScreen
@@ -356,7 +355,6 @@ fun SettingsRoute(
             onOpenLogs = { navigateTo(SettingsDestination.Logs) },
             onOpenUpdates = { navigateTo(SettingsDestination.Updates) },
             onOpenDesignCatalog = { navigateTo(SettingsDestination.DesignCatalog) },
-            onOpenDeveloperSettings = { navigateTo(SettingsDestination.DeveloperSettings) },
             onSaveGithubToken = viewModel::saveGithubToken,
             onClearGithubToken = viewModel::clearGithubToken,
             onSelectUpdateChannel = viewModel::setUpdateChannel,
@@ -384,15 +382,6 @@ fun SettingsRoute(
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
-        SettingsDestination.DeveloperSettings -> if (com.baraa.masroof.BuildConfig.ENABLE_MASROOF_BETA) {
-            val betaContext = LocalContext.current
-            SettingsDeveloperScreen(
-                onBack = { popOrExit() },
-                onOpenBeta = { BetaEntry.open(betaContext) },
-            )
-        } else {
-            LaunchedEffect(Unit) { popOrExit() }
-        }
 
     }
 }

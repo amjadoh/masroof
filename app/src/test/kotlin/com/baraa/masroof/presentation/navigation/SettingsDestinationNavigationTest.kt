@@ -24,7 +24,7 @@ class SettingsDestinationNavigationTest {
             decodeSettingsDestination("statement_reconciliation"),
         )
         assertEquals(SettingsDestination.DesignCatalog, decodeSettingsDestination("design_catalog"))
-        assertEquals(SettingsDestination.DeveloperSettings, decodeSettingsDestination(SettingsDestination.DeveloperSettings.encode()))
+        assertEquals(SettingsDestination.About, decodeSettingsDestination(SettingsDestination.About.encode()))
     }
 
     @Test

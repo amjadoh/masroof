@@ -56,30 +56,20 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
         self.assertEqual([":app:connectedDebugAndroidTest", "--no-parallel", "--stacktrace"], self.gradle_args())
         self.assertEqual([["pull", "/sdcard/m19-statement-screenshots/.", "m19-statement-screenshots"]], self.captures())
 
-    def test_beta_runs_full_beta_suite_without_requiring_production_screenshots(self):
-        result = self.run_suite("beta")
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual([":lab:beta:connectedDebugAndroidTest", "--no-parallel", "--stacktrace"], self.gradle_args())
-        self.assertEqual([["pull", "/sdcard/beta-dashboard-screenshots/.", "beta-dashboard-screenshots"]], self.captures())
-
     def test_gradle_failure_is_preserved_after_screenshot_collection(self):
-        for suite in ("app", "beta"):
+        for suite in ("app",):
             with self.subTest(suite=suite):
                 result = self.run_suite(suite, TEST_GRADLE_STATUS="17")
                 self.assertEqual(17, result.returncode)
-        self.assertEqual(2, len(self.captures()))
+        self.assertEqual(1, len(self.captures()))
 
     def test_capture_failure_does_not_replace_the_gradle_failure(self):
-        result = self.run_suite("beta", TEST_GRADLE_STATUS="19", TEST_ADB_FAILURE="1")
+        result = self.run_suite("app", TEST_GRADLE_STATUS="19", TEST_ADB_FAILURE="1")
         self.assertEqual(19, result.returncode)
         self.assertEqual(1, len(self.captures()))
 
     def test_successful_app_suite_still_fails_if_screenshots_are_missing(self):
         result = self.run_suite("app", TEST_SCREENSHOT="0")
-        self.assertNotEqual(0, result.returncode)
-
-    def test_successful_beta_suite_requires_dashboard_and_classification_screenshots(self):
-        result = self.run_suite("beta", TEST_SCREENSHOT="0")
         self.assertNotEqual(0, result.returncode)
 
     def test_bad_suite_cannot_start_gradle_or_adb(self):
@@ -113,28 +103,26 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
     def test_workflow_keeps_complete_coverage_and_clean_devices(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertEqual(1, workflow.count("run-instrumentation-smoke.sh app"))
-        self.assertEqual(1, workflow.count("run-instrumentation-smoke.sh beta"))
-        self.assertEqual(3, workflow.count("profile: pixel_2"))
+        self.assertNotIn("run-instrumentation-smoke.sh beta", workflow)
+        self.assertEqual(2, workflow.count("profile: pixel_2"))
         app = workflow.split("  emulator-app:", 1)[1].split("  emulator-smoke:", 1)[0]
-        beta = workflow.split("  emulator-beta:", 1)[1].split("  emulator-lifecycle:", 1)[0]
         lifecycle = workflow.split("  emulator-recovery:", 1)[1].split("  emulator-lifecycle:", 1)[0]
         self.assertIn("shard: [0, 1]", app)
         self.assertIn("fail-fast: false", app)
-        for job in (app, beta, lifecycle):
+        for job in (app, lifecycle):
             self.assertLess(job.index("- name: Assemble"), job.index("uses: reactivecircus/android-emulator-runner"))
             self.assertIn("/system-images/android-", job)
             self.assertIn("-no-snapshot", job)
         self.assertNotIn("run-instrumentation-smoke.sh beta", lifecycle)
         recovery = (ROOT / ".github/scripts/run-lifecycle-suite.sh").read_text()
-        for script in ("beta-process-death", "m13-process-death", "beta-apk-upgrade"):
-            self.assertEqual(1, recovery.count(f"bash scripts/{script}.sh"))
-        self.assertIn("suite: [beta, production, upgrade]", lifecycle)
+        for script in ("m13-process-death", "app-apk-upgrade"):
+            self.assertEqual(2 if script == "app-apk-upgrade" else 1, recovery.count(f"bash scripts/{script}.sh"))
+        self.assertIn("suite: [production, upgrade]", lifecycle)
         self.assertIn("fail-fast: false", lifecycle)
         self.assertIn("needs: emulator-recovery", workflow)
         self.assertIn('test "$RECOVERY_RESULT" = success', workflow)
-        self.assertIn("name: beta-instrumentation-reports", beta)
         self.assertIn("name: instrumentation-reports-${{ matrix.shard }}", app)
-        gate = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-beta:", 1)[0]
+        gate = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-recovery:", 1)[0]
         self.assertIn("if: always()", gate)
         self.assertIn('test "$SHARDS_RESULT" = success', gate)
         self.assertIn("find m19-statement-screenshots", gate)

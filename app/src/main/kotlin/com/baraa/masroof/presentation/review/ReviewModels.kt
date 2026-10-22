@@ -49,6 +49,7 @@ data class ReviewDetailUi(
     val readOnly: Boolean = false,
     val resolvedAtLabel: String? = null,
     val bankChoices: List<ReviewBankChoiceUi> = emptyList(),
+    val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
 )
 
 enum class ReviewListMode {
@@ -89,6 +90,12 @@ val REVIEW_FINANCIAL_TYPE_ACTIONS: List<FinancialTransactionType> = listOf(
     FinancialTransactionType.FEE,
     FinancialTransactionType.LOAN_REPAYMENT,
 )
+
+val REVIEW_RESOLUTION_TYPE_ACTIONS = listOf(
+    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+    FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+    FinancialTransactionType.SELF_TRANSFER,
+) + REVIEW_FINANCIAL_TYPE_ACTIONS
 
 /** Compose test tag for a review-detail financial-type action. Stable across locales. */
 fun reviewResolveTypeTestTag(type: FinancialTransactionType): String =

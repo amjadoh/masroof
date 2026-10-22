@@ -22,11 +22,11 @@ import json, os, pathlib, sys
 with open('calls.jsonl', 'a') as f: f.write(json.dumps([pathlib.Path(sys.argv[0]).name, *sys.argv[1:]]) + '\\n')
 sys.exit(int(os.environ.get('FAIL_STATUS', '0')))
 '''
-        for name in ('gradlew', 'bin/adb', 'scripts/beta-process-death.sh',
-                     'scripts/m13-process-death.sh', 'scripts/beta-apk-upgrade.sh'):
+        for name in ('gradlew', 'bin/adb', 'scripts/app-apk-upgrade.sh',
+                     'scripts/m13-process-death.sh'):
             path = self.work / name
             if name.startswith('scripts/'):
-                path.write_text('exec python3 "$(dirname "$0")/../recorder.py" "$0"\n')
+                path.write_text('exec python3 "$(dirname "$0")/../recorder.py" "$0" "$@"\n')
             else:
                 path.write_text(stub)
             path.chmod(0o755)
@@ -45,32 +45,27 @@ sys.exit(int(os.environ.get('FAIL_STATUS', '0')))
 
     def test_builds_only_the_selected_suite(self):
         expected = {
-            'beta': [':lab:beta:assembleDebugAndroidTest'],
             'production': [':app:assembleDebug', ':app:assembleDebugAndroidTest'],
-            'upgrade': [':lab:upgrade-host:assembleBeforeDebug', ':lab:upgrade-host:assembleAfterDebug',
-                        ':lab:upgrade-host:assembleBeforeDebugAndroidTest',
-                        ':lab:upgrade-host:assembleAfterDebugAndroidTest'],
         }
         for suite, tasks in expected.items():
             self.assertEqual(0, self.run_suite(suite, 'build').returncode)
             self.assertEqual(['gradlew', *tasks, '--stacktrace'], self.calls()[-1])
 
     def test_each_test_job_runs_only_its_own_journeys(self):
-        for suite, script, count in [('beta', 'beta-process-death.sh', 2),
-                                     ('production', 'm13-process-death.sh', 3),
-                                     ('upgrade', 'beta-apk-upgrade.sh', 1)]:
+        for suite, script, count in [('production', 'm13-process-death.sh', 3),
+                                     ('upgrade', 'app-apk-upgrade.sh', 1)]:
             before = len(self.calls()) if (self.work / 'calls.jsonl').exists() else 0
             result = self.run_suite(suite, 'test')
             self.assertEqual(0, result.returncode, result.stderr)
             calls = self.calls()[before:]
             self.assertEqual(count, len(calls))
-            self.assertEqual([script], calls[-1])
+            self.assertEqual([script, 'test'] if suite == 'upgrade' else [script], calls[-1])
             self.assertFalse(any(c[0] == 'gradlew' for c in calls))
             self.assertIn('(exit 0)', result.stdout)
 
     def test_failure_stops_the_suite_and_is_preserved(self):
         for phase in ('build', 'test'):
-            result = self.run_suite('beta', phase, FAIL_STATUS='17')
+            result = self.run_suite('production', phase, FAIL_STATUS='17')
             self.assertEqual(17, result.returncode)
         self.assertEqual(2, len(self.calls()))
 

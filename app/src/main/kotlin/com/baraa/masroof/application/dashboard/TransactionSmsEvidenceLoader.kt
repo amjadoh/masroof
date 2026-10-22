@@ -9,17 +9,19 @@ import com.baraa.masroof.domain.repository.RawSmsRepository
 class TransactionSmsEvidenceLoader(
     private val financialTransactionRepository: FinancialTransactionRepository,
     private val rawSmsRepository: RawSmsRepository,
+    private val provenanceWorkflow: com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow? = null,
 ) {
     data class SmsEvidence(
         val body: String,
         val sender: String?,
+        val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
     )
 
     suspend fun loadForTransaction(transactionId: String): List<SmsEvidence> =
         financialTransactionRepository.listRawSmsIds(transactionId)
             .mapNotNull { rawSmsId ->
                 rawSmsRepository.getById(rawSmsId)?.let { raw ->
-                    SmsEvidence(body = raw.body, sender = raw.sender)
+                    SmsEvidence(body = raw.body, sender = raw.sender, provenance = provenanceWorkflow?.load(rawSmsId))
                 }
             }
 }

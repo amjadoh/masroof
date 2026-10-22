@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import com.baraa.masroof.application.notification.NotificationAction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.presentation.common.MasroofScreenBackground
@@ -73,11 +74,12 @@ fun MasroofRoot(
     var selected by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
     var generation by rememberSaveable { mutableStateOf(0) }
     fun navigate(destination: HomeDestination) { requested = destination; generation++ }
-    androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.dashboard.LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow) {
+    androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.dashboard.LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow,
+        com.baraa.masroof.presentation.analytics.LocalLabAnalyticsWorkflow provides dashboardViewModel.labAnalytics) {
     Column(Modifier.fillMaxSize()) {
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
-                if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount,
+                if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.labUnreadAlerts(dashboardViewModel.labAnalytics),
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
         }
@@ -163,6 +165,14 @@ private fun MasroofContent(
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
 
+    val labTarget by com.baraa.masroof.application.analytics.AnalyticsNavigation.target.collectAsState()
+    LaunchedEffect(labTarget) { if (labTarget != null) { dashboardViewModel.closeTransactionDetail(); homeDestination = HomeDestination.Dashboard } }
+    val labCenterReturns by com.baraa.masroof.application.analytics.AnalyticsNavigation.centerReturns.collectAsState()
+    var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
+    LaunchedEffect(labCenterReturns) {
+        if (labCenterReturns > consumedLabCenterReturn) homeDestination = HomeDestination.NotificationCenter
+        consumedLabCenterReturn = labCenterReturns
+    }
     var consumedNavigationGeneration by rememberSaveable { mutableStateOf(0) }
     LaunchedEffect(navigationGeneration) {
         if (navigationGeneration > consumedNavigationGeneration) {
@@ -272,7 +282,9 @@ private fun MasroofContent(
             homeDestination == HomeDestination.AllTransactions &&
                 dashboardState.selectedTransactionId != null
 
-        if (!detailOpenedFromAllTransactions) {
+        val labAnalysisVisible by com.baraa.masroof.application.analytics.AnalyticsNavigation.analysisVisible.collectAsState()
+        val labOverlayDetail = homeDestination == HomeDestination.Dashboard && labAnalysisVisible && dashboardState.selectedTransactionId != null
+        if (!detailOpenedFromAllTransactions && !labOverlayDetail) {
             if (showTransactionDetail(
                     dashboardState = dashboardState,
                     onBack = dashboardViewModel::closeTransactionDetail,
@@ -287,7 +299,8 @@ private fun MasroofContent(
 
         key(navigationGeneration) {
         when (homeDestination) {
-            HomeDestination.Dashboard -> DashboardRoute(
+            HomeDestination.Dashboard -> Box {
+                DashboardRoute(
                 viewModel = dashboardViewModel,
                 notificationUnreadCount = notificationState.unreadCount,
                 onOpenNotificationCenter = { homeDestination = HomeDestination.NotificationCenter },
@@ -340,6 +353,14 @@ private fun MasroofContent(
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
+                if (labOverlayDetail) Box(Modifier.fillMaxSize().testTag("lab-analytics-transaction-detail")) {
+                    val closeLabDetail = { if (!dashboardState.reclassifying && !dashboardState.ignoring && !dashboardState.markingCommitment) dashboardViewModel.closeTransactionDetail() }
+                    BackHandler(onBack = closeLabDetail)
+                    showTransactionDetail(dashboardState, closeLabDetail,
+                        dashboardViewModel::reclassifySelectedTransaction, dashboardViewModel::ignoreSelectedTransaction,
+                        dashboardViewModel::markSelectedTransactionAsCommitment, overlayOnList = true)
+                }
+            }
             HomeDestination.AccountsSummary -> AccountsSummaryRoute(
                 viewModel = dashboardViewModel,
                 onBack = { homeDestination = HomeDestination.Dashboard },
@@ -553,6 +574,7 @@ private fun showTransactionDetail(
     val selectedId = dashboardState.selectedTransactionId ?: return false
     val selected = dashboardState.allTransactions.find { it.id == selectedId }
         ?: dashboardState.recentTransactions.find { it.id == selectedId }
+        ?: dashboardState.labSelectedTransaction
     if (selected != null) {
         val detailContent: @Composable () -> Unit = {
             TransactionDetailScreen(
@@ -578,6 +600,10 @@ private fun showTransactionDetail(
         } else {
             detailContent()
         }
+        return true
+    }
+    if (overlayOnList) {
+        com.baraa.masroof.presentation.analytics.LabEvidenceDetailFallback(dashboardState.selectedTransactionSmsLoading, onBack)
         return true
     }
     // Keep the detail destination while a refresh reloads rows for the same period.
