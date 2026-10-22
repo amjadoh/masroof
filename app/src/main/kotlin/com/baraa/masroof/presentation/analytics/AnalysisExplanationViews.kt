@@ -119,8 +119,9 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
         quality.excluded["OUTSIDE_PURCHASE_SCOPE"]?.let { EvidenceGroup(it, stringResource(R.string.lab_analysis_excluded_scope), workflow, snapshot.sourceHash, onOpenTransaction) }
         MasroofTextButton(onClick = { expanded = !expanded }) { Text(stringResource(if (expanded) R.string.lab_analysis_hide_data else R.string.lab_analysis_show_data)) }
         if (expanded) {
-            Text(stringResource(R.string.lab_analysis_quality_counts, quality.used, quality.coveredDays, snapshot.completedPeriods, quality.pendingReviews), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.lab_analysis_quality_counts_hint), style = MaterialTheme.typography.bodySmall)
+            MasroofGuidanceLabel(
+                stringResource(R.string.lab_analysis_quality_counts, quality.used, quality.coveredDays, snapshot.completedPeriods, quality.pendingReviews),
+                stringResource(R.string.lab_analysis_quality_counts_hint), style = MaterialTheme.typography.bodySmall)
             MasroofGuidanceLabel(stringResource(R.string.lab_analysis_scope_title), stringResource(R.string.lab_analysis_scope))
             if (quality.historyFrom != null && quality.historyThrough != null) Text(stringResource(R.string.lab_analysis_history_range,
                 day(quality.historyFrom), day(quality.historyThrough)), style = MaterialTheme.typography.bodySmall)
