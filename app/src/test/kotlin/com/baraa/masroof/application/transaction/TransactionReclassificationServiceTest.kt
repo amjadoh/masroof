@@ -2,6 +2,7 @@ package com.baraa.masroof.application.transaction
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.review.EffectiveParsedEventProvider
 import com.baraa.masroof.core.money.Currency
@@ -44,6 +45,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
+import java.math.BigDecimal
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -77,6 +79,8 @@ class TransactionReclassificationServiceTest {
             ),
             ownershipResolver = OwnershipResolver(accounts, cards, loans),
             ownershipConfirmationService = confirmation,
+            persistence = com.baraa.masroof.data.repository.RoomTransactionReclassificationRepository(
+                db,ftRepo,com.baraa.masroof.data.room.DatabaseAccessGate()),
         )
     }
 
@@ -98,6 +102,39 @@ class TransactionReclassificationServiceTest {
             FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3001"),
             updated.destinationContainerId,
         )
+        val decision = db.reviewItemDao().findByRawSmsId("sms-in")!!
+        assertEquals("USER_FINANCIAL_TYPE",decision.resolutionKind)
+        assertEquals(txId,decision.resolvedTransactionId)
+    }
+
+    @Test fun decisionWriteFailureRollsBackTheFinancialEdit() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA,"3001"))
+        persistIncomeTransfer(smsId="atomic-edit",counterparty="TEST",amount="100.00")
+        val txId=TransactionIdFactory.fromRawSmsIds(listOf("atomic-edit"))
+        val original=ftRepo.getById(txId)
+        db.openHelper.writableDatabase.execSQL("CREATE TRIGGER reject_decision BEFORE INSERT ON review_item BEGIN SELECT RAISE(ABORT,'injected'); END")
+        assertTrue(service.reclassify(txId,FinancialTransactionType.EXTERNAL_TRANSFER_IN) is ReclassificationResult.Rejected)
+        assertEquals(original,ftRepo.getById(txId))
+        assertEquals(null,db.reviewItemDao().findByRawSmsId("atomic-edit"))
+    }
+
+    @Test fun anAmountCorrectionBetweenAssemblyAndPostingInvalidatesTheOldEvidenceEvenWhenManuallyConfirmed() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA,"3001"))
+        persistIncomeTransfer(smsId="racing-edit",counterparty="TEST",amount="100.00")
+        val corrections=RoomUserCorrectionRepository(db.userCorrectionDao())
+        val effective=EffectiveParsedEventProvider(parsedRepo,corrections)
+        val assembledFrom=effective.findEffectiveByRawSmsId("racing-edit")!!
+        corrections.save(com.baraa.masroof.domain.model.UserCorrection("new-amount","racing-edit",null,
+            Money.of(BigDecimal("150.00"),Currency.SAR),null,null,Instant.now()))
+        assertTrue(effective.findEffectiveByRawSmsId("racing-edit")!!.automationConfirmed)
+        val guard=com.baraa.masroof.application.interpretation.AutomaticInterpretationWriteGuard(effective,
+            com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao()),ftRepo,
+            inferenceCurrent={ true },inTransaction={ work -> db.withTransaction { work() } })
+        var wrote=false
+        val result=guard.write(listOf(assembledFrom)) { wrote=true;FinancialTransactionSaveResult.Saved }
+        assertTrue(result is FinancialTransactionSaveResult.Conflict)
+        assertTrue(!wrote)
+        assertEquals("150.00",corrections.latestForRawSmsId("racing-edit")!!.correctedAmount!!.amount.toPlainString())
     }
 
     @Test

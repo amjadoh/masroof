@@ -1,0 +1,30 @@
+package com.baraa.masroof.application.interpretation
+
+import com.baraa.masroof.application.review.EffectiveParsedEventProvider
+import com.baraa.masroof.domain.model.ReviewResolutionKind
+import com.baraa.masroof.domain.repository.FinancialTransactionRepository
+import com.baraa.masroof.domain.repository.FinancialTransactionSaveResult
+import com.baraa.masroof.domain.repository.ReviewRepository
+import com.baraa.masroof.parsing.repository.ParsedEventRecord
+
+/** Compare the evidence actually assembled against current decisions in the SAME write transaction. */
+class AutomaticInterpretationWriteGuard(
+    private val events: EffectiveParsedEventProvider,
+    private val reviews: ReviewRepository,
+    private val transactions: FinancialTransactionRepository,
+    private val inferenceCurrent: suspend (ParsedEventRecord) -> Boolean,
+    private val inTransaction: suspend (suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult,
+) {
+    suspend fun write(expected: List<ParsedEventRecord>, mutation: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult = inTransaction {
+        val stale = expected.firstOrNull { prior ->
+            val id=prior.event.rawSmsId
+            val review=reviews.findByRawSmsId(id)
+            val current=events.findEffectiveByRawSmsId(id)
+            val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && transactions.isRawSmsLinked(id)
+            protected || current != prior || (review?.resolutionKind != ReviewResolutionKind.USER_FINANCIAL_TYPE &&
+                current != null && !inferenceCurrent(current))
+        }
+        if(stale != null) FinancialTransactionSaveResult.Conflict(stale.event.rawSmsId,"stale_family_inference")
+        else mutation()
+    }
+}

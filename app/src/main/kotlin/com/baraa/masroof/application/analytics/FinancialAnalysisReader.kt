@@ -10,7 +10,7 @@ import java.time.ZoneId
 import java.time.Clock
 
 internal data class FinancialAnalysisRead(val service: DashboardService, val rows: List<FinancialTransaction>,
-    val committed: Set<String>, val retry: Boolean)
+    val committed: Set<String>, val retry: Boolean, val incompleteDays: Set<Long>)
 
 /**
  * Copy only approved facts and the existing bounded dashboard evidence in a short read.
@@ -57,6 +57,19 @@ internal object FinancialAnalysisReader {
                 // Analytics never requests a new rate. Enrichment remains the financial authority.
                 TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ -> null }), zoneId = zone, clock = clock, evidenceSource = detachedEvidence)
             val retry = c.database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM processing_retry").use { it.moveToFirst(); it.getInt(0) > 0 }
-            FinancialAnalysisRead(service, rows, commitments.map { it.sourceTransactionId }.toSet(), retry)
+            val incompleteIds = (reviews.map { it.rawSmsId } + c.processingRetryRepository.listRetryableRawSmsIds()).toSet()
+            val incompleteRaw = c.rawSmsRepository.getByIds(incompleteIds).associateBy { it.id }
+            val incompleteEvents = c.parsedEventRepository.listByRawSmsIds(incompleteIds).associateBy { it.event.rawSmsId }
+            val incompleteDays = incompleteIds.flatMap { id ->
+                val rawSms = incompleteRaw[id] ?: return@flatMap emptyList()
+                val record = incompleteEvents[id]
+                val receiptDay = rawSms.receivedAt.atZone(zone).toLocalDate().toEpochDay()
+                val eventDay = record?.let {
+                    com.baraa.masroof.domain.assembly.TransactionTiming.effectiveOccurredAt(it.event, it.details.occurredAtLocal,
+                        rawSms.receivedAt, zone).atZone(zone).toLocalDate().toEpochDay()
+                }
+                listOfNotNull(receiptDay, eventDay)
+            }.toSet()
+            FinancialAnalysisRead(service, rows, commitments.map { it.sourceTransactionId }.toSet(), retry, incompleteDays)
         } }
 }

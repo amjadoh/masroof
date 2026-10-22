@@ -13,6 +13,9 @@ class ModelRefreshWorker(context: Context,params: WorkerParameters) : CoroutineW
         val container=(applicationContext as MasroofApplication).container
         if (container.awaitStartupMaintenance()!=com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome.READY) return Result.retry()
         val service=container.labInterpretationService?:return Result.success()
+        // Rebuild from durable decisions before comparing versions; a Room invalidation
+        // may have suspended personal assistance while this work was being queued.
+        service.synchronizeFeedback()
         val expected = inputData.getString("interpretationVersion")
         if (expected != null && expected != service.refreshVersion) return Result.success()
         if (expected == null && inputData.getString("modelVersion") != service.modelVersion) return Result.success()

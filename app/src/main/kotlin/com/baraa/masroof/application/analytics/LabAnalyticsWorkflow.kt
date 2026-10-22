@@ -51,7 +51,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
     private val preferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> request() }
     private val generation = java.util.concurrent.atomic.AtomicLong()
     private val observer = object : InvalidationTracker.Observer("financial_transaction", "financial_transaction_raw_sms_link",
-        "parsed_event", "commitment", "account_registry", "card_registry", "loan_registry", "credit_facility", "processing_retry", "review_item") {
+        "parsed_event", "commitment", "account_registry", "card_registry", "loan_registry", "credit_facility", "processing_retry", "review_item", "user_correction") {
         override fun onInvalidated(tables: Set<String>) { request() }
     }
     @Synchronized fun start() {
@@ -89,7 +89,11 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val prefs = requireNotNull(dao.preferences())
         val cached = dao.latest()?.let { runCatching { json.decodeFromString<AnalysisSnapshot>(it.payload) }.getOrNull() }
         val history = dao.recentSnapshots().mapNotNull { runCatching { json.decodeFromString<AnalysisSnapshot>(it.payload) }.getOrNull() }
-        mutable.value = AnalysisUiState(cached, true, false, dao.alerts().filterNot { it.resolved }, prefs, history)
+        val comparisons = dao.comparisons()
+        val learning = try { container.learningInsightsWorkflow.load() } catch(e: CancellationException) { throw e }
+            catch(_: Exception) { com.baraa.masroof.application.interpretation.LearningInsights(pending = true) }
+        mutable.value = AnalysisUiState(cached, true, false, dao.alerts().filterNot { it.resolved }, prefs, history,
+            forecastPerformance = ForecastPerformancePolicy.evaluate(comparisons), forecastComparisons = comparisons, learning = learning)
     }
 
     private data class Source(val clean: CleanData, val start: Long, val end: Long, val today: Long,
@@ -122,17 +126,46 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             val onboarding = container.onboardingPreferencesRepository
             val importedFrom = if (onboarding.isHistoricalImportCompleted()) onboarding.getHistoricalImportStartEpochMillis()
                 ?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toEpochDay() } else null
-            val firstKnownDay = facts.filter { it.day <= todayDay }.minOfOrNull { it.day }
-            val covered = importedFrom?.let { from -> firstKnownDay?.let { maxOf(from, it) } }
+            // A successful historical import also covers days with no financial rows.
+            val covered = importedFrom
             val retry = read.retry
             val noPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED
             val importBusy = AnalyticsImportGate.active()
             val blocked = retry || importBusy || !onboarding.isHistoricalImportCompleted() || noPermission
             store.analytics().initializePreferences(AnalysisPreferencesRow(enabledAt = clock.millis()))
-            val prefs = requireNotNull(store.analytics().preferences())
-            val gaps = prefs.gapDays.split(',').mapNotNull { it.toLongOrNull() }.toMutableSet()
-            if (noPermission || retry) gaps += todayDay
-            if (gaps.joinToString(",") != prefs.gapDays) store.analytics().preferences(prefs.copy(gapDays = gaps.sorted().joinToString(",")))
+            var prefs = requireNotNull(store.analytics().preferences())
+            val coverageRows = store.analytics().coverage().toMutableList()
+            val at = clock.millis()
+            for(day in prefs.gapDays.split(',').mapNotNull { it.toLongOrNull() }) {
+                if(coverageRows.none { it.id == "legacy:$day" || (it.reason !in setOf("SCAN_RECEIPT","CHECKPOINT") && day in it.fromDay..it.throughDay) })
+                    coverageRows += AnalysisCoverageRow("legacy:$day",day,day,"LEGACY",LocalDate.ofEpochDay(day).atStartOfDay(zone).toInstant().toEpochMilli().coerceAtLeast(0))
+            }
+            val checkpoint = coverageRows.firstOrNull { it.id == "last-check" }
+            if(noPermission || checkpoint?.repairedAt == null && checkpoint != null) {
+                val previous = coverageRows.lastOrNull { it.reason == "PERMISSION" && it.repairedAt == null }
+                if(previous != null) {
+                    coverageRows.remove(previous)
+                    coverageRows += previous.copy(throughDay = maxOf(previous.throughDay,todayDay))
+                } else if(noPermission) {
+                    val from = checkpoint?.throughDay ?: Instant.ofEpochMilli(prefs.enabledAt).atZone(zone).toLocalDate().toEpochDay()
+                    coverageRows += AnalysisCoverageRow("permission:$at",minOf(from,todayDay),todayDay,"PERMISSION",at)
+                }
+            }
+            for(day in read.incompleteDays) {
+                val prior = coverageRows.lastOrNull { it.reason == "PROCESSING" && it.fromDay == day && it.repairedAt == null }
+                if(prior == null) coverageRows += AnalysisCoverageRow("processing:$day:$at",day,day,"PROCESSING",at)
+            }
+            coverageRows.removeAll { it.id == "last-check" }
+            coverageRows += AnalysisCoverageRow("last-check",todayDay,todayDay,"CHECKPOINT",at,if(noPermission) null else at)
+            val unresolved = read.incompleteDays + if(noPermission) AnalysisCoveragePolicy.gapDays(coverageRows) else emptySet()
+            val recovered = AnalysisCoveragePolicy.recover(coverageRows,unresolved,at)
+            store.analytics().coverage(recovered)
+            val gaps = AnalysisCoveragePolicy.gapDays(recovered)
+            val gapText = gaps.sorted().joinToString(",")
+            if(gapText != prefs.gapDays) {
+                prefs = prefs.copy(gapDays = gapText)
+                store.analytics().preferences(prefs)
+            }
             val clean = FinancialCleaner.clean(facts, start.toEpochDay(), todayDay, covered, gaps) { day ->
                 val date = LocalDate.ofEpochDay(day); (day - FinancialPeriodPolicy.periodContaining(date).startDate.toEpochDay()).toInt()
             }
@@ -164,7 +197,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "presentation-v3|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "presentation-v4|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
                 dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights)
     }
@@ -176,11 +209,15 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val input = source()
         if (AnalyticsImportGate.active()) return@withLock
         val dao = store.analytics(); val prefs = dao.preferences() ?: AnalysisPreferencesRow(enabledAt = clock.millis())
+        val comparisons = settleComparisons(input)
+        val performance = ForecastPerformancePolicy.evaluate(comparisons)
         val latest = dao.latest()
-        if (latest?.sourceHash == input.fingerprint) { loadCached(); finishUi(input); return@withLock }
+        val captureMissing = ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) &&
+            !input.blocked && input.reasons.isEmpty() && !ForecastPerformancePolicy.hasComparison(comparisons,input.start)
+        if (latest?.sourceHash == input.fingerprint && !captureMissing) { loadCached(); finishUi(input); return@withLock }
         val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
-            { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) })
+            { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
         val patterns = RecurringDetector.detect(input.clean.recurring, input.today)
         val priorCandidates = dao.candidates().associateBy { it.id }
         val candidates = patterns.map { pattern ->
@@ -203,8 +240,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             result.actual, result.remaining, result.total, result.lower, result.upper,
             input.clean.days.filter { it.day >= input.start }.map { AnalysisDay(it.day, it.net, null) } + futureDays,
             quality, suggested, input.dues + estimates, input.completed,
-            trainingFrom = if (result.model?.accepted == true) result.model?.trainedFrom else result.baseline?.from,
-            trainingThrough = if (result.model?.accepted == true) result.model?.trainedThrough else result.baseline?.through,
+            trainingFrom = if (result.method == AnalyticsVersion.MODEL) result.model?.trainedFrom else result.baseline?.from,
+            trainingThrough = if (result.method == AnalyticsVersion.MODEL) result.model?.trainedThrough else result.baseline?.through,
             insights = input.insights, evaluations = result.evaluations.map { AnalysisEvaluation(it.horizon, it.count, it.mae, it.bias) },
             modelReason = result.reason, evaluationVersion = AnalyticsVersion.EVALUATION,
             wholeDaysFrom = (input.today + 1).takeIf { it < input.end }, wholeDaysLower = result.wholeDaysLower,
@@ -214,6 +251,13 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val alerts = alerts(snapshot, candidates.filter { priorCandidates[it.key]?.status != "REJECTED" }, dao.alerts(), prefs)
         store.withTransaction {
             dao.snapshot(AnalysisSnapshotRow(hash("$at|${input.fingerprint}"), input.fingerprint, at, json.encodeToString(snapshot)))
+            if(ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) && !input.blocked && input.reasons.isEmpty() &&
+                result.personalTotal != null && result.baselineTotal != null &&
+                !ForecastPerformancePolicy.hasComparison(dao.comparisons(),input.start)) {
+                dao.comparison(ForecastComparisonRow("${input.start}:${AnalyticsVersion.MODEL}:${ForecastPerformancePolicy.VERSION}",
+                    input.start,input.end,at,input.fingerprint,AnalyticsVersion.MODEL,ForecastPerformancePolicy.VERSION,
+                    requireNotNull(result.personalTotal),requireNotNull(result.baselineTotal),originDay = input.today))
+            }
             result.model?.let {
                 val payload = json.encodeToString(StoredHuber.from(it))
                 dao.model(AnalysisModelRow(hash(payload), payload))
@@ -231,6 +275,17 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         if (generation.get() == version) AnalyticsNotifications.publish(
             com.baraa.masroof.application.locale.AppLocaleContextFactory.wrap(context, container.appLocaleRepository.getLanguageTag()), store, snapshot, prefs, clock.millis())
     }
+    private suspend fun settleComparisons(input: Source): List<ForecastComparisonRow> {
+        val dao = store.analytics()
+        for(row in dao.comparisons().filter { it.periodEnd <= input.today }) {
+            val days = input.clean.days.filter { it.day in row.periodStart until row.periodEnd }
+            val complete = days.size.toLong() == row.periodEnd - row.periodStart && days.all { it.covered }
+            val actual = if(complete) days.fold(0L) { sum,day -> Math.addExact(sum,day.net) } else null
+            dao.evaluateComparison(row.id,actual,input.clean.fingerprint,if(actual == null) null else clock.millis())
+        }
+        return dao.comparisons()
+    }
+
     private fun finishUi(input: Source) {
         val actuals = mutable.value.history.filter { it.periodEnd <= input.today }.distinctBy { it.periodStart }.mapNotNull { past ->
             val days = input.clean.days.filter { it.day in past.periodStart until past.periodEnd }

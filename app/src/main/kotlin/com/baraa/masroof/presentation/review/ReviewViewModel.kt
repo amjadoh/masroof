@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.locale.AppLocaleRepository
 import androidx.lifecycle.viewModelScope
+import com.baraa.masroof.application.review.ExternalTransferDirection
 import com.baraa.masroof.application.review.ReviewDetailLoader
 import com.baraa.masroof.application.review.ReviewWorkflowResult
 import com.baraa.masroof.application.review.ReviewWorkflowService
@@ -177,10 +178,10 @@ class ReviewViewModel(
         }
     }
 
-    fun resolveAsExternalTransfer() {
-        val reviewId = _uiState.value.selectedDetail?.id ?: return
+    fun resolveAsExternalTransfer(reviewId: String, direction: ExternalTransferDirection) {
+        if (_uiState.value.selectedDetail?.id != reviewId) return
         runAction {
-            reviewWorkflowService.resolveTransferAsExternal(reviewId)
+            reviewWorkflowService.resolveTransferAsExternal(reviewId, direction)
         }
     }
 
@@ -363,6 +364,13 @@ class ReviewViewModel(
                         )
                     }
                     is ReviewWorkflowResult.Rejected -> {
+                        if (result.reason == "transfer_evidence_changed") {
+                            val detail = _uiState.value.selectedDetail?.let { detailLoader.loadDetail(it.id) }
+                            val candidates = if (detail?.review?.kind == ReviewKind.PENDING_MATCH)
+                                detailLoader.loadPairCandidates(detail.review.id).map(::toListItem) else emptyList()
+                            val updated = detail?.let { toDetailUi(it, candidates) }
+                            _uiState.update { it.copy(selectedDetail = updated) }
+                        }
                         _uiState.update {
                             it.copy(
                                 resolving = false,

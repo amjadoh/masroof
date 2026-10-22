@@ -15,13 +15,14 @@ data class PurchaseForecast(val status: String, val method: String, val actual: 
     val remaining: Long?, val total: Long?, val lower: Long?, val upper: Long?,
     val points: List<ForecastPoint>, val model: HuberModel?, val baseline: WeekdayModel? = null,
     val wholeDaysLower: Long? = null, val wholeDaysUpper: Long? = null,
-    val evaluations: List<HorizonEvaluation> = emptyList(), val reason: String = "INSUFFICIENT_HISTORY")
+    val evaluations: List<HorizonEvaluation> = emptyList(), val reason: String = "INSUFFICIENT_HISTORY",
+    val personalTotal: Long? = null, val baselineTotal: Long? = null)
 
 /** Numeric-only engine. All transforms and evaluation fits use the training prefix. */
 object PurchaseForecaster {
     fun forecast(data: CleanData, periodStart: Long, periodEnd: Long, today: Long, completedPeriods: Int,
         phase: (Long) -> Int, previous: HuberModel? = null,
-        completedPeriodsAt: (Long) -> Int = { completedPeriods }): PurchaseForecast {
+        completedPeriodsAt: (Long) -> Int = { completedPeriods }, allowPersonal: Boolean = true): PurchaseForecast {
         require(periodEnd > periodStart && today in periodStart until periodEnd)
         val actual = data.days.filter { it.day >= periodStart }.fold(0L) { sum, d -> Math.addExact(sum, d.net) }
         val history = data.days.filter { it.day < today && it.covered }
@@ -35,12 +36,17 @@ object PurchaseForecaster {
                 today - previous.trainedThrough <= 7 && previous.trainingFingerprint == fingerprint(training.filter { it.day <= previous.trainedThrough })
             model = if (canReuse) previous else runCatching { evaluateAndFit(training, phase, completedPeriodsAt) }.getOrNull()
         }
-        val chosen = model?.takeIf { it.accepted }
+        val chosen = model?.takeIf { it.accepted && allowPersonal }
         val predictions = predict(if (chosen == null) history else training, today, periodEnd - 1, phase, chosen)
         val todayGross = data.days.firstOrNull { it.day == today }?.gross ?: 0
         val remaining = predictions.fold(0L) { sum, point -> Math.addExact(sum,
             if (point.day == today) (point.gross - todayGross).coerceAtLeast(0) else point.gross) }
         val total = Math.addExact(actual, remaining)
+        fun projectedTotal(points: List<ForecastPoint>) = Math.addExact(actual, points.fold(0L) { sum, point ->
+            Math.addExact(sum, if(point.day == today) (point.gross - todayGross).coerceAtLeast(0) else point.gross)
+        })
+        val baselineTotal = projectedTotal(predict(history,today,periodEnd - 1,phase,null))
+        val personalTotal = model?.takeIf { it.accepted }?.let { projectedTotal(predict(training,today,periodEnd - 1,phase,it)) }
         val horizon = (periodEnd - today - 1).toInt()
         val baselineEvaluation = evaluate(history, phase, false, completedPeriodsAt)
         val baseSigned = baselineEvaluation.signed
@@ -51,6 +57,7 @@ object PurchaseForecaster {
         val wholeDays = predictions.filter { it.day > today }.fold(0L) { sum, p -> Math.addExact(sum, p.gross) }
         val reason = when {
             chosen != null -> "PERSONAL_MODEL"
+            !allowPersonal && model?.accepted == true -> "LIVE_BASELINE_BETTER"
             training.size < 120 -> if (history.size >= 120) "COVERAGE_GAPS" else "NEEDS_HISTORY"
             completedPeriods < 4 -> "NEEDS_PERIODS"
             training.count { it.gross > 0 } < 20 -> "NEEDS_PURCHASE_DAYS"
@@ -66,7 +73,7 @@ object PurchaseForecaster {
             if (horizon == 0) 0 else margin?.let { Math.addExact(wholeDays, it) },
             CORE_HORIZONS.mapNotNull { h -> signed[h]?.takeIf { it.size >= 8 }?.let { e ->
                 HorizonEvaluation(h, e.size, e.map(::abs).average().roundToLong(), e.average().roundToLong())
-            } }, reason)
+            } }, reason, personalTotal, baselineTotal)
     }
 
     private fun fingerprint(days: List<PurchaseDay>) = hash(days.joinToString { "${it.day}:${it.gross}:${it.refunds}:${it.phase}" })

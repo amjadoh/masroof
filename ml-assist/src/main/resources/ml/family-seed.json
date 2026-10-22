@@ -988,9 +988,7 @@
     "TRANSFER_OUT": 3,
     "WITHDRAWAL": 1
   },
-  "enabledFamilies": [
-    "TRANSFER_IN"
-  ],
+  "enabledFamilies": [],
   "evaluationSource": "ML_SEED_EVALUATION.json",
   "featuresVersion": "bank-family-title-v2",
   "policy": {
@@ -1000,13 +998,13 @@
   },
   "schema": 2,
   "training": {
-    "cleanRows": 50,
+    "cleanRows": 55,
     "conflicts": [],
     "rejected": [],
-    "sourceRows": 50,
-    "sourceSha256": "0f4acdd25026f8edc9983d672a2e4b374d92076b011e1666235d9e74cfabedfa",
-    "splitVersion": "family-holdout-v1",
-    "testGroups": 6,
+    "sourceRows": 55,
+    "sourceSha256": "322987fbbb24269fc511fee84cdeeaa771730913906322e124b821276beead5f",
+    "splitVersion": "family-runtime-holdout-v2",
+    "testGroups": 9,
     "trainGroups": 22,
     "trainIds": [
       "balance_notice_ar_001",
@@ -1032,10 +1030,65 @@
       "statement_ar_001",
       "withdrawal_ar_001"
     ],
-    "uniqueTemplates": 34,
-    "validationGroups": 6
+    "uniqueTemplates": 39,
+    "validationGroups": 8
   },
   "validation": [
+    {
+      "expected": "TRANSFER_IN",
+      "features": {
+        "b:حوالة محلية": 1,
+        "b:محلية واردة": 1,
+        "c3: مح": 1,
+        "c3: وا": 1,
+        "c3:ارد": 1,
+        "c3:الة": 1,
+        "c3:ة م": 1,
+        "c3:ة و": 1,
+        "c3:حلي": 1,
+        "c3:حوا": 1,
+        "c3:ردة": 1,
+        "c3:لة ": 1,
+        "c3:لية": 1,
+        "c3:محل": 1,
+        "c3:وار": 1,
+        "c3:وال": 1,
+        "c3:ية ": 1,
+        "c4: محل": 1,
+        "c4: وار": 1,
+        "c4:اردة": 1,
+        "c4:الة ": 1,
+        "c4:ة مح": 1,
+        "c4:ة وا": 1,
+        "c4:حلية": 1,
+        "c4:حوال": 1,
+        "c4:لة م": 1,
+        "c4:لية ": 1,
+        "c4:محلي": 1,
+        "c4:وارد": 1,
+        "c4:والة": 1,
+        "c4:ية و": 1,
+        "c5: محلي": 1,
+        "c5: وارد": 1,
+        "c5:الة م": 1,
+        "c5:ة محل": 1,
+        "c5:ة وار": 1,
+        "c5:حلية ": 1,
+        "c5:حوالة": 1,
+        "c5:لة مح": 1,
+        "c5:لية و": 1,
+        "c5:محلية": 1,
+        "c5:واردة": 1,
+        "c5:والة ": 1,
+        "c5:ية وا": 1,
+        "w:حوالة": 1,
+        "w:محلية": 1,
+        "w:واردة": 1
+      },
+      "passesValidation": true,
+      "runtimeEligible": true,
+      "template": "26ac99e693b3ff17efff4ba1953624941401299569af550d3754115c82e2f9e1"
+    },
     {
       "expected": "OTP",
       "features": {
@@ -1145,7 +1198,10 @@
         "w:شراء": 1,
         "w:عبر": 1,
         "w:لعملية": 1
-      }
+      },
+      "passesValidation": false,
+      "runtimeEligible": false,
+      "template": "4b51fa46ab1abddc2cdcece77c8fe79f5d857d344d8398e4ab358d3c1fe9fcee"
     },
     {
       "expected": "PURCHASE",
@@ -1218,7 +1274,79 @@
         "w:contactless": 1,
         "w:pos": 1,
         "w:purchase": 1
-      }
+      },
+      "passesValidation": true,
+      "runtimeEligible": false,
+      "template": "55cf377c8aa36728ac1e8de8d0cc4cee474c40b3a61df6cba63ff47ff601c683"
+    },
+    {
+      "expected": "NON_FINANCIAL",
+      "features": {
+        "b:حوالة محلية": 1,
+        "b:طلب حوالة": 1,
+        "b:محلية واردة": 1,
+        "c3: حو": 1,
+        "c3: مح": 1,
+        "c3: وا": 1,
+        "c3:ارد": 1,
+        "c3:الة": 1,
+        "c3:ب ح": 1,
+        "c3:ة م": 1,
+        "c3:ة و": 1,
+        "c3:حلي": 1,
+        "c3:حوا": 1,
+        "c3:ردة": 1,
+        "c3:طلب": 1,
+        "c3:لب ": 1,
+        "c3:لة ": 1,
+        "c3:لية": 1,
+        "c3:محل": 1,
+        "c3:وار": 1,
+        "c3:وال": 1,
+        "c3:ية ": 1,
+        "c4: حوا": 1,
+        "c4: محل": 1,
+        "c4: وار": 1,
+        "c4:اردة": 1,
+        "c4:الة ": 1,
+        "c4:ب حو": 1,
+        "c4:ة مح": 1,
+        "c4:ة وا": 1,
+        "c4:حلية": 1,
+        "c4:حوال": 1,
+        "c4:طلب ": 1,
+        "c4:لب ح": 1,
+        "c4:لة م": 1,
+        "c4:لية ": 1,
+        "c4:محلي": 1,
+        "c4:وارد": 1,
+        "c4:والة": 1,
+        "c4:ية و": 1,
+        "c5: حوال": 1,
+        "c5: محلي": 1,
+        "c5: وارد": 1,
+        "c5:الة م": 1,
+        "c5:ب حوا": 1,
+        "c5:ة محل": 1,
+        "c5:ة وار": 1,
+        "c5:حلية ": 1,
+        "c5:حوالة": 1,
+        "c5:طلب ح": 1,
+        "c5:لب حو": 1,
+        "c5:لة مح": 1,
+        "c5:لية و": 1,
+        "c5:محلية": 1,
+        "c5:واردة": 1,
+        "c5:والة ": 1,
+        "c5:ية وا": 1,
+        "w:حوالة": 1,
+        "w:طلب": 1,
+        "w:محلية": 1,
+        "w:واردة": 1
+      },
+      "passesValidation": false,
+      "runtimeEligible": true,
+      "template": "677b890f2831257b2180d401aeedf506b48f942f220a144db7f7e227b990ffcd"
     },
     {
       "expected": "TRANSFER_IN",
@@ -1273,7 +1401,10 @@
         "w:حوالة": 1,
         "w:داخلية": 1,
         "w:واردة": 1
-      }
+      },
+      "passesValidation": true,
+      "runtimeEligible": false,
+      "template": "756486a9aee7c457c44ae27f35621b3ace91196346d6b8910edbbfe7e9fa06f4"
     },
     {
       "expected": "TRANSFER_OUT",
@@ -1364,7 +1495,10 @@
         "w:عملية": 1,
         "w:مالية": 1,
         "w:مقبولة": 1
-      }
+      },
+      "passesValidation": true,
+      "runtimeEligible": false,
+      "template": "7a797749066cef658006582a252aa0c891ba53fdb175307211fa78dfd1a85803"
     },
     {
       "expected": "REFUND",
@@ -1447,7 +1581,10 @@
         "w:ايتمانية": 1,
         "w:بطاقة": 1,
         "w:مبلغ": 1
-      }
+      },
+      "passesValidation": true,
+      "runtimeEligible": false,
+      "template": "a73957f46c789fff0ab3810f233dab3ee7cf9307d448a478ae071efc1a7529b2"
     },
     {
       "expected": "NON_FINANCIAL",
@@ -1616,10 +1753,13 @@
         "w:تم": 1,
         "w:حسابك": 1,
         "w:عبر": 1
-      }
+      },
+      "passesValidation": false,
+      "runtimeEligible": false,
+      "template": "b348fc9f3aa775d059fa35b134f5dd1132e4b6c6a5fc6c6b16410a585ef7e20d"
     }
   ],
-  "version": "family-nb-v2-3e5e3449be7831ba",
+  "version": "family-nb-v2-e282d4e1d86a37ba",
   "vocabulary": [
     "b:apple pay",
     "b:google pay",

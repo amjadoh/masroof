@@ -19,15 +19,17 @@ object FamilyModelCodec {
             root.getValue("counts").jsonObject.mapKeys {SmsFamilyLabel.valueOf(it.key)}.mapValues {(_,value)->value.jsonObject.mapValues {it.value.jsonPrimitive.long}},
             root.getValue("enabledFamilies").jsonArray.map {SmsFamilyLabel.valueOf(it.jsonPrimitive.content)}.toSet(),
             policy.getValue("scoreThreshold").jsonPrimitive.double,policy.getValue("marginThreshold").jsonPrimitive.double,policy.getValue("coverageThreshold").jsonPrimitive.double)
-        val cases = root.getValue("validation").jsonArray.map { val row=it.jsonObject; FamilyEvaluation(SmsFamilyLabel.valueOf(row.getValue("expected").jsonPrimitive.content),terms(row.getValue("features"))) }
+        val cases = root.getValue("validation").jsonArray.map { val row=it.jsonObject; FamilyEvaluation(SmsFamilyLabel.valueOf(row.getValue("expected").jsonPrimitive.content),terms(row.getValue("features")),
+            row["runtimeEligible"]?.jsonPrimitive?.booleanOrNull ?: false, row["template"]?.jsonPrimitive?.contentOrNull,
+            row["passesValidation"]?.jsonPrimitive?.booleanOrNull ?: false) }
         val manifest = ModelManifest("sms-family",model.version,root.getValue("cleaningVersion").jsonPrimitive.content,
             root.getValue("featuresVersion").jsonPrimitive.content,model.enabledFamilies,root.getValue("evaluationSource").jsonPrimitive.content)
         manifest.requireCompatible()
         return Seed(model,cases,manifest)
     }
-    fun checked(seed: Seed, labels: List<HumanFamilyLabel>): FamilyClassifier {
+    fun checked(seed: Seed, labels: List<HumanFamilyLabel>, blocks: List<HumanTemplateBlock> = emptyList()): FamilyClassifier {
         seed.manifest.requireCompatible()
-        return FamilyClassifier.checked(seed.model,labels,seed.evaluation)
+        return FamilyClassifier.checked(seed.model,labels,seed.evaluation,blocks)
     }
 
     fun terms(element: JsonElement): Map<String,Int> = element.jsonObject.mapValues {it.value.jsonPrimitive.int}.also { map ->
@@ -49,16 +51,27 @@ object FamilyModelCodec {
         val payload = buildJsonObject {
             put("schema",2);put("cleaningVersion",FamilyInputCleaner.VERSION);put("featuresVersion",FamilyInputCleaner.FEATURES_VERSION);put("seedVersion",seed.model.version);put("modelVersion",classifier.version)
             put("labels",JsonArray(latest.sortedBy {it.rawId}.map(::labelJson)))
+            put("blocks", JsonArray(classifier.latestBlocks.map { block -> buildJsonObject {
+                put("bank",block.bankId);put("raw",block.rawId);put("decision",block.decisionId)
+                put("template",block.template);put("at",block.at)
+            } }))
             put("documents",buildJsonObject {classifier.model.documents.toSortedMap(compareBy {it.name}).forEach {(family,count)->put(family.name,count)}})
         }
         return buildJsonObject {put("checksum",FamilyInputCleaner.sha256(payload.toString()));put("payload",payload)}.toString()
     }
-    fun cachedLabels(text: String, seed: Seed): List<HumanFamilyLabel> {
+    fun cachedLabels(text: String, seed: Seed): List<HumanFamilyLabel> = cachedClassifier(text, seed).latestLabels
+
+    /** Decode suppressions together with labels; a cache must never silently drop a template block. */
+    fun cachedClassifier(text: String, seed: Seed): FamilyClassifier {
         require(text.length<=16*1024*1024)
         val root=Json.parseToJsonElement(text).jsonObject;val payload=root.getValue("payload").jsonObject
         require(root.getValue("checksum").jsonPrimitive.content==FamilyInputCleaner.sha256(payload.toString()))
         require(payload.getValue("cleaningVersion").jsonPrimitive.content==FamilyInputCleaner.VERSION)
         require(payload.getValue("schema").jsonPrimitive.int==2 && payload.getValue("seedVersion").jsonPrimitive.content==seed.model.version && payload.getValue("featuresVersion").jsonPrimitive.content==FamilyInputCleaner.FEATURES_VERSION)
-        return payload.getValue("labels").jsonArray.map(::label).also { require(checked(seed,it).version==payload.getValue("modelVersion").jsonPrimitive.content) }
+        val labels = payload.getValue("labels").jsonArray.map(::label)
+            val blocks = payload["blocks"]?.jsonArray.orEmpty().map { element -> val row=element.jsonObject
+                HumanTemplateBlock(row.getValue("bank").jsonPrimitive.content,row.getValue("raw").jsonPrimitive.content,
+                    row.getValue("decision").jsonPrimitive.content,row.getValue("template").jsonPrimitive.content,row.getValue("at").jsonPrimitive.long) }
+        return checked(seed,labels,blocks).also { require(it.version==payload.getValue("modelVersion").jsonPrimitive.content) }
     }
 }

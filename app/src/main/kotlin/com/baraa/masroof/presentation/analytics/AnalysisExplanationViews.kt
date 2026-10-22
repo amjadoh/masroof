@@ -85,6 +85,7 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             "PERSONAL_MODEL" -> R.string.lab_analysis_ready
             "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
             "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
+            "LIVE_BASELINE_BETTER" -> R.string.learning_forecast_paused
             "MODEL_UNAVAILABLE" -> R.string.lab_analysis_quality_model_retry
             "COVERAGE_GAPS" -> R.string.lab_analysis_quality_gaps
             "NEEDS_PERIODS" -> R.string.lab_analysis_quality_periods_reason
@@ -134,6 +135,40 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             if (snapshot.evaluations.isEmpty()) Text(stringResource(R.string.lab_analysis_evaluation_missing), style = MaterialTheme.typography.bodySmall)
             snapshot.evaluations.forEach { e -> Text(stringResource(R.string.lab_analysis_evaluation_row, e.horizon, e.count,
                 formatLocalizedMoney(analysisAmount(e.mae)), formatLocalizedMoney(analysisAmount(e.bias))), style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+}
+
+@Composable internal fun LearningAndForecastPerformance(state: AnalysisUiState) {
+    state.learning?.let { learning ->
+        MasroofCard(Modifier.testTag("learning-insights")) {
+            MasroofGuidanceLabel(stringResource(R.string.learning_title), stringResource(R.string.learning_counts_hint),
+                style = MaterialTheme.typography.titleSmall)
+            if(learning.pending) Text(stringResource(R.string.learning_pending), style = MaterialTheme.typography.bodySmall)
+            else if(learning.statisticalFamilies == 0) Text(stringResource(R.string.learning_statistical_paused), style = MaterialTheme.typography.bodySmall)
+            else Text(stringResource(R.string.learning_statistical_active,learning.statisticalFamilies), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.learning_counts, learning.attempted, learning.suggested, learning.understood, learning.posted, learning.awaitingReview), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.learning_feedback_counts, learning.learned, learning.blocked, learning.excluded, learning.repeatedContradictions, learning.pendingDecisions), style = MaterialTheme.typography.bodySmall)
+            learning.exclusions.forEach { (reason,count) -> Text(stringResource(R.string.learning_exclusion_count,
+                stringResource(com.baraa.masroof.presentation.interpretation.learningReasonResource(reason)),count), style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    MasroofCard(Modifier.testTag("forecast-performance")) {
+        MasroofGuidanceLabel(stringResource(R.string.learning_forecast_title), stringResource(R.string.learning_forecast_hint),
+            style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.learning_forecast_periods,state.forecastPerformance.periods),style = MaterialTheme.typography.bodySmall)
+        if(!state.forecastPerformance.allowPersonal) Text(stringResource(R.string.learning_forecast_paused),style = MaterialTheme.typography.bodySmall)
+        state.forecastPerformance.personalMae?.let { Amount(stringResource(R.string.learning_forecast_personal_error),it) }
+        state.forecastPerformance.baselineMae?.let { Amount(stringResource(R.string.learning_forecast_baseline_error),it) }
+        state.forecastComparisons.takeLast(3).forEach { comparison ->
+            Text(timestamp(comparison.issuedAt),style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.application.analytics.ForecastPerformancePolicy.originDay(comparison)?.let { origin ->
+                Text(stringResource(R.string.learning_forecast_origin, day(origin), (comparison.periodEnd - origin).toInt()),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            Amount(stringResource(R.string.learning_forecast_personal),comparison.personalTotal)
+            Amount(stringResource(R.string.learning_forecast_baseline),comparison.baselineTotal)
+            comparison.actual?.let { Amount(stringResource(R.string.lab_analysis_final_actual),it) }
         }
     }
 }

@@ -43,7 +43,7 @@ class AnalyticsPersistenceTest {
             AnalyticsArchiveStore.restore(db, raw)
             assertEquals(row, db.analytics().latest()); assertEquals(prefs, db.analytics().preferences())
             assertEquals(listOf(alert), db.analytics().alerts())
-            db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'room_%' AND name NOT LIKE 'android_%' AND name NOT LIKE 'sqlite_%'").use { assertEquals(5, it.count) }
+            db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'room_%' AND name NOT LIKE 'android_%' AND name NOT LIKE 'sqlite_%'").use { assertEquals(7, it.count) }
         } finally { db.close() }
         val reopened = AnalyticsDatabase.open(c)
         try { assertEquals(row, reopened.analytics().latest()) } finally { reopened.close() }

@@ -446,8 +446,13 @@ class ReviewWorkflowServiceTest {
             reasons = listOf("transfer_pending_match"),
             now = clock.now(),
         )
+        val stale = workflow.resolveTransferAsExternal(
+            ReviewIdFactory.fromRawSmsId("sms-out"), ExternalTransferDirection.INCOMING)
+        assertEquals("transfer_evidence_changed", (stale as ReviewWorkflowResult.Rejected).reason)
+        assertTrue(ftRepo.listAll().isEmpty())
+        assertEquals(ReviewStatus.REQUIRED, reviewRepo.findByRawSmsId("sms-out")!!.status)
         val result = workflow.resolveTransferAsExternal(
-            ReviewIdFactory.fromRawSmsId("sms-out"),
+            ReviewIdFactory.fromRawSmsId("sms-out"), ExternalTransferDirection.OUTGOING,
         ) as ReviewWorkflowResult.Success
         assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, result.transaction!!.type)
         assertNotEquals(FinancialTransactionType.EXPENSE, result.transaction!!.type)
@@ -486,7 +491,7 @@ class ReviewWorkflowServiceTest {
             now = clock.now(),
         )
         val result = workflow.resolveTransferAsExternal(
-            ReviewIdFactory.fromRawSmsId("sms-in"),
+            ReviewIdFactory.fromRawSmsId("sms-in"), ExternalTransferDirection.INCOMING,
         ) as ReviewWorkflowResult.Success
         assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_IN, result.transaction!!.type)
         assertNotEquals(FinancialTransactionType.INCOME, result.transaction!!.type)
@@ -1005,7 +1010,7 @@ class ReviewWorkflowServiceTest {
             FinancialTransactionType.EXPENSE,
         ) as ReviewWorkflowResult.Success
         val transfer = manual.resolveTransferAsExternal(
-            ReviewIdFactory.fromRawSmsId("sms-manual-transfer"),
+            ReviewIdFactory.fromRawSmsId("sms-manual-transfer"), ExternalTransferDirection.OUTGOING,
         ) as ReviewWorkflowResult.Success
 
         assertEquals(autoPurchase.occurredAt, purchase.transaction!!.occurredAt)

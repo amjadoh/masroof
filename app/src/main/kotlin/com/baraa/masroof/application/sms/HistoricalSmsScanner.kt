@@ -58,12 +58,15 @@ class HistoricalSmsScanner(
     private val batchProcessor: HistoricalSmsBatchProcessor,
     private val appLogService: AppLogService? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val coverageCompleted: suspend (Instant?, Instant) -> Unit = { _, _ -> },
+    private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
     suspend fun scan(receivedAfter: Instant? = null): SmsScanResult = withContext(ioDispatcher) {
         com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter) }
     }
 
     private suspend fun scanOnDispatcher(receivedAfter: Instant?): SmsScanResult {
+        val scanStartedAt = clock.instant()
         appLogService?.info(
             AppLogCategories.SCAN,
             "Historical scan started${receivedAfter?.let { " after $it" } ?: ""}",
@@ -174,6 +177,11 @@ class HistoricalSmsScanner(
             SmsScanFailure.DerivedIncomplete(it.stage)
         }
         val result = snapshot(failure)
+        if(result.failure == null && result.failed == 0 && result.skippedMalformed == 0) {
+            try { coverageCompleted(receivedAfter, scanStartedAt) }
+            catch(e: kotlinx.coroutines.CancellationException) { throw e }
+            catch(_: Exception) { appLogService?.warn(AppLogCategories.SCAN, "Coverage receipt pending; rescan required") }
+        }
         logScanFinished(result)
         return result
     }
