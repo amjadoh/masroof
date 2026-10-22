@@ -10,10 +10,13 @@ esac
 # Optional sharding applies only to stateless production smoke, never halt/resume.
 smoke_sharded=false
 if [ "$#" -eq 3 ] && [ "$1" = app ]; then
-  case "$2:$3" in 0:2|1:2) ;; *) echo "Expected shard 0 or 1 of 2" >&2; exit 2 ;; esac
+  case "$2:$3" in
+    0:2|1:2|0:4|1:4|2:4|3:4) ;;
+    *) echo "Expected a shard index in a two- or four-shard suite" >&2; exit 2 ;;
+  esac
   smoke_sharded=true
 elif [ "$#" -ne 1 ]; then
-  echo "Usage: $0 app [0|1 2]" >&2; exit 2
+  echo "Usage: $0 app [shard-index 2|4]" >&2; exit 2
 fi
 task_sdk_dir="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 test -n "$task_sdk_dir"
@@ -22,7 +25,10 @@ printf 'sdk.dir=%s\n' "$task_sdk_dir" > local.properties
 # Existing notPackage arguments keep process-death phases out of both suites.
 smoke_status=0
 if [ "$smoke_sharded" = true ]; then
-  ./gradlew "$smoke_task"     "-Pandroid.testInstrumentationRunnerArguments.numShards=$3"     "-Pandroid.testInstrumentationRunnerArguments.shardIndex=$2"     --no-parallel --stacktrace || smoke_status=$?
+  ./gradlew "$smoke_task" \
+    "-Pandroid.testInstrumentationRunnerArguments.numShards=$3" \
+    "-Pandroid.testInstrumentationRunnerArguments.shardIndex=$2" \
+    --no-parallel --stacktrace || smoke_status=$?
 else
   ./gradlew "$smoke_task" --no-parallel --stacktrace || smoke_status=$?
 fi
