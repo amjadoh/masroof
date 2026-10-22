@@ -40,8 +40,12 @@ hook(dashboard, '    var flowDetailMode by rememberSaveable', '''    var labAnal
     val labDestination by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.target.collectAsState()
     LaunchedEffect(labDestination) { if (labDestination != null) labAnalysisOpen = true }
     if (labAnalysisOpen) {
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.setAnalysisVisible(true)
+            onDispose { com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.setAnalysisVisible(false) }
+        }
         com.baraa.masroof.lab.replica.presentation.analytics.LabAnalyticsRoute(
-            onBack = { labAnalysisOpen = false; com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.clear() },
+            onBack = { labAnalysisOpen = false; com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.finish() },
             onOpenTransaction = onOpenTransaction,
         )
         return
@@ -56,16 +60,57 @@ nav = 'presentation/navigation/MasroofRoot.kt'
 hook(nav, 'LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow) {', 'LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow,\n        com.baraa.masroof.lab.replica.presentation.analytics.LocalLabAnalyticsWorkflow provides dashboardViewModel.labAnalytics) {')
 hook(nav, 'reviewCount = notifications.unreadCount,', 'reviewCount = notifications.unreadCount + com.baraa.masroof.lab.replica.presentation.analytics.labUnreadAlerts(dashboardViewModel.labAnalytics),')
 hook(nav, '    var consumedNavigationGeneration by rememberSaveable', '''    val labTarget by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.target.collectAsState()
-    LaunchedEffect(labTarget) { if (labTarget != null) homeDestination = HomeDestination.Dashboard }
+    LaunchedEffect(labTarget) { if (labTarget != null) { dashboardViewModel.closeTransactionDetail(); homeDestination = HomeDestination.Dashboard } }
+    val labCenterReturns by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.centerReturns.collectAsState()
+    var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
+    LaunchedEffect(labCenterReturns) {
+        if (labCenterReturns > consumedLabCenterReturn) homeDestination = HomeDestination.NotificationCenter
+        consumedLabCenterReturn = labCenterReturns
+    }
     var consumedNavigationGeneration by rememberSaveable''')
+# Keep analytics composed beneath transaction details so expanded groups and scroll survive Back.
+hook(nav, 'import androidx.compose.ui.Modifier', 'import androidx.compose.ui.Modifier\nimport androidx.compose.ui.platform.testTag')
+hook(nav, '        if (!detailOpenedFromAllTransactions) {', '''        val labAnalysisVisible by com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.analysisVisible.collectAsState()
+        val labOverlayDetail = homeDestination == HomeDestination.Dashboard && labAnalysisVisible && dashboardState.selectedTransactionId != null
+        if (!detailOpenedFromAllTransactions && !labOverlayDetail) {''')
+nav_source = (root / 'app/src/main/kotlin/com/baraa/masroof' / nav).read_text(encoding='utf-8')
+dashboard_branch = nav_source[nav_source.index('            HomeDestination.Dashboard -> DashboardRoute('):nav_source.index('            HomeDestination.AccountsSummary ->')]
+detail_overlay = '''                if (labOverlayDetail) Box(Modifier.fillMaxSize().testTag("lab-analytics-transaction-detail")) {
+                    val closeLabDetail = { if (!dashboardState.reclassifying && !dashboardState.ignoring && !dashboardState.markingCommitment) dashboardViewModel.closeTransactionDetail() }
+                    BackHandler(onBack = closeLabDetail)
+                    showTransactionDetail(dashboardState, closeLabDetail,
+                        dashboardViewModel::reclassifySelectedTransaction, dashboardViewModel::ignoreSelectedTransaction,
+                        dashboardViewModel::markSelectedTransactionAsCommitment, overlayOnList = true)
+                }
+            }
+'''
+hook(nav, dashboard_branch, dashboard_branch.replace('HomeDestination.Dashboard -> DashboardRoute(', 'HomeDestination.Dashboard -> Box {\n                DashboardRoute(', 1) + detail_overlay)
+hook(nav, '        ?: dashboardState.recentTransactions.find { it.id == selectedId }', '        ?: dashboardState.recentTransactions.find { it.id == selectedId }\n        ?: dashboardState.labSelectedTransaction')
+hook(nav, '    // Keep the detail destination while a refresh reloads rows for the same period.', '''    if (overlayOnList) {
+        com.baraa.masroof.lab.replica.presentation.analytics.LabEvidenceDetailFallback(dashboardState.selectedTransactionSmsLoading, onBack)
+        return true
+    }
+    // Keep the detail destination while a refresh reloads rows for the same period.''')
+hook('presentation/dashboard/DashboardModels.kt', '    val selectedTransactionId: String? = null,', '    val selectedTransactionId: String? = null,\n    val labSelectedTransaction: TransactionPreviewUi? = null,')
+hook('presentation/dashboard/DashboardViewModel.kt', '                selectedTransactionId = transactionId,', '                selectedTransactionId = transactionId,\n                labSelectedTransaction = null,')
+hook('presentation/dashboard/DashboardViewModel.kt', '                selectedTransactionId = null,', '                selectedTransactionId = null,\n                labSelectedTransaction = null,', count=2)
+hook('presentation/dashboard/DashboardViewModel.kt', '    private fun loadSelectedTransactionSms(transactionId: String) {\n        viewModelScope.launch {', '''    private fun loadSelectedTransactionSms(transactionId: String) {
+        viewModelScope.launch {
+            val outsidePeriod = _uiState.value.allTransactions.none { it.id == transactionId } && _uiState.value.recentTransactions.none { it.id == transactionId }
+            val labRow = if (!outsidePeriod) null else try {
+                labAnalytics?.evidence(listOf(transactionId))?.firstOrNull()?.let { item -> item.transaction?.let { toPreview(it, item.facts) } }
+            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }''')
+hook('presentation/dashboard/DashboardViewModel.kt', '                        selectedTransactionSms = evidence,', '                        selectedTransactionSms = evidence,\n                        labSelectedTransaction = labRow,')
 notifications = 'presentation/notification/NotificationCenterScreen.kt'
-hook(notifications, '    ) { contentModifier ->\n        when {', '''    ) { originalModifier ->
-        Column(originalModifier) {
-        com.baraa.masroof.lab.replica.presentation.analytics.LabAlertsCard()
-        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
-        val contentModifier = androidx.compose.ui.Modifier.fillMaxSize()
-        when {''')
-hook(notifications, '\n    }\n}\n\n@Composable\nprivate fun NotificationCenterRow', '\n        }\n        }\n    }\n}\n\n@Composable\nprivate fun NotificationCenterRow')
+notification_source = (root / 'app/src/main/kotlin/com/baraa/masroof' / notifications).read_text(encoding='utf-8')
+notification_body = notification_source[notification_source.index('    ) { contentModifier ->'):notification_source.index('\n@Composable\nprivate fun NotificationCenterRow')]
+hook(notifications, notification_body, """    ) { contentModifier ->
+        com.baraa.masroof.lab.replica.presentation.analytics.LabUnifiedNotificationContent(state, contentModifier) { item, divider ->
+            NotificationCenterRow(item, { onOpenNotification(item) }, divider)
+        }
+    }
+}
+""")
 
 # New draft has Save/Cancel only; existing editors retain every action.
 editor = 'presentation/settings/SettingsCommitmentEditorScreen.kt'
@@ -74,4 +119,10 @@ hook(editor, '            OutlinedButton(\n                onClick = onToggleAct
 hook(editor, '            OutlinedButton(\n                onClick = { showDeleteConfirm = true },', '            if (!newSuggestion) OutlinedButton(\n                onClick = { showDeleteConfirm = true },')
 hook('MainActivity.kt', '        super.onCreate(savedInstanceState)\n', '        super.onCreate(savedInstanceState)\n        intent?.getStringExtra("lab_analysis_alert")?.let { com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.open(it) }\n')
 
+hook('MainActivity.kt', '    override fun attachBaseContext(newBase: Context) {', '''    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("lab_analysis_alert")?.let { com.baraa.masroof.lab.replica.application.analytics.AnalyticsNavigation.open(it) }
+    }
+    override fun attachBaseContext(newBase: Context) {''')
 (root / 'lab/beta/replica-overlays/analytics.json').write_text(json.dumps(spec, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
