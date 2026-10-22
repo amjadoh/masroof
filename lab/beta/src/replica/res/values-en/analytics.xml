@@ -98,7 +98,7 @@
     <string name="lab_analysis_due_toggle">Remind me about dues</string>
     <string name="lab_analysis_due_hint">A reminder before a recorded commitment is due. Choose the number of days; the default is three.</string>
     <string name="lab_analysis_payment_toggle">Alert me when a recurring payment increases</string>
-    <string name="lab_analysis_payment_hint">Alerts when a recurring payment increases by at least 20% and SAR 10 against three earlier payments. It does not change a commitment automatically.</string>
+    <string name="lab_analysis_payment_hint" formatted="false">Alerts when a recurring payment increases by at least 20% and SAR 10 against three earlier payments. It does not change a commitment automatically.</string>
     <string name="lab_analysis_phone_hint">Turning this off keeps alerts available in the in-app notification center.</string>
     <string name="lab_analysis_budget_invalid">Enter a positive amount with up to two decimal places, or leave blank.</string>
     <string name="lab_analysis_days_invalid">Enter a number of days from 1 to 30.</string>
