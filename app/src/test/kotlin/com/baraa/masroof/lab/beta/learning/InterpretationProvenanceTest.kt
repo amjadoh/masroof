@@ -42,11 +42,12 @@ class InterpretationProvenanceTest {
     }
     @Test fun manualAndUnavailableSourcesNeverClaimCurrentMlParticipation() {
         val base = record()
-        for (resolution in listOf(ReviewResolutionKind.USER_FINANCIAL_TYPE, ReviewResolutionKind.USER_CORRECTION, ReviewResolutionKind.USER_NON_FINANCIAL))
+        for (resolution in listOf(ReviewResolutionKind.USER_FINANCIAL_TYPE, ReviewResolutionKind.USER_NON_FINANCIAL))
             assertEquals(InterpretationOrigin.MANUAL, InterpretationProvenanceWorkflow.project(base, resolution).origin)
         assertEquals(InterpretationOrigin.MANUAL, InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true, automationConfirmed = true)).origin)
         // A merchant-only correction leaves the original family inference intact.
         assertNotNull(InterpretationProvenanceWorkflow.project(base.copy(userCorrected = true)))
+        assertEquals(InterpretationOrigin.ML,InterpretationProvenanceWorkflow.project(base.copy(userCorrected=true),ReviewResolutionKind.USER_CORRECTION).origin)
         for (reasons in listOf(listOf("model:active"), listOf("family_origin:ML"), listOf("family_origin:ML", "model:"),
             listOf("family_origin:ML", "family_origin:HUMAN_TEMPLATE", "model:x"))) {
             assertEquals(InterpretationOrigin.UNAVAILABLE, InterpretationProvenanceWorkflow.project(base.copy(event = base.event.copy(confidence = Confidence(0.9, reasons)))).origin)

@@ -38,6 +38,7 @@ object ReviewReasonLabels {
             "raw_sms_already_finalized" -> R.string.review_error_already_finalized
             "parsed_event_missing" -> R.string.review_error_parsed_missing
             "missing_destination" -> R.string.review_reason_transfer_missing_side
+            "transfer_evidence_changed" -> R.string.learning_transfer_changed
             "missing_source" -> R.string.review_reason_transfer_missing_side
             "destination_not_owned" -> R.string.review_reason_transfer_ownership
             "source_not_owned" -> R.string.review_reason_transfer_ownership

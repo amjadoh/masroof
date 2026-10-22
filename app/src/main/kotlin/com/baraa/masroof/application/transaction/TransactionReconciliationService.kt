@@ -61,6 +61,7 @@ class TransactionReconciliationService(
     private val effectiveParsedEventProvider: EffectiveParsedEventProvider? = null,
     private val reviewRepository: ReviewRepository? = null,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
+    private val automaticWrite: (suspend (List<ParsedEventRecord>, suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult)? = null,
 ) {
     suspend fun reconcileStoredEvents(): ReconciliationSummary =
         reconcileStoredEventsDetailed().summary
@@ -379,6 +380,7 @@ class TransactionReconciliationService(
         records: List<ParsedEventRecord>,
         scope: AffectedScope? = null,
     ): ReconciliationReport {
+        val evidence = records.associateBy { it.event.rawSmsId }
         var assembledSingle = 0
         var matchedPairs = 0
         var pendingMatch = 0
@@ -417,9 +419,7 @@ class TransactionReconciliationService(
                     continue
                 }
                 // Explicit "this SMS is financial" decision (e.g. restore from ignored).
-                if (review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE ||
-                    review?.resolutionKind == ReviewResolutionKind.USER_CORRECTION
-                ) {
+                if (review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE) {
                     userConfirmed = true
                 }
             }
@@ -489,7 +489,7 @@ class TransactionReconciliationService(
                     when (single) {
                         is TransactionAssembler.Outcome.Assembled -> {
                             when (
-                                persist(single.transaction, single.rawSmsIds)
+                                persist(single.transaction, single.rawSmsIds, evidence)
                             ) {
                                 PersistOutcome.Saved -> {
                                     assembledSingle++
@@ -553,7 +553,7 @@ class TransactionReconciliationService(
                         )
                     ) {
                         is TransactionAssembler.Outcome.Assembled -> {
-                            when (persist(outcome.transaction, outcome.rawSmsIds)) {
+                            when (persist(outcome.transaction, outcome.rawSmsIds, evidence)) {
                                 PersistOutcome.Saved -> {
                                     assembledSingle++
                                     settledRawSmsIds += event.rawSmsId
@@ -634,7 +634,7 @@ class TransactionReconciliationService(
                 )
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
-                    when (persist(outcome.transaction, outcome.rawSmsIds)) {
+                    when (persist(outcome.transaction, outcome.rawSmsIds, evidence)) {
                         PersistOutcome.Saved -> {
                             matchedPairs++
                             matchedEventIds += pair.outgoing.event.id
@@ -678,7 +678,7 @@ class TransactionReconciliationService(
                 )
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
-                    when (persist(unmatched.transaction, unmatched.rawSmsIds)) {
+                    when (persist(unmatched.transaction, unmatched.rawSmsIds, evidence)) {
                         PersistOutcome.Saved -> {
                             assembledSingle++
                             pendingMatch = (pendingMatch - 1).coerceAtLeast(0)
@@ -768,6 +768,7 @@ class TransactionReconciliationService(
         scope: AffectedScope? = null,
     ): UpgradePassResult {
         val parsedById = records.associateBy { it.event.id }
+        val evidence = records.associateBy { it.event.rawSmsId }
         val outs: List<FinancialTransaction>
         val ins: List<FinancialTransaction>
         val singleLegSelfTransfers: List<FinancialTransaction>
@@ -933,7 +934,7 @@ class TransactionReconciliationService(
                     val rawSmsIds = listOf(outLeg.event.rawSmsId, inLeg.event.rawSmsId)
                         .distinct()
                         .sorted()
-                    when (upgradePersist(outcome.transaction, outcome.rawSmsIds, rawSmsIds)) {
+                    when (upgradePersist(outcome.transaction, outcome.rawSmsIds, rawSmsIds, evidence)) {
                         UpgradePersistOutcome.Saved -> {
                             matchedPairs++
                             assembledSingle++
@@ -975,6 +976,7 @@ class TransactionReconciliationService(
         scope: AffectedScope? = null,
     ): UpgradePassResult {
         val parsedById = records.associateBy { it.event.id }
+        val evidence = records.associateBy { it.event.rawSmsId }
         val staleFees = if (scope != null) {
             records
                 .filter { it.event.messageFamily == MessageFamily.FINANCING_INSTALLMENT }
@@ -1004,6 +1006,11 @@ class TransactionReconciliationService(
                 .firstOrNull { it.event.messageFamily == MessageFamily.FINANCING_INSTALLMENT }
                 ?: continue
             val event = record.event
+            if(preservesExplicitUserDecision(event.rawSmsId)) {
+                alreadyLinked++
+                settledRawSmsIds += event.rawSmsId
+                continue
+            }
             if (!TransactionAssembler.isAutomationEligible(event, record.automationConfirmed)) continue
             val receivedAt = rawSmsRepository.getById(event.rawSmsId)?.receivedAt ?: existing.occurredAt
             val sourceOwn = event.sourceAccountRef?.let { ownershipResolver.resolveAccount(it) }
@@ -1046,7 +1053,11 @@ class TransactionReconciliationService(
                         continue
                     }
                     val healed = outcome.transaction.copy(id = existing.id)
-                    if (financialTransactionRepository.update(healed)) {
+                    val update = guardedWrite(listOf(event.rawSmsId), evidence) {
+                        if (financialTransactionRepository.update(healed)) FinancialTransactionSaveResult.Saved
+                        else FinancialTransactionSaveResult.Conflict(event.rawSmsId,"update_failed")
+                    }
+                    if (update == FinancialTransactionSaveResult.Saved) {
                         assembledSingle++
                         settledRawSmsIds += event.rawSmsId
                     } else {
@@ -1077,19 +1088,20 @@ class TransactionReconciliationService(
         transaction: FinancialTransaction,
         rawSmsIds: List<String>,
         staleRawSmsIds: List<String>,
+        evidence: Map<String,ParsedEventRecord>,
     ): UpgradePersistOutcome {
-        when (persist(transaction, rawSmsIds)) {
+        when (persist(transaction, rawSmsIds, evidence)) {
             PersistOutcome.Saved -> return UpgradePersistOutcome.Saved
             PersistOutcome.Already -> return UpgradePersistOutcome.Already
             PersistOutcome.Failed -> Unit
         }
 
         return when (
-            financialTransactionRepository.replaceExclusiveStaleLinks(
+            guardedWrite(rawSmsIds, evidence) { financialTransactionRepository.replaceExclusiveStaleLinks(
                 transaction = transaction,
                 rawSmsIds = rawSmsIds,
                 staleRawSmsIds = staleRawSmsIds,
-            )
+            ) }
         ) {
             FinancialTransactionSaveResult.Saved -> UpgradePersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> UpgradePersistOutcome.Already
@@ -1109,12 +1121,21 @@ class TransactionReconciliationService(
     private suspend fun persist(
         transaction: FinancialTransaction,
         rawSmsIds: List<String>,
+        evidence: Map<String,ParsedEventRecord>,
     ): PersistOutcome =
-        when (financialTransactionRepository.save(transaction, rawSmsIds)) {
+        when (guardedWrite(rawSmsIds, evidence) { financialTransactionRepository.save(transaction, rawSmsIds) }) {
             FinancialTransactionSaveResult.Saved -> PersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> PersistOutcome.Already
             is FinancialTransactionSaveResult.Conflict -> PersistOutcome.Failed
         }
+
+    private suspend fun guardedWrite(ids: List<String>, evidence: Map<String,ParsedEventRecord>,
+        write: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult {
+        val guard = automaticWrite ?: return write()
+        val missing = ids.firstOrNull { it !in evidence }
+        if(missing != null) return FinancialTransactionSaveResult.Conflict(missing,"missing_evidence_snapshot")
+        return guard(ids.map { evidence.getValue(it) },write)
+    }
 
     private data class LegacyReleaseResult(
         val releasedRawSmsIds: Set<String> = emptySet(),

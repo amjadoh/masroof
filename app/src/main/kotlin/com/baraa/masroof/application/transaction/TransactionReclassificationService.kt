@@ -12,6 +12,8 @@ import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.ownership.OwnershipResolver
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
+import com.baraa.masroof.domain.repository.TransactionReclassificationRepository
+import java.time.Clock
 
 sealed interface ReclassificationResult {
     data class Success(val transaction: FinancialTransaction) : ReclassificationResult
@@ -28,6 +30,9 @@ class TransactionReclassificationService(
     private val ownershipResolver: OwnershipResolver,
     private val ownershipConfirmationService: OwnershipConfirmationService? = null,
     private val appLogService: AppLogService? = null,
+    private val persistence: TransactionReclassificationRepository? = null,
+    private val clock: Clock = Clock.systemUTC(),
+    private val afterDecisionCommitted: () -> Unit = {},
 ) {
     suspend fun reclassify(
         transactionId: String,
@@ -120,14 +125,19 @@ class TransactionReclassificationService(
             sourceContainerId = sourceId,
             destinationContainerId = destId,
         )
-        if (!financialTransactionRepository.update(updated)) {
+        val saved = try { persistence?.updateWithDecision(updated, rawSmsIds.single(), clock.instant())
+            ?: financialTransactionRepository.update(updated) }
+        catch(e: kotlinx.coroutines.CancellationException) { throw e }
+        catch(_: Exception) { false }
+        if (!saved) {
             return ReclassificationResult.Rejected("update_failed")
         }
+        afterDecisionCommitted()
         appLogService?.info(
             AppLogCategories.TRANSACTION,
             "Reclassified ${AppLogFormatting.maskId(transactionId)} to ${newType.name.lowercase()}",
         )
-        return ReclassificationResult.Success(updated)
+        return ReclassificationResult.Success(financialTransactionRepository.getById(updated.id) ?: updated)
     }
 
     private suspend fun maybeConfirmLoanOwned(reference: LoanReference) {

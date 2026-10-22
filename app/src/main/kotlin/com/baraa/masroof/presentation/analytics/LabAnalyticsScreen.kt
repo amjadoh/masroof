@@ -267,6 +267,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         }
     }
     PublishedForecastHistory(state)
+    LearningAndForecastPerformance(state)
 }
 
 @Composable private fun Preferences(workflow: LabAnalyticsWorkflow, state: AnalysisUiState, onBack: () -> Unit) {

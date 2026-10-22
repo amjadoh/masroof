@@ -28,8 +28,8 @@ class LearningPersistenceTest {
         try {
             assertEquals(listOf(label),db.learning().labels())
             assertEquals(listOf(audit),db.learning().history("raw-one"))
-            db.openHelper.readableDatabase.query("PRAGMA user_version").use {it.moveToFirst();assertEquals(1,it.getInt(0))}
-            db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'room_%' AND name NOT LIKE 'android_%' AND name NOT LIKE 'sqlite_%'").use {assertEquals(2,it.count)}
+            db.openHelper.readableDatabase.query("PRAGMA user_version").use {it.moveToFirst();assertEquals(2,it.getInt(0))}
+            db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'room_%' AND name NOT LIKE 'android_%' AND name NOT LIKE 'sqlite_%'").use {assertEquals(3,it.count)}
         }
         finally {db.close()}
         assertFalse(host.getDatabasePath("learning.db").exists())

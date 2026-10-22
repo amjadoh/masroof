@@ -74,6 +74,34 @@ sys.exit(int(os.environ.get('FAIL_STATUS', '0')))
             self.assertNotEqual(0, self.run_suite(*args).returncode)
         self.assertFalse((self.work / 'calls.jsonl').exists())
 
+    def test_learning_correction_survives_real_runner_phase_boundaries(self):
+        # Exercise the actual recovery script: both methods must run on one
+        # device, with force-stop between them, outside the orchestrated shards.
+        adb = self.work / 'bin/adb'
+        adb.write_text('''#!/usr/bin/env python3
+import json, pathlib, sys
+with open('calls.jsonl', 'a') as output:
+    output.write(json.dumps(['adb', *sys.argv[1:]]) + "\\n")
+if 'getprop' in sys.argv: print('36')
+if any('am instrument' in arg for arg in sys.argv): print('OK (1 test)')
+''')
+        result = subprocess.run(['bash', str(ROOT / 'scripts/m13-process-death.sh')],
+                                cwd=self.work, env=self.env, text=True,
+                                capture_output=True, timeout=10)
+        self.assertEqual(0, result.returncode, result.stderr)
+        calls = self.calls()
+        methods = [(index, call[-1]) for index, call in enumerate(calls)
+                   if 'LearningProcessDeathJourneyTest#' in call[-1]]
+        self.assertEqual(2, len(methods))
+        arm, resume = methods
+        self.assertIn('#armAfterFinancialCorrectionBeforeLearning', arm[1])
+        self.assertIn('#resumeFinancialCorrectionAndBlockNextTemplate', resume[1])
+        self.assertIn('-e m13Resume true', resume[1])
+        self.assertEqual([['adb', 'shell', 'am', 'force-stop', 'com.baraa.masroof']],
+                         calls[arm[0] + 1:resume[0]])
+        config = (ROOT / 'app/build.gradle.kts').read_text()
+        self.assertIn('com.baraa.masroof.instrumentation.processdeath', config)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,7 @@ REPORT = MODULE / 'ML_SEED_EVALUATION.json'
 EXPORT = ROOT / 'app/build/model-training/features.json'
 SPLITS = MODULE / 'tools/corpus-splits.json'
 APPROVED_FAMILIES = {'TRANSFER_IN'}  # Separation does not promote any new family.
+MIN_ACCEPTED_VALIDATION_TEMPLATES = 8
 POLICY = dict(scoreThreshold=0.98, marginThreshold=0.2, coverageThreshold=0.6)
 
 
@@ -90,31 +91,51 @@ def train(exported, frozen):
     vocabulary, documents, counts = fit(partitions['train'])
     evaluated = [dict(id=row['id'], template=row['template'], partition=split,
                       expected=row['family'], features=row['features'],
+                      runtimeEligible=row.get('runtimeEligible', False),
+                      expectedPassesValidation=row.get('expectedPassesValidation', False),
+                      candidateOutcomes=row.get('candidateOutcomes', {}),
                       **predict(row, set(vocabulary), documents, counts))
                  for split in ('validation', 'test') for row in partitions[split]]
     # Test results report performance; they NEVER select a family, threshold, or vocabulary.
     validation = [r for r in evaluated if r['partition'] == 'validation']
+    # Evaluate policy-accepted suggestions on naturally reached fallback cases only.
+    def accepted_for_family(row, family):
+        return row['runtimeEligible'] and accepts(row, {family})
     enabled = sorted(f for f in APPROVED_FAMILIES
-                     if any(r['expected'] == f for r in validation)
-                     and all(r['family'] == f for r in validation if r['expected'] == f)
-                     and not any(r['family'] == f and r['expected'] != f for r in validation))
+                     if sum(accepted_for_family(r, f) and r['expected'] == f and r['expectedPassesValidation'] for r in validation)
+                     >= MIN_ACCEPTED_VALIDATION_TEMPLATES
+                     and not any(accepted_for_family(r, f) and r['expected'] != f for r in validation))
     training = dict(sourceRows=len(exported['rows']) + len(exported['rejected']),
                     cleanRows=len(exported['rows']), rejected=exported['rejected'], conflicts=conflicts,
                     uniqueTemplates=sum(map(len, partitions.values())),
                     trainGroups=len(partitions['train']), validationGroups=len(partitions['validation']),
                     testGroups=len(partitions['test']), trainIds=sorted(r['id'] for r in partitions['train']),
-                    sourceSha256=hashlib.sha256(canonical(exported).encode()).hexdigest(), splitVersion='family-holdout-v1')
+                    sourceSha256=hashlib.sha256(canonical(exported).encode()).hexdigest(), splitVersion='family-runtime-holdout-v2')
     payload = dict(schema=2, cleaningVersion=exported['cleaningVersion'], featuresVersion=exported['featuresVersion'],
                    bankId=exported['bankId'], vocabulary=vocabulary, documents=documents, counts=counts,
                    enabledFamilies=enabled, policy=POLICY, evaluationSource='ML_SEED_EVALUATION.json', training=training,
-                   validation=[dict(expected=r['expected'], features=r['features']) for r in validation])
+                   validation=[dict(expected=r['expected'], features=r['features'], template=r['template'],
+                                    runtimeEligible=r['runtimeEligible'], passesValidation=r['expectedPassesValidation']) for r in validation])
     payload['version'] = 'family-nb-v2-' + hashlib.sha256(canonical(payload).encode()).hexdigest()[:16]
     report = dict(version=payload['version'], cleaningVersion=exported['cleaningVersion'],
                   featuresVersion=exported['featuresVersion'], training=training, enabledFamilies=enabled,
                   heldOutCases=[dict(**{k: v for k, v in r.items() if k != 'features'},
-                                     accepted=accepts(r, enabled)) for r in evaluated],
+                                     accepted=r['runtimeEligible'] and accepts(r, enabled),
+                                     validationAccepted=r['runtimeEligible'] and accepts(r, enabled) and r['candidateOutcomes'].get(r['family'], {}).get('validationAccepted', False),
+                                     assemblyAccepted=r['runtimeEligible'] and accepts(r, enabled) and r['candidateOutcomes'].get(r['family'], {}).get('assembly') == 'Assembled') for r in evaluated],
                   note='Frozen template-disjoint holdout. Test never selects model settings. '
                        'Small initial corpus; NB scores are not calibrated probabilities. No universal accuracy claim.')
+    report['runtimeEvaluation'] = dict(
+        validationEligible=sum(r['runtimeEligible'] for r in validation),
+        testEligible=sum(r['runtimeEligible'] for r in evaluated if r['partition'] == 'test'),
+        validationAccepted=sum(r['validationAccepted'] for r in report['heldOutCases']),
+        assemblyAccepted=sum(r['assemblyAccepted'] for r in report['heldOutCases']),
+        minimumAcceptedValidationTemplates=MIN_ACCEPTED_VALIDATION_TEMPLATES,
+        acceptedSuggestions=sum(r['accepted'] for r in report['heldOutCases']),
+        wrongAcceptedSuggestions=sum(r['accepted'] and r['family'] != r['expected'] for r in report['heldOutCases']))
+    if any(r['partition'] == 'test' and r['accepted'] and r['validationAccepted']
+           and r['family'] != r['expected'] for r in report['heldOutCases']):
+        raise ValueError('Unsafe final runtime holdout: accepted wrong family')
     return payload, report
 
 
