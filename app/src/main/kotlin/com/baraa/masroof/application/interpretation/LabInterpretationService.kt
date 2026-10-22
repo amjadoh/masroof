@@ -30,96 +30,214 @@ class LabInterpretationService(
     private val transactions: FinancialTransactionRepository,
     private val scope: CoroutineScope,
     private val log: AppLogService,
+    private val onFeedbackChanged: () -> Unit = {},
 ) : AutoCloseable {
     private val store = LabLearningStore(context)
+    private val auditJob = SupervisorJob(scope.coroutineContext[Job])
+    private val auditScope = CoroutineScope(scope.coroutineContext + auditJob)
+    @Volatile private var closed = false
     private val seed = runCatching {store.loadSeed()}.getOrElse { log.warn("ML","Seed unavailable: ${it.javaClass.simpleName}");null }
-    @Volatile private var classifier = seed?.let { model ->
-        val labels = runCatching {store.cached(model)}.getOrElse {log.warn("ML","Cached model rejected: ${it.javaClass.simpleName}");emptyList()}
-        FamilyModelCodec.checked(model,labels)
-    }
-    private val engine = RuleInterpreter(AlJaziraRuleProfile.current(),FamilyAssist { input,title -> LabFamilyAssist.suggest(classifier,BANK,input.body,title) })
+    // Cached weights are never authority before replaying durable human decisions.
+    @Volatile private var classifier: FamilyClassifier? = null
+    @Volatile private var synchronizedDecisions: String? = null
+    @Volatile private var pendingFeedback = false
+    private data class Attempt(val classifier: FamilyClassifier?, var requested: Boolean = false,
+        var outcome: String = "RULES", var prediction: FamilyModel.Prediction? = null)
+    private val attempt = ThreadLocal<Attempt>()
+    private val engine = RuleInterpreter(AlJaziraRuleProfile.current(),FamilyAssist { input,title ->
+        val trace = attempt.get()
+        trace?.requested = true
+        val features = LabFamilyAssist.clean(input.body).features
+        trace?.prediction = features?.let { trace.classifier?.model?.predict(it) }
+        val result = LabFamilyAssist.suggest(trace?.classifier,BANK,input.body,title)
+        trace?.outcome = when {
+            trace?.classifier == null -> "FEEDBACK_PENDING"
+            features == null -> "CLEANING_REJECTED"
+            result == null -> "ABSTAINED"
+            else -> "SUGGESTED"
+        }
+        result
+    })
     private val mutex = Mutex()
     private val changes = Channel<Unit>(Channel.CONFLATED)
     private var job: Job? = null
     private var tracker: InvalidationTracker? = null
-    private val observer = object : InvalidationTracker.Observer("user_correction","review_item") {
-        override fun onInvalidated(tables: Set<String>) { changes.trySend(Unit) }
+    private val observer = object : InvalidationTracker.Observer("user_correction","review_item","raw_sms","parsed_event","financial_transaction") {
+        override fun onInvalidated(tables: Set<String>) {
+            if(tables.any { it == "user_correction" || it == "review_item" }) invalidateFeedback()
+            else if(pendingFeedback) changes.trySend(Unit)
+        }
     }
     val modelVersion: String? get() = classifier?.version
+    val statisticalFamilyCount: Int get() = classifier?.model?.enabledFamilies?.size ?: 0
     val refreshVersion: String get() = "${engine.version}|${modelVersion ?: "rules-only"}"
     fun interpret(input: MessageInput): Interpretation {
-        val activeModel = classifier?.version
-        val result = engine.interpretRouted(input,BankId(BANK))
+        val trace = Attempt(classifier)
+        val activeModel = trace.classifier?.version
+        attempt.set(trace)
+        val result = try { engine.interpretRouted(input,BankId(BANK)) } finally { attempt.remove() }
+        val interpretedAt = System.currentTimeMillis()
         // Advisory audit writes never decide whether a transaction may be posted.
-        scope.launch {
+        if(!closed) auditScope.launch {
             try {
                 val key=SmsBodyHasher.sha256Hex("${input.evidenceId}|${result.version}|${result.familyInference?.modelVersion?:activeModel}")
                 store.record(EngineInterpretationRow(key,input.evidenceId,result.bank?.value,result.version.engine,result.version.rules,
                     result.familyInference?.modelVersion?:activeModel,result.familyInference?.origin?.name?:"RULES",result.facts.family.name,result.status.name,
-                    result.blockers.joinToString(",") {it.name},SmsBodyHasher.sha256Hex(input.body),input.receivedAt.toEpochMilli(),System.currentTimeMillis()))
+                    result.blockers.joinToString(",") {it.name},SmsBodyHasher.sha256Hex(input.body),input.receivedAt.toEpochMilli(),interpretedAt,
+                    trace.requested,trace.outcome,trace.prediction?.score,trace.prediction?.margin,trace.prediction?.coverage,
+                    if(trace.requested) LabFamilyAssist.clean(input.body).features?.template else null))
             } catch (e: CancellationException) { throw e }
               catch (e: Exception) { log.warn("ML","Interpretation audit pending: ${e.javaClass.simpleName}") }
         }
         return result
     }
     @Synchronized fun startLearning(invalidationTracker: InvalidationTracker) {
-        if (job!=null) return
+        if (job!=null || closed) return
         tracker=invalidationTracker;invalidationTracker.addObserver(observer)
         job=scope.launch {
+            var retryDelay = 5_000L
             for (ignored in changes) {
-                try { synchronizeFeedback() }
+                try {
+                    synchronizeFeedback()
+                    if(pendingFeedback) {
+                        delay(retryDelay)
+                        retryDelay = (retryDelay * 2).coerceAtMost(60_000L)
+                        changes.trySend(Unit)
+                    } else retryDelay = 5_000L
+                }
                 catch (e: CancellationException) {throw e}
-                catch (e: Exception) {log.warn("ML","Feedback sync pending: ${e.javaClass.simpleName}")}
+                catch (e: Exception) {
+                    invalidateFeedback()
+                    log.warn("ML","Feedback sync pending: ${e.javaClass.simpleName}")
+                    delay(5_000)
+                }
             }
         }
         changes.trySend(Unit)
     }
+    fun invalidateFeedback() {
+        classifier = null
+        synchronizedDecisions = null
+        changes.trySend(Unit)
+    }
+
+    private suspend fun decisions(): List<Decision> {
+        val result = mutableListOf<Decision>()
+        corrections.listForRawSmsIds(raw.listIdsByReceivedAt()).forEach { correction ->
+            result += Decision("correction:${correction.id}", correction.targetRawSmsId,
+                correction.correctedType?.let { MessageFamily.valueOf(it.name) },
+                correction.createdAt.toEpochMilli(), "USER_MESSAGE_FAMILY",
+                reason = if(correction.correctedType == null) "FIELDS_ONLY" else null)
+        }
+        for (review in reviews.listAll().filter { it.status == ReviewStatus.RESOLVED && it.resolutionKind != null &&
+                it.resolutionKind != ReviewResolutionKind.AUTO_NO_LONGER_REQUIRED }) {
+            // USER_CORRECTION is settlement metadata for the append-only correction
+            // already read above, not a second human decision that can supersede it.
+            if(review.resolutionKind == ReviewResolutionKind.USER_CORRECTION) continue
+            val at = review.resolvedAt?.toEpochMilli() ?: continue
+            val type = review.resolvedTransactionId?.let { transactions.getById(it)?.type }
+            val financialOnly = review.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE &&
+                type == null && transactions.isRawSmsLinked(review.rawSmsId)
+            val family = when(review.resolutionKind) {
+                ReviewResolutionKind.USER_NON_FINANCIAL -> MessageFamily.NON_FINANCIAL
+                ReviewResolutionKind.USER_FINANCIAL_TYPE -> type?.let(FamilyFeedbackPolicy::explicitFamily)?.let { MessageFamily.valueOf(it.name) }
+                else -> null
+            }
+            val source = if(review.resolutionKind == ReviewResolutionKind.USER_NON_FINANCIAL) "USER_NON_FINANCIAL" else "USER_EVENT_KIND"
+            result += Decision("review:${review.id}:$at",review.rawSmsId,family,at,source,type,
+                when(review.resolutionKind) {
+                    ReviewResolutionKind.USER_FINANCIAL_TYPE -> if(financialOnly) "FINANCIAL_ONLY" else if(type == null) "DECISION_PENDING" else null
+                    ReviewResolutionKind.USER_NON_FINANCIAL -> null
+                    else -> "CONTEXT_ONLY"
+                })
+        }
+        return result.sortedWith(compareBy<Decision> { it.at }.thenBy { it.id })
+    }
+    private fun fingerprint(decisions: List<Decision>) = SmsBodyHasher.sha256Hex(decisions.joinToString("|") { it.toString() })
+
+    /** Called inside the financial write transaction, after reading the current manual decisions. */
+    suspend fun isInferenceCurrent(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean {
+        if(record.automationConfirmed) return true
+        val inferred = record.event.confidence.reasons.any { it.startsWith("family_origin:") }
+        if(!inferred) return true
+        val model = classifier ?: return false
+        return "model:${model.version}" in record.event.confidence.reasons &&
+            synchronizedDecisions == fingerprint(decisions())
+    }
+
     suspend fun synchronizeFeedback(): String? = mutex.withLock {
-        val seed=seed?:run { schedulePendingRefresh(); return@withLock null }
-        val decisions=mutableListOf<Decision>()
-        val ids=raw.listIdsByReceivedAt()
-        corrections.listForRawSmsIds(ids).forEach { correction ->
-            correction.correctedType?.let {family ->
-                decisions += Decision("correction:${correction.id}",correction.targetRawSmsId,MessageFamily.valueOf(family.name),correction.createdAt.toEpochMilli(),"USER_MESSAGE_FAMILY")
+        if(closed) return@withLock null
+        val seed = seed ?: run { schedulePendingRefresh(); return@withLock null }
+        val before = decisions()
+        val wanted = before.map { it.rawId }.toSet()
+        val evidence = raw.getByIds(wanted).associateBy { it.id }
+        val events = parsed.listByRawSmsIds(wanted).associateBy { it.event.rawSmsId }
+        val semantic = before.filter { it.reason !in setOf("FIELDS_ONLY", "CONTEXT_ONLY") }
+            .groupBy { it.rawId }.mapValues { (_, rows) -> rows.maxWith(compareBy<Decision> { it.at }
+                .thenBy { if(it.provenance == "USER_MESSAGE_FAMILY") 1 else 0 }.thenBy { it.id }) }
+        val labels = mutableListOf<LearningLabelRow>()
+        val blocks = mutableListOf<HumanTemplateBlock>()
+        val feedback = before.map { decision ->
+            val message = evidence[decision.rawId]
+            val event = events[decision.rawId]?.event
+            val bank = event?.bank?.id
+            val cleaned = message?.let { LabFamilyAssist.clean(it.body) }
+            val features = cleaned?.features
+            var reason = decision.reason
+            var state = LearningFeedbackState.EXCLUDED
+            when {
+                reason in setOf("FIELDS_ONLY", "CONTEXT_ONLY") -> Unit
+                semantic[decision.rawId]?.id != decision.id -> reason = "SUPERSEDED"
+                message == null || event == null -> { state = LearningFeedbackState.PENDING; reason = "MISSING_EVIDENCE" }
+                bank != BANK -> reason = "UNSUPPORTED_BANK"
+                features == null -> reason = "CLEANING_${cleaned?.rejection?.name ?: "EMPTY"}"
+                reason == "DECISION_PENDING" -> state = LearningFeedbackState.PENDING
+                decision.family == MessageFamily.UNKNOWN && event.messageFamily.name != "UNKNOWN" -> {
+                    state = LearningFeedbackState.BLOCKED; reason = "CONTRADICTED_FAMILY"
+                    blocks += HumanTemplateBlock(bank, decision.rawId, decision.id, features.template, decision.at)
+                }
+                decision.family != null && decision.family != MessageFamily.UNKNOWN -> {
+                    state = LearningFeedbackState.LEARNED
+                    labels += LearningLabelRow(decision.id, decision.rawId, bank, LabFamilyAssist.toModel(decision.family).name,
+                        features.template, FamilyModelCodec.termsJson(features.terms).toString(), FamilyInputCleaner.FEATURES_VERSION,
+                        decision.at, decision.provenance, message.bodyHash)
+                }
+                decision.type != null && FamilyFeedbackPolicy.contradicts(
+                    com.baraa.masroof.domain.model.MessageFamily.valueOf(event.messageFamily.name), decision.type) -> {
+                    state = LearningFeedbackState.BLOCKED; reason = "CONTRADICTED_FAMILY"
+                    blocks += HumanTemplateBlock(bank, decision.rawId, decision.id, features.template, decision.at)
+                }
+                else -> reason = "AMBIGUOUS_FAMILY"
             }
+            LearningFeedbackRow(decision.id, decision.rawId, decision.at, decision.provenance, state.name, reason, bank, features?.template)
         }
-        val reviewRows=reviews.listAll()
-        for (review in reviewRows.filter {it.status==ReviewStatus.RESOLVED && it.resolutionKind in setOf(ReviewResolutionKind.USER_FINANCIAL_TYPE,ReviewResolutionKind.USER_NON_FINANCIAL)}) {
-            if (review.resolutionKind==ReviewResolutionKind.USER_NON_FINANCIAL) {
-                val at=review.resolvedAt?.toEpochMilli()?:continue
-                decisions += Decision("ignored:${review.id}:$at",review.rawSmsId,MessageFamily.NON_FINANCIAL,at,"USER_NON_FINANCIAL")
-                continue
-            }
-            val transaction=review.resolvedTransactionId?.let {transactions.getById(it)}?:continue
-            val family=eventKindFamily(transaction.type)?:continue
-            val at=review.resolvedAt?.toEpochMilli()?:continue
-            decisions += Decision("kind:${review.id}:$at",review.rawSmsId,family,at,"USER_EVENT_KIND")
-        }
-        val wanted=decisions.map {it.rawId}.toSet()
-        val evidence=raw.getByIds(wanted).associateBy {it.id}
-        val events=parsed.listByRawSmsIds(wanted).associateBy {it.event.rawSmsId}
-        val labels=decisions.filter {it.family!=MessageFamily.UNKNOWN}.mapNotNull { decision ->
-            val message=evidence[decision.rawId]?:return@mapNotNull null
-            val bank=events[decision.rawId]?.event?.bank?.id?:return@mapNotNull null
-            if (bank!=BANK) return@mapNotNull null
-            val features=LabFamilyAssist.clean(message.body).features?:return@mapNotNull null
-            LearningLabelRow(decision.id,decision.rawId,bank,LabFamilyAssist.toModel(decision.family).name,features.template,FamilyModelCodec.termsJson(features.terms).toString(),
-                FamilyInputCleaner.FEATURES_VERSION,decision.at,decision.provenance,message.bodyHash)
-        }
-        // Build/validate everything before atomically replacing advisory labels. Original decisions stay untouched.
-        val learned=labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
+        val learned = labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
-        val updated=FamilyModelCodec.checked(seed,learned)
-        store.saveLabels(labels)
+        val updated = FamilyModelCodec.checked(seed,learned,blocks)
+        val conflicted = learned.groupBy { it.template }.filterValues { rows -> rows.map { it.family }.distinct().size > 1 }.keys + updated.latestBlocks.map { it.template }
+        val explained = feedback.map { row -> if(row.state == LearningFeedbackState.LEARNED.name && row.template in conflicted)
+            row.copy(state = LearningFeedbackState.BLOCKED.name, reason = "CONFLICTING_TEMPLATE") else row }
+        pendingFeedback = explained.any { it.state == LearningFeedbackState.PENDING.name }
+        store.saveFeedback(labels,explained)
         store.persist(seed,updated)
-        classifier=updated
+        // An edit during fitting invalidates the candidate; do not briefly publish stale personal assistance.
+        if(before != decisions()) { invalidateFeedback(); return@withLock null }
+        synchronizedDecisions = fingerprint(before)
+        classifier = updated
         schedulePendingRefresh()
+        onFeedbackChanged()
         updated.version
     }
+    suspend fun feedbackStatus(rawId: String): LearningFeedbackStatus? {
+        if(classifier == null) return LearningFeedbackStatus(LearningFeedbackState.PENDING, "FEEDBACK_PENDING")
+        return store.feedback().lastOrNull { it.rawId == rawId }?.let { LearningFeedbackStatus(LearningFeedbackState.valueOf(it.state),it.reason) }
+    }
+    suspend fun learningFeedback() = store.feedback()
+    suspend fun learningLabels() = store.labels()
+    suspend fun interpretations() = store.interpretations()
     private suspend fun schedulePendingRefresh() {
         val prefs = context.getSharedPreferences("learning_runtime", Context.MODE_PRIVATE)
         val version = refreshVersion
-        if (prefs.getString("scheduled_interpretation", null) == version) return
         val required = reviews.listRequired()
         val pending = parsed.listByRawSmsIds(required.map { it.rawSmsId }).any { needsRefresh(it) && mayRefresh(it.event.rawSmsId) }
         if (pending) ModelRefreshWorker.enqueue(context, version)
@@ -127,24 +245,15 @@ class LabInterpretationService(
     }
     fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean =
         record.event.messageFamily.name == "UNKNOWN" ||
-            (record.event.parseStatus.name != "SUCCESS" && "rules:${engine.version.rules}" !in record.event.confidence.reasons)
+            (record.event.parseStatus.name != "SUCCESS" && "rules:${engine.version.rules}" !in record.event.confidence.reasons) ||
+            (record.event.confidence.reasons.any { it.startsWith("family_origin:") } && "model:$modelVersion" !in record.event.confidence.reasons)
     /** Do not re-interpret posted evidence or human decisions on engine/model upgrades. */
     suspend fun mayRefresh(rawSmsId: String): Boolean =
         !transactions.isRawSmsLinked(rawSmsId) && corrections.latestForRawSmsId(rawSmsId) == null &&
             reviews.findByRawSmsId(rawSmsId)?.resolutionKind == null
 
-    private data class Decision(val id: String,val rawId: String,val family: MessageFamily,val at: Long,val provenance: String)
-    private fun eventKindFamily(type: FinancialTransactionType): MessageFamily? = when(type) {
-        FinancialTransactionType.INCOME,FinancialTransactionType.EXTERNAL_TRANSFER_IN -> MessageFamily.TRANSFER_IN
-        FinancialTransactionType.EXTERNAL_TRANSFER_OUT -> MessageFamily.TRANSFER_OUT
-        FinancialTransactionType.CREDIT_CARD_PAYMENT -> MessageFamily.CARD_PAYMENT
-        FinancialTransactionType.REFUND -> MessageFamily.REFUND
-        FinancialTransactionType.CASH_WITHDRAWAL -> MessageFamily.WITHDRAWAL
-        FinancialTransactionType.BILL_PAYMENT -> MessageFamily.BILL_PAYMENT
-        FinancialTransactionType.LOAN_REPAYMENT -> MessageFamily.FINANCING_INSTALLMENT
-        FinancialTransactionType.FEE -> MessageFamily.FEE
-        else -> null // "Expense"/self-transfer/category changes do not identify a message family.
-    }
+    private data class Decision(val id: String,val rawId: String,val family: MessageFamily?,val at: Long,
+        val provenance: String,val type: FinancialTransactionType? = null,val reason: String? = null)
     suspend fun auditHistory(rawId: String) = store.history(rawId)
     fun invalidateForRestore() {
         close()
@@ -152,8 +261,11 @@ class LabInterpretationService(
         context.getSharedPreferences("learning_runtime",Context.MODE_PRIVATE).edit().clear().commit()
     }
     override fun close() {
+        closed = true
+        classifier = null
+        synchronizedDecisions = null
         tracker?.removeObserver(observer);tracker=null
-        runBlocking {job?.cancelAndJoin()};job=null
+        runBlocking {job?.cancelAndJoin();auditJob.cancelAndJoin()};job=null
         store.close()
     }
     companion object { const val BANK="BANK_ALJAZIRA" }

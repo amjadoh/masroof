@@ -43,7 +43,7 @@ class FamilyLearningTest {
     @Test fun trainedModelActuallyAssistsAnUnseenTitleWithoutChangingExtractedMoney() {
         val body="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00"
         assertEquals(MessageFamily.UNKNOWN,parse(body).facts.family)
-        val classifier=FamilyClassifier(seed.model)
+        val classifier=FamilyClassifier(seed.model.copy(enabledFamilies=setOf(SmsFamilyLabel.TRANSFER_IN)))
         val predicted=classifier.model.predict(requireNotNull(LabFamilyAssist.clean(body).features))
         val actual=parse(body,classifier)
         assertEquals("prediction=$predicted result=$actual",ParseStatus.SUCCESS,actual.status)
@@ -97,5 +97,15 @@ class FamilyLearningTest {
         assertNull(c.suggest("OTHER_BANK",requireNotNull(LabFamilyAssist.clean("حوالة محلية واردة").features)))
         val encoded=FamilyModelCodec.cache(seed,c)
         assertThrows(IllegalArgumentException::class.java) {FamilyModelCodec.cachedLabels(encoded.replaceFirst("\"checksum\":\"", "\"checksum\":\"0"),seed)}
+    }
+    @Test fun persistedBlocksSurviveCacheDecodeTogetherWithLabels() {
+        val features=requireNotNull(LabFamilyAssist.clean("سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20").features)
+        val label=HumanFamilyLabel(bank.value,"raw-one","label",SmsFamilyLabel.FINANCING_INSTALLMENT,features.template,features.terms,1,"USER_MESSAGE_FAMILY")
+        val block=HumanTemplateBlock(bank.value,"raw-two","edit",features.template,2)
+        val classifier=FamilyModelCodec.checked(seed,listOf(label),listOf(block))
+        val reopened=FamilyModelCodec.cachedClassifier(FamilyModelCodec.cache(seed,classifier),seed)
+        assertEquals(classifier.version,reopened.version)
+        assertEquals(listOf(block),reopened.latestBlocks)
+        assertNull(reopened.suggest(bank.value,features))
     }
 }

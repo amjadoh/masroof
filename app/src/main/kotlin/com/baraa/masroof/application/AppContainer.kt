@@ -306,6 +306,13 @@ class AppContainer(
             userCorrectionRepository = userCorrectionRepository,
         )
 
+    private val automaticInterpretationWriteGuard by lazy {
+        com.baraa.masroof.application.interpretation.AutomaticInterpretationWriteGuard(
+            effectiveParsedEventProvider,reviewRepository,financialTransactionRepository,
+            inferenceCurrent = { labInterpretationService?.isInferenceCurrent(it) != false },
+            inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } })
+    }
+
     val transactionReconciliationService: TransactionReconciliationService =
         TransactionReconciliationService(
             parsedEventRepository = parsedEventRepository,
@@ -315,6 +322,7 @@ class AppContainer(
             ownershipConfirmationService = ownershipConfirmationService,
             effectiveParsedEventProvider = effectiveParsedEventProvider,
             reviewRepository = reviewRepository,
+            automaticWrite = { expected, write -> automaticInterpretationWriteGuard.write(expected,write) },
         )
 
     val reviewQueueUpdater: ReviewQueueUpdater =
@@ -418,6 +426,9 @@ class AppContainer(
             ownershipResolver = ownershipResolver,
             ownershipConfirmationService = ownershipConfirmationService,
             appLogService = appLogService,
+            persistence = com.baraa.masroof.data.repository.RoomTransactionReclassificationRepository(
+                database, financialTransactionRepository, databaseAccessGate),
+            afterDecisionCommitted = { debugProcessHaltProbe.afterDurableWrite(DebugProcessHalt.RECLASSIFIED) },
         )
 
     val transactionIgnoreService: TransactionIgnoreService =
@@ -499,7 +510,8 @@ class AppContainer(
 
     val labInterpretationService = if (bankAdapterOverride==null)
         com.baraa.masroof.application.interpretation.LabInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
-            userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService) else null
+            userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService,
+            onFeedbackChanged = { maintenanceCompletionSignal.notifyCompleted(); if(analyticsDelegate.isInitialized()) labAnalytics.request() }) else null
     private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =
         bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(labInterpretationService)::interpret)
 
@@ -643,6 +655,9 @@ class AppContainer(
         dataSource = smsDataSource,
         batchProcessor = historicalSmsBatchProcessor,
         appLogService = appLogService,
+        coverageCompleted = { after, started -> databaseAccessGate.withAccess {
+            com.baraa.masroof.application.analytics.AnalysisCoverageStore.recordScan(appContext, after, started)
+        } },
     )
 
     /**
@@ -820,7 +835,10 @@ class AppContainer(
     /**
      * Startup releases financial UI only after correctness-blocking maintenance succeeds.
      */
-    val interpretationProvenanceWorkflow by lazy { com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow(effectiveParsedEventProvider, reviewRepository) }
+    val interpretationProvenanceWorkflow by lazy { com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow(effectiveParsedEventProvider, reviewRepository,
+        feedback = { labInterpretationService?.feedbackStatus(it) }) }
+    val learningInsightsWorkflow by lazy { com.baraa.masroof.application.interpretation.LearningInsightsWorkflow(
+        labInterpretationService, parsedEventRepository, financialTransactionRepository, reviewRepository) }
 
     private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.LabAnalyticsWorkflow(this, appContext) }
     val labAnalytics get() = analyticsDelegate.value

@@ -35,22 +35,87 @@ class ReplicaMachineLearningTest {
         return c
     }
     private suspend fun await(condition: suspend ()->Boolean) = withTimeout(15_000) {while(!condition()) delay(25)}
-    @Test fun aTrainedModelAssistsANewTitleAndTheDashboardGetsThePostedAmount() = runBlocking {
+    @Test fun pendingCorrectionLearnsWhenEvidenceArrivesWithoutAnotherHumanEdit() = runBlocking {
         val c=fresh()
         try {
+            val service=requireNotNull(c.labInterpretationService)
+            service.synchronizeFeedback()
+            val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: ${at()}"
+            c.rawSmsRepository.insertIfAbsent(evidence("pending-evidence",body))
+            c.userCorrectionRepository.save(UserCorrection("early-family","pending-evidence",MessageFamily.FINANCING_INSTALLMENT,
+                null,null,null,Instant.now()))
+            service.synchronizeFeedback()
+            assertEquals(com.baraa.masroof.application.interpretation.LearningFeedbackState.PENDING,service.feedbackStatus("pending-evidence")!!.state)
+            c.processStoredSmsUseCase.process("pending-evidence")
+            await { service.feedbackStatus("pending-evidence")?.state == com.baraa.masroof.application.interpretation.LearningFeedbackState.LEARNED }
+            assertNotNull(c.financialTransactionRepository.findByRawSmsId("pending-evidence"))
+        } finally { TestRuntime.reset(host) }
+    }
+    @Test fun explicitFamilyFeedbackIsNotHiddenBySettlementMetadataAndMerchantEditsDoNotTeachFamilies() = runBlocking {
+        val c=fresh()
+        val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: ${at()}"
+        try {
+            val service=requireNotNull(c.labInterpretationService)
+            service.synchronizeFeedback()
+            c.processRawSmsUseCase.ingest(evidence("explicit-family",body))
+            val review=requireNotNull(c.reviewRepository.findByRawSmsId("explicit-family"))
+            val corrected=c.reviewWorkflowService.applyCorrection(review.id,correctedType=MessageFamily.FINANCING_INSTALLMENT)
+            assertTrue(corrected.toString(),corrected is ReviewWorkflowResult.Success)
+            service.synchronizeFeedback()
+            await { service.feedbackStatus("explicit-family")?.state == com.baraa.masroof.application.interpretation.LearningFeedbackState.LEARNED }
+            c.processRawSmsUseCase.ingest(evidence("merchant-only",body.replace("سداد تمويل خاص","سداد تمويل شخصي خاص")))
+            val merchantReview=requireNotNull(c.reviewRepository.findByRawSmsId("merchant-only"))
+            assertTrue(c.reviewWorkflowService.applyCorrection(merchantReview.id,correctedMerchant="TEST") is ReviewWorkflowResult.Success)
+            service.synchronizeFeedback()
+            assertNull(c.financialTransactionRepository.findByRawSmsId("merchant-only"))
+            assertEquals("FIELDS_ONLY",service.feedbackStatus("merchant-only")!!.reason)
+            assertEquals(ReviewStatus.REQUIRED,c.reviewRepository.findByRawSmsId("merchant-only")!!.status)
+        } finally { TestRuntime.reset(host) }
+    }
+    @Test fun aPostedCorrectionBlocksTheSameTemplateAfterCorruptCacheAndColdReopen() = runBlocking {
+        var c=fresh()
+        val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: ${at()}"
+        try {
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            c.processRawSmsUseCase.ingest(evidence("cycle-teach",body))
+            val review=requireNotNull(c.reviewRepository.findByRawSmsId("cycle-teach"))
+            val taught=c.reviewWorkflowService.resolveAsFinancialType(review.id,FinancialTransactionType.LOAN_REPAYMENT)
+            assertTrue(taught.toString(),taught is ReviewWorkflowResult.Success)
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            c.processRawSmsUseCase.ingest(evidence("cycle-wrong",body.replace("SAR 20","SAR 21")))
+            val wrong=requireNotNull(c.financialTransactionRepository.findByRawSmsId("cycle-wrong"))
+            val correction=c.transactionReclassificationService.reclassify(wrong.id,FinancialTransactionType.EXPENSE)
+            assertTrue(correction.toString(),correction is com.baraa.masroof.application.transaction.ReclassificationResult.Success)
+            val before=c.financialTransactionRepository.listAll()
+            TestRuntime.close()
+            File(TestStorageContext(host).filesDir,"learning/family-model.json").writeText("{corrupt")
+            c=TestRuntime.container(host)
+            c.awaitPostStartupBackgroundWorkForTesting()
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
+            assertEquals(before,c.financialTransactionRepository.listAll())
+            assertEquals(com.baraa.masroof.application.interpretation.LearningFeedbackState.BLOCKED,
+                requireNotNull(c.labInterpretationService).feedbackStatus("cycle-wrong")!!.state)
+            c.processRawSmsUseCase.ingest(evidence("cycle-next",body.replace("SAR 20","SAR 22")))
+            assertNull(c.financialTransactionRepository.findByRawSmsId("cycle-next"))
+            assertEquals(ReviewStatus.REQUIRED,c.reviewRepository.findByRawSmsId("cycle-next")!!.status)
+            assertEquals(before,c.financialTransactionRepository.listAll())
+        } finally { TestRuntime.reset(host) }
+    }
+    @Test fun anUnprovenStatisticalFamilyStaysReviewableAndDoesNotBypassMissingRoles() = runBlocking {
+        val c=fresh()
+        try {
+            val service=requireNotNull(c.labInterpretationService)
+            service.synchronizeFeedback()
             val body="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: ${at()}"
             c.processRawSmsUseCase.ingest(evidence("ml-income",body))
-            val parsed=requireNotNull(c.parsedEventRepository.findByRawSmsId("ml-income"))
-            assertEquals(ParseStatus.SUCCESS,parsed.event.parseStatus)
-            assertTrue(parsed.event.confidence.reasons.toString(),parsed.event.confidence.reasons.any {it=="family_origin:ML"})
-            val rows=c.financialTransactionRepository.listAll()
-            assertEquals(1,rows.size);assertEquals("2000.00",rows.single().amount.amount.toPlainString())
-            assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_IN,rows.single().type)
-            assertTrue(c.reviewRepository.listRequired().isEmpty())
-            assertEquals(InterpretationOrigin.ML,c.interpretationProvenanceWorkflow.load("ml-income")!!.origin)
-            val service=requireNotNull(c.labInterpretationService)
-            await {service.auditHistory("ml-income").any {it.origin=="ML"}}
-            File(host.getExternalFilesDir(null),"ml-inference.txt").writeText("Engine family: ${parsed.event.messageFamily}\nAmount: ${rows.single().amount}\nModel evidence: ${parsed.event.confidence.reasons}\nFinancial type: ${rows.single().type}\nNo manual approval was requested.\n")
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            val review=requireNotNull(c.reviewRepository.findByRawSmsId("ml-income"))
+            assertEquals(ReviewStatus.REQUIRED,review.status)
+            assertEquals(MessageFamily.UNKNOWN,c.parsedEventRepository.findByRawSmsId("ml-income")!!.event.messageFamily)
+            await { service.auditHistory("ml-income").any { it.assistRequested && it.assistOutcome == "ABSTAINED" } }
+            val insights=c.learningInsightsWorkflow.load()
+            assertTrue(insights.attempted>=1)
+            assertEquals(0,insights.posted)
         } finally {TestRuntime.reset(host)}
     }
     @Test fun aRealManualLoanDecisionTeachesPendingAndFutureMessagesAfterColdReopen() = runBlocking {
@@ -70,6 +135,7 @@ class ReplicaMachineLearningTest {
             TestRuntime.close()
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
+            requireNotNull(c.labInterpretationService).synchronizeFeedback()
             assertEquals(version,requireNotNull(c.labInterpretationService).modelVersion)
             c.processRawSmsUseCase.ingest(evidence("ml-loan-next",body(22,298)))
             await {c.financialTransactionRepository.listAll().size==3}

@@ -50,7 +50,12 @@
     "transfer_out_inter_ar_002": "validation",
     "transfer_out_intra_ar_001": "train",
     "transfer_out_intra_ar_002": "train",
-    "withdrawal_ar_001": "train"
+    "withdrawal_ar_001": "train",
+    "runtime_local_incoming_valid": "validation",
+    "runtime_local_incoming_missing_network": "test",
+    "runtime_loan_unknown_title": "test",
+    "runtime_pending_transfer": "validation",
+    "runtime_otp_quotes_transfer": "test"
   },
   "version": "family-holdout-v1"
 }

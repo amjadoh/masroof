@@ -8,13 +8,17 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 class LabLearningStore(private val context: Context) : AutoCloseable {
-    private val databaseLazy = lazy {Room.databaseBuilder(context,LearningDatabase::class.java,NAME).build()}
+    private val databaseLazy = lazy {Room.databaseBuilder(context,LearningDatabase::class.java,NAME)
+        .addMigrations(LearningDatabase.MIGRATION_1_2).build()}
     private val database get()=databaseLazy.value
     private val cacheFile = File(context.filesDir,"learning/family-model.json")
     fun loadSeed() = FamilyModelCodec.seed(requireNotNull(FamilyModel::class.java.getResourceAsStream("/ml/family-seed.json")).bufferedReader().use {it.readText()})
-    fun cached(seed: FamilyModelCodec.Seed): List<HumanFamilyLabel> = if (cacheFile.exists()) FamilyModelCodec.cachedLabels(cacheFile.readText(),seed) else emptyList()
     suspend fun record(row: EngineInterpretationRow) = database.learning().record(row)
     suspend fun saveLabels(rows: List<LearningLabelRow>) { database.learning().replaceLabels(rows) }
+    suspend fun saveFeedback(labels: List<LearningLabelRow>, feedback: List<LearningFeedbackRow>) = database.learning().replaceFeedback(labels, feedback)
+    suspend fun feedback() = database.learning().feedback()
+    suspend fun labels() = database.learning().labels()
+    suspend fun interpretations() = database.learning().interpretations()
     suspend fun history(rawId: String) = database.learning().history(rawId)
     @Synchronized fun persist(seed: FamilyModelCodec.Seed, classifier: FamilyClassifier) {
         cacheFile.parentFile!!.mkdirs()

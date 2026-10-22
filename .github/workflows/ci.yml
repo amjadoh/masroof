@@ -64,6 +64,7 @@ jobs:
 
       - name: Verify trained model reproducibility
         run: |
+          python3 ml-assist/tools/test_train_family_model.py
           python3 ml-assist/tools/train_family_model.py --check
           python3 ml-assist/tools/test_training.py
 
