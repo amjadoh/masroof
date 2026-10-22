@@ -107,14 +107,16 @@ import java.time.ZoneId
 /** Original and analytics rows share one list/card. Analytics read state remains in its existing store. */
 @Composable fun LabUnifiedNotificationContent(state: NotificationCenterUiState, modifier: Modifier,
     originalRow: @Composable (NotificationItem, Boolean) -> Unit) {
-    val workflow = requireNotNull(LocalLabAnalyticsWorkflow.current)
-    val analysis by workflow.state.collectAsState()
+    // The original notification screen also renders independently in the design matrix.
+    // Only expose analysis actions when its workflow is supplied by the app root.
+    val workflow = LocalLabAnalyticsWorkflow.current
+    val analysis = workflow?.state?.collectAsState()?.value ?: AnalysisUiState()
     val scope = rememberCoroutineScope()
     val now = currentAnalysisTime()
     val alerts = visibleAnalysisAlerts(analysis, now)
     val unread = state.unreadCount + alerts.count { !it.read }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        MasroofTextButton(onClick = { AnalyticsNavigation.open("settings", fromCenter = true) }) { Text(stringResource(R.string.lab_analysis_settings)) }
+        if (workflow != null) MasroofTextButton(onClick = { AnalyticsNavigation.open("settings", fromCenter = true) }) { Text(stringResource(R.string.lab_analysis_settings)) }
         if (state.loading && state.items.isEmpty() && alerts.isEmpty()) CircularProgressIndicator()
         else if (state.items.isEmpty() && alerts.isEmpty()) Text(stringResource(R.string.notification_center_empty))
         else MasroofCard {
@@ -137,10 +139,10 @@ import java.time.ZoneId
                         MasroofTextButton(onClick = { menu = true }) { Text(stringResource(R.string.lab_analysis_actions)) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             if (!alert.read) DropdownMenuItem(text = { Text(stringResource(R.string.lab_analysis_read)) }, onClick = {
-                                menu = false; scope.launch { workflow.markAlert(alert.id) }
+                                menu = false; scope.launch { workflow?.markAlert(alert.id) }
                             })
                             DropdownMenuItem(text = { Text(stringResource(R.string.lab_analysis_snooze)) }, onClick = {
-                                menu = false; scope.launch { workflow.markAlert(alert.id, snooze = true) }
+                                menu = false; scope.launch { workflow?.markAlert(alert.id, snooze = true) }
                             })
                         }
                     }
