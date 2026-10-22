@@ -3,23 +3,32 @@ package com.baraa.masroof.domain.ownership
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.baraa.masroof.application.dashboard.DashboardRegistryWorkflow
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.room.MasroofDatabase
+import com.baraa.masroof.domain.assembly.TransactionAssembler
+import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.repository.NoOpLoanRegistryRepository
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.BankNetworkType
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.Confidence
+import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
 import com.baraa.masroof.domain.model.MoneyDirection
 import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.model.ParseStatus
 import com.baraa.masroof.domain.model.ParsedEvent
 import com.baraa.masroof.domain.model.PurchaseChannel
+import com.baraa.masroof.parsing.model.CardSmsChannel
+import com.baraa.masroof.parsing.model.ParseResult
+import com.baraa.masroof.parsing.model.SmsParseInput
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -192,6 +201,57 @@ class OwnershipDiscoveryServiceTest {
     }
 
     @Test
+    fun parsedAtmWithdrawal_discoversOnlyExplicitCardAndAccount() = runBlocking {
+        val parsed = parsedAtmWithdrawal()
+        assertEquals(MessageFamily.WITHDRAWAL, parsed.event.messageFamily)
+        assertEquals(CardSmsChannel.DEBIT, parsed.details.cardSmsChannel)
+        discovery.observe(parsed.event)
+
+        assertEquals(OwnershipStatus.UNKNOWN, accounts.resolve(AccountReference(Bank.BANK_ALJAZIRA, "3001")))
+        assertEquals(OwnershipStatus.UNKNOWN, cards.resolve(CardReference(Bank.BANK_ALJAZIRA, "8219")))
+        assertNull(cards.get(CardReference(Bank.BANK_ALJAZIRA, "3001")))
+        assertNull(accounts.get(AccountReference(Bank.BANK_ALJAZIRA, "8219")))
+        assertEquals(1, accounts.listAll().size)
+        assertEquals(1, cards.listAll().size)
+    }
+
+    @Test
+    fun rejectedFalseAtmCard_staysRejectedWithoutStoppingAccountOrWithdrawal() = runBlocking {
+        val parsed = parsedAtmWithdrawal()
+        val account = AccountReference(Bank.BANK_ALJAZIRA, "3001")
+        val falseCard = CardReference(Bank.BANK_ALJAZIRA, "3001")
+        val realCard = CardReference(Bank.BANK_ALJAZIRA, "8219")
+        val legacyEvent = parsed.event.copy(cardRef = falseCard)
+        discovery.observe(legacyEvent)
+        val confirmation = OwnershipConfirmationService(accounts, cards, NoOpLoanRegistryRepository)
+        confirmation.confirmAccountOwned(account)
+        confirmation.markCardExternal(falseCard) // Settings: "Do not track".
+
+        // Re-observing old evidence must not undo the user's rejection.
+        discovery.observe(legacyEvent)
+        discovery.observe(parsed.event)
+        assertEquals(OwnershipStatus.EXTERNAL, cards.resolve(falseCard))
+        assertEquals(OwnershipStatus.OWNED, accounts.resolve(account))
+        assertEquals(OwnershipStatus.UNKNOWN, cards.resolve(realCard))
+        assertEquals(listOf(realCard.last4), DashboardRegistryWorkflow(cards, accounts).listUnknownCards().map { it.last4 })
+
+        // The legacy card reference and its rejection cannot change an account-funded withdrawal.
+        val outcomes = listOf(legacyEvent, parsed.event).map { evidence ->
+            TransactionAssembler.assembleSingle(
+                event = evidence,
+                receivedAt = Instant.parse("2026-10-22T02:26:00Z"),
+                sourceOwnership = accounts.resolve(account),
+                destinationOwnership = OwnershipStatus.UNKNOWN,
+                cardOwnership = cards.resolve(requireNotNull(evidence.cardRef)),
+            ) as TransactionAssembler.Outcome.Assembled
+        }
+        assertEquals(outcomes.first(), outcomes.last())
+        assertEquals(FinancialTransactionType.CASH_WITHDRAWAL, outcomes.last().transaction.type)
+        assertEquals(FinancialContainerIdFactory.accountId(account), outcomes.last().transaction.sourceContainerId)
+        assertEquals(Money.of("100.00", Currency.SAR), outcomes.last().transaction.amount)
+    }
+
+    @Test
     fun balanceNotice_prefersSourceThenDestination() = runBlocking {
         val source = AccountReference(Bank.BANK_ALJAZIRA, "3001")
         discovery.observe(
@@ -311,6 +371,15 @@ class OwnershipDiscoveryServiceTest {
         assertNull(accounts.get(AccountReference(Bank.UNKNOWN, "0593")))
         assertNull(accounts.get(AccountReference(Bank("D360"), "0593")))
     }
+
+    private fun parsedAtmWithdrawal(): ParseResult.Success = EngineFixtureParser().parse(
+        SmsParseInput(
+            rawSmsId = "wd-parenthesized-mada",
+            sender = "AlJazira",
+            body = "سحب نقدي داخلي صراف الي\nمكان السحب: JEDDAH-بنك الرياض\nبطاقة (مدى):8219 \nحساب رقم: 3001\nبمبلغ: SAR 100.00\nفي: 2026-10-22 05:26",
+            receivedAt = Instant.parse("2026-10-22T02:26:00Z"),
+        ),
+    ) as ParseResult.Success
 
     private fun event(
         family: MessageFamily,
