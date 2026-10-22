@@ -217,6 +217,25 @@ class ReviewListRefreshTest {
         }
     }
 
+    @Test
+    fun anExternalActionUsesTheDisplayedDirectionAndReloadsChangedEvidenceWithoutPosting() = runTest {
+        World().use { world ->
+            world.persistPurchase("changed", "changed-event", "20.00", null, family=MessageFamily.TRANSFER_IN)
+            val id=world.requireReview("changed", "transfer_pending_match")
+            world.viewModel.openDetail(id)
+            advanceUntilIdle()
+            assertEquals(MessageFamily.TRANSFER_IN,world.viewModel.uiState.value.selectedDetail!!.messageFamily)
+            val stored=world.parsed.findByRawSmsId("changed")!!
+            world.parsed.save(stored.event.copy(messageFamily=MessageFamily.TRANSFER_OUT),stored.details)
+            world.viewModel.resolveAsExternalTransfer(id,com.baraa.masroof.application.review.ExternalTransferDirection.INCOMING)
+            advanceUntilIdle()
+            assertEquals("transfer_evidence_changed",world.viewModel.uiState.value.actionErrorDetail)
+            assertEquals(MessageFamily.TRANSFER_OUT,world.viewModel.uiState.value.selectedDetail!!.messageFamily)
+            assertNull(world.transactions.findByRawSmsId("changed"))
+            assertEquals(com.baraa.masroof.domain.model.ReviewStatus.REQUIRED,world.reviewRepo.getById(id)!!.status)
+        }
+    }
+
     private class World : AutoCloseable {
         private val clock = InstantClock { Instant.parse("2026-08-11T12:00:00Z") }
         private val db: MasroofDatabase = Room.inMemoryDatabaseBuilder(

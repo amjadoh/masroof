@@ -50,6 +50,7 @@ class InterpretationProvenanceWorkflow(
             // A manual family/amount decision supersedes inference. Merchant edits do not lift the parse gate.
             if (record.automationConfirmed || resolution in setOf(
                     ReviewResolutionKind.USER_FINANCIAL_TYPE,
+                    ReviewResolutionKind.USER_EXTERNAL_TRANSFER,
                     ReviewResolutionKind.USER_NON_FINANCIAL,
                 )) return InterpretationProvenance(InterpretationOrigin.MANUAL, record.event.messageFamily, requiredReview)
             val reasons = record.event.confidence.reasons

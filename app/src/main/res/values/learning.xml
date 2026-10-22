@@ -25,5 +25,7 @@
     <string name="learning_forecast_baseline_error">متوسط خطأ خط الأساس</string>
     <string name="learning_forecast_personal">الشخصي المحفوظ وقت التوقع</string>
     <string name="learning_forecast_baseline">خط الأساس المحفوظ وقت التوقع</string>
-    <string name="learning_forecast_hint">المقارنة لأول توقع صالح في اليوم الثامن، بعد اكتمال الفترة والتغطية. متوسط الخطأ لآخر ثلاث فترات مؤهلة؛ تبقى التوقعات ثابتة وتنعكس التصحيحات على الفعلي.</string>
+    <string name="learning_forecast_hint">المقارنة لأول توقع صالح يصدر من اليوم الثامن فصاعدًا قبل نهاية الفترة، بعد اكتمال الفترة والتغطية. وقت الإصدار والأفق محفوظان لكل مقارنة؛ متوسط الخطأ لآخر ثلاث فترات مؤهلة. تبقى التوقعات ثابتة وتنعكس التصحيحات على الفعلي.</string>
+    <string name="learning_transfer_changed">تغيرت بيانات الرسالة منذ عرضها. راجع التفاصيل المحدثة ثم أكد اختيارك مجددًا.</string>
+    <string name="learning_forecast_origin">تاريخ المقارنة: %1$s؛ أفق التوقع عند الإصدار: %2$d يومًا.</string>
 </resources>

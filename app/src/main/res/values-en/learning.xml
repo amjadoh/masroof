@@ -25,5 +25,7 @@
     <string name="learning_forecast_baseline_error">Baseline mean absolute error</string>
     <string name="learning_forecast_personal">Personal estimate saved at issue time</string>
     <string name="learning_forecast_baseline">Baseline estimate saved at issue time</string>
-    <string name="learning_forecast_hint">Compares the first valid forecast on day eight after the period and coverage are complete. Errors use the latest three eligible periods. Published estimates stay fixed; corrections update actuals.</string>
+    <string name="learning_forecast_hint">Compares the first valid forecast issued from day eight until before the period ends, once the period and coverage are complete. Each comparison retains its actual issue date and horizon. Errors use the latest three eligible periods. Published estimates stay fixed; corrections update actuals.</string>
+    <string name="learning_transfer_changed">The message changed after it was displayed. Review the updated details and confirm your choice again.</string>
+    <string name="learning_forecast_origin">Comparison date: %1$s; forecast horizon at issue: %2$d days.</string>
 </resources>

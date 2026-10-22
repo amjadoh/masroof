@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.baraa.masroof.application.review.ExternalTransferDirection
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
@@ -266,7 +267,7 @@ private fun ReviewDetailScreen(
     actionErrorDetail: String?,
     onBack: () -> Unit,
     onResolveType: (FinancialTransactionType) -> Unit,
-    onResolveExternal: () -> Unit,
+    onResolveExternal: (String, ExternalTransferDirection) -> Unit,
     onResolvePair: (String) -> Unit,
     onDismissNonFinancial: () -> Unit,
     onSelectBank: (String) -> Unit,
@@ -445,14 +446,19 @@ private fun ReviewDetailScreen(
                 }
             }
 
-            if (detail.showExternalTransferAction) {
+            val externalDirection = when (detail.messageFamily) {
+                MessageFamily.TRANSFER_IN -> ExternalTransferDirection.INCOMING
+                MessageFamily.TRANSFER_OUT -> ExternalTransferDirection.OUTGOING
+                else -> null
+            }
+            if (detail.showExternalTransferAction && externalDirection != null) {
                 val externalIcon = when (detail.messageFamily) {
                     MessageFamily.TRANSFER_IN -> MasroofIcons.externalIn
                     MessageFamily.TRANSFER_OUT -> MasroofIcons.externalOut
                     else -> MasroofIcons.selfTransfer
                 }
                 IconTextButton(
-                    onClick = onResolveExternal,
+                    onClick = { onResolveExternal(detail.id, externalDirection) },
                     enabled = !resolving,
                     icon = externalIcon,
                     text = stringResource(

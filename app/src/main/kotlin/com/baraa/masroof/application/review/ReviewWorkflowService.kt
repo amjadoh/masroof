@@ -43,6 +43,11 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 
+/** Direction explicitly displayed by the review action when the user confirms it. */
+enum class ExternalTransferDirection(val family: MessageFamily) {
+    INCOMING(MessageFamily.TRANSFER_IN), OUTGOING(MessageFamily.TRANSFER_OUT),
+}
+
 /**
  * Backend review / user-resolution APIs for future UI.
  * No Compose. No automatic guessing beyond P8 + explicit human decisions.
@@ -239,7 +244,7 @@ class ReviewWorkflowService(
         )
     }
 
-    suspend fun resolveTransferAsExternal(reviewId: String): ReviewWorkflowResult {
+    suspend fun resolveTransferAsExternal(reviewId: String, confirmedDirection: ExternalTransferDirection): ReviewWorkflowResult {
         val review = reviewRepository.getById(reviewId)
             ?: return ReviewWorkflowResult.Rejected("review_not_found")
         if (review.status != ReviewStatus.REQUIRED) {
@@ -251,6 +256,9 @@ class ReviewWorkflowService(
         val record = effectiveParsedEventProvider.findEffectiveByRawSmsId(review.rawSmsId)
             ?: return ReviewWorkflowResult.Rejected("parsed_event_missing")
         val event = record.event
+        if (event.messageFamily != confirmedDirection.family) {
+            return ReviewWorkflowResult.Rejected("transfer_evidence_changed")
+        }
         val amount = event.amount
             ?: return ReviewWorkflowResult.Rejected("missing_amount")
         val raw = rawSmsRepository.getById(review.rawSmsId)
@@ -315,6 +323,9 @@ class ReviewWorkflowService(
                 reviewId = review.id,
                 resolutionKind = ReviewResolutionKind.USER_EXTERNAL_TRANSFER,
                 resolvedAt = clock.now(),
+                validateBeforeWrite = {
+                    effectiveParsedEventProvider.findEffectiveByRawSmsId(review.rawSmsId) == record
+                },
             ),
         ).also { result ->
             if (result is ReviewWorkflowResult.Success) {

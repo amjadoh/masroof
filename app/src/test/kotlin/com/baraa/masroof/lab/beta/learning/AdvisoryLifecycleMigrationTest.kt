@@ -19,12 +19,12 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class) @Config(sdk=[28])
 class AdvisoryLifecycleMigrationTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
-    private fun createV1(name: String, type: String, insert: (SupportSQLiteDatabase) -> Unit) {
+    private fun createV1(name: String, type: String, version: Int = 1, insert: (SupportSQLiteDatabase) -> Unit) {
         context.deleteDatabase(name)
         val helper=FrameworkSQLiteOpenHelperFactory().create(SupportSQLiteOpenHelper.Configuration.builder(context).name(name)
-            .callback(object : SupportSQLiteOpenHelper.Callback(1) {
+            .callback(object : SupportSQLiteOpenHelper.Callback(version) {
                 override fun onCreate(db: SupportSQLiteDatabase) {
-                    val schema=Json.parseToJsonElement(java.io.File("schemas/$type/1.json").readText()).jsonObject.getValue("database").jsonObject
+                    val schema=Json.parseToJsonElement(java.io.File("schemas/$type/$version.json").readText()).jsonObject.getValue("database").jsonObject
                     for(element in schema.getValue("entities").jsonArray) {
                         val entity=element.jsonObject
                         val table=entity.getValue("tableName").jsonPrimitive.content
@@ -59,7 +59,7 @@ class AdvisoryLifecycleMigrationTest {
         createV1(name,AnalyticsDatabase::class.java.name) { db ->
             db.execSQL("INSERT INTO analysis_preferences VALUES (1,9000,0,1,1,1,3,0,1,10,'100')")
         }
-        val db=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2).build()
+        val db=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
         try {
             assertEquals("100",db.analytics().preferences()!!.gapDays)
             val gap=AnalysisCoverageRow("gap",100,100,"LEGACY",10)
@@ -74,4 +74,29 @@ class AdvisoryLifecycleMigrationTest {
             assertNotNull(AnalyticsArchiveStore.validate("{\"version\":1}"))
         } finally { db.close();context.deleteDatabase(name) }
     }
+    @Test fun analyticsV2UpgradeAndOldArchivePreserveTheOriginalComparisonOrigin() = runBlocking {
+        val name="analysis-v2-upgrade.db"
+        createV1(name,AnalyticsDatabase::class.java.name,version=2) { db ->
+            db.execSQL("INSERT INTO analysis_forecast_comparison VALUES ('legacy',100,130,10,'${"a".repeat(64)}','model','published-day8-v1',200,300,250,'${"b".repeat(64)}',20)")
+        }
+        val database=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name)
+            .addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
+        try {
+            val pair=database.analytics().comparisons().single()
+            assertEquals(107L,pair.originDay)
+            assertEquals(200L,pair.personalTotal)
+            assertEquals(300L,pair.baselineTotal)
+            assertEquals(250L,pair.actual)
+            val exported=AnalyticsArchiveStore.export(database)
+            assertEquals(3,AnalyticsArchiveStore.validate(exported)!!.version)
+            val old=Json.parseToJsonElement(exported).jsonObject.toMutableMap().apply {
+                put("version",JsonPrimitive(2))
+                put("comparisons",JsonArray(listOf(JsonObject(Json.parseToJsonElement(exported).jsonObject
+                    .getValue("comparisons").jsonArray.single().jsonObject.filterKeys { it != "originDay" }))))
+            }
+            AnalyticsArchiveStore.restore(database,JsonObject(old).toString())
+            assertEquals(listOf(pair),database.analytics().comparisons())
+        } finally { database.close();context.deleteDatabase(name) }
+    }
+
 }
