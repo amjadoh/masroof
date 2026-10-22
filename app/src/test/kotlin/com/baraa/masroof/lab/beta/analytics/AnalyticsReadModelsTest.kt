@@ -72,6 +72,36 @@ class AnalyticsReadModelsTest {
         val raw = """{"periodStart":0,"periodEnd":30,"issuedAt":1,"sourceHash":"a","status":"INSUFFICIENT_DATA","method":"NONE","actual":0,"remaining":null,"total":null,"lower":null,"upper":null,"days":[],"quality":{"used":0,"excluded":{},"unusual":[],"coveredDays":0,"coverageKnown":false,"pendingReviews":0,"blocked":false},"candidates":[],"dues":[],"completedPeriods":0}"""
         val snapshot = AnalyticsJson.format.decodeFromString(AnalysisSnapshot.serializer(), raw)
         assertNull(snapshot.trainingFrom); assertNull(snapshot.trainingThrough)
+        assertNull(snapshot.insights); assertNull(snapshot.evaluationVersion); assertTrue(snapshot.evaluations.isEmpty())
+        assertTrue(snapshot.quality.reasons.isEmpty()); assertNull(snapshot.wholeDaysLower)
+    }
+    @Test fun averagesExcludePartialPeriodsAndChangesNeverCrossAGap() {
+        val periods = listOf(AnalysisPeriod(0, 30, 3000, 30, 30), AnalysisPeriod(30, 60, 9999, 10, 30),
+            AnalysisPeriod(60, 90, 6000, 30, 30))
+        val view = AnalysisUiState(purchasePeriods = periods).purchaseHistory(3)
+        assertEquals(2, view.completeCount); assertEquals(4500L, view.average); assertNull(view.latestChange)
+        val next = AnalysisUiState(purchasePeriods = periods + AnalysisPeriod(90, 120, 4500, 30, 30)).purchaseHistory(3)
+        assertEquals(-1500L, next.latestChange); assertEquals(5250L, next.average)
+    }
+    @Test fun publishedHistoryGroupsOnlyConsecutiveEquivalentResultsAndPreservesEveryTimestamp() {
+        val base = AnalysisSnapshot(0, 30, 1, "a", "READY", "WEEKDAY_MEDIAN", 100, 200, 300, null, null,
+            emptyList(), AnalysisQuality(1, emptyMap(), emptyList(), 90, true, 0, false), emptyList(), emptyList(), 2)
+        val source = listOf(base.copy(issuedAt = 4), base.copy(issuedAt = 3, sourceHash = "b"),
+            base.copy(issuedAt = 2, total = 400), base)
+        val state = AnalysisUiState(history = source)
+        val groups = state.forecastHistoryGroups()
+        assertEquals(listOf(2, 1, 1), groups.map { it.snapshots.size })
+        assertEquals(source, groups.flatMap { it.snapshots })
+        assertEquals(source, state.history)
+    }
+    @Test fun completedPeriodsAtAnEvaluationOriginIgnoreLaterHistoryAndCoverage() {
+        val first = FinancialPeriodPolicy.periodContaining(LocalDate.of(2026, 5, 1))
+        val second = FinancialPeriodPolicy.next(first)
+        val third = FinancialPeriodPolicy.next(second)
+        val days = (first.startDate.toEpochDay() until third.endDateExclusive.toEpochDay()).map { PurchaseDay(it, 100, 0, 1, 0, true) }
+        assertEquals(1, completedAnalysisPeriods(clean(days), second.startDate.toEpochDay()))
+        assertEquals(2, completedAnalysisPeriods(clean(days), third.startDate.toEpochDay()))
+        assertEquals(1, completedAnalysisPeriods(clean(days.map { if (it.day == first.startDate.toEpochDay()) it.copy(covered = false) else it }), third.startDate.toEpochDay()))
     }
     @Test fun analyticsNavigationReturnsToCenterOnlyForCenterOrigins() {
         val before = AnalyticsNavigation.centerReturns.value
