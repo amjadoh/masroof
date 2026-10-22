@@ -73,14 +73,15 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     MasroofCard(Modifier.testTag("analysis-data-quality")) {
         MasroofGuidanceLabel(stringResource(R.string.lab_analysis_quality_title), stringResource(R.string.lab_analysis_quality_hint),
             style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.onSurface)
-        Text(stringResource(when {
+        MasroofGuidanceLabel(stringResource(when {
             quality.blocked -> R.string.lab_analysis_quality_warning
-            snapshot.status != "READY" -> R.string.lab_analysis_insufficient
+            snapshot.status != "READY" -> R.string.lab_analysis_quality_insufficient
             snapshot.method == "WEEKDAY_MEDIAN" -> R.string.lab_analysis_quality_initial
             else -> R.string.lab_analysis_quality_personal
-        }), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+        }), if (snapshot.status != "READY") stringResource(R.string.lab_analysis_need_data) else null,
+            style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.primary)
         Text(stringResource(R.string.lab_analysis_quality_coverage, quality.coveredDays, snapshot.completedPeriods), style = MaterialTheme.typography.bodySmall)
-        Text(stringResource(if (snapshot.status != "READY") R.string.lab_analysis_need_data else when (snapshot.modelReason) {
+        if (snapshot.status == "READY") Text(stringResource(when (snapshot.modelReason) {
             "PERSONAL_MODEL" -> R.string.lab_analysis_ready
             "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
             "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
