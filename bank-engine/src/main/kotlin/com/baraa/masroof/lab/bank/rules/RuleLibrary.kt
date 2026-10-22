@@ -14,7 +14,7 @@ object RuleLibrary {
     ))
 
     /** One interpreter, versioned literal profiles. Bank aliases remain caller-owned identity data. */
-    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 12,
+    fun current(): BankRuleSchema = initial().let { previous -> previous.copy(revision = 13,
         network = NetworkRules(sourceBankLabels = listOf("source bank", "from bank", "بنك المرسل", "البنك المرسل"),
             destinationBankLabels = listOf("destination bank", "to bank", "بنك المستفيد", "البنك المستفيد"),
             networkLabels = listOf("bank network", "network", "شبكة الحوالة")),
@@ -46,7 +46,7 @@ object RuleLibrary {
             "billerCode" to listOf("رمز المفوتر", "biller code") + if(rule.family == MessageFamily.BILL_PAYMENT) listOf("مفوتر") else emptyList(),
             "paymentDueDate" to listOf("تاريخ الاستحقاق", "payment due date"),
         ), labels = rule.labels + mapOf(
-            ExtractionField.CARD to listOf("بطاقة", "card", "credit card", "debit card", "بطاقة ائتمانية", "بطاقة مدى", "بطاقة مدى رقم", "بطاقة ائتمانية رقم"),
+            ExtractionField.CARD to listOf("بطاقة", "card", "credit card", "debit card", "بطاقة ائتمانية", "بطاقة مدى", "بطاقة (مدى)", "بطاقة (ائتمانية)", "بطاقة مدى رقم", "بطاقة ائتمانية رقم"),
             ExtractionField.AMOUNT to listOf("مبلغ العملية", "بمبلغ", "مبلغ", "amount", "of", "القيمة", "value") + if(rule.family == MessageFamily.FINANCING_INSTALLMENT) listOf("القسط") else emptyList(),
             ExtractionField.AVAILABLE_BALANCE to listOf("الرصيد المتاح", "رصيد", "available balance", "available balance is"),
             ExtractionField.MERCHANT to listOf("لدى", "merchant", "at") + if(rule.family == MessageFamily.REFUND) listOf("من", "from") else emptyList(),
@@ -60,9 +60,11 @@ object RuleLibrary {
             observations = buildMap {
                 put("card.debit_source", listOf("خصمت من حساب"))
                 if(rule.family in setOf(MessageFamily.PURCHASE,MessageFamily.REFUND)) put("fee.sar_unlabeled",listOf("رسوم العمليات الدولية"))
-                if (rule.family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT, MessageFamily.BALANCE_NOTICE, MessageFamily.NON_FINANCIAL)) {
+                if (rule.family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT, MessageFamily.BALANCE_NOTICE, MessageFamily.NON_FINANCIAL, MessageFamily.WITHDRAWAL)) {
                     put("card.credit", listOf("credit", "credit card", "ائتمانية"))
                     put("card.debit", listOf("debit", "debit card", "مدى"))
+                }
+                if (rule.family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT, MessageFamily.BALANCE_NOTICE, MessageFamily.NON_FINANCIAL)) {
                     put("card.statement", listOf("statement", "كشف"))
                     put("card.available_balance", listOf("available balance", "الرصيد المتاح"))
                     put("card.credit_balance", listOf("available balance", "الرصيد المتاح"))
