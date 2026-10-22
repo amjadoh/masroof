@@ -64,6 +64,22 @@ import java.time.Instant
 @Config(sdk = [28])
 class HistoricalSmsScannerTest {
 
+    @Test fun coverageReceiptRequiresACompleteScanAndCarriesTheOriginalLowerBound() = runBlocking {
+        val after=Instant.parse("2026-07-01T00:00:00Z")
+        val started=Instant.parse("2026-08-01T12:00:00Z")
+        val receipts=mutableListOf<Pair<Instant?,Instant>>()
+        val clean=HistoricalSmsScanner(FakeSmsDataSource(emptyList()),batchProcessor,
+            coverageCompleted={ from,at -> receipts += from to at },clock=java.time.Clock.fixed(started,java.time.ZoneOffset.UTC))
+        assertNull(clean.scan(after).failure)
+        assertEquals(listOf(after to started),receipts)
+        receipts.clear()
+        val denied=HistoricalSmsScanner(object : SmsDataSource {
+            override fun queryInbox(receivedAfter: Instant?): Sequence<InboxRow> = throw SmsPermissionException()
+        },batchProcessor,coverageCompleted={ from,at -> receipts += from to at })
+        assertTrue(denied.scan(after).failure is SmsScanFailure.PermissionDenied)
+        assertTrue(receipts.isEmpty())
+    }
+
     private lateinit var db: MasroofDatabase
     private lateinit var batchProcessor: HistoricalSmsBatchProcessor
 

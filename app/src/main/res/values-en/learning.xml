@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="learning_title">Learning from your decisions</string>
+    <string name="learning_statistical_paused">Statistical assistance is suspended until evaluation evidence is sufficient. Rules and consistent human templates continue.</string>
+    <string name="learning_statistical_active">Families eligible for statistical assistance: %1$d</string>
+    <string name="learning_used">Your decision taught the message family.</string>
+    <string name="learning_blocked">Automatic suggestions for the conflicting template are blocked.</string>
+    <string name="learning_excluded">This edit was not used to train the family classifier.</string>
+    <string name="learning_pending">Learning update pending. Rules continue while the update retries.</string>
+    <string name="learning_reason_fields">Editing the amount, merchant or counterparty does not identify the message family.</string>
+    <string name="learning_reason_context">An ownership or transfer pairing decision does not confirm a new family.</string>
+    <string name="learning_reason_bank">Personal learning is not available for this bank yet.</string>
+    <string name="learning_reason_conflict">A human decision conflicts with this template. Assistance stays blocked until the conflict is resolved.</string>
+    <string name="learning_reason_pending">Evidence or the decision is not fully available. The update will retry.</string>
+    <string name="learning_reason_cleaning">The wording cannot produce eligible, privacy-preserving training features.</string>
+    <string name="learning_reason_ambiguous">The selected financial type alone does not identify the message family.</string>
+    <string name="learning_counts">Messages reaching assistance: %1$d · Suggested: %2$d · Persisted assisted understanding: %3$d · Linked to a posted transaction: %4$d · In review: %5$d</string>
+    <string name="learning_feedback_counts">Decisions used: %1$d · Blocked templates: %2$d · Excluded edits: %3$d · Later suggestions contradicting a confirmed correction: %4$d · Decisions awaiting evidence: %5$d</string>
+    <string name="learning_exclusion_count">%1$s (%2$d)</string>
+    <string name="learning_counts_hint">Counts reflect available records, not accuracy. No correction does not prove a suggestion correct. Some past decisions cannot be verified.</string>
+    <string name="learning_forecast_title">Published forecast versus actual spending</string>
+    <string name="learning_forecast_periods">Completed eligible comparison periods: %1$d</string>
+    <string name="learning_forecast_paused">The baseline is used after sustained personal-model regression. Personal evaluation continues in the background.</string>
+    <string name="learning_forecast_personal_error">Personal mean absolute error</string>
+    <string name="learning_forecast_baseline_error">Baseline mean absolute error</string>
+    <string name="learning_forecast_personal">Personal estimate saved at issue time</string>
+    <string name="learning_forecast_baseline">Baseline estimate saved at issue time</string>
+    <string name="learning_forecast_hint">Compares the first valid forecast on day eight after the period and coverage are complete. Errors use the latest three eligible periods. Published estimates stay fixed; corrections update actuals.</string>
+</resources>

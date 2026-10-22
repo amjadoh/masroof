@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "id": "runtime_local_incoming_valid",
+      "body": "حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00",
+      "family": "TRANSFER_IN"
+    },
+    {
+      "id": "runtime_local_incoming_missing_network",
+      "body": "حوالة محلية واردة\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00",
+      "family": "TRANSFER_IN"
+    },
+    {
+      "id": "runtime_loan_unknown_title",
+      "body": "سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00",
+      "family": "FINANCING_INSTALLMENT"
+    },
+    {
+      "id": "runtime_pending_transfer",
+      "body": "طلب حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00",
+      "family": "NON_FINANCIAL"
+    },
+    {
+      "id": "runtime_otp_quotes_transfer",
+      "body": "رمز التحقق 123456\nحوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00",
+      "family": "OTP"
+    }
+  ]
+}

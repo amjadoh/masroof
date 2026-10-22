@@ -16,17 +16,21 @@ data class InterpretationProvenance(
     val origin: InterpretationOrigin,
     val family: MessageFamily,
     val pendingReview: Boolean,
+    val feedback: LearningFeedbackStatus? = null,
 )
 
 class InterpretationProvenanceWorkflow(
     private val effectiveEvents: EffectiveParsedEventProvider,
     private val reviews: ReviewRepository,
+    private val feedback: suspend (String) -> LearningFeedbackStatus? = { null },
 ) {
     suspend fun load(rawSmsId: String): InterpretationProvenance {
         return try {
             val record = effectiveEvents.findEffectiveByRawSmsId(rawSmsId) ?: return unavailable()
             val review = reviews.findByRawSmsId(rawSmsId)
-            project(record, review?.resolutionKind, review?.status == ReviewStatus.REQUIRED)
+            val status = try { feedback(rawSmsId) } catch(e: CancellationException) { throw e }
+                catch(_: Exception) { LearningFeedbackStatus(LearningFeedbackState.PENDING,"FEEDBACK_PENDING") }
+            project(record, review?.resolutionKind, review?.status == ReviewStatus.REQUIRED).copy(feedback = status)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -45,7 +49,7 @@ class InterpretationProvenanceWorkflow(
         ): InterpretationProvenance {
             // A manual family/amount decision supersedes inference. Merchant edits do not lift the parse gate.
             if (record.automationConfirmed || resolution in setOf(
-                    ReviewResolutionKind.USER_CORRECTION, ReviewResolutionKind.USER_FINANCIAL_TYPE,
+                    ReviewResolutionKind.USER_FINANCIAL_TYPE,
                     ReviewResolutionKind.USER_NON_FINANCIAL,
                 )) return InterpretationProvenance(InterpretationOrigin.MANUAL, record.event.messageFamily, requiredReview)
             val reasons = record.event.confidence.reasons
