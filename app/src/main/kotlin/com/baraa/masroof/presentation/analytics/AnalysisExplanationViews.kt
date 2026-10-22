@@ -142,7 +142,8 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 @Composable internal fun LearningAndForecastPerformance(state: AnalysisUiState) {
     state.learning?.let { learning ->
         MasroofCard(Modifier.testTag("learning-insights")) {
-            Text(stringResource(R.string.learning_title), style = MaterialTheme.typography.titleSmall)
+            MasroofGuidanceLabel(stringResource(R.string.learning_title), stringResource(R.string.learning_counts_hint),
+                style = MaterialTheme.typography.titleSmall)
             if(learning.pending) Text(stringResource(R.string.learning_pending), style = MaterialTheme.typography.bodySmall)
             else if(learning.statisticalFamilies == 0) Text(stringResource(R.string.learning_statistical_paused), style = MaterialTheme.typography.bodySmall)
             else Text(stringResource(R.string.learning_statistical_active,learning.statisticalFamilies), style = MaterialTheme.typography.bodySmall)
@@ -150,11 +151,11 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             Text(stringResource(R.string.learning_feedback_counts, learning.learned, learning.blocked, learning.excluded, learning.repeatedContradictions, learning.pendingDecisions), style = MaterialTheme.typography.bodySmall)
             learning.exclusions.forEach { (reason,count) -> Text(stringResource(R.string.learning_exclusion_count,
                 stringResource(com.baraa.masroof.presentation.interpretation.learningReasonResource(reason)),count), style = MaterialTheme.typography.bodySmall) }
-            Text(stringResource(R.string.learning_counts_hint), style = MaterialTheme.typography.bodySmall)
         }
     }
     MasroofCard(Modifier.testTag("forecast-performance")) {
-        Text(stringResource(R.string.learning_forecast_title), style = MaterialTheme.typography.titleSmall)
+        MasroofGuidanceLabel(stringResource(R.string.learning_forecast_title), stringResource(R.string.learning_forecast_hint),
+            style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.learning_forecast_periods,state.forecastPerformance.periods),style = MaterialTheme.typography.bodySmall)
         if(!state.forecastPerformance.allowPersonal) Text(stringResource(R.string.learning_forecast_paused),style = MaterialTheme.typography.bodySmall)
         state.forecastPerformance.personalMae?.let { Amount(stringResource(R.string.learning_forecast_personal_error),it) }
@@ -165,7 +166,6 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             Amount(stringResource(R.string.learning_forecast_baseline),comparison.baselineTotal)
             comparison.actual?.let { Amount(stringResource(R.string.lab_analysis_final_actual),it) }
         }
-        Text(stringResource(R.string.learning_forecast_hint),style = MaterialTheme.typography.bodySmall)
     }
 }
 
