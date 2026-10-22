@@ -1,6 +1,6 @@
 package com.baraa.masroof.parsing.fixtures
 
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.domain.model.ParseStatus
 import com.baraa.masroof.domain.model.ParsedEvent
 import com.baraa.masroof.parsing.model.ParseResult
@@ -14,7 +14,7 @@ import java.time.Instant
  * dashboard and integration characterization tests.
  */
 object AlJaziraFixtureParseHarness {
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
 
     fun load(id: String): AlJaziraFixture =
         AlJaziraFixtureLoader.loadAllFromClasspath().first { it.id == id }

@@ -482,6 +482,7 @@ class ReviewViewModel(
             kindLabelRes = review.kind.toUiLabelRes(),
             sender = detail.sender,
             body = detail.body.orEmpty(),
+            provenance = detail.provenance,
             dateLabel = dateLabel,
             messageFamilyLabel = family?.name,
             messageFamily = family,

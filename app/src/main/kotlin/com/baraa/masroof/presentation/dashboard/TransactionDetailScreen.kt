@@ -383,6 +383,7 @@ fun TransactionDetailScreen(
                             label = stringResource(R.string.review_sender, sender),
                         )
                     }
+                    com.baraa.masroof.presentation.interpretation.InterpretationProvenanceCard(evidence.provenance)
                     MasroofCard {
                         Text(
                             evidence.body,

@@ -1,6 +1,6 @@
 package com.baraa.masroof.domain.loan
 
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
@@ -20,7 +20,7 @@ import org.junit.Test
 import java.time.Instant
 
 class FinancingInstallmentAssemblyTest {
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
 
     private val body = """
         خصم: قسط تمويل

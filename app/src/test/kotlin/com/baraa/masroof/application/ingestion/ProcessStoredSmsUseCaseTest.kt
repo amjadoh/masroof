@@ -9,8 +9,8 @@ import com.baraa.masroof.application.review.ReviewQueueUpdater
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsAdapter
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.repository.RoomFinancialTransactionRepository
@@ -79,7 +79,7 @@ class ProcessStoredSmsUseCaseTest {
         val cards = RoomCardRegistryRepository.from(db)
         cards.setOwnership(CardReference(Bank.BANK_ALJAZIRA, "7271"), OwnershipStatus.OWNED)
         parseCalls.set(0)
-        registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = countingGateway())))
+        registry = BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = countingGateway())))
         processStored = ProcessStoredSmsUseCase(
             rawSmsRepository = rawRepo,
             parsedEventRepository = parsedRepo,
@@ -158,7 +158,7 @@ class ProcessStoredSmsUseCaseTest {
 
     @Test
     fun processById_ambiguousEvidence_leavesOneDurableReview_idempotently() = runBlocking {
-        val ambiguous = BankSmsRegistry(listOf(AlJaziraSmsAdapter(pipeline = countingGateway()), LookalikeAdapter()))
+        val ambiguous = BankSmsRegistry(listOf(engineFixtureAdapter(pipeline = countingGateway()), LookalikeAdapter()))
         val svc = ProcessStoredSmsUseCase(
             rawSmsRepository = rawRepo,
             parsedEventRepository = parsedRepo,
@@ -227,7 +227,7 @@ class ProcessStoredSmsUseCaseTest {
             rawSmsRepository = rawRepo,
             parsedEventRepository = parsedRepo,
             bankSmsRegistry = BankSmsRegistry(
-                listOf(AlJaziraSmsAdapter(), AlJaziraSmsAdapter()),
+                listOf(engineFixtureAdapter(), engineFixtureAdapter()),
             ),
         )
 
@@ -314,7 +314,7 @@ class ProcessStoredSmsUseCaseTest {
 
     private fun countingGateway() = SmsParseGateway { input ->
         parseCalls.incrementAndGet()
-        AlJaziraParsingPipeline().parse(input)
+        EngineFixtureParser().parse(input)
     }
 
     private fun sms(body: String, at: String = "2026-08-03T14:32:00Z"): RawSms =

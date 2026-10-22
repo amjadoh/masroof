@@ -15,6 +15,7 @@ class ReviewDetailLoader(
     private val reviewWorkflowService: ReviewWorkflowService,
     private val rawSmsRepository: RawSmsRepository,
     private val effectiveParsedEventProvider: EffectiveParsedEventProvider,
+    private val provenanceWorkflow: com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow? = null,
 ) {
     data class ReviewSummary(
         val review: ReviewItem,
@@ -35,6 +36,7 @@ class ReviewDetailLoader(
         val merchant: String?,
         val counterparty: String?,
         val cardRef: CardReference?,
+        val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
     )
 
     /**
@@ -115,6 +117,7 @@ class ReviewDetailLoader(
             merchant = event?.merchant,
             counterparty = event?.counterparty,
             cardRef = event?.cardRef,
+            provenance = provenanceWorkflow?.load(review.rawSmsId),
         )
     }
 }

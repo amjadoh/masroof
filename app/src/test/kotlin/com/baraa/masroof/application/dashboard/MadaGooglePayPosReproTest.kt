@@ -1,6 +1,6 @@
 package com.baraa.masroof.application.dashboard
 
-import com.baraa.masroof.bank.aljazira.AlJaziraParsingPipeline
+import com.baraa.masroof.testsupport.EngineFixtureParser
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
@@ -28,7 +28,7 @@ import java.time.ZoneId
  * Reproduction for Mada Google Pay POS purchase missing from debit card dashboard (card 8219).
  */
 class MadaGooglePayPosReproTest {
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
     private val zoneId = ZoneId.of("Asia/Riyadh")
     private val salaryPeriod = FinancialPeriodPolicy.periodContaining(LocalDate.parse("2026-08-11"))
 

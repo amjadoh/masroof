@@ -1,5 +1,8 @@
 package com.baraa.masroof.bank.aljazira
 
+import com.baraa.masroof.testsupport.EngineFixtureParser
+import com.baraa.masroof.testsupport.engineFixtureAdapter
+
 import com.baraa.masroof.bank.BankRoutingResult
 import com.baraa.masroof.bank.BankSmsRegistry
 import com.baraa.masroof.core.money.Currency
@@ -29,10 +32,10 @@ import java.time.Instant
  * Mandatory P4 regression coverage beyond the parameterized fixture corpus.
  */
 class AlJaziraParserRegressionTest {
-    private val pipeline = AlJaziraParsingPipeline()
+    private val pipeline = EngineFixtureParser()
     private val validator = DefaultParsedEventValidator()
     private val detector = AlJaziraBankDetector()
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
 
     @Test
     fun cardLast4BeforeAmount_doesNotBecomeAmount() {
@@ -89,7 +92,7 @@ class AlJaziraParserRegressionTest {
         assertEquals("3001", result.event.sourceAccountRef?.maskedNumber)
         assertEquals(Bank.BANK_ALJAZIRA, result.event.sourceAccountRef?.bank)
         assertEquals("2670", result.event.destinationAccountRef?.maskedNumber)
-        assertEquals(Bank.UNKNOWN, result.event.destinationAccountRef?.bank)
+        assertEquals(Bank.fromId("BANK_D360"), result.event.destinationAccountRef?.bank)
         assertEquals(Money.of("100.00", Currency.SAR), result.event.amount)
         assertEquals("براء ف. صالح بخ", result.event.counterparty)
         assertEquals("2BTMS11841719460", result.details.transactionReference)
@@ -113,7 +116,7 @@ class AlJaziraParserRegressionTest {
         assertEquals("3002", result.event.sourceAccountRef?.maskedNumber)
         assertEquals(Bank.BANK_ALJAZIRA, result.event.sourceAccountRef?.bank)
         assertEquals("0593", result.event.destinationAccountRef?.maskedNumber)
-        assertEquals(Bank.UNKNOWN, result.event.destinationAccountRef?.bank)
+        assertEquals(Bank.fromId("BANK_ANB"), result.event.destinationAccountRef?.bank)
         assertEquals(Money.of("13258.00", Currency.SAR), result.event.amount)
         assertEquals("TEST_REFERENCE_1", result.details.transactionReference)
         assertEquals(BankNetworkType.INTER_BANK, result.event.bankNetworkType)
@@ -135,7 +138,7 @@ class AlJaziraParserRegressionTest {
         ) as ParseResult.Success
         assertEquals(BankNetworkType.INTER_BANK, result.event.bankNetworkType)
         assertEquals("8888", result.event.sourceAccountRef?.maskedNumber)
-        assertEquals(Bank.UNKNOWN, result.event.sourceAccountRef?.bank)
+        assertEquals(Bank.fromId("BANK_RIYAD"), result.event.sourceAccountRef?.bank)
         assertEquals("3001", result.event.destinationAccountRef?.maskedNumber)
         assertEquals(Bank.BANK_ALJAZIRA, result.event.destinationAccountRef?.bank)
     }
@@ -483,7 +486,7 @@ class AlJaziraParserRegressionTest {
         )
         assertTrue(result is ParseResult.NonFinancial)
         val nf = result as ParseResult.NonFinancial
-        assertEquals(MessageFamily.NON_FINANCIAL, nf.event?.messageFamily)
+        assertEquals(MessageFamily.OTP, nf.event?.messageFamily)
         assertEquals(ParseStatus.NON_FINANCIAL, nf.event?.parseStatus)
         assertNull(nf.event?.amount)
     }
@@ -624,7 +627,7 @@ class AlJaziraParserRegressionTest {
         )
         assertTrue(result is ParseResult.NonFinancial)
         val nf = result as ParseResult.NonFinancial
-        assertEquals(MessageFamily.NON_FINANCIAL, nf.event?.messageFamily)
+        assertEquals(MessageFamily.OTP, nf.event?.messageFamily)
         assertEquals(ParseStatus.NON_FINANCIAL, nf.event?.parseStatus)
         assertNull(nf.event?.amount)
     }

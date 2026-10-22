@@ -17,7 +17,7 @@ import com.baraa.masroof.application.sms.LiveSmsProcessingWorker
 import com.baraa.masroof.application.sms.LiveSmsWorkScheduler
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.repository.RoomFinancialTransactionRepository
@@ -94,7 +94,7 @@ class LiveRetryRestartTest {
         val accounts = RoomAccountRegistryRepository.from(db)
         val clock = InstantClock { Instant.parse("2026-08-11T12:00:00Z") }
         val appLog = AppLogService(context)
-        val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+        val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
         cards.setOwnership(CardReference(Bank.BANK_ALJAZIRA, "7271"), OwnershipStatus.OWNED)
         val conflicts = AtomicInteger(Int.MAX_VALUE)
         val failingLedger = object : FinancialTransactionRepository by ftRepo {

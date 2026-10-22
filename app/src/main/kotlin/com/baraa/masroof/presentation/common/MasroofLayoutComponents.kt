@@ -24,7 +24,9 @@ fun MasroofScreenBackground(
             .fillMaxSize()
             .background(background),
     ) {
-        content()
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+        ) { content() }
     }
 }
 

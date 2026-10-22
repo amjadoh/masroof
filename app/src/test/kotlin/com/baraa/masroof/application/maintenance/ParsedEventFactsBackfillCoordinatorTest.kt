@@ -119,7 +119,7 @@ class ParsedEventFactsBackfillCoordinatorTest {
                     rawSmsRepository = rawRepo,
                     parsedEventRepository = parsedRepo,
                     bankSmsRegistry = com.baraa.masroof.bank.BankSmsRegistry(
-                        listOf(com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter()),
+                        listOf(com.baraa.masroof.testsupport.engineFixtureAdapter()),
                     ),
                 ),
                 refreshDerivedState = {},

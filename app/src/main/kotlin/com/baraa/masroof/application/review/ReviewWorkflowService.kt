@@ -478,7 +478,26 @@ class ReviewWorkflowService(
         val destAccountId = event.destinationAccountRef?.let(FinancialContainerIdFactory::accountId)
         val cardId = event.cardRef?.let(FinancialContainerIdFactory::cardId)
 
+        // An explicit type may repair an unknown family; it cannot invent an owned endpoint.
+        if (type in setOf(FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+                FinancialTransactionType.EXTERNAL_TRANSFER_IN, FinancialTransactionType.SELF_TRANSFER)) {
+            if (amount.amount.signum() <= 0) return ReviewWorkflowResult.Rejected("missing_amount")
+            val sourceOwned = event.sourceAccountRef?.let { ownershipResolver.resolveAccount(it) == OwnershipStatus.OWNED } == true
+            val destinationOwned = event.destinationAccountRef?.let { ownershipResolver.resolveAccount(it) == OwnershipStatus.OWNED } == true
+            if (type != FinancialTransactionType.EXTERNAL_TRANSFER_IN && (sourceAccountId == null || !sourceOwned))
+                return ReviewWorkflowResult.Rejected(if (sourceAccountId == null) "missing_source" else "source_not_owned")
+            if (type != FinancialTransactionType.EXTERNAL_TRANSFER_OUT && (destAccountId == null || !destinationOwned))
+                return ReviewWorkflowResult.Rejected(if (destAccountId == null) "missing_destination" else "destination_not_owned")
+            if ((type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT && destinationOwned) ||
+                (type == FinancialTransactionType.EXTERNAL_TRANSFER_IN && sourceOwned))
+                return ReviewWorkflowResult.Rejected("owned_transfer_requires_self_type")
+            if (type == FinancialTransactionType.SELF_TRANSFER && sourceAccountId == destAccountId)
+                return ReviewWorkflowResult.Rejected("same_transfer_account")
+        }
         val (sourceId, destId) = when (type) {
+            FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+            FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+            FinancialTransactionType.SELF_TRANSFER -> sourceAccountId to destAccountId
             FinancialTransactionType.EXPENSE ->
                 (cardId ?: sourceAccountId) to null
 
@@ -652,6 +671,9 @@ class ReviewWorkflowService(
 
     companion object {
         val ALLOWED_MANUAL_SINGLE_TYPES: Set<FinancialTransactionType> = setOf(
+    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+    FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+    FinancialTransactionType.SELF_TRANSFER,
             FinancialTransactionType.EXPENSE,
             FinancialTransactionType.INCOME,
             FinancialTransactionType.CREDIT_CARD_PAYMENT,

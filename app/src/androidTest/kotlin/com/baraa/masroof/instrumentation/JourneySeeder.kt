@@ -29,7 +29,7 @@ internal object JourneyFixtures {
     const val DASHBOARD_SMS: String = "sms-dashboard-smoke"
     const val DASHBOARD_MERCHANT: String = "Dashboard Mart"
     const val CORRECTION_SMS: String = "sms-correction-smoke"
-    const val CORRECTION_BODY: String = "SMOKE-CORRECTION"
+    const val CORRECTION_BODY: String = "شراء عبر الانترنت\nمبلغ: SAR 18.00\nلدى: Correction Mart"
     const val CORRECTION_MERCHANT: String = "Correction Mart"
     const val RESTORE_SMS: String = "sms-restore-smoke"
     const val RESTORE_BODY: String = "SMOKE-RESTORE"
@@ -110,21 +110,22 @@ internal object JourneySeeder {
     }
 
     private suspend fun seedCorrectionReview() {
-        insertEvidence(
-            rawSmsId = JourneyFixtures.CORRECTION_SMS,
+        val container = application().container
+        // Use durable evidence and the real engine. A rule refresh must read the same
+        // amount/merchant and event identity that the manual-resolution UI reads.
+        container.processRawSmsUseCase.ingest(RawSms(
+            id = JourneyFixtures.CORRECTION_SMS,
+            sender = "AlJazira",
             body = JourneyFixtures.CORRECTION_BODY,
-            merchant = JourneyFixtures.CORRECTION_MERCHANT,
-            eventId = "pe-correction-smoke",
-            amount = "18.00",
-            parseStatus = ParseStatus.REVIEW_REQUIRED,
-            at = Instant.now(),
-        )
-        application().container.reviewRepository.upsertRequired(
-            rawSmsId = JourneyFixtures.CORRECTION_SMS,
-            kind = ReviewKind.NEEDS_REVIEW,
-            reasons = listOf("parse_review_required"),
-            now = Instant.now(),
-        )
+            receivedAt = Instant.now(),
+            deviceMessageId = JourneyFixtures.CORRECTION_SMS,
+            bodyHash = SmsBodyHasher.sha256Hex(JourneyFixtures.CORRECTION_BODY),
+        ))
+        val parsed = checkNotNull(container.parsedEventRepository.findByRawSmsId(JourneyFixtures.CORRECTION_SMS))
+        check(parsed.event.amount == Money.of("18.00", Currency.SAR))
+        check(parsed.event.merchant == JourneyFixtures.CORRECTION_MERCHANT)
+        check(container.reviewRepository.listRequired().any { it.rawSmsId == JourneyFixtures.CORRECTION_SMS })
+        check(container.financialTransactionRepository.findByRawSmsId(JourneyFixtures.CORRECTION_SMS) == null)
     }
 
     private suspend fun seedIgnoredPurchase() {

@@ -62,6 +62,7 @@ class DashboardViewModel(
     maintenanceCompletions: Flow<Unit> = emptyFlow(),
     val chartDataWorkflow: com.baraa.masroof.application.dashboard.ChartDataWorkflow =
         com.baraa.masroof.application.dashboard.ChartDataWorkflow(com.baraa.masroof.application.dashboard.InMemoryChartDataPreferencesRepository()),
+    val labAnalytics: com.baraa.masroof.application.analytics.LabAnalyticsWorkflow? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -288,6 +289,7 @@ class DashboardViewModel(
         _uiState.update {
             it.copy(
                 selectedTransactionId = transactionId,
+                labSelectedTransaction = null,
                 selectedTransactionSms = emptyList(),
                 selectedTransactionSmsLoading = true,
                 reclassifySuccess = false,
@@ -306,6 +308,7 @@ class DashboardViewModel(
         _uiState.update {
             it.copy(
                 selectedTransactionId = null,
+                labSelectedTransaction = null,
                 selectedTransactionSms = emptyList(),
                 selectedTransactionSmsLoading = false,
                 reclassifying = false,
@@ -322,9 +325,13 @@ class DashboardViewModel(
 
     private fun loadSelectedTransactionSms(transactionId: String) {
         viewModelScope.launch {
+            val outsidePeriod = _uiState.value.allTransactions.none { it.id == transactionId } && _uiState.value.recentTransactions.none { it.id == transactionId }
+            val labRow = if (!outsidePeriod) null else try {
+                labAnalytics?.evidence(listOf(transactionId))?.firstOrNull()?.let { item -> item.transaction?.let { toPreview(it, item.facts) } }
+            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }
             val evidence = try {
                 smsEvidenceLoader.loadForTransaction(transactionId).map { item ->
-                    TransactionSmsEvidenceUi(body = item.body, sender = item.sender)
+                    TransactionSmsEvidenceUi(body = item.body, sender = item.sender, provenance = item.provenance)
                 }
             } catch (ce: CancellationException) {
                 throw ce
@@ -337,6 +344,7 @@ class DashboardViewModel(
                 } else {
                     current.copy(
                         selectedTransactionSms = evidence,
+                        labSelectedTransaction = labRow,
                         selectedTransactionSmsLoading = false,
                     )
                 }
@@ -431,6 +439,7 @@ class DashboardViewModel(
                     _uiState.update {
                         it.copy(
                             selectedTransactionId = null,
+                labSelectedTransaction = null,
                             selectedTransactionSms = emptyList(),
                             selectedTransactionSmsLoading = false,
                             ignoring = false,

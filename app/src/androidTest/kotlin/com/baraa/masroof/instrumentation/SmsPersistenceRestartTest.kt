@@ -33,7 +33,7 @@ import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.application.transaction.TransactionIgnoreService
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import com.baraa.masroof.bank.BankSmsRegistry
-import com.baraa.masroof.bank.aljazira.AlJaziraSmsAdapter
+import com.baraa.masroof.testsupport.engineFixtureAdapter
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.data.preferences.SharedPrefsAppLocaleRepository
@@ -798,7 +798,7 @@ private class DeviceSmsSession(
     val clock: InstantClock = InstantClock { Instant.parse("2026-08-11T12:00:00Z") }
     val appLog: AppLogService = AppLogService(context)
     val scheduler: PersistedWorkScheduler = PersistedWorkScheduler(File(context.filesDir, queueName))
-    private val registry = BankSmsRegistry(listOf(AlJaziraSmsAdapter()))
+    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
     lateinit var database: MasroofDatabase
         private set
     lateinit var rawRepo: RoomRawSmsRepository

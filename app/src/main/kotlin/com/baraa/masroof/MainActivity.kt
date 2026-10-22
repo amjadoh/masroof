@@ -64,6 +64,11 @@ class MainActivity : ComponentActivity() {
     private val container by lazy { (application as MasroofApplication).container }
     private var startupFinancialReady: Boolean = false
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("lab_analysis_alert")?.let { com.baraa.masroof.application.analytics.AnalyticsNavigation.open(it) }
+    }
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(
             AppLocaleContext.wrap(newBase, AppLocaleContext.readStoredLanguageTag(newBase)),
@@ -113,6 +118,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent?.getStringExtra("lab_analysis_alert")?.let { com.baraa.masroof.application.analytics.AnalyticsNavigation.open(it) }
         if (intent.getBooleanExtra(com.baraa.masroof.application.backup.DatabaseBackupService.EXTRA_RESTORE_FAILED, false)) {
             intent.removeExtra(com.baraa.masroof.application.backup.DatabaseBackupService.EXTRA_RESTORE_FAILED)
             android.widget.Toast.makeText(this, R.string.settings_import_failed, android.widget.Toast.LENGTH_LONG).show()
