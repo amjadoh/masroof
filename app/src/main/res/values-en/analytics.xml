@@ -128,6 +128,7 @@
     <string name="lab_analysis_evidence">Show transactions</string>
     <string name="lab_analysis_quality_title">Is there enough data?</string>
     <string name="lab_analysis_quality_initial">Enough for an initial estimate</string>
+    <string name="lab_analysis_quality_insufficient">More history needed for an estimate</string>
     <string name="lab_analysis_quality_personal">Personal model in use</string>
     <string name="lab_analysis_quality_coverage">%1$d covered days · %2$d complete salary periods</string>
     <string name="lab_analysis_quality_history_reason">The personal model needs 120 continuous days, 4 complete periods and 20 purchase days, then must perform better in evaluations.</string>

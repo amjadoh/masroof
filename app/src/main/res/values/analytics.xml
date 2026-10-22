@@ -128,6 +128,7 @@
     <string name="lab_analysis_evidence">عرض الحركات</string>
     <string name="lab_analysis_quality_title">هل البيانات كافية؟</string>
     <string name="lab_analysis_quality_initial">كافية لتقدير أولي</string>
+    <string name="lab_analysis_quality_insufficient">التاريخ غير كافٍ للتقدير بعد</string>
     <string name="lab_analysis_quality_personal">يُستخدم النموذج الشخصي</string>
     <string name="lab_analysis_quality_coverage">%1$d يومًا من البيانات · %2$d فترات راتب مكتملة</string>
     <string name="lab_analysis_quality_history_reason">النموذج الشخصي يحتاج 120 يومًا متصلًا، و4 فترات مكتملة، و20 يوم مشتريات؛ ثم يجب أن يتفوق في الاختبارات.</string>

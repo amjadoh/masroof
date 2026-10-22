@@ -276,11 +276,13 @@ class AnalyticsJourneyTest {
         runBlocking { TestRuntime.reset(host) }
         val c = TestRuntime.container(host)
         var showing by mutableStateOf(true)
+        var insufficient by mutableStateOf(true)
         var opened: String? = null
         var review = false; var permission = false; var rescan = false
         try {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.labAnalytics.refresh() }
             val workflow = c.labAnalytics
+            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.snapshot != null }
             val original = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot).let { it.copy(quality = it.quality.copy(
                 pendingReviews = 1, blocked = true, reasons = listOf("SMS_PERMISSION", "PROCESSING_RETRY"))) }
@@ -289,10 +291,20 @@ class AnalyticsJourneyTest {
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config) {
                     MasroofTheme { Column(Modifier.verticalScroll(rememberScrollState())) {
                         AnalysisSpendingExplanation(snapshot, workflow, { opened = it })
-                        AnalysisDataQuality(snapshot, workflow, { opened = it }, { review = true }, { permission = true }, { rescan = true })
+                        val displayed = if (insufficient) snapshot.copy(status = "INSUFFICIENT_DATA", method = "NONE",
+                            quality = snapshot.quality.copy(blocked = false, pendingReviews = 0, reasons = emptyList())) else snapshot
+                        AnalysisDataQuality(displayed, workflow, { opened = it }, { review = true }, { permission = true }, { rescan = true })
                     } }
                 }
             } }
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data, "en")).assertDoesNotExist()
+            val aboutInsufficient = text(R.string.guidance_about, "en").format(text(R.string.lab_analysis_quality_insufficient, "en"))
+            compose.onNodeWithContentDescription(aboutInsufficient).performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data, "en")).assertIsDisplayed()
+            instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            compose.waitForIdle()
+            compose.onNodeWithText(text(R.string.lab_analysis_need_data, "en")).assertDoesNotExist()
+            compose.runOnUiThread { insufficient = false }
             compose.onNodeWithTag("analysis-expand-insights").performScrollTo().performClick()
             compose.onNodeWithTag("analysis-component-PURCHASES").performScrollTo().performClick()
             compose.waitUntil(30_000) { compose.onAllNodesWithTag("lab-evidence-today-spend").fetchSemanticsNodes().isNotEmpty() }
