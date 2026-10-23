@@ -170,7 +170,7 @@ class SettingsViewModel(
     fun saveCardDisplayName(name: String) {
         val target = _uiState.value.renameCardTarget ?: return
         dismissRenameCard()
-        updateMetadata {
+        updateRegistry {
             settingsRegistryWorkflow.updateCardDisplayName(
                 CardReference(target.bank, target.last4),
                 name.trim().ifEmpty { null },
@@ -189,7 +189,7 @@ class SettingsViewModel(
     fun saveAccountDisplayName(name: String) {
         val target = _uiState.value.renameAccountTarget ?: return
         dismissRenameAccount()
-        updateMetadata {
+        updateRegistry {
             settingsRegistryWorkflow.updateAccountDisplayName(
                 AccountReference(target.bank, target.maskedNumber),
                 name.trim().ifEmpty { null },
@@ -294,7 +294,6 @@ class SettingsViewModel(
                 val reparsed = reparseStoredEvents()
                 check(reparsed.succeeded) { "Manual reparse incomplete: ${reparsed.failedCount} messages failed" }
                 val count = reparsed.refreshedCount
-                refreshReviewQueue()
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
                 applyRegistries(
                     cards = snapshot.cards,
@@ -400,7 +399,6 @@ class SettingsViewModel(
             _uiState.update { it.copy(importingSms = true, smsImportMessage = null, error = null) }
             try {
                 val result = importSmsFromInbox()
-                refreshReviewQueue()
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
                 applyRegistries(
                     cards = snapshot.cards,
