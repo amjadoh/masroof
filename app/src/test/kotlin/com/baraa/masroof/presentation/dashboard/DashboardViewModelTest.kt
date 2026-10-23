@@ -118,6 +118,67 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun refreshCompletingAfterOpeningDetail_keepsTheUsersNewSelection() = runTest {
+        val loader=FakeLoader()
+        val row=foreignTransaction()
+        loader.put(currentPeriod,overview(currentPeriod,spending="100.00").copy(transactions=listOf(row)))
+        val vm=viewModel(loader)
+        vm.refresh();advanceUntilIdle()
+        val gate=loader.enqueueGate(currentPeriod)
+        vm.refresh();advanceUntilIdle()
+        vm.openTransactionDetail(row.id);advanceUntilIdle()
+        gate.complete(Unit);advanceUntilIdle()
+        assertEquals(row.id,vm.uiState.value.selectedTransactionId)
+    }
+
+    @Test
+    fun refreshCompletingAfterClosingDetail_doesNotReopenIt() = runTest {
+        val loader=FakeLoader()
+        val row=foreignTransaction()
+        loader.put(currentPeriod,overview(currentPeriod,spending="100.00").copy(transactions=listOf(row)))
+        val vm=viewModel(loader)
+        vm.refresh();advanceUntilIdle()
+        vm.openTransactionDetail(row.id);advanceUntilIdle()
+        val gate=loader.enqueueGate(currentPeriod)
+        vm.refresh();advanceUntilIdle()
+        vm.closeTransactionDetail()
+        gate.complete(Unit);advanceUntilIdle()
+        assertNull(vm.uiState.value.selectedTransactionId)
+    }
+
+    @Test
+    fun refreshCompletingAfterSwitchingDetail_keepsTheLatestSelection() = runTest {
+        val loader=FakeLoader()
+        val first=foreignTransaction()
+        val second=first.copy(id="second")
+        loader.put(currentPeriod,overview(currentPeriod,spending="100.00").copy(transactions=listOf(first,second)))
+        val vm=viewModel(loader)
+        vm.refresh();advanceUntilIdle()
+        vm.openTransactionDetail(first.id);advanceUntilIdle()
+        val gate=loader.enqueueGate(currentPeriod)
+        vm.refresh();advanceUntilIdle()
+        vm.openTransactionDetail(second.id);advanceUntilIdle()
+        gate.complete(Unit);advanceUntilIdle()
+        assertEquals(second.id,vm.uiState.value.selectedTransactionId)
+    }
+
+    @Test
+    fun changingPeriod_clearsThePreviousDetailBeforeLoading() = runTest {
+        val loader=FakeLoader()
+        val row=foreignTransaction()
+        loader.put(currentPeriod,overview(currentPeriod,spending="100.00").copy(transactions=listOf(row)))
+        loader.put(previousPeriod,overview(previousPeriod,spending="50.00"))
+        val vm=viewModel(loader)
+        vm.refresh();advanceUntilIdle()
+        vm.openTransactionDetail(row.id);advanceUntilIdle()
+        val gate=loader.enqueueGate(previousPeriod)
+        vm.goToPreviousPeriod()
+        assertNull(vm.uiState.value.selectedTransactionId)
+        gate.complete(Unit);advanceUntilIdle()
+        assertNull(vm.uiState.value.selectedTransactionId)
+    }
+
+    @Test
     fun previews_renderApplicationFactsWithoutReinterpreting() = runTest {
         val tx = foreignTransaction()
         val loader = FakeLoader()
