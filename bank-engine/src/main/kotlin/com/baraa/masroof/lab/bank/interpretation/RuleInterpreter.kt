@@ -21,6 +21,17 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) })
 
+    // The snapshot is immutable. Validate its shape and normalized literals once.
+    private val supportedSchema = run {
+        val networkTerms = snapshot.network.bankAliases.values.flatten() + snapshot.network.sourceBankLabels +
+            snapshot.network.destinationBankLabels + snapshot.network.networkLabels + snapshot.network.unidentifiedExternalBankMarkers
+        runCatching { snapshot.validate() }.isSuccess && "UNKNOWN" !in snapshot.network.bankAliases &&
+            networkTerms.none { SourceText(it).text.none(Char::isLetterOrDigit) } && snapshot.rules.none {
+                (it.phrases + it.excludes + it.labels.values.flatten() + it.detailLabels.values.flatten() + it.observations.values.flatten())
+                    .any { term -> SourceText(term).text.none(Char::isLetterOrDigit) }
+            }
+    }
+
     override fun interpret(input: MessageInput, catalog: BankCatalog): Interpretation =
         interpretWithBanks(input, catalog.candidates(input.sender))
 
@@ -56,13 +67,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             return result(Facts(MessageFamily.OTP), ParseStatus.NON_FINANCIAL)
         }
         source.segmentInlinePurchase()
-        val validSchema = runCatching { snapshot.validate() }.isSuccess
-        // Validate every configured literal before executing the closed grammar.
-        val networkTerms = snapshot.network.bankAliases.values.flatten() + snapshot.network.sourceBankLabels +
-            snapshot.network.destinationBankLabels + snapshot.network.networkLabels + snapshot.network.unidentifiedExternalBankMarkers
-        if (!validSchema || "UNKNOWN" in snapshot.network.bankAliases || networkTerms.any { SourceText(it).text.none(Char::isLetterOrDigit) } || snapshot.rules.any {
-                    (it.phrases + it.excludes + it.labels.values.flatten() + it.detailLabels.values.flatten() + it.observations.values.flatten()).any { term -> SourceText(term).text.none(Char::isLetterOrDigit) }
-            }) {
+        if (!supportedSchema) {
             problem("UNSUPPORTED_RULE_CAPABILITY", Blocker.UNSUPPORTED_RULE_SCHEMA); return result()
         }
         // The first meaningful line supplies the family cue; party/reference fields cannot do so.
