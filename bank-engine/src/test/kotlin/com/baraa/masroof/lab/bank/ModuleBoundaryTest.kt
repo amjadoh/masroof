@@ -25,6 +25,7 @@ class ModuleBoundaryTest {
                 "com.baraa.masroof.domain.model.",
                 "com.baraa.masroof.domain.ids.",
                 "com.baraa.masroof.domain.period.",
+                "com.baraa.masroof.domain.rules.",
                 "com.baraa.masroof.domain.assembly.BankTransactionTimePolicy",
             ),
             "bank-engine" to common + listOf("com.baraa.masroof.lab.bank.", "com.baraa.masroof.lab.finance.value."),
