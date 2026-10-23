@@ -2,7 +2,6 @@ package com.baraa.masroof.lab.bank.interpretation
 
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.bank.rules.RuleLibrary
-import com.baraa.masroof.lab.finance.value.Money
 import java.security.MessageDigest
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
@@ -164,83 +163,20 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val currency = currencies.map { it.normalized }.distinct().singleOrNull()
         if (currencies.isNotEmpty() && (currency == null || MoneyGrammar.withCurrency("1", currency) == null))
             problem("INVALID_OR_CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-        data class Hit<T>(val value: T, val range: IntRange, val field: ExtractionField)
         val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
         val secondaryRanges = details.reserved.toMutableList()
-        fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
         // Reserve all known secondary roles even when the selected rule does not expose them.
         SECONDARY.forEach { label ->
             Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
         }
-        fun money(field: ExtractionField): Money? {
-            val hits = labels(field).flatMap { label ->
-                val pattern = Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
-                val matches = pattern.findAll(source.text).toList()
-                val separate = if (field == ExtractionField.AMOUNT && currency != null) {
-                    Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*([^\\n\\r]+)$")
-                        .findAll(source.text).mapNotNull { row ->
-                            MoneyGrammar.withCurrency(row.groupValues[1].trim(), currency)?.let { Hit(it, row.range, field) }
-                        }.filterNot { overlaps(it.range) }.toList()
-                } else emptyList()
-                Regex("(?m)^ *" + source.phrase(label).pattern).findAll(source.text).forEach { mention ->
-                    val longerRole = labels(field).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
-                        Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
-                    if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first } && separate.none { it.range.first == mention.range.first })
-                        problem("MALFORMED_${field.name}")
-                }
-                separate + matches.mapNotNull { match ->
-                    if (field == ExtractionField.AMOUNT && overlaps(match.range)) return@mapNotNull null
-                    val value = MoneyGrammar.read(match)
-                    if (value == null) { problem("INVALID_MONEY"); null }
-                    else Hit(value, match.range, field)
-                }
-            }
-            hits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
-            if (field == ExtractionField.AMOUNT && currency != null && hits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
-                problem("CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-            if (hits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
-            return hits.firstOrNull()?.value
-        }
-        fun identifier(field: ExtractionField): String? {
-            val hits = labels(field).flatMap { label ->
-                Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
-                    .findAll(source.text).map { Hit(it.groupValues[1].takeLast(4), it.groups[1]!!.range, field) }.toList()
-            }
-            hits.forEach { evidence += source.evidence("extract.identifier", field.name, it.range) }
-            if (hits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
-            return hits.firstOrNull()?.value
-        }
-        val balance = money(ExtractionField.AVAILABLE_BALANCE)
-        val amount = if (family in INFORMATIONAL) null else money(ExtractionField.AMOUNT)
-        val labeledCard = identifier(ExtractionField.CARD)
-        val card = run {
-            val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
-            val hits = pattern.findAll(source.text).toList()
-            val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) }).distinct()
-            if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
-            hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
-            values.singleOrNull()
-        }
-        val account = identifier(ExtractionField.SOURCE_ACCOUNT)
-        val destination = identifier(ExtractionField.DESTINATION_ACCOUNT)
-        val merchants = labels(ExtractionField.MERCHANT).flatMap { label ->
-            Regex("(?m)^ *" + source.phrase(label).pattern + "(?:[ \\t]*:[ \\t]*|[ \\t]+)([^\\n\\r]+)").findAll(source.text).map { match ->
-                val range = match.groups[1]!!.range
-                evidence += source.evidence("extract.merchant", "MERCHANT", range)
-                source.original(range).trim()
-            }.toList()
-        }.distinct()
-        if (merchants.size > 1) problem("CONFLICTING_MERCHANT", Blocker.CONFLICTING_FACTS)
-        val times = DateGrammar.timestamp.findAll(source.text).mapNotNull { match ->
-            val lineStart = source.text.lastIndexOf('\n', match.range.first).let { if (it < 0) 0 else it + 1 }
-            val prefix = source.text.substring(lineStart, match.range.first).trim().removeSuffix(":").trim()
-            if (prefix !in TIME_LABELS) {
-                problem("UNBOUND_TIME_ROLE"); return@mapNotNull null
-            }
-            evidence += source.evidence("extract.time", "occurredAtLocal", match.range)
-            DateGrammar.time(match.value).also { if (it == null) problem("INVALID_TIME") }
-        }.distinct().toList()
-        if (times.size > 1) problem("CONFLICTING_TIME", Blocker.CONFLICTING_FACTS)
+        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem)
+        val balance = primary.money(ExtractionField.AVAILABLE_BALANCE)
+        val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT)
+        val card = primary.card()
+        val account = primary.identifier(ExtractionField.SOURCE_ACCOUNT)
+        val destination = primary.identifier(ExtractionField.DESTINATION_ACCOUNT)
+        val merchant = primary.merchant()
+        val times = primary.transactionTimes()
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {
             it.code in setOf("INVALID_TIME", "UNBOUND_TIME_ROLE", "CONFLICTING_TIME") }
         if(receiptTime && family !in INFORMATIONAL) diagnostics += InterpretationDiagnostic(
@@ -278,7 +214,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val facts = Facts(if (familyCollision) MessageFamily.UNKNOWN else family, amount, if (family in INFORMATIONAL || family==MessageFamily.UNKNOWN) null else direction,
             sourceAccount = account?.let { AccountReference(sourceBank, it) },
             destinationAccount = destination?.let { AccountReference(destinationBank, it) },
-            card = card?.let { CardReference(banks.single(), it) }, merchant = merchants.singleOrNull(),
+            card = card?.let { CardReference(banks.single(), it) }, merchant = merchant,
             availableBalance = balance, occurredAtLocal = times.singleOrNull(),
             occurredAt = input.receivedAt.takeIf {receiptTime && family !in INFORMATIONAL}, outstandingBalance = details.due,
             labeledForeignAmount = details.foreign ?: amount?.takeIf { it.currency != com.baraa.masroof.lab.finance.value.Currency.SAR }, internationalFee = details.fee?.takeIf { family in setOf(MessageFamily.PURCHASE,MessageFamily.REFUND) }, exchangeRate = details.rate,
@@ -298,7 +234,6 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     companion object {
         const val VERSION = "bank-rules-independent-v14"
         private const val MAX_BODY = 16000
-        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية", "التاريخ")
         private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
         private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
         private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
