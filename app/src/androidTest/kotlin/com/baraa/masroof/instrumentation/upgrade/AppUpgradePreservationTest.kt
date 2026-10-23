@@ -2,9 +2,13 @@ package com.baraa.masroof.instrumentation.upgrade
 
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.MasroofApplication
+import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
+import com.baraa.masroof.domain.model.LoanReference
+import com.baraa.masroof.domain.model.LoanType
+import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.model.RawSms
 import com.baraa.masroof.domain.model.UserCorrection
 import com.baraa.masroof.sms.hash.SmsBodyHasher
@@ -31,8 +35,16 @@ class AppUpgradePreservationTest {
             container.processRawSmsUseCase.ingest(raw)
         }
         assertEquals(20, container.financialTransactionRepository.listAll().size)
+        val sources = container.financialTransactionRepository.listAll().sortedBy { it.id }.take(2)
+        for (source in sources) container.dashboardCommitmentsWorkflow.createFromTransaction(source.id)
+        val commitments = container.settingsCommitmentsWorkflow.listAll().sortedBy { it.id }
+        assertEquals(2, commitments.size)
+        container.settingsCommitmentsWorkflow.toggleActive(commitments.first().id)
+        container.loanRegistryRepository.setOwnership(LoanReference(Bank.BANK_ALJAZIRA, LoanType.PERSONAL), OwnershipStatus.OWNED)
         container.userCorrectionRepository.save(UserCorrection("preserved-correction", "upgrade-0", null, null,
             "My merchant", null, Instant.parse("2026-10-21T10:00:00Z")))
+        container.themePreferencesRepository.setThemeMode(ThemeMode.DARK)
+        container.appLocaleRepository.setLanguageTag("en")
         host.getSharedPreferences("theme_prefs", 0).edit().putString("upgrade-probe", "preserved").commit()
         snapshot.writeText(fingerprint())
     }
@@ -40,12 +52,19 @@ class AppUpgradePreservationTest {
     @Test fun verifyAfterUpdate() = runBlocking {
         container.awaitPostStartupBackgroundWorkForTesting()
         assertEquals(snapshot.readText(), fingerprint())
+        assertEquals(2, container.commitmentRepository.listAll().size)
+        assertEquals(1, container.commitmentRepository.listAll().count { !it.active })
+        assertEquals(OwnershipStatus.OWNED, container.loanRegistryRepository.resolve(LoanReference(Bank.BANK_ALJAZIRA, LoanType.PERSONAL)))
+        assertEquals(ThemeMode.DARK, container.themePreferencesRepository.getThemeMode())
+        assertEquals("en", container.appLocaleRepository.getLanguageTag())
         assertEquals("preserved", host.getSharedPreferences("theme_prefs", 0).getString("upgrade-probe", null))
         assertEquals("masroof.db", host.getDatabasePath("masroof.db").name)
         assertTrue(host.getDatabasePath("masroof.db").isFile)
     }
 
     private suspend fun fingerprint(): String = buildString {
+        appendLine(container.themePreferencesRepository.getThemeMode())
+        appendLine(container.appLocaleRepository.getLanguageTag())
         appendLine(container.rawSmsRepository.listIdsByReceivedAt().sorted())
         appendLine(container.parsedEventRepository.listAll().sortedBy { it.event.id })
         appendLine(container.financialTransactionRepository.listAll().sortedBy { it.id })
