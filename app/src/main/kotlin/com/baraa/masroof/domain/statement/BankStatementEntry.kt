@@ -93,11 +93,6 @@ object CanonicalStatementFormat {
     val HEADERS: Set<String> = REQUIRED_HEADERS + OPTIONAL_HEADERS
 }
 
-enum class StatementDirection {
-    DEBIT,
-    CREDIT,
-}
-
 enum class StatementRejection {
     OVERSIZED,
     TRUNCATED,
