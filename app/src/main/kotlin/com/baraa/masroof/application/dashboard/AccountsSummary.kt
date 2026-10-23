@@ -43,12 +43,9 @@ data class AccountsSummary(
 
     fun externalSummary(): AccountFlowSummary? = fleet.externalSummary()
 
-    fun totalCreditCardPayments(): Money =
-        sumBucket { it.creditCardPayment }
-
-    private fun sumBucket(selector: (OwnedAccount) -> Money): Money {
+    fun totalCreditCardPayments(): Money {
         val c = currency ?: return Money.zero(Currency.SAR)
-        return accounts.fold(Money.zero(c)) { acc, account -> acc + selector(account) }
+        return accounts.fold(Money.zero(c)) { acc, account -> acc + account.creditCardPayment }
     }
 
     companion object {
