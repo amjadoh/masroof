@@ -1,15 +1,9 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.ui.theme.MasroofSpacing
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.baraa.masroof.application.dashboard.SignedMoneyAmount
-import com.baraa.masroof.presentation.common.MasroofCard
-import com.baraa.masroof.presentation.common.MasroofCardAccent
 import com.baraa.masroof.ui.theme.MasroofThemeExtras
 import java.math.BigDecimal
 
@@ -28,72 +22,6 @@ data class DashboardSummaryMetricItem(
     val hint: String? = null,
     val signedAmount: BigDecimal? = null,
 )
-
-@Composable
-fun DashboardSummaryMetricCard(
-    title: String,
-    amount: String,
-    tone: DashboardMetricTone,
-    modifier: Modifier = Modifier,
-    accent: MasroofCardAccent = MasroofCardAccent.None,
-    hint: String? = null,
-    signedAmount: BigDecimal? = null,
-) {
-    DashboardSummaryMetricsCard(
-        metrics = listOf(
-            DashboardSummaryMetricItem(
-                title = title,
-                amount = amount,
-                tone = tone,
-                hint = hint,
-                signedAmount = signedAmount,
-            ),
-        ),
-        modifier = modifier,
-        accent = accent,
-    )
-}
-
-@Composable
-fun DashboardSummaryMetricsCard(
-    metrics: List<DashboardSummaryMetricItem>,
-    modifier: Modifier = Modifier,
-    accent: MasroofCardAccent = MasroofCardAccent.None,
-) {
-    if (metrics.isEmpty()) return
-
-    MasroofCard(modifier = modifier) {
-        metrics.forEachIndexed { index, metric ->
-            if (index > 0) {
-                Spacer(modifier = Modifier.height(MasroofSpacing.sectionGap))
-            }
-            DashboardSummaryMetricBlock(
-                title = metric.title,
-                amount = metric.amount,
-                tone = metric.tone,
-                hint = metric.hint,
-                signedAmount = metric.signedAmount,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DashboardSummaryMetricBlock(
-    title: String,
-    amount: String,
-    tone: DashboardMetricTone,
-    hint: String?,
-    signedAmount: BigDecimal?,
-) {
-    DashboardSummaryPrimaryMetric(
-        title = title,
-        amount = amount,
-        tone = tone,
-        hint = hint,
-        signedAmount = signedAmount,
-    )
-}
 
 @Composable
 fun resolveMetricToneColor(tone: DashboardMetricTone, signedAmount: BigDecimal? = null): Color {
