@@ -64,18 +64,28 @@ def partition(cases, count, weights):
     return groups
 
 
-def apk_identity(path):
+def signing_certificate(output):
+    # Build Tools 34-36 use "Signer #1"; 37 labels each verified signature scheme.
+    # Source-stamp certificates are separate and cannot stand in for an APK signer.
+    counts = re.findall(r'^Number of signers: (\d+)$', output, re.M)
+    certificates = set(re.findall(
+        r'^(?:Signer(?: #\d+| \(.*\))|V\d+(?:\.\d+)* Signer(?: #\d+)?):? certificate SHA-256 digest: ([0-9a-fA-F]{64})$',
+        output, re.M))
+    if counts != ['1'] or len(certificates) != 1:
+        raise ValueError('Expected exactly one verified APK signer certificate')
+    return certificates.pop().lower()
+
+
+def apk_identity(path, build_tools):
     sdk = Path(os.environ.get('ANDROID_SDK_ROOT', os.environ.get('ANDROID_HOME', '')))
-    builds = sorted((sdk / 'build-tools').glob('*'), key=lambda p: tuple(int(n) for n in re.findall(r'\d+', p.name)))
-    if not builds: raise ValueError('Android build tools are required to verify APK provenance')
-    tools = builds[-1]
-    signed = subprocess.check_output([str(tools / 'apksigner'), 'verify', '--print-certs', str(path)], text=True)
-    certificates = re.findall(r'Signer #\d+ certificate SHA-256 digest: (\w+)', signed)
-    if len(certificates) != 1: raise ValueError('Expected exactly one APK signer')
+    tools = sdk / 'build-tools' / build_tools
+    if not tools.is_dir(): raise ValueError(f'Validated Android Build Tools {build_tools} are required')
+    signed = subprocess.check_output([str(tools / 'apksigner'), 'verify', '--verbose', '--print-certs', str(path)], text=True)
+    certificate = signing_certificate(signed)
     badging = subprocess.check_output([str(tools / 'aapt'), 'dump', 'badging', str(path)], text=True)
     package = re.search(r"package: name='([^']+)'", badging)
     if not package: raise ValueError('APK package identity is absent')
-    return dict(package=package[1], certificate=certificates[0])
+    return dict(package=package[1], certificate=certificate, buildTools=build_tools)
 
 
 def bundle():
@@ -97,7 +107,7 @@ def bundle():
     for key, source in artifacts.items():
         target = BUNDLE / f'{key}.apk'
         if source != target: shutil.copyfile(source, target)
-        paths[key] = dict(file=target.name, sha256=digest(target), **apk_identity(target))
+        paths[key] = dict(file=target.name, sha256=digest(target), **apk_identity(target, config['buildTools']))
     expected_packages = dict(app=config['appId'], baseline=config['appId'], tests=config['appId']+'.test',
                              orchestrator='androidx.test.orchestrator', services='androidx.test.services')
     for key, package in expected_packages.items():
