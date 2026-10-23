@@ -1,10 +1,24 @@
 package com.baraa.masroof.lab.bank
 
+import com.baraa.masroof.lab.bank.interpretation.RuleInterpreter
+import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
+import com.baraa.masroof.lab.bank.rules.RuleLibrary
 import org.junit.Assert.*
 import org.junit.Test
 
 class RuleSchemaTest {
     private val rule = BankRule("purchase", MessageFamily.PURCHASE, listOf("purchase"))
+
+    @Test fun profileRefactoringPreservesRefreshIdentities() {
+        // Collection order participates in the content hash used by production refresh scheduling.
+        assertEquals("literal-v1-r1-ad3adfef15b3a6da60f97cb1bcc580356ed01429745b41989ad2abee177d45e5",
+            RuleInterpreter(RuleLibrary.initial()).version.rules)
+        assertEquals("literal-v1-r13-44c60f975c10bf3e6ec0e436c2a0b1940fcb2c2d3be0ee85dbc4c82f7953e55b",
+            RuleInterpreter(RuleLibrary.current()).version.rules)
+        assertEquals("literal-v1-r13-9954b0694e5b0dc7fe60db2ee7485bbee818b2a7b1b8ab443203261e72396947",
+            RuleInterpreter(AlJaziraRuleProfile.current()).version.rules)
+    }
+
     @Test fun closedLiteralSchemaRejectsUnknownVersionsAndUnsafeShape() {
         BankRuleSchema(revision = 1, rules = listOf(rule)).validate()
         listOf(BankRuleSchema(schema = 2, revision = 1, rules = listOf(rule)),
