@@ -45,48 +45,46 @@ fun CommitmentsSummaryScreen(state: DashboardUiState, onBack: () -> Unit,
     val overview = state.commitmentsOverview
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
     val colors = MasroofThemeExtras.extendedColors
-    DashboardSummaryScaffold(stringResource(R.string.approved_commitments), state, onBack) { modifier ->
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofHeroCard(stringResource(R.string.dashboard_commitments_remaining), formatLocalizedMoney(overview.remaining),
-                stringResource(R.string.dashboard_commitments_total) + " " + formatLocalizedMoney(overview.total) + " · " +
-                    stringResource(R.string.dashboard_commitments_paid) + " " + formatLocalizedMoney(overview.paid), role = MasroofHeroRole.Liability)
-            MasroofCard {
-                overview.rows.forEach { row ->
-                    val paid = row.status == CommitmentPaymentStatus.PAID
-                    val tint = if (paid) colors.inflow else colors.liability
-                    Row(Modifier.fillMaxWidth().clickable { onOpenCommitment(row) }.padding(vertical = MasroofReference.rowVertical),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(MasroofReference.rowGap)) {
-                        Surface(shape = MasroofShapes.small, color = if (paid) colors.inflowSoft else colors.liabilitySoft) {
-                            Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
-                                Icon(if (paid) MasroofIcons.success else MasroofIcons.calendar, null,
-                                    Modifier.size(MasroofReference.icon), tint = tint)
-                            }
+    DashboardSummaryScaffold(stringResource(R.string.approved_commitments), state, onBack) {
+        MasroofHeroCard(stringResource(R.string.dashboard_commitments_remaining), formatLocalizedMoney(overview.remaining),
+            stringResource(R.string.dashboard_commitments_total) + " " + formatLocalizedMoney(overview.total) + " · " +
+                stringResource(R.string.dashboard_commitments_paid) + " " + formatLocalizedMoney(overview.paid), role = MasroofHeroRole.Liability)
+        MasroofCard {
+            overview.rows.forEach { row ->
+                val paid = row.status == CommitmentPaymentStatus.PAID
+                val tint = if (paid) colors.inflow else colors.liability
+                Row(Modifier.fillMaxWidth().clickable { onOpenCommitment(row) }.padding(vertical = MasroofReference.rowVertical),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MasroofReference.rowGap)) {
+                    Surface(shape = MasroofShapes.small, color = if (paid) colors.inflowSoft else colors.liabilitySoft) {
+                        Box(Modifier.size(MasroofReference.iconBox), contentAlignment = Alignment.Center) {
+                            Icon(if (paid) MasroofIcons.success else MasroofIcons.calendar, null,
+                                Modifier.size(MasroofReference.icon), tint = tint)
                         }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-                            MasroofText(row.displayName, style = MasroofReference.pair)
-                            row.expectedDate?.let { MasroofText(date.format(it), style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            MasroofBadge(stringResource(if (paid) R.string.dashboard_commitments_status_paid else R.string.dashboard_commitments_status_unpaid),
-                                if (paid) MasroofCardAccent.Inflow else MasroofCardAccent.Liability)
-                            row.paymentMatchIssue?.let { issue ->
-                                MasroofText(stringResource(when (issue) {
-                                    CommitmentMatchIssue.AMBIGUOUS_PAYMENT -> R.string.commitment_payment_ambiguous
-                                    CommitmentMatchIssue.MISSING_SOURCE -> R.string.commitment_payment_missing_source
-                                }), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            row.paymentTransactionId?.let { id ->
-                                if (onOpenPayment != null) MasroofTextButton(onClick = { onOpenPayment(id) }) {
-                                    MasroofText(stringResource(R.string.commitment_open_payment))
-                                }
-                            }
-                        }
-                        MasroofReferenceMoney(formatLocalizedMoney(row.amount), style = MaterialTheme.typography.titleSmall)
                     }
-                    HorizontalDivider(color = colors.cardBorder)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
+                        MasroofText(row.displayName, style = MasroofReference.pair)
+                        row.expectedDate?.let { MasroofText(date.format(it), style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        MasroofBadge(stringResource(if (paid) R.string.dashboard_commitments_status_paid else R.string.dashboard_commitments_status_unpaid),
+                            if (paid) MasroofCardAccent.Inflow else MasroofCardAccent.Liability)
+                        row.paymentMatchIssue?.let { issue ->
+                            MasroofText(stringResource(when (issue) {
+                                CommitmentMatchIssue.AMBIGUOUS_PAYMENT -> R.string.commitment_payment_ambiguous
+                                CommitmentMatchIssue.MISSING_SOURCE -> R.string.commitment_payment_missing_source
+                            }), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        row.paymentTransactionId?.let { id ->
+                            if (onOpenPayment != null) MasroofTextButton(onClick = { onOpenPayment(id) }) {
+                                MasroofText(stringResource(R.string.commitment_open_payment))
+                            }
+                        }
+                    }
+                    MasroofReferenceMoney(formatLocalizedMoney(row.amount), style = MaterialTheme.typography.titleSmall)
                 }
-                if (overview.rows.isEmpty()) MasroofText(stringResource(R.string.reference_no_commitments))
+                HorizontalDivider(color = colors.cardBorder)
             }
+            if (overview.rows.isEmpty()) MasroofText(stringResource(R.string.reference_no_commitments))
         }
     }
 }

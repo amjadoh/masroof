@@ -4,11 +4,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 
-import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
@@ -77,57 +74,52 @@ fun AccountsSummaryScreen(
         title = stringResource(R.string.dashboard_accounts_summary_screen_title),
         state = state,
         onBack = onBack,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            DashboardSummaryHeroCard(
-                spec = accountsSummaryHeroSpec(
-                    fleet = resolveDashboardAccountsFleet(
-                        ownedAccounts = state.ownedAccounts,
-                        fleet = state.accountsFleet,
-                    ),
+    ) {
+        DashboardSummaryHeroCard(
+            spec = accountsSummaryHeroSpec(
+                fleet = resolveDashboardAccountsFleet(
+                    ownedAccounts = state.ownedAccounts,
+                    fleet = state.accountsFleet,
                 ),
-            )
+            ),
+        )
 
-            SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
-                explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account, chartKey = "accounts")
-            MasroofSectionHeader(title = stringResource(R.string.reference_followed_accounts))
+        SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
+            explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account, chartKey = "accounts")
+        MasroofSectionHeader(title = stringResource(R.string.reference_followed_accounts))
 
-            val hierarchy = state.bankHierarchy
-            when {
-                state.ownedAccounts.isEmpty() -> {
-                    Text(
-                        stringResource(R.string.dashboard_accounts_summary_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        val hierarchy = state.bankHierarchy
+        when {
+            state.ownedAccounts.isEmpty() -> {
+                Text(
+                    stringResource(R.string.dashboard_accounts_summary_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
-                hierarchy != null && hierarchy.hasContent -> {
-                    hierarchy.banks.forEach { bankTree ->
-                        val accounts = (bankTree.savingsAccounts + bankTree.walletAccounts)
-                            .map { it.bank to it.maskedNumber } +
-                            bankTree.currentAccounts.map { it.bank to it.maskedNumber }
-                        accounts.forEach { (bank, maskedNumber) ->
-                            resolveOwnedAccountUi(state.ownedAccounts, bank, maskedNumber)?.let { account ->
-                                AccountsSummaryAccountCard(
-                                    account = account,
-                                    onClick = { onOpenAccount(account) },
-                                )
-                            }
+            hierarchy != null && hierarchy.hasContent -> {
+                hierarchy.banks.forEach { bankTree ->
+                    val accounts = (bankTree.savingsAccounts + bankTree.walletAccounts)
+                        .map { it.bank to it.maskedNumber } +
+                        bankTree.currentAccounts.map { it.bank to it.maskedNumber }
+                    accounts.forEach { (bank, maskedNumber) ->
+                        resolveOwnedAccountUi(state.ownedAccounts, bank, maskedNumber)?.let { account ->
+                            AccountsSummaryAccountCard(
+                                account = account,
+                                onClick = { onOpenAccount(account) },
+                            )
                         }
                     }
                 }
+            }
 
-                else -> {
-                    state.ownedAccounts.forEach { account ->
-                        AccountsSummaryAccountCard(
-                            account = account,
-                            onClick = { onOpenAccount(account) },
-                        )
-                    }
+            else -> {
+                state.ownedAccounts.forEach { account ->
+                    AccountsSummaryAccountCard(
+                        account = account,
+                        onClick = { onOpenAccount(account) },
+                    )
                 }
             }
         }

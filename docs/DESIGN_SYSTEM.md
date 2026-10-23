@@ -170,3 +170,8 @@ and Customize action above previous-arrow, centered date range, next-arrow.
 The previous arrow is on the right in Arabic and left in English. Other pages
 keep the read-only period display. Commitment summary handles both screen Back
 and Android system Back through the same Home callback.
+
+Dashboard summary and detail pages emit into the `ColumnScope` supplied by
+`DashboardSummaryScaffold`. The scaffold owns scrolling, the period display,
+loading/error gates and `MasroofSpacing.sectionGap`; pages add a nested layout
+only for sections with their own grouping or spacing.
