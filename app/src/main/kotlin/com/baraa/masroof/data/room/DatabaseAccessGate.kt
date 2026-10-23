@@ -18,8 +18,8 @@ class DatabaseAccessGate {
     @Volatile private var retired = false
 
     suspend fun <T> withAccess(block: suspend () -> T): T {
-        checkAvailable()
         if (coroutineContext[Lease]?.gate === this) return block()
+        checkAvailable()
         while (true) {
             val wait = state.withLock {
                 checkAvailable()
@@ -69,6 +69,18 @@ class DatabaseAccessGate {
     /** Called under exclusive restore immediately before closing the live Room instance. */
     fun retire() {
         retired = true
+    }
+
+    /** Reject new work, but let an admitted multi-stage operation finish before Room closes. */
+    suspend fun retireAndDrain() {
+        check(coroutineContext[Lease]?.gate !== this) { "Close cannot run inside repository access" }
+        val idle = state.withLock {
+            retired = true
+            (drained ?: CompletableDeferred<Unit>().also { drained = it }).also {
+                if (active == 0) it.complete(Unit)
+            }
+        }
+        idle.await()
     }
 
     private fun checkAvailable() {
