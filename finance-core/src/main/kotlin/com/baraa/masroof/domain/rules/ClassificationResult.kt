@@ -4,7 +4,7 @@ import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.TransferOwnershipType
 
 /**
- * Outcome of applying domain financial rules to a [ClassificationContext].
+ * Outcome of applying domain financial rules to a [ClassificationEvidence].
  */
 sealed interface ClassificationResult {
     val impact: FinancialImpact

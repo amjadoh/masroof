@@ -21,7 +21,7 @@ class FinancialCoreOwnershipTest {
             "domain/matching" to listOf("TransactionMatcher"),
             "domain/rules" to listOf(
                 "TransactionClassifier", "FinancialImpactCalculator", "FinancialImpact", "TransferOwnershipResolver",
-                "InformationalMessagePolicy", "ClassificationContext", "ClassificationEvidence", "ClassificationResult", "ResolvedContainerFacts",
+                "InformationalMessagePolicy", "ClassificationEvidence", "ClassificationResult", "ResolvedContainerFacts",
             ),
             "domain/statement" to listOf("StatementMatchPolicy", "StatementDirection"),
             "domain/model" to listOf("FinancialTransaction", "ParsedEvent", "Bank"),
