@@ -3,7 +3,6 @@ package com.baraa.masroof.application.settings
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.AccountRegistryEntry
 import com.baraa.masroof.domain.model.AccountType
-import com.baraa.masroof.domain.model.CardNetwork
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.CardRegistryEntry
 import com.baraa.masroof.domain.model.LoanReference
@@ -60,22 +59,6 @@ class SettingsRegistryWorkflow(
 
     suspend fun updateAccountDisplayName(account: AccountReference, displayName: String?) {
         accountRegistryRepository.updateDisplayName(account, displayName)
-    }
-
-    suspend fun updateCardNetwork(card: CardReference, network: CardNetwork?) {
-        cardRegistryRepository.updateCardNetwork(card, network)
-    }
-
-    suspend fun setPrimaryCard(card: CardReference) {
-        cardRegistryRepository.setPrimaryCard(card)
-    }
-
-    suspend fun setSupplementaryCard(card: CardReference, primaryLast4: String) {
-        cardRegistryRepository.setSupplementaryCard(card, primaryLast4)
-    }
-
-    suspend fun clearCardRole(card: CardReference) {
-        cardRegistryRepository.clearCardRole(card)
     }
 
     suspend fun linkDebitToAccount(card: CardReference, account: AccountReference) {

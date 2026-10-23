@@ -815,7 +815,6 @@ class SettingsViewModelTest {
     override suspend fun configure(reference: com.baraa.masroof.domain.model.CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) { error("configure not used by this test double") }
 
         val entries = initial.toMutableList()
-        var markedAsDebit: Boolean = false
 
         override suspend fun observe(reference: CardReference, rawSmsId: String) = Unit
 
@@ -833,17 +832,7 @@ class SettingsViewModelTest {
         override suspend fun get(reference: CardReference) =
             entries.find { it.bank == reference.bank && it.last4 == reference.last4 }
 
-        override suspend fun markAsDebit(reference: CardReference) {
-            markedAsDebit = true
-            val index = entries.indexOfFirst { it.bank == reference.bank && it.last4 == reference.last4 }
-            if (index >= 0) {
-                entries[index] = entries[index].copy(
-                    cardType = com.baraa.masroof.domain.model.CardType.DEBIT,
-                    cardRole = com.baraa.masroof.domain.model.CardRole.STANDALONE,
-                    parentCardLast4 = null,
-                )
-            }
-        }
+        override suspend fun markAsDebit(reference: CardReference) = Unit
 
         override suspend fun clearCardRole(reference: CardReference) = Unit
 
