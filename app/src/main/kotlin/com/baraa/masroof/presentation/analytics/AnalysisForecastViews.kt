@@ -36,7 +36,6 @@ import java.time.LocalDate
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             s.total?.let { Amount(stringResource(R.string.lab_analysis_expected_total), it, MasroofAmountRole.Hero) }
-            if (s.total == null) Text(stringResource(R.string.lab_analysis_need_data), style = MaterialTheme.typography.bodySmall)
             s.remaining?.let { remaining -> MasroofForecastSplit(analysisAmount(s.actual).amount, analysisAmount(remaining).amount,
                 AppDigits.display("${stringResource(R.string.lab_analysis_actual)} ${visualMoney(s.actual)} · ${stringResource(R.string.lab_analysis_remaining)} ${visualMoney(remaining)}")) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {

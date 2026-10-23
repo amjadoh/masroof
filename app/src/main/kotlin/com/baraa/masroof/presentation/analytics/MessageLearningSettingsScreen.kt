@@ -10,7 +10,6 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
 import com.baraa.masroof.presentation.common.*
-import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
@@ -20,7 +19,12 @@ fun MessageLearningSettingsScreen(onBack: () -> Unit) {
     val state by workflow.state.collectAsState()
     MasroofSecondaryScaffold(stringResource(R.string.analysis_learning_settings), onBack, stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            Text(stringResource(R.string.analysis_learning_settings_hint), style = MaterialTheme.typography.bodyMedium)
+            MasroofGuidanceLabel(
+                label = stringResource(R.string.analysis_learning_settings),
+                message = stringResource(R.string.analysis_learning_settings_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
             MessageLearningInsights(state)
         }
     }
