@@ -451,7 +451,6 @@ object TransactionAssembler {
         return ResolvedContainerFacts(
             kind = ContainerKind.LOAN,
             ownership = ownership,
-            knownLoanType = loanType,
         )
     }
 

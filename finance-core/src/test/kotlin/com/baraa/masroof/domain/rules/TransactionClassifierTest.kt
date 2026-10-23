@@ -1,10 +1,6 @@
 package com.baraa.masroof.domain.rules
 
-import com.baraa.masroof.domain.model.Account
-import com.baraa.masroof.domain.model.AccountType
-import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.BankNetworkType
-import com.baraa.masroof.domain.model.Card
 import com.baraa.masroof.domain.model.CardType
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
@@ -18,83 +14,36 @@ import org.junit.Test
 
 class TransactionClassifierTest {
 
-    private val aljazira = Bank.BANK_ALJAZIRA
-    private val d360 = Bank("D360")
-
-    private val owned3001 = Account(
-        id = "acct-3001",
-        bank = aljazira,
-        maskedNumber = "3001",
-        displayName = "Main",
+    private val ownedAccount = ResolvedContainerFacts(
+        kind = ContainerKind.ACCOUNT,
         ownership = OwnershipStatus.OWNED,
-        type = AccountType.CURRENT,
     )
-    private val owned3002 = Account(
-        id = "acct-3002",
-        bank = aljazira,
-        maskedNumber = "3002",
-        displayName = "Savings",
-        ownership = OwnershipStatus.OWNED,
-        type = AccountType.SAVINGS,
-    )
-    private val ownedD360 = Account(
-        id = "acct-d360",
-        bank = d360,
-        maskedNumber = "1111",
-        displayName = "D360",
-        ownership = OwnershipStatus.OWNED,
-        type = AccountType.CURRENT,
-    )
-    private val wifeExternal = Account(
-        id = "acct-wife",
-        bank = aljazira,
-        maskedNumber = "8888",
-        displayName = null,
+    private val externalAccount = ResolvedContainerFacts(
+        kind = ContainerKind.ACCOUNT,
         ownership = OwnershipStatus.EXTERNAL,
-        type = AccountType.CURRENT,
     )
-    private val externalBeneficiary = Account(
-        id = "acct-other",
-        bank = aljazira,
-        maskedNumber = "7777",
-        displayName = null,
-        ownership = OwnershipStatus.EXTERNAL,
-        type = AccountType.CURRENT,
-    )
-    private val ownedCreditCard = Card(
-        id = "card-7271",
-        bank = aljazira,
-        last4 = "7271",
-        displayName = "CC",
+    private val ownedCreditCard = ResolvedContainerFacts(
+        kind = ContainerKind.CARD,
         ownership = OwnershipStatus.OWNED,
-        type = CardType.CREDIT,
-        linkedAccountId = "acct-3001",
+        knownCardType = CardType.CREDIT,
     )
-    private val ownedDebitCard = Card(
-        id = "card-debit",
-        bank = aljazira,
-        last4 = "1234",
-        displayName = "Debit",
+    private val ownedDebitCard = ResolvedContainerFacts(
+        kind = ContainerKind.CARD,
         ownership = OwnershipStatus.OWNED,
-        type = CardType.DEBIT,
-        linkedAccountId = "acct-3001",
+        knownCardType = CardType.DEBIT,
     )
-    private val unknownAccount = Account(
-        id = "acct-unknown",
-        bank = aljazira,
-        maskedNumber = "0000",
-        displayName = null,
+    private val unknownAccount = ResolvedContainerFacts(
+        kind = ContainerKind.ACCOUNT,
         ownership = OwnershipStatus.UNKNOWN,
-        type = AccountType.CURRENT,
     )
 
     @Test
     fun ownedToOwned_sameBank_isSelfTransfer() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
-                source = owned3001,
-                destination = owned3002,
+                source = ownedAccount,
+                destination = ownedAccount,
                 bankNetworkType = BankNetworkType.INTRA_BANK,
             ),
         )
@@ -110,10 +59,10 @@ class TransactionClassifierTest {
     @Test
     fun ownedToOwned_crossBank_isSelfTransfer() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
-                source = owned3001,
-                destination = ownedD360,
+                source = ownedAccount,
+                destination = ownedAccount,
                 bankNetworkType = BankNetworkType.INTER_BANK,
             ),
         )
@@ -128,10 +77,10 @@ class TransactionClassifierTest {
     @Test
     fun externalToOwned_intraBank_isNotSelfTransfer() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_IN,
-                source = wifeExternal,
-                destination = owned3001,
+                source = externalAccount,
+                destination = ownedAccount,
                 bankNetworkType = BankNetworkType.INTRA_BANK,
             ),
         )
@@ -147,10 +96,10 @@ class TransactionClassifierTest {
     @Test
     fun ownedToExternal_isExternalTransferOut() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
-                source = owned3001,
-                destination = externalBeneficiary,
+                source = ownedAccount,
+                destination = externalAccount,
                 bankNetworkType = BankNetworkType.INTRA_BANK,
             ),
         )
@@ -180,7 +129,7 @@ class TransactionClassifierTest {
     @Test
     fun billPayment_classifiesToBillPaymentType() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(messageFamily = MessageFamily.BILL_PAYMENT),
+            ClassificationEvidence(messageFamily = MessageFamily.BILL_PAYMENT),
         )
 
         assertTrue(result is ClassificationResult.Classified)
@@ -194,16 +143,16 @@ class TransactionClassifierTest {
     @Test
     fun debitOrCurrentPurchase_isExpense() {
         val debitResult = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.PURCHASE,
                 instrument = ownedDebitCard,
                 purchaseChannel = PurchaseChannel.POS,
             ),
         )
         val currentResult = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.PURCHASE,
-                instrument = owned3001,
+                instrument = ownedAccount,
                 purchaseChannel = PurchaseChannel.ONLINE,
             ),
         )
@@ -220,7 +169,7 @@ class TransactionClassifierTest {
     @Test
     fun creditCardPurchase_isExpense() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.PURCHASE,
                 instrument = ownedCreditCard,
                 purchaseChannel = PurchaseChannel.ONLINE,
@@ -236,16 +185,16 @@ class TransactionClassifierTest {
     @Test
     fun creditCardPayment_isNotExpense() {
         val fromFamily = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.CARD_PAYMENT,
-                source = owned3001,
+                source = ownedAccount,
                 destination = ownedCreditCard,
             ),
         )
         val fromTransferShape = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
-                source = owned3001,
+                source = ownedAccount,
                 destination = ownedCreditCard,
                 bankNetworkType = BankNetworkType.INTRA_BANK,
             ),
@@ -264,7 +213,7 @@ class TransactionClassifierTest {
     @Test
     fun refund_isNotOrdinaryIncome() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(messageFamily = MessageFamily.REFUND),
+            ClassificationEvidence(messageFamily = MessageFamily.REFUND),
         )
 
         val classified = result as ClassificationResult.Classified
@@ -277,9 +226,9 @@ class TransactionClassifierTest {
     @Test
     fun cashWithdrawal_isNotAutomaticallyExpense() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.WITHDRAWAL,
-                instrument = owned3001,
+                instrument = ownedAccount,
             ),
         )
 
@@ -293,7 +242,7 @@ class TransactionClassifierTest {
     @Test
     fun fee_countsAsExpense() {
         val result = TransactionClassifier.classify(
-            ClassificationContext(messageFamily = MessageFamily.FEE),
+            ClassificationEvidence(messageFamily = MessageFamily.FEE),
         )
 
         val classified = result as ClassificationResult.Classified
@@ -305,26 +254,26 @@ class TransactionClassifierTest {
     @Test
     fun unknownOwnership_doesNotGuessSelfOrExternalTransfer() {
         val ownedToUnknown = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
-                source = owned3001,
+                source = ownedAccount,
                 destination = unknownAccount,
                 bankNetworkType = BankNetworkType.INTRA_BANK,
             ),
         )
         val unknownToOwned = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_IN,
                 source = unknownAccount,
-                destination = owned3001,
+                destination = ownedAccount,
                 bankNetworkType = BankNetworkType.INTER_BANK,
             ),
         )
         val unknownToUnknown = TransactionClassifier.classify(
-            ClassificationContext(
+            ClassificationEvidence(
                 messageFamily = MessageFamily.TRANSFER_OUT,
                 source = unknownAccount,
-                destination = unknownAccount.copy(id = "acct-unknown-2"),
+                destination = unknownAccount,
             ),
         )
 
@@ -407,20 +356,20 @@ class TransactionClassifierTest {
 
         networks.forEach { network ->
             val ownedOwned = TransactionClassifier.classify(
-                ClassificationContext(
+                ClassificationEvidence(
                     messageFamily = MessageFamily.TRANSFER_OUT,
-                    source = owned3001,
-                    destination = owned3002,
+                    source = ownedAccount,
+                    destination = ownedAccount,
                     bankNetworkType = network,
                 ),
             ) as ClassificationResult.Classified
             assertEquals(FinancialTransactionType.SELF_TRANSFER, ownedOwned.transactionType)
 
             val externalOwned = TransactionClassifier.classify(
-                ClassificationContext(
+                ClassificationEvidence(
                     messageFamily = MessageFamily.TRANSFER_IN,
-                    source = wifeExternal,
-                    destination = owned3001,
+                    source = externalAccount,
+                    destination = ownedAccount,
                     bankNetworkType = network,
                 ),
             ) as ClassificationResult.Classified
