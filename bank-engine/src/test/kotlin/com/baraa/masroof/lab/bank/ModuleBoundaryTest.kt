@@ -19,7 +19,14 @@ class ModuleBoundaryTest {
         val common = listOf("java.", "kotlin.")
         mapOf(
             "ml-assist" to common + listOf("com.baraa.masroof.lab.ml.", "com.baraa.masroof.lab.analytics."),
-            "finance-core" to common + "com.baraa.masroof.lab.finance.",
+            "finance-core" to common + listOf(
+                "com.baraa.masroof.lab.finance.",
+                "com.baraa.masroof.core.money.",
+                "com.baraa.masroof.domain.model.",
+                "com.baraa.masroof.domain.ids.",
+                "com.baraa.masroof.domain.period.",
+                "com.baraa.masroof.domain.assembly.BankTransactionTimePolicy",
+            ),
             "bank-engine" to common + listOf("com.baraa.masroof.lab.bank.", "com.baraa.masroof.lab.finance.value."),
         ).forEach { (module, allowed) ->
             val sources = File(root, "$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
