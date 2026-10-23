@@ -322,26 +322,26 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun markCardAsDebit_clearsRoleAndSetsDebitType() = runTest {
-        val cards = TrackingCardRegistry(
-            CardRegistryEntry.forTest(
-                Bank.BANK_ALJAZIRA,
-                "7271",
-                OwnershipStatus.OWNED,
-                firstSeenRawSmsId = "1",
-                lastSeenRawSmsId = "1",
-                cardRole = com.baraa.masroof.domain.model.CardRole.PRIMARY,
-            ),
-        )
+    fun debitSetupClearsPriorCreditRole() = runTest {
+        val cards = FakeCardRegistry(CardRegistryEntry.forTest(
+            Bank.BANK_ALJAZIRA, "7271", OwnershipStatus.OWNED,
+            cardRole = com.baraa.masroof.domain.model.CardRole.PRIMARY,
+        ))
         val vm = viewModel(cards = cards)
         vm.refresh()
         advanceUntilIdle()
-        val card = vm.uiState.value.followedCards.single()
-
-        vm.markCardAsDebit(card)
+        vm.openCardNetworkPicker(vm.uiState.value.followedCards.single())
+        advanceUntilIdle()
+        vm.saveCardSetup(com.baraa.masroof.domain.model.CardConfiguration(
+            com.baraa.masroof.domain.model.CardNetwork.MADA,
+            com.baraa.masroof.domain.model.CardType.DEBIT,
+        ))
         advanceUntilIdle()
 
-        assertTrue(cards.markedAsDebit)
+        val card = vm.uiState.value.followedCards.single()
+        assertEquals(com.baraa.masroof.domain.model.CardType.DEBIT, card.cardType)
+        assertNull(card.cardRole)
+        assertNull(card.parentCardLast4)
     }
 
     @Test
