@@ -37,7 +37,13 @@ import java.time.*
 /** Read-only financial adapter; advisory writes target only AnalyticsDatabase. */
 class LabAnalyticsWorkflow(private val container: AppContainer, private val context: Context,
     private val clock: Clock = Clock.systemDefaultZone()) : AutoCloseable {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scopeJob = SupervisorJob()
+    private val scope = CoroutineScope(scopeJob + Dispatchers.Default)
+    private var refreshJob: Job? = null
+    private var clockJob: Job? = null
+    private var importJob: Job? = null
+    @Volatile private var closed = false
+    private val stopSignal = CompletableDeferred<Unit>()
     private val changes = Channel<Unit>(Channel.CONFLATED)
     private val mutex = Mutex()
     private val storeDelegate = lazy { AnalyticsDatabase.open(context) }
@@ -55,17 +61,22 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         override fun onInvalidated(tables: Set<String>) { request() }
     }
     @Synchronized fun start() {
-        if (started) return
+        if (started || closed) return
         started = true
         onboardingPrefs.registerOnSharedPreferenceChangeListener(preferenceListener)
         localePrefs.registerOnSharedPreferenceChangeListener(preferenceListener)
-        scope.launch {
-            while (container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) delay(5_000)
+        refreshJob = scope.launch {
+            while (!closed && container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) {
+                withTimeoutOrNull(5_000) { stopSignal.await() }
+            }
+            if (closed) return@launch
             container.database.invalidationTracker.addObserver(observer)
             runCatching { loadCached() }
             request()
             for (ignored in changes) {
-                delay(1200)
+                if (closed) break
+                withTimeoutOrNull(1200) { stopSignal.await() }
+                if (closed) break
                 while (changes.tryReceive().isSuccess) { /* coalesce committed batches */ }
                 try { refresh() } catch (e: CancellationException) { throw e }
                 catch (e: Exception) {
@@ -74,14 +85,14 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 }
             }
         }
-        scope.launch {
+        clockJob = scope.launch {
             var tick = clock.millis() / 3600_000
             while (isActive) { delay(60_000); val current = clock.millis() / 3600_000; if (current != tick) { tick = current; request() } }
         }
         AnalyticsWorker.scheduleDaily(context)
-        scope.launch { AnalyticsImportGate.completed.collect { request() } }
+        importJob = scope.launch { AnalyticsImportGate.completed.collect { request() } }
     }
-    fun request() { generation.incrementAndGet(); mutable.update { it.copy(updating = true) }; changes.trySend(Unit) }
+    fun request() { if (closed) return; generation.incrementAndGet(); mutable.update { it.copy(updating = true) }; changes.trySend(Unit) }
 
     private suspend fun loadCached() {
         val dao = store.analytics()
@@ -204,6 +215,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
 
     suspend fun refresh() = withContext(Dispatchers.Default) { refreshOnWorker() }
     private suspend fun refreshOnWorker() = mutex.withLock {
+        if (closed) return@withLock
         if (container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) return@withLock
         val version = generation.get()
         val input = source()
@@ -300,6 +312,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
     suspend fun updatePreferences(value: AnalysisPreferencesRow) {
         require(value.budget == null || value.budget > 0); require(value.reminderDays in 1..30)
         mutex.withLock {
+            if (closed) return@withLock
             container.databaseAccessGate.withAccess {
                 val old = store.analytics().preferences()
                 store.analytics().preferences(value.copy(id = 1, enabledAt = old?.enabledAt?.takeIf { it > 0 } ?: clock.millis(), gapDays = old?.gapDays.orEmpty()))
@@ -308,9 +321,12 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         request()
     }
     suspend fun findAlert(id: String): AnalysisAlertRow? = withContext(Dispatchers.IO) {
-        container.databaseAccessGate.withAccess { store.analytics().alerts().firstOrNull { it.id == id } }
+        mutex.withLock { if (closed) null else container.databaseAccessGate.withAccess {
+            store.analytics().alerts().firstOrNull { it.id == id }
+        } }
     }
     suspend fun markAlert(id: String, snooze: Boolean = false) = mutex.withLock {
+        if (closed) return@withLock
         container.databaseAccessGate.withAccess {
             val dao = store.analytics(); val row = dao.alerts().firstOrNull { it.id == id } ?: return@withAccess
             dao.alerts(listOf(row.copy(read = !snooze, readAt = if (!snooze && row.readAt == 0L) clock.millis() else row.readAt,
@@ -321,7 +337,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         }
     }
     suspend fun rejectCandidate(key: String) {
-        mutex.withLock { container.databaseAccessGate.withAccess {
+        mutex.withLock { if (closed) return
+            container.databaseAccessGate.withAccess {
             val row = store.analytics().candidates().firstOrNull { it.id == key } ?: return@withAccess
             store.analytics().candidates(listOf(row.copy(status = "REJECTED")))
         } }; request()
@@ -329,7 +346,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
     suspend fun acceptCandidate(key: String, draft: SettingsCommitmentsWorkflow.CommitmentEditorDraft): Boolean {
         val c = mutable.value.snapshot?.candidates?.firstOrNull { it.key == key } ?: return false
         require(draft.name.isNotBlank() && draft.amount.amount.signum() > 0)
-        mutex.withLock { container.databaseAccessGate.withAccess {
+        mutex.withLock { if (closed) return false
+            container.databaseAccessGate.withAccess {
             container.database.withTransaction {
                 val source = container.financialTransactionRepository.getById(c.sourceIds.last()) ?: error("Source changed")
                 val existing = container.commitmentRepository.getBySourceTransactionId(source.id)
@@ -391,12 +409,21 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         com.baraa.masroof.domain.model.CommitmentRecurrence.valueOf(candidate.cadence), LocalDate.ofEpochDay(candidate.nextDay))
     fun parseBudget(value: String): Long? = value.trim().takeIf { it.isNotEmpty() }?.let { BigDecimal(normalizeAnalysisNumber(it)).setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).longValueExact().also { require(it > 0) } }
     override fun close() {
-        val job = scope.coroutineContext[Job]!!
-        job.cancel()
-        runBlocking { job.join() }
+        if (closed) return
+        closed = true
+        stopSignal.complete(Unit)
         onboardingPrefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
         localePrefs.unregisterOnSharedPreferenceChangeListener(preferenceListener)
         if (started) container.database.invalidationTracker.removeObserver(observer)
+        changes.close()
+        clockJob?.cancel()
+        importJob?.cancel()
+        runBlocking {
+            refreshJob?.join()
+            mutex.withLock { }
+            scopeJob.complete()
+            scopeJob.join()
+        }
         if (storeDelegate.isInitialized()) store.close()
     }
     companion object { fun from(context: Context): LabAnalyticsWorkflow = (context.applicationContext as MasroofApplication).container.labAnalytics }
