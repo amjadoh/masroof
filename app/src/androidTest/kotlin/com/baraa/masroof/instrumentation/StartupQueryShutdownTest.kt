@@ -42,6 +42,30 @@ class StartupQueryShutdownTest {
         }
     }
 
+    @Test(timeout = 30_000)
+    fun restoreCanCloseAfterRetirementWhileAnApplicationReaderIsQueued() = runBlocking {
+        val host = InstrumentationRegistry.getInstrumentation().targetContext
+        val context = TestStorageContext(host, "retired-restore-close")
+        val c = AppContainer(context)
+        try {
+            c.runStartupMaintenance()
+            c.awaitPostStartupBackgroundWorkForTesting()
+            c.databaseAccessGate.withRestore {
+                val queued = c.applicationScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    c.databaseAccessGate.withAccess { error("A queued reader cannot enter retired Room") }
+                }
+                assertFalse("Reader is parked behind exclusive restore", queued.isCompleted)
+                c.databaseAccessGate.retire()
+                c.close()
+                assertTrue(queued.isCancelled)
+            }
+            assertEquals("CLOSED", c.shutdownStage)
+        } finally {
+            c.close()
+            File(context.filesDir.parentFile!!.absolutePath).deleteRecursively()
+        }
+    }
+
     private fun assertShutdownDrains(startup: Boolean) {
         val host = InstrumentationRegistry.getInstrumentation().targetContext
         val context = TestStorageContext(host, "startup-query-shutdown")
