@@ -209,7 +209,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "presentation-v4|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "presentation-v5|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
                 dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights)
     }
@@ -245,7 +245,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val quality = AnalysisQuality(input.clean.quality.used, input.clean.quality.excluded, input.clean.quality.unusualIds,
             input.clean.quality.coveredDays, input.clean.quality.coverageKnown, input.reviews,
             input.blocked || input.reasons.isNotEmpty(),
-            input.clean.days.firstOrNull { it.covered }?.day, input.clean.days.lastOrNull { it.covered }?.day, input.reasons)
+            input.clean.days.firstOrNull { it.covered }?.day, input.clean.days.lastOrNull { it.covered }?.day, input.reasons,
+            AnalysisPresentationBuilder.coverage(input.clean, input.today), AnalysisPresentationBuilder.consecutiveCompleteDays(input.clean, input.today))
         val todayFacts = input.clean.days.first { it.day == input.today }
         val futureDays = result.points.map { point -> AnalysisDay(point.day, null,
             if (point.day == input.today) Math.addExact(todayFacts.net, (point.gross - todayFacts.gross).coerceAtLeast(0)) else point.gross) }
@@ -394,6 +395,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             ids.distinct().sortedWith(compareByDescending<String> { dates[it] }.thenBy { it })
         }
     }
+    fun comparisonExplanation() = AnalysisPresentationBuilder.comparison(state.value, LocalDate.now(clock).toEpochDay(), clock.zone)
+
     fun money(cents: Long): Money = Money(BigDecimal.valueOf(cents, 2), Currency.SAR)
     fun budgetStatus(): String {
         val s = state.value.snapshot ?: return "NONE"

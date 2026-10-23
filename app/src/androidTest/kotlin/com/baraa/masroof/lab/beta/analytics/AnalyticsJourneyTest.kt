@@ -52,7 +52,7 @@ class AnalyticsJourneyTest {
             CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config),LocalConfiguration provides config) {
                 MasroofTheme(darkTheme=dark) { MasroofScreenBackground {
                     Column(androidx.compose.ui.Modifier.verticalScroll(rememberScrollState())) {
-                        LearningAndForecastPerformance(AnalysisUiState(forecastComparisons=listOf(pair)))
+                        ForecastPerformanceDetails(AnalysisUiState(forecastComparisons=listOf(pair)))
                     }
                 } }
             }
@@ -133,6 +133,7 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithText(text(R.string.lab_analysis_title, language)).assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-purchases")
                 compose.onNodeWithText(text(R.string.lab_analysis_need_data, language)).assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.analysis_forecasts_tab, language)).performClick()
                 val about = text(R.string.guidance_about, language).format(text(R.string.lab_analysis_initial, language))
                 compose.onNodeWithContentDescription(about).performClick()
                 compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
@@ -141,18 +142,27 @@ class AnalyticsJourneyTest {
                 compose.waitForIdle(); instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK); compose.waitForIdle()
                 compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
                 compose.onNodeWithText(text(R.string.lab_analysis_title, language)).assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, language)).performClick()
                 compose.onNodeWithTag("analysis-spending-explanation").performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-spending-explanation")
+                compose.onNodeWithText(text(R.string.analysis_merchants, language)).performScrollTo().assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-merchant-bars")
+                compose.onNodeWithText(text(R.string.analysis_change_title, language)).performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.analysis_decrease_axis, language)).performScrollTo().assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-change-bars")
+                compose.onNodeWithTag("analysis-quality-entry").performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_show_data, language)).performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-data-details")
-                compose.onNodeWithTag("learning-insights").performScrollTo().assertIsDisplayed()
-                compose.onNodeWithText(text(R.string.learning_statistical_paused,language)).assertIsDisplayed()
-                screen("$language-${if (isDark) "dark" else "light"}-learning-insights")
+                compose.onNodeWithTag("learning-insights").assertDoesNotExist()
+                compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, language)).performClick()
+                compose.onNodeWithText(text(R.string.analysis_forecasts_tab, language)).performClick()
+                compose.onNodeWithTag("analysis-daily-bars").performScrollTo().assertIsDisplayed()
+                screen("$language-${if (isDark) "dark" else "light"}-daily-bars")
+                compose.onNodeWithTag("analysis-performance-entry").performScrollTo().performClick()
                 compose.onNodeWithTag("forecast-performance").performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-forecast-performance")
-                compose.onNodeWithText(text(R.string.lab_analysis_hide_data, language)).performScrollTo().performClick()
-                compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).assertDoesNotExist()
+                compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, language)).performClick()
                 compose.onNodeWithTag("lab-analysis-settings").performClick()
                 screen("$language-${if (isDark) "dark" else "light"}-settings")
                 compose.onNodeWithText(text(R.string.lab_analysis_cancel, language)).performScrollTo().performClick()
@@ -267,6 +277,7 @@ class AnalyticsJourneyTest {
                     } }
                 }
             } }
+            compose.onNodeWithTag("analysis-quality-entry").performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_show_data, "en")).performScrollTo().performClick()
             val reason = text(R.string.lab_analysis_excluded_scope, "en")
             compose.onNode(hasText(reason, substring = true) and hasClickAction()).performScrollTo().performClick()
@@ -275,6 +286,7 @@ class AnalyticsJourneyTest {
             assertEquals("settlement", openedTransaction)
             screen("en-light-quality-transactions")
             compose.onNodeWithText(text(R.string.lab_analysis_payment_number, "en").format(1)).assertDoesNotExist()
+            compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, "en")).performClick()
             compose.onNodeWithTag("lab-analysis-settings").performClick()
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-budget"))).performTextReplacement("invalid")
             compose.onNodeWithText(text(R.string.lab_analysis_save, "en")).performScrollTo().performClick()
@@ -361,6 +373,45 @@ class AnalyticsJourneyTest {
             runBlocking { TestRuntime.reset(host) }
         }
     }
+    @Test fun learningIsReachableFromSettingsAndSharedChartsAreInTheDesignCatalog() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var mode by mutableIntStateOf(0)
+        var showing by mutableStateOf(true)
+        try {
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.labAnalytics.refresh() }
+            compose.waitUntil(30_000) { !c.labAnalytics.state.value.updating }
+            val before = runBlocking { c.financialTransactionRepository.listAll() }
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")); fontScale = 1.3f }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config, LocalLabAnalyticsWorkflow provides c.labAnalytics) {
+                    MasroofTheme { MasroofScreenBackground {
+                        when (mode) {
+                            0 -> com.baraa.masroof.presentation.settings.SettingsHubScreen(
+                                com.baraa.masroof.presentation.settings.SettingsUiState(loading = false), 0,
+                                {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, onOpenLearning = { mode = 1 })
+                            1 -> MessageLearningSettingsScreen { mode = 0 }
+                            else -> com.baraa.masroof.presentation.debug.DesignCatalogScreen { mode = 0 }
+                        }
+                    } }
+                }
+            } }
+            compose.onNodeWithText(text(R.string.analysis_learning_settings, "en")).performScrollTo().performClick()
+            compose.onNodeWithTag("learning-insights").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("forecast-performance").assertDoesNotExist()
+            screen("en-learning-settings-large-font")
+            compose.runOnUiThread { mode = 2 }
+            compose.onNodeWithText(text(R.string.analysis_shared_charts, "en")).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Published forecast").performScrollTo().assertIsDisplayed()
+            screen("en-shared-analytics-catalog-large-font")
+            assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
     private suspend fun seed(c: AppContainer) {
         val today = LocalDate.now()
         c.onboardingPreferencesRepository.setOnboardingStarted(true)
