@@ -86,18 +86,19 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             evidence += source.evidence("notice.beneficiary.directory", "family", 0..(source.text.length - 1))
             return result(Facts(MessageFamily.NON_FINANCIAL), ParseStatus.NON_FINANCIAL)
         }
-        val candidates = snapshot.rules.filter { rule -> rule.phrases.any { titleMatches(it).isNotEmpty() } && rule.excludes.none(::contains) }
+        val spansByRule = snapshot.rules.associateWith { rule -> rule.phrases.flatMap(::titleMatches).map { it.range } }
+        val candidates = snapshot.rules.filter { rule -> spansByRule.getValue(rule).isNotEmpty() && rule.excludes.none(::contains) }
         // A configured compound title (e.g. refund of a purchase) consumes its nested literal,
         // but independent movement cues on another span still conflict.
+        val refundSpans = candidates.filter { it.family == MessageFamily.REFUND }.flatMap { spansByRule.getValue(it) }
         var matching = candidates.filter { rule ->
-            val spans = rule.phrases.flatMap(::titleMatches).map { it.range }
-            spans.any { span -> candidates.filter { it.family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE }.none { other ->
-                other.phrases.flatMap(::titleMatches).any { it.range.first <= span.first && it.range.last >= span.last && it.range != span }
-            } }
+            rule.family != MessageFamily.PURCHASE || spansByRule.getValue(rule).any { span ->
+                refundSpans.none { it.first <= span.first && it.last >= span.last && it != span }
+            }
         }
-        matching.forEach { rule -> rule.phrases.forEach { phrase -> titleMatches(phrase).forEach { match ->
-            evidence += source.evidence(rule.id, "family", (lineStart + leading + match.range.first)..(lineStart + leading + match.range.last))
-        } } }
+        matching.forEach { rule -> spansByRule.getValue(rule).forEach { span ->
+            evidence += source.evidence(rule.id, "family", (lineStart + leading + span.first)..(lineStart + leading + span.last))
+        } }
         if (matching.isNotEmpty() && matching.map { it.family to it.direction }.distinct().size != 1) {
             problem("FAMILY_OR_DIRECTION_CONFLICT", Blocker.CONFLICTING_FACTS); return result()
         }
@@ -117,6 +118,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             matching = snapshot.rules // Review-only extraction of labelled facts; never automatic authority.
         }
         val familyPhrases = matching.flatMap {it.phrases} + listOfNotNull(title.takeIf {inference!=null})
+        val matchingTitleSpans = matching.flatMap { spansByRule.getValue(it) }
         // A second bare movement cue still conflicts; moving it into a party field does not.
         snapshot.rules.filter { it.family != family && it.excludes.none(::contains) }.forEach { rule ->
             rule.phrases.forEach { phrase -> source.phrase(phrase).findAll(source.text).forEach { match ->
@@ -126,8 +128,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
                 val indent = line.length - line.trimStart().length
                 val bound = roleEnd(line.trimStart())
                 val cueAtStart = match.range.first == start + indent
-                val consumedTitle = family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE && start == lineStart && matching.flatMap { it.phrases }.flatMap(::titleMatches).any {
-                    match.range.first >= lineStart + leading + it.range.first && match.range.last <= lineStart + leading + it.range.last
+                val consumedTitle = family == MessageFamily.REFUND && rule.family == MessageFamily.PURCHASE && start == lineStart && matchingTitleSpans.any {
+                    match.range.first >= lineStart + leading + it.first && match.range.last <= lineStart + leading + it.last
                 }
                 if (!consumedTitle && (bound == 0 || (cueAtStart && match.value.length > bound))) {
                     problem("FAMILY_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
