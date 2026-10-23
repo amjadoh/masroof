@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.baraa.masroof.application.notification.NotificationAction
@@ -147,6 +148,11 @@ private fun MasroofContent(
     val settingsState by settingsViewModel.uiState.collectAsState()
     val notificationState by notificationCenterViewModel.uiState.collectAsState()
     var homeDestination by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
+    // Full-screen transaction details remove the destination from composition temporarily.
+    // Retain its selection and scroll until a different destination or fresh navigation opens.
+    val destinationStateHolder = key(homeDestination, navigationGeneration) {
+        rememberSaveableStateHolder()
+    }
     var settingsReturnDestination by rememberSaveable {
         mutableStateOf(HomeDestination.Dashboard)
     }
@@ -302,6 +308,7 @@ private fun MasroofContent(
         }
 
         key(navigationGeneration) {
+        destinationStateHolder.SaveableStateProvider(homeDestination) {
         when (homeDestination) {
             HomeDestination.Dashboard -> Box {
                 DashboardRoute(
@@ -550,6 +557,7 @@ private fun MasroofContent(
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
+        }
         }
         }
     } else {
