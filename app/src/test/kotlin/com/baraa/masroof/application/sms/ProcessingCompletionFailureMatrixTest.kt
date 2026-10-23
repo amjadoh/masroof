@@ -339,6 +339,35 @@ class ProcessingCompletionFailureMatrixTest {
     }
 
     @Test
+    fun completingExistingFailedReportRetainsRetryWithoutPostingAgain() = runBlocking {
+        val raw = LiveSmsProcessingHarness.liveSms(at = "2026-08-16T10:00:00Z")
+        val captured = harness.capture.capture(raw) as BankSmsCaptureResult.Captured
+        assertTrue(harness.processStored().parseAndStore(captured.rawSms, captured.route) is SmsIngestionResult.Parsed)
+        val accounts = RoomAccountRegistryRepository.from(harness.db)
+        val cards = RoomCardRegistryRepository.from(harness.db)
+        val schedules = AtomicInteger(0)
+        val workflow = reviewWorkflow(OwnershipConfirmationService(accounts, cards, NoOpLoanRegistryRepository), schedules)
+        harness.nonthrowingSaveConflicts.set(1)
+        val report = com.baraa.masroof.application.transaction.TransactionReconciliationService(
+            parsedEventRepository = harness.parsedRepo,
+            rawSmsRepository = harness.rawRepo,
+            financialTransactionRepository = harness.ledgerUnderTest,
+            ownershipResolver = com.baraa.masroof.domain.ownership.OwnershipResolver(accounts, cards, NoOpLoanRegistryRepository),
+        ).reconcileStoredEventsDetailed()
+        assertEquals(1, report.summary.failed)
+
+        // A second sweep would now post successfully and hide the first pass's failure.
+        val failure = runCatching { workflow.completeReconciliation(report) }.exceptionOrNull()
+
+        assertTrue(failure is ReconciliationIncompleteException)
+        assertEquals(1, (failure as ReconciliationIncompleteException).failureCount)
+        assertNull(harness.ftRepo.findByRawSmsId(raw.id))
+        assertEquals(listOf(raw.id), harness.processingRetryRepo.listRetryableRawSmsIds(ProcessingRetryMode.HISTORICAL_BATCH))
+        assertEquals(1, schedules.get())
+        assertEquals(0, harness.reconciliationListAllCalls.get())
+    }
+
+    @Test
     fun ownershipChange_conflict_keepsTheOwnershipDecisionAndRetriesOnlyTheAffectedSms() = runBlocking {
         val raw = LiveSmsProcessingHarness.liveSms(at = "2026-08-15T10:00:00Z")
         val captured = harness.capture.capture(raw) as BankSmsCaptureResult.Captured
