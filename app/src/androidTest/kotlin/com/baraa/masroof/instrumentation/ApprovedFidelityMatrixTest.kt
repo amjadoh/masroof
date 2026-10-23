@@ -172,7 +172,6 @@ class ApprovedFidelityMatrixTest {
             "accounts" -> AccountsSummaryScreen(
                 state = financial,
                 onBack = {},
-                onManageAccounts = {},
                 onOpenAccount = {}
             )
             "debitDetail" -> DebitCardDetailScreen(
@@ -188,7 +187,6 @@ class ApprovedFidelityMatrixTest {
             "cards" -> CardsSummaryScreen(
                 state = financial,
                 onBack = {},
-                onManageCards = {},
                 onOpenCard = {},
                 onOpenDebit = {},
                 cardNetworksByLast4 = financial.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork }
@@ -202,7 +200,6 @@ class ApprovedFidelityMatrixTest {
             "loans" -> LoansSummaryScreen(
                 state = financial,
                 onBack = {},
-                onManageLoans = {},
                 onOpenLoan = {}
             )
             "loanDetail" -> LoanDetailScreen(

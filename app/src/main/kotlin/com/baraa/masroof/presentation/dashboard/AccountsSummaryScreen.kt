@@ -28,9 +28,7 @@ import com.baraa.masroof.ui.theme.MasroofThemeExtras
 fun AccountsSummaryRoute(
     viewModel: DashboardViewModel,
     onBack: () -> Unit,
-    onManageAccounts: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedAccountKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -60,7 +58,6 @@ fun AccountsSummaryRoute(
             AccountsSummaryScreen(
                 state = state,
                 onBack = onBack,
-                onManageAccounts = onManageAccounts,
                 onOpenAccount = { account -> selectedAccountKey = ownedAccountKey(account) },
             )
         }
@@ -74,7 +71,6 @@ private fun ownedAccountKey(account: OwnedAccountUi): String =
 fun AccountsSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
-    onManageAccounts: () -> Unit,
     onOpenAccount: (OwnedAccountUi) -> Unit,
 ) {
     DashboardSummaryScaffold(
@@ -97,10 +93,7 @@ fun AccountsSummaryScreen(
 
             SpendingTrendSection(state.spendingTrends?.accounts, stringResource(R.string.approved_accounts_daily),
                 explanation = stringResource(R.string.reference_accounts_scope), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account, chartKey = "accounts")
-            AccountsSummaryHeader(
-                accountCount = state.ownedAccounts.size,
-                onManageAccounts = onManageAccounts,
-            )
+            MasroofSectionHeader(title = stringResource(R.string.reference_followed_accounts))
 
             val hierarchy = state.bankHierarchy
             when {
@@ -156,14 +149,6 @@ fun AccountsSummaryScreen(
             }
         }
     }
-}
-
-@Composable
-private fun AccountsSummaryHeader(
-    accountCount: Int,
-    onManageAccounts: () -> Unit,
-) {
-    MasroofSectionHeader(title = stringResource(R.string.reference_followed_accounts))
 }
 
 private fun resolveOwnedAccountUi(

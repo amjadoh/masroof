@@ -32,7 +32,6 @@ fun MerchantSpendingSummaryRoute(
     viewModel: DashboardViewModel,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
     onOpenDaily: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -50,9 +49,6 @@ fun MerchantSpendingSummaryRoute(
             state = state,
             onBack = { selectedMerchantKey = null },
             onOpenTransaction = onOpenTransaction,
-            onOpenAllTransactions = {
-                onOpenAllTransactions(TransactionListFilterState(transactionIds = selected.transactionIds))
-            },
         )
     } else {
         MerchantSpendingSummaryScreen(
@@ -155,7 +151,6 @@ private fun MerchantSpendingDetailScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: () -> Unit,
 ) {
     val transactions = state.allTransactions.filter { it.id in row.transactionIds }
     DashboardSummaryScaffold(

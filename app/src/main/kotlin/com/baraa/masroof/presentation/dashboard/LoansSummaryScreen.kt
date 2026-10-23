@@ -30,9 +30,7 @@ fun LoansSummaryRoute(
     detailBackExitsSummary: Boolean = false,
     onInitialSelectionConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onManageLoans: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedLoanKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -78,7 +76,6 @@ fun LoansSummaryRoute(
             LoansSummaryScreen(
                 state = state,
                 onBack = onBack,
-                onManageLoans = onManageLoans,
                 onOpenLoan = { loan -> selectedLoanKey = LoanOwnershipKey.of(loan) },
             )
         }
@@ -89,7 +86,6 @@ fun LoansSummaryRoute(
 fun LoansSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
-    onManageLoans: () -> Unit,
     onOpenLoan: (LoanOverview) -> Unit,
 ) {
     val followedLoans = state.followedLoansOverview()

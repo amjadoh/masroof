@@ -36,9 +36,7 @@ fun CardsSummaryRoute(
     detailBackExitsSummary: Boolean = false,
     onInitialSelectionConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onManageCards: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedCardKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -108,7 +106,6 @@ fun CardsSummaryRoute(
             CardsSummaryScreen(
                 state = state,
                 onBack = onBack,
-                onManageCards = onManageCards,
                 onOpenCard = { row -> selectedCardKey = CardOwnershipKey.of(row) },
                 onOpenDebit = { debit -> selectedDebitKey = CardOwnershipKey.of(debit) },
                 cardNetworksByLast4 = cardNetworks,
@@ -121,7 +118,6 @@ fun CardsSummaryRoute(
 fun CardsSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
-    onManageCards: () -> Unit,
     onOpenCard: (CreditCardDashboardRow) -> Unit,
     onOpenDebit: (DebitCardOverview) -> Unit,
     cardNetworksByLast4: Map<String, com.baraa.masroof.domain.model.CardNetwork?>,
@@ -176,10 +172,7 @@ fun CardsSummaryScreen(
                         }
                     }
                 }
-                CardsSummaryHeader(
-                    cardCount = followedFacilities.cardCount,
-                    onManageCards = onManageCards,
-                )
+                MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
                 if (creditSelected) followedFacilities.facilities.forEach { facility ->
                     CreditFacilityCard(
                         facility = facility,
@@ -203,12 +196,4 @@ fun CardsSummaryScreen(
             }
         }
     }
-}
-
-@Composable
-private fun CardsSummaryHeader(
-    cardCount: Int,
-    onManageCards: () -> Unit,
-) {
-    MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
 }

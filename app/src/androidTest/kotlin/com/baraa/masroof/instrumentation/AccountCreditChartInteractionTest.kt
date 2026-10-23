@@ -48,9 +48,9 @@ class AccountCreditChartInteractionTest {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         key(language.value, dark.value, page.value) {
                             when (page.value) {
-                                "accounts" -> AccountsSummaryScreen(state, {}, {}, {})
+                                "accounts" -> AccountsSummaryScreen(state, {}, {})
                                 "accountDetail" -> AccountDetailScreen(state.ownedAccounts.first(), state, {}, {})
-                                "credit" -> CardsSummaryScreen(state, {}, {}, {}, {}, state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork })
+                                "credit" -> CardsSummaryScreen(state, {}, {}, {}, state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork })
                                 "primary" -> CardDetailScreen(facility.primary, state, {}, {})
                                 else -> CardDetailScreen(facility.supplementaries.first(), state, {}, {})
                             }
