@@ -2,7 +2,6 @@ package com.baraa.masroof.data.repository
 
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.core.money.Currency
-import com.baraa.masroof.data.room.ExchangeRatePairWrite
 import com.baraa.masroof.data.room.dao.FinancialTransactionDao
 import com.baraa.masroof.data.room.dao.ParsedEventDao
 import com.baraa.masroof.data.room.dao.RoomBatch
@@ -152,29 +151,7 @@ class RoomFinancialTransactionRepository(
     }
 
     override suspend fun update(transaction: FinancialTransaction): Boolean = accessGate.withAccess {
-        val entity = FinancialTransactionMapper.toEntity(transaction)
-        val existing = dao.getById(entity.id) ?: return@withAccess false
-        val (rate, source) = ExchangeRatePairWrite.storedOrIncoming(
-            storedRate = existing.appliedExchangeRate,
-            storedSource = existing.exchangeRateSource,
-            incomingRate = entity.appliedExchangeRate,
-            incomingSource = entity.exchangeRateSource,
-        )
-        return@withAccess dao.updateTransaction(
-            id = entity.id,
-            type = entity.type,
-            amountDecimal = entity.amountDecimal,
-            amountCurrency = entity.amountCurrency,
-            occurredAtEpochMillis = entity.occurredAtEpochMillis,
-            sourceContainerId = entity.sourceContainerId,
-            destinationContainerId = entity.destinationContainerId,
-            merchant = entity.merchant,
-            counterparty = entity.counterparty,
-            categoryId = entity.categoryId,
-            appliedExchangeRate = rate,
-            exchangeRateSource = source,
-            occurredAtZone = entity.occurredAtZone,
-        ) > 0
+        dao.updatePreservingExchangeRate(FinancialTransactionMapper.toEntity(transaction)) > 0
     }
 
     override suspend fun updateAppliedExchangeRate(
