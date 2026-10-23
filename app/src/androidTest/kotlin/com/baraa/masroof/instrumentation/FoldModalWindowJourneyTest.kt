@@ -2,6 +2,8 @@ package com.baraa.masroof.instrumentation
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -92,61 +94,84 @@ class FoldModalWindowJourneyTest {
         compose.waitUntil(20_000) { exists("sheet-overlay") }
         compose.waitForIdle()
     }
-    private fun resize(size: String) {
+    private var requestedWindow: IntSize? = null
+    private val controlTags = listOf("sheet-actions", "sheet-close", "sheet-apply", "sheet-cancel")
+    private data class ActivityGeometry(val activity: MainActivity, val size: IntSize, val contentHeight: Int,
+        val metricsWidth: Int, val density: Float)
+    private data class ModalGeometry(val activity: ActivityGeometry, val overlay: Rect, val scrim: Rect,
+        val sheet: Rect, val controls: Map<String, Rect>)
+
+    private fun activityGeometry() = compose.runOnIdle {
+        val activity = compose.activity
+        ActivityGeometry(activity, IntSize(activity.window.decorView.width, activity.window.decorView.height),
+            activity.findViewById<android.view.View>(android.R.id.content).height,
+            activity.resources.displayMetrics.widthPixels, activity.resources.displayMetrics.density)
+    }
+    private fun resize(size: String, overlayOpen: Boolean = true) {
+        val dimensions = size.split('x').map(String::toInt)
+        requestedWindow = IntSize(dimensions[0], dimensions[1])
         val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("wm size $size")
         android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
-        val expected = size.substringBefore('x').toInt()
-        compose.waitUntil(30_000) { compose.activity.window.decorView.width == expected && exists("sheet-overlay") }
+        compose.waitUntil(30_000) {
+            activityGeometry().size == requestedWindow && (!overlayOpen || exists("sheet-overlay"))
+        }
         compose.waitForIdle()
     }
-    private fun verify(kind: String, profile: String) {
-        // WindowManager layout follows Activity configuration delivery asynchronously.
-        // Edge-to-edge Dialog and Activity content can consume different system-bar insets.
-        // Cover all Activity content without exceeding the current full Android window.
-        try { compose.waitUntil(30_000) {
-            runCatching {
-                val bounds = compose.onNodeWithTag("sheet-overlay").fetchSemanticsNode().boundsInRoot
-                abs(bounds.width - compose.activity.window.decorView.width) <= 2f &&
-                    bounds.height >= compose.activity.findViewById<android.view.View>(android.R.id.content).height - 2f &&
-                    bounds.height <= compose.activity.window.decorView.height + 2f &&
-                    listOf("sheet-actions", "sheet-close", "sheet-apply", "sheet-cancel").all { tag ->
-                        val child = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
-                        child.width > 0 && child.height > 0 && child.left >= bounds.left &&
-                            child.right <= bounds.right && child.top >= bounds.top && child.bottom <= bounds.bottom
-                    }
-            }.getOrDefault(false)
-        } } catch (failure: Throwable) {
-            capture("$kind-$language-$appearance-$profile-failure")
-            println("WINDOW activity=${compose.activity.window.decorView.width}x${compose.activity.window.decorView.height} content=${compose.activity.findViewById<android.view.View>(android.R.id.content).height}")
-            listOf("sheet-overlay", "masroof-bottom-sheet", "sheet-actions", "sheet-close", "sheet-apply", "sheet-body").forEach {
-                println("WINDOW $it ${runCatching { compose.onNodeWithTag(it).fetchSemanticsNode().boundsInRoot }}")
-            }
-            throw failure
-        }
-        val overlay = compose.onNodeWithTag("sheet-overlay").fetchSemanticsNode().boundsInRoot
-        val scrim = compose.onNodeWithTag("sheet-scrim").fetchSemanticsNode().boundsInRoot
-        val sheet = compose.onNodeWithTag("masroof-bottom-sheet").fetchSemanticsNode().boundsInRoot
-        val width = compose.activity.window.decorView.width.toFloat()
-        assertEquals("Locale-wrapped Activity metrics must follow its current window", width,
-            compose.activity.resources.displayMetrics.widthPixels.toFloat(), 2f)
-        assertEquals("Overlay must span actual Activity window", width, overlay.width, 2f)
-        assertTrue("Overlay must cover all Activity content", overlay.height >=
-            compose.activity.findViewById<android.view.View>(android.R.id.content).height - 2f)
-        assertTrue("Overlay must fit within the current Android window",
-            overlay.height <= compose.activity.window.decorView.height + 2f)
+    private fun measureModal(): ModalGeometry {
+        // Activity recreation, system insets and the Dialog are laid out independently.
+        // Bracket semantic reads with UI-thread window reads instead of mixing frames.
+        val before = activityGeometry()
+        fun bounds(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val measured = ModalGeometry(before, bounds("sheet-overlay"), bounds("sheet-scrim"),
+            bounds("masroof-bottom-sheet"), controlTags.associateWith(::bounds))
+        assertEquals("Activity geometry changed while measuring the modal", before, activityGeometry())
+        return measured
+    }
+    private fun assertGeometry(value: ModalGeometry) {
+        val activity = value.activity
+        val overlay = value.overlay
+        val scrim = value.scrim
+        val sheet = value.sheet
+        requestedWindow?.let { assertEquals("Both requested window dimensions must be applied", it, activity.size) }
+        assertTrue("Activity content must be laid out: $activity", activity.size.width > 0 && activity.contentHeight > 0)
+        val width = activity.size.width.toFloat()
+        assertEquals("Locale-wrapped Activity metrics must follow its current window", width, activity.metricsWidth.toFloat(), 2f)
+        assertEquals("Overlay must span actual Activity window: $value", width, overlay.width, 2f)
+        assertTrue("Overlay must cover all Activity content: $value", overlay.height >= activity.contentHeight - 2f)
+        assertTrue("Overlay must fit within the current Android window: $value", overlay.height <= activity.size.height + 2f)
         assertEquals(overlay.left, scrim.left, 1f); assertEquals(overlay.right, scrim.right, 1f)
         assertEquals(overlay.top, scrim.top, 1f); assertEquals(overlay.bottom, scrim.bottom, 1f)
-        assertTrue("Sheet is not centered in the full window", abs(sheet.center.x - overlay.center.x) <= 2f)
-        val density = compose.activity.resources.displayMetrics.density
-        assertTrue(sheet.width <= MasroofSheetTokens.maxWidth.value * density + 2f)
-        // Compose 1.6's displayed predicate can retain a stale View clip after wm resize.
-        // Require FULL containment in the measured Android window, and exercise real touch below.
-        listOf("sheet-actions", "sheet-close", "sheet-apply", "sheet-cancel").forEach { tag ->
-            val child = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        assertTrue("Sheet is not centered in the full window: $value", abs(sheet.center.x - overlay.center.x) <= 2f)
+        assertTrue(sheet.width <= MasroofSheetTokens.maxWidth.value * activity.density + 2f)
+        value.controls.forEach { (tag, child) ->
             assertTrue("$tag must fit completely inside the current window: $child / $overlay",
                 child.width > 0 && child.height > 0 && child.left >= overlay.left && child.right <= overlay.right &&
                     child.top >= overlay.top && child.bottom <= overlay.bottom)
         }
+    }
+    private fun verify(kind: String, profile: String) {
+        var previous: ModalGeometry? = null
+        var lastMeasurement: ModalGeometry? = null
+        var lastFailure: Throwable? = null
+        try { compose.waitUntil(30_000) {
+            runCatching {
+                val measured = measureModal()
+                lastMeasurement = measured
+                assertGeometry(measured)
+                // Require a second identical complete measurement. Passing an old
+                // width while height/insets are still changing is not convergence.
+                val stable = measured == previous
+                previous = measured
+                stable
+            }.getOrElse { failure -> lastFailure = failure; previous = null; false }
+        } } catch (failure: Throwable) {
+            println("WINDOW kind=$kind profile=$profile requested=$requestedWindow last=$lastMeasurement")
+            lastFailure?.let { failure.addSuppressed(it); println("WINDOW last failure: $it") }
+            capture("$kind-$language-$appearance-$profile-failure")
+            throw failure
+        }
+        // All geometry assertions above use the same immutable measurement.
+        // A permanently undersized overlay still times out with its actual bounds.
         if (profile == "folded" || profile == "reopened") {
             compose.onNodeWithTag("sheet-actions").assertIsDisplayed()
             compose.onNodeWithTag("sheet-close").assertIsDisplayed()
@@ -195,9 +220,7 @@ class FoldModalWindowJourneyTest {
         verify(kind, "recreated")
         pressDeviceBack(compose); compose.waitUntil(10_000) { !exists("sheet-overlay") }
         // Re-open after returning to the folded window, without a modal present.
-        val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("wm size 640x1440")
-        android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
-        compose.waitUntil(30_000) { compose.activity.window.decorView.width == 640 }
+        resize("640x1440", overlayOpen = false)
         openSheet(kind); verify(kind, "reopened")
         compose.onNodeWithTag("sheet-cancel").performTouchInput { click(center) }
         compose.waitUntil(10_000) { !exists("sheet-overlay") }
