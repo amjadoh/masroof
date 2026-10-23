@@ -135,7 +135,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -159,8 +158,9 @@ class AppContainer(
 
     val clock: InstantClock = InstantClock.System
 
+    private val applicationJob = SupervisorJob()
     val applicationScope: CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        CoroutineScope(applicationJob + Dispatchers.IO)
 
     val appLogService: AppLogService = AppLogService(appContext)
 
@@ -717,11 +717,17 @@ class AppContainer(
         runBlocking(Dispatchers.IO) {
             startupMaintenanceJob?.join()
         }
+        // Release readers that were waiting for startup before draining their service mutexes.
+        startupMaintenanceOutcome.value = StartupMaintenanceOutcome.BLOCKED
         shutdownStage = "ANALYTICS_DRAINING"
         stopLabAnalytics()
         shutdownStage = "LEARNING_DRAINING"
         labInterpretationService?.close()
-        applicationScope.cancel()
+        shutdownStage = "APPLICATION_DRAINING"
+        runBlocking(Dispatchers.IO) {
+            applicationJob.complete()
+            applicationJob.join()
+        }
         // WorkManager jobs outlive applicationScope; finish admitted work before closing their stores.
         runBlocking(Dispatchers.IO) {
             databaseAccessGate.retireAndDrain()

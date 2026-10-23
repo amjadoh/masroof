@@ -19,7 +19,7 @@ This is a map of existing production paths and executable coverage, not a claim 
 
 ## Root causes corrected
 
-Cancelling startup did not cancel SQLite's native first-open callback. Room close could acquire the close write lock and wait for SQLiteOpenHelper's monitor, while the callback held that monitor and waited for Room's invalidation read lock. The native barrier regression reproduced both sides of that deadlock. Shutdown now stops producers and drains admitted startup, learning, analytics and financial leases before closing stores; it does not solve the lock inversion by increasing CI timeouts.
+Cancelling startup did not cancel SQLite's native first-open callback. Room close could acquire the close write lock and wait for SQLiteOpenHelper's monitor, while the callback held that monitor and waited for Room's invalidation read lock. The native barrier regression reproduced both sides of that deadlock. Shutdown now stops producers and drains admitted startup, application-scope capture, learning, analytics and financial leases before closing stores; it does not solve the lock inversion by increasing CI timeouts.
 
 Commitment display names are editable labels. Payment matching now uses the source transaction's persisted merchant/counterparty/biller identity, with a unique biller code taking precedence when both sides provide it. Amount changes do not prevent a match. Only eligible positive payments inside the selected period can mark an occurrence paid. Actual paid amount and source payment ID are exposed; future expected amounts and the ledger are not rewritten. Competing commitments remain unpaid with a visible ambiguity reason instead of assigning the first ID. A one-time commitment's date alone is not payment evidence.
 
