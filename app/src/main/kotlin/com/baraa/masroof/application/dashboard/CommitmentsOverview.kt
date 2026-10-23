@@ -305,18 +305,6 @@ object CommitmentsOverviewBuilder {
         zoneId: ZoneId,
     ): Boolean = CommitmentPauseTransitions.isVisibleInSalaryPeriod(commitment, salaryPeriod, zoneId)
 
-    internal fun isOneTimeCommitmentInPeriod(
-        commitment: Commitment,
-        salaryPeriod: FinancialPeriod,
-    ): Boolean {
-        return isDateInPeriod(commitment.transactionDate, salaryPeriod)
-    }
-
-    internal fun isCommitmentDueInPeriod(
-        commitment: Commitment,
-        salaryPeriod: FinancialPeriod,
-    ): Boolean = occurrencesInPeriod(commitment, salaryPeriod).isNotEmpty()
-
     internal fun occurrencesInPeriod(
         commitment: Commitment,
         salaryPeriod: FinancialPeriod,

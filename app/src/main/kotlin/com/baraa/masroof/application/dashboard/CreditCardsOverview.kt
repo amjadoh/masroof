@@ -68,3 +68,12 @@ fun CreditCardDashboardRow.statementDueFor(facility: CreditFacilityOverview? = n
     }
     return matchingFacility?.facilityDue ?: resolveLatestStatementDue(listOf(this))
 }
+
+internal fun sumCreditCardSpending(
+    rows: List<CreditCardDashboardRow>,
+    selector: (CreditCardDashboardRow) -> SignedMoneyAmount,
+): SignedMoneyAmount =
+    if (rows.isEmpty()) SignedMoneyAmount.zero(Currency.SAR) else SignedMoneyAmount(
+        rows.sumOf { selector(it).amount }.setScale(Money.SCALE, java.math.RoundingMode.HALF_EVEN),
+        rows.first().statementSpendingNet.currency,
+    )
