@@ -62,7 +62,11 @@ fun MasroofValueBarRow(title: String, value: String, progress: Float, modifier: 
 @Composable
 fun MasroofDivergingBarRow(title: String, changeLabel: String, fraction: Float, modifier: Modifier = Modifier) {
     val extended = MasroofThemeExtras.extendedColors
-    val color = if (fraction < 0) extended.inflow else extended.outflow
+    val color = when {
+        fraction < 0 -> extended.inflow
+        fraction > 0 -> extended.outflow
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val axis = MaterialTheme.colorScheme.onSurfaceVariant
     Column(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
