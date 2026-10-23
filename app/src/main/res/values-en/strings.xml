@@ -711,4 +711,7 @@
     <string name="settings_card_no_primary">No confirmed primary card in this bank.</string>
     <string name="settings_card_no_account">No linked account yet</string>
     <string name="settings_card_dependents_block">This card has supplementary cards. Reassign them explicitly before changing the primary card type or role.</string>
+    <string name="commitment_payment_ambiguous">More than one commitment matches this payment. Review the commitments.</string>
+    <string name="commitment_payment_missing_source">The original transaction is unavailable. Review this commitment.</string>
+    <string name="commitment_open_payment">View payment</string>
 </resources>

@@ -106,7 +106,7 @@ class CommitmentsOverviewBuilderTest {
             zoneId = zone,
         )
         assertEquals(1, inPreviousPeriod.rows.size)
-        assertEquals(CommitmentPaymentStatus.PAID, inPreviousPeriod.rows.single().status)
+        assertEquals(CommitmentPaymentStatus.UNPAID, inPreviousPeriod.rows.single().status)
     }
 
     @Test
@@ -159,7 +159,7 @@ class CommitmentsOverviewBuilderTest {
             zoneId = zone,
         )
         assertEquals(1, inEditedPeriod.rows.size)
-        assertEquals(CommitmentPaymentStatus.PAID, inEditedPeriod.rows.single().status)
+        assertEquals(CommitmentPaymentStatus.UNPAID, inEditedPeriod.rows.single().status)
     }
 
     @Test
@@ -587,10 +587,11 @@ class CommitmentsOverviewBuilderTest {
         )
 
         assertEquals(2, overview.rows.size)
-        assertEquals(1, overview.rows.count { it.status == CommitmentPaymentStatus.PAID })
-        assertEquals(1, overview.rows.count { it.status == CommitmentPaymentStatus.UNPAID })
-        assertEquals(Money.of("71.00", Currency.SAR), overview.paid)
-        assertEquals(Money.of("71.00", Currency.SAR), overview.remaining)
+        assertEquals(0, overview.rows.count { it.status == CommitmentPaymentStatus.PAID })
+        assertEquals(2, overview.rows.count { it.status == CommitmentPaymentStatus.UNPAID })
+        assertEquals(Money.zero(Currency.SAR), overview.paid)
+        assertEquals(Money.of("142.00", Currency.SAR), overview.remaining)
+        assertTrue(overview.rows.all { it.paymentMatchIssue == CommitmentMatchIssue.AMBIGUOUS_PAYMENT })
     }
 
     @Test

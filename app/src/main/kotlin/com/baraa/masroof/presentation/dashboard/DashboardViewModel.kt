@@ -68,6 +68,7 @@ class DashboardViewModel(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     private var activePeriod: DashboardSalaryPeriod = dashboardPeriodWorkflow.currentPeriod()
+    private var followCurrentPeriod = true
 
     private var loadJob: Job? = null
     private var rescanJob: Job? = null
@@ -179,6 +180,14 @@ class DashboardViewModel(
 
     fun refresh() {
         syncSmsPermissionState()
+        if (followCurrentPeriod) {
+            val current = dashboardPeriodWorkflow.currentPeriod()
+            if (current != activePeriod) {
+                activePeriod = current
+                load(activePeriod, resetSelection = true)
+                return
+            }
+        }
         load(activePeriod)
     }
 
@@ -229,16 +238,19 @@ class DashboardViewModel(
     }
 
     fun goToPreviousPeriod() {
+        followCurrentPeriod = false
         activePeriod = dashboardPeriodWorkflow.previous(activePeriod)
         load(activePeriod, resetSelection = true)
     }
 
     fun goToNextPeriod() {
+        followCurrentPeriod = false
         activePeriod = dashboardPeriodWorkflow.next(activePeriod)
         load(activePeriod, resetSelection = true)
     }
 
     fun goToCurrentPeriod() {
+        followCurrentPeriod = true
         activePeriod = dashboardPeriodWorkflow.currentPeriod()
         load(activePeriod, resetSelection = true)
     }

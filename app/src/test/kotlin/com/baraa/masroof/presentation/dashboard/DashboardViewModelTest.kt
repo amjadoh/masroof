@@ -784,6 +784,42 @@ class DashboardViewModelTest {
         assertNull(layoutRepo.saved)
     }
 
+    @Test
+    fun resumedCurrentPeriod_followsTheClockAcrossASalaryBoundary() = runTest {
+        val movingClock = MovingClock(clock.instant(), zone)
+        val loader = FakeLoader()
+        val next = FinancialPeriodPolicy.next(currentPeriod)
+        loader.put(currentPeriod, overview(currentPeriod, "100.00"))
+        loader.put(next, overview(next, "130.00"))
+        val vm = viewModel(loader, periodClock = movingClock)
+        vm.refresh(); advanceUntilIdle()
+        movingClock.now = next.startDate.atStartOfDay(zone).toInstant()
+        vm.onAppResumed(); advanceUntilIdle()
+        assertEquals(next, vm.uiState.value.period)
+    }
+
+    @Test
+    fun resumedHistoricalSelection_staysSelectedUntilUserReturnsToCurrent() = runTest {
+        val movingClock = MovingClock(clock.instant(), zone)
+        val loader = FakeLoader()
+        val next = FinancialPeriodPolicy.next(currentPeriod)
+        for (p in listOf(previousPeriod, currentPeriod, next)) loader.put(p, overview(p, "100.00"))
+        val vm = viewModel(loader, periodClock = movingClock)
+        vm.refresh(); advanceUntilIdle()
+        vm.goToPreviousPeriod(); advanceUntilIdle()
+        movingClock.now = next.startDate.atStartOfDay(zone).toInstant()
+        vm.onAppResumed(); advanceUntilIdle()
+        assertEquals(previousPeriod, vm.uiState.value.period)
+        vm.goToCurrentPeriod(); advanceUntilIdle()
+        assertEquals(next, vm.uiState.value.period)
+    }
+
+    private class MovingClock(var now: Instant, private val zone: ZoneId) : Clock() {
+        override fun getZone(): ZoneId = zone
+        override fun withZone(zone: ZoneId): Clock = Clock.fixed(now, zone)
+        override fun instant(): Instant = now
+    }
+
     private fun viewModel(
         loader: FakeLoader,
         cardRegistry: com.baraa.masroof.domain.repository.CardRegistryRepository = FakeCardRegistry(),
@@ -845,11 +881,10 @@ class DashboardViewModelTest {
             overviewLoader = loader,
             dashboardRegistryWorkflow = com.baraa.masroof.testsupport.PresentationWorkflowTestSupport
                 .dashboardRegistryWorkflow(cards = cardRegistry, accounts = accountRegistry),
-            dashboardPeriodWorkflow = com.baraa.masroof.testsupport.PresentationWorkflowTestSupport
-                .dashboardPeriodWorkflow(
-                    now = periodClock.instant(),
-                    zoneId = periodZoneId,
-                ),
+            dashboardPeriodWorkflow = com.baraa.masroof.application.dashboard.DashboardPeriodWorkflow(
+                clock = object : com.baraa.masroof.sms.time.InstantClock { override fun now() = periodClock.instant() },
+                zoneId = periodZoneId,
+            ),
             layoutPreferencesRepository = layoutPreferencesRepository,
             rescanService = rescanService,
             smsEvidenceLoader = smsEvidenceLoader,
