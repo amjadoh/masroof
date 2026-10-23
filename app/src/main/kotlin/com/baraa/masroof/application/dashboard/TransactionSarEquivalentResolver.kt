@@ -48,13 +48,15 @@ class TransactionSarEquivalentResolver(
             val linkedRecord = linkedParsedRecord(tx, parsedByEventId)
             val includeFee = tx.type != FinancialTransactionType.REFUND
 
-            if (tx.appliedExchangeRate != null && tx.exchangeRateSource != null) {
+            val appliedRate = tx.appliedExchangeRate
+            val appliedSource = tx.exchangeRateSource
+            if (appliedRate != null && appliedSource != null) {
                 resolutionFromRate(
                     tx = tx,
-                    exchangeRate = tx.appliedExchangeRate,
-                    source = tx.exchangeRateSource,
+                    exchangeRate = appliedRate,
+                    source = appliedSource,
                     primaryCurrency = primaryCurrency,
-                    internationalFee = if (includeFee && tx.exchangeRateSource == ExchangeRateSource.SMS) {
+                    internationalFee = if (includeFee && appliedSource == ExchangeRateSource.SMS) {
                         linkedRecord?.details?.internationalFee
                     } else {
                         null

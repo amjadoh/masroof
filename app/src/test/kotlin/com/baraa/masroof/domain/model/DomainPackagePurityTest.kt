@@ -18,6 +18,7 @@ class DomainPackagePurityTest {
             File("src/main/kotlin/com/baraa/masroof/core"),
             File("src/main/kotlin/com/baraa/masroof/parsing"),
             File("src/main/kotlin/com/baraa/masroof/bank"),
+            File("../finance-core/src/main/kotlin/com/baraa/masroof"),
         )
         val forbidden = listOf(
             "import android.",
@@ -45,8 +46,11 @@ class DomainPackagePurityTest {
 
     @Test
     fun domainSources_doNotImportHigherLayers() {
-        val domainRoot = File("src/main/kotlin/com/baraa/masroof/domain")
-        assertTrue(domainRoot.isDirectory)
+        val domainRoots = listOf(
+            File("src/main/kotlin/com/baraa/masroof/domain"),
+            File("../finance-core/src/main/kotlin/com/baraa/masroof/domain"),
+        )
+        domainRoots.forEach { assertTrue("Missing domain sources: $it", it.isDirectory) }
         val forbidden = listOf(
             "import com.baraa.masroof.parsing",
             "import com.baraa.masroof.bank",
@@ -55,8 +59,7 @@ class DomainPackagePurityTest {
             "import androidx.room",
             "import android.",
         )
-        domainRoot.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
+        domainRoots.flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
             .forEach { file ->
                 val text = file.readText()
                 forbidden.forEach { needle ->
