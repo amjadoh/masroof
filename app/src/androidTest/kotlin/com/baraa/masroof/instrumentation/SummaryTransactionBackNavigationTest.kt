@@ -1,6 +1,7 @@
 package com.baraa.masroof.instrumentation
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -74,13 +75,15 @@ class SummaryTransactionBackNavigationTest {
     private fun checkJourney(account: Boolean, mada: Boolean = false) {
         val summary = if (account) R.string.dashboard_accounts_summary_screen_title else R.string.dashboard_cards_summary_screen_title
         val detail = if (account) R.string.reference_account_detail_title else R.string.reference_card_detail_title
+        val detailHeading = hasText(text(detail)) and !hasClickAction()
         val merchant = "Navigation ${if (account || mada) "Debit" else "Credit"} H"
         awaitText(text(R.string.reference_shortcut_accounts))
         openSummary(account)
         if (mada) clickText(text(R.string.reference_mada_tab))
         val suffix = if (account) "3001" else if (mada) "2210" else "7271"
         clickText(suffix, substring = true)
-        compose.onNodeWithText(text(detail)).assertIsDisplayed()
+        compose.waitUntil(30_000) { compose.onNode(detailHeading).isDisplayed() }
+        compose.onNode(detailHeading).assertIsDisplayed()
 
         // Both toolbar Back and Android Back must restore the exact detail and scroll position.
         for (systemBack in listOf(false, true)) {
@@ -98,8 +101,8 @@ class SummaryTransactionBackNavigationTest {
             } else {
                 compose.onNodeWithContentDescription(text(R.string.review_back)).performClick()
             }
-            compose.waitUntil(10_000) { compose.onNodeWithText(text(detail)).isDisplayed() }
-            compose.onNodeWithText(text(detail)).assertIsDisplayed()
+            compose.waitUntil(10_000) { compose.onNode(detailHeading).isDisplayed() }
+            compose.onNode(detailHeading).assertIsDisplayed()
             compose.onNode(hasText(merchant) and hasClickAction()).assertIsDisplayed()
             assertEquals("Returning from a transaction must retain scroll", before, scrollPosition(), 1f)
         }
@@ -109,7 +112,7 @@ class SummaryTransactionBackNavigationTest {
         pressDeviceBack(compose)
         openSummary(account)
         compose.onNodeWithText(text(summary)).assertIsDisplayed()
-        compose.onNode(hasText(text(detail)) and !hasClickAction()).assertDoesNotExist()
+        compose.onNode(detailHeading).assertDoesNotExist()
     }
 
     private fun openSummary(account: Boolean) = clickText(text(
@@ -125,8 +128,14 @@ class SummaryTransactionBackNavigationTest {
     }
 
     private fun clickText(value: String, substring: Boolean = false) {
-        val node = compose.onAllNodes(hasText(value, substring = substring) and hasClickAction()).onFirst()
-        node.performScrollTo().performClick()
+        val target = hasText(value, substring = substring) and hasClickAction()
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(target).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
+        // Dashboard data loads asynchronously and can move a shortcut after scrolling.
+        // Navigate through the identified action; transaction rows below still receive real taps.
+        compose.onAllNodes(target).onFirst().performScrollTo().assertIsEnabled()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
         compose.waitForIdle()
     }
 
