@@ -8,6 +8,10 @@ import com.baraa.masroof.data.room.PreservingOpenHelperFactory
 import com.baraa.masroof.testsupport.TestStorageContext
 import org.junit.Assert.*
 import org.junit.Test
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -16,7 +20,29 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Hold the first connection before invalidation initialization requests Room's close lock. */
 class StartupQueryShutdownTest {
     @Test(timeout = 30_000)
-    fun shutdownWaitsForFirstConnectionWithoutCancellingItsRoomQuery() {
+    fun shutdownWaitsForFirstConnectionWithoutCancellingItsRoomQuery() = assertShutdownDrains(startup = true)
+
+    @Test(timeout = 30_000)
+    fun shutdownDrainsAdmittedApplicationQueryWithoutCancellingItsConnection() = assertShutdownDrains(startup = false)
+
+    @Test(timeout = 30_000)
+    fun closeReleasesAnAnalyticsRefreshWaitingForStartup() = runBlocking(Dispatchers.Default) {
+        val host = InstrumentationRegistry.getInstrumentation().targetContext
+        val context = TestStorageContext(host, "analytics-before-startup-close")
+        val c = AppContainer(context)
+        try {
+            val refresh = launch(start = CoroutineStart.UNDISPATCHED) { c.labAnalytics.refresh() }
+            assertFalse("Refresh is suspended on the startup authority", refresh.isCompleted)
+            c.close()
+            refresh.join()
+            assertEquals("CLOSED", c.shutdownStage)
+        } finally {
+            c.close()
+            File(context.filesDir.parentFile!!.absolutePath).deleteRecursively()
+        }
+    }
+
+    private fun assertShutdownDrains(startup: Boolean) {
         val host = InstrumentationRegistry.getInstrumentation().targetContext
         val context = TestStorageContext(host, "startup-query-shutdown")
         val entered = CountDownLatch(1)
@@ -47,11 +73,14 @@ class StartupQueryShutdownTest {
         val closed = CountDownLatch(1)
         val closing = Thread { try { c.close() } finally { closed.countDown() } }.apply { isDaemon = true }
         try {
-            c.runStartupMaintenance()
+            val query = if (startup) { c.runStartupMaintenance(); null }
+                else c.applicationScope.launch { c.rawSmsRepository.listIdsByReceivedAt() }
             assertTrue("First connection reached the barrier", entered.await(10, TimeUnit.SECONDS))
             closing.start()
+            val drainingStage = if (startup) "STARTUP_DRAINING" else "APPLICATION_DRAINING"
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
-            while (closing.state !in setOf(Thread.State.WAITING, Thread.State.TIMED_WAITING, Thread.State.BLOCKED) && System.nanoTime() < deadline) {
+            while ((c.shutdownStage != drainingStage || closing.state !in setOf(Thread.State.WAITING, Thread.State.TIMED_WAITING, Thread.State.BLOCKED)) &&
+                c.shutdownStage !in setOf("DATABASE_CLOSING", "CLOSED") && System.nanoTime() < deadline) {
                 Thread.yield()
             }
             if (c.startupCancelled) {
@@ -60,7 +89,9 @@ class StartupQueryShutdownTest {
                 val closingDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
                 while ((c.shutdownStage != "DATABASE_CLOSING" || closing.state != Thread.State.BLOCKED) && System.nanoTime() < closingDeadline) Thread.yield()
             }
-            assertEquals("Startup must drain before any database close", "STARTUP_DRAINING", c.shutdownStage)
+            assertEquals("Admitted connection must drain before any database close",
+                drainingStage, c.shutdownStage)
+            assertFalse("Application queries must also finish normally", query?.isCancelled == true)
             assertFalse("Cancelling a Room continuation does not stop the connection it is opening", c.startupCancelled)
             assertEquals(1L, closed.count)
         } finally {
