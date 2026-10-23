@@ -161,7 +161,14 @@ object CommitmentsOverviewBuilder {
             allowedPaymentIds = allowedPaymentIds,
         )
         val paidOccurrenceCount = matchedPayments.size
-        return occurrences.mapIndexed { index, occurrence ->
+        // Recurring payments may exceed the scheduled occurrences within one salary period.
+        val rowCount = if (commitment.recurrence == null) {
+            occurrences.size
+        } else {
+            maxOf(occurrences.size, matchedPayments.size)
+        }
+        return List(rowCount) { index ->
+            val occurrence = occurrences.getOrNull(index)
             val isPaid = index < paidOccurrenceCount
             val matchedPayment = matchedPayments.getOrNull(index)
             val rowAmount = if (isPaid && matchedPayment != null) {
@@ -175,7 +182,11 @@ object CommitmentsOverviewBuilder {
                 commitment.dueDate ?: occurrence
             }
             CommitmentDashboardRow(
-                key = "user:${commitment.id}:$occurrence",
+                key = if (matchedPayment != null) {
+                    "user:${commitment.id}:payment:${matchedPayment.transactionId}"
+                } else {
+                    "user:${commitment.id}:$occurrence"
+                },
                 source = CommitmentDashboardSource.USER,
                 displayName = commitment.name,
                 amount = rowAmount,
