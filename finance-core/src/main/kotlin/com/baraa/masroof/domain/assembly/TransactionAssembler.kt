@@ -128,7 +128,6 @@ object TransactionAssembler {
             }
         }
 
-        val resolvedLoanType = loanType
         val sourceFacts = accountFacts(event.sourceAccountRef, sourceOwnership)
         val destinationFacts = when (event.messageFamily) {
             MessageFamily.CARD_PAYMENT ->
@@ -136,7 +135,7 @@ object TransactionAssembler {
                     ?: accountFacts(event.destinationAccountRef, destinationOwnership)
 
             MessageFamily.FINANCING_INSTALLMENT ->
-                loanFacts(event.bank, resolvedLoanType, loanOwnership)
+                loanFacts(event.bank, loanType, loanOwnership)
 
             else -> accountFacts(event.destinationAccountRef, destinationOwnership)
         }
@@ -156,56 +155,41 @@ object TransactionAssembler {
                 instrument = instrumentFacts,
                 purchaseChannel = event.purchaseChannel,
                 bankNetworkType = event.bankNetworkType,
-                loanType = resolvedLoanType,
+                loanType = loanType,
             ),
         )
 
-        return when (classification) {
+        val type = when (classification) {
             is ClassificationResult.Classified -> {
                 if (deferIntraBankPairing &&
                     shouldDeferIntraBankUntilPairing(event, classification.transactionType)
                 ) {
                     return Outcome.PendingMatch
                 }
-                val tx = buildTransaction(
-                    type = classification.transactionType,
-                    amount = amount,
-                    occurredAt = transactionOccurredAt,
-                    event = event,
-                    linkedEventIds = listOf(event.id),
-                    rawSmsIds = listOf(event.rawSmsId),
-                    loanType = resolvedLoanType,
-                    occurredAtZone = occurredAtZone,
-                )
-                Outcome.Assembled(tx.transaction, tx.rawSmsIds)
+                classification.transactionType
             }
 
-            is ClassificationResult.NeedsReview -> {
+            is ClassificationResult.NeedsReview -> when {
                 // Conservative purchase: family alone is enough for EXPENSE when amount exists.
-                if (event.messageFamily == MessageFamily.PURCHASE &&
-                    classification.tentativeType == FinancialTransactionType.EXPENSE
-                ) {
-                    val tx = buildTransaction(
-                        type = FinancialTransactionType.EXPENSE,
-                        amount = amount,
-                        occurredAt = transactionOccurredAt,
-                        event = event,
-                        linkedEventIds = listOf(event.id),
-                        rawSmsIds = listOf(event.rawSmsId),
-                        loanType = resolvedLoanType,
-                        occurredAtZone = occurredAtZone,
-                    )
-                    return Outcome.Assembled(tx.transaction, tx.rawSmsIds)
-                }
-                if (event.messageFamily == MessageFamily.TRANSFER_IN ||
-                    event.messageFamily == MessageFamily.TRANSFER_OUT
-                ) {
-                    Outcome.PendingMatch
-                } else {
-                    Outcome.NeedsReview(classification.reasons)
-                }
+                event.messageFamily == MessageFamily.PURCHASE &&
+                    classification.tentativeType == FinancialTransactionType.EXPENSE ->
+                    FinancialTransactionType.EXPENSE
+
+                event.messageFamily == MessageFamily.TRANSFER_IN ||
+                    event.messageFamily == MessageFamily.TRANSFER_OUT ->
+                    return Outcome.PendingMatch
+
+                else -> return Outcome.NeedsReview(classification.reasons)
             }
         }
+        return buildTransaction(
+            type = type,
+            amount = amount,
+            occurredAt = transactionOccurredAt,
+            event = event,
+            loanType = loanType,
+            occurredAtZone = occurredAtZone,
+        )
     }
 
     /**
@@ -237,14 +221,12 @@ object TransactionAssembler {
         val amount = event.amount
             ?: return Outcome.NeedsReview(listOf("missing_amount"))
 
+        if (TransactionMatcher.hasPendingIntraBankCounterpart(candidate, pendingCounterparts)) {
+            return Outcome.PendingMatch
+        }
         if (sourceOwnership == OwnershipStatus.OWNED &&
             destinationOwnership == OwnershipStatus.OWNED
         ) {
-            if (pendingCounterparts.isNotEmpty() &&
-                TransactionMatcher.hasPendingIntraBankCounterpart(candidate, pendingCounterparts)
-            ) {
-                return Outcome.PendingMatch
-            }
             val transactionOccurredAt = TransactionTiming.effectiveOccurredAt(candidate, fallbackZone)
             return assembleSingle(
                 event = event,
@@ -261,62 +243,38 @@ object TransactionAssembler {
         val transactionOccurredAt = TransactionTiming.effectiveOccurredAt(candidate, fallbackZone)
         val zone = TransactionTiming.zoneFor(event.bank, fallback = fallbackZone)
 
-        return when (event.messageFamily) {
+        val type = when (event.messageFamily) {
             MessageFamily.TRANSFER_OUT -> {
                 if (sourceOwnership != OwnershipStatus.OWNED) {
                     return Outcome.PendingMatch
                 }
-                if (pendingCounterparts.isNotEmpty() &&
-                    TransactionMatcher.hasPendingIntraBankCounterpart(candidate, pendingCounterparts)
-                ) {
-                    return Outcome.PendingMatch
-                }
                 val sourceRef = event.sourceAccountRef
                     ?: return Outcome.NeedsReview(listOf("missing_source"))
-                val sourceId = FinancialContainerIdFactory.accountId(sourceRef)
+                FinancialContainerIdFactory.accountId(sourceRef)
                     ?: return Outcome.NeedsReview(listOf("source_not_durable"))
-                val built = buildTransaction(
-                    type = FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
-                    amount = amount,
-                    occurredAt = transactionOccurredAt,
-                    event = event,
-                    linkedEventIds = listOf(event.id),
-                    rawSmsIds = listOf(event.rawSmsId),
-                    occurredAtZone = zone,
-                )
-                // Prefer durable owned source even if buildTransaction dropped UNKNOWN dest.
-                val tx = built.transaction.copy(sourceContainerId = sourceId)
-                Outcome.Assembled(tx, built.rawSmsIds)
+                FinancialTransactionType.EXTERNAL_TRANSFER_OUT
             }
 
             MessageFamily.TRANSFER_IN -> {
                 if (destinationOwnership != OwnershipStatus.OWNED) {
                     return Outcome.PendingMatch
                 }
-                if (pendingCounterparts.isNotEmpty() &&
-                    TransactionMatcher.hasPendingIntraBankCounterpart(candidate, pendingCounterparts)
-                ) {
-                    return Outcome.PendingMatch
-                }
                 val destRef = event.destinationAccountRef
                     ?: return Outcome.NeedsReview(listOf("missing_destination"))
-                val destId = FinancialContainerIdFactory.accountId(destRef)
+                FinancialContainerIdFactory.accountId(destRef)
                     ?: return Outcome.NeedsReview(listOf("destination_not_durable"))
-                val built = buildTransaction(
-                    type = FinancialTransactionType.EXTERNAL_TRANSFER_IN,
-                    amount = amount,
-                    occurredAt = transactionOccurredAt,
-                    event = event,
-                    linkedEventIds = listOf(event.id),
-                    rawSmsIds = listOf(event.rawSmsId),
-                    occurredAtZone = zone,
-                )
-                val tx = built.transaction.copy(destinationContainerId = destId)
-                Outcome.Assembled(tx, built.rawSmsIds)
+                FinancialTransactionType.EXTERNAL_TRANSFER_IN
             }
 
-            else -> Outcome.PendingMatch
+            else -> return Outcome.PendingMatch
         }
+        return buildTransaction(
+            type = type,
+            amount = amount,
+            occurredAt = transactionOccurredAt,
+            event = event,
+            occurredAtZone = zone,
+        )
     }
 
     /**
@@ -469,21 +427,15 @@ object TransactionAssembler {
         )
     }
 
-    private data class Built(
-        val transaction: FinancialTransaction,
-        val rawSmsIds: List<String>,
-    )
-
     private fun buildTransaction(
         type: FinancialTransactionType,
         amount: com.baraa.masroof.core.money.Money,
         occurredAt: Instant,
         event: ParsedEvent,
-        linkedEventIds: List<String>,
-        rawSmsIds: List<String>,
         loanType: LoanType? = null,
         occurredAtZone: java.time.ZoneId? = null,
-    ): Built {
+    ): Outcome.Assembled {
+        val rawSmsIds = listOf(event.rawSmsId)
         val zone = occurredAtZone ?: TransactionTiming.zoneFor(event.bank)
         // Resolve durable ids from references only (null for Bank.UNKNOWN / incomplete).
         val durableSourceAccountId = event.sourceAccountRef?.let(FinancialContainerIdFactory::accountId)
@@ -507,19 +459,11 @@ object TransactionAssembler {
                 // Incoming value to the user's container — never put the receiver in source.
                 null to (durableDestAccountId ?: durableCardId)
 
-            MessageFamily.WITHDRAWAL,
-            MessageFamily.BILL_PAYMENT,
-            MessageFamily.FEE,
-            MessageFamily.TRANSFER_OUT,
-            MessageFamily.TRANSFER_IN,
-            ->
-                durableSourceAccountId to durableDestAccountId
-
             else ->
                 durableSourceAccountId to durableDestAccountId
         }
 
-        return Built(
+        return Outcome.Assembled(
             transaction = FinancialTransaction(
                 id = TransactionIdFactory.fromRawSmsIds(rawSmsIds),
                 type = type,
@@ -530,10 +474,10 @@ object TransactionAssembler {
                 merchant = event.merchant,
                 counterparty = event.counterparty,
                 categoryId = null,
-                linkedParsedEventIds = linkedEventIds.sorted(),
+                linkedParsedEventIds = listOf(event.id),
                 occurredAtZone = zone.id,
             ),
-            rawSmsIds = rawSmsIds.sorted(),
+            rawSmsIds = rawSmsIds,
         )
     }
 }
