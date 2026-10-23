@@ -29,6 +29,12 @@ transaction. Dashboard builders/calculators and evidence scoping also stay in
 `app`. The statement match policy and direction value live in core; canonical
 CSV parsing, its stream interface and reconciliation workflow stay in app.
 
+`FinancialTransaction.fromSingleEvent` shares the construction of a transaction
+from one parsed event between automatic assembly and manual review. Callers
+still authorize the operation and choose its type, endpoints and timing; the
+factory does not classify, resolve ownership or write to storage. Manual and
+automatic endpoint precedence remain separate.
+
 This extraction preserves schema v18 and the existing write paths. It introduces
 no backfill, history reparse, new database, worker, backup format or UI behavior.
 Policy tests run directly on JVM in `finance-core`; app integration tests cover
@@ -55,6 +61,12 @@ Automatic reconciliation compares its assembled evidence with current effective 
 Family activation uses naturally reached rule-fallback cases, current score/margin/coverage thresholds, at least eight distinct accepted validation templates that pass financial validation, and zero accepted wrong validation families. Frozen test groups cannot choose thresholds or activation; an accepted wrong final-test family blocks artifact generation. The current small corpus does not meet activation support, so statistical families are suspended while rules and consistent explicit human templates remain available. The report distinguishes suggestion, validation and assembly, while device lifecycle tests verify persistence and later corrections.
 
 Startup blocks financial screens while required maintenance is incomplete. Dashboards read persisted scoped evidence without parsing SMS or writing FX. Analysis reads approved financial inputs and writes only advisory results; a suggested commitment needs explicit confirmation through the existing commitment workflow.
+
+Navigation state, including analytics notification targets and return origins,
+lives in `presentation/navigation`. Workers and application workflows do not
+own screen navigation. Settings uses the shared card setup draft and one
+registry-write/reload path; configuring a card does not reparse or reconcile
+financial history.
 
 Encrypted backups retain the existing envelope and financial migration support. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learned caches are invalidated and reconstructed from retained human decisions.
 
