@@ -190,6 +190,50 @@ class TransactionAssemblerTest {
     }
 
     @Test
+    fun successfulPurchase_withoutResolvedInstrument_retainsExpenseFallback() {
+        val outcome = TransactionAssembler.assembleSingle(
+            event = event(family = MessageFamily.PURCHASE, amount = money("15.00")),
+            receivedAt = receivedAt,
+            sourceOwnership = OwnershipStatus.UNKNOWN,
+            destinationOwnership = OwnershipStatus.UNKNOWN,
+            cardOwnership = OwnershipStatus.UNKNOWN,
+        ) as TransactionAssembler.Outcome.Assembled
+
+        assertEquals(FinancialTransactionType.EXPENSE, outcome.transaction.type)
+        assertEquals(money("15.00"), outcome.transaction.amount)
+        assertEquals(listOf("pe-1"), outcome.transaction.linkedParsedEventIds)
+        assertEquals(listOf("sms-1"), outcome.rawSmsIds)
+    }
+
+    @Test
+    fun unmatchedTransfers_reportMissingOrNonDurableOwnedEndpoint() {
+        for (family in listOf(MessageFamily.TRANSFER_OUT, MessageFamily.TRANSFER_IN)) {
+            val outgoing = family == MessageFamily.TRANSFER_OUT
+            val side = if (outgoing) "source" else "destination"
+            val endpoints = listOf(
+                null to "missing_$side",
+                AccountReference(Bank.BANK_ALJAZIRA, " ") to "${side}_not_durable",
+                AccountReference(Bank.UNKNOWN, "3001") to "${side}_not_durable",
+            )
+            for ((reference, reason) in endpoints) {
+                val outcome = TransactionAssembler.assembleUnmatchedOwnedTransfer(
+                    candidate = transferCandidate(
+                        event = event(
+                            family = family,
+                            amount = money("100.00"),
+                            source = reference.takeIf { outgoing },
+                            destination = reference.takeUnless { outgoing },
+                        ),
+                        sourceOwnership = if (outgoing) OwnershipStatus.OWNED else OwnershipStatus.UNKNOWN,
+                        destinationOwnership = if (outgoing) OwnershipStatus.UNKNOWN else OwnershipStatus.OWNED,
+                    ),
+                )
+                assertEquals(TransactionAssembler.Outcome.NeedsReview(listOf(reason)), outcome)
+            }
+        }
+    }
+
+    @Test
     fun ownedOwnedIntraBank_assembleSingle_defersUntilPairing() {
         val outcome = TransactionAssembler.assembleSingle(
             event = event(
