@@ -685,13 +685,13 @@ class AppContainer(
             processRawSms = processRawSmsUseCase,
             refreshDerivedState = {
                 discoverFromStoredEvents()
-                reconcileStoredEvents()
+                val report = transactionReconciliationService.reconcileStoredEventsDetailed()
                 FinancialTransactionEvidenceSyncer.syncMerchants(
                     transactions = financialTransactionRepository.listAll(),
                     parsedRecords = parsedEventRepository.listAll(),
                     repository = financialTransactionRepository,
                 )
-                refreshReviewQueue()
+                reviewWorkflowService.completeReconciliation(report)
                 enrichExchangeRatesBestEffort()
             },
             appLogService = appLogService,
