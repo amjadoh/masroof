@@ -12,7 +12,6 @@ import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
 import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
-import com.baraa.masroof.domain.ids.TransactionIdFactory
 import com.baraa.masroof.domain.ids.UserCorrectionIdFactory
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
 import com.baraa.masroof.domain.matching.TransferMatchPair
@@ -259,8 +258,7 @@ class ReviewWorkflowService(
         if (event.messageFamily != confirmedDirection.family) {
             return ReviewWorkflowResult.Rejected("transfer_evidence_changed")
         }
-        val amount = event.amount
-            ?: return ReviewWorkflowResult.Rejected("missing_amount")
+        if (event.amount == null) return ReviewWorkflowResult.Rejected("missing_amount")
         val raw = rawSmsRepository.getById(review.rawSmsId)
             ?: return ReviewWorkflowResult.Rejected("raw_sms_missing")
 
@@ -303,17 +301,12 @@ class ReviewWorkflowService(
             occurredAtLocal = record.details.occurredAtLocal,
             receivedAt = raw.receivedAt,
         )
-        val tx = FinancialTransaction(
-            id = TransactionIdFactory.fromRawSmsIds(listOf(review.rawSmsId)),
+        val tx = FinancialTransaction.fromSingleEvent(
+            event = event,
             type = type,
-            amount = amount,
             occurredAt = occurredAt,
             sourceContainerId = sourceId,
             destinationContainerId = destId,
-            merchant = event.merchant,
-            counterparty = event.counterparty,
-            categoryId = null,
-            linkedParsedEventIds = listOf(event.id),
             occurredAtZone = occurredAtZone,
         )
         return mapPersistResult(
@@ -546,17 +539,12 @@ class ReviewWorkflowService(
             occurredAtLocal = record.details.occurredAtLocal,
             receivedAt = raw.receivedAt,
         )
-        val tx = FinancialTransaction(
-            id = TransactionIdFactory.fromRawSmsIds(listOf(review.rawSmsId)),
+        val tx = FinancialTransaction.fromSingleEvent(
+            event = event,
             type = type,
-            amount = amount,
             occurredAt = occurredAt,
             sourceContainerId = sourceId,
             destinationContainerId = destId,
-            merchant = event.merchant,
-            counterparty = event.counterparty,
-            categoryId = null,
-            linkedParsedEventIds = listOf(event.id),
             occurredAtZone = occurredAtZone,
         )
         return mapPersistResult(
