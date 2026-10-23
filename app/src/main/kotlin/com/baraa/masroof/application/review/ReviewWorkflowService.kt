@@ -124,13 +124,17 @@ class ReviewWorkflowService(
             is OwnershipChange.Loan ->
                 parsedEventRepository.listRawSmsIdsReferencingLoan(change.loan)
         }
+        reconcileAffectedAndUpdateReviews(rawSmsIds)?.let { throw it }
+    }
+
+    private suspend fun reconcileAffectedAndUpdateReviews(rawSmsIds: Collection<String>): ReconciliationIncompleteException? {
         val report = try {
             reconciliationService.reconcileAffectedRawSmsIds(rawSmsIds)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             retainHistoricalRetry(rawSmsIds, failureCount = rawSmsIds.size.coerceAtLeast(1))
-            throw incomplete(rawSmsIds, rawSmsIds.size.coerceAtLeast(1))
+            return incomplete(rawSmsIds, rawSmsIds.size.coerceAtLeast(1))
         }
         try {
             reviewQueueUpdater.applyReport(report)
@@ -138,7 +142,7 @@ class ReviewWorkflowService(
             throw e
         } catch (_: Exception) {
             retainHistoricalRetry(rawSmsIds, failureCount = report.summary.failed.coerceAtLeast(1))
-            throw incomplete(
+            return incomplete(
                 rawSmsIds,
                 report.summary.failed.coerceAtLeast(1),
                 ReconciliationCompletionPolicy.STAGE_REVIEW_UPDATE,
@@ -147,8 +151,9 @@ class ReviewWorkflowService(
         if (!ReconciliationCompletionPolicy.isComplete(report)) {
             val failedIds = report.failedRawSmsIds.ifEmpty { rawSmsIds.toSet() }
             retainHistoricalRetry(failedIds, report.summary.failed)
-            throw incomplete(failedIds, report.summary.failed)
+            return incomplete(failedIds, report.summary.failed)
         }
+        return null
     }
 
     suspend fun listRequiredReviews(): List<ReviewItem> =
@@ -195,27 +200,15 @@ class ReviewWorkflowService(
         )
         userCorrectionRepository.save(correction)
 
-        val scope = listOf(review.rawSmsId)
-        val report = try {
-            reconciliationService.reconcileAffectedRawSmsIds(scope)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            retainHistoricalRetry(scope, failureCount = 1)
-            return ReviewWorkflowResult.Rejected("reconciliation_incomplete")
-        }
-        try {
-            reviewQueueUpdater.applyReport(report)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            retainHistoricalRetry(scope, failureCount = report.summary.failed.coerceAtLeast(1))
-            return ReviewWorkflowResult.Rejected("review_update_incomplete")
-        }
-        if (!ReconciliationCompletionPolicy.isComplete(report)) {
-            val failedIds = report.failedRawSmsIds.ifEmpty { scope.toSet() }
-            retainHistoricalRetry(failedIds, report.summary.failed)
-            return ReviewWorkflowResult.Rejected("reconciliation_incomplete")
+        val incomplete = reconcileAffectedAndUpdateReviews(listOf(review.rawSmsId))
+        if (incomplete != null) {
+            return ReviewWorkflowResult.Rejected(
+                if (incomplete.stage == ReconciliationCompletionPolicy.STAGE_REVIEW_UPDATE) {
+                    "review_update_incomplete"
+                } else {
+                    "reconciliation_incomplete"
+                },
+            )
         }
 
         val updated = reviewRepository.findByRawSmsId(review.rawSmsId)

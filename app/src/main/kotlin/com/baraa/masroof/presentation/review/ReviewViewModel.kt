@@ -70,10 +70,7 @@ class ReviewViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
             try {
-                val summaries = when (_uiState.value.listMode) {
-                    ReviewListMode.PENDING -> detailLoader.loadSummaries()
-                    ReviewListMode.IGNORED -> detailLoader.loadIgnoredSummaries()
-                }
+                val summaries = loadCurrentSummaries()
                 applySummaries(summaries)
             } catch (ce: CancellationException) {
                 throw ce
@@ -147,11 +144,7 @@ class ReviewViewModel(
                         return@launch
                     }
                 }
-                val pairCandidates = if (detail.review.kind == ReviewKind.PENDING_MATCH) {
-                    detailLoader.loadPairCandidates(reviewId).map(::toListItem)
-                } else {
-                    emptyList()
-                }
+                val pairCandidates = pairCandidatesFor(detail)
                 _uiState.update {
                     it.copy(
                         loading = false,
@@ -201,11 +194,7 @@ class ReviewViewModel(
                     refreshAfterAction(message = ReviewMessage.RESOLVED, closeDetail = true)
                     return@launch
                 }
-                val pairCandidates = if (detail.review.kind == ReviewKind.PENDING_MATCH) {
-                    detailLoader.loadPairCandidates(reviewId).map(::toListItem)
-                } else {
-                    emptyList()
-                }
+                val pairCandidates = pairCandidatesFor(detail)
                 val stillChoosing = ExplicitBankSelection.offersBankChoice(detail.review.reasons)
                 _uiState.update {
                     it.copy(
@@ -239,10 +228,7 @@ class ReviewViewModel(
             try {
                 when (val result = transactionRestoreService.restore(rawSmsId, newType)) {
                     is RestoreResult.Success -> {
-                        val summaries = when (_uiState.value.listMode) {
-                            ReviewListMode.PENDING -> detailLoader.loadSummaries()
-                            ReviewListMode.IGNORED -> detailLoader.loadIgnoredSummaries()
-                        }
+                        val summaries = loadCurrentSummaries()
                         applySummaries(summaries)
                         _uiState.update {
                             it.copy(
@@ -309,11 +295,7 @@ class ReviewViewModel(
                         )
                         return@launch
                     }
-                    val pairCandidates = if (detail.review.kind == ReviewKind.PENDING_MATCH) {
-                        detailLoader.loadPairCandidates(reviewId).map(::toListItem)
-                    } else {
-                        emptyList()
-                    }
+                    val pairCandidates = pairCandidatesFor(detail)
                     _uiState.update {
                         it.copy(
                             loading = false,
@@ -366,8 +348,7 @@ class ReviewViewModel(
                     is ReviewWorkflowResult.Rejected -> {
                         if (result.reason == "transfer_evidence_changed") {
                             val detail = _uiState.value.selectedDetail?.let { detailLoader.loadDetail(it.id) }
-                            val candidates = if (detail?.review?.kind == ReviewKind.PENDING_MATCH)
-                                detailLoader.loadPairCandidates(detail.review.id).map(::toListItem) else emptyList()
+                            val candidates = detail?.let { pairCandidatesFor(it) }.orEmpty()
                             val updated = detail?.let { toDetailUi(it, candidates) }
                             _uiState.update { it.copy(selectedDetail = updated) }
                         }
@@ -394,10 +375,7 @@ class ReviewViewModel(
         message: ReviewMessage,
         closeDetail: Boolean,
     ) {
-        val summaries = when (_uiState.value.listMode) {
-            ReviewListMode.PENDING -> detailLoader.loadSummaries()
-            ReviewListMode.IGNORED -> detailLoader.loadIgnoredSummaries()
-        }
+        val summaries = loadCurrentSummaries()
         val items = summaries.map(::toListItem)
         _uiState.update {
             it.copy(
@@ -411,6 +389,19 @@ class ReviewViewModel(
             )
         }
     }
+
+    private suspend fun loadCurrentSummaries(): List<ReviewDetailLoader.ReviewSummary> =
+        when (_uiState.value.listMode) {
+            ReviewListMode.PENDING -> detailLoader.loadSummaries()
+            ReviewListMode.IGNORED -> detailLoader.loadIgnoredSummaries()
+        }
+
+    private suspend fun pairCandidatesFor(detail: ReviewDetailLoader.ReviewDetail): List<ReviewListItemUi> =
+        if (detail.review.kind == ReviewKind.PENDING_MATCH) {
+            detailLoader.loadPairCandidates(detail.review.id).map(::toListItem)
+        } else {
+            emptyList()
+        }
 
     private fun applySummaries(summaries: List<ReviewDetailLoader.ReviewSummary>) {
         val items = summaries.map(::toListItem)
