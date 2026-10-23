@@ -125,23 +125,6 @@ fun MessageFamily?.toUiLabelRes(): Int? =
         else -> null
     }
 
-fun FinancialTransactionType.toUiLabelRes(): Int =
-    when (this) {
-        FinancialTransactionType.EXPENSE -> com.baraa.masroof.R.string.txn_type_expense
-        FinancialTransactionType.INCOME -> com.baraa.masroof.R.string.txn_type_income
-        FinancialTransactionType.CREDIT_CARD_PAYMENT -> com.baraa.masroof.R.string.txn_type_card_payment
-        FinancialTransactionType.REFUND -> com.baraa.masroof.R.string.txn_type_refund
-        FinancialTransactionType.CASH_WITHDRAWAL -> com.baraa.masroof.R.string.txn_type_cash_withdrawal
-        FinancialTransactionType.BILL_PAYMENT -> com.baraa.masroof.R.string.txn_type_bill_payment
-        FinancialTransactionType.LOAN_REPAYMENT -> com.baraa.masroof.R.string.txn_type_loan_repayment
-        FinancialTransactionType.FEE -> com.baraa.masroof.R.string.txn_type_fee
-        FinancialTransactionType.ADJUSTMENT -> com.baraa.masroof.R.string.txn_type_adjustment
-        FinancialTransactionType.SELF_TRANSFER -> com.baraa.masroof.R.string.txn_type_self_transfer
-        FinancialTransactionType.EXTERNAL_TRANSFER_IN -> com.baraa.masroof.R.string.txn_type_external_in
-        FinancialTransactionType.EXTERNAL_TRANSFER_OUT -> com.baraa.masroof.R.string.txn_type_external_out
-        FinancialTransactionType.UNKNOWN -> com.baraa.masroof.R.string.txn_type_unknown
-    }
-
 fun ReviewKind.toUiLabelRes(): Int =
     when (this) {
         ReviewKind.NEEDS_REVIEW -> com.baraa.masroof.R.string.review_kind_needs_review
