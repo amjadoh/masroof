@@ -62,35 +62,30 @@ fun DashboardFlowDetailScreen(
         title = stringResource(presentation.titleRes),
         state = state,
         onBack = onBack,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            com.baraa.masroof.presentation.common.MasroofHeroCard(
-                stringResource(presentation.totalTitleRes), formattedTotal,
-                guidance = stringResource(presentation.totalHintRes),
-                role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.ui.theme.MasroofHeroRole.Inflow else com.baraa.masroof.ui.theme.MasroofHeroRole.Outflow)
-            MasroofCard {
-                val rows = when (mode) {
-                    DashboardFlowDetailMode.Expense -> coreExpenseSummaryRows(summary)
-                    DashboardFlowDetailMode.Income -> coreIncomeSummaryRows(summary)
-                }
-                FlowDetailSummarySection(rows, presentation.direction)
+    ) {
+        com.baraa.masroof.presentation.common.MasroofHeroCard(
+            stringResource(presentation.totalTitleRes), formattedTotal,
+            guidance = stringResource(presentation.totalHintRes),
+            role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.ui.theme.MasroofHeroRole.Inflow else com.baraa.masroof.ui.theme.MasroofHeroRole.Outflow)
+        MasroofCard {
+            val rows = when (mode) {
+                DashboardFlowDetailMode.Expense -> coreExpenseSummaryRows(summary)
+                DashboardFlowDetailMode.Income -> coreIncomeSummaryRows(summary)
             }
+            FlowDetailSummarySection(rows, presentation.direction)
+        }
 
-            val flowTransactions = when (mode) {
-                DashboardFlowDetailMode.Expense -> grouping.expense.values
-                DashboardFlowDetailMode.Income -> grouping.income.values
-            }.flatten().mapNotNull { previewsById[it.id] }.sortedWith(
-                compareByDescending<TransactionPreviewUi> { it.localDate }.thenByDescending { it.id },
+        val flowTransactions = when (mode) {
+            DashboardFlowDetailMode.Expense -> grouping.expense.values
+            DashboardFlowDetailMode.Income -> grouping.income.values
+        }.flatten().mapNotNull { previewsById[it.id] }.sortedWith(
+            compareByDescending<TransactionPreviewUi> { it.localDate }.thenByDescending { it.id },
+        )
+        if (flowTransactions.isNotEmpty()) {
+            DashboardSummaryTransactionsSection(
+                transactions = flowTransactions,
+                onOpenTransaction = onOpenTransaction,
             )
-            if (flowTransactions.isNotEmpty()) {
-                DashboardSummaryTransactionsSection(
-                    transactions = flowTransactions,
-                    onOpenTransaction = onOpenTransaction,
-                )
-            }
         }
     }
 }

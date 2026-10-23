@@ -3,7 +3,6 @@ package com.baraa.masroof.presentation.dashboard
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
@@ -19,15 +18,14 @@ import com.baraa.masroof.presentation.common.MasroofMetric
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.ui.theme.MasroofReference
 import com.baraa.masroof.ui.theme.MasroofThemeExtras
-import com.baraa.masroof.ui.theme.MasroofSpacing
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTransaction: (String) -> Unit) {
     val ordinary = state.spendingTrends?.overall ?: state.dailySpendingTrend ?: return
     if (ordinary.points.isEmpty()) {
-        DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) { modifier ->
-            com.baraa.masroof.presentation.common.MasroofCard(modifier) {
+        DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) {
+            com.baraa.masroof.presentation.common.MasroofCard(Modifier.fillMaxWidth()) {
                 com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.dashboard_chart_no_elapsed_days),
                     style = MaterialTheme.typography.bodySmall)
             }
@@ -44,32 +42,30 @@ fun DailyExpensesScreen(state: DashboardUiState, onBack: () -> Unit, onOpenTrans
     val names = state.ownedCards.associate { CardOwnershipKey.of(it.bank, it.last4) to
         (it.displayName ?: com.baraa.masroof.presentation.common.formatCardLast4(it.last4)) }
     val allLabel = stringResource(R.string.approved_all_expenses)
-    DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) { modifier ->
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
-                val keys = listOf("all") + names.keys.toList()
-                com.baraa.masroof.presentation.common.MasroofSelect(names[scope] ?: allLabel,
-                    keys.map { names[it] ?: allLabel }, { scope = keys[it] }, Modifier.weight(1f), label = allLabel)
-                com.baraa.masroof.presentation.common.MasroofSelect(date.format(point.date),
-                    trend.points.map { date.format(it.date) }, { day = trend.points[it].date.toString() }, Modifier.weight(1f),
-                    label = stringResource(R.string.reference_day_view))
-            }
-            MasroofHeroCard(stringResource(R.string.reference_daily_net, date.format(point.date)), formatLocalizedMoney(point.spending))
-            SpendingTrendSection(trend, stringResource(R.string.reference_daily_title), selectedDate = point.date,
-                onDaySelected = { day = it.toString() }, chartKey = chartKey,
-                scopeLabel = names[scope] ?: allLabel,
-                explanation = stringResource(if (scope == "all") R.string.dashboard_all_trend_basis
-                    else if (state.creditFacilities?.debitCards?.any { CardOwnershipKey.of(it) == scope } == true)
-                        R.string.dashboard_mada_trend_basis else R.string.approved_card_expense_basis))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
-                MasroofMetric(stringResource(R.string.reference_before_refunds), formatLocalizedMoney(point.beforeRefunds),
-                    MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
-                MasroofMetric(stringResource(R.string.reference_day_refunds), formatLocalizedMoney(point.refunds),
-                    MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))
-            }
-            val ids = trend.transactionIdsByDate[point.date].orEmpty()
-            DashboardSummaryTransactionsSection(state.allTransactions.filter { it.id in ids }, onOpenTransaction,
-                ownedCards = state.ownedCards, title = stringResource(R.string.reference_day_transactions))
+    DashboardSummaryScaffold(stringResource(R.string.reference_daily_title), state, onBack) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
+            val keys = listOf("all") + names.keys.toList()
+            com.baraa.masroof.presentation.common.MasroofSelect(names[scope] ?: allLabel,
+                keys.map { names[it] ?: allLabel }, { scope = keys[it] }, Modifier.weight(1f), label = allLabel)
+            com.baraa.masroof.presentation.common.MasroofSelect(date.format(point.date),
+                trend.points.map { date.format(it.date) }, { day = trend.points[it].date.toString() }, Modifier.weight(1f),
+                label = stringResource(R.string.reference_day_view))
         }
+        MasroofHeroCard(stringResource(R.string.reference_daily_net, date.format(point.date)), formatLocalizedMoney(point.spending))
+        SpendingTrendSection(trend, stringResource(R.string.reference_daily_title), selectedDate = point.date,
+            onDaySelected = { day = it.toString() }, chartKey = chartKey,
+            scopeLabel = names[scope] ?: allLabel,
+            explanation = stringResource(if (scope == "all") R.string.dashboard_all_trend_basis
+                else if (state.creditFacilities?.debitCards?.any { CardOwnershipKey.of(it) == scope } == true)
+                    R.string.dashboard_mada_trend_basis else R.string.approved_card_expense_basis))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
+            MasroofMetric(stringResource(R.string.reference_before_refunds), formatLocalizedMoney(point.beforeRefunds),
+                MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
+            MasroofMetric(stringResource(R.string.reference_day_refunds), formatLocalizedMoney(point.refunds),
+                MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))
+        }
+        val ids = trend.transactionIdsByDate[point.date].orEmpty()
+        DashboardSummaryTransactionsSection(state.allTransactions.filter { it.id in ids }, onOpenTransaction,
+            ownedCards = state.ownedCards, title = stringResource(R.string.reference_day_transactions))
     }
 }

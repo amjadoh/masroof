@@ -72,33 +72,28 @@ fun MerchantSpendingSummaryScreen(
         title = stringResource(R.string.dashboard_merchants_summary_title),
         state = state,
         onBack = onBack,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
-                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_period_view), true, {})
-                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_day_view), false, onOpenDaily)
-            }
-            MasroofSectionTitle(
-                title = stringResource(R.string.dashboard_merchants_summary_title),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+            com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_period_view), true, {})
+            com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_day_view), false, onOpenDaily)
+        }
+        MasroofSectionTitle(
+            title = stringResource(R.string.dashboard_merchants_summary_title),
+        )
+        if (!overview.hasContent) {
+            Text(
+                stringResource(R.string.dashboard_merchants_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!overview.hasContent) {
-                Text(
-                    stringResource(R.string.dashboard_merchants_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(
-                    stringResource(R.string.dashboard_merchants_qualifying_count, overview.merchants.size),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                overview.merchants.forEach { row ->
-                    MerchantSpendingListRow(row = row, onClick = { onOpenMerchant(row) })
-                }
+        } else {
+            Text(
+                stringResource(R.string.dashboard_merchants_qualifying_count, overview.merchants.size),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = MasroofFontWeights.bold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            overview.merchants.forEach { row ->
+                MerchantSpendingListRow(row = row, onClick = { onOpenMerchant(row) })
             }
         }
     }
@@ -157,17 +152,12 @@ private fun MerchantSpendingDetailScreen(
         title = row.displayName,
         state = state,
         onBack = onBack,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            MerchantSpendingListRow(row = row, onClick = {})
-            DashboardSummaryTransactionsSection(
-                transactions = transactions,
-                onOpenTransaction = onOpenTransaction,
-                ownedCards = state.ownedCards,
-            )
-        }
+    ) {
+        MerchantSpendingListRow(row = row, onClick = {})
+        DashboardSummaryTransactionsSection(
+            transactions = transactions,
+            onOpenTransaction = onOpenTransaction,
+            ownedCards = state.ownedCards,
+        )
     }
 }
