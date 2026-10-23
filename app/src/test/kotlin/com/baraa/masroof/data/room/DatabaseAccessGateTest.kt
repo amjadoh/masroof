@@ -55,6 +55,30 @@ class DatabaseAccessGateTest {
     }
 
     @Test
+    fun shutdownDrainsTheWholeWorkerLease_includingLaterRepositoryOperations() = runTest {
+        val gate = DatabaseAccessGate()
+        val release = CompletableDeferred<Unit>()
+        val events = mutableListOf<String>()
+        val worker = launch {
+            gate.withAccess {
+                events += "parsed"
+                release.await()
+                gate.withAccess { events += "reconciled" }
+            }
+        }
+        runCurrent()
+        val closing = launch { gate.retireAndDrain(); events += "closed" }
+        runCurrent()
+        assertFalse(closing.isCompleted)
+        val rejected = runCatching { gate.withAccess { error("new work entered during close") } }.exceptionOrNull()
+        assertTrue(rejected is DatabaseRestartRequiredException)
+        release.complete(Unit)
+        worker.join()
+        closing.join()
+        assertEquals(listOf("parsed", "reconciled", "closed"), events)
+    }
+
+    @Test
     fun cancellationWhileDraining_reopensAdmissionWithoutLosingAnActiveLease() = runTest {
         val gate = DatabaseAccessGate()
         val release = CompletableDeferred<Unit>()

@@ -62,12 +62,6 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest :bank-engine:test :finance-core:test :ml-assist:test --stacktrace
 
-      - name: Verify trained model reproducibility
-        run: |
-          python3 ml-assist/tools/test_train_family_model.py
-          python3 ml-assist/tools/train_family_model.py --check
-          python3 ml-assist/tools/test_training.py
-
       - name: Upload Android unit-test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,6 +74,14 @@ jobs:
             finance-core/build/reports/tests/
             ml-assist/build/reports/tests/
           if-no-files-found: warn
+
+      # Training re-runs FamilyFeatureExportTest and replaces app's Gradle test report.
+      # Upload the complete suite first so its regressions remain reviewable.
+      - name: Verify trained model reproducibility
+        run: |
+          python3 ml-assist/tools/test_train_family_model.py
+          python3 ml-assist/tools/train_family_model.py --check
+          python3 ml-assist/tools/test_training.py
 
   static-analysis:
     runs-on: ubuntu-latest
