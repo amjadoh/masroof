@@ -108,6 +108,12 @@ android {
             // The feature-export test enrolls only explicitly reviewed corpus ids.
             it.inputs.file(rootProject.file("ml-assist/tools/corpus-splits.json"))
                 .withPathSensitivity(PathSensitivity.RELATIVE)
+            // Architecture/schema tests read source files, including relocated policies.
+            it.inputs.files(
+                fileTree("src/main/kotlin") { include("**/*.kt") },
+                rootProject.fileTree("finance-core/src/main/kotlin") { include("**/*.kt") },
+                fileTree("schemas/com.baraa.masroof.data.room.MasroofDatabase") { include("*.json") },
+            ).withPathSensitivity(PathSensitivity.RELATIVE)
             if (it.name == "testDebugUnitTest") {
                 it.outputs.file(layout.buildDirectory.file("model-training/features.json"))
             }

@@ -39,6 +39,13 @@ class ModuleBoundaryTest {
                     assertTrue("${file.name} imports ${match.groupValues[1]}",
                         allowed.any { match.groupValues[1].startsWith(it) })
                 }
+                // Fully qualified calls must not bypass the import boundary. In particular,
+                // bank-engine can use finance values, but never financial posting policies.
+                Regex("\\bcom\\.baraa\\.masroof(?:\\.[A-Za-z_][A-Za-z_0-9]*|\\.\\*)+")
+                    .findAll(file.readText()).forEach { match ->
+                        assertTrue("${file.name} references ${match.value}",
+                            allowed.any { match.value == it.removeSuffix(".") || match.value.startsWith(it) })
+                    }
                 assertFalse("Fully qualified Android API in ${file.name}",
                     Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()))
                 if (module == "bank-engine") assertFalse("ML implementation leaked into engine: ${file.name}",

@@ -4,11 +4,35 @@ Masroof has one Android application, one financial database and one bank interpr
 
 ## Modules
 
-- `app`: presentation → application workflows → domain/parsing/data/SMS/bank ports. `AppContainer` wires the only production runtime.
+- `app`: presentation → application workflows → domain/parsing/data/SMS/bank ports and the pure financial core. `AppContainer` wires the only production runtime.
 - `bank-engine`: pure Kotlin interpretation and literal rules, depending only on `finance-core` value contracts. `NewEngineSmsAdapter` maps its output through `InterpretationDraftMapper` and the production `ParseFinalizer`.
-- `finance-core`: bank/money value contracts; no parallel financial ledger or calculators.
+- `finance-core`: production money/value models, salary and statement periods, bank transaction time, deterministic container/transaction identities, financial classification/impact, transfer matching and assembly, and statement matching. Policies consume supplied facts and return decisions or transactions in memory; there is no ledger, repository, Android dependency or I/O. Existing engine value contracts remain available separately.
 - `ml-assist`: local family classifier, cleaned human templates, forecasting and recurring-pattern detection. The engine consumes an injected assistance contract rather than depending on ML implementation.
 - `ui-kit`: shared theme, typography, fonts, cards and charts. It cannot access financial storage.
+
+## Financial policy ownership
+
+The extracted sources keep their original `com.baraa.masroof.core.money` and
+`com.baraa.masroof.domain.*` packages, public signatures and persisted enum values.
+Only the value models needed by those policies move. The two existing Money
+contracts are not unified. `bank-engine` may still reference only
+`com.baraa.masroof.lab.finance.value`; depending on the core module does not give
+it authority to classify, match or assemble financial transactions.
+
+Ownership lookup/discovery/confirmation, repository ports, reconciliation,
+human correction, durable retry and `ReconciliationCompletionPolicy` stay in
+`app`. Assembly returns an in-memory outcome; the existing application workflow
+still checks current evidence and human decisions inside the financial write
+transaction. Dashboard builders/calculators and evidence scoping also stay in
+`app`. The statement match policy and direction value live in core; canonical
+CSV parsing, its stream interface and reconciliation workflow stay in app.
+
+This extraction preserves schema v18 and the existing write paths. It introduces
+no backfill, history reparse, new database, worker, backup format or UI behavior.
+Policy tests run directly on JVM in `finance-core`; app integration tests cover
+the unchanged persistence, orchestration and dashboard paths. Architecture checks
+scan both source roots, require the moved policies to exist in core, reject
+app-side copies and reject fully qualified calls that bypass module import rules.
 
 ## Processing and authority
 

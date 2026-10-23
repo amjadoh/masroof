@@ -13,3 +13,11 @@ detekt {
     buildUponDefaultConfig = false
     parallel = true
 }
+
+// Ownership checks inspect the app tree as well as this module's sources.
+tasks.test {
+    inputs.files(
+        fileTree("src/main/kotlin") { include("**/*.kt") },
+        rootProject.fileTree("app/src/main/kotlin") { include("**/*.kt") },
+    ).withPathSensitivity(PathSensitivity.RELATIVE)
+}
