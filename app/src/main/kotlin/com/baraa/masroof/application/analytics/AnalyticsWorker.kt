@@ -15,8 +15,6 @@ import com.baraa.masroof.MainActivity
 import com.baraa.masroof.data.analytics.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.TimeUnit
 
 class AnalyticsWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -35,25 +33,6 @@ class AnalyticsWorker(context: Context, params: WorkerParameters) : CoroutineWor
     }
 }
 
-object AnalyticsNavigation {
-    private val mutable = MutableStateFlow<String?>(null)
-    val target = mutable.asStateFlow()
-    private val visible = MutableStateFlow(false)
-    val analysisVisible = visible.asStateFlow()
-    fun setAnalysisVisible(value: Boolean) { visible.value = value }
-    private var returnToCenter = false
-    private val returns = MutableStateFlow(0L)
-    val centerReturns = returns.asStateFlow()
-    fun open(alert: String = "", fromCenter: Boolean = false) { returnToCenter = fromCenter; mutable.value = alert }
-    /** Consume the destination without losing its origin while displaying details. */
-    fun clear() { mutable.value = null }
-    fun reset() { clear(); returnToCenter = false; visible.value = false }
-    fun finish() {
-        clear()
-        if (returnToCenter) returns.value += 1
-        returnToCenter = false
-    }
-}
 
 object AnalyticsNotifications {
     private const val CHANNEL = "masroof_analysis"

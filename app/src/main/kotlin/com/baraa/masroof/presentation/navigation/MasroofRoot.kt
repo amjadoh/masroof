@@ -172,9 +172,9 @@ private fun MasroofContent(
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
 
-    val labTarget by com.baraa.masroof.application.analytics.AnalyticsNavigation.target.collectAsState()
+    val labTarget by AnalyticsNavigation.target.collectAsState()
     LaunchedEffect(labTarget) { if (labTarget != null) { dashboardViewModel.closeTransactionDetail(); homeDestination = HomeDestination.Dashboard } }
-    val labCenterReturns by com.baraa.masroof.application.analytics.AnalyticsNavigation.centerReturns.collectAsState()
+    val labCenterReturns by AnalyticsNavigation.centerReturns.collectAsState()
     var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
     LaunchedEffect(labCenterReturns) {
         if (labCenterReturns > consumedLabCenterReturn) homeDestination = HomeDestination.NotificationCenter
@@ -218,6 +218,20 @@ private fun MasroofContent(
         homeDestination = HomeDestination.Review
     }
 
+    fun returnFromSettings() {
+        homeDestination = settingsReturnDestination
+        dashboardViewModel.refresh()
+    }
+
+    fun returnFromReview() {
+        homeDestination = reviewReturnDestination
+        if (reviewReturnToAnalysis) {
+            AnalyticsNavigation.open("resume")
+            reviewReturnToAnalysis = false
+        }
+        if (reviewReturnDestination == HomeDestination.Dashboard) dashboardViewModel.refresh()
+    }
+
     fun openTransactionList(
         filter: TransactionListFilterState? = null,
         returnTo: HomeDestination = HomeDestination.Dashboard,
@@ -239,51 +253,25 @@ private fun MasroofContent(
 
     if (onboardingState.step == OnboardingStep.HOME) {
         BackHandler {
-            when {
-                dashboardState.selectedTransactionId != null ->
-                    dashboardViewModel.closeTransactionDetail()
-
-                homeDestination == HomeDestination.AllTransactions ->
-                    homeDestination = transactionListReturnDestination
-
-                homeDestination == HomeDestination.AccountsSummary ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.CardsSummary ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.LoansSummary ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.CommitmentsSummary ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.MerchantsSummary ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.NotificationCenter ->
-                    homeDestination = HomeDestination.Dashboard
-
-                homeDestination == HomeDestination.DailyExpenses -> homeDestination = HomeDestination.MerchantsSummary
-
-                homeDestination == HomeDestination.Settings -> {
-                    homeDestination = settingsReturnDestination
-                    dashboardViewModel.refresh()
-                }
-
-                homeDestination == HomeDestination.Review ->
-                    if (reviewState.selectedDetail != null) {
-                        reviewViewModel.closeDetail()
-                    } else {
-                        homeDestination = reviewReturnDestination
-                        if (reviewReturnToAnalysis) { com.baraa.masroof.application.analytics.AnalyticsNavigation.open("resume"); reviewReturnToAnalysis = false }
-                        if (reviewReturnDestination == HomeDestination.Dashboard) {
-                            dashboardViewModel.refresh()
-                        }
+            if (dashboardState.selectedTransactionId != null) {
+                dashboardViewModel.closeTransactionDetail()
+            } else {
+                when (homeDestination) {
+                    HomeDestination.AllTransactions -> homeDestination = transactionListReturnDestination
+                    HomeDestination.AccountsSummary,
+                    HomeDestination.CardsSummary,
+                    HomeDestination.LoansSummary,
+                    HomeDestination.CommitmentsSummary,
+                    HomeDestination.MerchantsSummary,
+                    HomeDestination.NotificationCenter,
+                    -> homeDestination = HomeDestination.Dashboard
+                    HomeDestination.DailyExpenses -> homeDestination = HomeDestination.MerchantsSummary
+                    HomeDestination.Settings -> returnFromSettings()
+                    HomeDestination.Review -> {
+                        if (reviewState.selectedDetail != null) reviewViewModel.closeDetail() else returnFromReview()
                     }
-
-                else -> {
                     // Consume system back on the home screen — do not exit the app.
+                    HomeDestination.Dashboard -> Unit
                 }
             }
         }
@@ -292,7 +280,7 @@ private fun MasroofContent(
             homeDestination == HomeDestination.AllTransactions &&
                 dashboardState.selectedTransactionId != null
 
-        val labAnalysisVisible by com.baraa.masroof.application.analytics.AnalyticsNavigation.analysisVisible.collectAsState()
+        val labAnalysisVisible by AnalyticsNavigation.analysisVisible.collectAsState()
         val labOverlayDetail = homeDestination == HomeDestination.Dashboard && labAnalysisVisible && dashboardState.selectedTransactionId != null
         if (!detailOpenedFromAllTransactions && !labOverlayDetail) {
             if (showTransactionDetail(
@@ -502,13 +490,7 @@ private fun MasroofContent(
             )
             HomeDestination.Review -> ReviewRoute(
                 viewModel = reviewViewModel,
-                onBack = {
-                    homeDestination = reviewReturnDestination
-                    if (reviewReturnToAnalysis) { com.baraa.masroof.application.analytics.AnalyticsNavigation.open("resume"); reviewReturnToAnalysis = false }
-                    if (reviewReturnDestination == HomeDestination.Dashboard) {
-                        dashboardViewModel.refresh()
-                    }
-                },
+                onBack = ::returnFromReview,
             )
             HomeDestination.AllTransactions -> {
                 val ownedCardKeys = remember(dashboardState.ownedCards) {
@@ -545,10 +527,7 @@ private fun MasroofContent(
                 reviewRequiredCount = dashboardState.summary?.reviewRequiredCount ?: 0,
                 pendingLaunch = pendingSettingsLaunch,
                 onPendingLaunchConsumed = { pendingSettingsLaunch = null },
-                onBack = {
-                    homeDestination = settingsReturnDestination
-                    dashboardViewModel.refresh()
-                },
+                onBack = ::returnFromSettings,
                 onOpenReview = { openReview(returnTo = HomeDestination.Settings) },
                 onLocaleChanged = onLocaleChanged,
                 onRequestExport = onRequestExport,

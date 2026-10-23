@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
+
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
@@ -138,15 +140,15 @@ internal fun DashboardScreen(
     onOpenReview: () -> Unit = {},
 ) {
     var labAnalysisOpen by rememberSaveable { mutableStateOf(false) }
-    val labDestination by com.baraa.masroof.application.analytics.AnalyticsNavigation.target.collectAsState()
+    val labDestination by AnalyticsNavigation.target.collectAsState()
     LaunchedEffect(labDestination) { if (labDestination != null) labAnalysisOpen = true }
     if (labAnalysisOpen) {
         androidx.compose.runtime.DisposableEffect(Unit) {
-            com.baraa.masroof.application.analytics.AnalyticsNavigation.setAnalysisVisible(true)
-            onDispose { com.baraa.masroof.application.analytics.AnalyticsNavigation.setAnalysisVisible(false) }
+            AnalyticsNavigation.setAnalysisVisible(true)
+            onDispose { AnalyticsNavigation.setAnalysisVisible(false) }
         }
         com.baraa.masroof.presentation.analytics.LabAnalyticsRoute(
-            onBack = { labAnalysisOpen = false; com.baraa.masroof.application.analytics.AnalyticsNavigation.finish() },
+            onBack = { labAnalysisOpen = false; AnalyticsNavigation.finish() },
             onOpenTransaction = onOpenTransaction,
             onOpenReview = onOpenReview, onRequestSmsPermission = onRequestSmsPermission, onRescan = onRescan,
         )

@@ -43,35 +43,8 @@ internal fun ManageSettingsTarget.toRegistryCategory(): SettingsRegistryCategory
         ManageSettingsTarget.Loans -> SettingsRegistryCategory.Loans
     }
 
-internal fun resolvePendingDestination(
-    pending: SettingsDestination,
-    state: SettingsUiState,
-): SettingsDestination =
-    when (pending) {
-        SettingsDestination.Banks -> SettingsDestination.MyAccounts
-        SettingsDestination.MyAccounts,
-        SettingsDestination.MyCards,
-        SettingsDestination.MyLoans,
-        SettingsDestination.MyCommitments,
-        is SettingsDestination.CommitmentDetail,
-        is SettingsDestination.BankAccounts,
-        is SettingsDestination.BankCards,
-        is SettingsDestination.BankLoans,
-        is SettingsDestination.BankHub,
-        SettingsDestination.App,
-        SettingsDestination.DataBackup,
-        SettingsDestination.Updates,
-        SettingsDestination.ExportBackup,
-        SettingsDestination.RestoreBackup,
-        SettingsDestination.DataTools,
-        SettingsDestination.StatementReconciliation,
-        SettingsDestination.Hub,
-        SettingsDestination.About,
-        SettingsDestination.Logs,
-        SettingsDestination.MessageLearning,
-        SettingsDestination.DesignCatalog,
-        -> pending
-    }
+internal fun resolvePendingDestination(pending: SettingsDestination): SettingsDestination =
+    if (pending == SettingsDestination.Banks) SettingsDestination.MyAccounts else pending
 
 internal fun resolveManageSettingsLaunch(
     state: SettingsUiState,
