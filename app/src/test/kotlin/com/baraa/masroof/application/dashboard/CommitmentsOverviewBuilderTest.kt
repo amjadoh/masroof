@@ -916,6 +916,96 @@ class CommitmentsOverviewBuilderTest {
         assertEquals(Money.of("112.50", Currency.SAR), overview.rows.single().amount)
     }
 
+    @Test
+    fun monthlyCommitment_countsEveryPaymentInSalaryPeriodWhenAmountIncreases() {
+        val salaryPeriod = FinancialPeriod(
+            startDate = LocalDate.parse("2026-09-27"),
+            endDateExclusive = LocalDate.parse("2026-10-27"),
+        )
+        val septemberPayment = transaction(
+            id = "chatgpt-september",
+            merchant = "Google ChatGPT",
+            amount = "267.93",
+            at = Instant.parse("2026-09-29T18:21:00Z"),
+        )
+        val octoberPayment = transaction(
+            id = "chatgpt-october",
+            merchant = "Google ChatGPT",
+            amount = "429.99",
+            at = Instant.parse("2026-10-21T18:21:00Z"),
+        )
+        val beforePeriod = septemberPayment.copy(
+            id = "before-period",
+            occurredAt = FinancialPeriodPolicy.toInclusiveStartInstant(salaryPeriod.startDate, zone).minusSeconds(1),
+        )
+        val afterPeriod = octoberPayment.copy(
+            id = "after-period",
+            occurredAt = FinancialPeriodPolicy.toExclusiveEndInstant(salaryPeriod.endDateExclusive, zone),
+        )
+        val overview = CommitmentsOverviewBuilder.build(
+            salaryPeriod = salaryPeriod,
+            commitments = listOf(
+                commitment(
+                    name = "Google ChatGPT",
+                    amount = septemberPayment.amount,
+                    sourceTransactionId = septemberPayment.id,
+                    recurrence = CommitmentRecurrence.MONTHLY,
+                    transactionDate = LocalDate.parse("2026-09-29"),
+                ),
+            ),
+            creditFacilities = CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR),
+            loansOverview = LoansOverview(emptyList(), null, Currency.SAR),
+            transactions = listOf(afterPeriod, octoberPayment, beforePeriod, septemberPayment),
+            primaryCurrency = Currency.SAR,
+            sarEquivalents = emptyMap(),
+            zoneId = zone,
+        )
+
+        assertEquals(listOf(septemberPayment.id, octoberPayment.id), overview.rows.map { it.paymentTransactionId })
+        assertEquals(listOf(septemberPayment.amount, octoberPayment.amount), overview.rows.map { it.amount })
+        assertEquals(
+            listOf(LocalDate.parse("2026-09-29"), LocalDate.parse("2026-10-21")),
+            overview.rows.map { it.expectedDate },
+        )
+        assertTrue(overview.rows.all { it.status == CommitmentPaymentStatus.PAID })
+        assertEquals(Money.of("697.92", Currency.SAR), overview.total)
+        assertEquals(overview.total, overview.paid)
+        assertEquals(Money.zero(Currency.SAR), overview.remaining)
+    }
+
+    @Test
+    fun recurringCommitment_keepsSeparatePaymentsOnSameDayWithUniqueKeys() {
+        val firstPayment = transaction(
+            id = "first-payment",
+            merchant = "Subscription",
+            amount = "100",
+            at = Instant.parse("2026-08-01T10:00:00Z"),
+        )
+        val secondPayment = firstPayment.copy(id = "second-payment", amount = Money.of("150", Currency.SAR))
+        val overview = CommitmentsOverviewBuilder.build(
+            salaryPeriod = period,
+            commitments = listOf(
+                commitment(
+                    name = "Subscription",
+                    amount = firstPayment.amount,
+                    sourceTransactionId = firstPayment.id,
+                    recurrence = CommitmentRecurrence.MONTHLY,
+                ),
+            ),
+            creditFacilities = CreditFacilitiesOverview(emptyList(), emptyList(), Currency.SAR),
+            loansOverview = LoansOverview(emptyList(), null, Currency.SAR),
+            transactions = listOf(firstPayment, secondPayment),
+            primaryCurrency = Currency.SAR,
+            sarEquivalents = emptyMap(),
+            zoneId = zone,
+        )
+
+        assertEquals(2, overview.rows.size)
+        assertEquals(2, overview.rows.map { it.key }.distinct().size)
+        assertEquals(Money.of("250", Currency.SAR), overview.paid)
+        assertEquals(Money.zero(Currency.SAR), overview.remaining)
+    }
+
     private fun commitment(
         name: String,
         amount: Money,

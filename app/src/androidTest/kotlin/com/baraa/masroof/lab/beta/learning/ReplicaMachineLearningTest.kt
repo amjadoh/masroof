@@ -35,7 +35,8 @@ class ReplicaMachineLearningTest {
         c.onboardingOwnershipWorkflow.confirmAccountOwned(AccountReference(bank,"3001"))
         return c
     }
-    private suspend fun await(condition: suspend ()->Boolean) = withTimeout(15_000) {while(!condition()) delay(25)}
+    private suspend fun await(timeoutMillis: Long = 15_000, condition: suspend ()->Boolean) =
+        withTimeout(timeoutMillis) {while(!condition()) delay(25)}
     @Test fun explicitExternalDirectionsTeachFromTheCommittedTypesAndSurviveColdReopen() = runBlocking {
         var c=fresh()
         val incoming="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_PERSON\nمبلغ العملية: SAR 20.00\nفي: ${at()}"
@@ -286,7 +287,11 @@ class ReplicaMachineLearningTest {
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
             requireNotNull(c.labInterpretationService).synchronizeFeedback()
-            await { c.reviewRepository.listRequired().isEmpty() }
+            // A worker admitted by the previous container can retry during close/reopen.
+            // Cover one default WorkManager backoff before requiring the real refresh to finish.
+            await(timeoutMillis = androidx.work.WorkRequest.DEFAULT_BACKOFF_DELAY_MILLIS + 15_000) {
+                c.reviewRepository.listRequired().isEmpty()
+            }
             assertEquals(MessageFamily.NON_FINANCIAL,c.parsedEventRepository.findByRawSmsId("rule-old-loyalty")!!.event.messageFamily)
             assertEquals(before,c.financialTransactionRepository.listAll())
             assertEquals(posted,c.parsedEventRepository.findByRawSmsId("rule-posted"))
