@@ -35,11 +35,6 @@ on:
         required: false
         default: ''
         type: string
-      skip_ci_check:
-        description: 'Skip green CI gate (emergency manual dispatch only)'
-        required: false
-        default: false
-        type: boolean
   workflow_call:
     inputs:
       type:
@@ -73,6 +68,7 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
+  actions: read
 
 concurrency:
   group: masroof-publish
@@ -91,14 +87,18 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Checkout publication controls from the workflow commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .release-control
+
       - name: Verify CI passed on target commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARGET_REF: ${{ inputs.ref || 'main' }}
-          SKIP_CI_CHECK: ${{ inputs.skip_ci_check || 'false' }}
         run: |
           chmod +x scripts/verify-ci-status.sh
-          ./scripts/verify-ci-status.sh "$TARGET_REF"
+          python3 .release-control/scripts/verify_ci_status.py "$(git rev-parse HEAD)"
 
       - name: Resolve target version and versionCode
         id: version

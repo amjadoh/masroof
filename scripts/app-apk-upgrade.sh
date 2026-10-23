@@ -24,6 +24,10 @@ case "$phase" in
     adb shell pm clear com.baraa.masroof
     instrument() {
       local output
+      if [[ -n "${CI_DEVICE_BUNDLE:-}" ]]; then
+        python3 scripts/ci_device.py phase --case "$class#$1"
+        return
+      fi
       output=$(adb shell am instrument -w -r -e clearPackageData false -e class "$class#$1" "$runner")
       printf '%s\n' "$output"
       printf '%s\n' "$output" > "$diagnostics/$1.txt"

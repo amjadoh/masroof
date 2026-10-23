@@ -27,6 +27,14 @@ echo "=== Running Version Resolution Test Suite ==="
 TEST_TMP=$(mktemp -d)
 trap 'rm -rf "$TEST_TMP"' EXIT
 
+# Fixed fixture: published-version cases must not drift when the app fallback bumps.
+mkdir -p "$TEST_TMP/fixture/scripts" "$TEST_TMP/fixture/app"
+cp "$SCRIPT" "$TEST_TMP/fixture/scripts/resolve-next-version.sh"
+SCRIPT="$TEST_TMP/fixture/scripts/resolve-next-version.sh"
+cat > "$TEST_TMP/fixture/app/build.gradle.kts" <<'EOF'
+val appVersionCode = providers.gradleProperty("appVersionCode").orElse("70")
+val appVersionName = providers.gradleProperty("appVersionName").orElse("0.3.17")
+EOF
 mkdir -p "$TEST_TMP/bin"
 export PATH="$TEST_TMP/bin:$PATH"
 

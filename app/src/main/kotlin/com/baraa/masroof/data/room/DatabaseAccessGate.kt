@@ -5,6 +5,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -15,6 +16,7 @@ class DatabaseAccessGate {
     private var active = 0
     private var restoring: CompletableDeferred<Unit>? = null
     private var drained: CompletableDeferred<Unit>? = null
+    private val retirement = CompletableDeferred<Unit>()
     @Volatile private var retired = false
 
     suspend fun <T> withAccess(block: suspend () -> T): T {
@@ -26,7 +28,12 @@ class DatabaseAccessGate {
                 restoring.also { if (it == null) active++ }
             }
             if (wait == null) break
-            wait.await()
+            select<Unit> {
+                wait.onAwait { }
+                // Restore may need to join this reader before leaving its exclusive block.
+                // No Room operation has been admitted yet, so retire the waiter immediately.
+                retirement.onAwait { throw DatabaseRestartRequiredException() }
+            }
         }
         try {
             return withContext(Lease(this)) { block() }
@@ -69,13 +76,14 @@ class DatabaseAccessGate {
     /** Called under exclusive restore immediately before closing the live Room instance. */
     fun retire() {
         retired = true
+        retirement.complete(Unit)
     }
 
     /** Reject new work, but let an admitted multi-stage operation finish before Room closes. */
     suspend fun retireAndDrain() {
         check(coroutineContext[Lease]?.gate !== this) { "Close cannot run inside repository access" }
         val idle = state.withLock {
-            retired = true
+            retire()
             (drained ?: CompletableDeferred<Unit>().also { drained = it }).also {
                 if (active == 0) it.complete(Unit)
             }

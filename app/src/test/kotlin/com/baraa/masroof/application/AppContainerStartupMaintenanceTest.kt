@@ -15,7 +15,6 @@ import com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome
 import com.baraa.masroof.data.room.MasroofDatabase
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -52,13 +51,9 @@ class AppContainerStartupMaintenanceTest {
         workManager = WorkManager.getInstance(context)
     }
 
-    /**
-     * Cancels instead of [AppContainer.close]: closing Room while a cancelled startup query
-     * still holds its connection lock deadlocks under Robolectric.
-     */
     @After
     fun tearDown() {
-        container.applicationScope.cancel()
+        container.close()
         WorkManagerTestInitHelper.closeWorkDatabase()
     }
 

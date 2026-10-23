@@ -55,6 +55,20 @@ class DatabaseAccessGateTest {
     }
 
     @Test
+    fun retirementReleasesQueuedReadersBeforeTheRestoreBlockCanFinish() = runTest {
+        val gate = DatabaseAccessGate()
+        gate.withRestore {
+            val queued = launch { gate.withAccess { error("A queued reader must not enter retired Room") } }
+            runCurrent()
+            assertFalse(queued.isCompleted)
+            gate.retire()
+            runCurrent()
+            assertTrue("Restore must be able to drain readers before leaving its exclusive block", queued.isCompleted)
+            assertTrue(queued.isCancelled)
+        }
+    }
+
+    @Test
     fun shutdownDrainsTheWholeWorkerLease_includingLaterRepositoryOperations() = runTest {
         val gate = DatabaseAccessGate()
         val release = CompletableDeferred<Unit>()

@@ -36,6 +36,7 @@ class LabInterpretationService(
     private val auditJob = SupervisorJob(scope.coroutineContext[Job])
     private val auditScope = CoroutineScope(scope.coroutineContext + auditJob)
     @Volatile private var closed = false
+    private val stopSignal = CompletableDeferred<Unit>()
     private val seed = runCatching {store.loadSeed()}.getOrElse { log.warn("ML","Seed unavailable: ${it.javaClass.simpleName}");null }
     // Cached weights are never authority before replaying durable human decisions.
     @Volatile private var classifier: FamilyClassifier? = null
@@ -97,10 +98,11 @@ class LabInterpretationService(
         job=scope.launch {
             var retryDelay = 5_000L
             for (ignored in changes) {
+                if (closed) break
                 try {
                     synchronizeFeedback()
-                    if(pendingFeedback) {
-                        delay(retryDelay)
+                    if(pendingFeedback && !closed) {
+                        withTimeoutOrNull(retryDelay) { stopSignal.await() }
                         retryDelay = (retryDelay * 2).coerceAtMost(60_000L)
                         changes.trySend(Unit)
                     } else retryDelay = 5_000L
@@ -109,7 +111,7 @@ class LabInterpretationService(
                 catch (e: Exception) {
                     invalidateFeedback()
                     log.warn("ML","Feedback sync pending: ${e.javaClass.simpleName}")
-                    delay(5_000)
+                    if (!closed) withTimeoutOrNull(5_000) { stopSignal.await() }
                 }
             }
         }
@@ -228,6 +230,7 @@ class LabInterpretationService(
         store.saveFeedback(labels,explained)
         store.persist(seed,updated)
         // An edit during fitting invalidates the candidate; do not briefly publish stale personal assistance.
+        if (closed) return@withLock null
         if(before != decisions()) { invalidateFeedback(); return@withLock null }
         synchronizedDecisions = fingerprint(before)
         classifier = updated
@@ -269,10 +272,21 @@ class LabInterpretationService(
     }
     override fun close() {
         closed = true
+        stopSignal.complete(Unit)
         classifier = null
         synchronizedDecisions = null
         tracker?.removeObserver(observer);tracker=null
-        runBlocking {job?.cancelAndJoin();auditJob.cancelAndJoin()};job=null
+        changes.close()
+        // Do not cancel Room continuations while their connection callback is opening.
+        // Stop producers, let admitted writes and synchronization finish, then close Room.
+        runBlocking {
+            job?.join()
+            mutex.withLock { }
+            auditJob.complete()
+            auditJob.join()
+        }
+        job=null
+        classifier = null
         store.close()
     }
     companion object { const val BANK="BANK_ALJAZIRA" }
