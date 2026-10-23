@@ -50,7 +50,7 @@ object AnalysisSpendingInsightsBuilder {
                 if (b <= 0) null else BigDecimal.valueOf(delta).multiply(BigDecimal(100)).divide(BigDecimal.valueOf(b), 1, RoundingMode.HALF_EVEN).toPlainString(), groups)
         }
         return AnalysisSpendingInsights(components(current), merchants(current).filter { it.amount > 0 }.sortedWith(
-            compareByDescending<AnalysisSpendingGroup> { it.amount }.thenBy { it.key }).take(5), comparison)
+            compareByDescending<AnalysisSpendingGroup> { it.amount }.thenBy { it.key }), comparison)
     }
 }
 

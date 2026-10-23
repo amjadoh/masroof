@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="analysis_shared_charts">Shared analysis charts</string>
+    <string name="analysis_forecasts_tab">Forecasts</string>
+    <string name="analysis_composition">What makes up your spending?</string>
+    <string name="analysis_merchants">Top merchants by spending</string>
+    <string name="analysis_merchants_scope">Net purchases after refunds</string>
+    <string name="analysis_change_title">Where did spending rise or fall?</string>
+    <string name="analysis_increase">↑ Increase %1$s</string>
+    <string name="analysis_decrease">↓ Decrease %1$s</string>
+    <string name="analysis_increase_axis">Spending increase →</string>
+    <string name="analysis_decrease_axis">← Spending decrease</string>
+    <string name="analysis_quality_details">Analysis data quality</string>
+    <string name="analysis_quality_open">View data quality</string>
+    <string name="analysis_performance_open">Forecast performance and history</string>
+    <string name="analysis_performance_subtitle">Saved forecasts and their comparison with actual spending</string>
+    <string name="analysis_coverage_title">History coverage</string>
+    <string name="analysis_personal_readiness">Personal model readiness</string>
+    <string name="analysis_personal_days">Consecutive complete days</string>
+    <string name="analysis_personal_periods">Complete salary periods</string>
+    <string name="analysis_progress">%1$d / %2$d</string>
+    <string name="analysis_used_count">Transactions used: %1$d</string>
+    <string name="analysis_outside_count">Outside spending scope: %1$d</string>
+    <string name="analysis_comparison_empty">Comparison for the current period is not available yet</string>
+    <string name="analysis_anchor_date">Comparison recording opens: %1$s</string>
+    <string name="analysis_enabled_date">Forecast recording started: %1$s</string>
+    <string name="analysis_wait_anchor">Day eight of the current salary period has not arrived yet.</string>
+    <string name="analysis_no_early_forecast">The period ended without a saved comparison forecast. Current data cannot create a previously published forecast.</string>
+    <string name="analysis_wait_period">The early forecast is saved. Comparison appears after the period and its coverage are complete.</string>
+    <string name="analysis_comparison_gap">The period has ended, but its coverage is incomplete for comparison.</string>
+    <string name="analysis_no_due">No outstanding dues for this period</string>
+    <string name="analysis_no_due_hint">Payments appear here by due date.</string>
+    <string name="analysis_commitments_separate">Commitments are separate from the spending forecast</string>
+    <string name="analysis_learning_settings">Learning message types from your corrections</string>
+    <string name="analysis_learning_settings_hint">Learning bank message types; this does not measure spending forecast accuracy.</string>
+    <string name="analysis_actual_legend">■ Actual</string>
+    <string name="analysis_expected_legend">▨ Estimated</string>
+    <string name="analysis_history_trend">How did this period’s forecast change?</string>
+    <string name="analysis_view_history">View history</string>
+    <string name="analysis_transaction_count">%1$d transactions</string>
+    <string name="analysis_wait_eligible">No eligible comparison forecast has been saved yet. The first valid forecast can be saved from day eight until period end, once model and coverage requirements are met.</string>
+</resources>

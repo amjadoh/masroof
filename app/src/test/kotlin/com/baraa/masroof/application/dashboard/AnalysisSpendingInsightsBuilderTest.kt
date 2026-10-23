@@ -33,6 +33,13 @@ class AnalysisSpendingInsightsBuilderTest {
         assertNull(build(listOf(fact("a", 31, 1000))).comparison!!.percent)
         assertNull(build(listOf(fact("r", 1, -500, "REFUNDS"))).comparison!!.percent)
     }
+    @Test fun allMerchantsRemainAvailableForTheAnalysisDrilldownIncludingSinglePurchases() {
+        val result = build((1..8).map { fact("merchant-$it", 32, it * 100L, merchant = "Shop $it") })
+        assertEquals(8, result.merchants.size)
+        assertEquals("Shop 8", result.merchants.first().name)
+        assertEquals(1, result.merchants.last().ids.size)
+        assertEquals(3600L, result.components.first().amount)
+    }
     @Test fun merchantNamesAreConservativeAndChangesReferenceBothSides() {
         val result = build(listOf(fact("old", 2, 1000, merchant = " Shop "), fact("now", 32, 2500, merchant = "shop"),
             fact("other", 33, 500, merchant = "Shop branch")))

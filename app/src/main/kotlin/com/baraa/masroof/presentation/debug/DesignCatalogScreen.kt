@@ -84,6 +84,7 @@ fun DesignCatalogScreen(
             SpacingSection()
             IconSizeSection()
             ComponentSection()
+            AnalyticsCatalogSection()
         }
     }
 }

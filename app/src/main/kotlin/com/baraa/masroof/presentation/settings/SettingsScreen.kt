@@ -128,6 +128,7 @@ fun SettingsRoute(
             onOpenDataBackup = { navigateTo(SettingsDestination.DataBackup) },
             onOpenStatementReconciliation = { navigateTo(SettingsDestination.StatementReconciliation) },
             onOpenAbout = { navigateTo(SettingsDestination.About) },
+            onOpenLearning = { navigateTo(SettingsDestination.MessageLearning) },
         )
 
         SettingsDestination.MyAccounts -> SettingsRegistryCategoryScreen(
@@ -379,6 +380,7 @@ fun SettingsRoute(
             onRequestExport = onRequestExportLogs,
         )
 
+        SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(onBack = { popOrExit() })
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
@@ -437,6 +439,7 @@ internal fun SettingsHubScreen(
     onOpenDataBackup: () -> Unit,
     onOpenStatementReconciliation: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenLearning: () -> Unit = {},
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_title),
@@ -469,6 +472,8 @@ internal fun SettingsHubScreen(
                     stringResource(R.string.settings_data_backup_hub_subtitle), MasroofIcons.backup, onOpenDataBackup)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title),
                     stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onOpenStatementReconciliation)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.analysis_learning_settings),
+                    stringResource(R.string.analysis_learning_settings_hint), MasroofIcons.analysis, onOpenLearning)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_about_section),
                     stringResource(R.string.settings_about_subtitle, state.appVersion), MasroofIcons.periodHint, onOpenAbout, divider = false)
             }
