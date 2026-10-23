@@ -15,6 +15,14 @@ class ObservationRulesTest {
     private fun input(body: String) = MessageInput("observation-fixture", "Synthetic", body, Instant.parse("2026-10-18T10:00:00Z"))
     private fun parse(body: String, schema: BankRuleSchema = RuleLibrary.current()) = RuleInterpreter(schema).interpret(input(body), catalog)
 
+    @Test fun balanceEvidenceRetainsAllMatchesOfTheFirstConfiguredPhrase() {
+        val body = "$purchase\nAvailable balance: SAR 500\nالرصيد المتاح: SAR 500\nAvailable balance: SAR 500"
+        val result = parse(body)
+        assertEquals(ParseStatus.SUCCESS, result.status)
+        assertEquals(listOf("Available balance", "Available balance"), result.evidence
+            .filter { it.field == "observation.card.available_balance" }.map { it.slice(input(body)) })
+    }
+
     @Test fun cardChannelsUseTypedRolesAndConfiguredCreditBalanceProof() {
         val r = parse("$purchase\nCard type: credit\nPurchase channel: online")
         assertEquals(ParseStatus.SUCCESS, r.status); assertEquals(CardChannel.CREDIT, r.facts.cardChannel)

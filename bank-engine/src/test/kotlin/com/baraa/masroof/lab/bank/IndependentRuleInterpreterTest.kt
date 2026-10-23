@@ -109,6 +109,26 @@ class IndependentRuleInterpreterTest {
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("x".repeat(16001)).status)
     }
 
+    @Test fun unsupportedSchemaKeepsOtpPriorityAcrossRepeatedMessages() {
+        val invalidSchemas = listOf(
+            RuleLibrary.initial().copy(schema = 2),
+            RuleLibrary.initial().let { schema -> schema.copy(rules = schema.rules.map { it.copy(phrases = listOf("ـ")) }) },
+        )
+        invalidSchemas.forEach { schema ->
+            val engine = RuleInterpreter(schema)
+            repeat(2) {
+                val financial = engine.interpret(input(purchase), catalog)
+                assertEquals(ParseStatus.REVIEW_REQUIRED, financial.status)
+                assertTrue(Blocker.UNSUPPORTED_RULE_SCHEMA in financial.blockers)
+                assertTrue(financial.evidence.isEmpty())
+                val otp = engine.interpret(input("OTP 123456\n$purchase"), catalog)
+                assertEquals(ParseStatus.NON_FINANCIAL, otp.status)
+                assertEquals(MessageFamily.OTP, otp.facts.family)
+                assertTrue(otp.blockers.isEmpty())
+            }
+        }
+    }
+
     @Test fun aSingleIdentifierCannotServeTwoAssetRoles() {
         val rule = RuleLibrary.initial().rules.first().copy(labels = RuleLibrary.initial().rules.first().labels +
             (ExtractionField.SOURCE_ACCOUNT to listOf("card")))
