@@ -953,13 +953,6 @@ class SettingsViewModel(
         }
     }
 
-    private fun updateMetadata(action: suspend () -> Unit) {
-        updateRegistry {
-            action()
-            refreshReviewQueue()
-        }
-    }
-
     private fun updateRegistry(onUpdated: () -> Unit = {}, action: suspend () -> Unit) {
         if (_uiState.value.updating) return
         viewModelScope.launch {
@@ -1326,11 +1319,12 @@ class SettingsViewModel(
     }
 
     fun setAccountType(account: ManagedAccountUi, accountType: AccountType) {
-        updateMetadata {
+        updateRegistry {
             settingsRegistryWorkflow.updateAccountType(
                 AccountReference(account.bank, account.maskedNumber),
                 accountType,
             )
+            refreshReviewQueue()
         }
         dismissAccountTypePicker()
     }
