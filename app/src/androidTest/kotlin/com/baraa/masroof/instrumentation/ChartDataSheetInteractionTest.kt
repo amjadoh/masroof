@@ -52,7 +52,12 @@ class ChartDataSheetInteractionTest {
         compose.onNodeWithTag("sheet-apply").assertIsDisplayed()
     }
 
-    @Test fun allChartScopes_supportDraftApplyCancelReloadAndDayAmounts_inBothLanguagesAndThemes() {
+    @Test fun exerciseAllChartScopes_ar_light() = exerciseAllChartScopes("ar", false)
+    @Test fun exerciseAllChartScopes_ar_dark() = exerciseAllChartScopes("ar", true)
+    @Test fun exerciseAllChartScopes_en_light() = exerciseAllChartScopes("en", false)
+    @Test fun exerciseAllChartScopes_en_dark() = exerciseAllChartScopes("en", true)
+
+    private fun exerciseAllChartScopes(lang: String, night: Boolean) {
         val state = FidelityFixtures.financial()
         val trends = state.spendingTrends!!
         val facility = state.creditFacilities!!.facilities.first()
@@ -85,8 +90,7 @@ class ChartDataSheetInteractionTest {
                 }
             }
         }
-        for (lang in listOf("ar", "en")) for (night in listOf(false, true))
-            for (id in listOf("homePurchases", "homeOverall", "accounts", "accountDetail", "credit", "primary", "supplementary", "mada", "daily")) {
+        for (id in listOf("homePurchases", "homeOverall", "accounts", "accountDetail", "credit", "primary", "supplementary", "mada", "daily")) {
                 val chartKey = when (id) {
                     "homePurchases" -> "home:purchases"
                     "homeOverall", "daily" -> "home:overall"
