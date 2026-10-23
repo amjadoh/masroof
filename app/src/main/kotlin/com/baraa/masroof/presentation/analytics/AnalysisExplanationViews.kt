@@ -21,49 +21,21 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     else -> R.string.lab_analysis_component_purchases
 })
 
-@Composable internal fun AnalysisSpendingExplanation(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit) {
+@Composable internal fun AnalysisSpendingExplanation(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit, includeChanges: Boolean = true) {
     val insights = snapshot.insights ?: return
     var expanded by rememberSaveable(snapshot.periodStart) { mutableStateOf(false) }
+    AnalysisComparisonCard(snapshot)
     MasroofCard(Modifier.testTag("analysis-spending-explanation")) {
-        MasroofSectionHeader(stringResource(R.string.lab_analysis_insights), icon = MasroofIcons.analysis)
-        insights.components.forEach { group ->
-            MasroofMoneyRow(spendingGroupName(group), formatLocalizedMoney(analysisAmount(group.amount)))
-        }
-        val comparison = insights.comparison
-        if (comparison == null) Text(stringResource(R.string.lab_analysis_comparison_missing), style = MaterialTheme.typography.bodySmall)
-        else {
-            Text(stringResource(R.string.lab_analysis_comparison_dates, day(comparison.from), day(comparison.through),
-                day(comparison.previousFrom), day(comparison.previousThrough)), style = MaterialTheme.typography.bodySmall)
-            MasroofMoneyRow(stringResource(R.string.lab_analysis_comparison_current), formatLocalizedMoney(analysisAmount(comparison.current)))
-            MasroofMoneyRow(stringResource(R.string.lab_analysis_comparison_previous), formatLocalizedMoney(analysisAmount(comparison.previous)))
-            Text(stringResource(R.string.lab_analysis_comparison_delta, formatLocalizedMoney(analysisAmount(comparison.delta))))
-            comparison.percent?.let { Text(stringResource(R.string.lab_analysis_comparison_percent, it), style = MaterialTheme.typography.bodySmall) }
-            comparison.changes.firstOrNull()?.let { change -> Text(stringResource(R.string.lab_analysis_change_value,
-                spendingGroupName(change.group), formatLocalizedMoney(analysisAmount(change.delta))), style = MaterialTheme.typography.bodySmall) }
-        }
+        AnalysisComponentBars(snapshot)
         MasroofTextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("analysis-expand-insights")) {
             Text(stringResource(if (expanded) R.string.lab_analysis_hide_data else R.string.lab_analysis_change_evidence))
         }
-        if (expanded) {
-            insights.components.forEach { group ->
-                EvidenceGroup(group.ids, "${spendingGroupName(group)} · ${formatLocalizedMoney(analysisAmount(group.amount))}",
-                    workflow, snapshot.sourceHash, onOpenTransaction, tag = "analysis-component-${group.key}")
-            }
-            if (comparison != null && comparison.changes.isNotEmpty()) {
-                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_changes), stringResource(R.string.lab_analysis_changes_hint))
-                comparison.changes.forEach { change ->
-                    EvidenceGroup(change.group.ids + change.previousIds,
-                        stringResource(R.string.lab_analysis_change_value, spendingGroupName(change.group), formatLocalizedMoney(analysisAmount(change.delta))),
-                        workflow, snapshot.sourceHash, onOpenTransaction)
-                }
-            }
-            Text(stringResource(R.string.lab_analysis_top_merchants), style = MaterialTheme.typography.titleSmall)
-            if (insights.merchants.isEmpty()) Text(stringResource(R.string.lab_analysis_no_merchants), style = MaterialTheme.typography.bodySmall)
-            insights.merchants.forEach { group ->
-                EvidenceGroup(group.ids, "${group.name} · ${formatLocalizedMoney(analysisAmount(group.amount))}", workflow, snapshot.sourceHash, onOpenTransaction)
-            }
+        if (expanded) insights.components.forEach { group ->
+            EvidenceGroup(group.ids, "${spendingGroupName(group)} · ${visualMoney(group.amount)}", workflow, snapshot.sourceHash,
+                onOpenTransaction, tag = "analysis-component-${group.key}")
         }
     }
+    if (includeChanges) AnalysisChangeCard(snapshot, workflow, onOpenTransaction)
 }
 
 @Composable internal fun AnalysisDataQuality(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit,
@@ -71,27 +43,53 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     var expanded by rememberSaveable { mutableStateOf(false) }
     val quality = snapshot.quality
     MasroofCard(Modifier.testTag("analysis-data-quality")) {
-        MasroofGuidanceLabel(stringResource(R.string.lab_analysis_quality_title), stringResource(R.string.lab_analysis_quality_hint),
-            style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.onSurface)
-        MasroofGuidanceLabel(stringResource(when {
-            quality.blocked -> R.string.lab_analysis_quality_warning
-            snapshot.status != "READY" -> R.string.lab_analysis_quality_insufficient
-            snapshot.method == "WEEKDAY_MEDIAN" -> R.string.lab_analysis_quality_initial
-            else -> R.string.lab_analysis_quality_personal
-        }), if (snapshot.status != "READY") stringResource(R.string.lab_analysis_need_data) else null,
-            style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.primary)
-        Text(stringResource(R.string.lab_analysis_quality_coverage, quality.coveredDays, snapshot.completedPeriods), style = MaterialTheme.typography.bodySmall)
-        if (snapshot.status == "READY") Text(stringResource(when (snapshot.modelReason) {
-            "PERSONAL_MODEL" -> R.string.lab_analysis_ready
-            "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
-            "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
-            "LIVE_BASELINE_BETTER" -> R.string.learning_forecast_paused
-            "MODEL_UNAVAILABLE" -> R.string.lab_analysis_quality_model_retry
-            "COVERAGE_GAPS" -> R.string.lab_analysis_quality_gaps
-            "NEEDS_PERIODS" -> R.string.lab_analysis_quality_periods_reason
-            "NEEDS_PURCHASE_DAYS" -> R.string.lab_analysis_quality_purchase_days_reason
-            else -> R.string.lab_analysis_quality_history_reason
-        }), style = MaterialTheme.typography.bodySmall)
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.cardInnerGap)) {
+            MasroofGuidanceLabel(stringResource(when {
+                quality.blocked -> R.string.lab_analysis_quality_warning
+                snapshot.status != "READY" -> R.string.lab_analysis_quality_insufficient
+                snapshot.method == "WEEKDAY_MEDIAN" -> R.string.lab_analysis_quality_initial
+                else -> R.string.lab_analysis_quality_personal
+            }), if (snapshot.status != "READY") stringResource(R.string.lab_analysis_need_data) else stringResource(R.string.lab_analysis_quality_hint),
+                style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.lab_analysis_quality_coverage, quality.coveredDays, snapshot.completedPeriods), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    MasroofCard {
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.cardInnerGap)) {
+            MasroofSectionHeader(stringResource(R.string.analysis_coverage_title))
+            if (quality.coverageDays.isNotEmpty()) com.baraa.masroof.ui.components.MasroofCoverageGrid(quality.coverageDays.map { it.covered },
+                stringResource(R.string.lab_analysis_quality_coverage, quality.coveredDays, snapshot.completedPeriods))
+            if (quality.historyFrom != null && quality.historyThrough != null) Text(stringResource(R.string.lab_analysis_history_range,
+                day(quality.historyFrom), day(quality.historyThrough)), style = MaterialTheme.typography.bodySmall)
+            if (!quality.coverageKnown) Text(stringResource(R.string.lab_analysis_coverage_unknown), style = MaterialTheme.typography.bodySmall)
+            if (snapshot.trainingFrom != null && snapshot.trainingThrough != null) MasroofGuidanceLabel(stringResource(R.string.lab_analysis_training_range,
+                day(snapshot.trainingFrom), day(snapshot.trainingThrough)), stringResource(R.string.lab_analysis_training_hint), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    MasroofCard {
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
+            MasroofGuidanceLabel(stringResource(R.string.analysis_personal_readiness), stringResource(R.string.lab_analysis_quality_history_reason), style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
+            quality.consecutiveCompleteDays?.let { count -> com.baraa.masroof.ui.components.MasroofValueBarRow(
+                stringResource(R.string.analysis_personal_days), com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, count, 120)), fraction(count.toLong(), 120),
+                style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default) }
+            com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.analysis_personal_periods),
+                com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, snapshot.completedPeriods, 4)), fraction(snapshot.completedPeriods.toLong(), 4),
+                style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default)
+            if (snapshot.status == "READY") Text(stringResource(when (snapshot.modelReason) {
+                "PERSONAL_MODEL" -> R.string.lab_analysis_ready
+                "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
+                "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
+                "LIVE_BASELINE_BETTER" -> R.string.learning_forecast_paused
+                "MODEL_UNAVAILABLE" -> R.string.lab_analysis_quality_model_retry
+                "COVERAGE_GAPS" -> R.string.lab_analysis_quality_gaps
+                "NEEDS_PERIODS" -> R.string.lab_analysis_quality_periods_reason
+                "NEEDS_PURCHASE_DAYS" -> R.string.lab_analysis_quality_purchase_days_reason
+                else -> R.string.lab_analysis_quality_history_reason
+            }), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    MasroofCard {
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.cardInnerGap)) {
         if (quality.pendingReviews > 0) MasroofTextButton(onClick = onOpenReview, modifier = Modifier.testTag("analysis-open-review")) {
             Text(stringResource(R.string.lab_analysis_quality_open_review) + " (${quality.pendingReviews})")
         } else Text(stringResource(R.string.lab_analysis_quality_no_reviews), style = MaterialTheme.typography.bodySmall)
@@ -112,34 +110,28 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
                 "COVERAGE_GAPS" -> Text(stringResource(R.string.lab_analysis_quality_gaps), style = MaterialTheme.typography.bodySmall)
             }
         }
-        // Missing money/FX requires attention. Scope and large amounts are explanations, not errors.
-        quality.excluded.filterKeys { it !in setOf("OUTSIDE_PURCHASE_SCOPE", "DUPLICATE_ID") }.forEach { (reason, ids) ->
-            EvidenceGroup(ids, stringResource(if (reason == "FUTURE_DATE") R.string.lab_analysis_excluded_future else R.string.lab_analysis_excluded_amount),
-                workflow, snapshot.sourceHash, onOpenTransaction)
-        }
-        if (quality.unusual.isNotEmpty()) EvidenceGroup(quality.unusual, stringResource(R.string.lab_analysis_unusual), workflow, snapshot.sourceHash, onOpenTransaction)
-        quality.excluded["OUTSIDE_PURCHASE_SCOPE"]?.let { EvidenceGroup(it, stringResource(R.string.lab_analysis_excluded_scope), workflow, snapshot.sourceHash, onOpenTransaction) }
-        MasroofTextButton(onClick = { expanded = !expanded }) { Text(stringResource(if (expanded) R.string.lab_analysis_hide_data else R.string.lab_analysis_show_data)) }
-        if (expanded) {
-            MasroofGuidanceLabel(
-                stringResource(R.string.lab_analysis_quality_counts, quality.used, quality.coveredDays, snapshot.completedPeriods, quality.pendingReviews),
-                stringResource(R.string.lab_analysis_quality_counts_hint), style = MaterialTheme.typography.bodySmall)
-            MasroofGuidanceLabel(stringResource(R.string.lab_analysis_scope_title), stringResource(R.string.lab_analysis_scope))
-            if (quality.historyFrom != null && quality.historyThrough != null) Text(stringResource(R.string.lab_analysis_history_range,
-                day(quality.historyFrom), day(quality.historyThrough)), style = MaterialTheme.typography.bodySmall)
-            if (!quality.coverageKnown) Text(stringResource(R.string.lab_analysis_coverage_unknown), style = MaterialTheme.typography.bodySmall)
-            if (snapshot.trainingFrom != null && snapshot.trainingThrough != null) MasroofGuidanceLabel(
-                stringResource(R.string.lab_analysis_training_range, day(snapshot.trainingFrom), day(snapshot.trainingThrough)), stringResource(R.string.lab_analysis_training_hint))
-            quality.excluded["DUPLICATE_ID"]?.let { EvidenceGroup(it, stringResource(R.string.lab_analysis_excluded_duplicate), workflow, snapshot.sourceHash, onOpenTransaction) }
-            MasroofGuidanceLabel(stringResource(R.string.lab_analysis_evaluation), stringResource(R.string.lab_analysis_evaluation_hint))
-            if (snapshot.evaluations.isEmpty()) Text(stringResource(R.string.lab_analysis_evaluation_missing), style = MaterialTheme.typography.bodySmall)
-            snapshot.evaluations.forEach { e -> Text(stringResource(R.string.lab_analysis_evaluation_row, e.horizon, e.count,
-                formatLocalizedMoney(analysisAmount(e.mae)), formatLocalizedMoney(analysisAmount(e.bias))), style = MaterialTheme.typography.bodySmall) }
+
+            Text(stringResource(R.string.analysis_used_count, quality.used), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.analysis_outside_count, quality.excluded["OUTSIDE_PURCHASE_SCOPE"].orEmpty().size), style = MaterialTheme.typography.bodySmall)
+            quality.excluded.filterKeys { it !in setOf("OUTSIDE_PURCHASE_SCOPE", "DUPLICATE_ID") }.forEach { (reason, ids) ->
+                EvidenceGroup(ids, stringResource(if (reason == "FUTURE_DATE") R.string.lab_analysis_excluded_future else R.string.lab_analysis_excluded_amount), workflow, snapshot.sourceHash, onOpenTransaction)
+            }
+            MasroofTextButton(onClick = { expanded = !expanded }) { Text(stringResource(if (expanded) R.string.lab_analysis_hide_data else R.string.lab_analysis_show_data)) }
+            if (expanded) {
+                if (quality.unusual.isNotEmpty()) EvidenceGroup(quality.unusual, stringResource(R.string.lab_analysis_unusual), workflow, snapshot.sourceHash, onOpenTransaction)
+                quality.excluded["OUTSIDE_PURCHASE_SCOPE"]?.let { EvidenceGroup(it, stringResource(R.string.lab_analysis_excluded_scope), workflow, snapshot.sourceHash, onOpenTransaction) }
+                quality.excluded["DUPLICATE_ID"]?.let { EvidenceGroup(it, stringResource(R.string.lab_analysis_excluded_duplicate), workflow, snapshot.sourceHash, onOpenTransaction) }
+                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_quality_counts, quality.used, quality.coveredDays, snapshot.completedPeriods, quality.pendingReviews), stringResource(R.string.lab_analysis_quality_counts_hint), style = MaterialTheme.typography.bodySmall)
+                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_scope_title), stringResource(R.string.lab_analysis_scope))
+                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_evaluation), stringResource(R.string.lab_analysis_evaluation_hint))
+                if (snapshot.evaluations.isEmpty()) Text(stringResource(R.string.lab_analysis_evaluation_missing), style = MaterialTheme.typography.bodySmall)
+                snapshot.evaluations.forEach { e -> Text(stringResource(R.string.lab_analysis_evaluation_row, e.horizon, e.count, visualMoney(e.mae), visualMoney(e.bias)), style = MaterialTheme.typography.bodySmall) }
+            }
         }
     }
 }
 
-@Composable internal fun LearningAndForecastPerformance(state: AnalysisUiState) {
+@Composable internal fun MessageLearningInsights(state: AnalysisUiState) {
     state.learning?.let { learning ->
         MasroofCard(Modifier.testTag("learning-insights")) {
             MasroofGuidanceLabel(stringResource(R.string.learning_title), stringResource(R.string.learning_counts_hint),
@@ -153,32 +145,54 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
                 stringResource(com.baraa.masroof.presentation.interpretation.learningReasonResource(reason)),count), style = MaterialTheme.typography.bodySmall) }
         }
     }
+}
+
+@Composable internal fun ForecastPerformanceDetails(state: AnalysisUiState) {
     MasroofCard(Modifier.testTag("forecast-performance")) {
-        MasroofGuidanceLabel(stringResource(R.string.learning_forecast_title), stringResource(R.string.learning_forecast_hint),
-            style = MaterialTheme.typography.titleSmall)
-        Text(stringResource(R.string.learning_forecast_periods,state.forecastPerformance.periods),style = MaterialTheme.typography.bodySmall)
-        if(!state.forecastPerformance.allowPersonal) Text(stringResource(R.string.learning_forecast_paused),style = MaterialTheme.typography.bodySmall)
-        state.forecastPerformance.personalMae?.let { Amount(stringResource(R.string.learning_forecast_personal_error),it) }
-        state.forecastPerformance.baselineMae?.let { Amount(stringResource(R.string.learning_forecast_baseline_error),it) }
-        state.forecastComparisons.takeLast(3).forEach { comparison ->
-            Text(timestamp(comparison.issuedAt),style = MaterialTheme.typography.bodySmall)
-            com.baraa.masroof.application.analytics.ForecastPerformancePolicy.originDay(comparison)?.let { origin ->
-                Text(stringResource(R.string.learning_forecast_origin, day(origin), (comparison.periodEnd - origin).toInt()),
-                    style = MaterialTheme.typography.bodySmall)
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
+            MasroofGuidanceLabel(stringResource(R.string.learning_forecast_title), stringResource(R.string.learning_forecast_hint), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.learning_forecast_periods, state.forecastPerformance.periods), style = MaterialTheme.typography.bodySmall)
+            if (!state.forecastPerformance.allowPersonal) Text(stringResource(R.string.learning_forecast_paused), style = MaterialTheme.typography.bodySmall)
+            state.forecastPerformance.personalMae?.let { Amount(stringResource(R.string.learning_forecast_personal_error), it) }
+            state.forecastPerformance.baselineMae?.let { Amount(stringResource(R.string.learning_forecast_baseline_error), it) }
+            state.forecastComparisons.filter { ForecastPerformancePolicy.supports(it) }.groupBy { it.periodStart }.values.map { it.minBy { row -> row.issuedAt } }.sortedBy { it.periodStart }.takeLast(3).forEach { comparison ->
+                Text("${day(comparison.periodStart)} — ${day(comparison.periodEnd - 1)}", style = MaterialTheme.typography.titleSmall)
+                Text(timestamp(comparison.issuedAt), style = MaterialTheme.typography.bodySmall)
+                com.baraa.masroof.application.analytics.ForecastPerformancePolicy.originDay(comparison)?.let { origin ->
+                    Text(stringResource(R.string.learning_forecast_origin, day(origin), (comparison.periodEnd - origin).toInt()), style = MaterialTheme.typography.bodySmall)
+                }
+                val maximum = maxOf(comparison.personalTotal, comparison.baselineTotal, comparison.actual ?: 0, 0)
+                com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.learning_forecast_personal), visualMoney(comparison.personalTotal), fraction(comparison.personalTotal, maximum), style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default)
+                com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.learning_forecast_baseline), visualMoney(comparison.baselineTotal), fraction(comparison.baselineTotal, maximum), previous = true, style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default)
+                comparison.actual?.let { actual ->
+                    com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.lab_analysis_final_actual), visualMoney(actual), fraction(actual, maximum))
+                } ?: Text(stringResource(R.string.analysis_wait_period), style = MaterialTheme.typography.bodySmall)
             }
-            Amount(stringResource(R.string.learning_forecast_personal),comparison.personalTotal)
-            Amount(stringResource(R.string.learning_forecast_baseline),comparison.baselineTotal)
-            comparison.actual?.let { Amount(stringResource(R.string.lab_analysis_final_actual),it) }
         }
     }
 }
 
 @Composable internal fun PublishedForecastHistory(state: AnalysisUiState) {
     if (state.history.isEmpty()) return
+    val groups = state.forecastHistoryGroups().take(8)
+    val current = groups.map { it.snapshots.first() }.filter { it.periodStart == state.snapshot?.periodStart && it.total != null }.sortedBy { it.issuedAt }
     MasroofCard {
+        Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.cardInnerGap)) {
+        if (current.isNotEmpty()) {
+            Text(stringResource(R.string.analysis_history_trend), style = MaterialTheme.typography.titleMedium)
+            var selected by rememberSaveable { mutableIntStateOf(0) }
+            val axes = current.map { timestamp(it.issuedAt) }
+            val labels = current.map { "${timestamp(it.issuedAt)} · ${visualMoney(it.total!!)}" }
+            Text(labels[selected.coerceIn(labels.indices)], style = MaterialTheme.typography.bodySmall)
+            MasroofInteractiveLineChart(current.map { analysisAmount(it.total!!).amount }, java.math.BigDecimal.ZERO,
+                selectedPointIndex = selected.coerceIn(current.indices), onPointSelected = { selected = it }, pointLabel = { labels[it] },
+                axisLabel = { axes[it] }, currencyLabel = stringResource(R.string.lab_analysis_sar))
+        }
         MasroofGuidanceLabel(stringResource(R.string.lab_analysis_history), stringResource(R.string.lab_analysis_history_hint),
             style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.onSurface)
-        state.forecastHistoryGroups().take(8).forEach { group ->
+        var historyExpanded by rememberSaveable { mutableStateOf(false) }
+        MasroofTextButton(onClick = { historyExpanded = !historyExpanded }) { Text(stringResource(R.string.analysis_view_history)) }
+        if (historyExpanded) groups.forEach { group ->
             val past = group.snapshots.first()
             var expanded by rememberSaveable(past.issuedAt) { mutableStateOf(false) }
             Text(timestamp(past.issuedAt), style = MaterialTheme.typography.bodySmall)
@@ -190,5 +204,6 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
                 if (expanded) group.snapshots.forEach { Text(timestamp(it.issuedAt), style = MaterialTheme.typography.bodySmall) }
             }
         }
+    }
     }
 }

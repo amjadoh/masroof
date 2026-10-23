@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="analysis_shared_charts">رسومات التحليل الموحدة</string>
+    <string name="analysis_forecasts_tab">التوقعات</string>
+    <string name="analysis_composition">ممّ يتكوّن صرفك؟</string>
+    <string name="analysis_merchants">أعلى التجار بالصرف</string>
+    <string name="analysis_merchants_scope">صافي المشتريات بعد الاستردادات</string>
+    <string name="analysis_change_title">أين زاد صرفك وأين انخفض؟</string>
+    <string name="analysis_increase">↑ زيادة %1$s</string>
+    <string name="analysis_decrease">↓ انخفاض %1$s</string>
+    <string name="analysis_increase_axis">زيادة الصرف →</string>
+    <string name="analysis_decrease_axis">← انخفاض الصرف</string>
+    <string name="analysis_quality_details">جودة بيانات التحليل</string>
+    <string name="analysis_quality_open">عرض جودة البيانات</string>
+    <string name="analysis_performance_open">دقة التوقع وسجله</string>
+    <string name="analysis_performance_subtitle">النتائج المحفوظة ومقارنتها بالفعلي</string>
+    <string name="analysis_coverage_title">تغطية السجل</string>
+    <string name="analysis_personal_readiness">جاهزية النموذج الشخصي</string>
+    <string name="analysis_personal_days">الأيام المكتملة المتصلة</string>
+    <string name="analysis_personal_periods">فترات الراتب المكتملة</string>
+    <string name="analysis_progress">%1$d / %2$d</string>
+    <string name="analysis_used_count">حركات مستخدمة: %1$d</string>
+    <string name="analysis_outside_count">خارج نطاق الصرف: %1$d</string>
+    <string name="analysis_comparison_empty">مقارنة الفترة الحالية غير متاحة بعد</string>
+    <string name="analysis_anchor_date">تبدأ نافذة حفظ المقارنة: %1$s</string>
+    <string name="analysis_enabled_date">بدأ حفظ التوقعات: %1$s</string>
+    <string name="analysis_wait_anchor">لم يحن اليوم الثامن من فترة الراتب الحالية بعد.</string>
+    <string name="analysis_no_early_forecast">انتهت الفترة دون توقع مقارنة محفوظ. البيانات الحالية لا تنشئ توقعًا منشورًا بأثر رجعي.</string>
+    <string name="analysis_wait_period">التوقع المبكر محفوظ؛ تظهر المقارنة بعد اكتمال الفترة وتغطيتها.</string>
+    <string name="analysis_comparison_gap">الفترة انتهت، لكن تغطيتها غير مكتملة للمقارنة.</string>
+    <string name="analysis_no_due">لا توجد مستحقات معلّقة لهذه الفترة</string>
+    <string name="analysis_no_due_hint">تظهر الدفعات هنا حسب موعد استحقاقها.</string>
+    <string name="analysis_commitments_separate">الالتزامات منفصلة عن توقع الصرف</string>
+    <string name="analysis_learning_settings">فهم الرسائل من تصحيحاتك</string>
+    <string name="analysis_learning_settings_hint">تعلّم نوع الرسالة البنكية؛ لا يقيس دقة توقع الصرف.</string>
+    <string name="analysis_actual_legend">■ فعلي</string>
+    <string name="analysis_expected_legend">▨ تقديري</string>
+    <string name="analysis_history_trend">كيف تغيّر توقع هذه الفترة؟</string>
+    <string name="analysis_view_history">عرض السجل</string>
+    <string name="analysis_transaction_count">%1$d حركة</string>
+    <string name="analysis_wait_eligible">لم يُحفظ توقع مؤهل للمقارنة بعد. يُحفظ أول توقع صالح من اليوم الثامن وحتى نهاية الفترة، عند اكتمال شروط النموذج والتغطية.</string>
+</resources>

@@ -92,8 +92,13 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     val state by workflow.state.collectAsState()
     val scope = rememberCoroutineScope()
     val target by AnalyticsNavigation.target.collectAsState()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val displayedTab = tab.takeIf { it in 0..1 } ?: 0 // An older saved screen may still reference the removed alerts tab.
+    // A distinct saved-state key avoids restoring the former integer tab as a String.
+    var tab by rememberSaveable(key = "analysis-tab-name") { mutableStateOf("spending") }
+    val spendingScroll = rememberScrollState()
+    val forecastScroll = rememberScrollState()
+    val commitmentsScroll = rememberScrollState()
+    var detail by rememberSaveable { mutableStateOf<String?>(null) }
+    val displayedTab = listOf("spending", "forecasts", "commitments").indexOf(tab).coerceAtLeast(0)
     var settings by rememberSaveable { mutableStateOf(target == "settings") }
     var settingsEntry by rememberSaveable { mutableStateOf(target == "settings") }
     var endedAlert by rememberSaveable { mutableStateOf(false) }
@@ -115,7 +120,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
             catch (_: Exception) { null }
         settings = false; settingsEntry = false
-        tab = if (alert?.kind in listOf("DUE", "PAYMENT")) 1 else 0
+        detail = null
+        tab = if (alert?.kind in listOf("DUE", "PAYMENT")) "commitments" else "spending"
         purchaseRange = 0
         endedAlert = alert == null || alert.resolved
         if (alert != null && !alert.resolved) {
@@ -125,7 +131,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         pendingTarget = null
     }
     BackHandler(enabled = !saving) {
-        when { editing != null -> editing = null; settings -> if (settingsEntry) onBack() else { settings = false }; else -> onBack() }
+        when { editing != null -> editing = null; detail != null -> detail = null; settings -> if (settingsEntry) onBack() else { settings = false }; else -> onBack() }
     }
     BackHandler(enabled = saving) { }
     val candidate = state.snapshot?.candidates?.firstOrNull { it.key == editing }
@@ -150,6 +156,23 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         return
     }
     if (settings) { Preferences(workflow, state, onBack = { if (settingsEntry) onBack() else settings = false }); return }
+    if (detail != null) {
+        val title = when (detail) {
+            "quality" -> R.string.analysis_quality_details
+            "merchants" -> R.string.analysis_merchants
+            else -> R.string.analysis_performance_open
+        }
+        MasroofSecondaryScaffold(stringResource(title), { detail = null }, stringResource(R.string.lab_analysis_back)) { modifier ->
+            Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                when (detail) {
+                    "quality" -> state.snapshot?.let { AnalysisDataQuality(it, workflow, onOpenTransaction, onOpenReview, onRequestSmsPermission, onRescan) }
+                    "merchants" -> state.snapshot?.let { AnalysisMerchantCard(it, workflow, onOpenTransaction, showAll = true) }
+                    else -> AnalysisPerformanceOverview(state, workflow)
+                }
+            }
+        }
+        return
+    }
     MasroofSecondaryScaffold(stringResource(R.string.lab_analysis_title), onBack,
         stringResource(R.string.lab_analysis_back), actions = {
             IconButton(onClick = { settingsEntry = false; settings = true }, modifier = Modifier.testTag("lab-analysis-settings")) {
@@ -158,31 +181,42 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         }) { modifier ->
         Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             TabRow(selectedTabIndex = displayedTab) {
-                listOf(R.string.lab_analysis_spending_tab, R.string.lab_analysis_commitments).forEachIndexed { index, label ->
-                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = index }, text = { Text(stringResource(label)) })
+                listOf(R.string.lab_analysis_spending_tab, R.string.analysis_forecasts_tab, R.string.lab_analysis_commitments).forEachIndexed { index, label ->
+                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] }, text = { Text(stringResource(label)) })
                 }
             }
-            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(when (displayedTab) {
+                1 -> forecastScroll; 2 -> commitmentsScroll; else -> spendingScroll
+            }),
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
                 if (displayedTab != 0 || purchaseRange == 0) state.snapshot?.let { Text("${day(it.periodStart)} — ${day(it.periodEnd - 1)}", style = MaterialTheme.typography.bodySmall) }
-                if (displayedTab != 0 || purchaseRange == 0 || state.updating || state.unavailable) Status(state)
+                if (state.updating || state.unavailable || state.snapshot == null || displayedTab == 1) Status(state)
                 if (endedAlert) Text(stringResource(R.string.lab_analysis_alert_ended))
                 if (state.unavailable) MasroofTextButton(onClick = workflow::request) { Text(stringResource(R.string.dashboard_retry)) }
                 when (displayedTab) {
-                    0 -> Purchases(state, workflow, onOpenTransaction, purchaseRange, onOpenReview, onRequestSmsPermission, onRescan) { purchaseRange = it }
-                    1 -> {
+                    0 -> SpendingTab(state, workflow, onOpenTransaction, purchaseRange, { purchaseRange = it }, { detail = "quality" }, { detail = "merchants" })
+                    1 -> ForecastTab(state, workflow, { detail = "quality" }, { detail = "performance" })
+                    2 -> {
+                        if (state.snapshot?.dues?.isEmpty() == true) MasroofCard {
+                            com.baraa.masroof.ui.components.MasroofAnalysisEmptyState(stringResource(R.string.analysis_no_due),
+                                stringResource(R.string.analysis_no_due_hint), MasroofIcons.calendar)
+                        }
                         MasroofGuidanceLabel(stringResource(R.string.lab_analysis_commitments), stringResource(R.string.lab_analysis_commitments_hint))
                         state.snapshot?.dues?.forEach { due ->
                             FocusAnalysisItem(focusedAlert == "due:${due.id}:${due.day}", { focusedAlert = null }) {
                             MasroofCard {
-                                Text(due.name, style = MaterialTheme.typography.titleSmall)
+                                com.baraa.masroof.ui.components.MasroofTimelineRow(
+                                    com.baraa.masroof.application.locale.AppDigits.display(due.name),
+                                    com.baraa.masroof.application.locale.AppDigits.display(due.day?.let { day(it) }.orEmpty()), active = due.confirmed)
                                 Amount(stringResource(if (due.confirmed) R.string.lab_analysis_confirmed else R.string.lab_analysis_estimated), due.amount)
-                                due.day?.let { Text(day(it), style = MaterialTheme.typography.bodySmall) }
                             }
                             }
                         }
                         MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), icon = MasroofIcons.analysis)
-                        if (state.snapshot?.candidates.isNullOrEmpty()) Text(stringResource(R.string.lab_analysis_no_candidates))
+                        if (state.snapshot?.candidates?.isEmpty() == true) MasroofCard {
+                            com.baraa.masroof.ui.components.MasroofAnalysisEmptyState(stringResource(R.string.lab_analysis_no_candidates),
+                                stringResource(R.string.analysis_commitments_separate), MasroofIcons.calendar)
+                        }
                         state.snapshot?.candidates?.forEach { c ->
                             MasroofCard(Modifier.testTag("lab-candidate-${c.key}")) {
                                 Text(c.name, style = MaterialTheme.typography.titleSmall)
@@ -220,54 +254,26 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun Purchases(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit, range: Int, onOpenReview: () -> Unit, onRequestSmsPermission: () -> Unit, onRescan: () -> Unit, onRangeChanged: (Int) -> Unit) {
-    val s = state.snapshot
+@Composable private fun SpendingTab(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit,
+    range: Int, onRangeChanged: (Int) -> Unit, onQuality: () -> Unit, onMerchants: () -> Unit) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
         listOf(0 to R.string.lab_analysis_current_period, 3 to R.string.lab_analysis_last_three, 6 to R.string.lab_analysis_last_six).forEach { (value, label) ->
             MasroofChoice(label = stringResource(label), selected = range == value, onClick = { onRangeChanged(value) }, modifier = Modifier.testTag("lab-history-$value"))
         }
     }
     if (range > 0) HistoricalPurchases(state, range)
-    if (range == 0 && s != null) {
-        MasroofCard {
-            s.total?.let { Amount(stringResource(R.string.lab_analysis_expected_total), it) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_actual), s.actual) }
-                s.remaining?.let { amount -> Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_remaining), amount) } }
+    state.snapshot?.let { s ->
+        if (range == 0) {
+            MasroofCard {
+                Amount(stringResource(R.string.lab_analysis_actual), s.actual, MasroofAmountRole.Hero)
+                Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (s.wholeDaysFrom != null && s.wholeDaysLower != null && s.wholeDaysUpper != null) {
-                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_whole_days_range, day(s.wholeDaysFrom),
-                    formatLocalizedMoney(analysisAmount(s.wholeDaysLower)), formatLocalizedMoney(analysisAmount(s.wholeDaysUpper))),
-                    stringResource(R.string.lab_analysis_intraday_hint))
-            } else if (s.total != null) MasroofGuidanceLabel(stringResource(R.string.lab_analysis_range_unavailable), stringResource(R.string.lab_analysis_no_range))
-            if (state.preferences.budget != null) Amount(stringResource(R.string.lab_analysis_budget), state.preferences.budget)
-            if (workflow.budgetStatus() == "NEAR") Text(stringResource(R.string.lab_analysis_near), color = MaterialTheme.colorScheme.primary)
+            AnalysisSpendingExplanation(s, workflow, onOpenTransaction, includeChanges = false)
+            AnalysisMerchantCard(s, workflow, onOpenTransaction, onViewAll = onMerchants)
+            AnalysisChangeCard(s, workflow, onOpenTransaction)
         }
-        AnalysisSpendingExplanation(s, workflow, onOpenTransaction)
+        AnalysisQualityEntry(s, onQuality)
     }
-    s?.let { AnalysisDataQuality(it, workflow, onOpenTransaction, onOpenReview, onRequestSmsPermission, onRescan) }
-    if (range == 0 && s != null) {
-        val points = remember(s) { s.chart() }
-        if (points.isNotEmpty()) MasroofCard {
-            MasroofGuidanceLabel(stringResource(R.string.lab_analysis_chart), stringResource(R.string.lab_analysis_chart_hint),
-                style = MaterialTheme.typography.titleSmall, contentColor = MaterialTheme.colorScheme.onSurface)
-            if (s.trainingFrom != null && s.trainingThrough != null) MasroofGuidanceLabel(
-                stringResource(R.string.lab_analysis_training_range, day(s.trainingFrom), day(s.trainingThrough)),
-                stringResource(R.string.lab_analysis_training_hint), style = MaterialTheme.typography.bodySmall)
-            var selected by rememberSaveable(s.periodStart) { mutableIntStateOf(0) }
-            val index = selected.coerceIn(points.indices)
-            val labels = points.map { "${day(it.day)} · ${stringResource(if (it.expected) R.string.lab_analysis_estimated else R.string.lab_analysis_actual)} · ${formatLocalizedMoney(analysisAmount(it.amount))}" }
-            Text(labels[index], style = MaterialTheme.typography.bodySmall)
-            MasroofInteractiveLineChart(points.map { it.amount }, java.math.BigDecimal.ZERO,
-                selectedPointIndex = index, onPointSelected = { selected = it }, pointLabel = { labels[it] },
-                axisLabel = { LocalDate.ofEpochDay(points[it].day).dayOfMonth.toString() },
-                currencyLabel = stringResource(R.string.lab_analysis_sar), expectedFromIndex = points.indexOfFirst { it.expected }.takeIf { it >= 0 })
-            Text(stringResource(R.string.lab_analysis_chart_legend), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-    PublishedForecastHistory(state)
-    LearningAndForecastPerformance(state)
 }
 
 @Composable private fun Preferences(workflow: LabAnalyticsWorkflow, state: AnalysisUiState, onBack: () -> Unit) {
@@ -341,10 +347,10 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         Switch(checked, onChange, enabled = enabled)
     }
 }
-@Composable internal fun Amount(label: String, cents: Long) {
+@Composable internal fun Amount(label: String, cents: Long, role: MasroofAmountRole = MasroofAmountRole.Card) {
     Column(Modifier.fillMaxWidth().padding(vertical = MasroofSpacing.inlineGap)) {
         if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        MasroofAmountText(formatLocalizedMoney(analysisAmount(cents)), MasroofAmountRole.Card, maxLines = 2)
+        MasroofAmountText(formatLocalizedMoney(analysisAmount(cents)), role, maxLines = 2)
     }
 }
 @Composable internal fun day(value: Long): String = DateTimeFormatter.ofPattern("d MMM yyyy", LocalConfiguration.current.locales[0]).format(LocalDate.ofEpochDay(value))
