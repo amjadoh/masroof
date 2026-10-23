@@ -107,29 +107,13 @@ fun AccountsSummaryScreen(
 
                 hierarchy != null && hierarchy.hasContent -> {
                     hierarchy.banks.forEach { bankTree ->
-                        bankTree.savingsAccounts.forEach { node ->
-                            resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
+                        val accounts = (bankTree.savingsAccounts + bankTree.walletAccounts)
+                            .map { it.bank to it.maskedNumber } +
+                            bankTree.currentAccounts.map { it.bank to it.maskedNumber }
+                        accounts.forEach { (bank, maskedNumber) ->
+                            resolveOwnedAccountUi(state.ownedAccounts, bank, maskedNumber)?.let { account ->
                                 AccountsSummaryAccountCard(
                                     account = account,
-                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
-                                    onClick = { onOpenAccount(account) },
-                                )
-                            }
-                        }
-                        bankTree.walletAccounts.forEach { node ->
-                            resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
-                                AccountsSummaryAccountCard(
-                                    account = account,
-                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
-                                    onClick = { onOpenAccount(account) },
-                                )
-                            }
-                        }
-                        bankTree.currentAccounts.forEach { node ->
-                            resolveOwnedAccountUi(state.ownedAccounts, node.bank, node.maskedNumber)?.let { account ->
-                                AccountsSummaryAccountCard(
-                                    account = account,
-                                    trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                                     onClick = { onOpenAccount(account) },
                                 )
                             }
@@ -141,7 +125,6 @@ fun AccountsSummaryScreen(
                     state.ownedAccounts.forEach { account ->
                         AccountsSummaryAccountCard(
                             account = account,
-                            trend = state.spendingTrends?.byAccount?.get(ownedAccountKey(account)),
                             onClick = { onOpenAccount(account) },
                         )
                     }
@@ -158,8 +141,7 @@ private fun resolveOwnedAccountUi(
 ): OwnedAccountUi? = ownedAccounts.find { it.bank == bank && it.maskedNumber == maskedNumber }
 
 @Composable
-private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> Unit,
-    trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null) {
+private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> Unit) {
     val movement = account.periodSummary?.cashPosition()
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
     EntitySummaryCard(account.displayLabel(), "",
