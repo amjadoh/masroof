@@ -1,54 +1,78 @@
 package com.baraa.masroof.application.interpretation
 
 import android.content.Context
-import androidx.work.*
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.baraa.masroof.MasroofApplication
-import com.baraa.masroof.application.ingestion.SmsIngestionResult
+import com.baraa.masroof.application.logging.AppLogCategories
+import com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome
+import com.baraa.masroof.application.transaction.ReconciliationIncompleteException
+import com.baraa.masroof.data.room.DatabaseRestartRequiredException
 import kotlinx.coroutines.CancellationException
 
-/** Refresh unresolved interpretations after a rule/model change in one parse batch, then one production derived pass. */
-class ModelRefreshWorker(context: Context,params: WorkerParameters) : CoroutineWorker(context,params) {
-    override suspend fun doWork(): Result {
-      return try {
-        val container=(applicationContext as MasroofApplication).container
-        if (container.awaitStartupMaintenance()!=com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome.READY) return Result.retry()
-        val service=container.labInterpretationService?:return Result.success()
-        // Rebuild from durable decisions before comparing versions; a Room invalidation
-        // may have suspended personal assistance while this work was being queued.
-        service.synchronizeFeedback()
-        val expected = inputData.getString("interpretationVersion")
-        if (expected != null && expected != service.refreshVersion) return Result.success()
-        if (expected == null && inputData.getString("modelVersion") != service.modelVersion) return Result.success()
-        val pending=container.reviewRepository.listRequired().filter {
-            service.mayRefresh(it.rawSmsId) &&
-                container.parsedEventRepository.findByRawSmsId(it.rawSmsId)?.let(service::needsRefresh) == true
-        }
-        var failed=false
-        for (review in pending) {
-            // Recheck under the same financial transaction as the parse write: a concurrent
-            // posting or manual decision must win over this advisory refresh.
-            container.withDatabaseTransaction {
-                if (service.mayRefresh(review.rawSmsId)) {
-                    val raw=container.rawSmsRepository.getById(review.rawSmsId)
-                    if (raw != null && container.processStoredSmsUseCase.reparseAndStore(raw) is SmsIngestionResult.Failed) failed=true
-                }
+/** Refresh unresolved interpretations in one parse batch, then one durable derived pass. */
+class ModelRefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = try {
+        val container = (applicationContext as MasroofApplication).container
+        if (container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) {
+            Result.retry()
+        } else container.databaseAccessGate.withAccess {
+            // Keep this container alive across all stages, including the separate learning database.
+            val service = container.labInterpretationService
+            service?.synchronizeFeedback()
+            val expected = inputData.getString("interpretationVersion")
+            val versionMatches = service != null && if (expected != null) expected == service.refreshVersion
+                else inputData.getString("modelVersion") == service.modelVersion
+            val complete = if (service != null && versionMatches) ModelRefreshWorkflow(
+                reviews = container.reviewRepository,
+                parsed = container.parsedEventRepository,
+                raw = container.rawSmsRepository,
+                retries = container.processingRetryRepository,
+                processor = container.processStoredSmsUseCase,
+                mayRefresh = service::mayRefresh,
+                needsRefresh = service::needsRefresh,
+                inTransaction = { container.withDatabaseTransaction(it) },
+                recoverDerived = { container.historicalDerivedRecovery.recoverPending() },
+                clock = container.clock,
+            ).refresh() else {
+                // Committed derived work survives model changes or unavailable assistance.
+                container.historicalDerivedRecovery.recoverPending()
+                true
             }
-        }
-        if (pending.isNotEmpty()) {
-            container.discoverFromStoredEvents()
-            // refreshReviewQueue owns the single reconciliation completion policy and durable retry set.
-            container.refreshReviewQueue()
             container.maintenanceCompletionSignal.notifyCompleted()
+            if (complete) Result.success() else Result.retry()
         }
-        if (failed) Result.retry() else Result.success()
-    } catch (e: CancellationException) {throw e}
-      catch (_: Exception) {Result.retry()}
+    } catch (_: DatabaseRestartRequiredException) {
+        // Rejected admission to an old container is retryable; genuine coroutine cancellation is not swallowed.
+        Result.retry()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        val incomplete = e as? ReconciliationIncompleteException
+        val details = incomplete?.let { " failures=${it.failureCount} id=${it.maskedRawSmsId}" }.orEmpty()
+        (applicationContext as MasroofApplication).container.appLogService.warn(
+            AppLogCategories.INGEST,
+            "ModelRefreshWorker stage=${incomplete?.stage ?: "refresh"} incomplete$details " +
+                "attempt=${runAttemptCount + 1} retry_state=retained (${e.javaClass.simpleName})",
+        )
+        Result.retry()
     }
+
     companion object {
-        const val TAG="masroof:model-refresh"
-        fun enqueue(context: Context,version: String) {
-            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork("$TAG:$version",ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<ModelRefreshWorker>().setInputData(workDataOf("interpretationVersion" to version)).addTag(TAG).build()).result.get()
+        const val TAG = "masroof:model-refresh"
+        fun enqueue(context: Context, version: String) {
+            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+                "$TAG:$version",
+                ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<ModelRefreshWorker>()
+                    .setInputData(workDataOf("interpretationVersion" to version))
+                    .addTag(TAG)
+                    .build(),
+            ).result.get()
         }
     }
 }

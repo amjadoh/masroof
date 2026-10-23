@@ -711,8 +711,11 @@ class AppContainer(
         }
         stopLabAnalytics()
         applicationScope.cancel()
+        // WorkManager jobs outlive applicationScope; finish admitted work before closing their stores.
+        runBlocking(Dispatchers.IO) {
+            databaseAccessGate.retireAndDrain()
+        }
         labInterpretationService?.close()
-        databaseAccessGate.retire()
         database.close()
     }
 
