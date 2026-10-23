@@ -158,8 +158,6 @@ data class SettingsUiState(
     val accountTypeTarget: ManagedAccountUi? = null,
     val cardNetworkTarget: ManagedCardUi? = null,
     val cardTypeSuggestion: CardType? = null,
-    val cardRoleTarget: ManagedCardUi? = null,
-    val linkDebitTarget: ManagedCardUi? = null,
     val reparsingStored: Boolean = false,
     val importingSms: Boolean = false,
     val smsImportMessage: SmsImportMessage? = null,

@@ -170,7 +170,7 @@ class SettingsViewModel(
     fun saveCardDisplayName(name: String) {
         val target = _uiState.value.renameCardTarget ?: return
         dismissRenameCard()
-        updateCardMetadata(target) {
+        updateMetadata {
             settingsRegistryWorkflow.updateCardDisplayName(
                 CardReference(target.bank, target.last4),
                 name.trim().ifEmpty { null },
@@ -189,7 +189,7 @@ class SettingsViewModel(
     fun saveAccountDisplayName(name: String) {
         val target = _uiState.value.renameAccountTarget ?: return
         dismissRenameAccount()
-        updateAccountMetadata(target) {
+        updateMetadata {
             settingsRegistryWorkflow.updateAccountDisplayName(
                 AccountReference(target.bank, target.maskedNumber),
                 name.trim().ifEmpty { null },
@@ -214,85 +214,11 @@ class SettingsViewModel(
 
     fun saveCardSetup(configuration: com.baraa.masroof.domain.model.CardConfiguration) {
         val target = _uiState.value.cardNetworkTarget ?: return
-        if (_uiState.value.updating) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updating = true, error = null) }
-            try {
-                settingsRegistryWorkflow.configureCard(CardReference(target.bank, target.last4), configuration)
-                // Metadata correction is not a reparse, ownership change or ledger rebuild.
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
-                _uiState.update { it.copy(updating = false, cardNetworkTarget = null, cardTypeSuggestion = null) }
-            } catch (ce: CancellationException) { throw ce } catch (_: Exception) {
-                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
-            }
-        }
-    }
-
-    fun setCardNetwork(network: CardNetwork?) {
-        val target = _uiState.value.cardNetworkTarget ?: return
-        dismissCardNetworkPicker()
-        updateCardMetadata(target) {
-            settingsRegistryWorkflow.updateCardNetwork(
-                CardReference(target.bank, target.last4),
-                network,
-            )
-        }
-    }
-
-    fun openCardRolePicker(card: ManagedCardUi) {
-        _uiState.update { it.copy(cardRoleTarget = card) }
-    }
-
-    fun dismissCardRolePicker() {
-        _uiState.update { it.copy(cardRoleTarget = null) }
-    }
-
-    fun setPrimaryCard(card: ManagedCardUi) {
-        dismissCardRolePicker()
-        updateCardMetadata(card) {
-            settingsRegistryWorkflow.setPrimaryCard(CardReference(card.bank, card.last4))
-        }
-    }
-
-    fun setSupplementaryCard(card: ManagedCardUi, primaryLast4: String) {
-        dismissCardRolePicker()
-        updateCardMetadata(card) {
-            settingsRegistryWorkflow.setSupplementaryCard(
-                CardReference(card.bank, card.last4),
-                primaryLast4,
-            )
-        }
-    }
-
-    fun clearCardRole(card: ManagedCardUi) {
-        dismissCardRolePicker()
-        updateCardMetadata(card) {
-            settingsRegistryWorkflow.clearCardRole(CardReference(card.bank, card.last4))
-        }
-    }
-
-    fun openLinkDebitCard(card: ManagedCardUi) {
-        _uiState.update { it.copy(linkDebitTarget = card) }
-    }
-
-    fun dismissLinkDebitCard() {
-        _uiState.update { it.copy(linkDebitTarget = null) }
-    }
-
-    fun linkDebitToAccount(card: ManagedCardUi, account: ManagedAccountUi) {
-        dismissLinkDebitCard()
-        updateCardMetadata(card) {
-            settingsRegistryWorkflow.linkDebitToAccount(
-                CardReference(card.bank, card.last4),
-                AccountReference(account.bank, account.maskedNumber),
-            )
-        }
-    }
-
-    fun markCardAsDebit(card: ManagedCardUi) {
-        updateCardMetadata(card) {
-            settingsRegistryWorkflow.markCardAsDebit(CardReference(card.bank, card.last4))
+        updateRegistry(onUpdated = {
+            _uiState.update { it.copy(cardNetworkTarget = null, cardTypeSuggestion = null) }
+        }) {
+            // Metadata correction is not a reparse, ownership change or ledger rebuild.
+            settingsRegistryWorkflow.configureCard(CardReference(target.bank, target.last4), configuration)
         }
     }
 
@@ -1029,42 +955,23 @@ class SettingsViewModel(
         }
     }
 
-    private fun updateCardMetadata(_card: ManagedCardUi, action: suspend () -> Unit) {
-        if (_uiState.value.updating) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updating = true, error = null) }
-            try {
-                action()
-                refreshReviewQueue()
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
-                _uiState.update { it.copy(updating = false) }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
-            }
+    private fun updateMetadata(action: suspend () -> Unit) {
+        updateRegistry {
+            action()
+            refreshReviewQueue()
         }
     }
 
-    private fun updateAccountMetadata(_account: ManagedAccountUi, action: suspend () -> Unit) {
+    private fun updateRegistry(onUpdated: () -> Unit = {}, action: suspend () -> Unit) {
         if (_uiState.value.updating) return
         viewModelScope.launch {
             _uiState.update { it.copy(updating = true, error = null) }
             try {
                 action()
-                refreshReviewQueue()
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
+                applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
                 _uiState.update { it.copy(updating = false) }
+                onUpdated()
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {
@@ -1074,85 +981,29 @@ class SettingsViewModel(
     }
 
     private fun updateCardOwnership(card: ManagedCardUi, owned: Boolean, openSetup: Boolean = false) {
-        if (_uiState.value.updating) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updating = true, error = null) }
-            try {
-                val ref = CardReference(card.bank, card.last4)
-                if (owned) {
-                    settingsRegistryWorkflow.confirmCardOwned(ref)
-                } else {
-                    settingsRegistryWorkflow.markCardExternal(ref)
-                }
-                reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
-                _uiState.update { it.copy(updating = false) }
-                if (openSetup) _uiState.value.followedCards.firstOrNull { it.bank == card.bank && it.last4 == card.last4 }
-                    ?.let(::openCardNetworkPicker)
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
-            }
+        updateRegistry(onUpdated = {
+            if (openSetup) _uiState.value.followedCards.firstOrNull { it.bank == card.bank && it.last4 == card.last4 }
+                ?.let(::openCardNetworkPicker)
+        }) {
+            val ref = CardReference(card.bank, card.last4)
+            if (owned) settingsRegistryWorkflow.confirmCardOwned(ref) else settingsRegistryWorkflow.markCardExternal(ref)
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
         }
     }
 
     private fun updateAccountOwnership(account: ManagedAccountUi, owned: Boolean) {
-        if (_uiState.value.updating) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updating = true, error = null) }
-            try {
-                val ref = AccountReference(account.bank, account.maskedNumber)
-                if (owned) {
-                    settingsRegistryWorkflow.confirmAccountOwned(ref)
-                } else {
-                    settingsRegistryWorkflow.markAccountExternal(ref)
-                }
-                reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
-                _uiState.update { it.copy(updating = false) }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
-            }
+        updateRegistry {
+            val ref = AccountReference(account.bank, account.maskedNumber)
+            if (owned) settingsRegistryWorkflow.confirmAccountOwned(ref) else settingsRegistryWorkflow.markAccountExternal(ref)
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
         }
     }
 
     private fun updateLoanOwnership(loan: ManagedLoanUi, owned: Boolean) {
-        if (_uiState.value.updating) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updating = true, error = null) }
-            try {
-                val ref = LoanReference(loan.bank, loan.loanType)
-                if (owned) {
-                    settingsRegistryWorkflow.confirmLoanOwned(ref)
-                } else {
-                    settingsRegistryWorkflow.markLoanExternal(ref)
-                }
-                reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Loan(ref))
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
-                _uiState.update { it.copy(updating = false) }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
-            }
+        updateRegistry {
+            val ref = LoanReference(loan.bank, loan.loanType)
+            if (owned) settingsRegistryWorkflow.confirmLoanOwned(ref) else settingsRegistryWorkflow.markLoanExternal(ref)
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Loan(ref))
         }
     }
 
@@ -1255,6 +1106,10 @@ class SettingsViewModel(
             .find { it.id == commitmentId }
 
     private fun applyCommitments(commitments: List<Commitment>) {
+        _uiState.update { it.withCommitments(commitments) }
+    }
+
+    private fun SettingsUiState.withCommitments(commitments: List<Commitment>): SettingsUiState {
         val zoneId = java.time.ZoneId.systemDefault()
         val items = commitments.map { commitment -> toManagedCommitmentUi(commitment, zoneId) }
         val disabledItems = CommitmentHistoryBuilder.disabledTabItems(commitments, zoneId)
@@ -1270,14 +1125,12 @@ class SettingsViewModel(
                     at = entry.at.atZone(zoneId).toLocalDate(),
                 )
             }
-        _uiState.update {
-            it.copy(
-                activeCommitments = items.filter { item -> item.active },
-                disabledCommitments = disabledItems,
-                commitmentRecordEntries = recordEntries,
-                commitmentsLoaded = true,
-            )
-        }
+        return copy(
+            activeCommitments = items.filter { item -> item.active },
+            disabledCommitments = disabledItems,
+            commitmentRecordEntries = recordEntries,
+            commitmentsLoaded = true,
+        )
     }
 
     private fun toManagedCommitmentUi(
@@ -1345,26 +1198,6 @@ class SettingsViewModel(
             }
         val followedCards = cardItems.filter { card -> card.ownership == OwnershipStatus.OWNED }
         val followedAccounts = accountItems.filter { account -> account.ownership == OwnershipStatus.OWNED }
-        val commitmentItems = commitments?.map { commitment ->
-            toManagedCommitmentUi(commitment, java.time.ZoneId.systemDefault())
-        }
-        val disabledItems = commitments?.let { list ->
-            CommitmentHistoryBuilder.disabledTabItems(list, java.time.ZoneId.systemDefault())
-                .mapNotNull { historyItem ->
-                    commitmentItems?.firstOrNull { it.id == historyItem.commitmentId }
-                }
-        }
-        val recordEntries = commitments?.let { list ->
-            CommitmentRecordBuilder.recordTabItems(list)
-                .map { entry ->
-                    CommitmentRecordEntryUi(
-                        commitmentId = entry.commitmentId,
-                        commitmentName = entry.commitmentName,
-                        event = entry.event,
-                        at = entry.at.atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
-                    )
-                }
-        }
         _uiState.update {
             it.copy(
                 loading = false,
@@ -1375,10 +1208,6 @@ class SettingsViewModel(
                 unregisteredAccounts = accountItems.filter { account -> account.ownership == OwnershipStatus.UNKNOWN },
                 stoppedAccounts = accountItems.filter { account -> account.ownership == OwnershipStatus.EXTERNAL },
                 loans = loanItems,
-                activeCommitments = commitmentItems?.filter { item -> item.active } ?: it.activeCommitments,
-                disabledCommitments = disabledItems ?: it.disabledCommitments,
-                commitmentRecordEntries = recordEntries ?: it.commitmentRecordEntries,
-                commitmentsLoaded = commitments?.let { true } ?: it.commitmentsLoaded,
                 bankTrees = buildBankTrees(
                     cards = followedCards,
                     accounts = followedAccounts,
@@ -1390,7 +1219,7 @@ class SettingsViewModel(
                     loans = loanItems,
                 ),
                 error = null,
-            )
+            ).let { state -> if (commitments == null) state else state.withCommitments(commitments) }
         }
     }
 
@@ -1499,7 +1328,7 @@ class SettingsViewModel(
     }
 
     fun setAccountType(account: ManagedAccountUi, accountType: AccountType) {
-        updateAccountMetadata(account) {
+        updateMetadata {
             settingsRegistryWorkflow.updateAccountType(
                 AccountReference(account.bank, account.maskedNumber),
                 accountType,
