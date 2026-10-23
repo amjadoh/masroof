@@ -1,6 +1,7 @@
 package com.baraa.masroof.presentation.dashboard
 
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
+import com.baraa.masroof.presentation.dashboard.AccountTransactionPresentation.matchesAccountContainer
 
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
@@ -54,17 +55,6 @@ object DashboardSummaryTransactionFilter {
                 (tx.type == FinancialTransactionType.LOAN_REPAYMENT &&
                     tx.destinationContainerId == loanContainerId)
         }
-    }
-
-    private fun matchesAccountContainer(
-        containerId: String?,
-        ownedContainerId: String?,
-        ownedLast4s: Set<String>,
-    ): Boolean {
-        if (containerId == null || ownedContainerId == null) return false
-        if (containerId == ownedContainerId) return true
-        if (!containerId.startsWith("account:")) return false
-        return containerId.substringAfterLast(':') in ownedLast4s
     }
 
     fun forDebitCard(
