@@ -100,23 +100,11 @@ object CurrentAccountSummaryCalculator {
 
     fun spendingSplit(
         transactions: List<FinancialTransaction>,
-        parsedRecords: List<ParsedEventRecord>,
-        primaryCurrency: Currency = Currency.SAR,
+        currentAccount: CurrentAccountSummary,
         sarEquivalents: Map<String, Money> = emptyMap(),
-        ownedAccountContainerIds: Set<String> = emptySet(),
-        ownedAccountLast4s: Set<String> = emptySet(),
         debitCardScope: DebitCardScopeFacts = DebitCardScopeFacts(emptySet(), emptyMap()),
     ): SpendingSplitSummary {
-        val currentAccount = summarize(
-            transactions = transactions,
-            parsedRecords = parsedRecords,
-            primaryCurrency = primaryCurrency,
-            sarEquivalents = sarEquivalents,
-            ownedAccountContainerIds = ownedAccountContainerIds,
-            ownedAccountLast4s = ownedAccountLast4s,
-            debitCardScope = debitCardScope,
-        )
-
+        val primaryCurrency = currentAccount.currency
         var cardGross = Money.zero(primaryCurrency)
         var cardRefunds = Money.zero(primaryCurrency)
 
