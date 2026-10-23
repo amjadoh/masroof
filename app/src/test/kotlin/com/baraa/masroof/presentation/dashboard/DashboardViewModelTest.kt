@@ -555,6 +555,22 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun failedScanPreservesEachEntrypointsRefreshBehavior() = runTest {
+        for (pullToRefresh in listOf(false, true)) {
+            val loader = FakeLoader()
+            loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
+            val vm = viewModel(loader, rescanService = { error("scan failed") })
+
+            if (pullToRefresh) vm.refreshWithSmsImport() else vm.rescanSms()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.rescanning)
+            assertEquals(SmsRescanStatus.FAILED, vm.uiState.value.rescanStatus)
+            assertEquals(if (pullToRefresh) listOf(currentPeriod) else emptyList<FinancialPeriod>(), loader.calls)
+        }
+    }
+
+    @Test
     fun onAppResumed_afterPermissionGranted_triggersRescan() = runTest {
         val loader = FakeLoader()
         loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))

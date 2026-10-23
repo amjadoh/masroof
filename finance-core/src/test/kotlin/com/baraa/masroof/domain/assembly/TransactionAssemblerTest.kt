@@ -10,6 +10,7 @@ import com.baraa.masroof.domain.model.BankNetworkType
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.Confidence
 import com.baraa.masroof.domain.model.FinancialTransactionType
+import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.MessageFamily
 import com.baraa.masroof.domain.model.MoneyDirection
 import com.baraa.masroof.domain.model.OwnershipStatus
@@ -28,6 +29,39 @@ import java.time.Instant
 class TransactionAssemblerTest {
 
     private val receivedAt = Instant.parse("2026-08-01T12:00:00Z")
+
+    @Test
+    fun singleEventConstructionPreservesExplicitResolutionAndEvidence() {
+        val evidence = event(
+            family = MessageFamily.UNKNOWN,
+            amount = money("51.99"),
+            source = AccountReference(Bank.BANK_ALJAZIRA, "3001"),
+            card = CardReference(Bank.BANK_ALJAZIRA, "7271"),
+        ).copy(merchant = "Shop", counterparty = "Party", parseStatus = ParseStatus.REVIEW_REQUIRED)
+        val cardId = FinancialContainerIdFactory.cardId(Bank.BANK_ALJAZIRA, "7271")
+        val transaction = FinancialTransaction.fromSingleEvent(
+            event = evidence,
+            type = FinancialTransactionType.EXPENSE,
+            occurredAt = receivedAt,
+            sourceContainerId = cardId,
+            destinationContainerId = null,
+            occurredAtZone = "Asia/Riyadh",
+        )
+
+        assertEquals(com.baraa.masroof.domain.ids.TransactionIdFactory.fromRawSmsIds(listOf(evidence.rawSmsId)), transaction.id)
+        assertEquals(FinancialTransactionType.EXPENSE, transaction.type)
+        assertEquals(evidence.amount, transaction.amount)
+        assertEquals(cardId, transaction.sourceContainerId)
+        assertNull(transaction.destinationContainerId)
+        assertEquals(listOf(evidence.id), transaction.linkedParsedEventIds)
+        assertEquals(receivedAt, transaction.occurredAt)
+        assertEquals("Asia/Riyadh", transaction.occurredAtZone)
+        assertEquals("Shop", transaction.merchant)
+        assertEquals("Party", transaction.counterparty)
+        assertNull(transaction.categoryId)
+        assertNull(transaction.appliedExchangeRate)
+        assertNull(transaction.exchangeRateSource)
+    }
 
     @Test
     fun assemblerSource_doesNotFabricateAccountOrCardTypes() {

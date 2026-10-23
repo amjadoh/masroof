@@ -1,5 +1,7 @@
 package com.baraa.masroof.testsupport
 
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
+
 import android.content.Context
 import com.baraa.masroof.MasroofApplication
 import com.baraa.masroof.application.AppContainer
@@ -25,7 +27,7 @@ object TestRuntime {
     @Synchronized fun close() { current?.close(); current = null }
     suspend fun reset(context: Context) = withContext(Dispatchers.IO) {
         close()
-        com.baraa.masroof.application.analytics.AnalyticsNavigation.reset()
+        AnalyticsNavigation.reset()
         java.io.File(context.filesDir, "test-storage").deleteRecursively()
         java.io.File(context.applicationInfo.dataDir, "shared_prefs").listFiles().orEmpty()
             .filter { it.name.startsWith("test-storage:") }.forEach {

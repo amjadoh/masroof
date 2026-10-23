@@ -1,5 +1,7 @@
 package com.baraa.masroof.lab.beta.analytics
 
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
+
 import com.baraa.masroof.lab.analytics.*
 import com.baraa.masroof.application.analytics.*
 import com.baraa.masroof.data.analytics.*

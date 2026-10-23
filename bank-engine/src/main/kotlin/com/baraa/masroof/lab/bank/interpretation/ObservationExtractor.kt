@@ -24,7 +24,6 @@ internal class ObservationExtractor(
     )
     }
     private fun fail(code: String) = problem(code, Blocker.CONFLICTING_FACTS)
-    private fun key(value: String) = SourceText(value).text.trim().replace(Regex("[ \\t]+"), " ")
 
     fun read(): ObservedFacts {
         val reader = RoleLineReader(source, headers, evidence)
@@ -57,7 +56,7 @@ internal class ObservationExtractor(
             val found = linkedSetOf<String>()
             val typed = linkedSetOf<String>()
             reader.read(header).forEach { row ->
-                val candidates = keys.filter { id -> configured[id].orEmpty().any { key(it) == key(row.normalized) } }
+                val candidates = keys.filter { id -> configured[id].orEmpty().any { roleValueKey(it) == roleValueKey(row.normalized) } }
                 if (candidates.size != 1) fail("UNKNOWN_OR_AMBIGUOUS_$header") else {
                     val id = candidates.single()
                     found += id
