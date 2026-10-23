@@ -34,3 +34,6 @@ package-lock.json
 
 # Local files preserved during the production cutover
 .local-preserved/
+
+# Python CI helper bytecode
+__pycache__/

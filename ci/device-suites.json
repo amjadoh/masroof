@@ -1,0 +1,57 @@
+{
+  "api": 36,
+  "runner": "com.baraa.masroof.test/com.baraa.masroof.instrumentation.MasroofAndroidTestRunner",
+  "appId": "com.baraa.masroof",
+  "shards": 4,
+  "processDeath": [
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armAfterCapture",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeAfterCapture"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armAfterParsed",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeAfterParsed"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armAfterReconciled",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeAfterReconciled"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armAfterReview",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeAfterReview"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armRequiredReview",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeRequiredReview"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armUserNonFinancial",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeUserNonFinancial"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armLiveRetry",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeLiveRetry"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armHistoricalAfterParsed",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeHistoricalAfterParsed"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#armInsideIgnoreTransaction",
+      "com.baraa.masroof.instrumentation.processdeath.M13ProcessDeathJourneyTest#resumeInsideIgnoreTransaction"
+    ],
+    [
+      "com.baraa.masroof.instrumentation.processdeath.LearningProcessDeathJourneyTest#armAfterFinancialCorrectionBeforeLearning",
+      "com.baraa.masroof.instrumentation.processdeath.LearningProcessDeathJourneyTest#resumeFinancialCorrectionAndBlockNextTemplate"
+    ]
+  ],
+  "upgrade": [
+    "com.baraa.masroof.instrumentation.upgrade.AppUpgradePreservationTest#seedBeforeUpdate",
+    "com.baraa.masroof.instrumentation.upgrade.AppUpgradePreservationTest#verifyAfterUpdate"
+  ],
+  "excluded": {
+    "com.baraa.masroof.instrumentation.PreVacuumBackupSnapshotTest#concurrentExport_onPre327Sqlite_importsAndReopensRoom": "API 26\u201328 compatibility is outside the agreed CI device scope"
+  },
+  "timeouts": {},
+  "baseline": "b76c1afc"
+}

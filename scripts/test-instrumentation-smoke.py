@@ -107,32 +107,24 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
         self.assertEqual(6, len(self.captures()))
 
     def test_workflow_keeps_complete_coverage_and_clean_devices(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertEqual(1, workflow.count("run-instrumentation-smoke.sh app"))
-        self.assertNotIn("run-instrumentation-smoke.sh beta", workflow)
-        self.assertEqual(2, workflow.count("profile: pixel_2"))
-        app = workflow.split("  emulator-app:", 1)[1].split("  emulator-smoke:", 1)[0]
-        lifecycle = workflow.split("  emulator-recovery:", 1)[1].split("  emulator-lifecycle:", 1)[0]
-        self.assertIn("shard: [0, 1, 2, 3]", app)
-        self.assertIn("run-instrumentation-smoke.sh app ${{ matrix.shard }} ${{ strategy.job-total }}", app)
-        self.assertIn("fail-fast: false", app)
-        for job in (app, lifecycle):
-            self.assertLess(job.index("- name: Assemble"), job.index("uses: reactivecircus/android-emulator-runner"))
-            self.assertIn("/system-images/android-", job)
-            self.assertIn("-no-snapshot", job)
-        self.assertNotIn("run-instrumentation-smoke.sh beta", lifecycle)
-        recovery = (ROOT / ".github/scripts/run-lifecycle-suite.sh").read_text()
-        for script in ("m13-process-death", "app-apk-upgrade"):
-            self.assertEqual(2 if script == "app-apk-upgrade" else 1, recovery.count(f"bash scripts/{script}.sh"))
-        self.assertIn("suite: [production, upgrade]", lifecycle)
-        self.assertIn("fail-fast: false", lifecycle)
-        self.assertIn("needs: emulator-recovery", workflow)
-        self.assertIn('test "$RECOVERY_RESULT" = success', workflow)
-        self.assertIn("name: instrumentation-reports-${{ matrix.shard }}", app)
-        gate = workflow.split("  emulator-smoke:", 1)[1].split("  emulator-recovery:", 1)[0]
-        self.assertIn("if: always()", gate)
-        self.assertIn('test "$SHARDS_RESULT" = success', gate)
-        self.assertIn("find m19-statement-screenshots", gate)
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        app = workflow.split('  emulator-app:', 1)[1].split('  emulator-recovery:', 1)[0]
+        recovery = workflow.split('  emulator-recovery:', 1)[1].split('  emulator-lifecycle:', 1)[0]
+        self.assertIn('shard: [0, 1, 2, 3]', app)
+        self.assertIn('scripts/ci_device.py run --shard', app)
+        self.assertNotIn('gradlew', app)
+        self.assertIn('fail-fast: false', app)
+        self.assertIn('suite: [production, upgrade]', recovery)
+        self.assertNotIn('gradlew', recovery)
+        self.assertIn('CI_DEVICE_BUNDLE:', recovery)
+        for section in [app, recovery]:
+            self.assertIn('name: shared-test-apks', section)
+            self.assertIn('-no-snapshot', section)
+            self.assertIn('if: always()', section)
+        gate = workflow.split('  emulator-smoke:', 1)[1]
+        self.assertIn('unit-test, static-analysis, emulator-app, emulator-lifecycle', gate)
+        self.assertIn('Require complete CI', gate)
+        self.assertIn('Require statement reconciliation screenshots', gate)
 
 
 if __name__ == "__main__":
