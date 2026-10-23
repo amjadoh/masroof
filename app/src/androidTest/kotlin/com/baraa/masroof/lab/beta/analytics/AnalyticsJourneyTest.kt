@@ -398,6 +398,13 @@ class AnalyticsJourneyTest {
                 }
             } }
             compose.onNodeWithText(text(R.string.analysis_learning_settings, "en")).performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertDoesNotExist()
+            val learningHelp = text(R.string.guidance_about, "en").format(text(R.string.analysis_learning_settings, "en"))
+            compose.onNodeWithContentDescription(learningHelp).performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertIsDisplayed()
+            instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            compose.waitForIdle()
+            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertDoesNotExist()
             compose.onNodeWithTag("learning-insights").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("forecast-performance").assertDoesNotExist()
             screen("en-learning-settings-large-font")

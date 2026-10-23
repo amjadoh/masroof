@@ -114,6 +114,8 @@ class ReplicaSetupJourneyTest {
             screenshot("03b-dashboard-forecast-entry")
             compose.onNodeWithTag("lab-forecast-entry").performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_title)).assertIsDisplayed()
+            click(R.string.analysis_forecasts_tab)
+            compose.onNodeWithText(text(R.string.analysis_forecasts_tab)).assertIsSelected()
             compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertDoesNotExist()
             compose.onNodeWithContentDescription(host.getString(R.string.guidance_about,
                 text(R.string.lab_analysis_insufficient))).performClick()
@@ -122,6 +124,8 @@ class ReplicaSetupJourneyTest {
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithText(text(R.string.lab_analysis_insufficient)).assertIsDisplayed()
             screenshot("03c-analysis-opened-from-home")
+            compose.onNodeWithTag("analysis-quality-entry").performScrollTo().performClick()
+            compose.onNodeWithText(text(R.string.analysis_quality_details)).assertIsDisplayed()
             compose.onNodeWithText(text(R.string.lab_analysis_show_data)).performScrollTo().performClick()
             compose.onNode(hasText(text(R.string.lab_analysis_excluded_scope), substring = true) and hasClickAction()).performScrollTo().performClick()
             val groupSize = container.labAnalytics.state.value.snapshot!!.quality.excluded["OUTSIDE_PURCHASE_SCOPE"]!!.size
@@ -141,6 +145,8 @@ class ReplicaSetupJourneyTest {
             compose.onNodeWithTag("lab-analytics-transaction-detail").assertDoesNotExist()
             compose.onNodeWithTag("lab-evidence-analytics-prior-payment").assertIsDisplayed()
             screenshot("03f-quality-keeps-scroll-after-detail")
+            back()
+            compose.onNodeWithText(text(R.string.analysis_forecasts_tab)).assertIsSelected()
             back()
             compose.onNodeWithTag("lab-forecast-entry").performScrollTo().assertIsDisplayed()
             // Analytics settings opened from the existing center return to that center on Cancel.
