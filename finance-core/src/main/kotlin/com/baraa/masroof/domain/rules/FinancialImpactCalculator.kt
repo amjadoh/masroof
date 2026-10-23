@@ -9,30 +9,24 @@ import com.baraa.masroof.domain.model.FinancialTransactionType
 object FinancialImpactCalculator {
     fun forType(type: FinancialTransactionType): FinancialImpact =
         when (type) {
-            FinancialTransactionType.SELF_TRANSFER ->
+            FinancialTransactionType.SELF_TRANSFER,
+            FinancialTransactionType.CREDIT_CARD_PAYMENT,
+            FinancialTransactionType.LOAN_REPAYMENT,
+            FinancialTransactionType.CASH_WITHDRAWAL,
+            ->
+                // Moving cash between owned containers or settling principal
+                // (cash down, liability down) leaves net worth unchanged.
                 FinancialImpact(
                     countsAsExpense = false,
                     countsAsIncome = false,
                     netWorthEffect = NetWorthEffect.ZERO,
                 )
 
-            FinancialTransactionType.CREDIT_CARD_PAYMENT ->
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    // Cash down, liability down — net worth unchanged (D-007).
-                    netWorthEffect = NetWorthEffect.ZERO,
-                )
-
-            FinancialTransactionType.LOAN_REPAYMENT ->
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    // Cash down, loan principal down — net worth unchanged.
-                    netWorthEffect = NetWorthEffect.ZERO,
-                )
-
-            FinancialTransactionType.EXPENSE ->
+            FinancialTransactionType.EXPENSE,
+            FinancialTransactionType.BILL_PAYMENT,
+            FinancialTransactionType.FEE,
+            ->
+                // Fees and bills reduce net worth like ordinary spending.
                 FinancialImpact(
                     countsAsExpense = true,
                     countsAsIncome = false,
@@ -46,24 +40,6 @@ object FinancialImpactCalculator {
                     netWorthEffect = NetWorthEffect.INCREASE,
                 )
 
-            FinancialTransactionType.EXTERNAL_TRANSFER_IN ->
-                // Not automatically income (D-004, §12). Cash direction alone does
-                // not determine net worth (loan, gift, reimbursement, etc.).
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.UNRESOLVED,
-                )
-
-            FinancialTransactionType.EXTERNAL_TRANSFER_OUT ->
-                // Not automatically expense (D-005, §11). Cash direction alone does
-                // not determine net worth (loan repayment, spending, investment, etc.).
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.UNRESOLVED,
-                )
-
             FinancialTransactionType.REFUND ->
                 // Offsets a prior purchase; not ordinary income (D-008, §12).
                 FinancialImpact(
@@ -72,37 +48,14 @@ object FinancialImpactCalculator {
                     netWorthEffect = NetWorthEffect.INCREASE,
                 )
 
-            FinancialTransactionType.CASH_WITHDRAWAL ->
-                // Bank cash → physical cash; not an expense by default (§11).
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.ZERO,
-                )
-
-            FinancialTransactionType.BILL_PAYMENT ->
-                FinancialImpact(
-                    countsAsExpense = true,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.DECREASE,
-                )
-
-            FinancialTransactionType.FEE ->
-                // Fee is its own type; economically it reduces net worth like spending.
-                FinancialImpact(
-                    countsAsExpense = true,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.DECREASE,
-                )
-
+            FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+            FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
             FinancialTransactionType.ADJUSTMENT,
             FinancialTransactionType.UNKNOWN,
             ->
-                FinancialImpact(
-                    countsAsExpense = false,
-                    countsAsIncome = false,
-                    netWorthEffect = NetWorthEffect.UNRESOLVED,
-                )
+                // Cash direction alone does not establish income, expense or
+                // net-worth effect (loan, gift, reimbursement, investment, etc.).
+                unresolved()
         }
 
     fun unresolved(): FinancialImpact =
