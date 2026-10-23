@@ -1,4 +1,23 @@
-plugins { kotlin("jvm") }
+plugins {
+    kotlin("jvm")
+    alias(libs.plugins.detekt)
+}
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
 kotlin { jvmToolchain(17) }
-dependencies { testImplementation(libs.junit) }
+dependencies {
+    testImplementation(libs.junit)
+    detektPlugins(libs.detekt.formatting)
+}
+detekt {
+    config.setFrom("$rootDir/detekt.yml")
+    buildUponDefaultConfig = false
+    parallel = true
+}
+
+// Ownership checks inspect the app tree as well as this module's sources.
+tasks.test {
+    inputs.files(
+        fileTree("src/main/kotlin") { include("**/*.kt") },
+        rootProject.fileTree("app/src/main/kotlin") { include("**/*.kt") },
+    ).withPathSensitivity(PathSensitivity.RELATIVE)
+}

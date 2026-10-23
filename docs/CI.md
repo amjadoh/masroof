@@ -6,6 +6,14 @@ Every PR to main and every main push runs the full required suite. The stable me
 
 Unit tests (including pure modules), lint/detekt and the shared APK build run independently. The feature export is a declared unit-test output, so model reproducibility consumes the export from that same test execution/cache without a second Gradle test invocation.
 
+Financial policy tests live in `finance-core` and run through `:finance-core:test`
+in the existing unit job. The existing root `detekt` task also checks finance-core
+with the shared configuration and formatting plugin. Architecture test inputs
+include the relocated sources and financial schema, so a source-only boundary
+change cannot reuse an unrelated cached result. `FinancialSchemaCompatibilityTest`
+pins the v18 schema/version/identity; financial effect fixtures pin the extraction
+baseline. The real APK update and backup/recovery device suites remain required.
+
 `build-test-apks` builds baseline `b76c1afc` (version 900001), promoted app (900002) and instrumentation APK once. They use the same ephemeral debug signing key. `scripts/ci_device.py bundle` verifies package names and signing certificates, records commit SHA and APK SHA-256 hashes, and downloads the official AndroidX Orchestrator/test-services APKs. Device jobs consume that immutable artifact; they do not compile again. Java setup does not compete with setup-gradle for the Gradle cache.
 
 `ci/device-suites.json` pins APK verification to the project's validated Build Tools 34.0.0 (rather than the newest SDK tool installed on a runner) and owns the validated API 36 image, four ordinary shards and the stateful phase registry. Ordinary tests default into the required suite, including new tests. Unknown stateful phases, overlap and stale registry entries fail. Runtime log-only discovery of the compiled APK must match the entire source inventory before execution. Shards use deterministic longest-processing-time assignment from `ci/device-durations.json`; update measured weights when test costs change. Arabic/English and light/dark matrix variants are separate cases with the same page/scope assertions and captures.

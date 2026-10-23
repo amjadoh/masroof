@@ -124,7 +124,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 val original = raw[tx.id] ?: tx
                 val amount = runCatching {
                     val decimal = if (original.amount.currency == Currency.SAR) original.amount.amount else {
-                        if (tx.appliedExchangeRate == null || tx.exchangeRateSource == null || tx.appliedExchangeRate.signum() <= 0) null
+                        val appliedRate = tx.appliedExchangeRate
+                        if (appliedRate == null || tx.exchangeRateSource == null || appliedRate.signum() <= 0) null
                         else historical.labSarEquivalents[tx.id]?.amount
                     }
                     decimal?.setScale(2, RoundingMode.HALF_EVEN)?.movePointRight(2)?.longValueExact()

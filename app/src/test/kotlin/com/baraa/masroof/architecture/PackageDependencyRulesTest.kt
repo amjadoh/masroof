@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Enforces the package-level dependency policy while Masroof remains a single Gradle module.
+ * Enforces package-level policy across app and the extracted financial core.
  *
  * Temporary exceptions represent existing dependency debt and must be removed by the roadmap
  * PR named alongside each exception. New exceptions are not permitted.
@@ -287,7 +287,7 @@ class PackageDependencyRulesTest {
     fun application_dashboard_doesNotMapArabicLoanLabels() {
         val forbidden = listOf("تمويل شخصي", "سيارة", "عقار")
         kotlinFilesIn("application/dashboard").forEach { file ->
-            val relativePath = file.relativeTo(sourceRoot).invariantSeparatorsPath
+            val relativePath = sourceRelativePath(file)
             val source = file.readText()
             forbidden.forEach { label ->
                 assertFalse(
@@ -315,7 +315,7 @@ class PackageDependencyRulesTest {
     ) {
         assertTrue("Expected Kotlin sources", files.isNotEmpty())
         files.forEach { file ->
-            val relativePath = file.relativeTo(sourceRoot).invariantSeparatorsPath
+            val relativePath = sourceRelativePath(file)
             if (relativePath in allowedFiles) return@forEach
             val source = file.readText()
             forbiddenImports.forEach { forbiddenImport ->
@@ -328,13 +328,17 @@ class PackageDependencyRulesTest {
         }
     }
 
-    private fun kotlinFilesIn(packageName: String): List<File> {
-        val root = File(sourceRoot, packageName)
-        return root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    private fun kotlinFilesIn(packageName: String): List<File> = sourceRoots.flatMap { source ->
+        File(source, packageName).walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }
+
+    private fun sourceRelativePath(file: File): String =
+        file.canonicalFile.relativeTo(sourceRoots.first { file.canonicalFile.startsWith(it.canonicalFile) }.canonicalFile)
+            .invariantSeparatorsPath
 
     private companion object {
         val sourceRoot = File("src/main/kotlin/com/baraa/masroof")
+        val sourceRoots = listOf(sourceRoot, File("../finance-core/src/main/kotlin/com/baraa/masroof"))
 
         val outerLayerImports = listOf(
             "import com.baraa.masroof.application.",

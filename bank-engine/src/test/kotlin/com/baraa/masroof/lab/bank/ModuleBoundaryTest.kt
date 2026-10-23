@@ -19,7 +19,17 @@ class ModuleBoundaryTest {
         val common = listOf("java.", "kotlin.")
         mapOf(
             "ml-assist" to common + listOf("com.baraa.masroof.lab.ml.", "com.baraa.masroof.lab.analytics."),
-            "finance-core" to common + "com.baraa.masroof.lab.finance.",
+            "finance-core" to common + listOf(
+                "com.baraa.masroof.lab.finance.",
+                "com.baraa.masroof.core.money.",
+                "com.baraa.masroof.domain.model.",
+                "com.baraa.masroof.domain.ids.",
+                "com.baraa.masroof.domain.period.",
+                "com.baraa.masroof.domain.rules.",
+                "com.baraa.masroof.domain.assembly.",
+                "com.baraa.masroof.domain.matching.",
+                "com.baraa.masroof.domain.statement.",
+            ),
             "bank-engine" to common + listOf("com.baraa.masroof.lab.bank.", "com.baraa.masroof.lab.finance.value."),
         ).forEach { (module, allowed) ->
             val sources = File(root, "$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
@@ -29,6 +39,13 @@ class ModuleBoundaryTest {
                     assertTrue("${file.name} imports ${match.groupValues[1]}",
                         allowed.any { match.groupValues[1].startsWith(it) })
                 }
+                // Fully qualified calls must not bypass the import boundary. In particular,
+                // bank-engine can use finance values, but never financial posting policies.
+                Regex("\\bcom\\.baraa\\.masroof(?:\\.[A-Za-z_][A-Za-z_0-9]*|\\.\\*)+")
+                    .findAll(file.readText()).forEach { match ->
+                        assertTrue("${file.name} references ${match.value}",
+                            allowed.any { match.value == it.removeSuffix(".") || match.value.startsWith(it) })
+                    }
                 assertFalse("Fully qualified Android API in ${file.name}",
                     Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()))
                 if (module == "bank-engine") assertFalse("ML implementation leaked into engine: ${file.name}",
