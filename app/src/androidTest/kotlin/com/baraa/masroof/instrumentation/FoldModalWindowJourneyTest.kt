@@ -83,8 +83,11 @@ class FoldModalWindowJourneyTest {
             compose.waitUntil(30_000) { compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
         }
         when (kind) {
-            "chart" -> compose.onNodeWithTag("chart-customize", useUnmergedTree = true).performScrollTo().performClick()
-            "layout" -> compose.onNodeWithTag("dashboard-customize", useUnmergedTree = true).performScrollTo().performClick()
+            "chart", "layout" -> {
+                val tag = if (kind == "chart") "chart-customize" else "dashboard-customize"
+                compose.onNodeWithTag(tag, useUnmergedTree = true).performScrollTo().assertIsEnabled()
+                    .performSemanticsAction(SemanticsActions.OnClick) { it() }
+            }
             "filter" -> {
                 clickText(text(R.string.reference_all_types))
                 clickText(text(R.string.transaction_list_filter_sheet_title))
