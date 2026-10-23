@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
@@ -540,16 +541,15 @@ class StatementReconciliationSmokeTest {
     }
 
     private fun awaitFinancialShell() {
-        awaitText(text(R.string.dashboard_empty_period), scroll = true)
+        waitUntil("financial navigation is ready") {
+            contentDescriptionExists(text(R.string.dashboard_open_settings)) &&
+                contentDescriptionExists(text(R.string.approved_nav_home))
+        }
         val blocked = text(R.string.startup_maintenance_blocked)
         assertEquals(emulatorMessage("startup maintenance blocked the shell"), 0, nodeCount(textMatcher(blocked)))
+        composeRule.onNodeWithContentDescription(text(R.string.approved_nav_home))
+            .assertIsDisplayed().assertIsSelected()
         composeRule.onNodeWithContentDescription(text(R.string.dashboard_open_settings)).assertIsDisplayed()
-    }
-
-    private fun awaitText(value: String, scroll: Boolean) {
-        waitUntil("text '$value'") { textExists(value) }
-        if (scroll) scrollTo(textMatcher(value))
-        composeRule.onAllNodes(textMatcher(value))[0].assertIsDisplayed()
     }
 
     private fun awaitTag(tag: String) {
@@ -592,8 +592,6 @@ class StatementReconciliationSmokeTest {
         composeRule.onAllNodes(matcher)
             .fetchSemanticsNodes(atLeastOneRootRequired = false)
             .size
-
-    private fun textExists(value: String): Boolean = nodeExists(textMatcher(value))
 
     private fun contentDescriptionExists(value: String): Boolean =
         composeRule.onAllNodes(hasContentDescription(value))
