@@ -46,21 +46,6 @@ data class AccountsSummary(
     fun totalCreditCardPayments(): Money =
         sumBucket { it.creditCardPayment }
 
-    fun totalCashWithdrawals(): Money =
-        sumBucket { it.cashWithdrawal }
-
-    fun totalBillPayments(): Money =
-        sumBucket { it.billPayment }
-
-    fun totalPosPurchases(): Money =
-        sumBucket { it.posPurchase }
-
-    fun totalFees(): Money =
-        sumBucket { it.fees }
-
-    fun totalExternalTransfersOut(): Money =
-        sumBucket { it.externalTransfersOut }
-
     private fun sumBucket(selector: (OwnedAccount) -> Money): Money {
         val c = currency ?: return Money.zero(Currency.SAR)
         return accounts.fold(Money.zero(c)) { acc, account -> acc + selector(account) }

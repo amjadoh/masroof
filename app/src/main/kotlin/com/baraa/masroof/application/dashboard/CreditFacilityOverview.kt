@@ -169,8 +169,8 @@ object CreditFacilityOverviewBuilder {
             primary = primary,
             supplementaries = supplementaries,
             facilityDue = resolveLatestStatementDue(all),
-            facilitySalaryPeriodSpending = sumSpending(all) { it.salaryPeriodSpendingNet },
-            facilityStatementSpending = sumSpending(all) { it.statementSpendingNet },
+            facilitySalaryPeriodSpending = sumCreditCardSpending(all) { it.salaryPeriodSpendingNet },
+            facilityStatementSpending = sumCreditCardSpending(all) { it.statementSpendingNet },
             aggregateStatementPeriodLabel = primary.statementPeriodLabel
                 ?: overview.aggregateStatementPeriodLabel,
             salaryPeriodLabel = overview.salaryPeriodLabel,
@@ -191,22 +191,6 @@ object CreditFacilityOverviewBuilder {
             statementPeriodLabel = null,
             snapshot = null,
         )
-
-    private fun sumSpending(
-        rows: List<CreditCardDashboardRow>,
-        selector: (CreditCardDashboardRow) -> SignedMoneyAmount,
-    ): SignedMoneyAmount {
-        if (rows.isEmpty()) return SignedMoneyAmount.zero(Currency.SAR)
-        var sum = java.math.BigDecimal.ZERO
-        val currency = rows.first().statementSpendingNet.currency
-        for (row in rows) {
-            sum = sum.add(selector(row).amount)
-        }
-        return SignedMoneyAmount(
-            sum.setScale(Money.SCALE, java.math.RoundingMode.HALF_EVEN),
-            currency,
-        )
-    }
 
     private fun com.baraa.masroof.domain.model.OwnershipStatus.isOwned(): Boolean =
         this == com.baraa.masroof.domain.model.OwnershipStatus.OWNED
