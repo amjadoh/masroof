@@ -78,6 +78,16 @@ class DeviceProtocolTest(unittest.TestCase):
         suites = device.classify(device.source_cases() | {'example.NewTest#case'}, config)
         self.assertIn('example.NewTest#case', suites['primary'])
 
+    def test_signer_formats_preserve_exactly_one_verified_certificate(self):
+        cert = 'a'*64
+        old = f'Number of signers: 1\nSigner #1 certificate SHA-256 digest: {cert}\n'
+        modern = f'Number of signers: 1\nV2 Signer: certificate SHA-256 digest: {cert}\nV3.0 Signer: certificate SHA-256 digest: {cert}\n'
+        for text in [old, modern, modern + 'Source Stamp Signer certificate SHA-256 digest: ' + 'b'*64]:
+            self.assertEqual(cert, device.signing_certificate(text))
+        for invalid in [old.replace('signers: 1', 'signers: 2'), modern + 'V3.1 Signer: certificate SHA-256 digest: ' + 'b'*64,
+                        'Number of signers: 1\n', old.replace('Number of signers: 1\n', ''), old.replace(cert, 'not-a-digest')]:
+            with self.subTest(output=invalid), self.assertRaises(ValueError): device.signing_certificate(invalid)
+
     def test_bundle_rejects_wrong_commit_changed_apk_and_lost_case(self):
         with tempfile.TemporaryDirectory() as directory:
             bundle = Path(directory)
