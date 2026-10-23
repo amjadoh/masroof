@@ -15,10 +15,9 @@ internal class TransferNetworkResolver(
 ) {
     private var invalid = false
     private fun fail(code: String) { invalid = true; problem(code, Blocker.CONFLICTING_FACTS) }
-    private fun key(value: String) = SourceText(value).text.trim().replace(Regex("[ \\t]+"), " ")
     private val owners = buildMap<String, Set<BankId>> {
         rules.bankAliases.forEach { (id, aliases) -> aliases.forEach { alias ->
-            val name = key(alias)
+            val name = roleValueKey(alias)
             put(name, get(name).orEmpty() + BankId(id))
         } }
     }
@@ -31,12 +30,12 @@ internal class TransferNetworkResolver(
         fun bank(rows: List<RoleLine>,externalRole: Boolean): BankId? {
             val unknownNames=mutableSetOf<String>()
             val ids = rows.map { row ->
-                val candidates = owners[key(row.normalized)].orEmpty()
+                val candidates = owners[roleValueKey(row.normalized)].orEmpty()
                 if(candidates.size==1) candidates.single()
                 else if(candidates.isEmpty() && externalRole && rules.unidentifiedExternalBankMarkers.any {source.phrase(it).containsMatchIn(row.normalized) && source.phrase(it).replace(row.normalized, "").any(Char::isLetter)} &&
                     owners.keys.none {SourceText(row.normalized).phrase(it).containsMatchIn(row.normalized)}) {
                     unidentifiedExternal=true
-                    unknownNames+=key(row.normalized)
+                    unknownNames+=roleValueKey(row.normalized)
                     null // External bank identity remains unknown. Never bind its suffix to a local owned asset.
                 } else {fail("NETWORK_ALIAS_NOT_UNIQUE");null}
             }.filterNotNull().distinct()
@@ -82,9 +81,9 @@ internal class TransferNetworkResolver(
         }
         val networkRows = reader.read("bankNetwork")
         networkRows.forEach { row ->
-            val value = key(row.normalized)
-            val intra = value in (observations["network.intra"].orEmpty().map(::key) + "intra_bank")
-            val inter = value in (observations["network.inter"].orEmpty().map(::key) + "inter_bank")
+            val value = roleValueKey(row.normalized)
+            val intra = value in (observations["network.intra"].orEmpty().map(::roleValueKey) + "intra_bank")
+            val inter = value in (observations["network.inter"].orEmpty().map(::roleValueKey) + "inter_bank")
             if (intra == inter) fail("NETWORK_MARKER_NOT_UNIQUE")
             else networks += if (intra) BankNetwork.INTRA_BANK else BankNetwork.INTER_BANK
         }

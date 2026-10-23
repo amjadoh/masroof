@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.analytics
 
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
+
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler

@@ -96,19 +96,8 @@ class DashboardService(
         )
     }
 
-    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview {
-        val projection = loadProjection(period)
-        return projection.toOverview().copy(
-            creditFacilities = projection.creditFacilities,
-            loansOverview = projection.loansOverview,
-            commitmentsOverview = projection.commitmentsOverview,
-            merchantSpending = projection.merchantSpending,
-            dailySpendingTrend = projection.dailySpendingTrend,
-            spendingTrends = projection.spendingTrends,
-            bankHierarchy = projection.bankHierarchy,
-            accountsFleet = projection.accountsFleet,
-        )
-    }
+    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview =
+        loadProjection(period).toOverview()
 
     suspend fun loadProjection(period: FinancialPeriod): DashboardProjection {
         val startInclusive = FinancialPeriodPolicy.toInclusiveStartInstant(period.startDate, zoneId)

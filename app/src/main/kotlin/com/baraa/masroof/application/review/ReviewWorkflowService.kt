@@ -12,7 +12,6 @@ import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
 import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
-import com.baraa.masroof.domain.ids.TransactionIdFactory
 import com.baraa.masroof.domain.ids.UserCorrectionIdFactory
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
 import com.baraa.masroof.domain.matching.TransferMatchPair
@@ -125,13 +124,17 @@ class ReviewWorkflowService(
             is OwnershipChange.Loan ->
                 parsedEventRepository.listRawSmsIdsReferencingLoan(change.loan)
         }
+        reconcileAffectedAndUpdateReviews(rawSmsIds)?.let { throw it }
+    }
+
+    private suspend fun reconcileAffectedAndUpdateReviews(rawSmsIds: Collection<String>): ReconciliationIncompleteException? {
         val report = try {
             reconciliationService.reconcileAffectedRawSmsIds(rawSmsIds)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             retainHistoricalRetry(rawSmsIds, failureCount = rawSmsIds.size.coerceAtLeast(1))
-            throw incomplete(rawSmsIds, rawSmsIds.size.coerceAtLeast(1))
+            return incomplete(rawSmsIds, rawSmsIds.size.coerceAtLeast(1))
         }
         try {
             reviewQueueUpdater.applyReport(report)
@@ -139,7 +142,7 @@ class ReviewWorkflowService(
             throw e
         } catch (_: Exception) {
             retainHistoricalRetry(rawSmsIds, failureCount = report.summary.failed.coerceAtLeast(1))
-            throw incomplete(
+            return incomplete(
                 rawSmsIds,
                 report.summary.failed.coerceAtLeast(1),
                 ReconciliationCompletionPolicy.STAGE_REVIEW_UPDATE,
@@ -148,8 +151,9 @@ class ReviewWorkflowService(
         if (!ReconciliationCompletionPolicy.isComplete(report)) {
             val failedIds = report.failedRawSmsIds.ifEmpty { rawSmsIds.toSet() }
             retainHistoricalRetry(failedIds, report.summary.failed)
-            throw incomplete(failedIds, report.summary.failed)
+            return incomplete(failedIds, report.summary.failed)
         }
+        return null
     }
 
     suspend fun listRequiredReviews(): List<ReviewItem> =
@@ -196,27 +200,15 @@ class ReviewWorkflowService(
         )
         userCorrectionRepository.save(correction)
 
-        val scope = listOf(review.rawSmsId)
-        val report = try {
-            reconciliationService.reconcileAffectedRawSmsIds(scope)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            retainHistoricalRetry(scope, failureCount = 1)
-            return ReviewWorkflowResult.Rejected("reconciliation_incomplete")
-        }
-        try {
-            reviewQueueUpdater.applyReport(report)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            retainHistoricalRetry(scope, failureCount = report.summary.failed.coerceAtLeast(1))
-            return ReviewWorkflowResult.Rejected("review_update_incomplete")
-        }
-        if (!ReconciliationCompletionPolicy.isComplete(report)) {
-            val failedIds = report.failedRawSmsIds.ifEmpty { scope.toSet() }
-            retainHistoricalRetry(failedIds, report.summary.failed)
-            return ReviewWorkflowResult.Rejected("reconciliation_incomplete")
+        val incomplete = reconcileAffectedAndUpdateReviews(listOf(review.rawSmsId))
+        if (incomplete != null) {
+            return ReviewWorkflowResult.Rejected(
+                if (incomplete.stage == ReconciliationCompletionPolicy.STAGE_REVIEW_UPDATE) {
+                    "review_update_incomplete"
+                } else {
+                    "reconciliation_incomplete"
+                },
+            )
         }
 
         val updated = reviewRepository.findByRawSmsId(review.rawSmsId)
@@ -259,8 +251,7 @@ class ReviewWorkflowService(
         if (event.messageFamily != confirmedDirection.family) {
             return ReviewWorkflowResult.Rejected("transfer_evidence_changed")
         }
-        val amount = event.amount
-            ?: return ReviewWorkflowResult.Rejected("missing_amount")
+        if (event.amount == null) return ReviewWorkflowResult.Rejected("missing_amount")
         val raw = rawSmsRepository.getById(review.rawSmsId)
             ?: return ReviewWorkflowResult.Rejected("raw_sms_missing")
 
@@ -303,17 +294,12 @@ class ReviewWorkflowService(
             occurredAtLocal = record.details.occurredAtLocal,
             receivedAt = raw.receivedAt,
         )
-        val tx = FinancialTransaction(
-            id = TransactionIdFactory.fromRawSmsIds(listOf(review.rawSmsId)),
+        val tx = FinancialTransaction.fromSingleEvent(
+            event = event,
             type = type,
-            amount = amount,
             occurredAt = occurredAt,
             sourceContainerId = sourceId,
             destinationContainerId = destId,
-            merchant = event.merchant,
-            counterparty = event.counterparty,
-            categoryId = null,
-            linkedParsedEventIds = listOf(event.id),
             occurredAtZone = occurredAtZone,
         )
         return mapPersistResult(
@@ -546,17 +532,12 @@ class ReviewWorkflowService(
             occurredAtLocal = record.details.occurredAtLocal,
             receivedAt = raw.receivedAt,
         )
-        val tx = FinancialTransaction(
-            id = TransactionIdFactory.fromRawSmsIds(listOf(review.rawSmsId)),
+        val tx = FinancialTransaction.fromSingleEvent(
+            event = event,
             type = type,
-            amount = amount,
             occurredAt = occurredAt,
             sourceContainerId = sourceId,
             destinationContainerId = destId,
-            merchant = event.merchant,
-            counterparty = event.counterparty,
-            categoryId = null,
-            linkedParsedEventIds = listOf(event.id),
             occurredAtZone = occurredAtZone,
         )
         return mapPersistResult(

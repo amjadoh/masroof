@@ -64,11 +64,9 @@ class AppNavigationTest {
 
     @Test
     fun resolvePendingDestination_legacyBanks_mapsToMyAccounts() {
-        val state = SettingsUiState(bankSummaries = listOf(summary(alJazira)))
-
         assertEquals(
             SettingsDestination.MyAccounts,
-            resolvePendingDestination(SettingsDestination.Banks, state),
+            resolvePendingDestination(SettingsDestination.Banks),
         )
     }
 

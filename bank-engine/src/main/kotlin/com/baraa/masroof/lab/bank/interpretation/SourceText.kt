@@ -56,3 +56,7 @@ internal class SourceText(private val original: String) {
 
     fun original(range: IntRange): String = original.substring(starts[range.first], ends[range.last])
 }
+
+/** Comparison key for an entire role value, shared by observations and bank aliases. */
+internal fun roleValueKey(value: String): String =
+    SourceText(value).text.trim().replace(Regex("[ \\t]+"), " ")

@@ -96,22 +96,9 @@ class TransactionReconciliationService(
     }
 
     /**
-     * Single pass for a batch of newly stored events (historical import): every stored event,
-     * visited in RawSms arrival order like per-message processing, so transactions created by
-     * the batch get the same rawSms-derived ids a message-by-message import would assign.
-     */
-    suspend fun reconcileBatchDetailed(): ReconciliationReport {
-        val arrival = rawSmsRepository.listIdsByReceivedAt()
-            .withIndex()
-            .associate { (index, rawSmsId) -> rawSmsId to index }
-        val records = loadRecords().sortedBy { arrival[it.event.rawSmsId] ?: Int.MAX_VALUE }
-        return reconcileRecordsDetailed(records)
-    }
-
-    /**
      * Reconcile after a newly saved ParsedEvent using the wider incremental
      * supplement. Live processing uses [reconcileAffectedRawSmsIds] instead.
-     * Maintenance keeps [reconcileBatchDetailed] for a full-history pass.
+     * Full-history maintenance uses [reconcileStoredEventsDetailed].
      *
      * A returned report with [ReconciliationSummary.failed] greater than zero did
      * not throw. Callers still treat that report as incomplete.

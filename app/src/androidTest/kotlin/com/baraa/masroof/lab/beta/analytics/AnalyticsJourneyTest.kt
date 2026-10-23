@@ -1,5 +1,7 @@
 package com.baraa.masroof.lab.beta.analytics
 
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
+
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.activity.compose.LocalActivityResultRegistryOwner

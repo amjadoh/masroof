@@ -116,8 +116,7 @@ object TransactionAssembler {
             )
         }
 
-        val amount = event.amount
-            ?: return Outcome.NeedsReview(listOf("missing_amount"))
+        if (event.amount == null) return Outcome.NeedsReview(listOf("missing_amount"))
 
         // Transfers with an UNKNOWN-bank side cannot be finalized without a match.
         if (event.messageFamily == MessageFamily.TRANSFER_OUT ||
@@ -184,7 +183,6 @@ object TransactionAssembler {
         }
         return buildTransaction(
             type = type,
-            amount = amount,
             occurredAt = transactionOccurredAt,
             event = event,
             loanType = loanType,
@@ -218,8 +216,7 @@ object TransactionAssembler {
             else -> return Outcome.PendingMatch
         }
 
-        val amount = event.amount
-            ?: return Outcome.NeedsReview(listOf("missing_amount"))
+        if (event.amount == null) return Outcome.NeedsReview(listOf("missing_amount"))
 
         if (TransactionMatcher.hasPendingIntraBankCounterpart(candidate, pendingCounterparts)) {
             return Outcome.PendingMatch
@@ -270,7 +267,6 @@ object TransactionAssembler {
         }
         return buildTransaction(
             type = type,
-            amount = amount,
             occurredAt = transactionOccurredAt,
             event = event,
             occurredAtZone = zone,
@@ -429,7 +425,6 @@ object TransactionAssembler {
 
     private fun buildTransaction(
         type: FinancialTransactionType,
-        amount: com.baraa.masroof.core.money.Money,
         occurredAt: Instant,
         event: ParsedEvent,
         loanType: LoanType? = null,
@@ -464,17 +459,12 @@ object TransactionAssembler {
         }
 
         return Outcome.Assembled(
-            transaction = FinancialTransaction(
-                id = TransactionIdFactory.fromRawSmsIds(rawSmsIds),
+            transaction = FinancialTransaction.fromSingleEvent(
+                event = event,
                 type = type,
-                amount = amount,
                 occurredAt = occurredAt,
                 sourceContainerId = sourceId,
                 destinationContainerId = destId,
-                merchant = event.merchant,
-                counterparty = event.counterparty,
-                categoryId = null,
-                linkedParsedEventIds = listOf(event.id),
                 occurredAtZone = zone.id,
             ),
             rawSmsIds = rawSmsIds,

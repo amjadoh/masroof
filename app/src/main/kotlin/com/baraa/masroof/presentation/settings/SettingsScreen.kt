@@ -94,7 +94,7 @@ fun SettingsRoute(
     LaunchedEffect(pendingLaunch, state.loading, state.bankSummaries) {
         val launch = pendingLaunch ?: return@LaunchedEffect
         if (launch.destination.needsBankSummaries() && state.loading) return@LaunchedEffect
-        openAt(resolvePendingDestination(launch.destination, state))
+        openAt(resolvePendingDestination(launch.destination))
         onPendingLaunchConsumed()
     }
 

@@ -1248,7 +1248,7 @@ class TransactionReconciliationServiceTest {
                 reconciliation.reconcileStoredEvents()
                 reconciliation.reconcileStoredEvents()
             } else {
-                reconciliation.reconcileBatchDetailed()
+                reconciliation.reconcileAffectedRawSmsIds(rawRepo.listIdsByReceivedAt())
             }
             return ftRepo.listAll().sortedBy { it.id }
         }
@@ -1295,7 +1295,7 @@ class TransactionReconciliationServiceTest {
         reconciliation.reconcileStoredEvents()
         val storedPass = ftRepo.listAll()
         seed()
-        reconciliation.reconcileBatchDetailed()
+        reconciliation.reconcileAffectedRawSmsIds(rawRepo.listIdsByReceivedAt())
         val batchPass = ftRepo.listAll()
 
         assertEquals(storedPass, batchPass)

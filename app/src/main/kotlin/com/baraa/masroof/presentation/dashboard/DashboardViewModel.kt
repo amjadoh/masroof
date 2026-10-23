@@ -200,26 +200,7 @@ class DashboardViewModel(
             refresh()
             return
         }
-        if (rescanJob?.isActive == true) return
-        rescanJob = viewModelScope.launch {
-            _uiState.update { it.copy(rescanning = true, rescanStatus = null) }
-            try {
-                val result = rescanService()
-                _uiState.update {
-                    it.copy(
-                        rescanning = false,
-                        rescanStatus = mapRescanStatus(result),
-                    )
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update {
-                    it.copy(rescanning = false, rescanStatus = SmsRescanStatus.FAILED)
-                }
-            }
-            refresh()
-        }
+        launchSmsRescan(refreshAfterFailure = true)
     }
 
     fun onAppResumed() {
@@ -261,23 +242,23 @@ class DashboardViewModel(
             _uiState.update { it.copy(rescanStatus = SmsRescanStatus.PERMISSION_DENIED) }
             return
         }
+        launchSmsRescan(refreshAfterFailure = false)
+    }
+
+    private fun launchSmsRescan(refreshAfterFailure: Boolean) {
         if (rescanJob?.isActive == true) return
         rescanJob = viewModelScope.launch {
             _uiState.update { it.copy(rescanning = true, rescanStatus = null) }
             try {
                 val result = rescanService()
-                _uiState.update {
-                    it.copy(
-                        rescanning = false,
-                        rescanStatus = mapRescanStatus(result),
-                    )
-                }
-                refresh()
+                _uiState.update { it.copy(rescanning = false, rescanStatus = mapRescanStatus(result)) }
+                if (!refreshAfterFailure) refresh()
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {
                 _uiState.update { it.copy(rescanning = false, rescanStatus = SmsRescanStatus.FAILED) }
             }
+            if (refreshAfterFailure) refresh()
         }
     }
 
@@ -370,7 +351,7 @@ class DashboardViewModel(
             _uiState.update { it.copy(reclassifying = true, reclassifySuccess = false, reclassifyError = null, ignoreError = null) }
             when (val result = reclassificationService.reclassify(transactionId, newType)) {
                 is ReclassificationResult.Success -> {
-                    refreshPreservingSelection()
+                    refresh()
                     _uiState.update {
                         it.copy(
                             reclassifying = false,
@@ -410,7 +391,7 @@ class DashboardViewModel(
             }
             when (result) {
                 CommitmentCreationResult.Success -> {
-                    refreshPreservingSelection()
+                    refresh()
                     _uiState.update {
                         it.copy(
                             markingCommitment = false,
@@ -469,10 +450,6 @@ class DashboardViewModel(
                 }
             }
         }
-    }
-
-    private fun refreshPreservingSelection() {
-        refresh()
     }
 
     private fun periodPresentation(period: DashboardSalaryPeriod): Pair<String, String?> {
@@ -587,39 +564,14 @@ class DashboardViewModel(
                 if (period != activePeriod) {
                     return@launch
                 }
-                _uiState.update { current ->
-                    if (samePeriodRefresh) {
-                        current.copy(
-                            loading = false,
-                            error = DashboardError.LOAD_FAILED,
-                            period = period,
-                            periodLabel = periodLabel,
-                            periodAdjustmentHint = periodAdjustmentHint,
-                        )
-                    } else {
-                        current.copy(
-                            loading = false,
-                            error = DashboardError.LOAD_FAILED,
-                            period = period,
-                            periodLabel = periodLabel,
-                            periodAdjustmentHint = periodAdjustmentHint,
-                            summary = null,
-                            currentAccount = null,
-                            spendingSplit = null,
-                            creditFacilities = null,
-                        merchantSpending = com.baraa.masroof.application.dashboard.MerchantSpendingOverview.empty(),
-                        dailySpendingTrend = null,
-                        spendingTrends = null,
-                        accountsFleet = null,
-                            recentTransactions = emptyList(),
-                            allTransactions = emptyList(),
-                            flowDetailGrouping = null,
-                            transactionAccountInvolvement = emptyMap(),
-                            transactionCardInvolvement = emptyMap(),
-                            transactionLoanInvolvement = emptyMap(),
-                            transactionDebitSpendInvolvement = emptyMap(),
-                        )
-                    }
+                _uiState.update {
+                    it.copy(
+                        loading = false,
+                        error = DashboardError.LOAD_FAILED,
+                        period = period,
+                        periodLabel = periodLabel,
+                        periodAdjustmentHint = periodAdjustmentHint,
+                    )
                 }
             }
         }
