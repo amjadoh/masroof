@@ -466,7 +466,7 @@ private fun MasroofContent(
                                 launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
                         }
                     }
-                })
+                }, onOpenPayment = dashboardViewModel::openTransactionDetail)
             HomeDestination.DailyExpenses -> com.baraa.masroof.presentation.dashboard.DailyExpensesScreen(
                 state = dashboardState, onBack = { homeDestination = HomeDestination.MerchantsSummary },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail)

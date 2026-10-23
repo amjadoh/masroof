@@ -43,8 +43,12 @@ class ApprovedFidelityMatrixTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val pageIds = listOf("home", "transactions", "accounts", "accountDetail", "cards", "cardDetail", "loans", "loanDetail", "commitments", "merchants", "daily", "review", "settings", "preferences", "about", "updates", "logs", "backup", "exportBackup", "restoreBackup", "dataTools", "notifications", "flowIn", "flowOut", "commitmentEditor", "statement", "onboarding", "bankRegistry", "myAccounts", "myCards", "myLoans", "myCommitments")
 
-    @Test
-    fun captureAllProductionPages_inArabicEnglish_andLightDark() {
+    @Test fun captureProductionPages_ar_light() = captureProductionPages("ar", false)
+    @Test fun captureProductionPages_ar_dark() = captureProductionPages("ar", true)
+    @Test fun captureProductionPages_en_light() = captureProductionPages("en", false)
+    @Test fun captureProductionPages_en_dark() = captureProductionPages("en", true)
+
+    private fun captureProductionPages(lang: String, night: Boolean) {
         val screen = mutableStateOf("home")
         val language = mutableStateOf("ar")
         val dark = mutableStateOf(false)
@@ -79,7 +83,7 @@ class ApprovedFidelityMatrixTest {
         val directory = File(instrumentation.targetContext.getExternalFilesDir(null), "fidelity-matrix-final")
         directory.mkdirs()
         val capturePages = InstrumentationRegistry.getArguments().getString("capturePages")?.split(",") ?: pageIds
-        for (lang in listOf("ar", "en")) for (night in listOf(false, true)) for (page in capturePages) {
+        for (page in capturePages) {
             compose.runOnIdle { language.value = lang; dark.value = night; screen.value = page }
             compose.waitForIdle()
             instrumentation.waitForIdleSync()
@@ -113,7 +117,7 @@ class ApprovedFidelityMatrixTest {
             FileOutputStream(File(directory, "$page-$lang-${if (night) "dark" else "light"}-bottom.png")).use { bottom.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bottom.recycle()
         }
-        assertTrue(File(directory, "${capturePages.last()}-en-dark.png").isFile)
+        assertTrue(File(directory, "${capturePages.last()}-$lang-${if (night) "dark" else "light"}.png").isFile)
     }
 
     @Composable

@@ -135,7 +135,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -150,6 +149,7 @@ class AppContainer(
     bankAdapterOverride: com.baraa.masroof.bank.BankSmsAdapter? = null,
     smsDataSourceOverride: com.baraa.masroof.sms.datasource.SmsDataSource? = null,
     restartAfterRestore: (() -> Unit)? = null,
+    databaseOpenHelperFactory: androidx.sqlite.db.SupportSQLiteOpenHelper.Factory = com.baraa.masroof.data.room.PreservingOpenHelperFactory(),
 ) {
     private val appContext = context.applicationContext
 
@@ -158,8 +158,9 @@ class AppContainer(
 
     val clock: InstantClock = InstantClock.System
 
+    private val applicationJob = SupervisorJob()
     val applicationScope: CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        CoroutineScope(applicationJob + Dispatchers.IO)
 
     val appLogService: AppLogService = AppLogService(appContext)
 
@@ -176,7 +177,7 @@ class AppContainer(
                 MasroofDatabase::class.java,
                 MasroofDatabase.NAME,
             )
-                .openHelperFactory(com.baraa.masroof.data.room.PreservingOpenHelperFactory())
+                .openHelperFactory(databaseOpenHelperFactory)
                 .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .build()
         }
@@ -704,19 +705,37 @@ class AppContainer(
     suspend fun reparseAllStoredEvents(): ReparseAllStoredEventsResult =
         storedSmsReprocessor.reprocessAll()
 
-    fun close() {
-        startupMaintenanceJob?.cancel()
+    @Volatile internal var shutdownStage: String = "OPEN"
+        private set
+    internal val startupCancelled: Boolean get() = startupMaintenanceJob?.isCancelled == true
+
+    @Synchronized fun close() {
+        if (shutdownStage == "CLOSED") return
+        shutdownStage = "STARTUP_DRAINING"
+        // Room cancellation can finish the coroutine before its first SQLite connection opens.
+        // Drain startup normally so close cannot take the write lock during that callback.
         runBlocking(Dispatchers.IO) {
             startupMaintenanceJob?.join()
         }
+        // Release readers that were waiting for startup before draining their service mutexes.
+        startupMaintenanceOutcome.value = StartupMaintenanceOutcome.BLOCKED
+        shutdownStage = "ANALYTICS_DRAINING"
         stopLabAnalytics()
-        applicationScope.cancel()
+        shutdownStage = "LEARNING_DRAINING"
+        labInterpretationService?.close()
+        shutdownStage = "APPLICATION_DRAINING"
+        runBlocking(Dispatchers.IO) {
+            applicationJob.complete()
+            applicationJob.join()
+        }
         // WorkManager jobs outlive applicationScope; finish admitted work before closing their stores.
         runBlocking(Dispatchers.IO) {
             databaseAccessGate.retireAndDrain()
         }
-        labInterpretationService?.close()
+        shutdownStage = "DATABASE_CLOSING"
         database.close()
+        startupMaintenanceOutcome.value = StartupMaintenanceOutcome.BLOCKED
+        shutdownStage = "CLOSED"
     }
 
     val databaseBackupService: DatabaseBackupService by lazy {
@@ -903,5 +922,7 @@ class AppContainer(
 
     /** Returns the safety outcome of the initial startup maintenance attempt. */
     suspend fun awaitStartupMaintenance(): StartupMaintenanceOutcome =
-        startupMaintenanceOutcome.filterNotNull().first()
+        startupMaintenanceOutcome.filterNotNull().first().let {
+            if (shutdownStage == "OPEN") it else StartupMaintenanceOutcome.BLOCKED
+        }
 }

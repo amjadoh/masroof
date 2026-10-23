@@ -37,7 +37,6 @@ class CommitmentsDashboardProjection(
                 financialTransactionRepository.getById(commitment.sourceTransactionId)
             }
         }
-        val commitmentSarEquivalents = resolveSar(context, commitmentSourceTransactions)
         val loansOverview = LoanOverviewBuilder.build(
             salaryPeriod = period,
             loans = loans,
@@ -50,12 +49,15 @@ class CommitmentsDashboardProjection(
             displayLocale = displayLocale,
         )
         val creditCardPaymentTransactions = creditFacilityPaymentTransactionsOutsidePeriod(context, creditFacilities)
-        val creditCardPaymentSarEquivalents = resolveSar(context, creditCardPaymentTransactions)
+        val additional = (commitmentSourceTransactions + creditCardPaymentTransactions).distinctBy { it.id }
+        val expanded = evidenceSource.extend(context.evidence, additional)
+        val additionalSarEquivalents = sarEquivalentResolver.resolve(additional, expanded.parsedRecords, expanded.rawSmsById, primaryCurrency).sarAmounts()
         val commitmentTransactions = buildList {
             addAll(transactions)
             addAll(commitmentSourceTransactions)
             addAll(creditCardPaymentTransactions)
         }.distinctBy { it.id }
+        val recordsById = expanded.parsedRecords.associateBy { it.event.id }
         CommitmentsDashboardSection(
             loansOverview = loansOverview,
             transactionLoanInvolvement = LoanRepaymentAttribution.buildInvolvementIndex(
@@ -69,22 +71,11 @@ class CommitmentsDashboardProjection(
                 loansOverview = loansOverview,
                 transactions = commitmentTransactions,
                 primaryCurrency = primaryCurrency,
-                sarEquivalents = sarEquivalents + commitmentSarEquivalents + creditCardPaymentSarEquivalents,
+                sarEquivalents = sarEquivalents + additionalSarEquivalents,
                 zoneId = zoneId,
+                paymentIdentities = commitmentTransactions.associate { tx -> tx.id to CommitmentPaymentIdentity.from(tx, recordsById) },
             ),
         )
-    }
-
-    private suspend fun resolveSar(
-        context: DashboardProjectionContext,
-        transactions: List<FinancialTransaction>,
-    ) = evidenceSource.extend(context.evidence, transactions).let { evidence ->
-        sarEquivalentResolver.resolve(
-            transactions = transactions,
-            parsedRecords = evidence.parsedRecords,
-            rawSmsById = evidence.rawSmsById,
-            primaryCurrency = context.primaryCurrency,
-        ).sarAmounts()
     }
 
     private suspend fun creditFacilityPaymentTransactionsOutsidePeriod(

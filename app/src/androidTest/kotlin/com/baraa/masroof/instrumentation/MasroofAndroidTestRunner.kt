@@ -19,6 +19,10 @@ class MasroofAndroidTestRunner : AndroidJUnitRunner() {
 
     override fun onCreate(arguments: Bundle?) {
         resume = arguments?.getString(RESUME_ARGUMENT) == "true"
+        if (arguments?.getString("ciDiagnostics") == "true") {
+            val listener = CiDiagnosticsListener::class.java.name
+            arguments.putString("listener", listOfNotNull(arguments.getString("listener"), listener).joinToString(","))
+        }
         super.onCreate(arguments)
     }
 

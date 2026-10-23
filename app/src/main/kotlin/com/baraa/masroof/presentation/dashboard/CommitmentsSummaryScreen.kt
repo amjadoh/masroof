@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CommitmentDashboardRow
 import com.baraa.masroof.application.dashboard.CommitmentDashboardSource
+import com.baraa.masroof.application.dashboard.CommitmentMatchIssue
 import com.baraa.masroof.application.dashboard.CommitmentPaymentStatus
 import com.baraa.masroof.presentation.common.MasroofBadge
 import com.baraa.masroof.presentation.common.MasroofCard
@@ -28,6 +29,7 @@ import com.baraa.masroof.presentation.common.MasroofHeroCard
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofReferenceMoney
 import com.baraa.masroof.presentation.common.MasroofText
+import com.baraa.masroof.presentation.common.MasroofTextButton
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.ui.theme.MasroofHeroRole
 import com.baraa.masroof.ui.theme.MasroofReference
@@ -38,7 +40,7 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun CommitmentsSummaryScreen(state: DashboardUiState, onBack: () -> Unit,
-    onOpenCommitment: (CommitmentDashboardRow) -> Unit) {
+    onOpenCommitment: (CommitmentDashboardRow) -> Unit, onOpenPayment: ((String) -> Unit)? = null) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     val overview = state.commitmentsOverview
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
@@ -67,6 +69,17 @@ fun CommitmentsSummaryScreen(state: DashboardUiState, onBack: () -> Unit,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             MasroofBadge(stringResource(if (paid) R.string.dashboard_commitments_status_paid else R.string.dashboard_commitments_status_unpaid),
                                 if (paid) MasroofCardAccent.Inflow else MasroofCardAccent.Liability)
+                            row.paymentMatchIssue?.let { issue ->
+                                MasroofText(stringResource(when (issue) {
+                                    CommitmentMatchIssue.AMBIGUOUS_PAYMENT -> R.string.commitment_payment_ambiguous
+                                    CommitmentMatchIssue.MISSING_SOURCE -> R.string.commitment_payment_missing_source
+                                }), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            row.paymentTransactionId?.let { id ->
+                                if (onOpenPayment != null) MasroofTextButton(onClick = { onOpenPayment(id) }) {
+                                    MasroofText(stringResource(R.string.commitment_open_payment))
+                                }
+                            }
                         }
                         MasroofReferenceMoney(formatLocalizedMoney(row.amount), style = MaterialTheme.typography.titleSmall)
                     }
