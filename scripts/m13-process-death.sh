@@ -16,6 +16,12 @@ instrument() {
   shift
   local extra="${*:-}"
   local output
+  if [[ -n "${CI_DEVICE_BUNDLE:-}" ]]; then
+    local resume=()
+    if [[ "$extra" == *m13Resume* ]]; then resume=(--resume); fi
+    python3 scripts/ci_device.py phase --case "${CLASS}#${method}" "${resume[@]}"
+    return
+  fi
   output=$(adb shell "am instrument -w -r ${extra} -e class '${CLASS}#${method}' ${RUNNER}")
   printf '%s\n' "$output"
   case "$output" in
