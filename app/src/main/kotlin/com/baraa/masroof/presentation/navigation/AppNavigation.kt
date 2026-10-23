@@ -68,6 +68,7 @@ internal fun resolvePendingDestination(
         SettingsDestination.Hub,
         SettingsDestination.About,
         SettingsDestination.Logs,
+        SettingsDestination.MessageLearning,
         SettingsDestination.DesignCatalog,
         -> pending
     }

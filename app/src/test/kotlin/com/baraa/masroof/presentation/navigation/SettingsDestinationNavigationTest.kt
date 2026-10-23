@@ -23,6 +23,7 @@ class SettingsDestinationNavigationTest {
             SettingsDestination.StatementReconciliation,
             decodeSettingsDestination("statement_reconciliation"),
         )
+        assertEquals(SettingsDestination.MessageLearning, decodeSettingsDestination(SettingsDestination.MessageLearning.encode()))
         assertEquals(SettingsDestination.DesignCatalog, decodeSettingsDestination("design_catalog"))
         assertEquals(SettingsDestination.About, decodeSettingsDestination(SettingsDestination.About.encode()))
     }

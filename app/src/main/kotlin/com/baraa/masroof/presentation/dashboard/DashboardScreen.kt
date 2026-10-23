@@ -350,10 +350,7 @@ private fun DashboardCustomizableSections(
                 DashboardSectionId.MERCHANTS -> {
                     state.spendingTrends?.let { trends ->
                         HomeSpendingTrendSection(trends)
-                        DashboardAnalysisSection(
-                            merchantOverview = state.merchantSpending,
-                            onViewAll = onOpenMerchantsSummary,
-                        )
+
                     }
                 }
 
