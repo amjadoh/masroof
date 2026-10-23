@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Badge
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
@@ -84,66 +82,6 @@ fun SettingsNavRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(MasroofSpacing.largeGap),
             )
-        }
-    }
-}
-
-@Composable
-fun SettingsReparseRow(
-    title: String,
-    subtitle: String,
-    detail: String? = null,
-    icon: ImageVector,
-    actionIcon: ImageVector,
-    running: Boolean,
-    enabled: Boolean,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-    guidance: String? = null,
-) {
-    MasroofNavCard(
-        onClick = onRefresh,
-        modifier = modifier,
-        enabled = enabled && !running,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(MasroofSpacing.screenPaddingLarge),
-            )
-            Spacer(Modifier.width(MasroofSpacing.sectionGap))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
-                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
-                    style = MasroofTextStyles.cardTitle, contentColor = MaterialTheme.colorScheme.onSurface)
-                if (subtitle.isNotBlank()) Text(
-                    subtitle,
-                    style = MasroofTextStyles.hint,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                detail?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (running) {
-                CircularProgressIndicator(modifier = Modifier.size(MasroofSpacing.screenPaddingLarge))
-            } else {
-                IconButton(onClick = onRefresh, enabled = enabled) {
-                    Icon(
-                        imageVector = actionIcon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
         }
     }
 }
