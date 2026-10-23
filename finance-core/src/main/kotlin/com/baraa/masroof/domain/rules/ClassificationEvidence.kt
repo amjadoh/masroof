@@ -7,8 +7,7 @@ import com.baraa.masroof.domain.model.PurchaseChannel
 /**
  * Classification inputs using only facts the caller genuinely knows.
  *
- * Prefer this over constructing temporary [com.baraa.masroof.domain.model.Account]
- * / [com.baraa.masroof.domain.model.Card] objects solely to satisfy the classifier.
+ * Container kind, ownership and optional card type are supplied as resolved facts.
  */
 data class ClassificationEvidence(
     val messageFamily: MessageFamily,

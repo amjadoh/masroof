@@ -231,6 +231,17 @@ class TransactionMatcherTest {
     }
 
     @Test
+    fun matchesEqualAmountsWithDifferentDecimalScales() {
+        val outgoing = outgoing(reference = "ref-1")
+        val incoming = incoming(reference = "ref-1", amount = Money(BigDecimal.TEN, Currency.SAR))
+
+        assertEquals(
+            listOf(TransferMatchPair(outgoing, incoming)),
+            TransactionMatcher.findMutuallyUniquePairs(listOf(outgoing, incoming)),
+        )
+    }
+
+    @Test
     fun rejectsDifferentCurrenciesEvenWhenNumericAmountsMatch() {
         val outgoing = outgoing(reference = "ref-1")
         val incoming = incoming(reference = "ref-1", amount = Money.of(BigDecimal.TEN, Currency.USD))

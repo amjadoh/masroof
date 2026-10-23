@@ -13,7 +13,9 @@ Masroof has one Android application, one financial database and one bank interpr
 ## Financial policy ownership
 
 The extracted sources keep their original `com.baraa.masroof.core.money` and
-`com.baraa.masroof.domain.*` packages, public signatures and persisted enum values.
+`com.baraa.masroof.domain.*` packages and persisted enum values.
+Classification consumes `ClassificationEvidence` with resolved container facts;
+production and policy tests use the same input contract.
 Only the value models needed by those policies move. The two existing Money
 contracts are not unified. `bank-engine` may still reference only
 `com.baraa.masroof.lab.finance.value`; depending on the core module does not give

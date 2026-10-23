@@ -126,41 +126,6 @@ class DomainModelInvariantTest {
     }
 
     @Test
-    fun accountAndCard_areFinancialContainersWithIndependentOwnership() {
-        val owned: FinancialContainer = Account(
-            id = "acct-1",
-            bank = Bank.BANK_ALJAZIRA,
-            maskedNumber = "3001",
-            displayName = "Main",
-            ownership = OwnershipStatus.OWNED,
-            type = AccountType.CURRENT,
-        )
-        val external: FinancialContainer = Account(
-            id = "acct-wife",
-            bank = Bank.BANK_ALJAZIRA,
-            maskedNumber = "8888",
-            displayName = null,
-            ownership = OwnershipStatus.EXTERNAL,
-            type = AccountType.CURRENT,
-        )
-        val card: FinancialContainer = Card(
-            id = "card-1",
-            bank = Bank.BANK_ALJAZIRA,
-            last4 = "7271",
-            displayName = "CC",
-            ownership = OwnershipStatus.OWNED,
-            type = CardType.CREDIT,
-            linkedAccountId = "acct-1",
-        )
-
-        assertEquals(OwnershipStatus.OWNED, owned.ownership)
-        assertEquals(OwnershipStatus.EXTERNAL, external.ownership)
-        assertEquals(Bank.BANK_ALJAZIRA, card.bank)
-        assertTrue(owned is Account)
-        assertTrue(card is Card)
-    }
-
-    @Test
     fun userCorrection_doesNotRequireMutatingRawSms() {
         val raw = RawSms(
             id = "sms-1",

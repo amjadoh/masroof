@@ -9,7 +9,7 @@ import java.time.Instant
  * related-event matching when required.
  *
  * Multiple [ParsedEvent]s may link to one transaction via [linkedParsedEventIds].
- * Container ids reference [FinancialContainer.id] values (accounts or cards).
+ * Container ids are bank-qualified account, card or loan identifiers.
  *
  * [categoryId] is an opaque identifier until categorization is modeled in a
  * later phase.
