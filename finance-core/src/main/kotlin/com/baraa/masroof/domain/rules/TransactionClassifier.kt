@@ -11,22 +11,9 @@ import com.baraa.masroof.domain.model.TransferOwnershipType
  * Pure domain classifier: structured facts + resolved ownership → financial meaning.
  *
  * Does not parse SMS, match related events, or consult bank-specific wording.
- * [ClassificationEvidence.bankNetworkType] / [ClassificationContext.bankNetworkType]
- * are ignored for ownership decisions.
+ * [ClassificationEvidence.bankNetworkType] is ignored for ownership decisions.
  */
 object TransactionClassifier {
-
-    fun classify(context: ClassificationContext): ClassificationResult =
-        classify(
-            ClassificationEvidence(
-                messageFamily = context.messageFamily,
-                source = context.source?.let(ResolvedContainerFacts::from),
-                destination = context.destination?.let(ResolvedContainerFacts::from),
-                instrument = context.instrument?.let(ResolvedContainerFacts::from),
-                purchaseChannel = context.purchaseChannel,
-                bankNetworkType = context.bankNetworkType,
-            ),
-        )
 
     fun classify(evidence: ClassificationEvidence): ClassificationResult {
         return when (evidence.messageFamily) {
