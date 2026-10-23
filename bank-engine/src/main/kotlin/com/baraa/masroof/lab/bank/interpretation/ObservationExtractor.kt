@@ -35,14 +35,24 @@ internal class ObservationExtractor(
             val start = source.text.lastIndexOf('\n', range.first).let { it + 1 }
             val end = source.text.indexOf('\n', range.last).let { if (it < 0) source.text.length else it }
             val line = source.text.substring(start, end).trim().removeSuffix(":")
-            val title = start == titleStart && evidence.any { it.field == "family" &&
-                it.start >= source.evidence("scope", "scope", start..(end - 1)).start &&
-                it.end <= source.evidence("scope", "scope", start..(end - 1)).end } &&
-                familyPhrases.any { source.phrase(it).containsMatchIn(line) }
             val lineRange = source.evidence("scope", "scope", start..(end - 1))
+            val title = start == titleStart && evidence.any { it.field == "family" &&
+                it.start >= lineRange.start && it.end <= lineRange.end } &&
+                familyPhrases.any { source.phrase(it).containsMatchIn(line) }
             val bound = boundField != null && physical.any { it.field == boundField && it.start >= lineRange.start && it.end <= lineRange.end }
             return title || bound
         }
+        fun scopedMatches(phrase: String, boundField: String?) =
+            source.phrase(phrase).findAll(source.text).filter { scoped(it.range, boundField) }
+
+        // Keep every match from the first matching phrase, in configured order.
+        fun observeFirstPhrase(id: String, boundField: String, rule: String, field: String = id): Boolean =
+            configured[id].orEmpty().any { phrase ->
+                val matches = scopedMatches(phrase, boundField).toList()
+                matches.forEach { evidence += source.evidence(rule, "observation.$field", it.range) }
+                matches.isNotEmpty()
+            }
+
         fun choose(keys: List<String>, header: String, allowed: Set<MessageFamily>, boundField: String? = null): String? {
             val found = linkedSetOf<String>()
             val typed = linkedSetOf<String>()
@@ -56,7 +66,7 @@ internal class ObservationExtractor(
                 }
             }
             keys.forEach { id -> configured[id].orEmpty().forEach { phrase ->
-                source.phrase(phrase).findAll(source.text).filter { scoped(it.range, boundField) }.forEach { match ->
+                scopedMatches(phrase, boundField).forEach { match ->
                     found += id
                     evidence += source.evidence("extract.observation", "observation.$id", match.range)
                 }
@@ -84,29 +94,21 @@ internal class ObservationExtractor(
         // A conflicting explicit product remains blocked; it must not become a generic personal loan.
         val genericLoan = if (loan == null && family == MessageFamily.FINANCING_INSTALLMENT &&
             evidence.none { it.field in setOf("observation.loan.personal", "observation.loan.auto", "observation.loan.mortgage") }) {
-            configured["loan.generic"].orEmpty().flatMap { phrase -> source.phrase(phrase).findAll(source.text).toList() }
-                .filter { scoped(it.range, "counterparty") }.onEach {
+            configured["loan.generic"].orEmpty().flatMap { phrase -> scopedMatches(phrase, "counterparty").toList() }
+                .onEach {
                     evidence += source.evidence("extract.observation.financing_default", "observation.loan.personal", it.range)
                 }.takeIf { it.isNotEmpty() }?.let { LoanType.PERSONAL }
         } else null
         val salary = choose(listOf("income.salary"), "observation.incomeType", setOf(MessageFamily.TRANSFER_IN))?.let { true }
-        val balance = configured["card.available_balance"].orEmpty().any { phrase ->
-            source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "AVAILABLE_BALANCE") }.onEach {
-                evidence += source.evidence("extract.observation", "observation.card.available_balance", it.range)
-            }.toList().isNotEmpty()
-        }
+        val balance = observeFirstPhrase("card.available_balance", "AVAILABLE_BALANCE", "extract.observation")
         if (balance && family !in cards) fail("UNRELATED_BALANCE_OBSERVATION")
         val creditBalance = card==null && balance && physical.any {it.field=="CARD"} &&
             configured["card.credit_balance"].orEmpty().any {phrase ->
-                source.phrase(phrase).findAll(source.text).any {scoped(it.range,"AVAILABLE_BALANCE")}}
+                scopedMatches(phrase, "AVAILABLE_BALANCE").any() }
         if(creditBalance) physical.firstOrNull {it.field=="CARD"}?.let {
             evidence += it.copy(ruleId="extract.observation.credit_balance",field="observation.card.credit")
         }
-        val debitSource = configured["card.debit_source"].orEmpty().any { phrase ->
-            source.phrase(phrase).findAll(source.text).filter { scoped(it.range, "SOURCE_ACCOUNT") }.onEach {
-                evidence += source.evidence("extract.observation.debit_source", "observation.card.debit", it.range)
-            }.toList().isNotEmpty()
-        }
+        val debitSource = observeFirstPhrase("card.debit_source", "SOURCE_ACCOUNT", "extract.observation.debit_source", "card.debit")
         return ObservedFacts(if (debitSource) CardChannel.DEBIT else card ?: CardChannel.CREDIT.takeIf {creditBalance}, purchase, loan ?: genericLoan,
             salary ?: false.takeIf { family == MessageFamily.TRANSFER_IN }, balance)
     }
