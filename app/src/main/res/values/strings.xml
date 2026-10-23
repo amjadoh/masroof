@@ -719,4 +719,7 @@
     <string name="settings_card_no_primary">لا توجد بطاقة أساسية مؤكدة في هذا البنك.</string>
     <string name="settings_card_no_account">بدون ربط بحساب حاليًا</string>
     <string name="settings_card_dependents_block">لهذه البطاقة بطاقات إضافية مرتبطة. أعد ربطها بنفسك أولًا قبل تغيير نوع أو دور الأساسية.</string>
+    <string name="commitment_payment_ambiguous">تطابق هذه الدفعة أكثر من التزام. راجع الالتزامات.</string>
+    <string name="commitment_payment_missing_source">الحركة الأصلية غير متاحة. راجع هذا الالتزام.</string>
+    <string name="commitment_open_payment">عرض حركة الدفع</string>
 </resources>

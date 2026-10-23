@@ -38,6 +38,8 @@ data class CommitmentDashboardRow(
     val userCommitmentId: String? = null,
     val creditFacilityKey: String? = null,
     val loanKey: String? = null,
+    val paymentTransactionId: String? = null,
+    val paymentMatchIssue: CommitmentMatchIssue? = null,
 )
 
 data class CommitmentsOverview(
@@ -73,24 +75,25 @@ object CommitmentsOverviewBuilder {
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
         zoneId: ZoneId,
+        paymentIdentities: Map<String, CommitmentPaymentIdentity> = emptyMap(),
     ): CommitmentsOverview {
-        val consumedPaymentTransactionIds = mutableSetOf<String>()
+        val sources = transactions.associateBy { it.id }
+        val visibleCommitments = commitments.filter { isCommitmentVisibleInPeriod(it, salaryPeriod, zoneId) }
+            .filter { occurrencesInPeriod(it, salaryPeriod).isNotEmpty() }.sortedBy { it.id }
+        val start = FinancialPeriodPolicy.toInclusiveStartInstant(salaryPeriod.startDate, zoneId)
+        val end = FinancialPeriodPolicy.toExclusiveEndInstant(salaryPeriod.endDateExclusive, zoneId)
+        val owners = transactions.filter { it.occurredAt >= start && it.occurredAt < end }.associate { tx ->
+            val matching = visibleCommitments.filter { c -> matchesCommitmentPayment(tx, c, primaryCurrency, sarEquivalents,
+                source = sources[c.sourceTransactionId], identities = paymentIdentities) }
+            val exact = matching.filter { it.sourceTransactionId == tx.id }
+            tx.id to exact.ifEmpty { matching }
+        }
         val rows = buildList {
-            commitments
-                .filter { isCommitmentVisibleInPeriod(it, salaryPeriod, zoneId) }
-                .sortedBy { it.id }
-                .forEach { commitment ->
-                addAll(
-                    buildUserRows(
-                        commitment = commitment,
-                        salaryPeriod = salaryPeriod,
-                        transactions = transactions,
-                        primaryCurrency = primaryCurrency,
-                        sarEquivalents = sarEquivalents,
-                        zoneId = zoneId,
-                        consumedPaymentTransactionIds = consumedPaymentTransactionIds,
-                    ),
-                )
+            visibleCommitments.forEach { commitment ->
+                val allowed = owners.filterValues { it.size == 1 && it.single().id == commitment.id }.keys
+                val ambiguous = owners.values.any { it.size > 1 && it.any { c -> c.id == commitment.id } }
+                addAll(buildUserRows(commitment, salaryPeriod, transactions, primaryCurrency, sarEquivalents, zoneId,
+                    allowed, ambiguous, commitment.sourceTransactionId in sources))
             }
             addAll(
                 buildCreditCardRows(
@@ -136,7 +139,9 @@ object CommitmentsOverviewBuilder {
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
         zoneId: ZoneId,
-        consumedPaymentTransactionIds: MutableSet<String>,
+        allowedPaymentIds: Set<String>,
+        ambiguous: Boolean,
+        hasSource: Boolean,
     ): List<CommitmentDashboardRow> {
         val occurrences = occurrencesInPeriod(commitment, salaryPeriod)
         if (occurrences.isEmpty()) return emptyList()
@@ -148,24 +153,14 @@ object CommitmentsOverviewBuilder {
             transactions = transactions,
         ) ?: return emptyList()
         val matchedPayments = collectMatchingPayments(
-            commitment = commitment,
             salaryPeriod = salaryPeriod,
             transactions = transactions,
             primaryCurrency = primaryCurrency,
             sarEquivalents = sarEquivalents,
             zoneId = zoneId,
-            consumedPaymentTransactionIds = consumedPaymentTransactionIds,
+            allowedPaymentIds = allowedPaymentIds,
         )
-        val paidOccurrenceCount = if (commitment.recurrence == null) {
-            when {
-                occurrences.isEmpty() -> 0
-                isDateInPeriod(commitment.transactionDate, salaryPeriod) || matchedPayments.isNotEmpty() ->
-                    occurrences.size
-                else -> 0
-            }
-        } else {
-            matchedPayments.size
-        }
+        val paidOccurrenceCount = matchedPayments.size
         return occurrences.mapIndexed { index, occurrence ->
             val isPaid = index < paidOccurrenceCount
             val matchedPayment = matchedPayments.getOrNull(index)
@@ -191,6 +186,13 @@ object CommitmentsOverviewBuilder {
                     CommitmentPaymentStatus.UNPAID
                 },
                 userCommitmentId = commitment.id,
+                paymentTransactionId = matchedPayment?.transactionId,
+                paymentMatchIssue = when {
+                    isPaid -> null
+                    ambiguous -> CommitmentMatchIssue.AMBIGUOUS_PAYMENT
+                    !hasSource -> CommitmentMatchIssue.MISSING_SOURCE
+                    else -> null
+                },
             )
         }
     }
@@ -366,42 +368,31 @@ object CommitmentsOverviewBuilder {
     }
 
     private data class MatchedCommitmentPayment(
+        val transactionId: String,
         val occurredAt: Instant,
         val amount: Money,
     )
 
     private fun collectMatchingPayments(
-        commitment: Commitment,
         salaryPeriod: FinancialPeriod,
         transactions: List<FinancialTransaction>,
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
         zoneId: ZoneId,
-        consumedPaymentTransactionIds: MutableSet<String>,
+        allowedPaymentIds: Set<String>,
     ): List<MatchedCommitmentPayment> {
         val periodStart = FinancialPeriodPolicy.toInclusiveStartInstant(salaryPeriod.startDate, zoneId)
         val periodEnd = FinancialPeriodPolicy.toExclusiveEndInstant(salaryPeriod.endDateExclusive, zoneId)
         val matched = mutableListOf<MatchedCommitmentPayment>()
         transactions.forEach { tx ->
             if (tx.occurredAt < periodStart || tx.occurredAt >= periodEnd) return@forEach
-            if (tx.id in consumedPaymentTransactionIds) return@forEach
-            if (
-                !matchesCommitmentPayment(
-                    transaction = tx,
-                    commitment = commitment,
-                    primaryCurrency = primaryCurrency,
-                    sarEquivalents = sarEquivalents,
-                )
-            ) {
-                return@forEach
-            }
+            if (tx.id !in allowedPaymentIds) return@forEach
             val paymentAmount = TransactionAmountResolver.effectiveAmount(
                 tx = tx,
                 primaryCurrency = primaryCurrency,
                 sarEquivalents = sarEquivalents,
             ) ?: return@forEach
-            consumedPaymentTransactionIds.add(tx.id)
-            matched.add(MatchedCommitmentPayment(occurredAt = tx.occurredAt, amount = paymentAmount))
+            matched.add(MatchedCommitmentPayment(transactionId = tx.id, occurredAt = tx.occurredAt, amount = paymentAmount))
         }
         return matched.sortedBy { it.occurredAt }
     }
@@ -411,6 +402,8 @@ object CommitmentsOverviewBuilder {
         commitment: Commitment,
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
+        source: FinancialTransaction? = null,
+        identities: Map<String, CommitmentPaymentIdentity> = emptyMap(),
     ): Boolean {
         if (
             transaction.type != FinancialTransactionType.EXPENSE &&
@@ -426,10 +419,11 @@ object CommitmentsOverviewBuilder {
         ) ?: return false
         if (txAmount.amount.signum() <= 0) return false
         if (transaction.id == commitment.sourceTransactionId) return true
-        val txName = transaction.merchant?.trim()?.lowercase()
-            ?: transaction.counterparty?.trim()?.lowercase()
-            ?: return false
-        return txName == commitment.name.trim().lowercase()
+        val expected = identities[commitment.sourceTransactionId]
+            ?: source?.let(CommitmentPaymentIdentity::from)
+            ?: CommitmentPaymentIdentity(setOf(CommitmentPaymentIdentity.normalize(commitment.name)).filter(String::isNotEmpty).toSet())
+        val actual = identities[transaction.id] ?: CommitmentPaymentIdentity.from(transaction)
+        return expected.matches(actual)
     }
 
     private fun resolveMoney(
