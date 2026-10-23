@@ -325,19 +325,9 @@ object TransactionClassifier {
     private fun isOwnedCashLikeToOwnedCreditCard(
         source: ResolvedContainerFacts,
         destination: ResolvedContainerFacts,
-    ): Boolean {
-        val sourceIsOwnedCashLike =
-            source.ownership == OwnershipStatus.OWNED &&
-                (
-                    source.kind == ContainerKind.ACCOUNT ||
-                        (source.kind == ContainerKind.CARD && source.knownCardType == CardType.DEBIT)
-                    )
-        val destinationIsOwnedCredit =
-            destination.kind == ContainerKind.CARD &&
-                destination.knownCardType == CardType.CREDIT &&
-                destination.ownership == OwnershipStatus.OWNED
-        return sourceIsOwnedCashLike && destinationIsOwnedCredit
-    }
+    ): Boolean =
+        isOwnedAccountToOwnedCardPaymentShape(source, destination) &&
+            destination.knownCardType == CardType.CREDIT
 
     private fun classified(
         type: FinancialTransactionType,
