@@ -69,7 +69,7 @@ object TransactionMatcher {
                 it.destinationOwnership == OwnershipStatus.OWNED
         }
 
-        val byAmount = (outgoing + incoming).groupBy { moneyKey(it.event.amount!!) }
+        val byAmount = (outgoing + incoming).groupBy { it.amount }
 
         val pairs = mutableListOf<TransferMatchPair>()
         for ((_, group) in byAmount) {
@@ -297,7 +297,4 @@ object TransactionMatcher {
             }
         }
     }
-
-    private fun moneyKey(money: Money): String =
-        "${money.currency.name}|${money.amount.stripTrailingZeros().toPlainString()}"
 }
