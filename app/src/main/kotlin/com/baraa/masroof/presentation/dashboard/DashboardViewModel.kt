@@ -179,7 +179,7 @@ class DashboardViewModel(
 
     fun refresh() {
         syncSmsPermissionState()
-        load(activePeriod, preserveSelectionId = _uiState.value.selectedTransactionId)
+        load(activePeriod)
     }
 
     /**
@@ -230,17 +230,17 @@ class DashboardViewModel(
 
     fun goToPreviousPeriod() {
         activePeriod = dashboardPeriodWorkflow.previous(activePeriod)
-        load(activePeriod)
+        load(activePeriod, resetSelection = true)
     }
 
     fun goToNextPeriod() {
         activePeriod = dashboardPeriodWorkflow.next(activePeriod)
-        load(activePeriod)
+        load(activePeriod, resetSelection = true)
     }
 
     fun goToCurrentPeriod() {
         activePeriod = dashboardPeriodWorkflow.currentPeriod()
-        load(activePeriod)
+        load(activePeriod, resetSelection = true)
     }
 
     fun rescanSms() {
@@ -470,7 +470,10 @@ class DashboardViewModel(
             FinancialPeriodUiFormatter.formatAdjustmentHint(context, adjustment)
     }
 
-    private fun load(period: DashboardSalaryPeriod, preserveSelectionId: String? = null) {
+    private fun load(period: DashboardSalaryPeriod, resetSelection: Boolean = false) {
+        // Period navigation closes the old detail once, before loading. An async
+        // overview result must never overwrite a newer open/close/select action.
+        if (resetSelection) closeTransactionDetail()
         val samePeriodRefresh =
             _uiState.value.period == period && _uiState.value.summary?.period == period
         val (periodLabel, periodAdjustmentHint) = periodPresentation(period)
@@ -557,7 +560,6 @@ class DashboardViewModel(
                         transactionDebitSpendInvolvement = overview.transactionDebitSpendInvolvement,
                         isCurrentPeriod = overview.isCurrentPeriod,
                         error = null,
-                        selectedTransactionId = preserveSelectionId,
                         unknownCards = unknownCards,
                         ownedCards = ownedCards,
                         ownedAccounts = ownedAccounts,
@@ -565,7 +567,7 @@ class DashboardViewModel(
                         committedSourceTransactionIds = committedIds,
                     )
                 }
-                preserveSelectionId?.let(::loadSelectedTransactionSms)
+                _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {
