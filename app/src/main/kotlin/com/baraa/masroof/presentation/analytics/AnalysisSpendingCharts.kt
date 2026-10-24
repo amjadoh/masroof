@@ -28,7 +28,8 @@ internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.compone
     if (state.updating || state.unavailable || state.observations.isEmpty()) return
     MasroofCard(Modifier.testTag("spending-observations")) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofSectionHeader(stringResource(R.string.personal_spending_attention), icon = MasroofIcons.analysis)
+            MasroofGuidanceLabel(stringResource(R.string.personal_spending_attention), stringResource(R.string.personal_spending_hint),
+                style = MaterialTheme.typography.titleMedium)
             state.observations.forEach { observation ->
                 Column(Modifier.testTag("spending-observation-chart-${observation.id}"),
                     verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
@@ -58,11 +59,11 @@ internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.compone
     val comparison = snapshot.insights?.comparison
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofSectionHeader(stringResource(R.string.lab_analysis_insights), icon = MasroofIcons.analysis)
+            MasroofGuidanceLabel(stringResource(R.string.lab_analysis_insights), comparison?.let {
+                stringResource(R.string.lab_analysis_comparison_dates, day(it.from), day(it.through), day(it.previousFrom), day(it.previousThrough))
+            }, style = MaterialTheme.typography.titleMedium)
             if (comparison == null) Text(stringResource(R.string.lab_analysis_comparison_missing), style = MaterialTheme.typography.bodySmall)
             else {
-                Text(stringResource(R.string.lab_analysis_comparison_dates, day(comparison.from), day(comparison.through),
-                    day(comparison.previousFrom), day(comparison.previousThrough)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Amount(stringResource(if (comparison.delta < 0) R.string.analysis_decrease else R.string.analysis_increase, ""), comparison.delta)
                 comparison.percent?.let { Text(stringResource(R.string.lab_analysis_comparison_percent, it), style = MaterialTheme.typography.labelMedium) }
                 val maximum = maxOf(comparison.current, comparison.previous, 0)
@@ -115,9 +116,11 @@ internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.compone
     val merchants = snapshot.insights?.merchants.orEmpty()
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofSectionHeader(stringResource(R.string.analysis_merchants), icon = MasroofIcons.merchant,
-                onViewAll = onViewAll, viewAllLabel = stringResource(R.string.dashboard_merchants_view_all))
-            Text(stringResource(R.string.analysis_merchants_scope), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                MasroofSectionHeader(stringResource(R.string.analysis_merchants), Modifier.weight(1f), icon = MasroofIcons.merchant,
+                    onViewAll = onViewAll, viewAllLabel = stringResource(R.string.dashboard_merchants_view_all))
+                MasroofGuidanceButton(stringResource(R.string.analysis_merchants), stringResource(R.string.analysis_merchants_scope))
+            }
             if (merchants.isEmpty()) Text(stringResource(R.string.lab_analysis_no_merchants))
             (if (showAll) merchants else merchants.take(5)).forEach { group ->
                 MasroofValueBarRow(AppDigits.display(group.name.orEmpty()), visualMoney(group.amount), fraction(group.amount, merchants.first().amount),

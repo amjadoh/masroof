@@ -59,15 +59,17 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     }
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
-            MasroofGuidanceLabel(stringResource(R.string.analysis_personal_readiness), stringResource(R.string.lab_analysis_quality_history_reason), style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
-            Text(stringResource(R.string.forecast_continuous_learning), style = MaterialTheme.typography.bodySmall)
+            val readinessHelp = listOfNotNull(stringResource(R.string.lab_analysis_quality_history_reason),
+                stringResource(R.string.forecast_continuous_learning),
+                if (snapshot.status == "READY") stringResource(forecastReasonResource(snapshot.modelReason)) else null).joinToString("\n\n")
+            MasroofGuidanceLabel(stringResource(R.string.analysis_personal_readiness), readinessHelp,
+                style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
             quality.consecutiveCompleteDays?.let { count -> com.baraa.masroof.ui.components.MasroofValueBarRow(
                 stringResource(R.string.analysis_personal_days), com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, count, 120)), fraction(count.toLong(), 120),
                 style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default) }
             com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.analysis_personal_periods),
                 com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, snapshot.completedPeriods, 4)), fraction(snapshot.completedPeriods.toLong(), 4),
                 style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default)
-            if (snapshot.status == "READY") Text(stringResource(forecastReasonResource(snapshot.modelReason)), style = MaterialTheme.typography.bodySmall)
         }
     }
     MasroofCard {
