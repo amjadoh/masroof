@@ -59,7 +59,7 @@ class AdvisoryLifecycleMigrationTest {
         createV1(name,AnalyticsDatabase::class.java.name) { db ->
             db.execSQL("INSERT INTO analysis_preferences VALUES (1,9000,0,1,1,1,3,0,1,10,'100')")
         }
-        val db=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
+        val db=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3,AnalyticsDatabase.MIGRATION_3_4).build()
         try {
             assertEquals("100",db.analytics().preferences()!!.gapDays)
             val gap=AnalysisCoverageRow("gap",100,100,"LEGACY",10)
@@ -80,7 +80,7 @@ class AdvisoryLifecycleMigrationTest {
             db.execSQL("INSERT INTO analysis_forecast_comparison VALUES ('legacy',100,130,10,'${"a".repeat(64)}','model','published-day8-v1',200,300,250,'${"b".repeat(64)}',20)")
         }
         val database=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name)
-            .addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
+            .addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3,AnalyticsDatabase.MIGRATION_3_4).build()
         try {
             val pair=database.analytics().comparisons().single()
             assertEquals(107L,pair.originDay)
@@ -88,7 +88,7 @@ class AdvisoryLifecycleMigrationTest {
             assertEquals(300L,pair.baselineTotal)
             assertEquals(250L,pair.actual)
             val exported=AnalyticsArchiveStore.export(database)
-            assertEquals(3,AnalyticsArchiveStore.validate(exported)!!.version)
+            assertEquals(4,AnalyticsArchiveStore.validate(exported)!!.version)
             val old=Json.parseToJsonElement(exported).jsonObject.toMutableMap().apply {
                 put("version",JsonPrimitive(2))
                 put("comparisons",JsonArray(listOf(JsonObject(Json.parseToJsonElement(exported).jsonObject
