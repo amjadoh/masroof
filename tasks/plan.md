@@ -1,3 +1,20 @@
+# Proposed next phase: personal spending and forecasting
+
+Design proposal: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGHTS_DESIGN.md).
+Start from PR #329 / `d2d3ebe5`; CI #943 passed, PR remains draft/unmerged.
+This is a reviewable plan and prototype, not an implementation or activation.
+
+Work areas and order: evidence audit → forecast explanation → scoped spending
+observations → recurring review → diverse message review. Base-model
+qualification is a separate data milestone. Reuse current models and screens;
+use robust descriptive statistics for initial spending observations. Preserve
+financial v18, human decisions, all qualification gates and current authorities.
+Detailed scope, acceptance, UI behavior and validation are in the linked design;
+proposed implementation slices are in `todo.md`. The completed baseline below
+is retained as the record of #329.
+
+---
+
 # Continuous local learning
 
 Implement the approved plan on `feat/continuous-local-learning`. Inference and
