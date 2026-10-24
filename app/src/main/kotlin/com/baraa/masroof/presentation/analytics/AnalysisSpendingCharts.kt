@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.*
 import com.baraa.masroof.lab.analytics.SpendingObservation
@@ -31,14 +32,12 @@ internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.compone
             MasroofGuidanceLabel(stringResource(R.string.personal_spending_attention), stringResource(R.string.personal_spending_hint),
                 style = MaterialTheme.typography.titleMedium)
             state.observations.forEach { observation ->
-                Column(Modifier.testTag("spending-observation-chart-${observation.id}"),
+                Column(Modifier.testTag("spending-observation-chart-${observation.id}").clickable(
+                    role = Role.Button, onClickLabel = stringResource(R.string.personal_spending_evidence),
+                    onClick = { onOpenGroup("observation:${observation.id}") }),
                     verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                     Text(observation.merchant, style = MaterialTheme.typography.titleSmall)
                     AnalysisSpendingObservationBars(observation)
-                    MasroofTextButton(onClick = { onOpenGroup("observation:${observation.id}") },
-                        modifier = Modifier.testTag("spending-observation-${observation.id}")) {
-                        Text(stringResource(R.string.personal_spending_evidence))
-                    }
                 }
             }
         }
