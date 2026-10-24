@@ -14,13 +14,31 @@ OUT = MODULE / 'src/main/resources/ml/family-seed.json'
 REPORT = MODULE / 'ML_SEED_EVALUATION.json'
 EXPORT = ROOT / 'app/build/model-training/features.json'
 SPLITS = MODULE / 'tools/corpus-splits.json'
-APPROVED_FAMILIES = {'TRANSFER_IN'}  # Separation does not promote any new family.
+APPROVED_FAMILIES = {'PURCHASE', 'TRANSFER_IN', 'TRANSFER_OUT', 'CARD_PAYMENT', 'BILL_PAYMENT',
+                     'FINANCING_INSTALLMENT', 'WITHDRAWAL', 'REFUND', 'FEE'}
 MIN_ACCEPTED_VALIDATION_TEMPLATES = 8
 POLICY = dict(scoreThreshold=0.98, marginThreshold=0.2, coverageThreshold=0.6)
 
 
 def canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+
+def freeze_splits(exported, existing):
+    """Assign cleaned template groups before training, without consulting labels."""
+    groups = collections.defaultdict(list)
+    for row in exported['rows']:
+        groups[row['template']].append(row['id'])
+    partitions = {}
+    priority = {'train': 0, 'validation': 1, 'test': 2}
+    for template, identities in groups.items():
+        prior = [existing[identity] for identity in identities if identity in existing]
+        bucket = int(hashlib.sha256(('family-holdout-template-v1|' + template).encode()).hexdigest()[:8], 16) % 10
+        split = max(prior, key=priority.get) if prior else 'train' if bucket < 6 else 'validation' if bucket < 8 else 'test'
+        partitions.update({identity: split for identity in identities})
+    for row in exported['rejected']:
+        partitions[row['id']] = existing.get(row['id'], 'train')
+    return dict(version='template-group-v1', partitions=partitions, provisional=False)
 
 
 def partition_rows(rows, frozen):
@@ -133,9 +151,14 @@ def train(exported, frozen):
         minimumAcceptedValidationTemplates=MIN_ACCEPTED_VALIDATION_TEMPLATES,
         acceptedSuggestions=sum(r['accepted'] for r in report['heldOutCases']),
         wrongAcceptedSuggestions=sum(r['accepted'] and r['family'] != r['expected'] for r in report['heldOutCases']))
-    if any(r['partition'] == 'test' and r['accepted'] and r['validationAccepted']
+    if any(r['partition'] == 'test' and r['accepted']
            and r['family'] != r['expected'] for r in report['heldOutCases']):
         raise ValueError('Unsafe final runtime holdout: accepted wrong family')
+    for family in enabled:
+        accepted_test = [r for r in report['heldOutCases'] if r['partition'] == 'test' and
+                         r['accepted'] and r['family'] == family and r['expectedPassesValidation']]
+        if len(accepted_test) < MIN_ACCEPTED_VALIDATION_TEMPLATES:
+            raise ValueError('Insufficient final runtime holdout for enabled family')
     return payload, report
 
 
@@ -143,14 +166,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--skip-export', action='store_true')
+    parser.add_argument('--export', type=pathlib.Path, default=EXPORT)
+    parser.add_argument('--splits', type=pathlib.Path, default=SPLITS)
+    parser.add_argument('--output', type=pathlib.Path, default=OUT)
+    parser.add_argument('--report', type=pathlib.Path, default=REPORT)
+    parser.add_argument('--freeze-splits', type=pathlib.Path, help='Freeze cleaned template groups before training')
     args = parser.parse_args()
     if not args.skip_export:
         subprocess.run(['./gradlew', ':app:testDebugUnitTest', '--tests', '*FamilyFeatureExportTest',
                         '--no-daemon', '-Dorg.gradle.jvmargs=-Xmx1536m',
                         '-Pkotlin.compiler.execution.strategy=in-process', '--max-workers=1',
                         '--no-parallel', '--console=plain'], cwd=ROOT, check=True)
-    payload, report = train(json.loads(EXPORT.read_text()), json.loads(SPLITS.read_text())['partitions'])
-    outputs = ((OUT, payload), (REPORT, report))
+    exported = json.loads(args.export.read_text())
+    split_manifest = json.loads(args.splits.read_text())
+    if args.freeze_splits:
+        existing = {} if split_manifest.get('provisional') else split_manifest['partitions']
+        frozen = freeze_splits(exported, existing)
+        args.freeze_splits.write_text(json.dumps(frozen, sort_keys=True, indent=2) + '\n')
+        print('Cleaned template partitions frozen; no model was trained.')
+        return
+    if split_manifest.get('provisional'):
+        raise ValueError('Freeze cleaned template groups before training private inputs')
+    payload, report = train(exported, split_manifest['partitions'])
+    outputs = ((args.output, payload), (args.report, report))
     for path, value in outputs:
         text = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n'
         if args.check:
@@ -159,7 +197,8 @@ def main():
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
-    print(json.dumps(dict(version=payload['version'], enabledFamilies=payload['enabledFamilies'], **report['training']), ensure_ascii=False))
+    print(json.dumps(dict(version=payload['version'], enabledFamilies=payload['enabledFamilies'],
+                          **{key:report['training'][key] for key in ('sourceRows','cleanRows','uniqueTemplates','trainGroups','validationGroups','testGroups')}), ensure_ascii=False))
 
 
 if __name__ == '__main__':

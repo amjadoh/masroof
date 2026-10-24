@@ -5,6 +5,14 @@ import train_family_model as training
 
 
 class TrainingContractTest(unittest.TestCase):
+    def test_new_splits_group_templates_without_using_labels_and_preserve_frozen_test(self):
+        rows = [self.row('a'), self.row('b'), self.row('c', 'other')]
+        exported = dict(rows=rows, rejected=[])
+        original = training.freeze_splits(exported, {'a': 'test'})
+        self.assertEqual('test', original['partitions']['b'])
+        changed = copy.deepcopy(exported)
+        changed['rows'][0]['family'] = 'OTP'
+        self.assertEqual(original, training.freeze_splits(changed, {'a': 'test'}))
     def row(self, identity, template='same', family='PURCHASE'):
         return dict(id=identity, template=template, family=family, features={'w:purchase': 1})
 

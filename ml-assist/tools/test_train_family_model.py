@@ -9,7 +9,7 @@ class ActivationPolicyTest(unittest.TestCase):
     def corpus(self, count=8):
         rows = []
         partitions = {}
-        for name, split in [('train', 'train')] + [(f'validation-{i}', 'validation') for i in range(count)] + [('test', 'test')]:
+        for name, split in [('train', 'train')] + [(f'validation-{i}', 'validation') for i in range(count)] + [(f'test-{i}', 'test') for i in range(9)]:
             rows.append(dict(id=name, template=name, family='TRANSFER_IN', features={'w:transfer': 1},
                              runtimeEligible=True, expectedPassesValidation=True,
                              candidateOutcomes={'TRANSFER_IN': dict(validationAccepted=True, assembly='Assembled')}))
@@ -52,6 +52,12 @@ class ActivationPolicyTest(unittest.TestCase):
         changed, _ = train(source, frozen)
         for key in ['vocabulary', 'counts', 'documents', 'enabledFamilies']:
             self.assertEqual(original[key], changed[key])
+
+    def test_insufficient_final_holdout_cannot_ship_even_when_validation_passes(self):
+        source, frozen = self.corpus()
+        source['rows'] = [r for r in source['rows'] if not r['id'].startswith('test-') or r['id'] == 'test-0']
+        with self.assertRaisesRegex(ValueError, 'Insufficient final runtime holdout'):
+            train(source, frozen)
 
 
 if __name__ == '__main__':
