@@ -10,12 +10,13 @@ object FamilyPersonalization {
 
     fun rebuild(seed: FamilyModel, labels: List<HumanFamilyLabel>, validation: List<FamilyEvaluation>,
         blocks: List<HumanTemplateBlock> = emptyList(), runtimeEligibleTemplates: Set<String>? = null): FamilyPersonalizationResult {
-        val baseline = FamilyClassifier(seed, labels, blocks, emptySet())
+        val validatedBlocks = FamilyClassifier.checked(seed, labels, validation, blocks).latestBlocks
+        val baseline = FamilyClassifier(seed, labels, validatedBlocks, emptySet())
         val trusted = baseline.trustedLabels
         val training = trusted.filterNot { isValidation(it.bankId, it.template) }
         val heldOut = trusted.filter { isValidation(it.bankId, it.template) &&
             (runtimeEligibleTemplates == null || it.template in runtimeEligibleTemplates) }
-        val candidate = FamilyClassifier(seed, labels, blocks, training.map { it.template }.toSet())
+        val candidate = FamilyClassifier(seed, labels, validatedBlocks, training.map { it.template }.toSet())
         fun suggestion(model: FamilyModel, terms: Map<String, Int>) = model.predictTerms(terms)?.takeIf(model::accepts)?.family
         // Do not call suggest(): exact human-template memory would leak held-out answers.
         fun correct(model: FamilyModel) = heldOut.count { suggestion(model, it.terms) == it.family }

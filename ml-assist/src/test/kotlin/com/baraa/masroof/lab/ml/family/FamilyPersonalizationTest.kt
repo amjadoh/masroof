@@ -62,4 +62,12 @@ class FamilyPersonalizationTest {
         assertFalse(revoked.personalUsed)
         assertNull(revoked.classifier.suggest(base.bankId, unseen))
     }
+
+    @Test fun heldOutSeedTruthStillBlocksAContradictingHumanTemplate() {
+        val label = label(1).copy(template = features.template, family = SmsFamilyLabel.FINANCING_INSTALLMENT)
+        val validation = listOf(FamilyEvaluation(SmsFamilyLabel.FEE, features.terms, true, features.template, true))
+        val result = FamilyPersonalization.rebuild(seed, listOf(label), validation)
+        assertNull(result.classifier.suggest(seed.bankId, features))
+        assertTrue(result.classifier.latestBlocks.any { it.template == features.template })
+    }
 }
