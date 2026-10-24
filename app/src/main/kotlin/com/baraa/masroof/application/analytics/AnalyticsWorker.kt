@@ -109,6 +109,10 @@ object LabAnalyticsBackup {
             }
         }
         archive.models.forEach { row ->
+            if (row.id.startsWith("recurring:")) {
+                json.decodeFromString<StoredRecurringModel>(row.payload).model()
+                return@forEach
+            }
             if (row.id.startsWith("baseline:")) {
                 val b = json.decodeFromString(StoredBaseline.serializer(), row.payload)
                 require(b.kind == "WEEKDAY_MEDIAN" && b.medians.size == 7 && b.medians.all { it >= 0 } && b.from <= b.through)
@@ -126,6 +130,19 @@ object LabAnalyticsBackup {
             require(c.key == row.id && c.sourceIds.size >= 3 && c.sourceIds.distinct().size == c.sourceIds.size)
             require(c.amount > 0 && c.lower >= 0 && c.upper >= c.lower && c.cadence in setOf("WEEKLY", "MONTHLY"))
             require(row.status in setOf("SUGGESTED", "ACCEPTED", "REJECTED"))
+            if (c.seriesKey != null) {
+                require(c.seriesKey.matches(Regex("[0-9a-f]{64}")))
+                com.baraa.masroof.lab.analytics.RecurringLearning.requireFeatures(c.features)
+            }
+        }
+        archive.feedback.forEach { row ->
+            val payload = json.decodeFromString<RecurringFeedbackPayload>(row.payload).also { it.validate() }
+            require(row.seriesKey == payload.seriesKey)
+            require(when (row.kind) {
+                "NOT_RECURRING" -> payload.label == "NONE"
+                "DISMISSED" -> payload.label == null
+                else -> payload.label == null || payload.label in setOf("WEEKLY", "MONTHLY")
+            })
         }
         archive.alerts.forEach { require(it.kind in setOf("ACTUAL", "BUDGET", "DUE", "PAYMENT") && it.amount >= 0 && it.firstSeen >= 0 && it.observedAt >= it.firstSeen && it.readAt >= 0) }
     }

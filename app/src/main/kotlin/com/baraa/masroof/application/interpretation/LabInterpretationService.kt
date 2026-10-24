@@ -226,10 +226,11 @@ class LabInterpretationService(
         val learned = labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
         val eligibleTemplates = mutableSetOf<String>()
+        var requested = false
+        val probe = RuleInterpreter(AlJaziraRuleProfile.current(), FamilyAssist { _, _ -> requested = true; null })
         learned.forEach { label ->
             val message = evidence[label.rawId] ?: return@forEach
-            var requested = false
-            val probe = RuleInterpreter(AlJaziraRuleProfile.current(), FamilyAssist { _, _ -> requested = true; null })
+            requested = false
             probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(BANK))
             if (requested) eligibleTemplates += label.template
         }
