@@ -103,13 +103,19 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val comparisons = dao.comparisons()
         val learning = try { container.learningInsightsWorkflow.load() } catch(e: CancellationException) { throw e }
             catch(_: Exception) { com.baraa.masroof.application.interpretation.LearningInsights(pending = true) }
+        val candidates = dao.candidates().mapNotNull { runCatching { json.decodeFromString<AnalysisCandidate>(it.payload) }.getOrNull() }
+        val corrections = dao.feedback().filter { it.kind in setOf("NOT_RECURRING", "DISMISSED") }.sortedByDescending { it.decidedAt }.mapNotNull { row ->
+            candidates.firstOrNull { it.seriesKey == row.seriesKey }?.let { AnalysisRecurringCorrection(row.seriesKey, it.name, row.kind) }
+        }
         mutable.value = AnalysisUiState(cached, true, false, dao.alerts().filterNot { it.resolved }, prefs, history,
-            forecastPerformance = ForecastPerformancePolicy.evaluate(comparisons), forecastComparisons = comparisons, learning = learning)
+            forecastPerformance = ForecastPerformancePolicy.evaluate(comparisons), forecastComparisons = comparisons, learning = learning,
+            recurringCorrections = corrections)
     }
 
     private data class Source(val clean: CleanData, val start: Long, val end: Long, val today: Long,
         val completed: Int, val dues: List<AnalysisDue>, val committed: Set<String>, val reviews: Int,
-        val blocked: Boolean, val fingerprint: String, val reasons: List<String>, val insights: AnalysisSpendingInsights)
+        val blocked: Boolean, val fingerprint: String, val reasons: List<String>, val insights: AnalysisSpendingInsights,
+        val committedCadences: Map<String, String>)
 
     private suspend fun source(): Source {
             val zone = clock.zone; val today = LocalDate.now(clock); val todayDay = today.toEpochDay()
@@ -133,7 +139,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 val effective = historical.transactionFacts[tx.id]?.effectiveType ?: tx.type
                 FinancialFact(tx.id, tx.occurredAt.atZone(zone).toLocalDate().toEpochDay(), amount,
                     tx.type == FinancialTransactionType.REFUND, tx.id in included, tx.merchant ?: tx.counterparty,
-                    effective in setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE, FinancialTransactionType.BILL_PAYMENT))
+                    effective in setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE, FinancialTransactionType.BILL_PAYMENT),
+                    tx.sourceContainerId ?: tx.destinationContainerId)
             }
             val onboarding = container.onboardingPreferencesRepository
             val importedFrom = if (onboarding.isHistoricalImportCompleted()) onboarding.getHistoricalImportStartEpochMillis()
@@ -209,9 +216,10 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
-            val canonical = "presentation-v5|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|${clock.millis() / (6 * 3600_000L)}"
+            val feedback = store.analytics().feedback().joinToString { "${it.seriesKey}:${it.kind}:${it.decidedAt}:${hash(it.payload)}" }
+            val canonical = "continuous-learning-v1|${RecurringLearningWorkflow.version}|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|$feedback|${read.committedCadences}|${clock.millis() / (6 * 3600_000L)}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
-                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights)
+                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights, read.committedCadences)
     }
 
     suspend fun refresh() = withContext(Dispatchers.Default) { refreshOnWorker() }
@@ -228,18 +236,32 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val captureMissing = ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) &&
             !input.blocked && input.reasons.isEmpty() && !ForecastPerformancePolicy.hasComparison(comparisons,input.start)
         if (latest?.sourceHash == input.fingerprint && !captureMissing) { loadCached(); finishUi(input); return@withLock }
-        val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
+        val previous = dao.models().filterNot { it.id.startsWith("baseline:") || it.id.startsWith("recurring:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
             { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
-        val patterns = RecurringDetector.detect(input.clean.recurring, input.today)
+        val feedback = dao.feedback().map { row ->
+            if (row.kind != "CONFIRM_PENDING") row else {
+                val payload = json.decodeFromString<RecurringFeedbackPayload>(row.payload)
+                if (payload.label != null && input.committedCadences[payload.sourceIds.last()] == payload.label) {
+                    row.copy(kind = "CONFIRMED").also { dao.feedback(it) }
+                } else row
+            }
+        }
+        val recurring = RecurringLearningWorkflow.build(input.clean.recurring, feedback, input.today, input.committedCadences)
+        val (patterns, recurringStatus) = recurring
         val priorCandidates = dao.candidates().associateBy { it.id }
+        val legacy = priorCandidates.values.filter { it.status != "SUGGESTED" }.mapNotNull { row ->
+            runCatching { json.decodeFromString<AnalysisCandidate>(row.payload) }.getOrNull()?.takeIf { it.seriesKey == null }?.let { row to it }
+        }
         val candidates = patterns.map { pattern ->
             AnalysisCandidate(pattern.key, pattern.name, pattern.estimate, pattern.lower, pattern.upper, pattern.nextDay,
                 pattern.cadence, pattern.sourceIds, input.clean.recurring.first { it.id == pattern.sourceIds.last() }.day,
-                pattern.latestAmount, pattern.referenceAmount, pattern.amountIncreased, pattern.nextDay < input.today)
+                pattern.latestAmount, pattern.referenceAmount, pattern.amountIncreased, pattern.nextDay < input.today,
+                pattern.seriesKey, pattern.features, pattern.origin, pattern.modelVersion)
         }
-        val suggested = candidates.filter { item -> item.sourceIds.none { it in input.committed } && priorCandidates[item.key]?.status !in setOf("ACCEPTED", "REJECTED") }
-        val estimates = candidates.filter { item -> item.nextDay in input.today until input.end && item.sourceIds.none { it in input.committed } && priorCandidates[item.key]?.status != "REJECTED" }
+        fun status(item: AnalysisCandidate) = priorCandidates[item.key]?.status ?: legacy.firstOrNull { (_, old) -> old.sourceIds.any { it in item.sourceIds } }?.first?.status
+        val suggested = candidates.filter { item -> item.sourceIds.none { it in input.committed } && status(item) !in setOf("ACCEPTED", "REJECTED") }
+        val estimates = candidates.filter { item -> item.nextDay in input.today until input.end && item.sourceIds.none { it in input.committed } && status(item) != "REJECTED" }
             .map { AnalysisDue(it.key, it.name, it.amount, it.nextDay, false) }
         val at = clock.millis()
         val quality = AnalysisQuality(input.clean.quality.used, input.clean.quality.excluded, input.clean.quality.unusualIds,
@@ -259,10 +281,11 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             insights = input.insights, evaluations = result.evaluations.map { AnalysisEvaluation(it.horizon, it.count, it.mae, it.bias) },
             modelReason = result.reason, evaluationVersion = AnalyticsVersion.EVALUATION,
             wholeDaysFrom = (input.today + 1).takeIf { it < input.end }, wholeDaysLower = result.wholeDaysLower,
-            wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(result.actual, it) })
+            wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(result.actual, it) },
+            recurringLearning = recurringStatus)
         // A committed source invalidation while fitting invalidates the entire result.
         if (generation.get() != version || input.fingerprint != source().fingerprint) { request(); return@withLock }
-        val alerts = alerts(snapshot, candidates.filter { priorCandidates[it.key]?.status != "REJECTED" }, dao.alerts(), prefs)
+        val alerts = alerts(snapshot, candidates.filter { status(it) != "REJECTED" }, dao.alerts(), prefs)
         store.withTransaction {
             dao.snapshot(AnalysisSnapshotRow(hash("$at|${input.fingerprint}"), input.fingerprint, at, json.encodeToString(snapshot)))
             if(ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) && !input.blocked && input.reasons.isEmpty() &&
@@ -280,8 +303,11 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 val payload = json.encodeToString(StoredBaseline(it.medians, it.from, it.through, it.errors))
                 dao.model(AnalysisModelRow("baseline:${hash(payload)}", payload))
             }
+            recurring.candidate?.let { model ->
+                dao.model(AnalysisModelRow("recurring:${model.version}", json.encodeToString(StoredRecurringModel.from(model))))
+            }
             dao.candidates(candidates.map { c -> RecurringCandidateRow(c.key,
-                priorCandidates[c.key]?.status ?: if (c.sourceIds.any { it in input.committed }) "ACCEPTED" else "SUGGESTED", json.encodeToString(c)) })
+                status(c) ?: if (c.sourceIds.any { it in input.committed }) "ACCEPTED" else "SUGGESTED", json.encodeToString(c)) })
             dao.alerts(alerts)
         }
         if (generation.get() != version) { request(); return@withLock }
@@ -338,11 +364,16 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             AnalyticsNotifications.cancel(context, id)
         }
     }
-    suspend fun rejectCandidate(key: String) {
+    suspend fun rejectCandidate(key: String, notRecurring: Boolean = false) {
         mutex.withLock { if (closed) return
             container.databaseAccessGate.withAccess {
             val row = store.analytics().candidates().firstOrNull { it.id == key } ?: return@withAccess
-            store.analytics().candidates(listOf(row.copy(status = "REJECTED")))
+            store.withTransaction {
+                val candidate = json.decodeFromString<AnalysisCandidate>(row.payload)
+                recordRecurringFeedback(candidate, if (notRecurring) "NOT_RECURRING" else "DISMISSED",
+                    if (notRecurring) RecurringLabel.NONE.name else null)
+                store.analytics().candidates(listOf(row.copy(status = "REJECTED")))
+            }
         } }; request()
     }
     suspend fun acceptCandidate(key: String, draft: SettingsCommitmentsWorkflow.CommitmentEditorDraft): Boolean {
@@ -350,6 +381,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         require(draft.name.isNotBlank() && draft.amount.amount.signum() > 0)
         mutex.withLock { if (closed) return false
             container.databaseAccessGate.withAccess {
+            recordRecurringFeedback(c, "CONFIRM_PENDING", draft.recurrence?.name?.takeIf { it in setOf("WEEKLY", "MONTHLY") })
             container.database.withTransaction {
                 val source = container.financialTransactionRepository.getById(c.sourceIds.last()) ?: error("Source changed")
                 val existing = container.commitmentRepository.getBySourceTransactionId(source.id)
@@ -360,9 +392,37 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 }
             }
             val row = store.analytics().candidates().firstOrNull { it.id == key }
-            if (row != null) store.analytics().candidates(listOf(row.copy(status = "ACCEPTED")))
+            val saved = container.commitmentRepository.getBySourceTransactionId(c.sourceIds.last())
+            val learnedCadence = draft.recurrence?.name?.takeIf { it in setOf("WEEKLY", "MONTHLY") && saved?.recurrence?.name == it }
+            store.withTransaction {
+                recordRecurringFeedback(c, "CONFIRMED", learnedCadence)
+                if (row != null) store.analytics().candidates(listOf(row.copy(status = "ACCEPTED")))
+            }
         } }
         request(); return true
+    }
+
+    private suspend fun recordRecurringFeedback(candidate: AnalysisCandidate, kind: String, label: String?) {
+        val seriesKey = candidate.seriesKey ?: return
+        if (candidate.features.isEmpty()) return
+        val payload = RecurringFeedbackPayload(seriesKey, candidate.sourceIds, candidate.features, label).also { it.validate() }
+        store.analytics().feedback(RecurringFeedbackRow(seriesKey, kind, json.encodeToString(payload), clock.millis()))
+    }
+
+    suspend fun undoRecurringCorrection(seriesKey: String) = mutex.withLock {
+        if (closed) return@withLock
+        container.databaseAccessGate.withAccess {
+            store.withTransaction {
+                val dao = store.analytics()
+                val row = dao.feedback().firstOrNull { it.seriesKey == seriesKey && it.kind in setOf("NOT_RECURRING", "DISMISSED") } ?: return@withTransaction
+                dao.deleteFeedback(row.seriesKey)
+                val candidates = dao.candidates().filter { it.status == "REJECTED" }.filter {
+                    runCatching { json.decodeFromString<AnalysisCandidate>(it.payload).seriesKey == seriesKey }.getOrDefault(false)
+                }
+                dao.candidates(candidates.map { it.copy(status = "SUGGESTED") })
+            }
+        }
+        request()
     }
 
     /** Bounded, live read; projection and evidence enrichment happen outside the financial read transaction. */
@@ -396,6 +456,33 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         }
     }
     fun comparisonExplanation() = AnalysisPresentationBuilder.comparison(state.value, LocalDate.now(clock).toEpochDay(), clock.zone)
+
+    internal suspend fun replayForecasts(): List<ForecastReplayRow> = withContext(Dispatchers.Default) {
+        mutex.withLock {
+            if (closed) return@withLock emptyList()
+            val input = source()
+            purchasePeriodHistory(input.clean, input.start).filter { it.complete }.map { period ->
+                val origin = period.start + 7
+                ForecastReplay.evaluate(input.clean, period.start, period.end, origin, completedAnalysisPeriods(input.clean, origin),
+                    { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() },
+                    { day -> completedAnalysisPeriods(input.clean, day) })
+            }
+        }
+    }
+
+    /** Explicit developer-only export; no UI, network upload, names, dates or monetary amounts. */
+    internal suspend fun exportReviewedRecurrence(contributorGroup: String): String = withContext(Dispatchers.Default) {
+        require(contributorGroup.matches(Regex("[A-Za-z0-9_-]{1,64}")))
+        mutex.withLock {
+            if (closed) return@withLock ""
+            val input = source()
+            val result = RecurringLearningWorkflow.build(input.clean.recurring, store.analytics().feedback(), input.today, input.committedCadences)
+            result.reviewedExamples.sortedBy { it.seriesKey }.joinToString("\n", postfix = "\n") { row ->
+                listOf(hash("$contributorGroup|${row.seriesKey}"), contributorGroup, "train", row.label.name,
+                    result.ruleLabels.getValue(row.seriesKey).name).joinToString("\t") + "\t" + row.features.joinToString("\t")
+            }
+        }
+    }
 
     fun money(cents: Long): Money = Money(BigDecimal.valueOf(cents, 2), Currency.SAR)
     fun budgetStatus(): String {
