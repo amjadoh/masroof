@@ -581,20 +581,32 @@ class AnalyticsJourneyTest {
             for (locale in listOf("ar", "en")) for (isDark in listOf(false, true)) {
                 compose.runOnUiThread { language = locale; dark = isDark }
                 compose.onNodeWithTag("analysis-tab-0").performClick()
+                compose.waitUntil(30_000) { compose.onAllNodesWithTag("spending-observation-chart-observed-0").fetchSemanticsNodes().size == 1 }
+                compose.onNodeWithTag("spending-observation-chart-observed-0").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithTag("spending-observation-current-observed-0").assert(hasAnyDescendant(hasText(
+                    com.baraa.masroof.application.locale.AppDigits.display(text(R.string.personal_spending_payment, locale)))))
+                compose.onNodeWithTag("spending-observation-reference-observed-0").assertIsDisplayed()
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+                screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-chart")
                 compose.onNodeWithTag("spending-observation-observed-0").performScrollTo().performClick()
+                compose.waitUntil(30_000) { compose.onAllNodesWithTag("lab-evidence-observed-0").fetchSemanticsNodes().size == 1 }
                 compose.onNodeWithTag("lab-evidence-observed-0").performScrollTo().assertIsDisplayed().performClick()
                 assertEquals("observed-0", opened)
                 compose.onNodeWithTag("lab-evidence-observed-6").performScrollTo().assertIsDisplayed()
                 screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-evidence")
                 compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, locale)).performClick()
                 compose.onNodeWithTag("analysis-tab-1").performClick()
+                compose.onNodeWithTag("forecast-explanation-details").assertDoesNotExist()
                 compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
-                compose.onNodeWithTag("masroof-bottom-sheet").assertIsDisplayed()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+                compose.onNodeWithTag("forecast-explanation-details").performScrollTo().assertIsDisplayed()
                 compose.onNodeWithText(com.baraa.masroof.application.locale.AppDigits.display(
                     text(R.string.personal_forecast_qualification, locale))).performScrollTo().assertIsDisplayed()
                 screen("$locale-${if (isDark) "dark" else "light"}-forecast-explanation")
-                compose.onNodeWithTag("sheet-cancel").performClick()
-                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
+                compose.onNodeWithTag("forecast-explanation-details").assertDoesNotExist()
+                compose.onNodeWithTag("analysis-daily-bars").performScrollTo().assertIsDisplayed()
             }
             assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
             runBlocking {
@@ -604,6 +616,8 @@ class AnalyticsJourneyTest {
                 workflow.request(); workflow.refresh()
             }
             compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.none { it.id == "observed-0" } }
+            compose.onNodeWithTag("analysis-tab-0").performClick()
+            compose.onNodeWithTag("spending-observation-chart-observed-0").assertDoesNotExist()
         } finally {
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
             runBlocking { TestRuntime.reset(host) }

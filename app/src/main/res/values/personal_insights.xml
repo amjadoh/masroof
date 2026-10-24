@@ -1,21 +1,22 @@
 <resources>
     <string name="personal_forecast_why">لماذا هذا التقدير؟</string>
+    <string name="personal_forecast_hide">إخفاء التفاصيل</string>
     <string name="personal_forecast_initial">تقدير أولي من سجلك</string>
     <string name="personal_forecast_model">نموذجك الشخصي مستخدم</string>
     <string name="personal_forecast_unavailable">التقدير غير متاح حاليًا</string>
     <string name="personal_forecast_refreshing">جارٍ تحديث التقدير؛ التفاصيل المعروضة تخص آخر نتيجة محفوظة.</string>
     <string name="personal_forecast_initial_hint">يعتمد التقدير على وسيط صرفك في أيام الأسبوع المشابهة.</string>
     <string name="personal_forecast_model_hint">يتعلم النموذج محليًا من يوم الأسبوع وموقع اليوم من فترة الراتب وصرف الأيام السابقة.</string>
-    <string name="personal_forecast_qualification">تجربة النموذج الشخصي تحتاج ١٢٠ يومًا متصلًا مغطى و٤ فترات راتب مكتملة و٢٠ يوم مشتريات. ثم يجب أن يجتاز اختبارات مستقلة ويتفوق على التقدير الأولي؛ اكتمال المدة وحده لا يفعّله.</string>
+    <string name="personal_forecast_qualification">تجربة النموذج الشخصي تحتاج 120 يومًا متصلًا مغطى و4 فترات راتب مكتملة و20 يوم مشتريات. ثم يجب أن يجتاز اختبارات مستقلة ويتفوق على التقدير الأولي؛ اكتمال المدة وحده لا يفعّله.</string>
     <string name="personal_forecast_errors">خطأ التوقع حسب المدة</string>
     <string name="personal_forecast_error_row">توقع %1$d أيام: متوسط خطأ %2$s عبر %3$d اختبارات.</string>
-    <string name="personal_spending_attention">يستحق انتباهك</string>
+    <string name="personal_spending_attention">دفعات أعلى من المعتاد</string>
     <string name="personal_spending_hint">ملاحظات إحصائية من سجلك، مع بقاء المبالغ الفعلية كما هي. ارتفاع دفعة لا يعني وجود خطأ فيها.</string>
-    <string name="personal_spending_unusual">دفعتك لدى «%1$s» أعلى من المعتاد لديك.</string>
-    <string name="personal_spending_comparison">هذه الدفعة: %1$s · وسيط دفعاتك السابقة: %2$s</string>
     <string name="personal_spending_reference">مقارنة بـ%1$d دفعات سابقة ضمن نفس مصدر الدفع، من %2$s إلى %3$s.</string>
     <string name="personal_spending_evidence">عرض الدفعات وسبب الملاحظة</string>
     <string name="personal_spending_payment">الدفعة الحالية</string>
+    <string name="personal_spending_median">وسيط دفعاتك السابقة</string>
+    <string name="personal_spending_sample">من %1$d دفعات سابقة بنفس مصدر الدفع</string>
     <string name="personal_spending_previous">الدفعات المرجعية السابقة</string>
     <string name="personal_review_title">مراجعة صيغ مختلفة</string>
     <string name="personal_review_scope">جلسة اختيارية تعرض حتى ثلاث صيغ من رسائلك المعلقة. تفتح كل رسالة المراجعة الحالية؛ القرار يخصها وحدها، وتُستخدم القرارات المؤهلة فقط في التعلّم.</string>

@@ -35,7 +35,6 @@ import java.time.LocalDate
     val s = state.snapshot ?: return
     var explaining by rememberSaveable { mutableStateOf(false) }
     val explanation = remember(s) { AnalysisPresentationBuilder.forecast(s) }
-    if (explaining) ForecastExplanationSheet(s, state.updating || state.unavailable) { explaining = false }
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -43,8 +42,8 @@ import java.time.LocalDate
                 Text(stringResource(if (state.updating) R.string.lab_analysis_updating else
                     forecastMethodResource(if (state.unavailable) ForecastMethod.UNAVAILABLE else explanation.method)), modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall)
-                MasroofTextButton(onClick = { explaining = true }, modifier = Modifier.testTag("forecast-explanation-open")) {
-                    Text(stringResource(R.string.personal_forecast_why))
+                MasroofTextButton(onClick = { explaining = !explaining }, modifier = Modifier.testTag("forecast-explanation-open")) {
+                    Text(stringResource(if (explaining) R.string.personal_forecast_hide else R.string.personal_forecast_why))
                 }
             }
             s.total?.let { Amount(stringResource(R.string.lab_analysis_expected_total), it, MasroofAmountRole.Hero) }
@@ -54,6 +53,7 @@ import java.time.LocalDate
                 Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_actual), s.actual) }
                 s.remaining?.let { remaining -> Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_remaining), remaining) } }
             }
+            if (explaining) ForecastExplanation(s, state.updating || state.unavailable)
             Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             state.preferences.budget?.let { Amount(stringResource(R.string.lab_analysis_budget), it) }
             if (workflow.budgetStatus() == "NEAR") Text(stringResource(R.string.lab_analysis_near), style = MaterialTheme.typography.bodySmall)
@@ -121,12 +121,11 @@ private fun forecastMethodResource(method: ForecastMethod): Int = when (method) 
     ForecastMethod.UNAVAILABLE -> R.string.personal_forecast_unavailable
 }
 
-@Composable private fun ForecastExplanationSheet(snapshot: AnalysisSnapshot, stale: Boolean, onClose: () -> Unit) {
+@Composable private fun ForecastExplanation(snapshot: AnalysisSnapshot, stale: Boolean) {
     val explanation = AnalysisPresentationBuilder.forecast(snapshot)
-    MasroofBottomSheet(stringResource(R.string.personal_forecast_why), onClose, onClose,
-        stringResource(R.string.lab_analysis_close)) {
+    Column(Modifier.testTag("forecast-explanation-details"),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         if (stale) Text(stringResource(R.string.personal_forecast_refreshing))
-        else Text(stringResource(forecastMethodResource(explanation.method)), style = MaterialTheme.typography.titleSmall)
         if (explanation.method != ForecastMethod.UNAVAILABLE) Text(stringResource(
             if (explanation.method == ForecastMethod.PERSONAL) R.string.personal_forecast_model_hint else R.string.personal_forecast_initial_hint))
         Text(stringResource(R.string.lab_analysis_quality_coverage, snapshot.quality.coveredDays, snapshot.completedPeriods))

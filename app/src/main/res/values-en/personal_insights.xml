@@ -1,5 +1,6 @@
 <resources>
     <string name="personal_forecast_why">Why this estimate?</string>
+    <string name="personal_forecast_hide">Hide details</string>
     <string name="personal_forecast_initial">Initial estimate from your history</string>
     <string name="personal_forecast_model">Your personal model is in use</string>
     <string name="personal_forecast_unavailable">Estimate currently unavailable</string>
@@ -9,13 +10,13 @@
     <string name="personal_forecast_qualification">Trying the personal model requires 120 consecutive covered days, 4 complete salary periods and 20 purchase days. It must then pass independent checks and beat the initial estimate; history alone does not activate it.</string>
     <string name="personal_forecast_errors">Forecast error by horizon</string>
     <string name="personal_forecast_error_row">%1$d-day forecast: average error %2$s across %3$d checks.</string>
-    <string name="personal_spending_attention">Worth a look</string>
+    <string name="personal_spending_attention">Higher payments than usual</string>
     <string name="personal_spending_hint">Statistical observations from your history; actual amounts stay unchanged. A larger payment does not mean it is incorrect.</string>
-    <string name="personal_spending_unusual">Your payment to “%1$s” is higher than usual for you.</string>
-    <string name="personal_spending_comparison">This payment: %1$s · Median of previous payments: %2$s</string>
     <string name="personal_spending_reference">Compared with %1$d previous payments from the same payment source, from %2$s to %3$s.</string>
     <string name="personal_spending_evidence">View payments and explanation</string>
     <string name="personal_spending_payment">Current payment</string>
+    <string name="personal_spending_median">Median of previous payments</string>
+    <string name="personal_spending_sample">From %1$d previous payments using the same payment source</string>
     <string name="personal_spending_previous">Previous reference payments</string>
     <string name="personal_review_title">Review distinct message patterns</string>
     <string name="personal_review_scope">An optional session with up to three patterns from pending messages. Each opens the existing review; your decision applies to that message only, and only eligible decisions teach the model.</string>
