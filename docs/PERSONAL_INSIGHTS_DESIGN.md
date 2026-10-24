@@ -1,10 +1,11 @@
 # Personal spending and forecasting — design proposal
 
-Status: proposed, for product review; no production implementation or model activation.
+Status: implemented and locally verified on `feat/personal-spending-insights`;
+full follow-up PR CI is required before merge. Statistical seeds remain ineligible.
 Baseline: PR #329, `feat/continuous-local-learning`, `d2d3ebe5`.
 CI #943 / run 40097906593 succeeded on that head. PR is draft and unmerged
-at inspection on 2026-10-24. Later implementation PRs target `main` after the
-baseline lands; this proposal does not enlarge or merge #329.
+at inspection on 2026-10-24. The follow-up targets `main` and depends on #329
+landing first; its implementation does not enlarge or merge #329.
 
 ## Objective and assumptions
 
@@ -19,7 +20,7 @@ Success means a user can understand why a result appeared, inspect its evidence,
 correct an interpretation, and see the actual method in use. A model version or
 a growing training count is not evidence that accuracy improved.
 
-## Proposed capability map
+## Accepted capability map
 
 These are product work areas, not new Gradle modules or service layers.
 
@@ -264,4 +265,19 @@ worth its migration/lifecycle cost. None blocks reviewing this proposed design.
   save cancellation and optional review entry. No connected browser
   was available to visually inspect the HTML prototype; this does not establish
   browser rendering/accessibility or production UI acceptance.
-- No model activated, financial data changed, production code modified or PR merged.
+- The preceding bullets record design review before implementation. Implementation
+  progress and fresh validation are recorded in `tasks/todo.md` and the follow-up PR.
+
+## Delivered increment
+
+Existing screens now explain the active forecast and qualified errors, show up
+to three unusual-payment observations with exact prior evidence, clarify recurring
+feedback and offer a small optional review using existing resolution authority.
+Reviewed return wording is supported with a cleaner-version bump and reproducible
+seed regeneration. No duplicate contribution feature, merchant aliases, new ML
+dependency, model-weight cache or additional financial/advisory schema was needed.
+
+Nine fixture-based device cases and the additional local private probe passed;
+the latter verified observation participation while preserving the ledger. User-rated
+usefulness remains unmeasured. Independent base qualification remains a separate
+data milestone, with the original safety gates intact.
