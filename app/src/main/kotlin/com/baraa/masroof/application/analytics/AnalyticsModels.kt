@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class AnalysisCandidate(val key: String, val name: String, val amount: Long, val lower: Long,
     val upper: Long, val nextDay: Long, val cadence: String, val sourceIds: List<String>, val latestDay: Long,
     val latestAmount: Long, val referenceAmount: Long?, val increased: Boolean, val overdue: Boolean = false,
-    val seriesKey: String? = null, val features: List<Double> = emptyList(), val origin: String = "RULES", val modelVersion: String? = null)
+    val seriesKey: String? = null, val origin: String = "RULES", val modelVersion: String? = null)
 @Serializable data class AnalysisCoverageDay(val day: Long, val covered: Boolean)
 @Serializable data class AnalysisQuality(val used: Int, val excluded: Map<String, List<String>>, val unusual: List<String>,
     val coveredDays: Int, val coverageKnown: Boolean, val pendingReviews: Int, val blocked: Boolean,

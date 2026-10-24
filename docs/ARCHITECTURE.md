@@ -106,8 +106,8 @@ saved commitment's source/cadence agrees. Feedback failure cannot undo a saved
 financial commitment. Legacy rejection remains dismissal, not a negative label.
 Explicit negative preferences remain until undone; missing evidence disqualifies
 them from statistical training. Removing/changing a confirmed commitment revokes
-its earlier training label. Stored numerical candidates are diagnostic data and
-are rebuilt from current facts; restores never blindly enable cached models.
+its earlier training label. Numerical models are rebuilt from current facts and human decisions; unused
+candidate weights and duplicate feature snapshots are not persisted.
 Archive 4 retains compatibility with archives 1-3 and financial schema 18.
 
 Forecast replay uses the existing forecaster on a strict historical prefix with

@@ -29,7 +29,7 @@ data class RecurringModel(val version: String, val weights: List<List<Double>>, 
         return values.map { it / values.sum() }
     }
 }
-data class RecurringPersonalization(val model: RecurringModel?, val candidate: RecurringModel?, val personalUsed: Boolean,
+data class RecurringPersonalization(val model: RecurringModel?, val personalUsed: Boolean,
     val trainingSeries: Int, val validationSeries: Int, val reason: String)
 
 /** Small regularized softmax classifier. Only explicit human labels are training truth. */
@@ -85,7 +85,7 @@ object RecurringLearning {
         }
         val accepted = reason == "PERSONAL_MODEL"
         return RecurringPersonalization(if (accepted) candidate?.copy(accepted = true) else baseline,
-            candidate, accepted, training.size, heldOut.size, reason)
+            accepted, training.size, heldOut.size, reason)
     }
 
     private fun precise(model: RecurringModel, rows: List<RecurringExample>): Boolean {

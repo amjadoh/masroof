@@ -236,7 +236,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
         val captureMissing = ForecastPerformancePolicy.eligibleOrigin(input.start,input.end,input.today) &&
             !input.blocked && input.reasons.isEmpty() && !ForecastPerformancePolicy.hasComparison(comparisons,input.start)
         if (latest?.sourceHash == input.fingerprint && !captureMissing) { loadCached(); finishUi(input); return@withLock }
-        val previous = dao.models().filterNot { it.id.startsWith("baseline:") || it.id.startsWith("recurring:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
+        val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
             { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
         val feedback = dao.feedback().map { row ->
@@ -257,7 +257,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             AnalysisCandidate(pattern.key, pattern.name, pattern.estimate, pattern.lower, pattern.upper, pattern.nextDay,
                 pattern.cadence, pattern.sourceIds, input.clean.recurring.first { it.id == pattern.sourceIds.last() }.day,
                 pattern.latestAmount, pattern.referenceAmount, pattern.amountIncreased, pattern.nextDay < input.today,
-                pattern.seriesKey, pattern.features, pattern.origin, pattern.modelVersion)
+                pattern.seriesKey, pattern.origin, pattern.modelVersion)
         }
         fun status(item: AnalysisCandidate) = priorCandidates[item.key]?.status ?: legacy.firstOrNull { (_, old) -> old.sourceIds.any { it in item.sourceIds } }?.first?.status
         val suggested = candidates.filter { item -> item.sourceIds.none { it in input.committed } && status(item) !in setOf("ACCEPTED", "REJECTED") }
@@ -302,9 +302,6 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             result.baseline?.let {
                 val payload = json.encodeToString(StoredBaseline(it.medians, it.from, it.through, it.errors))
                 dao.model(AnalysisModelRow("baseline:${hash(payload)}", payload))
-            }
-            recurring.candidate?.let { model ->
-                dao.model(AnalysisModelRow("recurring:${model.version}", json.encodeToString(StoredRecurringModel.from(model))))
             }
             dao.candidates(candidates.map { c -> RecurringCandidateRow(c.key,
                 status(c) ?: if (c.sourceIds.any { it in input.committed }) "ACCEPTED" else "SUGGESTED", json.encodeToString(c)) })
@@ -404,8 +401,7 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
 
     private suspend fun recordRecurringFeedback(candidate: AnalysisCandidate, kind: String, label: String?) {
         val seriesKey = candidate.seriesKey ?: return
-        if (candidate.features.isEmpty()) return
-        val payload = RecurringFeedbackPayload(seriesKey, candidate.sourceIds, candidate.features, label).also { it.validate() }
+        val payload = RecurringFeedbackPayload(seriesKey, candidate.sourceIds, label).also { it.validate() }
         store.analytics().feedback(RecurringFeedbackRow(seriesKey, kind, json.encodeToString(payload), clock.millis()))
     }
 

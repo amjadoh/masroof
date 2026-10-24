@@ -88,7 +88,7 @@ class AdvisoryLifecycleDeviceTest {
             val dao = database.analytics()
             assertTrue(dao.feedback().isEmpty())
             assertEquals("REJECTED", dao.candidates().single().status)
-            val payload = com.baraa.masroof.application.analytics.RecurringFeedbackPayload("series", listOf("a","b","c"), List(8) { 0.0 }, "NONE")
+            val payload = com.baraa.masroof.application.analytics.RecurringFeedbackPayload("series", listOf("a","b","c"), "NONE")
             val row = RecurringFeedbackRow("series", "NOT_RECURRING",
                 AnalyticsJson.format.encodeToString(com.baraa.masroof.application.analytics.RecurringFeedbackPayload.serializer(), payload), 100)
             dao.feedback(row)

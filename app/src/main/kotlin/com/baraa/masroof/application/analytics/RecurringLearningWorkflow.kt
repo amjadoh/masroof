@@ -17,22 +17,18 @@ import kotlinx.serialization.decodeFromString
         safety.forEach { it.example() }
         return RecurringModel(version, weights, accepted, featureVersion, threshold)
     }
-    companion object {
-        fun from(model: RecurringModel) = StoredRecurringModel(model.version, model.weights, model.accepted, model.featureVersion, model.threshold)
-    }
 }
 @Serializable data class RecurringFeedbackPayload(val seriesKey: String, val sourceIds: List<String>,
-    val features: List<Double>, val label: String? = null, val featureVersion: String = RecurringLearning.FEATURE_VERSION) {
+    val label: String? = null, val featureVersion: String = RecurringLearning.FEATURE_VERSION) {
     fun validate() {
         require(seriesKey.isNotBlank() && sourceIds.size >= 3 && sourceIds.size <= 5000 && sourceIds.distinct().size == sourceIds.size)
         require(featureVersion == RecurringLearning.FEATURE_VERSION)
-        RecurringLearning.requireFeatures(features)
         label?.let { RecurringLabel.valueOf(it) }
     }
 }
 
 internal object RecurringLearningWorkflow {
-    data class Result(val patterns: List<RecurringPattern>, val status: RecurringLearningStatus, val candidate: RecurringModel?,
+    data class Result(val patterns: List<RecurringPattern>, val status: RecurringLearningStatus,
         val reviewedExamples: List<RecurringExample>, val ruleLabels: Map<String, RecurringLabel>)
     private val seed = runCatching {
         RecurringModel::class.java.getResourceAsStream("/ml/recurring-seed.json")?.bufferedReader()?.use {
@@ -81,7 +77,7 @@ internal object RecurringLearningWorkflow {
         }
         val patterns = RecurringDetector.detect(facts, today, classify)
         return Result(patterns, RecurringLearningStatus(if (result.personalUsed) "PERSONAL_MODEL" else if (result.model != null) "SEED_MODEL" else "RULES",
-            result.reason, result.trainingSeries, result.validationSeries), result.candidate, examples,
+            result.reason, result.trainingSeries, result.validationSeries), examples,
             series.mapValues { it.value.ruleLabel })
     }
 }
