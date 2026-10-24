@@ -67,7 +67,7 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertEqual(len(cases), sum(map(len, suites.values())))
         self.assertEqual(20, len(suites['processDeath']))
         self.assertEqual(2, len(suites['upgrade']))
-        self.assertEqual(1, len(suites['excluded']))
+        self.assertEqual(2, len(suites['excluded']))
         self.assertTrue(all(len(pair) == 2 for pair in config['processDeath']))
         with self.assertRaises(ValueError):
             device.classify(cases | {'com.baraa.masroof.instrumentation.processdeath.NewTest#orphan'}, config)
