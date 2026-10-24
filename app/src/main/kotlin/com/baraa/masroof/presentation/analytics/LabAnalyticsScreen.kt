@@ -162,7 +162,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     }
     if (settings) { Preferences(workflow, state, onBack = { if (settingsEntry) onBack() else settings = false }); return }
     evidenceKey?.let { selected ->
-        key(selected) { AnalysisTransactionsScreen(state.snapshot, selected, workflow, { evidenceKey = null }, onOpenTransaction) }
+        key(selected) { AnalysisTransactionsScreen(state.snapshot, selected, workflow, { evidenceKey = null }, onOpenTransaction,
+            state = state) }
         return
     }
     if (detail != null) {
@@ -232,7 +233,11 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                             }
                             }
                         }
-                        MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), icon = MasroofIcons.analysis)
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), Modifier.weight(1f), icon = MasroofIcons.analysis)
+                            if (state.snapshot?.candidates?.isNotEmpty() == true) MasroofGuidanceButton(
+                                stringResource(R.string.lab_analysis_candidates), stringResource(R.string.personal_recurring_decisions_hint))
+                        }
                         if (state.snapshot?.candidates?.isEmpty() == true) MasroofCard {
                             com.baraa.masroof.ui.components.MasroofAnalysisEmptyState(stringResource(R.string.lab_analysis_no_candidates),
                                 stringResource(R.string.analysis_commitments_separate), MasroofIcons.calendar)
@@ -301,12 +306,13 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     state.snapshot?.let { s ->
         if (range == 0) {
             MasroofCard {
-                Amount(stringResource(R.string.lab_analysis_actual), s.actual, MasroofAmountRole.Hero)
-                Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_actual), stringResource(R.string.lab_analysis_scope_short))
+                Amount("", s.actual, MasroofAmountRole.Hero)
             }
             AnalysisSpendingExplanation(s, onOpenGroup)
             AnalysisMerchantCard(s, onOpenGroup, onViewAll = onMerchants)
             AnalysisChangeCard(s, onOpenGroup)
+            AnalysisSpendingObservations(state, onOpenGroup)
         }
     }
 }

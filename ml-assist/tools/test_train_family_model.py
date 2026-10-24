@@ -59,6 +59,16 @@ class ActivationPolicyTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Insufficient final runtime holdout'):
             train(source, frozen)
 
+    def test_cleaning_audit_counts_rejections_without_enrolling_them_in_training(self):
+        source, frozen = self.corpus()
+        original, _ = train(source, frozen)
+        source['rejected'] = [dict(id='excluded', reason='UNRECOGNIZED_TITLE', family='REFUND')]
+        model, report = train(source, frozen)
+        self.assertEqual({'UNRECOGNIZED_TITLE': 1}, report['cleaningAudit']['rejectedByReason'])
+        self.assertEqual({'REFUND': 1}, report['cleaningAudit']['rejectedByFamily'])
+        for key in ['vocabulary', 'counts', 'documents', 'enabledFamilies']:
+            self.assertEqual(original[key], model[key])
+
 
 if __name__ == '__main__':
     unittest.main()

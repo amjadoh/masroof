@@ -16,7 +16,7 @@ object AnalyticsVersion {
 
 data class FinancialFact(val id: String, val day: Long, val amount: Long?, val refund: Boolean,
     val included: Boolean, val merchant: String? = null, val recurringEligible: Boolean = false,
-    val recurringScope: String? = null)
+    val recurringScope: String? = null, val comparisonScope: String? = null)
 data class PurchaseDay(val day: Long, val gross: Long, val refunds: Long, val count: Int,
     val phase: Int, val covered: Boolean) {
     val net: Long get() = Math.subtractExact(gross, refunds)
@@ -73,7 +73,7 @@ object FinancialCleaner {
             !it.refund && it.amount!!.toDouble() > median + maxOf(6 * mad, median * 3, 10000.0)
         }.map { it.id }
         val report = QualityReport(accepted.size, excluded, unusual, days.count { it.covered }, coveredFrom != null)
-        val canonical = facts.distinct().sortedBy { it.id }.joinToString("\n") { "${it.id}|${it.day}|${it.amount}|${it.refund}|${it.included}|${it.merchant}|${it.recurringEligible}|${it.recurringScope}" }
+        val canonical = facts.distinct().sortedBy { it.id }.joinToString("\n") { "${it.id}|${it.day}|${it.amount}|${it.refund}|${it.included}|${it.merchant}|${it.recurringEligible}|${it.recurringScope}|${it.comparisonScope}" }
         return CleanData(days, recurring, report, hash("${AnalyticsVersion.CLEANING}|$start|$today|$coveredFrom|${gaps.sorted()}|$canonical"))
     }
 }

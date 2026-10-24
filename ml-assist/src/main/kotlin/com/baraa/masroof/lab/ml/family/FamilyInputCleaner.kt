@@ -19,7 +19,7 @@ data class FamilyCleaningResult(val features: CleanFamilyFeatures?, val rejectio
 
 /** Task-specific minimization, after the bank's normalization. Never remove negation/security words. */
 object FamilyInputCleaner {
-    const val VERSION = "sms-family-clean-v1"
+    const val VERSION = "sms-family-clean-v2"
     const val FEATURES_VERSION = "bank-family-title-v2"
     private val spaces = Regex("\\s+")
     private val words = Regex("[\\p{L}]+")
@@ -30,7 +30,7 @@ object FamilyInputCleaner {
         card credit debit refund payment transfer incoming outgoing local internal external accepted
         declined rejected cancelled reversed reversal request pending failed not no never otp verification
         balance notice statement issue cash withdrawal fee loan installment bill login account
-        استرداد مبلغ عملية شراء عبر نقاط البيع من الانترنت حوالة مالية صادرة واردة داخلية محلية
+        استرداد استرجاع مبلغ عملية شراء عبر نقاط البيع من الانترنت حوالة مالية صادرة واردة داخلية محلية
         راتب مقبولة حسابك الجاري خصم قسط تمويل سداد خاص شخصي رسوم خدمة سحب نقدي فاتورة بطاقة
         ايتمانية ائتمانية تسديد اشعار رصيد اصدار كشف حساب اسم المستفيد رمز التحقق الخاص بك هو
         لا تشاركه مع اي شخص تم تسجيل الدخول الي بنجاح تطبيق بنك الجزيرة لعملية طلب مرفوضة رفض

@@ -33,8 +33,17 @@ import java.time.LocalDate
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun ForecastTab(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onQuality: () -> Unit, onPerformance: () -> Unit) {
     val s = state.snapshot ?: return
+    val explanation = remember(s) { AnalysisPresentationBuilder.forecast(s) }
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(stringResource(if (state.updating) R.string.lab_analysis_updating else
+                    forecastMethodResource(if (state.unavailable) ForecastMethod.UNAVAILABLE else explanation.method)), modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall)
+                MasroofGuidanceButton(stringResource(R.string.personal_forecast_why),
+                    forecastHelp(s, state.updating || state.unavailable), Modifier.testTag("forecast-explanation-open"))
+            }
             s.total?.let { Amount(stringResource(R.string.lab_analysis_expected_total), it, MasroofAmountRole.Hero) }
             s.remaining?.let { remaining -> MasroofForecastSplit(analysisAmount(s.actual).amount, analysisAmount(remaining).amount,
                 AppDigits.display("${stringResource(R.string.lab_analysis_actual)} ${visualMoney(s.actual)} · ${stringResource(R.string.lab_analysis_remaining)} ${visualMoney(remaining)}")) }
@@ -42,7 +51,6 @@ import java.time.LocalDate
                 Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_actual), s.actual) }
                 s.remaining?.let { remaining -> Column(Modifier.weight(1f)) { Amount(stringResource(R.string.lab_analysis_remaining), remaining) } }
             }
-            Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             state.preferences.budget?.let { Amount(stringResource(R.string.lab_analysis_budget), it) }
             if (workflow.budgetStatus() == "NEAR") Text(stringResource(R.string.lab_analysis_near), style = MaterialTheme.typography.bodySmall)
         }
@@ -99,5 +107,33 @@ import java.time.LocalDate
         }
     }
     ForecastPerformanceDetails(state)
+    state.snapshot?.let { ForecastEvaluationSummary(it) }
     PublishedForecastHistory(state)
+}
+
+private fun forecastMethodResource(method: ForecastMethod): Int = when (method) {
+    ForecastMethod.INITIAL -> R.string.personal_forecast_initial
+    ForecastMethod.PERSONAL -> R.string.personal_forecast_model
+    ForecastMethod.UNAVAILABLE -> R.string.personal_forecast_unavailable
+}
+
+@Composable private fun forecastHelp(snapshot: AnalysisSnapshot, stale: Boolean): String {
+    val explanation = AnalysisPresentationBuilder.forecast(snapshot)
+    return listOfNotNull(
+        if (stale) stringResource(R.string.personal_forecast_refreshing) else null,
+        if (explanation.method == ForecastMethod.UNAVAILABLE) null else stringResource(
+            if (explanation.method == ForecastMethod.PERSONAL) R.string.personal_forecast_model_hint else R.string.personal_forecast_initial_hint),
+        stringResource(forecastReasonResource(snapshot.modelReason)),
+        stringResource(R.string.personal_forecast_qualification),
+        stringResource(R.string.lab_analysis_scope_short),
+    ).joinToString("\n\n")
+}
+
+@Composable private fun ForecastEvaluationSummary(snapshot: AnalysisSnapshot) {
+    val evaluations = remember(snapshot) { AnalysisPresentationBuilder.forecast(snapshot).evaluations }
+    MasroofCard(Modifier.testTag("forecast-horizon-errors")) {
+        MasroofSectionHeader(stringResource(R.string.personal_forecast_errors))
+        if (evaluations.isEmpty()) Text(stringResource(R.string.lab_analysis_evaluation_missing))
+        evaluations.forEach { e -> Text(stringResource(R.string.personal_forecast_error_row, e.horizon, visualMoney(e.mae), e.count)) }
+    }
 }

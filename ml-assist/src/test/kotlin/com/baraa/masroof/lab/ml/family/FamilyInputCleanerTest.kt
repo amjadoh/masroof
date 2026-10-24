@@ -48,4 +48,14 @@ class FamilyInputCleanerTest {
         assertEquals(CleaningRejection.TOO_LARGE, FamilyInputCleaner.clean("purchase ".repeat(100), emptyList()).rejection)
         assertEquals(CleaningRejection.UNRECOGNIZED_TITLE, FamilyInputCleaner.clean("purchase hypotheticalnegation", emptyList()).rejection)
     }
+    @Test fun reviewedReturnWordingKeepsSecurityAndRejectionQualifiers() {
+        val returned = clean("عملية استرجاع", listOf("مبلغ", "بطاقة"))
+        assertTrue(returned.terms.containsKey("w:استرجاع"))
+        val rejected = clean("عملية استرجاع مرفوضة")
+        val security = clean("رمز التحقق لعملية استرجاع")
+        assertNotEquals(returned.template, rejected.template)
+        assertNotEquals(returned.template, security.template)
+        assertTrue(security.terms.containsKey("w:التحقق"))
+        assertNull(FamilyInputCleaner.clean("عملية استرجاع محمد", emptyList()).features)
+    }
 }

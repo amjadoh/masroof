@@ -54,6 +54,7 @@ fun SettingsRoute(
     onRequestExportLogs: () -> Unit,
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
+    onOpenReviewExample: (String) -> Unit = { onOpenReview() },
 ) {
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -380,7 +381,8 @@ fun SettingsRoute(
             onRequestExport = onRequestExportLogs,
         )
 
-        SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(onBack = { popOrExit() })
+        SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(
+            onBack = { popOrExit() }, onOpenExample = onOpenReviewExample)
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
