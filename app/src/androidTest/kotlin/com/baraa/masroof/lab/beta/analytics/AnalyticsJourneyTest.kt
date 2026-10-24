@@ -152,6 +152,8 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithText(text(R.string.analysis_change_title, language)).performScrollTo().assertIsDisplayed()
                 compose.onNodeWithText(text(R.string.analysis_decrease_axis, language)).performScrollTo().assertIsDisplayed()
                 screen("$language-${if (isDark) "dark" else "light"}-change-bars")
+                compose.onNodeWithTag("analysis-quality-entry").assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.analysis_forecasts_tab, language)).performClick()
                 compose.onNodeWithTag("analysis-quality-entry").performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_show_data, language)).performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_scope_title, language)).performScrollTo().assertIsDisplayed()
@@ -324,12 +326,100 @@ class AnalyticsJourneyTest {
             runBlocking { TestRuntime.reset(host) }
         }
     }
+    @Test fun chartRowsOpenScopedTransactionsAndBackRestoresTheirSource() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var opened: String? = null
+        try {
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.labAnalytics.refresh() }
+            val workflow = c.labAnalytics
+            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.snapshot != null }
+            val before = runBlocking { c.financialTransactionRepository.listAll() }
+            val snapshot = requireNotNull(workflow.state.value.snapshot)
+            val insights = requireNotNull(snapshot.insights)
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")); fontScale = 1.3f }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config,
+                    LocalLabAnalyticsWorkflow provides workflow) {
+                    MasroofTheme { MasroofScreenBackground { LabAnalyticsRoute({}, { opened = it }) } }
+                }
+            } }
+            fun assertEvidence(vararg groups: List<String>) {
+                val ids = groups.flatMap { it }
+                compose.onNodeWithTag("analysis-transactions").assertIsDisplayed()
+                groups.filter { it.isNotEmpty() }.forEach { group ->
+                    compose.waitUntil(30_000) {
+                        compose.onAllNodesWithTag("lab-evidence-${group.first()}").fetchSemanticsNodes().isNotEmpty()
+                    }
+                }
+                while (compose.onAllNodesWithText(text(R.string.lab_analysis_more, "en")).fetchSemanticsNodes().isNotEmpty()) {
+                    val loaded = ids.count { compose.onAllNodesWithTag("lab-evidence-$it").fetchSemanticsNodes().isNotEmpty() }
+                    compose.onAllNodesWithText(text(R.string.lab_analysis_more, "en"))[0].performScrollTo().performClick()
+                    compose.waitUntil(30_000) {
+                        ids.count { compose.onAllNodesWithTag("lab-evidence-$it").fetchSemanticsNodes().isNotEmpty() } > loaded
+                    }
+                }
+                ids.forEach { compose.onNodeWithTag("lab-evidence-$it").assertExists() }
+            }
+            fun back() { compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, "en")).performClick() }
+            compose.onNodeWithTag("analysis-quality-entry").assertDoesNotExist()
+            compose.onNodeWithTag("analysis-expand-insights").assertDoesNotExist()
+            compose.onNodeWithText("Show comparison transactions").assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.lab_analysis_comparison_current, "en")).assert(hasClickAction().not())
+            compose.onNodeWithText(text(R.string.lab_analysis_comparison_previous, "en")).assert(hasClickAction().not())
+            insights.components.forEach { group ->
+                compose.onNodeWithTag("analysis-component-${group.key}").performScrollTo().performClick()
+                assertEvidence(group.ids)
+                if (group.key == "TRANSFERS") {
+                    compose.onNodeWithTag("lab-evidence-external").performScrollTo().performClick()
+                    assertEquals("external", opened)
+                    compose.onNodeWithTag("lab-evidence-self").assertDoesNotExist()
+                    compose.onNodeWithTag("lab-evidence-cash").assertDoesNotExist()
+                    screen("en-light-external-transfer-transactions")
+                }
+                back()
+                compose.onNodeWithTag("analysis-component-${group.key}").assertIsDisplayed()
+                compose.onNodeWithTag("lab-evidence-external").assertDoesNotExist()
+            }
+            val merchant = insights.merchants.first()
+            compose.onNodeWithTag("analysis-merchant-${merchant.key}").performScrollTo().performClick()
+            assertEvidence(merchant.ids)
+            compose.onNodeWithTag("lab-evidence-external").assertDoesNotExist()
+            back()
+            compose.onNodeWithText(text(R.string.dashboard_merchants_view_all, "en")).performScrollTo().performClick()
+            compose.onNodeWithTag("analysis-merchant-${merchant.key}").performScrollTo().performClick()
+            assertEvidence(merchant.ids)
+            instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+            compose.waitForIdle()
+            compose.onNodeWithTag("analysis-merchant-${merchant.key}").assertIsDisplayed()
+            back()
+            val comparison = requireNotNull(insights.comparison)
+            for (change in comparison.changes) {
+                compose.onNodeWithTag("analysis-change-${change.group.key}").performScrollTo().performClick()
+                assertEvidence(change.group.ids, change.previousIds)
+                compose.onNodeWithText(text(R.string.lab_analysis_comparison_current, "en")).assertExists()
+                compose.onNodeWithText(text(R.string.lab_analysis_comparison_previous, "en")).assertExists()
+                compose.onNodeWithTag("lab-evidence-today-spend").assertDoesNotExist()
+                screen("en-light-change-${change.group.key.replace(':', '-')}")
+                back()
+            }
+            compose.onNodeWithText(text(R.string.analysis_forecasts_tab, "en")).performClick()
+            compose.onNodeWithTag("analysis-quality-entry").performScrollTo().assertIsDisplayed()
+            assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
     @Test fun qualityActionsAndSpendingEvidenceAreReachableWithoutChangingFinancialData() {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
         runBlocking { TestRuntime.reset(host) }
         val c = TestRuntime.container(host)
         var showing by mutableStateOf(true)
         var insufficient by mutableStateOf(true)
+        var selection by mutableStateOf<String?>(null)
         var opened: String? = null
         var review = false; var permission = false; var rescan = false
         try {
@@ -342,8 +432,9 @@ class AnalyticsJourneyTest {
             val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")) }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config) {
-                    MasroofTheme { Column(Modifier.verticalScroll(rememberScrollState())) {
-                        AnalysisSpendingExplanation(snapshot, workflow, { opened = it })
+                    MasroofTheme { if (selection != null) AnalysisTransactionsScreen(snapshot, selection!!, workflow, { selection = null }, { opened = it })
+                    else Column(Modifier.verticalScroll(rememberScrollState())) {
+                        AnalysisSpendingExplanation(snapshot, { selection = it })
                         val displayed = if (insufficient) snapshot.copy(status = "INSUFFICIENT_DATA", method = "NONE",
                             quality = snapshot.quality.copy(blocked = false, pendingReviews = 0, reasons = emptyList())) else snapshot
                         AnalysisDataQuality(displayed, workflow, { opened = it }, { review = true }, { permission = true }, { rescan = true })
@@ -358,12 +449,11 @@ class AnalyticsJourneyTest {
             compose.waitForIdle()
             compose.onNodeWithText(text(R.string.lab_analysis_need_data, "en")).assertDoesNotExist()
             compose.runOnUiThread { insufficient = false }
-            compose.onNodeWithTag("analysis-expand-insights").performScrollTo().performClick()
             compose.onNodeWithTag("analysis-component-PURCHASES").performScrollTo().performClick()
             compose.waitUntil(30_000) { compose.onAllNodesWithTag("lab-evidence-today-spend").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("lab-evidence-today-spend").performScrollTo().performClick()
             assertEquals("today-spend", opened)
-            compose.onNodeWithTag("analysis-expand-insights").performScrollTo().performClick()
+            compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, "en")).performClick()
             compose.onNodeWithTag("analysis-open-review").performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_quality_permission_action, "en")).performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_quality_retry_action, "en")).performScrollTo().performClick()

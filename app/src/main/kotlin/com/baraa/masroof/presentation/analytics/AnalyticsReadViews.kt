@@ -67,8 +67,8 @@ import java.time.ZoneId
 }
 
 @Composable internal fun EvidenceGroup(ids: List<String>, reason: String, workflow: LabAnalyticsWorkflow,
-    source: String, onOpenTransaction: (String) -> Unit, tag: String? = null) {
-    var expanded by rememberSaveable(reason) { mutableStateOf(false) }
+    source: String, onOpenTransaction: (String) -> Unit, collapsible: Boolean = true) {
+    var expanded by rememberSaveable(reason) { mutableStateOf(!collapsible) }
     var visible by rememberSaveable(reason) { mutableIntStateOf(20) }
     var retry by remember { mutableIntStateOf(0) }
     var rows by remember { mutableStateOf<List<AnalysisEvidence>?>(null) }
@@ -83,9 +83,11 @@ import java.time.ZoneId
         catch (_: Exception) { failed = true }
     }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
-        MasroofTextButton(onClick = { expanded = !expanded }, modifier = if (tag == null) Modifier else Modifier.testTag(tag)) { Text("$reason (${ids.size})") }
+        if (collapsible) MasroofTextButton(onClick = { expanded = !expanded }) { Text("$reason (${ids.size})") }
+        else Text(stringResource(R.string.analysis_transaction_count, ids.size), style = MaterialTheme.typography.titleSmall)
         if (expanded) {
             when {
+                ids.isEmpty() -> Text(stringResource(R.string.analysis_no_transactions), style = MaterialTheme.typography.bodySmall)
                 failed -> MasroofTextButton(onClick = { retry++ }) { Text(stringResource(R.string.dashboard_retry)) }
                 rows == null -> CircularProgressIndicator()
                 else -> rows.orEmpty().forEach { evidence ->

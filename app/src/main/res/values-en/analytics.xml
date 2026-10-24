@@ -122,7 +122,6 @@
     <string name="lab_analysis_changes">Largest contributions to the change</string>
     <string name="lab_analysis_changes_hint">These comparisons describe the arithmetic change. A merchant can be part of a component, so rows are not additive.</string>
     <string name="lab_analysis_change_value">%1$s: change %2$s</string>
-    <string name="lab_analysis_change_evidence">Show comparison transactions</string>
     <string name="lab_analysis_top_merchants">Top merchants by net purchases</string>
     <string name="lab_analysis_no_merchants">No named purchases available to show merchants.</string>
     <string name="lab_analysis_evidence">Show transactions</string>

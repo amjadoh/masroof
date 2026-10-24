@@ -1,0 +1,58 @@
+package com.baraa.masroof.presentation.analytics
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.baraa.masroof.R
+import com.baraa.masroof.application.analytics.AnalysisSnapshot
+import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
+import com.baraa.masroof.presentation.common.MasroofCard
+import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
+import com.baraa.masroof.presentation.common.MasroofSectionHeader
+import com.baraa.masroof.presentation.common.MasroofText as Text
+import com.baraa.masroof.ui.theme.MasroofSpacing
+
+@Composable internal fun AnalysisTransactionsScreen(snapshot: AnalysisSnapshot?, selection: String, workflow: LabAnalyticsWorkflow,
+    onBack: () -> Unit, onOpenTransaction: (String) -> Unit) {
+    val insights = snapshot?.insights
+    val comparison = insights?.comparison
+    val change = comparison?.changes?.firstOrNull { "change:${it.group.key}" == selection }
+    val group = change?.group ?: (insights?.components.orEmpty() + insights?.merchants.orEmpty()).firstOrNull { it.key == selection }
+    val title = group?.let { spendingGroupName(it) } ?: stringResource(R.string.transaction_detail_title)
+    MasroofSecondaryScaffold(title, onBack, stringResource(R.string.lab_analysis_back)) { modifier ->
+        Column(modifier.testTag("analysis-transactions").verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            if (snapshot == null || group == null) {
+                Text(stringResource(R.string.lab_analysis_transaction_missing))
+            } else if (change != null) {
+                MasroofCard {
+                    Amount(stringResource(if (change.delta < 0) R.string.analysis_decrease else R.string.analysis_increase, ""), change.delta)
+                }
+                MasroofCard {
+                    MasroofSectionHeader(stringResource(R.string.lab_analysis_comparison_current))
+                    Text("${day(comparison.from)} — ${day(comparison.through)}", style = MaterialTheme.typography.bodySmall)
+                    Amount(title, change.group.amount)
+                    EvidenceGroup(change.group.ids, title, workflow, snapshot.sourceHash, onOpenTransaction, collapsible = false)
+                }
+                MasroofCard {
+                    MasroofSectionHeader(stringResource(R.string.lab_analysis_comparison_previous))
+                    Text("${day(comparison.previousFrom)} — ${day(comparison.previousThrough)}", style = MaterialTheme.typography.bodySmall)
+                    Amount(title, change.previous)
+                    EvidenceGroup(change.previousIds, title, workflow, snapshot.sourceHash, onOpenTransaction, collapsible = false)
+                }
+            } else {
+                Text("${day(snapshot.periodStart)} — ${day(snapshot.periodEnd - 1)}", style = MaterialTheme.typography.bodySmall)
+                MasroofCard {
+                    Amount(title, group.amount)
+                    EvidenceGroup(group.ids, title, workflow, snapshot.sourceHash, onOpenTransaction, collapsible = false)
+                }
+            }
+        }
+    }
+}
