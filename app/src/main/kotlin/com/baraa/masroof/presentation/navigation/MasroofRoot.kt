@@ -478,6 +478,11 @@ private fun MasroofContent(
                 onPendingLaunchConsumed = { pendingSettingsLaunch = null },
                 onBack = ::returnFromSettings,
                 onOpenReview = { openReview(returnTo = HomeDestination.Settings) },
+                onOpenReviewExample = { id ->
+                    openReview(returnTo = HomeDestination.Settings)
+                    reviewViewModel.setListMode(com.baraa.masroof.presentation.review.ReviewListMode.PENDING)
+                    reviewViewModel.openDetail(id)
+                },
                 onLocaleChanged = onLocaleChanged,
                 onRequestExport = onRequestExport,
                 onRequestImport = onRequestImport,

@@ -94,6 +94,10 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
     }
     fun request() { if (closed) return; generation.incrementAndGet(); mutable.update { it.copy(updating = true) }; changes.trySend(Unit) }
 
+    suspend fun messageReviewExamples() = withContext(Dispatchers.IO) {
+        container.databaseAccessGate.withAccess { container.messageReviewWorkflow.load() }
+    }
+
     private suspend fun loadCached() {
         val dao = store.analytics()
         dao.initializePreferences(AnalysisPreferencesRow(enabledAt = clock.millis()))

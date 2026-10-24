@@ -234,6 +234,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                             }
                         }
                         MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), icon = MasroofIcons.analysis)
+                        if (state.snapshot?.candidates?.isNotEmpty() == true) Text(stringResource(R.string.personal_recurring_decisions_hint),
+                            style = MaterialTheme.typography.bodySmall)
                         if (state.snapshot?.candidates?.isEmpty() == true) MasroofCard {
                             com.baraa.masroof.ui.components.MasroofAnalysisEmptyState(stringResource(R.string.lab_analysis_no_candidates),
                                 stringResource(R.string.analysis_commitments_separate), MasroofIcons.calendar)

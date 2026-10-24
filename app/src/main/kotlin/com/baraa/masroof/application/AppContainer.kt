@@ -861,6 +861,8 @@ class AppContainer(
         feedback = { labInterpretationService?.feedbackStatus(it) }) }
     val learningInsightsWorkflow by lazy { com.baraa.masroof.application.interpretation.LearningInsightsWorkflow(
         labInterpretationService, parsedEventRepository, financialTransactionRepository, reviewRepository) }
+    val messageReviewWorkflow by lazy { com.baraa.masroof.application.interpretation.MessageReviewWorkflow(
+        reviewRepository, rawSmsRepository, parsedEventRepository) }
 
     private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.LabAnalyticsWorkflow(this, appContext) }
     val labAnalytics get() = analyticsDelegate.value
