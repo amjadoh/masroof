@@ -70,6 +70,22 @@ Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGH
 
 ## Personal insights local verification
 
+- CI run 40111544025 failed only the recurring-feedback device journey with
+  `performMeasureAndLayout called during measure layout`. Its diagnostic stacks
+  show Compose's `waitUntil` advancing the virtual frame clock while waiting for
+  external workflow feedback. The CI APK bundle matched source `a86fa81b`; three
+  isolated local baseline runs passed, so the failure was timing-dependent.
+- Recurring-feedback waits now observe the workflow StateFlow with the same
+  90-second timeout, leaving UI synchronization to the existing Compose actions.
+  Assertions retain financial parity and training counts and now require the
+  exact series/decision kind and complete undo removal. Production code is unchanged.
+- App/test APK builds and lint/detekt passed. The repaired case passed three
+  isolated Orchestrator runs, then all 31 required cases in the original failing
+  shard passed with API 36, Orchestrator isolation and CI's default font scale.
+  No case, assertion, CI shard or validation gate was removed or disabled.
+- A supplementary run at system font scale 1.3 passed the recurring journey but
+  exposed the separate English home-shortcut one-line fidelity assertion; that
+  variant is not reported as passing. The complete default-font shard passed.
 - Approved visual refinement: append shared current-payment/prior-median bars
   after existing spending charts and retain exact evidence navigation. Explanations
   use shared exclamation-mark guidance, without expanding text in the chart card.

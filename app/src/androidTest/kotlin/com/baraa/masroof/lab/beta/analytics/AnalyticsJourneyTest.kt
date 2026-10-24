@@ -27,6 +27,7 @@ import com.baraa.masroof.presentation.analytics.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.ui.theme.MasroofTheme
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -520,8 +521,7 @@ class AnalyticsJourneyTest {
         var showing by mutableStateOf(true)
         try {
             runBlocking { c.awaitPostStartupBackgroundWorkForTesting(); seed(c) }
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot?.candidates?.isNotEmpty() == true }
-            val candidate = c.labAnalytics.state.value.snapshot!!.candidates.first()
+            val candidate = awaitAnalysis(c.labAnalytics) { it.snapshot?.candidates?.isNotEmpty() == true }.snapshot!!.candidates.first()
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalLabAnalyticsWorkflow provides c.labAnalytics) {
@@ -530,14 +530,17 @@ class AnalyticsJourneyTest {
             } }
             compose.onNodeWithTag("analysis-tab-2").performClick()
             compose.onNodeWithTag("recurring-not-${candidate.key}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.seriesKey == candidate.seriesKey } }
-            val corrected = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            val corrected = awaitAnalysis(c.labAnalytics) { state -> state.recurringCorrections.any {
+                it.seriesKey == candidate.seriesKey && it.kind == "NOT_RECURRING"
+            } }.snapshot!!.recurringLearning!!
             assertEquals(1, corrected.trainingSeries + corrected.validationSeries)
             compose.onNodeWithTag("recurring-undo-${candidate.seriesKey}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot!!.candidates.any { it.key == candidate.key } }
+            awaitAnalysis(c.labAnalytics) { state -> state.snapshot!!.candidates.any { it.key == candidate.key } &&
+                state.recurringCorrections.none { it.seriesKey == candidate.seriesKey } }
             compose.onNodeWithTag("recurring-dismiss-${candidate.key}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.kind == "DISMISSED" } }
-            val dismissed = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            val dismissed = awaitAnalysis(c.labAnalytics) { state -> state.recurringCorrections.any {
+                it.seriesKey == candidate.seriesKey && it.kind == "DISMISSED"
+            } }.snapshot!!.recurringLearning!!
             assertEquals(0, dismissed.trainingSeries + dismissed.validationSeries)
             assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
             screen("recurring-explicit-feedback")
@@ -703,6 +706,11 @@ class AnalyticsJourneyTest {
         }
         c.labAnalytics.request()
     }
+    // Workflow completion is external to Compose; waiting must not pump its virtual frame clock.
+    private fun awaitAnalysis(workflow: LabAnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState = runBlocking {
+        withTimeout(90_000) { workflow.state.first { !it.updating && condition(it) } }
+    }
+
     private fun text(id: Int, language: String): String = host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale(language)) }).getString(id)
     private fun screen(name: String) {
         compose.waitForIdle()
