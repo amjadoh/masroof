@@ -92,7 +92,7 @@
   "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#corruptLearningCacheDoesNotBlockKnownRulesOrChangeFinancialHistory": 1.008,
   "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#explicitExternalDirectionsTeachFromTheCommittedTypesAndSurviveColdReopen": 5.525,
   "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#explicitFamilyFeedbackIsNotHiddenBySettlementMetadataAndMerchantEditsDoNotTeachFamilies": 3.366,
-  "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#oldFeatureCacheIsRebuiltFromHumanDecisionsWithoutChangingPostedHistory": 2.864,
+  "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#oldFeatureLabelsAreRebuiltFromHumanDecisionsWithoutChangingPostedHistory": 2.864,
   "com.baraa.masroof.lab.beta.learning.ReplicaMachineLearningTest#pendingCorrectionLearnsWhenEvidenceArrivesWithoutAnotherHumanEdit": 7.258,
   "com.baraa.masroof.lab.beta.replica.ReplicaFinancialParityTest#fiveReportedMessagesPostWithoutRepeatedReviews": 4.021,
   "com.baraa.masroof.lab.beta.replica.ReplicaFinancialParityTest#importsOwnershipLedgerDashboardReplayAndReopenMatchProduction": 4.997,

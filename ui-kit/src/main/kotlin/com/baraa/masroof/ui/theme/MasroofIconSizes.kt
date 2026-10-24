@@ -10,11 +10,7 @@ object MasroofIconSizes {
     val xl = 24.dp
     val logo = 36.dp
     val hero = 48.dp
-    val onboardingLogo = 56.dp
     val sectionHeader = md
     val appBarAction = MasroofReference.icon
     val moneyRowLeading = md
-    val periodInline = md
-    val compactCardLeading = sm
-    val compactCardChevron = xs
 }

@@ -37,6 +37,12 @@ class ReplicaMachineLearningTest {
     }
     private suspend fun await(timeoutMillis: Long = 15_000, condition: suspend ()->Boolean) =
         withTimeout(timeoutMillis) {while(!condition()) delay(25)}
+    private fun writeLegacyModelCache(text: String): File =
+        File(TestStorageContext(host).filesDir,"learning/family-model.json").apply {
+            parentFile!!.mkdirs()
+            writeText(text)
+        }
+
     @Test fun explicitExternalDirectionsTeachFromTheCommittedTypesAndSurviveColdReopen() = runBlocking {
         var c=fresh()
         val incoming="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_PERSON\nمبلغ العملية: SAR 20.00\nفي: ${at()}"
@@ -76,7 +82,7 @@ class ReplicaMachineLearningTest {
             assertEquals(setOf("TRANSFER_IN","TRANSFER_OUT"),service.learningLabels().map { it.family }.toSet())
             val before=c.financialTransactionRepository.listAll()
             TestRuntime.close()
-            File(TestStorageContext(host).filesDir,"learning/family-model.json").writeText("{corrupt")
+            writeLegacyModelCache("{corrupt")
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
             requireNotNull(c.labInterpretationService).synchronizeFeedback()
@@ -148,7 +154,7 @@ class ReplicaMachineLearningTest {
             assertTrue(correction.toString(),correction is com.baraa.masroof.application.transaction.ReclassificationResult.Success)
             val before=c.financialTransactionRepository.listAll()
             TestRuntime.close()
-            File(TestStorageContext(host).filesDir,"learning/family-model.json").writeText("{corrupt")
+            writeLegacyModelCache("{corrupt")
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
             requireNotNull(c.labInterpretationService).synchronizeFeedback()
@@ -220,7 +226,7 @@ class ReplicaMachineLearningTest {
             requireNotNull(c.labInterpretationService).synchronizeFeedback()
             val before=c.financialTransactionRepository.listAll()
             TestRuntime.close()
-            File(TestStorageContext(host).filesDir,"learning/family-model.json").writeText("{corrupt")
+            writeLegacyModelCache("{corrupt")
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
             assertEquals(before,c.financialTransactionRepository.listAll())
@@ -232,7 +238,7 @@ class ReplicaMachineLearningTest {
         } finally {TestRuntime.reset(host)}
     }
 
-    @Test fun oldFeatureCacheIsRebuiltFromHumanDecisionsWithoutChangingPostedHistory() = runBlocking {
+    @Test fun oldFeatureLabelsAreRebuiltFromHumanDecisionsWithoutChangingPostedHistory() = runBlocking {
         var c=fresh()
         fun body(amount: Int)="سداد تمويل خاص\nمن: 3001\nالقسط: SAR $amount\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: ${at()}"
         try {
@@ -248,7 +254,7 @@ class ReplicaMachineLearningTest {
                 legacy.learning().replaceLabels(listOf(LearningLabelRow("legacy","old-model-human","BANK_ALJAZIRA",
                     "FINANCING_INSTALLMENT","old-template","{\"w:private_person\":1}","bank-family-title-v1",1L,"USER_EVENT_KIND","hash")))
             } finally {legacy.close()}
-            File(scoped.filesDir,"learning/family-model.json").writeText("{\"schema\":1,\"featuresVersion\":\"bank-family-title-v1\"}")
+            val obsoleteCache = writeLegacyModelCache("{\"schema\":1,\"featuresVersion\":\"bank-family-title-v1\"}")
             c=TestRuntime.container(host)
             c.awaitPostStartupBackgroundWorkForTesting()
             requireNotNull(c.labInterpretationService).synchronizeFeedback()
@@ -260,13 +266,13 @@ class ReplicaMachineLearningTest {
                 assertEquals(FamilyInputCleaner.FEATURES_VERSION,rows.single().featuresVersion)
                 assertFalse(rows.single().featuresJson.contains("private_person"))
             } finally {rebuilt.close()}
-            assertTrue(File(scoped.filesDir,"learning/family-model.json").readText().contains(FamilyInputCleaner.VERSION))
+            assertTrue(obsoleteCache.readText().contains("bank-family-title-v1"))
             assertEquals(ReviewStatus.RESOLVED,c.reviewRepository.findByRawSmsId("old-model-human")!!.status)
             c.processRawSmsUseCase.ingest(evidence("old-model-next",body(21)))
             assertEquals(2,c.financialTransactionRepository.listAll().size)
             assertTrue(c.reviewRepository.listRequired().isEmpty())
             File(host.getExternalFilesDir(null),"ml-cleaning-upgrade.txt").writeText(
-                "Old feature cache rejected.\nHuman decision rebuilt using ${FamilyInputCleaner.VERSION}.\nPosted history unchanged across reopen.\nFuture amount 21 SAR extracted fresh; no repeated review.\n")
+                "Obsolete model cache ignored.\nHuman decision rebuilt using ${FamilyInputCleaner.VERSION}.\nPosted history unchanged across reopen.\nFuture amount 21 SAR extracted fresh; no repeated review.\n")
         } finally {TestRuntime.reset(host)}
     }
 

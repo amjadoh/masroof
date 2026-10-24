@@ -102,20 +102,9 @@ class EffectiveParsedEventProviderTest {
 
         val windowStart = Instant.parse("2026-08-01T00:00:00Z")
         val windowEnd = Instant.parse("2026-08-06T00:00:00Z")
-        val inWindow = expectedEffective(parsedRepo.listReceivedBetween(windowStart, windowEnd))
-        countingDao.reset()
-        assertEquals(inWindow, provider.listEffectiveReceivedBetween(windowStart, windowEnd))
-        assertEquals(1, countingDao.batchQueries)
-        assertEquals(0, countingDao.perSmsQueries)
-        assertEquals(
-            listOf("raw-merchant", "raw-multi", "raw-plain", "raw-transfer-in", "raw-transfer-out"),
-            countingDao.batchIdChunks.single(),
-        )
-        assertTrue(inWindow.none { it.event.rawSmsId == "raw-outside" })
-
         val transfers = expectedEffective(parsedRepo.listUnlinkedTransfers())
         countingDao.reset()
-        assertEquals(transfers, provider.listUnlinkedTransfersEffective())
+        assertEquals(transfers, provider.listUnlinkedTransfersEffectiveReceivedBetween(windowStart, windowEnd))
         assertEquals(listOf("raw-transfer-in", "raw-transfer-out"), transfers.map { it.event.rawSmsId })
         assertEquals(1, countingDao.batchQueries)
         assertEquals(0, countingDao.perSmsQueries)
@@ -150,10 +139,7 @@ class EffectiveParsedEventProviderTest {
         countingDao.reset()
         assertEquals(
             emptyList<ParsedEventRecord>(),
-            provider.listEffectiveReceivedBetween(
-                Instant.parse("2026-09-01T00:00:00Z"),
-                Instant.parse("2026-09-02T00:00:00Z"),
-            ),
+            provider.listEffectiveByRawSmsIds(listOf("missing")),
         )
         assertEquals(0, countingDao.batchQueries)
         assertEquals(0, countingDao.perSmsQueries)
