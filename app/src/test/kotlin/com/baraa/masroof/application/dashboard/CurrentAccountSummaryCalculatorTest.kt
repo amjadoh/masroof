@@ -432,14 +432,15 @@ class CurrentAccountSummaryCalculatorTest {
     fun spendingSplit_totalSpending_matchesCurrentAccountOutflow() {
         val accountId = "account:bank_aljazira:3001"
         val cardId = "card:bank_aljazira:7271"
+        val transactions = listOf(
+            tx("pos", FinancialTransactionType.EXPENSE, "90", source = accountId),
+            tx("xfer-out", FinancialTransactionType.EXTERNAL_TRANSFER_OUT, "100", source = accountId),
+            tx("card-pay", FinancialTransactionType.CREDIT_CARD_PAYMENT, "50", source = accountId, dest = cardId),
+            tx("card", FinancialTransactionType.EXPENSE, "75", source = cardId),
+        )
         val split = CurrentAccountSummaryCalculator.spendingSplit(
-            transactions = listOf(
-                tx("pos", FinancialTransactionType.EXPENSE, "90", source = accountId),
-                tx("xfer-out", FinancialTransactionType.EXTERNAL_TRANSFER_OUT, "100", source = accountId),
-                tx("card-pay", FinancialTransactionType.CREDIT_CARD_PAYMENT, "50", source = accountId, dest = cardId),
-                tx("card", FinancialTransactionType.EXPENSE, "75", source = cardId),
-            ),
-            parsedRecords = emptyList(),
+            transactions = transactions,
+            currentAccount = CurrentAccountSummaryCalculator.summarize(transactions, emptyList()),
         )
         assertEquals(Money.of("240.00", Currency.SAR), split.totalSpending)
         assertEquals(SignedMoneyAmount.of(Money.of("75.00", Currency.SAR)), split.creditCardPurchases)
@@ -510,7 +511,7 @@ class CurrentAccountSummaryCalculatorTest {
         assertEquals(listOf("purchase", "account-refund", "card-refund"), periodTransactions.map { it.id })
 
         val summary = summarizeOwned(periodTransactions, accountId)
-        val split = CurrentAccountSummaryCalculator.spendingSplit(
+        val splitSummary = CurrentAccountSummaryCalculator.summarize(
             transactions = periodTransactions,
             parsedRecords = listOf(
                 parsedRecord(
@@ -522,6 +523,10 @@ class CurrentAccountSummaryCalculatorTest {
             ),
             ownedAccountContainerIds = setOf(accountId),
             ownedAccountLast4s = setOf("3001"),
+        )
+        val split = CurrentAccountSummaryCalculator.spendingSplit(
+            transactions = periodTransactions,
+            currentAccount = splitSummary,
         )
         val grouping = CurrentAccountFlowDetailGrouper.group(
             transactions = periodTransactions,

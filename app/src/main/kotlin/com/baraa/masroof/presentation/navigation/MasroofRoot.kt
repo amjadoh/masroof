@@ -364,22 +364,7 @@ private fun MasroofContent(
             HomeDestination.AccountsSummary -> AccountsSummaryRoute(
                 viewModel = dashboardViewModel,
                 onBack = { homeDestination = HomeDestination.Dashboard },
-                onManageAccounts = {
-                    openSettings(
-                        returnTo = HomeDestination.AccountsSummary,
-                        launch = resolveManageSettingsLaunch(
-                            state = settingsState,
-                            target = ManageSettingsTarget.Accounts,
-                        ),
-                    )
-                },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
-                onOpenAllTransactions = { filter ->
-                    openTransactionList(
-                        filter = filter,
-                        returnTo = HomeDestination.AccountsSummary,
-                    )
-                },
             )
             HomeDestination.CardsSummary -> CardsSummaryRoute(
                 viewModel = dashboardViewModel,
@@ -391,22 +376,7 @@ private fun MasroofContent(
                     pendingCardsSummaryDebitKey = null
                 },
                 onBack = { homeDestination = HomeDestination.Dashboard },
-                onManageCards = {
-                    openSettings(
-                        returnTo = HomeDestination.CardsSummary,
-                        launch = resolveManageSettingsLaunch(
-                            state = settingsState,
-                            target = ManageSettingsTarget.Cards,
-                        ),
-                    )
-                },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
-                onOpenAllTransactions = { filter ->
-                    openTransactionList(
-                        filter = filter,
-                        returnTo = HomeDestination.CardsSummary,
-                    )
-                },
             )
             HomeDestination.LoansSummary -> LoansSummaryRoute(
                 viewModel = dashboardViewModel,
@@ -414,34 +384,13 @@ private fun MasroofContent(
                 detailBackExitsSummary = loansSummaryDetailExitsToHome,
                 onInitialSelectionConsumed = { pendingLoansSummaryLoanKey = null },
                 onBack = { homeDestination = HomeDestination.Dashboard },
-                onManageLoans = {
-                    openSettings(
-                        returnTo = HomeDestination.LoansSummary,
-                        launch = resolveManageSettingsLaunch(
-                            state = settingsState,
-                            target = ManageSettingsTarget.Loans,
-                        ),
-                    )
-                },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
-                onOpenAllTransactions = { filter ->
-                    openTransactionList(
-                        filter = filter,
-                        returnTo = HomeDestination.LoansSummary,
-                    )
-                },
             )
             HomeDestination.MerchantsSummary -> MerchantSpendingSummaryRoute(
                 viewModel = dashboardViewModel,
                 onBack = { homeDestination = HomeDestination.Dashboard },
                 onOpenDaily = { homeDestination = HomeDestination.DailyExpenses },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
-                onOpenAllTransactions = { filter ->
-                    openTransactionList(
-                        filter = filter,
-                        returnTo = HomeDestination.MerchantsSummary,
-                    )
-                },
             )
             HomeDestination.CommitmentsSummary -> com.baraa.masroof.presentation.dashboard.CommitmentsSummaryScreen(
                 dashboardState, { homeDestination = HomeDestination.Dashboard }, { row ->

@@ -34,9 +34,6 @@ class TransactionRestoreService(
     private val processingRecovery: ProcessingRecovery? = null,
     private val onHistoricalRetry: (() -> Unit)? = null,
 ) {
-    suspend fun listIgnoredRawSmsIds(): List<String> =
-        reviewRepository.listIgnored().map { it.rawSmsId }
-
     suspend fun restore(
         rawSmsId: String,
         newType: FinancialTransactionType? = null,
@@ -96,11 +93,6 @@ class TransactionRestoreService(
             }
         }
     }
-
-    suspend fun restoreWithReclassify(
-        rawSmsId: String,
-        newType: FinancialTransactionType,
-    ): RestoreResult = restore(rawSmsId, newType)
 
     /**
      * The caller already recorded [ReviewResolutionKind.USER_FINANCIAL_TYPE].

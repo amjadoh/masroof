@@ -44,14 +44,14 @@ fun DashboardFlowDetailScreen(
             titleRes = R.string.dashboard_expense_details_title,
             total = movement.outflow,
             totalTitleRes = R.string.dashboard_total_spent,
-            tone = DashboardMetricTone.Outflow,
+            direction = TransactionDirectionUi.OUTWARD,
             totalHintRes = R.string.dashboard_flow_detail_expense_total_hint,
         )
         DashboardFlowDetailMode.Income -> FlowDetailPresentation(
             titleRes = R.string.dashboard_income_details_title,
             total = movement.inflow,
             totalTitleRes = R.string.dashboard_total_inflow,
-            tone = DashboardMetricTone.Inflow,
+            direction = TransactionDirectionUi.INCOME,
             totalHintRes = R.string.dashboard_flow_detail_income_total_hint,
         )
     }
@@ -62,32 +62,30 @@ fun DashboardFlowDetailScreen(
         title = stringResource(presentation.titleRes),
         state = state,
         onBack = onBack,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            com.baraa.masroof.presentation.common.MasroofHeroCard(
-                stringResource(presentation.totalTitleRes), formattedTotal,
-                guidance = stringResource(presentation.totalHintRes),
-                role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.ui.theme.MasroofHeroRole.Inflow else com.baraa.masroof.ui.theme.MasroofHeroRole.Outflow)
-            MasroofCard {
-                when (mode) {
-                    DashboardFlowDetailMode.Expense -> FlowDetailExpenseSummarySection(summary = summary)
-                    DashboardFlowDetailMode.Income -> FlowDetailIncomeSummarySection(summary = summary)
-                }
+    ) {
+        com.baraa.masroof.presentation.common.MasroofHeroCard(
+            stringResource(presentation.totalTitleRes), formattedTotal,
+            guidance = stringResource(presentation.totalHintRes),
+            role = if (mode == DashboardFlowDetailMode.Income) com.baraa.masroof.ui.theme.MasroofHeroRole.Inflow else com.baraa.masroof.ui.theme.MasroofHeroRole.Outflow)
+        MasroofCard {
+            val rows = when (mode) {
+                DashboardFlowDetailMode.Expense -> coreExpenseSummaryRows(summary)
+                DashboardFlowDetailMode.Income -> coreIncomeSummaryRows(summary)
             }
+            FlowDetailSummarySection(rows, presentation.direction)
+        }
 
-            val flowTransactions = when (mode) {
-                DashboardFlowDetailMode.Expense -> flowExpenseTransactions(grouping, previewsById)
-                DashboardFlowDetailMode.Income -> flowIncomeTransactions(grouping, previewsById)
-            }
-            if (flowTransactions.isNotEmpty()) {
-                DashboardSummaryTransactionsSection(
-                    transactions = flowTransactions,
-                    onOpenTransaction = onOpenTransaction,
-                )
-            }
+        val flowTransactions = when (mode) {
+            DashboardFlowDetailMode.Expense -> grouping.expense.values
+            DashboardFlowDetailMode.Income -> grouping.income.values
+        }.flatten().mapNotNull { previewsById[it.id] }.sortedWith(
+            compareByDescending<TransactionPreviewUi> { it.localDate }.thenByDescending { it.id },
+        )
+        if (flowTransactions.isNotEmpty()) {
+            DashboardSummaryTransactionsSection(
+                transactions = flowTransactions,
+                onOpenTransaction = onOpenTransaction,
+            )
         }
     }
 }
@@ -96,59 +94,23 @@ private data class FlowDetailPresentation(
     val titleRes: Int,
     val total: Money,
     val totalTitleRes: Int,
-    val tone: DashboardMetricTone,
+    val direction: TransactionDirectionUi,
     val totalHintRes: Int,
 )
 
 @Composable
-private fun FlowDetailExpenseSummarySection(summary: CurrentAccountSummary) {
+private fun FlowDetailSummarySection(rows: List<FlowSummaryRow>, direction: TransactionDirectionUi) {
     Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         DashboardSummaryBreakdownHeader(title = stringResource(R.string.dashboard_flow_detail_breakdown_title))
-        coreExpenseSummaryRows(summary).forEach { row ->
+        rows.forEach { row ->
             FlowDetailSummaryRow(
                 label = stringResource(row.labelRes),
                 amount = row.amount,
-                direction = TransactionDirectionUi.OUTWARD,
+                direction = direction,
             )
         }
     }
 }
-
-@Composable
-private fun FlowDetailIncomeSummarySection(summary: CurrentAccountSummary) {
-    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-        DashboardSummaryBreakdownHeader(title = stringResource(R.string.dashboard_flow_detail_breakdown_title))
-        coreIncomeSummaryRows(summary).forEach { row ->
-            FlowDetailSummaryRow(
-                label = stringResource(row.labelRes),
-                amount = row.amount,
-                direction = TransactionDirectionUi.INCOME,
-            )
-        }
-    }
-}
-
-private fun flowExpenseTransactions(
-    grouping: CurrentAccountFlowDetailGrouping,
-    previewsById: Map<String, TransactionPreviewUi>,
-): List<TransactionPreviewUi> =
-    grouping.expense.values.flatten()
-        .mapNotNull { previewsById[it.id] }
-        .sortedByDateDesc()
-
-private fun flowIncomeTransactions(
-    grouping: CurrentAccountFlowDetailGrouping,
-    previewsById: Map<String, TransactionPreviewUi>,
-): List<TransactionPreviewUi> =
-    grouping.income.values.flatten()
-        .mapNotNull { previewsById[it.id] }
-        .sortedByDateDesc()
-
-private fun List<TransactionPreviewUi>.sortedByDateDesc(): List<TransactionPreviewUi> =
-    sortedWith(
-        compareByDescending<TransactionPreviewUi> { it.localDate }
-            .thenByDescending { it.id },
-    )
 
 @Composable
 private fun FlowDetailSummaryRow(

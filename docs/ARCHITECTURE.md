@@ -66,7 +66,11 @@ Navigation state, including analytics notification targets and return origins,
 lives in `presentation/navigation`. Workers and application workflows do not
 own screen navigation. Settings uses the shared card setup draft and one
 registry-write/reload path; configuring a card does not reparse or reconcile
-financial history.
+financial history. Renaming an account or card also uses that metadata-only path.
+Manual reparse reconciles once, synchronizes merchant evidence, then completes
+review updates using that same report. Settings reloads registries after a completed
+reparse or rescan; it does not start another financial pass. A failed report remains
+incomplete and durably retryable even if a second pass could succeed.
 
 Encrypted backups retain the existing envelope and financial migration support. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learned caches are invalidated and reconstructed from retained human decisions.
 

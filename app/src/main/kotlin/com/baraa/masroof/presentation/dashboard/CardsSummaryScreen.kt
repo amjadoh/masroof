@@ -2,13 +2,11 @@ package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.ui.theme.MasroofSpacing
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
@@ -36,9 +34,7 @@ fun CardsSummaryRoute(
     detailBackExitsSummary: Boolean = false,
     onInitialSelectionConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onManageCards: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedCardKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -108,7 +104,6 @@ fun CardsSummaryRoute(
             CardsSummaryScreen(
                 state = state,
                 onBack = onBack,
-                onManageCards = onManageCards,
                 onOpenCard = { row -> selectedCardKey = CardOwnershipKey.of(row) },
                 onOpenDebit = { debit -> selectedDebitKey = CardOwnershipKey.of(debit) },
                 cardNetworksByLast4 = cardNetworks,
@@ -121,7 +116,6 @@ fun CardsSummaryRoute(
 fun CardsSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
-    onManageCards: () -> Unit,
     onOpenCard: (CreditCardDashboardRow) -> Unit,
     onOpenDebit: (DebitCardOverview) -> Unit,
     cardNetworksByLast4: Map<String, com.baraa.masroof.domain.model.CardNetwork?>,
@@ -135,80 +129,64 @@ fun CardsSummaryScreen(
         state = state,
         onBack = onBack,
         showPeriod = true,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            if (followedFacilities == null || !followedFacilities.hasContent) {
-                Text(
-                    stringResource(R.string.dashboard_cards_summary_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    ) {
+        if (followedFacilities == null || !followedFacilities.hasContent) {
+            Text(
+                stringResource(R.string.dashboard_cards_summary_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), creditSelected, { creditSelected = true })
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), !creditSelected, { creditSelected = false })
+            }
+            if (creditSelected && followedFacilities.facilities.isNotEmpty()) {
+                DashboardSummaryHeroCard(spec = creditFacilitiesSummaryHeroSpec(followedFacilities, locale))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
+                    com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_salary_spending),
+                        formatLocalizedMoney(followedFacilities.aggregateCreditSalaryPeriodSpending()), com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.card, Modifier.weight(1f))
+                    com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_statement_spending),
+                        formatLocalizedMoney(followedFacilities.aggregateCreditStatementSpending()), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                }
+                SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
+                    showAverage = true, chartKey = "credit")
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
-                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), creditSelected, { creditSelected = true })
-                    com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), !creditSelected, { creditSelected = false })
-                }
-                if (creditSelected && followedFacilities.facilities.isNotEmpty()) {
-                    DashboardSummaryHeroCard(spec = creditFacilitiesSummaryHeroSpec(followedFacilities, locale))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
-                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_salary_spending),
-                            formatLocalizedMoney(followedFacilities.aggregateCreditSalaryPeriodSpending()), com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.card, Modifier.weight(1f))
-                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_statement_spending),
-                            formatLocalizedMoney(followedFacilities.aggregateCreditStatementSpending()), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
-                    }
-                    SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
-                        showAverage = true, chartKey = "credit")
-                } else {
-                    com.baraa.masroof.presentation.common.MasroofHeroCard(
-                        stringResource(R.string.approved_total_expenses),
-                        formatLocalizedMoney(followedFacilities.aggregateDebitSalaryPeriodSpending()),
-                        role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account,
-                    )
-                    state.spendingTrends?.debitCards?.let { trend ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
-                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.dashboard_expenses_before_refunds), formatLocalizedMoney(trend.totalBeforeRefunds),
-                                com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
-                            com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_refunds), formatLocalizedMoney(trend.totalRefunds),
-                                com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))
-                        }
-                    }
-                }
-                CardsSummaryHeader(
-                    cardCount = followedFacilities.cardCount,
-                    onManageCards = onManageCards,
+                com.baraa.masroof.presentation.common.MasroofHeroCard(
+                    stringResource(R.string.approved_total_expenses),
+                    formatLocalizedMoney(followedFacilities.aggregateDebitSalaryPeriodSpending()),
+                    role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account,
                 )
-                if (creditSelected) followedFacilities.facilities.forEach { facility ->
-                    CreditFacilityCard(
-                        facility = facility,
-                        cardNetworksByLast4 = cardNetworksByLast4,
-                        zoneId = ZoneId.systemDefault(),
-                        ownedCards = state.ownedCards,
-                        modifier = Modifier.fillMaxWidth(),
-                        onOpenCard = onOpenCard,
-                        trends = state.spendingTrends?.byCard.orEmpty(),
-                    )
+                state.spendingTrends?.debitCards?.let { trend ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
+                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.dashboard_expenses_before_refunds), formatLocalizedMoney(trend.totalBeforeRefunds),
+                            com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.outflow, Modifier.weight(1f))
+                        com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_refunds), formatLocalizedMoney(trend.totalRefunds),
+                            com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.inflow, Modifier.weight(1f))
+                    }
                 }
-                if (!creditSelected) followedFacilities.debitCards.forEach { debit ->
-                    DebitCardSummaryTile(
-                        debit = debit,
-                        network = cardNetworksByLast4[CardOwnershipKey.of(debit)] ?: debit.network,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { onOpenDebit(debit) },
-                        trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
-                    )
-                }
+            }
+            MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
+            if (creditSelected) followedFacilities.facilities.forEach { facility ->
+                CreditFacilityCard(
+                    facility = facility,
+                    cardNetworksByLast4 = cardNetworksByLast4,
+                    zoneId = ZoneId.systemDefault(),
+                    ownedCards = state.ownedCards,
+                    modifier = Modifier.fillMaxWidth(),
+                    onOpenCard = onOpenCard,
+                    trends = state.spendingTrends?.byCard.orEmpty(),
+                )
+            }
+            if (!creditSelected) followedFacilities.debitCards.forEach { debit ->
+                DebitCardSummaryTile(
+                    debit = debit,
+                    network = cardNetworksByLast4[CardOwnershipKey.of(debit)] ?: debit.network,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onOpenDebit(debit) },
+                    trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
+                )
             }
         }
     }
-}
-
-@Composable
-private fun CardsSummaryHeader(
-    cardCount: Int,
-    onManageCards: () -> Unit,
-) {
-    MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
 }
