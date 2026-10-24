@@ -11,22 +11,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
-import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.ui.theme.*
 
-@Suppress("UNUSED_PARAMETER")
 @Composable
 fun TransactionListToolbar(
     periodLabel: String,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onOpenFilters: () -> Unit,
-    activeFilterCount: Int,
     onClearFilters: () -> Unit,
     filteredCount: Int,
-    totalCount: Int,
-    totalAmount: Money?,
     filterActive: Boolean,
     typeChoices: List<Pair<String, String>> = emptyList(),
     selectedType: String? = null,
@@ -55,6 +50,3 @@ fun TransactionListToolbar(
         }
     }
 }
-
-fun TransactionListFilterState.activeFilterCount(): Int =
-    types.size + cardLast4s.size + accountContainerIds.size + transactionIds.size + if (searchQuery.isNotBlank()) 1 else 0

@@ -36,42 +36,4 @@ object FamilyModelCodec {
         require(FamilyInputCleaner.validTerms(map))
     }
     fun termsJson(terms: Map<String,Int>) = buildJsonObject {terms.toSortedMap().forEach {(key,value)->put(key,value)}}
-    fun labelJson(label: HumanFamilyLabel) = buildJsonObject {
-        put("bank",label.bankId);put("raw",label.rawId);put("decision",label.decisionId);put("family",label.family.name)
-        put("template",label.template);put("features",termsJson(label.terms));put("at",label.at);put("provenance",label.provenance)
-    }
-    fun label(element: JsonElement): HumanFamilyLabel {
-        val row=element.jsonObject
-        return HumanFamilyLabel(row.getValue("bank").jsonPrimitive.content,row.getValue("raw").jsonPrimitive.content,
-            row.getValue("decision").jsonPrimitive.content,SmsFamilyLabel.valueOf(row.getValue("family").jsonPrimitive.content),
-            row.getValue("template").jsonPrimitive.content,terms(row.getValue("features")),row.getValue("at").jsonPrimitive.long,row.getValue("provenance").jsonPrimitive.content)
-    }
-    fun cache(seed: Seed, classifier: FamilyClassifier): String {
-        val latest = classifier.latestLabels
-        val payload = buildJsonObject {
-            put("schema",2);put("cleaningVersion",FamilyInputCleaner.VERSION);put("featuresVersion",FamilyInputCleaner.FEATURES_VERSION);put("seedVersion",seed.model.version);put("modelVersion",classifier.version)
-            put("labels",JsonArray(latest.sortedBy {it.rawId}.map(::labelJson)))
-            put("blocks", JsonArray(classifier.latestBlocks.map { block -> buildJsonObject {
-                put("bank",block.bankId);put("raw",block.rawId);put("decision",block.decisionId)
-                put("template",block.template);put("at",block.at)
-            } }))
-            put("documents",buildJsonObject {classifier.model.documents.toSortedMap(compareBy {it.name}).forEach {(family,count)->put(family.name,count)}})
-        }
-        return buildJsonObject {put("checksum",FamilyInputCleaner.sha256(payload.toString()));put("payload",payload)}.toString()
-    }
-    fun cachedLabels(text: String, seed: Seed): List<HumanFamilyLabel> = cachedClassifier(text, seed).latestLabels
-
-    /** Decode suppressions together with labels; a cache must never silently drop a template block. */
-    fun cachedClassifier(text: String, seed: Seed): FamilyClassifier {
-        require(text.length<=16*1024*1024)
-        val root=Json.parseToJsonElement(text).jsonObject;val payload=root.getValue("payload").jsonObject
-        require(root.getValue("checksum").jsonPrimitive.content==FamilyInputCleaner.sha256(payload.toString()))
-        require(payload.getValue("cleaningVersion").jsonPrimitive.content==FamilyInputCleaner.VERSION)
-        require(payload.getValue("schema").jsonPrimitive.int==2 && payload.getValue("seedVersion").jsonPrimitive.content==seed.model.version && payload.getValue("featuresVersion").jsonPrimitive.content==FamilyInputCleaner.FEATURES_VERSION)
-        val labels = payload.getValue("labels").jsonArray.map(::label)
-            val blocks = payload["blocks"]?.jsonArray.orEmpty().map { element -> val row=element.jsonObject
-                HumanTemplateBlock(row.getValue("bank").jsonPrimitive.content,row.getValue("raw").jsonPrimitive.content,
-                    row.getValue("decision").jsonPrimitive.content,row.getValue("template").jsonPrimitive.content,row.getValue("at").jsonPrimitive.long) }
-        return checked(seed,labels,blocks).also { require(it.version==payload.getValue("modelVersion").jsonPrimitive.content) }
-    }
 }

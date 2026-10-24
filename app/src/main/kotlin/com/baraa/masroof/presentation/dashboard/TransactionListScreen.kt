@@ -1,7 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -110,7 +111,6 @@ fun TransactionListScreen(
             involvementByTransactionId = transactionAccountInvolvement,
         )
     }
-    val activeFilterCount = filterState.activeFilterCount()
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.transaction_share)
     val shareSubject = stringResource(R.string.transaction_list_title)
@@ -176,11 +176,8 @@ fun TransactionListScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
                 onOpenFilters = { filtersSheetOpen = true },
-                activeFilterCount = activeFilterCount,
                 onClearFilters = clearFilters,
                 filteredCount = filterResult.transactions.size,
-                totalCount = transactions.size,
-                totalAmount = filterResult.totalAmount,
                 filterActive = filterState.isActive,
                 typeChoices = availableTypes.map { it.name to transactionTypeLabel(it) },
                 selectedType = selectedTypeNames.singleOrNull(),

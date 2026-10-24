@@ -13,7 +13,6 @@ val MasroofShapes = Shapes(
 )
 
 val MasroofCardShape = RoundedCornerShape(20.dp)
-val MasroofPillShape = RoundedCornerShape(14.dp)
 val MasroofRowShape = RoundedCornerShape(12.dp)
 val MasroofBadgeShape = RoundedCornerShape(999.dp)
 val MasroofLogoShape = RoundedCornerShape(11.dp)
@@ -22,9 +21,6 @@ val MasroofLogoShape = RoundedCornerShape(11.dp)
 object MasroofComponentShapes {
     val iconContainer = RoundedCornerShape(8.dp)
     val tokenSwatch = RoundedCornerShape(4.dp)
-    val customizeControl = RoundedCornerShape(12.dp)
-    val radius6 = RoundedCornerShape(6.dp)
-    val radius12 = RoundedCornerShape(12.dp)
     val radius14 = RoundedCornerShape(14.dp)
     val radius16 = RoundedCornerShape(16.dp)
     val radius999 = RoundedCornerShape(999.dp)

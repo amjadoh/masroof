@@ -5,7 +5,6 @@ import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
 import com.baraa.masroof.domain.matching.TransactionMatcher
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
-import com.baraa.masroof.domain.model.BankNetworkType
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
@@ -96,22 +95,6 @@ class TransactionReconciliationService(
     }
 
     /**
-     * Reconcile after a newly saved ParsedEvent using the wider incremental
-     * supplement. Live processing uses [reconcileAffectedRawSmsIds] instead.
-     * Full-history maintenance uses [reconcileStoredEventsDetailed].
-     *
-     * A returned report with [ReconciliationSummary.failed] greater than zero did
-     * not throw. Callers still treat that report as incomplete.
-     */
-    suspend fun reconcileAfterParsedEvent(event: ParsedEvent): ReconciliationSummary =
-        reconcileAfterParsedEventDetailed(event).summary
-
-    suspend fun reconcileAfterParsedEventDetailed(event: ParsedEvent): ReconciliationReport {
-        val records = loadRecordsAround(event)
-        return reconcileRecordsDetailed(records)
-    }
-
-    /**
      * Reconcile [rawSmsIds] without a full-history scan.
      *
      * Non-transfer evidence is loaded by those ids only. Transfer evidence also
@@ -162,55 +145,6 @@ class TransactionReconciliationService(
     private suspend fun loadRecords(): List<ParsedEventRecord> =
         effectiveParsedEventProvider?.listAllEffective()
             ?: parsedEventRepository.listAll()
-
-    private suspend fun loadRecordsAround(event: ParsedEvent): List<ParsedEventRecord> {
-        val receivedAt = rawSmsRepository.getById(event.rawSmsId)?.receivedAt ?: return loadRecords()
-        val window = TransactionMatcher.TRANSFER_MATCH_WINDOW.multipliedBy(2)
-        val startInclusive = receivedAt.minus(window)
-        val endExclusive = receivedAt.plus(window).plusMillis(1)
-        val windowed = effectiveParsedEventProvider?.listEffectiveReceivedBetween(startInclusive, endExclusive)
-            ?: parsedEventRepository.listReceivedBetween(startInclusive, endExclusive)
-        return supplementIncrementalReconcileRecords(windowed)
-    }
-
-    /**
-     * Keeps incremental reconciliation bounded to a received-at window while still
-     * loading transfer legs that pairing and stale external-upgrade passes require.
-     */
-    private suspend fun supplementIncrementalReconcileRecords(
-        windowed: List<ParsedEventRecord>,
-    ): List<ParsedEventRecord> {
-        val unlinkedTransfers = effectiveParsedEventProvider?.listUnlinkedTransfersEffective()
-            ?: parsedEventRepository.listUnlinkedTransfers()
-        val candidateTransactions = financialTransactionRepository.listByTypes(
-            listOf(
-                FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
-                FinancialTransactionType.EXTERNAL_TRANSFER_IN,
-                FinancialTransactionType.SELF_TRANSFER,
-            ),
-        ).filter { transaction ->
-            transaction.type != FinancialTransactionType.SELF_TRANSFER ||
-                transaction.linkedParsedEventIds.size == 1
-        }
-        if (unlinkedTransfers.isEmpty() && candidateTransactions.isEmpty()) {
-            return windowed
-        }
-
-        val merged = windowed.associateBy { it.event.id }.toMutableMap()
-        for (record in unlinkedTransfers) {
-            merged.putIfAbsent(record.event.id, record)
-        }
-        for (transaction in candidateTransactions) {
-            for (parsedEventId in transaction.linkedParsedEventIds) {
-                val record = effectiveParsedEventProvider?.getEffectiveById(parsedEventId)
-                    ?: parsedEventRepository.getById(parsedEventId)
-                    ?: continue
-                if (!record.event.messageFamily.isTransferFamily()) continue
-                merged.putIfAbsent(parsedEventId, record)
-            }
-        }
-        return merged.values.toList()
-    }
 
     private fun MessageFamily.isTransferFamily(): Boolean =
         this == MessageFamily.TRANSFER_IN || this == MessageFamily.TRANSFER_OUT

@@ -52,7 +52,7 @@ The engine uses rules first. Eligible local family inference never supplies an a
 
 `masroof.db` remains schema 18 with its fourteen tables, full migrations and importable backup hashes. Existing preference files, Keystore alias, app id and worker names remain stable. `learning.db` stores labels/provenance; `analytics.db` stores advisory results and preferences. Old Lab files are neither imported nor deleted automatically.
 
-The learning store is schema 2 and the analytics store is schema 3. Posted type edits atomically update the financial transaction and its latest `USER_FINANCIAL_TYPE` review decision in the unchanged financial schema. Learning rebuilds from durable decisions before enabling personal assistance; a cached model alone is not startup authority. Exact template suppressions include bank and feature identity and revoke both statistical and human-template assistance. Financial `EXPENSE`/`INCOME`, ownership decisions and field-only edits do not invent family labels. Unsupported or ambiguous decisions have an explicit feedback disposition.
+The learning store is schema 2 and the analytics store is schema 3. Posted type edits atomically update the financial transaction and its latest `USER_FINANCIAL_TYPE` review decision in the unchanged financial schema. Learning rebuilds from durable decisions before enabling personal assistance; no derived model cache is written or loaded. Exact template suppressions include bank and feature identity and revoke both statistical and human-template assistance. Financial `EXPENSE`/`INCOME`, ownership decisions and field-only edits do not invent family labels. Unsupported or ambiguous decisions have an explicit feedback disposition.
 
 `USER_EXTERNAL_TRANSFER` now teaches an incoming/outgoing family from the external type committed with the resolved review, including compatible retained decisions. The UI sends the direction explicitly displayed by its action. A changed direction is rejected before assembly; a changed effective evidence snapshot is rejected inside the financial write transaction. The refreshed detail explains the rejection. Missing decision evidence remains pending; later contradictory edits supersede the label and can suppress the template. Broad financial types still do not count as learned family corrections. Classifier features and score calibration are unchanged; activation gates, rather than a new estimator, restrict automatic use.
 
@@ -72,7 +72,7 @@ review updates using that same report. Settings reloads registries after a compl
 reparse or rescan; it does not start another financial pass. A failed report remains
 incomplete and durably retryable even if a second pass could succeed.
 
-Encrypted backups retain the existing envelope and financial migration support. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learned caches are invalidated and reconstructed from retained human decisions.
+Encrypted backups retain the existing envelope and financial migration support. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learning state is invalidated and reconstructed from retained human decisions.
 
 See [AGENTS.md](../AGENTS.md) for enforced boundaries and [ANALYTICS.md](ANALYTICS.md) for model and alert policy.
 

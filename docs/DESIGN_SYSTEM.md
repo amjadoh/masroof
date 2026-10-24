@@ -3,17 +3,17 @@
 This document describes the central implementation tokens. The visual approval source is
 `masroof-code-based-preview.html`, SHA256
 `d3f4f86f88edfbd99b42381f7f1782645c6a893d4278096f1215b4b961029d6d`.
-Human-approved later amendments override that prototype. The implementation entry point is
-`presentation/theme/MasroofDesign.kt`, version `approved-2026-10-10`.
+Human-approved later amendments override that prototype. Tokens live in
+`ui-kit/src/main/kotlin/com/baraa/masroof/ui/theme/`; `MasroofDesign.version` is `approved-2026-10-10`.
 
 ## One source of visual values
 
 | Concern | Authoritative source |
 | --- | --- |
 | Light/dark and semantic colors | `MasroofColors.kt`, `MasroofHeroColors.kt` |
-| Brand/network colors | `MasroofNetworkColors.kt`, `res/values/masroof_brand.xml` for the Android launcher |
+| Launcher brand colors | `res/values/masroof_brand.xml` |
 | Opacity and font weights | `MasroofDesign.kt` |
-| Spacing and geometry | `MasroofReference.kt` through `MasroofDesign.reference`, `MasroofSpacing.kt` |
+| Spacing and geometry | `MasroofReference.kt`, `MasroofSpacing.kt` |
 | Typography and font weights | `MasroofTypography.kt`, `MasroofFontFamily.kt`, `MasroofFontWeights` |
 | Shapes | `MasroofShapes.kt` |
 | Icon geometry | `MasroofIconSizes.kt` |
@@ -72,8 +72,8 @@ in both themes and the Arabic date picker.
 `presentation/common/MasroofGuidance.kt` is the only contextual-help component.
 Use `MasroofGuidanceButton` beside the subject, or `MasroofGuidanceLabel` for a
 label and its help icon. The neutral circled exclamation is mapped in MasroofIcons.
-`MasroofDesign.guidance` exposes the icon size, accessible touch area, popover
-width, padding, shape, elevation and edge spacing. Colors and typography use the
+`MasroofGuidanceStyle` exposes the icon size, popover width, padding, shape,
+elevation and edge spacing. Colors and typography use the
 shared MaterialTheme. The small anchored popover fits the window in RTL and LTR,
 flips above its subject when necessary, and dismisses on outside press or Back.
 Explanations are hidden until requested and never invoke a parent action.

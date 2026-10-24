@@ -56,14 +56,8 @@ data class Facts(
     val billerCode: String? = null,
     val loanType: LoanType? = null,
     val salaryIncomeWording: Boolean? = null,
-    val ibanSuffix: String? = null,
     val executionState: String? = null,
-    val cardKind: String? = null,
     val network: String? = null,
-    val senderName: String? = null,
-    val recipientName: String? = null,
-    val senderBank: String? = null,
-    val accountIdentifier: String? = null,
 )
 
 /** Half-open offsets into the ORIGINAL input body, never folded comparison text. */
