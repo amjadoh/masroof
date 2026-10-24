@@ -1,8 +1,10 @@
-# Proposed next phase: personal spending and forecasting
+# Personal spending and forecasting implementation
 
 Design proposal: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGHTS_DESIGN.md).
 Start from PR #329 / `d2d3ebe5`; CI #943 passed, PR remains draft/unmerged.
-This is a reviewable plan and prototype, not an implementation or activation.
+Implementation approved by the user. Work is isolated on
+`feat/personal-spending-insights`, based on the unchanged #329 head. Qualification
+remains conditional on independent data; no statistical seed is force-enabled.
 
 Work areas and order: evidence audit → forecast explanation → scoped spending
 observations → recurring review → diverse message review. Base-model
@@ -10,7 +12,7 @@ qualification is a separate data milestone. Reuse current models and screens;
 use robust descriptive statistics for initial spending observations. Preserve
 financial v18, human decisions, all qualification gates and current authorities.
 Detailed scope, acceptance, UI behavior and validation are in the linked design;
-proposed implementation slices are in `todo.md`. The completed baseline below
+implementation slices are in `todo.md`. The completed baseline below
 is retained as the record of #329.
 
 ---

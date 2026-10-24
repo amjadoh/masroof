@@ -1,53 +1,56 @@
-# Proposed personal spending and forecasting tasks
+# Personal spending and forecasting tasks
 
-All tasks below are proposals; production implementation has not started.
+Approved for implementation. Local production changes are in progress on
+`feat/personal-spending-insights`; the #329 branch is unchanged.
 Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGHTS_DESIGN.md).
 
-- [ ] A. Audit exclusions and current readiness (2–3 files/tools).
+- [x] A. Audit exclusions and current readiness (2–3 files/tools).
   - Accept: reason-grouped counts, production cleaner parity, no inferred labels.
   - Verify: feature export, private qualification report, unchanged ledger/schema.
   - Areas: `ml-assist/tools`, `FamilyFeatureExportTest`, private outputs outside git.
   - Dependency: #329 baseline; no model activation from this audit alone.
-- [ ] B. Explain current forecast method/readiness (3–5 files).
+- [x] B. Explain current forecast method/readiness (3–5 files).
   - Accept: existing result drives text/detail; error metric has horizon/sample count;
     absent checks show an honest empty state.
   - Verify: `AnalysisPresentationBuilder` focused tests and device detail journey.
   - Areas: `AnalysisPresentationBuilder`, `AnalysisForecastViews`, localized strings/tests.
   - Dependency: A; no numerical forecast changes.
-- [ ] C. Build unusual-payment observations from scoped facts (2–3 files).
+- [x] C. Build unusual-payment observations from scoped facts (2–3 files).
   - Accept: prior-only reference, scope isolation, explicit sparse/invalid abstention.
   - Verify: focused analytics tests for MAD=0, FX, refunds, dates and same-day ambiguity.
   - Areas: pure `ml-assist` calculator/test, existing approved fact model if needed.
   - Dependency: A; provisional heuristic reviewed before enabling in UI.
-- [ ] D. Connect one observation to Spending and evidence (3–5 files).
+- [x] D. Connect one observation to Spending and evidence (3–5 files).
   - Accept: at most three useful observations; exact drilldown; correction/deletion refresh.
   - Verify: application analytics tests, ledger parity and Arabic/English device journey.
   - Areas: `LabAnalyticsWorkflow`, snapshot/result, `LabAnalyticsScreen`, strings/tests.
   - Dependency: C; preserve current comparison and transaction navigation.
-- [ ] Checkpoint B–D: inspect useful vs incorrect observations privately; build/lint,
+- [x] Checkpoint B–D: inspect observations privately; build/lint,
   data-quality states and unchanged financial totals before expanding the feature.
-- [ ] E. Improve existing spending-contribution explanation if needed (2–4 files).
+  - Private production probe produced observations and unchanged ledger;
+    this demonstrates participation, not user-rated usefulness or measured accuracy.
+- [x] E. Retain the existing spending-contribution explanation; no duplicate observation needed.
   - Accept: same completed-day window, no duplicate observation or double-counted claims.
   - Verify: scoped-vs-full characterization and spending-insights tests.
   - Areas: `AnalysisSpendingInsightsBuilder`, `AnalysisSpendingCharts`, focused tests.
   - Dependency: D evidence; cut this task if current comparison already communicates it.
-- [ ] F. Polish recurring review with evidence and explicit decisions (3–5 files).
+- [x] F. Reuse recurring review/evidence/undo and clarify explicit decisions (3–5 files).
   - Accept: save/editor, negative/dismiss/undo remain distinct; actual origin visible.
   - Verify: recurring persistence, lifecycle/device correction/undo and backup tests.
   - Areas: existing recurring workflow, Commitment UI, strings/tests.
   - Dependency: A; retain seed and personal qualification gates.
-- [ ] G. Support reviewed structural message wording (3–5 files).
+- [x] G. Support reviewed structural message wording (3–5 files).
   - Accept: no personal vocabulary; version change and human-decision preservation.
   - Verify: cleaner/security/refund/negation regression, frozen evaluation partitions.
   - Areas: `FamilyInputCleaner`, feature export and focused regression tests.
   - Dependency: A audit; do not reparse posted evidence.
-- [ ] H. Select useful distinct message review examples (2–3 files).
+- [x] H. Select useful distinct message review examples (2–3 files).
   - Accept: bank-qualified groups, current unresolved evidence, deterministic priorities;
     no guessed labels or confidence when seed is ineligible.
   - Verify: grouping, changed/revoked decisions, unsupported and security cases.
   - Areas: application interpretation workflow/result and focused tests.
   - Dependency: G; use existing review authority.
-- [ ] I. Add optional small review session to existing settings (3–5 files).
+- [x] I. Add optional small review session to existing settings (3–5 files).
   - Accept: max three initial examples, explicit decisions, discard draft on dismissal,
     visible pending/error state and preserved current correction flow.
   - Verify: device save/cancel/reopen and learning-provenance tests.
@@ -58,8 +61,35 @@ Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGH
   - Verify: reproducible family/recurring training and untouched final evaluation.
   - Areas: reviewed corpus and generated artifacts/reports; private source stays outside git.
   - Dependency: G plus sufficient independent reviewed data; not promised by other tasks.
+  - Current evaluation: ineligible. Reviewed return wording is accepted by the
+    updated private family export, with frozen holdouts retained. Private counts
+    stay outside git. Shipped family seed still enables no statistical family.
 - [ ] Final checkpoint: focused tests, lint/detekt, APKs, relevant device lifecycle,
   upgrade/restore/process-death and full PR CI; verify actual readiness against UI.
+  - Local checks passed; full follow-up PR CI remains required before merge.
+
+## Personal insights local verification
+
+- 373 focused app tests passed (analytics, dashboard, family learning, migration,
+  persistence and package boundaries), plus two new message-selection tests.
+  Targeted regressions were rerun after the final navigation/display corrections.
+- 51 ml-assist tests, 11 Python training tests and 10 CI-device registry tests passed.
+  Both shipped seed reproducibility checks passed. No statistical family enabled.
+- App lint/detekt and debug/app instrumentation APK builds passed. No new dependency,
+  financial schema change, worker identity or derived-model persistence was added.
+- Nine API 36 tests passed together: new spending evidence/forecast explanation
+  (Arabic/English, light/dark, 1.3× font), optional review/cancel, forecast ledger
+  parity/reopen, recurring correction/undo, four lifecycle/restore migrations, and
+  setup/learning/provenance/financial-validation journey.
+- The additional private-backup device probe passed against the supplied encrypted
+  backup. Production analysis kept the ledger unchanged; its model-participation
+  report and derived observations stay outside git. Offline qualification remains
+  insufficient under the unchanged gates.
+- The first new forecast-detail test assertion used unconverted Arabic digits;
+  it now uses the shared AppDigits display policy and asserts the full text is
+  displayed after scrolling. Validation was retained; all nine device cases passed.
+- Private inputs and generated private reports remain outside git/CI. Published
+  artifact regeneration uses only the repository's existing reviewed corpus.
 
 ---
 
