@@ -8,8 +8,24 @@ import java.time.ZoneId
 enum class ForecastComparisonStatus { UNAVAILABLE, AWAITING_ELIGIBLE_FORECAST, WAITING_FOR_ANCHOR, NO_QUALIFIED_FORECAST, WAITING_FOR_PERIOD, INCOMPLETE_COVERAGE, READY }
 data class ForecastComparisonExplanation(val status: ForecastComparisonStatus, val anchorDay: Long? = null, val enabledDay: Long? = null)
 data class AnalysisDailyBar(val day: Long, val amount: Long?, val expected: Boolean)
+enum class ForecastMethod { UNAVAILABLE, INITIAL, PERSONAL }
+data class ForecastExplanation(val method: ForecastMethod, val evaluations: List<AnalysisEvaluation>)
 
 object AnalysisPresentationBuilder {
+    fun forecast(snapshot: AnalysisSnapshot): ForecastExplanation {
+        val method = when {
+            snapshot.quality.blocked || snapshot.status != "READY" || snapshot.total == null -> ForecastMethod.UNAVAILABLE
+            snapshot.method == "WEEKDAY_MEDIAN" -> ForecastMethod.INITIAL
+            snapshot.method == com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL -> ForecastMethod.PERSONAL
+            else -> ForecastMethod.UNAVAILABLE
+        }
+        val evaluations = if (method == ForecastMethod.UNAVAILABLE ||
+            snapshot.evaluationVersion != com.baraa.masroof.lab.analytics.AnalyticsVersion.EVALUATION) emptyList() else
+            snapshot.evaluations.filter { it.horizon in setOf(1, 7, 14, 28) && it.count >= 8 && it.mae >= 0 }
+                .distinctBy { it.horizon }.sortedBy { it.horizon }
+        return ForecastExplanation(method, evaluations)
+    }
+
     fun comparison(state: AnalysisUiState, today: Long, zone: ZoneId): ForecastComparisonExplanation {
         val snapshot = state.snapshot ?: return ForecastComparisonExplanation(ForecastComparisonStatus.UNAVAILABLE)
         val anchor = snapshot.periodStart + 7

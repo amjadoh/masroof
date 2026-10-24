@@ -33,8 +33,19 @@ import java.time.LocalDate
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun ForecastTab(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onQuality: () -> Unit, onPerformance: () -> Unit) {
     val s = state.snapshot ?: return
+    var explaining by rememberSaveable { mutableStateOf(false) }
+    val explanation = remember(s) { AnalysisPresentationBuilder.forecast(s) }
+    if (explaining) ForecastExplanationSheet(s, state.updating || state.unavailable) { explaining = false }
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(stringResource(forecastMethodResource(explanation.method)), modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall)
+                MasroofTextButton(onClick = { explaining = true }, modifier = Modifier.testTag("forecast-explanation-open")) {
+                    Text(stringResource(R.string.personal_forecast_why))
+                }
+            }
             s.total?.let { Amount(stringResource(R.string.lab_analysis_expected_total), it, MasroofAmountRole.Hero) }
             s.remaining?.let { remaining -> MasroofForecastSplit(analysisAmount(s.actual).amount, analysisAmount(remaining).amount,
                 AppDigits.display("${stringResource(R.string.lab_analysis_actual)} ${visualMoney(s.actual)} · ${stringResource(R.string.lab_analysis_remaining)} ${visualMoney(remaining)}")) }
@@ -99,5 +110,37 @@ import java.time.LocalDate
         }
     }
     ForecastPerformanceDetails(state)
+    state.snapshot?.let { ForecastEvaluationSummary(it) }
     PublishedForecastHistory(state)
+}
+
+private fun forecastMethodResource(method: ForecastMethod): Int = when (method) {
+    ForecastMethod.INITIAL -> R.string.personal_forecast_initial
+    ForecastMethod.PERSONAL -> R.string.personal_forecast_model
+    ForecastMethod.UNAVAILABLE -> R.string.personal_forecast_unavailable
+}
+
+@Composable private fun ForecastExplanationSheet(snapshot: AnalysisSnapshot, stale: Boolean, onClose: () -> Unit) {
+    val explanation = AnalysisPresentationBuilder.forecast(snapshot)
+    MasroofBottomSheet(stringResource(R.string.personal_forecast_why), onClose, onClose,
+        stringResource(R.string.lab_analysis_close)) {
+        if (stale) Text(stringResource(R.string.personal_forecast_refreshing))
+        else Text(stringResource(forecastMethodResource(explanation.method)), style = MaterialTheme.typography.titleSmall)
+        if (explanation.method != ForecastMethod.UNAVAILABLE) Text(stringResource(
+            if (explanation.method == ForecastMethod.PERSONAL) R.string.personal_forecast_model_hint else R.string.personal_forecast_initial_hint))
+        Text(stringResource(R.string.lab_analysis_quality_coverage, snapshot.quality.coveredDays, snapshot.completedPeriods))
+        if (snapshot.trainingFrom != null && snapshot.trainingThrough != null) Text(stringResource(
+            R.string.lab_analysis_training_range, day(snapshot.trainingFrom), day(snapshot.trainingThrough)))
+        Text(stringResource(forecastReasonResource(snapshot.modelReason)))
+        Text(stringResource(R.string.personal_forecast_qualification), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable private fun ForecastEvaluationSummary(snapshot: AnalysisSnapshot) {
+    val evaluations = remember(snapshot) { AnalysisPresentationBuilder.forecast(snapshot).evaluations }
+    MasroofCard(Modifier.testTag("forecast-horizon-errors")) {
+        MasroofSectionHeader(stringResource(R.string.personal_forecast_errors))
+        if (evaluations.isEmpty()) Text(stringResource(R.string.lab_analysis_evaluation_missing))
+        evaluations.forEach { e -> Text(stringResource(R.string.personal_forecast_error_row, e.horizon, visualMoney(e.mae), e.count)) }
+    }
 }

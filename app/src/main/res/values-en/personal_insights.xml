@@ -1,0 +1,12 @@
+<resources>
+    <string name="personal_forecast_why">Why this estimate?</string>
+    <string name="personal_forecast_initial">Initial estimate from your history</string>
+    <string name="personal_forecast_model">Your personal model is in use</string>
+    <string name="personal_forecast_unavailable">Estimate currently unavailable</string>
+    <string name="personal_forecast_refreshing">Updating the estimate; these details describe the last saved result.</string>
+    <string name="personal_forecast_initial_hint">The estimate uses your median spending on matching weekdays.</string>
+    <string name="personal_forecast_model_hint">The model learns locally from weekdays, the day within your salary period, and previous spending.</string>
+    <string name="personal_forecast_qualification">Trying the personal model requires 120 consecutive covered days, 4 complete salary periods and 20 purchase days. It must then pass independent checks and beat the initial estimate; history alone does not activate it.</string>
+    <string name="personal_forecast_errors">Forecast error by horizon</string>
+    <string name="personal_forecast_error_row">%1$d-day forecast: average error %2$s across %3$d checks.</string>
+</resources>
