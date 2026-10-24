@@ -281,6 +281,7 @@ class AnalyticsJourneyTest {
                     } }
                 }
             } }
+            compose.onNodeWithText(text(R.string.analysis_forecasts_tab, "en")).performClick()
             compose.onNodeWithTag("analysis-quality-entry").performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_show_data, "en")).performScrollTo().performClick()
             val reason = text(R.string.lab_analysis_excluded_scope, "en")
