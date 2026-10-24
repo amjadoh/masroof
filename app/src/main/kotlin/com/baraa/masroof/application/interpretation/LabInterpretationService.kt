@@ -40,6 +40,8 @@ class LabInterpretationService(
     private val seed = runCatching {store.loadSeed()}.getOrElse { log.warn("ML","Seed unavailable: ${it.javaClass.simpleName}");null }
     // Rebuild assistance from durable human decisions before enabling it.
     @Volatile private var classifier: FamilyClassifier? = null
+    @Volatile var personalization: FamilyPersonalizationResult? = null
+        private set
     @Volatile private var synchronizedDecisions: String? = null
     @Volatile private var pendingFeedback = false
     private data class Attempt(val classifier: FamilyClassifier?, var requested: Boolean = false,
@@ -119,6 +121,7 @@ class LabInterpretationService(
     }
     fun invalidateFeedback() {
         classifier = null
+        personalization = null
         synchronizedDecisions = null
         changes.trySend(Unit)
     }
@@ -222,7 +225,16 @@ class LabInterpretationService(
         }
         val learned = labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
-        val updated = FamilyModelCodec.checked(seed,learned,blocks)
+        val eligibleTemplates = mutableSetOf<String>()
+        learned.forEach { label ->
+            val message = evidence[label.rawId] ?: return@forEach
+            var requested = false
+            val probe = RuleInterpreter(AlJaziraRuleProfile.current(), FamilyAssist { _, _ -> requested = true; null })
+            probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(BANK))
+            if (requested) eligibleTemplates += label.template
+        }
+        val rebuilt = FamilyPersonalization.rebuild(seed.model, learned, seed.evaluation, blocks, eligibleTemplates)
+        val updated = rebuilt.classifier
         val conflicted = learned.groupBy { it.template }.filterValues { rows -> rows.map { it.family }.distinct().size > 1 }.keys + updated.latestBlocks.map { it.template }
         val explained = feedback.map { row -> if(row.state == LearningFeedbackState.LEARNED.name && row.template in conflicted)
             row.copy(state = LearningFeedbackState.BLOCKED.name, reason = "CONFLICTING_TEMPLATE") else row }
@@ -232,6 +244,7 @@ class LabInterpretationService(
         if (closed) return@withLock null
         if(before != decisions()) { invalidateFeedback(); return@withLock null }
         synchronizedDecisions = fingerprint(before)
+        personalization = rebuilt
         classifier = updated
         schedulePendingRefresh()
         onFeedbackChanged()
