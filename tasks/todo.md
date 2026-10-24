@@ -1,4 +1,17 @@
-# Finance core extraction checklist
+# Continuous local learning checklist
+
+- [ ] Family personalization and held-out templates.
+- [ ] Recurring features, classifier, fitting and held-out series.
+- [ ] Analytics migration/archive 4 and durable feedback.
+- [ ] Workflow integration, qualified identities and feedback UI.
+- [ ] Model participation/readiness explanations.
+- [ ] Private data tools and reproducible seed evaluation.
+- [ ] Focused tests, build, architecture/lint checks and documentation.
+- [ ] Device/CI checks recorded without claiming unrun checks.
+
+---
+
+# Previous completed work: finance core extraction checklist
 
 - [x] Freeze financial compatibility examples and schema contract; run baseline tests.
 - [x] Move money, periods, time policy and identities; compile and test; commit.
