@@ -479,6 +479,7 @@ private fun MasroofContent(
                 onBack = ::returnFromSettings,
                 onOpenReview = { openReview(returnTo = HomeDestination.Settings) },
                 onOpenReviewExample = { id ->
+                    pendingSettingsLaunch = SettingsLaunchRequest(SettingsDestination.MessageLearning)
                     openReview(returnTo = HomeDestination.Settings)
                     reviewViewModel.setListMode(com.baraa.masroof.presentation.review.ReviewListMode.PENDING)
                     reviewViewModel.openDetail(id)
