@@ -512,6 +512,41 @@ class AnalyticsJourneyTest {
         }
     }
 
+    @Test fun recurringCorrectionsTeachOnlyExplicitLabelsAndCanBeUndone() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand(
+            "pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        try {
+            runBlocking { c.awaitPostStartupBackgroundWorkForTesting(); seed(c) }
+            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot?.candidates?.isNotEmpty() == true }
+            val candidate = c.labAnalytics.state.value.snapshot!!.candidates.first()
+            val before = runBlocking { c.financialTransactionRepository.listAll() }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalLabAnalyticsWorkflow provides c.labAnalytics) {
+                    MasroofTheme { MasroofScreenBackground { LabAnalyticsRoute({}, {}) } }
+                }
+            } }
+            compose.onNodeWithTag("analysis-tab-2").performClick()
+            compose.onNodeWithTag("recurring-not-${candidate.key}").performScrollTo().performClick()
+            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.seriesKey == candidate.seriesKey } }
+            val corrected = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            assertEquals(1, corrected.trainingSeries + corrected.validationSeries)
+            compose.onNodeWithTag("recurring-undo-${candidate.seriesKey}").performScrollTo().performClick()
+            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot!!.candidates.any { it.key == candidate.key } }
+            compose.onNodeWithTag("recurring-dismiss-${candidate.key}").performScrollTo().performClick()
+            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.kind == "DISMISSED" } }
+            val dismissed = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            assertEquals(0, dismissed.trainingSeries + dismissed.validationSeries)
+            assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
+            screen("recurring-explicit-feedback")
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
     private suspend fun seed(c: AppContainer) {
         val today = LocalDate.now()
         c.onboardingPreferencesRepository.setOnboardingStarted(true)

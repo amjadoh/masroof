@@ -191,7 +191,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             TabRow(selectedTabIndex = displayedTab) {
                 listOf(R.string.lab_analysis_spending_tab, R.string.analysis_forecasts_tab, R.string.lab_analysis_commitments).forEachIndexed { index, label ->
-                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] }, text = { Text(stringResource(label)) })
+                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] }, text = { Text(stringResource(label)) }, modifier = Modifier.testTag("analysis-tab-$index"))
                 }
             }
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(when (displayedTab) {
@@ -211,6 +211,17 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                                 stringResource(R.string.analysis_no_due_hint), MasroofIcons.calendar)
                         }
                         MasroofGuidanceLabel(stringResource(R.string.lab_analysis_commitments), stringResource(R.string.lab_analysis_commitments_hint))
+                        state.snapshot?.recurringLearning?.let { learning ->
+                            MasroofCard {
+                                Text(stringResource(when (learning.method) {
+                                    "PERSONAL_MODEL" -> R.string.recurring_personal_used
+                                    "SEED_MODEL" -> R.string.recurring_seed_used
+                                    else -> R.string.recurring_rules_used
+                                }), style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.recurring_learning_examples, learning.trainingSeries, learning.validationSeries), style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(personalLearningReason(learning.reason)), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                         state.snapshot?.dues?.forEach { due ->
                             FocusAnalysisItem(focusedAlert == "due:${due.id}:${due.day}", { focusedAlert = null }) {
                             MasroofCard {
@@ -229,6 +240,11 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                         state.snapshot?.candidates?.forEach { c ->
                             MasroofCard(Modifier.testTag("lab-candidate-${c.key}")) {
                                 Text(c.name, style = MaterialTheme.typography.titleSmall)
+                                Text(stringResource(when (c.origin) {
+                                    "MODEL" -> R.string.recurring_model_origin
+                                    "HUMAN_DECISION" -> R.string.recurring_human_origin
+                                    else -> R.string.recurring_rules_origin
+                                }), style = MaterialTheme.typography.bodySmall)
                                 Amount(stringResource(R.string.lab_analysis_estimated), c.amount)
                                 if (c.overdue) Text(stringResource(R.string.lab_analysis_overdue_candidate), style = MaterialTheme.typography.bodySmall)
                                 Text("${stringResource(if (c.cadence == "WEEKLY") R.string.lab_analysis_weekly else R.string.lab_analysis_monthly)} · ${day(c.nextDay)}")
@@ -237,8 +253,19 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                                 MasroofButton(onClick = { editing = c.key }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
                                     Text(stringResource(R.string.lab_analysis_review_candidate))
                                 }
-                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key) } }) { Text(stringResource(R.string.lab_analysis_reject)) }
+                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key, notRecurring = true) } }, modifier = Modifier.testTag("recurring-not-${c.key}")) { Text(stringResource(R.string.recurring_not_recurring)) }
+                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key) } }, modifier = Modifier.testTag("recurring-dismiss-${c.key}")) { Text(stringResource(R.string.recurring_dismiss)) }
                             }
+                        }
+                        if (state.recurringCorrections.isNotEmpty()) MasroofCard {
+                            Text(stringResource(R.string.recurring_previous_decisions), style = MaterialTheme.typography.titleSmall)
+                            var visible by rememberSaveable { mutableIntStateOf(20) }
+                            state.recurringCorrections.take(visible).forEach { correction ->
+                                Text(correction.name, style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(if (correction.kind == "NOT_RECURRING") R.string.recurring_not_recurring else R.string.recurring_dismiss), style = MaterialTheme.typography.bodySmall)
+                                MasroofTextButton(onClick = { scope.launch { workflow.undoRecurringCorrection(correction.seriesKey) } }, modifier = Modifier.testTag("recurring-undo-${correction.seriesKey}")) { Text(stringResource(R.string.recurring_undo)) }
+                            }
+                            if (visible < state.recurringCorrections.size) MasroofTextButton(onClick = { visible += 20 }) { Text(stringResource(R.string.lab_analysis_more)) }
                         }
                     }
 

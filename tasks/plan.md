@@ -1,4 +1,42 @@
-# Finance core policy extraction
+# Continuous local learning
+
+Implement the approved plan on `feat/continuous-local-learning`. Inference and
+personal training stay on-device. Financial schema 18 and financial authority
+stay unchanged. User-supplied backups are private inputs, never repository data.
+
+## Ordered increments
+
+1. Family personalization: stable held-out templates, seed safety gates and
+   operational status distinct from exact human-template memory.
+2. Recurring numerical classification and local fitting from explicit human
+   decisions; held-out series; deterministic amount/date estimation.
+3. Analytics schema/archive 4, durable feedback, qualified identities and UI.
+4. Actual model participation/readiness for forecasts, messages and recurrence.
+5. Private data tools, reproducible reports, scoped tests, migration/restore,
+   device checks and documentation.
+
+## Acceptance gates
+
+Family seeds require >=8 accepted naturally eligible validation and >=8 final
+test templates per enabled family, with no accepted wrong families. Personal
+fitting holds out 20% of templates, requires >=8 eligible held-out templates,
+more correct coverage, no added errors and passing seed validation.
+
+Recurrence seeds require >=95% precision, >=10-point recall improvement over
+rules and no increased false-positive rate; validation/test each need >=30
+accepted independent series per cadence and >=30 hard negatives. Personal
+fitting holds out 20% of series and needs >=8 held-out series (>=2 recurring,
+>=2 non-recurring), >=95% precision, better coverage and no increased FPR.
+
+Insufficient real labels leave models ineligible. Synthetic examples test
+behavior, not real-world accuracy. Preserve forecast training/evaluation gates,
+immutable published comparisons and the current live regression policy.
+
+Focused checks run locally; full suites run in PR/main CI, never release CI.
+
+---
+
+# Previous completed work: finance core policy extraction
 
 Baseline: main after #317 (`33a7c06e`). Move production policies, preserving
 packages, signatures, behavior and persistence. Keep `masroof.db` schema 18,

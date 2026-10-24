@@ -10,7 +10,7 @@ import java.time.ZoneId
 import java.time.Clock
 
 internal data class FinancialAnalysisRead(val service: DashboardService, val rows: List<FinancialTransaction>,
-    val committed: Set<String>, val retry: Boolean, val incompleteDays: Set<Long>)
+    val committed: Set<String>, val retry: Boolean, val incompleteDays: Set<Long>, val committedCadences: Map<String, String>)
 
 /**
  * Copy only approved facts and the existing bounded dashboard evidence in a short read.
@@ -70,6 +70,7 @@ internal object FinancialAnalysisReader {
                 }
                 listOfNotNull(receiptDay, eventDay)
             }.toSet()
-            FinancialAnalysisRead(service, rows, commitments.map { it.sourceTransactionId }.toSet(), retry, incompleteDays)
+            FinancialAnalysisRead(service, rows, commitments.map { it.sourceTransactionId }.toSet(), retry, incompleteDays,
+                commitments.mapNotNull { it.recurrence?.name?.let { recurrence -> it.sourceTransactionId to recurrence } }.toMap())
         } }
 }

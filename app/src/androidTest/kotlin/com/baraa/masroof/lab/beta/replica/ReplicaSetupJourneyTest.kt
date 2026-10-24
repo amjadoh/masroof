@@ -121,6 +121,7 @@ class ReplicaSetupJourneyTest {
                 text(R.string.lab_analysis_insufficient))).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_need_data)).assertIsDisplayed()
             back()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
             compose.onNodeWithText(text(R.string.lab_analysis_insufficient)).assertIsDisplayed()
             screenshot("03c-analysis-opened-from-home")
@@ -231,7 +232,13 @@ class ReplicaSetupJourneyTest {
             // A learned human template can propose a family, but zero principal
             // still cannot pass the independent financial validation gate.
             val blockedReviewId = runBlocking {
+                // The preceding unresolved review invalidates feedback asynchronously.
+                // Rebuild before testing an established human-template suggestion.
+                requireNotNull(container.labInterpretationService).synchronizeFeedback()
                 container.processRawSmsUseCase.ingest(raw("ui-model-blocked",body.replace("SAR 23","SAR 0.00")))
+                requireNotNull(container.labInterpretationService).synchronizeFeedback()
+                assertEquals(com.baraa.masroof.application.interpretation.InterpretationOrigin.HUMAN_TEMPLATE,
+                    container.interpretationProvenanceWorkflow.load("ui-model-blocked").origin)
                 requireNotNull(container.reviewRepository.findByRawSmsId("ui-model-blocked")).id
             }
             compose.runOnUiThread { review.refresh() }
