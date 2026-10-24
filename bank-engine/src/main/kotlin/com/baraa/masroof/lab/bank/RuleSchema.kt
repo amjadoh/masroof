@@ -11,6 +11,7 @@ data class BankRule(
     val excludes: List<String> = emptyList(),
     val direction: MoneyDirection = MoneyDirection.OUTGOING,
     val labels: Map<ExtractionField, List<String>> = emptyMap(),
+    // Retained in the data-class text used by persisted rule-version hashes.
     val operator: RuleOperator = RuleOperator.CONTAINS_TOKEN_PHRASE,
     val detailLabels: Map<String, List<String>> = emptyMap(),
     val observations: Map<String, List<String>> = emptyMap(),

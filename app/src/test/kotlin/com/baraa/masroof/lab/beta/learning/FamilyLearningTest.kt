@@ -27,18 +27,10 @@ class FamilyLearningTest {
         MessageFamily.entries.forEach {assertEquals(it,LabFamilyAssist.toBank(LabFamilyAssist.toModel(it)))}
     }
 
-    @Test fun incompatibleCleaningMetadataCannotLoadASeedOrCachedLabels() {
+    @Test fun incompatibleCleaningMetadataCannotLoadASeed() {
         val text=requireNotNull(FamilyModel::class.java.getResourceAsStream("/ml/family-seed.json")).bufferedReader().use {it.readText()}
         assertThrows(IllegalArgumentException::class.java) {FamilyModelCodec.seed(text.replace(FamilyInputCleaner.VERSION,"obsolete-cleaner"))}
-        val c=FamilyClassifier(seed.model)
-        val cache=FamilyModelCodec.cache(seed,c)
-        val root=kotlinx.serialization.json.Json.parseToJsonElement(cache) as kotlinx.serialization.json.JsonObject
-        val payload=(root.getValue("payload") as kotlinx.serialization.json.JsonObject).toMutableMap()
-        payload["cleaningVersion"]=kotlinx.serialization.json.JsonPrimitive("obsolete-cleaner")
-        val body=kotlinx.serialization.json.JsonObject(payload)
-        val obsolete=kotlinx.serialization.json.JsonObject(mapOf("payload" to body,
-            "checksum" to kotlinx.serialization.json.JsonPrimitive(FamilyInputCleaner.sha256(body.toString())))).toString()
-        assertThrows(IllegalArgumentException::class.java) {FamilyModelCodec.cachedLabels(obsolete,seed)}
+        assertThrows(IllegalArgumentException::class.java) {FamilyModelCodec.seed(text.replace(FamilyInputCleaner.FEATURES_VERSION,"obsolete-features"))}
     }
     @Test fun trainedModelActuallyAssistsAnUnseenTitleWithoutChangingExtractedMoney() {
         val body="حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000.00\nفي: 2026-10-06 09:00"
@@ -64,7 +56,7 @@ class FamilyLearningTest {
         val blocked="طلب حوالة محلية واردة\nبنك المرسل: بنك الرياض\nاودعت الى حساب: 3001\nمن: TEST_EMPLOYER\nمبلغ العملية: SAR 2000\nفي: 2026-10-06 09:00"
         assertNotEquals(ParseStatus.SUCCESS,parse(blocked,FamilyClassifier(seed.model)).status)
     }
-    @Test fun oneExplicitHumanFamilyCorrectionTeachesTheTemplateAndSurvivesSerialization() {
+    @Test fun oneExplicitHumanFamilyCorrectionTeachesTheTemplate() {
         val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
         val before=parse(body)
         assertEquals(MessageFamily.UNKNOWN,before.facts.family)
@@ -72,9 +64,7 @@ class FamilyLearningTest {
         val f=requireNotNull(LabFamilyAssist.clean(body).features)
         val label=HumanFamilyLabel(bank.value,"raw-one","human-one",SmsFamilyLabel.FINANCING_INSTALLMENT,f.template,f.terms,1L,"USER_EVENT_KIND")
         val classifier=FamilyModelCodec.checked(seed,listOf(label))
-        val serialized=FamilyModelCodec.cache(seed,classifier)
-        val reopened=FamilyModelCodec.checked(seed,FamilyModelCodec.cachedLabels(serialized,seed))
-        val after=parse(body.replace("SAR 20","SAR 21"),reopened)
+        val after=parse(body.replace("SAR 20","SAR 21"),classifier)
         assertEquals(after.toString(),ParseStatus.SUCCESS,after.status)
         assertEquals(MessageFamily.FINANCING_INSTALLMENT,after.facts.family)
         assertEquals(FamilyOrigin.HUMAN_TEMPLATE,after.familyInference!!.origin)
@@ -95,15 +85,13 @@ class FamilyLearningTest {
         assertThrows(IllegalArgumentException::class.java) {seed.model.copy(documents=seed.model.documents.mapValues {-1L})}
         val c=FamilyClassifier(seed.model)
         assertNull(c.suggest("OTHER_BANK",requireNotNull(LabFamilyAssist.clean("حوالة محلية واردة").features)))
-        val encoded=FamilyModelCodec.cache(seed,c)
-        assertThrows(IllegalArgumentException::class.java) {FamilyModelCodec.cachedLabels(encoded.replaceFirst("\"checksum\":\"", "\"checksum\":\"0"),seed)}
     }
-    @Test fun persistedBlocksSurviveCacheDecodeTogetherWithLabels() {
+    @Test fun rebuildingFromHumanDecisionsKeepsTemplateBlocks() {
         val features=requireNotNull(LabFamilyAssist.clean("سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20").features)
         val label=HumanFamilyLabel(bank.value,"raw-one","label",SmsFamilyLabel.FINANCING_INSTALLMENT,features.template,features.terms,1,"USER_MESSAGE_FAMILY")
         val block=HumanTemplateBlock(bank.value,"raw-two","edit",features.template,2)
         val classifier=FamilyModelCodec.checked(seed,listOf(label),listOf(block))
-        val reopened=FamilyModelCodec.cachedClassifier(FamilyModelCodec.cache(seed,classifier),seed)
+        val reopened=FamilyModelCodec.checked(seed,classifier.latestLabels,classifier.latestBlocks)
         assertEquals(classifier.version,reopened.version)
         assertEquals(listOf(block),reopened.latestBlocks)
         assertNull(reopened.suggest(bank.value,features))

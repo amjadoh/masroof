@@ -31,12 +31,10 @@ object MasroofReference {
     val rowGap = 11.dp
     val metadataGap = 3.dp
     val heroPadding = 20.dp
-    val heroGap = 9.dp
     val chartHeadGap = 15.dp
     val heroFooterValue = TextStyle(fontFamily = MasroofFontFamily, fontSize = 18.sp,
         lineHeight = 28.8.sp, fontWeight = MasroofFontWeights.semiBold, fontFeatureSettings = "tnum")
     val navigationHorizontal = 8.dp
-    val navigationVertical = 10.dp
     val navigationItemVertical = 9.dp
     val navigationTop = 12.dp
     val navigationBottom = 16.dp

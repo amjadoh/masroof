@@ -38,7 +38,7 @@ class LabInterpretationService(
     @Volatile private var closed = false
     private val stopSignal = CompletableDeferred<Unit>()
     private val seed = runCatching {store.loadSeed()}.getOrElse { log.warn("ML","Seed unavailable: ${it.javaClass.simpleName}");null }
-    // Cached weights are never authority before replaying durable human decisions.
+    // Rebuild assistance from durable human decisions before enabling it.
     @Volatile private var classifier: FamilyClassifier? = null
     @Volatile private var synchronizedDecisions: String? = null
     @Volatile private var pendingFeedback = false
@@ -228,7 +228,6 @@ class LabInterpretationService(
             row.copy(state = LearningFeedbackState.BLOCKED.name, reason = "CONFLICTING_TEMPLATE") else row }
         pendingFeedback = explained.any { it.state == LearningFeedbackState.PENDING.name }
         store.saveFeedback(labels,explained)
-        store.persist(seed,updated)
         // An edit during fitting invalidates the candidate; do not briefly publish stale personal assistance.
         if (closed) return@withLock null
         if(before != decisions()) { invalidateFeedback(); return@withLock null }

@@ -700,7 +700,7 @@ class TransactionReconciliationServiceTest {
     }
 
     @Test
-    fun reconcileAfterParsedEvent_healsStaleExternalPairOutsideReceivedWindow() = runBlocking {
+    fun reconcileAffectedRawSmsIds_healsStaleExternalPairOutsideReceivedWindow() = runBlocking {
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
         val occurredAt = LocalDateTime.parse("2026-08-01T12:00:00")
         val outAt = Instant.parse("2026-08-01T12:00:00Z")
@@ -720,8 +720,7 @@ class TransactionReconciliationServiceTest {
                 counterparty = "براء بخش",
             ),
         )
-        val outgoing = parsedRepo.findByRawSmsId("sms-out-stale")!!.event
-        reconciliation.reconcileAfterParsedEvent(outgoing)
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-out-stale"))
         assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, ftRepo.listAll().single().type)
 
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3003"))
@@ -739,8 +738,7 @@ class TransactionReconciliationServiceTest {
                 network = BankNetworkType.INTRA_BANK,
             ),
         )
-        val incoming = parsedRepo.findByRawSmsId("sms-in-stale")!!.event
-        reconciliation.reconcileAfterParsedEvent(incoming)
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-in-stale"))
 
         assertEquals(1, ftRepo.listAll().size)
         val tx = ftRepo.listAll().single()
@@ -766,7 +764,7 @@ class TransactionReconciliationServiceTest {
                 network = BankNetworkType.INTER_BANK,
             ),
         )
-        reconciliation.reconcileAfterParsedEvent(parsedRepo.findByRawSmsId("sms-ref-out")!!.event)
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-ref-out"))
         assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, ftRepo.listAll().single().type)
 
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3003"))
@@ -784,7 +782,7 @@ class TransactionReconciliationServiceTest {
                 network = BankNetworkType.INTER_BANK,
             ),
         )
-        reconciliation.reconcileAfterParsedEvent(parsedRepo.findByRawSmsId("sms-ref-in")!!.event)
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-ref-in"))
 
         assertEquals(1, ftRepo.listAll().size)
         val healed = ftRepo.listAll().single()
@@ -849,7 +847,7 @@ class TransactionReconciliationServiceTest {
     }
 
     @Test
-    fun reconcileAfterParsedEvent_pairsSelfTransferWithinWindow() = runBlocking {
+    fun reconcileAffectedRawSmsIds_pairsSelfTransferWithinWindow() = runBlocking {
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3003"))
         persistEvent(
@@ -877,8 +875,7 @@ class TransactionReconciliationServiceTest {
                 network = BankNetworkType.INTRA_BANK,
             ),
         )
-        val incoming = parsedRepo.findByRawSmsId("sms-in-inc")!!.event
-        reconciliation.reconcileAfterParsedEvent(incoming)
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-in-inc"))
         assertEquals(1, ftRepo.listAll().size)
         val tx = ftRepo.listAll().single()
         assertEquals(FinancialTransactionType.SELF_TRANSFER, tx.type)
@@ -1242,7 +1239,7 @@ class TransactionReconciliationServiceTest {
             confirmation.confirmCardOwned(CardReference(Bank.BANK_ALJAZIRA, "7271"))
             for ((event, details, at) in batch) {
                 persistEvent(smsId = event.rawSmsId, event = event, details = details, at = at)
-                if (incremental) reconciliation.reconcileAfterParsedEvent(event)
+                if (incremental) reconciliation.reconcileAffectedRawSmsIds(listOf(event.rawSmsId))
             }
             if (incremental) {
                 reconciliation.reconcileStoredEvents()
@@ -2041,7 +2038,7 @@ class TransactionReconciliationServiceTest {
     }
 
     @Test
-    fun stalePairHeal_keepsUnknownBankZoneWhenDeviceDefaultDiffers() = runBlocking {
+    fun fullReconcile_healsStalePairKeepingUnknownBankZoneWhenDeviceDefaultDiffers() = runBlocking {
         val previous = java.util.TimeZone.getDefault()
         java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/New_York"))
         try {
@@ -2066,8 +2063,7 @@ class TransactionReconciliationServiceTest {
                     network = BankNetworkType.INTRA_BANK,
                 ),
             )
-            val outgoing = parsedRepo.findByRawSmsId("sms-out-zone-heal")!!.event
-            serviceIn(tokyo).reconcileAfterParsedEvent(outgoing)
+            serviceIn(tokyo).reconcileAffectedRawSmsIds(listOf("sms-out-zone-heal"))
             assertEquals("Asia/Tokyo", ftRepo.listAll().single().occurredAtZone)
 
             confirmation.confirmAccountOwned(AccountReference(other, "3003"))
@@ -2086,8 +2082,8 @@ class TransactionReconciliationServiceTest {
                     network = BankNetworkType.INTRA_BANK,
                 ),
             )
-            val incoming = parsedRepo.findByRawSmsId("sms-in-zone-heal")!!.event
-            serviceIn(java.time.ZoneId.of("America/New_York")).reconcileAfterParsedEvent(incoming)
+            // Full maintenance revisits posted legs outside the new message's device-zone window.
+            serviceIn(java.time.ZoneId.of("America/New_York")).reconcileStoredEventsDetailed()
 
             val healed = ftRepo.listAll().single()
             assertEquals(FinancialTransactionType.SELF_TRANSFER, healed.type)
@@ -2124,8 +2120,7 @@ class TransactionReconciliationServiceTest {
                     network = BankNetworkType.INTRA_BANK,
                 ),
             )
-            val outgoing = parsedRepo.findByRawSmsId("sms-out-mixed-zone")!!.event
-            serviceIn(tokyo).reconcileAfterParsedEvent(outgoing)
+            serviceIn(tokyo).reconcileAffectedRawSmsIds(listOf("sms-out-mixed-zone"))
             val posted = ftRepo.listAll().single()
             assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, posted.type)
             assertEquals("Asia/Tokyo", posted.occurredAtZone)
@@ -2147,8 +2142,7 @@ class TransactionReconciliationServiceTest {
                     network = BankNetworkType.INTRA_BANK,
                 ),
             )
-            val incoming = parsedRepo.findByRawSmsId("sms-in-mixed-zone")!!.event
-            serviceIn(java.time.ZoneId.of("America/New_York")).reconcileAfterParsedEvent(incoming)
+            serviceIn(java.time.ZoneId.of("America/New_York")).reconcileAffectedRawSmsIds(listOf("sms-in-mixed-zone"))
 
             val healed = ftRepo.listAll().single()
             assertEquals(FinancialTransactionType.SELF_TRANSFER, healed.type)
