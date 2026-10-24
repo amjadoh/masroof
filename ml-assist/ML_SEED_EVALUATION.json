@@ -1,5 +1,9 @@
 {
-  "cleaningVersion": "sms-family-clean-v1",
+  "cleaningAudit": {
+    "rejectedByFamily": {},
+    "rejectedByReason": {}
+  },
+  "cleaningVersion": "sms-family-clean-v2",
   "enabledFamilies": [],
   "featuresVersion": "bank-family-title-v2",
   "heldOutCases": [
@@ -8,52 +12,70 @@
       "assemblyAccepted": false,
       "candidateOutcomes": {
         "BILL_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "CARD_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "FEE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "FINANCING_INSTALLMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "PURCHASE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "REFUND": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "TRANSFER_IN": {
-          "assembly": "PendingMatch",
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
           "validationAccepted": true
         },
         "TRANSFER_OUT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         },
         "WITHDRAWAL": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "6.51",
+          "assembly": "Assembled",
+          "financialType": "REFUND",
+          "validationAccepted": true
         }
       },
-      "coverage": 0.851063829787234,
-      "expected": "TRANSFER_IN",
+      "coverage": 0.8846153846153846,
+      "expected": "REFUND",
       "expectedPassesValidation": true,
-      "family": "TRANSFER_IN",
-      "id": "runtime_local_incoming_valid",
-      "margin": 0.9999660911648512,
+      "family": "CARD_PAYMENT",
+      "id": "refund_ar_cc_hamza_001",
+      "margin": 0.9999999999611956,
       "partition": "validation",
-      "runtimeEligible": true,
-      "score": 0.9999830454702694,
-      "template": "26ac99e693b3ff17efff4ba1953624941401299569af550d3754115c82e2f9e1",
+      "runtimeEligible": false,
+      "score": 0.9999999999805977,
+      "template": "0ee37ca124cc8c1b801744a687105325f923c1458f77bb445356b912ba5647ed",
       "validationAccepted": false
     },
     {
@@ -97,16 +119,16 @@
           "validationAccepted": false
         }
       },
-      "coverage": 0.8584905660377359,
-      "expected": "OTP",
+      "coverage": 0.6557377049180327,
+      "expected": "NON_FINANCIAL",
       "expectedPassesValidation": false,
-      "family": "PURCHASE",
-      "id": "collision_otp_online_purchase_ar_001",
-      "margin": 0.9999925340485472,
+      "family": "TRANSFER_IN",
+      "id": "runtime_pending_transfer",
+      "margin": 0.9999660911648512,
       "partition": "validation",
-      "runtimeEligible": false,
-      "score": 0.9999962669297752,
-      "template": "4b51fa46ab1abddc2cdcece77c8fe79f5d857d344d8398e4ab358d3c1fe9fcee",
+      "runtimeEligible": true,
+      "score": 0.9999830454702694,
+      "template": "1c0ac32c9cf984ce69f349d7c291e72c4c7847237d0136ae5f64c6945f698304",
       "validationAccepted": false
     },
     {
@@ -177,113 +199,7 @@
       "partition": "validation",
       "runtimeEligible": false,
       "score": 0.9999993605786218,
-      "template": "55cf377c8aa36728ac1e8de8d0cc4cee474c40b3a61df6cba63ff47ff601c683",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "CARD_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FEE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "PURCHASE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "REFUND": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_IN": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_OUT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "WITHDRAWAL": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        }
-      },
-      "coverage": 0.6557377049180327,
-      "expected": "NON_FINANCIAL",
-      "expectedPassesValidation": false,
-      "family": "TRANSFER_IN",
-      "id": "runtime_pending_transfer",
-      "margin": 0.9999660911648512,
-      "partition": "validation",
-      "runtimeEligible": true,
-      "score": 0.9999830454702694,
-      "template": "677b890f2831257b2180d401aeedf506b48f942f220a144db7f7e227b990ffcd",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "CARD_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FEE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "PURCHASE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "REFUND": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_IN": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_OUT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "WITHDRAWAL": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        }
-      },
-      "coverage": 0.92,
-      "expected": "TRANSFER_IN",
-      "expectedPassesValidation": true,
-      "family": "TRANSFER_IN",
-      "id": "case2_internal_incoming_transfer",
-      "margin": 0.6111158103879124,
-      "partition": "validation",
-      "runtimeEligible": false,
-      "score": 0.8055579019680946,
-      "template": "756486a9aee7c457c44ae27f35621b3ace91196346d6b8910edbbfe7e9fa06f4",
+      "template": "22f227e58484d0996e99fa1096f62e2cfc5ddd5fdd79166b8612d0aaeac16827",
       "validationAccepted": false
     },
     {
@@ -354,7 +270,7 @@
       "partition": "validation",
       "runtimeEligible": false,
       "score": 1.0,
-      "template": "7a797749066cef658006582a252aa0c891ba53fdb175307211fa78dfd1a85803",
+      "template": "2d64f9991202cbbf5059060b968843c084da3074dbc44976252216eeae823504",
       "validationAccepted": false
     },
     {
@@ -362,70 +278,158 @@
       "assemblyAccepted": false,
       "candidateOutcomes": {
         "BILL_PAYMENT": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "CARD_PAYMENT": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "FEE": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "FINANCING_INSTALLMENT": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "PURCHASE": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "REFUND": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "TRANSFER_IN": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "TRANSFER_OUT": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "WITHDRAWAL": {
-          "amount": "6.51",
-          "assembly": "Assembled",
-          "financialType": "REFUND",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         }
       },
-      "coverage": 0.8846153846153846,
-      "expected": "REFUND",
+      "coverage": 0.92,
+      "expected": "TRANSFER_IN",
       "expectedPassesValidation": true,
-      "family": "CARD_PAYMENT",
-      "id": "refund_ar_cc_hamza_001",
-      "margin": 0.9999999999611956,
+      "family": "TRANSFER_IN",
+      "id": "case2_internal_incoming_transfer",
+      "margin": 0.6111158103879124,
       "partition": "validation",
       "runtimeEligible": false,
-      "score": 0.9999999999805977,
-      "template": "a73957f46c789fff0ab3810f233dab3ee7cf9307d448a478ae071efc1a7529b2",
+      "score": 0.8055579019680946,
+      "template": "9acf2cc1fcf03655cb02f1a0ea88c3474cd5d65057b93c6245fa68e7e84cef45",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "CARD_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FEE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "PURCHASE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "REFUND": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_IN": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_OUT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "WITHDRAWAL": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        }
+      },
+      "coverage": 0.8584905660377359,
+      "expected": "OTP",
+      "expectedPassesValidation": false,
+      "family": "PURCHASE",
+      "id": "collision_otp_online_purchase_ar_001",
+      "margin": 0.9999925340485472,
+      "partition": "validation",
+      "runtimeEligible": false,
+      "score": 0.9999962669297752,
+      "template": "af35b3be33cacd6fd3d6349c277fe3e31340ba9c57d25a7e5740a0f73c9a979c",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "CARD_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FEE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "PURCHASE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "REFUND": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_IN": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "TRANSFER_OUT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "WITHDRAWAL": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        }
+      },
+      "coverage": 0.851063829787234,
+      "expected": "TRANSFER_IN",
+      "expectedPassesValidation": true,
+      "family": "TRANSFER_IN",
+      "id": "runtime_local_incoming_valid",
+      "margin": 0.9999660911648512,
+      "partition": "validation",
+      "runtimeEligible": true,
+      "score": 0.9999830454702694,
+      "template": "af78b39fa743bb2986be8ebc7361932f07d60d2cba7e21f4a6a8a54dd882d90f",
       "validationAccepted": false
     },
     {
@@ -478,7 +482,7 @@
       "partition": "validation",
       "runtimeEligible": false,
       "score": 0.9999993870353785,
-      "template": "b348fc9f3aa775d059fa35b134f5dd1132e4b6c6a5fc6c6b16410a585ef7e20d",
+      "template": "c69971834d4ff52638bfc559de29af2f52a560867be31dbeae27a393a1b2407b",
       "validationAccepted": false
     },
     {
@@ -486,70 +490,211 @@
       "assemblyAccepted": false,
       "candidateOutcomes": {
         "BILL_PAYMENT": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "CARD_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FEE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "PURCHASE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "REFUND": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_IN": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_OUT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "WITHDRAWAL": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        }
+      },
+      "coverage": 1.0,
+      "expected": "OTP",
+      "expectedPassesValidation": false,
+      "family": "OTP",
+      "id": "runtime_otp_quotes_transfer",
+      "margin": 0.9999939392207292,
+      "partition": "test",
+      "runtimeEligible": false,
+      "score": 0.9999948192667836,
+      "template": "14d3f6e14650e6f0e4444bd1a66f865fb1142fb2bf7f0a954be3a842a426a304",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "CARD_PAYMENT": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "FEE": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "FINANCING_INSTALLMENT": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "PURCHASE": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "REFUND": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "TRANSFER_IN": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "TRANSFER_OUT": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         },
         "WITHDRAWAL": {
-          "amount": "89.50",
-          "assembly": "Assembled",
-          "financialType": "EXPENSE",
+          "assembly": "PendingMatch",
           "validationAccepted": true
         }
       },
-      "coverage": 0.6333333333333333,
-      "expected": "PURCHASE",
+      "coverage": 0.6818181818181818,
+      "expected": "TRANSFER_IN",
       "expectedPassesValidation": true,
-      "family": "PURCHASE",
-      "id": "purchase_pos_en_001",
-      "margin": 0.9999980972210156,
+      "family": "TRANSFER_IN",
+      "id": "case9_salary",
+      "margin": 0.9999092875500901,
       "partition": "test",
       "runtimeEligible": false,
-      "score": 0.9999983618732151,
-      "template": "0ab48ac9feeaf6811a5de09d14dfaf299023395fa859841f6d56e82b1ca0ed5f",
+      "score": 0.9999546381152506,
+      "template": "298db20af6137ff6914ceb9ddfe7f039df41a584fac7eb638a18ca125f8f4405",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "CARD_PAYMENT": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "FEE": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "PURCHASE": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "REFUND": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "TRANSFER_IN": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "TRANSFER_OUT": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        },
+        "WITHDRAWAL": {
+          "assembly": "PendingMatch",
+          "validationAccepted": true
+        }
+      },
+      "coverage": 1.0,
+      "expected": "TRANSFER_OUT",
+      "expectedPassesValidation": true,
+      "family": "TRANSFER_OUT",
+      "id": "collision_intra_generic_labels_ar_002",
+      "margin": 1.0,
+      "partition": "test",
+      "runtimeEligible": false,
+      "score": 1.0,
+      "template": "4519a275dd1421322839bb4c052777c5d9129d37439447c5d1f323100f41b30b",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "CARD_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FEE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "PURCHASE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "REFUND": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_IN": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_OUT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "WITHDRAWAL": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        }
+      },
+      "coverage": 0.36936936936936937,
+      "expected": "OTP",
+      "expectedPassesValidation": false,
+      "family": "PURCHASE",
+      "id": "collision_otp_online_purchase_en_001",
+      "margin": 0.9999999998901052,
+      "partition": "test",
+      "runtimeEligible": false,
+      "score": 0.9999999999114346,
+      "template": "70f87d77f515eb016afe94f7567513dd81a62e0cb730ee82f1567fee7c115e15",
       "validationAccepted": false
     },
     {
@@ -602,7 +747,60 @@
       "partition": "test",
       "runtimeEligible": true,
       "score": 0.9999830454702694,
-      "template": "1322d0622544633cefb65491597a194f5d84c263d18c16bfecc637ec3f9d2491",
+      "template": "940ac8e48713a76b20e6db0ebef48faecbfd01fa1203b2e1ed69332257239d46",
+      "validationAccepted": false
+    },
+    {
+      "accepted": false,
+      "assemblyAccepted": false,
+      "candidateOutcomes": {
+        "BILL_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "CARD_PAYMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FEE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "FINANCING_INSTALLMENT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "PURCHASE": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "REFUND": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_IN": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "TRANSFER_OUT": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        },
+        "WITHDRAWAL": {
+          "assembly": "NOT_ELIGIBLE",
+          "validationAccepted": false
+        }
+      },
+      "coverage": 0.8850574712643678,
+      "expected": "NON_FINANCIAL",
+      "expectedPassesValidation": false,
+      "family": "CARD_PAYMENT",
+      "id": "collision_statement_amount_ar_001",
+      "margin": 0.9999868553216127,
+      "partition": "test",
+      "runtimeEligible": false,
+      "score": 0.9999934276608047,
+      "template": "a83c8754ead1c09b78153034a72af75b6bf841bdb62d575d6de6ab0c83e291ad",
       "validationAccepted": false
     },
     {
@@ -673,7 +871,7 @@
       "partition": "test",
       "runtimeEligible": false,
       "score": 0.9999997382146818,
-      "template": "50f634225ffe9eb4a12e211aa7979a98f8ad9b4881444d71b454444f0d774cb0",
+      "template": "bf4bf360f9a984d87946260c1e171d6ac9a1305eb4704f67a10721601f2f1eab",
       "validationAccepted": false
     },
     {
@@ -728,7 +926,7 @@
       "partition": "test",
       "runtimeEligible": true,
       "score": 0.8237517382375791,
-      "template": "734d694239710be3e405196b79d6d210fde30cb42309af2942f613e781e0b3a1",
+      "template": "c4be840cf02a71b10ef00c4f0ccb987a3e805bdb7e1a586c9f8777ddc12e46e1",
       "validationAccepted": false
     },
     {
@@ -736,264 +934,70 @@
       "assemblyAccepted": false,
       "candidateOutcomes": {
         "BILL_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "CARD_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "FEE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "FINANCING_INSTALLMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "PURCHASE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "REFUND": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "TRANSFER_IN": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "TRANSFER_OUT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         },
         "WITHDRAWAL": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
+          "amount": "89.50",
+          "assembly": "Assembled",
+          "financialType": "EXPENSE",
+          "validationAccepted": true
         }
       },
-      "coverage": 0.36936936936936937,
-      "expected": "OTP",
-      "expectedPassesValidation": false,
+      "coverage": 0.6333333333333333,
+      "expected": "PURCHASE",
+      "expectedPassesValidation": true,
       "family": "PURCHASE",
-      "id": "collision_otp_online_purchase_en_001",
-      "margin": 0.9999999998901052,
+      "id": "purchase_pos_en_001",
+      "margin": 0.9999980972210156,
       "partition": "test",
       "runtimeEligible": false,
-      "score": 0.9999999999114346,
-      "template": "8008aa3e9604f76d32b8ad5a0cd72c300625b432556c2c231c09ce181e05eb20",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "CARD_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FEE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "PURCHASE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "REFUND": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_IN": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_OUT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "WITHDRAWAL": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        }
-      },
-      "coverage": 0.8850574712643678,
-      "expected": "NON_FINANCIAL",
-      "expectedPassesValidation": false,
-      "family": "CARD_PAYMENT",
-      "id": "collision_statement_amount_ar_001",
-      "margin": 0.9999868553216127,
-      "partition": "test",
-      "runtimeEligible": false,
-      "score": 0.9999934276608047,
-      "template": "8c86b48bf26adcaa9f44b51bf367947262bdf32eac0dd1fd0696be084bcd9122",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "CARD_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FEE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "PURCHASE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "REFUND": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_IN": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_OUT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "WITHDRAWAL": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        }
-      },
-      "coverage": 1.0,
-      "expected": "TRANSFER_OUT",
-      "expectedPassesValidation": true,
-      "family": "TRANSFER_OUT",
-      "id": "collision_intra_generic_labels_ar_002",
-      "margin": 1.0,
-      "partition": "test",
-      "runtimeEligible": false,
-      "score": 1.0,
-      "template": "ad28505f3723a51ae509828ae5edd321cae1e3e9900d769a0f4174a5a696c692",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "CARD_PAYMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FEE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "PURCHASE": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "REFUND": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_IN": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "TRANSFER_OUT": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        },
-        "WITHDRAWAL": {
-          "assembly": "NOT_ELIGIBLE",
-          "validationAccepted": false
-        }
-      },
-      "coverage": 1.0,
-      "expected": "OTP",
-      "expectedPassesValidation": false,
-      "family": "OTP",
-      "id": "runtime_otp_quotes_transfer",
-      "margin": 0.9999939392207292,
-      "partition": "test",
-      "runtimeEligible": false,
-      "score": 0.9999948192667836,
-      "template": "d2c4ee81ae137087bde0d00dab31b1aa16b0a41781ed5dc32b7a8a669a32fc36",
-      "validationAccepted": false
-    },
-    {
-      "accepted": false,
-      "assemblyAccepted": false,
-      "candidateOutcomes": {
-        "BILL_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "CARD_PAYMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FEE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "FINANCING_INSTALLMENT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "PURCHASE": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "REFUND": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_IN": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "TRANSFER_OUT": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        },
-        "WITHDRAWAL": {
-          "assembly": "PendingMatch",
-          "validationAccepted": true
-        }
-      },
-      "coverage": 0.6818181818181818,
-      "expected": "TRANSFER_IN",
-      "expectedPassesValidation": true,
-      "family": "TRANSFER_IN",
-      "id": "case9_salary",
-      "margin": 0.9999092875500901,
-      "partition": "test",
-      "runtimeEligible": false,
-      "score": 0.9999546381152506,
-      "template": "d4a99ea250776683abe860d04929498362618cb0a8157d5e8afdaf38361c03d5",
+      "score": 0.9999983618732151,
+      "template": "db205f83cdfe22c4665ee797ebb6c3674ab614448f0bb4bd70b6f14345a5a6e8",
       "validationAccepted": false
     }
   ],
@@ -1012,7 +1016,7 @@
     "conflicts": [],
     "rejected": [],
     "sourceRows": 55,
-    "sourceSha256": "322987fbbb24269fc511fee84cdeeaa771730913906322e124b821276beead5f",
+    "sourceSha256": "a81a2aa96240b51bd88c24c7815282afc79a377fa6a5344434930d93e1f13a4b",
     "splitVersion": "family-runtime-holdout-v2",
     "testGroups": 9,
     "trainGroups": 22,
@@ -1043,5 +1047,5 @@
     "uniqueTemplates": 39,
     "validationGroups": 8
   },
-  "version": "family-nb-v2-e282d4e1d86a37ba"
+  "version": "family-nb-v2-fb0d46f6a66be8ca"
 }

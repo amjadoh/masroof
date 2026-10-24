@@ -143,6 +143,9 @@ def train(exported, frozen):
                                      assemblyAccepted=r['runtimeEligible'] and accepts(r, enabled) and r['candidateOutcomes'].get(r['family'], {}).get('assembly') == 'Assembled') for r in evaluated],
                   note='Frozen template-disjoint holdout. Test never selects model settings. '
                        'Small initial corpus; NB scores are not calibrated probabilities. No universal accuracy claim.')
+    report['cleaningAudit'] = dict(
+        rejectedByReason=dict(collections.Counter(r['reason'] for r in exported['rejected'])),
+        rejectedByFamily=dict(collections.Counter(r.get('family', 'UNKNOWN') for r in exported['rejected'])))
     report['runtimeEvaluation'] = dict(
         validationEligible=sum(r['runtimeEligible'] for r in validation),
         testEligible=sum(r['runtimeEligible'] for r in evaluated if r['partition'] == 'test'),
