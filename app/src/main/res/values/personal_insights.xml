@@ -9,4 +9,12 @@
     <string name="personal_forecast_qualification">تجربة النموذج الشخصي تحتاج ١٢٠ يومًا متصلًا مغطى و٤ فترات راتب مكتملة و٢٠ يوم مشتريات. ثم يجب أن يجتاز اختبارات مستقلة ويتفوق على التقدير الأولي؛ اكتمال المدة وحده لا يفعّله.</string>
     <string name="personal_forecast_errors">خطأ التوقع حسب المدة</string>
     <string name="personal_forecast_error_row">توقع %1$d أيام: متوسط خطأ %2$s عبر %3$d اختبارات.</string>
+    <string name="personal_spending_attention">يستحق انتباهك</string>
+    <string name="personal_spending_hint">ملاحظات إحصائية من سجلك، مع بقاء المبالغ الفعلية كما هي. ارتفاع دفعة لا يعني وجود خطأ فيها.</string>
+    <string name="personal_spending_unusual">دفعتك لدى «%1$s» أعلى من المعتاد لديك.</string>
+    <string name="personal_spending_comparison">هذه الدفعة: %1$s · وسيط دفعاتك السابقة: %2$s</string>
+    <string name="personal_spending_reference">مقارنة بـ%1$d دفعات سابقة ضمن نفس مصدر الدفع، من %2$s إلى %3$s.</string>
+    <string name="personal_spending_evidence">عرض الدفعات وسبب الملاحظة</string>
+    <string name="personal_spending_payment">الدفعة الحالية</string>
+    <string name="personal_spending_previous">الدفعات المرجعية السابقة</string>
 </resources>

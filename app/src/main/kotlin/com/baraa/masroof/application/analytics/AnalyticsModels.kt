@@ -42,7 +42,8 @@ data class AnalysisUiState(val snapshot: AnalysisSnapshot? = null, val updating:
     val forecastPerformance: ForecastPerformance = ForecastPerformance(),
     val forecastComparisons: List<com.baraa.masroof.data.analytics.ForecastComparisonRow> = emptyList(),
     val learning: com.baraa.masroof.application.interpretation.LearningInsights? = null,
-    val recurringCorrections: List<AnalysisRecurringCorrection> = emptyList())
+    val recurringCorrections: List<AnalysisRecurringCorrection> = emptyList(),
+    val observations: List<SpendingObservation> = emptyList())
 
 data class AnalysisChartPoint(val day: Long, val amount: java.math.BigDecimal, val expected: Boolean)
 fun analysisAmount(cents: Long) = com.baraa.masroof.application.dashboard.SignedMoneyAmount(

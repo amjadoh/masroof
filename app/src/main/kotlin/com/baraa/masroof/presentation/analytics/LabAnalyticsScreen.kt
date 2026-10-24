@@ -162,7 +162,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     }
     if (settings) { Preferences(workflow, state, onBack = { if (settingsEntry) onBack() else settings = false }); return }
     evidenceKey?.let { selected ->
-        key(selected) { AnalysisTransactionsScreen(state.snapshot, selected, workflow, { evidenceKey = null }, onOpenTransaction) }
+        key(selected) { AnalysisTransactionsScreen(state.snapshot, selected, workflow, { evidenceKey = null }, onOpenTransaction,
+            state = state) }
         return
     }
     if (detail != null) {
@@ -305,6 +306,21 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             AnalysisSpendingExplanation(s, onOpenGroup)
+            if (!state.updating && !state.unavailable && state.observations.isNotEmpty()) MasroofCard {
+                MasroofSectionHeader(stringResource(R.string.personal_spending_attention))
+                Text(stringResource(R.string.personal_spending_hint), style = MaterialTheme.typography.bodySmall)
+                state.observations.forEach { observation ->
+                    Text(stringResource(R.string.personal_spending_unusual, observation.merchant), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.personal_spending_comparison, visualMoney(observation.amount), visualMoney(observation.reference)),
+                        style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.personal_spending_reference, observation.referenceIds.size, day(observation.from), day(observation.through)),
+                        style = MaterialTheme.typography.bodySmall)
+                    MasroofTextButton(onClick = { onOpenGroup("observation:${observation.id}") },
+                        modifier = Modifier.testTag("spending-observation-${observation.id}")) {
+                        Text(stringResource(R.string.personal_spending_evidence))
+                    }
+                }
+            }
             AnalysisMerchantCard(s, onOpenGroup, onViewAll = onMerchants)
             AnalysisChangeCard(s, onOpenGroup)
         }

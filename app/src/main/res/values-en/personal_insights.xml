@@ -9,4 +9,12 @@
     <string name="personal_forecast_qualification">Trying the personal model requires 120 consecutive covered days, 4 complete salary periods and 20 purchase days. It must then pass independent checks and beat the initial estimate; history alone does not activate it.</string>
     <string name="personal_forecast_errors">Forecast error by horizon</string>
     <string name="personal_forecast_error_row">%1$d-day forecast: average error %2$s across %3$d checks.</string>
+    <string name="personal_spending_attention">Worth a look</string>
+    <string name="personal_spending_hint">Statistical observations from your history; actual amounts stay unchanged. A larger payment does not mean it is incorrect.</string>
+    <string name="personal_spending_unusual">Your payment to “%1$s” is higher than usual for you.</string>
+    <string name="personal_spending_comparison">This payment: %1$s · Median of previous payments: %2$s</string>
+    <string name="personal_spending_reference">Compared with %1$d previous payments from the same payment source, from %2$s to %3$s.</string>
+    <string name="personal_spending_evidence">View payments and explanation</string>
+    <string name="personal_spending_payment">Current payment</string>
+    <string name="personal_spending_previous">Previous reference payments</string>
 </resources>
