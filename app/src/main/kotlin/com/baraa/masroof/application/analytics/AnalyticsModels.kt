@@ -9,7 +9,8 @@ import kotlinx.serialization.Serializable
 @Serializable data class AnalysisDue(val id: String, val name: String, val amount: Long, val day: Long?, val confirmed: Boolean)
 @Serializable data class AnalysisCandidate(val key: String, val name: String, val amount: Long, val lower: Long,
     val upper: Long, val nextDay: Long, val cadence: String, val sourceIds: List<String>, val latestDay: Long,
-    val latestAmount: Long, val referenceAmount: Long?, val increased: Boolean, val overdue: Boolean = false)
+    val latestAmount: Long, val referenceAmount: Long?, val increased: Boolean, val overdue: Boolean = false,
+    val seriesKey: String? = null, val origin: String = "RULES", val modelVersion: String? = null)
 @Serializable data class AnalysisCoverageDay(val day: Long, val covered: Boolean)
 @Serializable data class AnalysisQuality(val used: Int, val excluded: Map<String, List<String>>, val unusual: List<String>,
     val coveredDays: Int, val coverageKnown: Boolean, val pendingReviews: Int, val blocked: Boolean,
@@ -28,7 +29,11 @@ import kotlinx.serialization.Serializable
     val evaluations: List<AnalysisEvaluation> = emptyList(), val modelReason: String? = null,
     val evaluationVersion: String? = null, val wholeDaysFrom: Long? = null,
     val wholeDaysLower: Long? = null, val wholeDaysUpper: Long? = null,
-    val budgetLower: Long? = null)
+    val budgetLower: Long? = null, val recurringLearning: RecurringLearningStatus? = null)
+
+@Serializable data class RecurringLearningStatus(val method: String, val reason: String,
+    val trainingSeries: Int, val validationSeries: Int)
+data class AnalysisRecurringCorrection(val seriesKey: String, val name: String, val kind: String)
 data class AnalysisUiState(val snapshot: AnalysisSnapshot? = null, val updating: Boolean = true,
     val unavailable: Boolean = false, val alerts: List<AnalysisAlertRow> = emptyList(),
     val preferences: AnalysisPreferencesRow = AnalysisPreferencesRow(), val history: List<AnalysisSnapshot> = emptyList(),
@@ -36,7 +41,8 @@ data class AnalysisUiState(val snapshot: AnalysisSnapshot? = null, val updating:
     val purchasePeriods: List<AnalysisPeriod> = emptyList(),
     val forecastPerformance: ForecastPerformance = ForecastPerformance(),
     val forecastComparisons: List<com.baraa.masroof.data.analytics.ForecastComparisonRow> = emptyList(),
-    val learning: com.baraa.masroof.application.interpretation.LearningInsights? = null)
+    val learning: com.baraa.masroof.application.interpretation.LearningInsights? = null,
+    val recurringCorrections: List<AnalysisRecurringCorrection> = emptyList())
 
 data class AnalysisChartPoint(val day: Long, val amount: java.math.BigDecimal, val expected: Boolean)
 fun analysisAmount(cents: Long) = com.baraa.masroof.application.dashboard.SignedMoneyAmount(

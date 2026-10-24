@@ -10,7 +10,7 @@ data class FamilyEvaluation(val family: SmsFamilyLabel, val terms: Map<String, I
 
 /** Human decisions are the only runtime labels. Predictions never teach themselves. */
 class FamilyClassifier(seed: FamilyModel, labels: List<HumanFamilyLabel> = emptyList(),
-    blocks: List<HumanTemplateBlock> = emptyList()) {
+    blocks: List<HumanTemplateBlock> = emptyList(), statisticalTemplates: Set<String>? = null) {
     val seed = seed.copy(vocabulary = seed.vocabulary.toSet(), documents = seed.documents.toMap(),
         counts = seed.counts.mapValues { it.value.toMap() }, enabledFamilies = seed.enabledFamilies.toSet())
     val latestBlocks = blocks.filter { it.bankId == seed.bankId }.groupBy { it.rawId }.mapNotNull { (_, rows) ->
@@ -29,15 +29,18 @@ class FamilyClassifier(seed: FamilyModel, labels: List<HumanFamilyLabel> = empty
     // A conflicted template has no statistical authority either. One template is one example.
     private val trusted = groups.values.filter { rows -> rows.first().template !in blockedTemplates && rows.map { it.family }.distinct().size == 1 }
         .map { rows -> rows.maxWith(compareBy<HumanFamilyLabel> { it.at }.thenBy { it.decisionId }) }
+    internal val trustedLabels get() = trusted
+    private val statistical = trusted.filter { statisticalTemplates == null || it.template in statisticalTemplates }
     val version = if (latestLabels.isEmpty() && latestBlocks.isEmpty()) seed.version else seed.version + "-human-" + FamilyInputCleaner.sha256(
         latestLabels.joinToString("|") { "${it.rawId}:${it.decisionId}:${it.family}:${it.template}" } +
-            latestBlocks.joinToString("|") { "block:${it.rawId}:${it.decisionId}:${it.template}" }).take(16)
-    val model: FamilyModel = if (trusted.isEmpty()) this.seed.copy(version = version) else {
-        val vocabulary = (this.seed.vocabulary + trusted.flatMap { it.terms.keys }.distinct().sorted()
+            latestBlocks.joinToString("|") { "block:${it.rawId}:${it.decisionId}:${it.template}" } +
+            (statisticalTemplates?.sorted()?.joinToString(prefix = "|personal-v1:") ?: "")).take(16)
+    val model: FamilyModel = if (statistical.isEmpty()) this.seed.copy(version = version) else {
+        val vocabulary = (this.seed.vocabulary + statistical.flatMap { it.terms.keys }.distinct().sorted()
             .take((4096 - this.seed.vocabulary.size).coerceAtLeast(0))).toSet()
         val documents = this.seed.documents.toMutableMap()
         val counts = this.seed.counts.mapValues { it.value.toMutableMap() }.toMutableMap()
-        trusted.forEach { row ->
+        statistical.forEach { row ->
             documents[row.family] = (documents[row.family] ?: 0L) + 1
             val target = counts.getOrPut(row.family) { mutableMapOf() }
             row.terms.filterKeys { it in vocabulary }.forEach { (term, count) -> target[term] = (target[term] ?: 0L) + count }

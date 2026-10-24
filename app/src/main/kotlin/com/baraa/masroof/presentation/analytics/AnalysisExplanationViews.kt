@@ -60,6 +60,7 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofSpacing.sectionGap)) {
             MasroofGuidanceLabel(stringResource(R.string.analysis_personal_readiness), stringResource(R.string.lab_analysis_quality_history_reason), style = MaterialTheme.typography.titleMedium, contentColor = MaterialTheme.colorScheme.onSurface)
+            Text(stringResource(R.string.forecast_continuous_learning), style = MaterialTheme.typography.bodySmall)
             quality.consecutiveCompleteDays?.let { count -> com.baraa.masroof.ui.components.MasroofValueBarRow(
                 stringResource(R.string.analysis_personal_days), com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, count, 120)), fraction(count.toLong(), 120),
                 style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default) }
@@ -130,12 +131,24 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             if(learning.pending) Text(stringResource(R.string.learning_pending), style = MaterialTheme.typography.bodySmall)
             else if(learning.statisticalFamilies == 0) Text(stringResource(R.string.learning_statistical_paused), style = MaterialTheme.typography.bodySmall)
             else Text(stringResource(R.string.learning_statistical_active,learning.statisticalFamilies), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.learning_distinct_origins, learning.statisticalSuggestions, learning.templateSuggestions), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(if (learning.personalUsed) R.string.learning_personal_used else R.string.learning_personal_collecting), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.learning_personal_examples, learning.trainingTemplates, learning.validationTemplates), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(personalLearningReason(learning.personalReason)), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.learning_counts, learning.attempted, learning.suggested, learning.understood, learning.posted, learning.awaitingReview), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.learning_feedback_counts, learning.learned, learning.blocked, learning.excluded, learning.repeatedContradictions, learning.pendingDecisions), style = MaterialTheme.typography.bodySmall)
             learning.exclusions.forEach { (reason,count) -> Text(stringResource(R.string.learning_exclusion_count,
                 stringResource(com.baraa.masroof.presentation.interpretation.learningReasonResource(reason)),count), style = MaterialTheme.typography.bodySmall) }
         }
     }
+}
+
+internal fun personalLearningReason(reason: String): Int = when (reason) {
+    "SEED_NOT_ELIGIBLE" -> R.string.learning_seed_not_eligible
+    "SAFETY_VALIDATION_FAILED" -> R.string.learning_personal_safety
+    "BASELINE_BETTER" -> R.string.learning_baseline_better
+    "PERSONAL_MODEL" -> R.string.learning_personal_used_reason
+    else -> R.string.learning_needs_examples
 }
 
 @Composable internal fun ForecastPerformanceDetails(state: AnalysisUiState) {

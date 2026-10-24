@@ -108,6 +108,11 @@ android {
             // The feature-export test enrolls only explicitly reviewed corpus ids.
             it.inputs.file(rootProject.file("ml-assist/tools/corpus-splits.json"))
                 .withPathSensitivity(PathSensitivity.RELATIVE)
+            listOf("MASROOF_CORPUS_SPLITS", "MASROOF_REVIEWED_CORPUS", "MASROOF_FEATURE_EXPORT").forEach { name ->
+                it.inputs.property(name, providers.environmentVariable(name).orElse(""))
+            }
+            System.getenv("MASROOF_REVIEWED_CORPUS")?.let { path -> it.inputs.file(path) }
+            System.getenv("MASROOF_CORPUS_SPLITS")?.let { path -> it.inputs.file(path) }
             // Architecture/schema tests read source files, including relocated policies.
             it.inputs.files(
                 fileTree("src/main/kotlin") { include("**/*.kt") },

@@ -18,7 +18,7 @@ class FamilyFeatureExportTest {
     @Test fun exportVerifiedCorpusFeatures() {
         val canonical = File("src/test/resources/testdata/bank_aljazira")
         val reported = File("src/test/resources/testdata/engine/reported")
-        val approvedIds = Json.parseToJsonElement(File("../ml-assist/tools/corpus-splits.json").readText())
+        val approvedIds = Json.parseToJsonElement(File(System.getenv("MASROOF_CORPUS_SPLITS") ?: "../ml-assist/tools/corpus-splits.json").readText())
             .jsonObject.getValue("partitions").jsonObject.keys
         assertTrue("The reviewed training corpus must not be empty", approvedIds.isNotEmpty())
         val exportedIds = mutableSetOf<String>()
@@ -82,8 +82,14 @@ class FamilyFeatureExportTest {
             .getValue("cases").jsonArray.forEach { element -> val row = element.jsonObject
                 add(row.getValue("id").jsonPrimitive.content,row.getValue("body").jsonPrimitive.content,row.getValue("family").jsonPrimitive.content)
             }
+        System.getenv("MASROOF_REVIEWED_CORPUS")?.let { path ->
+            Json.parseToJsonElement(File(path).readText()).jsonObject.getValue("cases").jsonArray.forEach { element ->
+                val row = element.jsonObject
+                add(row.getValue("id").jsonPrimitive.content, row.getValue("body").jsonPrimitive.content, row.getValue("family").jsonPrimitive.content)
+            }
+        }
         val output = buildJsonObject { put("cleaningVersion",FamilyInputCleaner.VERSION);put("featuresVersion",FamilyInputCleaner.FEATURES_VERSION);put("bankId","BANK_ALJAZIRA");put("rows",JsonArray(rows.sortedBy {it.getValue("id").jsonPrimitive.content}));put("rejected",JsonArray(rejected)) }
-        File("build/model-training/features.json").apply {parentFile!!.mkdirs();writeText(output.toString())}
+        File(System.getenv("MASROOF_FEATURE_EXPORT") ?: "build/model-training/features.json").apply {parentFile!!.mkdirs();writeText(output.toString())}
         assertEquals("Every reviewed training fixture must still exist", approvedIds, exportedIds)
         assertEquals(approvedIds.size, rows.size + rejected.size)
     }

@@ -56,7 +56,7 @@ class AdvisoryLifecycleDeviceTest {
     @Test fun migrateAnalyticsAndRestoreKeepBothPublishedEstimatesImmutable() = runBlocking {
         val name="device-analysis-upgrade.db"
         createV1(name,AnalyticsDatabase::class.java.name) { it.execSQL("INSERT INTO analysis_preferences VALUES (1,9000,0,1,1,1,3,0,1,10,'100')") }
-        val database=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
+        val database=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name).addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3,AnalyticsDatabase.MIGRATION_3_4).build()
         try {
             val dao=database.analytics()
             assertEquals("100",dao.preferences()!!.gapDays)
@@ -77,13 +77,35 @@ class AdvisoryLifecycleDeviceTest {
             assertEquals(listOf(actual),dao.comparisons())
         } finally { database.close();context.deleteDatabase(name) }
     }
+    @Test fun analyticsV3UpgradeKeepsLegacyRejectionSeparateFromExplicitFeedback() = runBlocking {
+        val name = "analysis-v3-feedback-upgrade.db"
+        createV1(name, AnalyticsDatabase::class.java.name, version = 3) {
+            it.execSQL("INSERT INTO recurring_candidate VALUES ('legacy','REJECTED','{}')")
+        }
+        val database = Room.databaseBuilder(context, AnalyticsDatabase::class.java, name)
+            .addMigrations(AnalyticsDatabase.MIGRATION_3_4).build()
+        try {
+            val dao = database.analytics()
+            assertTrue(dao.feedback().isEmpty())
+            assertEquals("REJECTED", dao.candidates().single().status)
+            val payload = com.baraa.masroof.application.analytics.RecurringFeedbackPayload("series", listOf("a","b","c"), "NONE")
+            val row = RecurringFeedbackRow("series", "NOT_RECURRING",
+                AnalyticsJson.format.encodeToString(com.baraa.masroof.application.analytics.RecurringFeedbackPayload.serializer(), payload), 100)
+            dao.feedback(row)
+            val archive = AnalyticsArchiveStore.export(database)
+            AnalyticsArchiveStore.restore(database, null)
+            AnalyticsArchiveStore.restore(database, archive)
+            assertEquals(listOf(row), dao.feedback())
+        } finally { database.close(); context.deleteDatabase(name) }
+    }
+
     @Test fun analyticsV2UpgradeAndOldArchivePreserveTheOriginalComparisonOrigin() = runBlocking {
         val name="analysis-v2-upgrade.db"
         createV1(name,AnalyticsDatabase::class.java.name,version=2) { db ->
             db.execSQL("INSERT INTO analysis_forecast_comparison VALUES ('legacy',100,130,10,'${"a".repeat(64)}','model','published-day8-v1',200,300,250,'${"b".repeat(64)}',20)")
         }
         val database=Room.databaseBuilder(context,AnalyticsDatabase::class.java,name)
-            .addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3).build()
+            .addMigrations(AnalyticsDatabase.MIGRATION_1_2,AnalyticsDatabase.MIGRATION_2_3,AnalyticsDatabase.MIGRATION_3_4).build()
         try {
             val pair=database.analytics().comparisons().single()
             assertEquals(107L,pair.originDay)
@@ -91,7 +113,7 @@ class AdvisoryLifecycleDeviceTest {
             assertEquals(300L,pair.baselineTotal)
             assertEquals(250L,pair.actual)
             val exported=AnalyticsArchiveStore.export(database)
-            assertEquals(3,AnalyticsArchiveStore.validate(exported)!!.version)
+            assertEquals(4,AnalyticsArchiveStore.validate(exported)!!.version)
             val old=Json.parseToJsonElement(exported).jsonObject.toMutableMap().apply {
                 put("version",JsonPrimitive(2))
                 put("comparisons",JsonArray(listOf(JsonObject(Json.parseToJsonElement(exported).jsonObject

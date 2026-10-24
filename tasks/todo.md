@@ -1,4 +1,37 @@
-# Finance core extraction checklist
+# Continuous local learning checklist
+
+- [x] Family personalization and held-out templates.
+- [x] Recurring features, classifier, fitting and held-out series.
+- [x] Analytics migration/archive 4 and durable feedback.
+- [x] Workflow integration, qualified identities and feedback UI.
+- [x] Model participation/readiness explanations.
+- [x] Private data tools and reproducible seed evaluation.
+- [x] Focused tests, build, architecture/lint checks and documentation.
+- [x] Local device checks recorded; full PR CI remains required before merge.
+
+
+## Verification and remaining activation data
+
+- 46 ml-assist tests and 472 scoped app tests passed, including recurring feedback,
+  forecast/persistence and package boundaries; 10 Python training tests and 10
+  device-suite registry tests passed. Both seed reproducibility checks passed.
+- Debug and instrumentation APK builds, Android lint and app detekt passed.
+- API 36: four advisory lifecycle/migration/restore tests, recurring correction/undo
+  UI, forecast financial parity/draft/reopen UI and learning/settings/catalog UI passed.
+- Consented backup probe runs production analysis in separate storage and verifies
+  the financial ledger fingerprint is unchanged. Private data stays outside git/CI.
+- The supplied history covers 89 days/two complete salary periods; its six confirmed
+  recurring series split into four training/two held-out series. Of 73 unambiguous
+  reviewed message candidates, cleaning accepts 29 records/10 distinct templates.
+  These are insufficient for activation. Forecasts use WEEKDAY_MEDIAN (NEEDS_HISTORY),
+  recurrence uses RULES, and no statistical message family is enabled. Exact human
+  memory remains separate from statistical learning; no real-world accuracy is claimed.
+- Full PR/main CI, including upgrade/process-death/device suites, is required before
+  merge. Release CI is unchanged. No private input is committed or uploaded.
+
+---
+
+# Previous completed work: finance core extraction checklist
 
 - [x] Freeze financial compatibility examples and schema contract; run baseline tests.
 - [x] Move money, periods, time policy and identities; compile and test; commit.
