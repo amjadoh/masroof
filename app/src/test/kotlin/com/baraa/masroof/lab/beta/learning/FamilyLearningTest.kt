@@ -72,6 +72,20 @@ class FamilyLearningTest {
         val conflict=label.copy(rawId="raw-two",decisionId="human-two",family=SmsFamilyLabel.FEE)
         assertNull(FamilyClassifier(seed.model,listOf(label,conflict)).suggest(bank.value,f))
     }
+    @Test fun personalTemplateKeepsItsSourceWhenZeroPrincipalFailsFinancialValidation() {
+        val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
+        val features=requireNotNull(LabFamilyAssist.clean(body).features)
+        val label=HumanFamilyLabel(bank.value,"raw-one","human-one",SmsFamilyLabel.FINANCING_INSTALLMENT,features.template,features.terms,1L,"USER_EVENT_KIND")
+        val classifier=FamilyPersonalization.rebuild(seed.model,listOf(label),seed.evaluation).classifier
+        val invalid=body.replace("SAR 20","SAR 0.00")
+        val result=com.baraa.masroof.bank.InterpretationDraftMapper().map(input(invalid),parse(invalid,classifier),com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA)
+        assertTrue(result.toString(), result is com.baraa.masroof.parsing.model.ParseResult.ReviewRequired)
+        val event=requireNotNull((result as com.baraa.masroof.parsing.model.ParseResult.ReviewRequired).event)
+        val provenance=com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow.project(com.baraa.masroof.parsing.repository.ParsedEventRecord(event,result.details))
+        assertEquals(com.baraa.masroof.application.interpretation.InterpretationOrigin.HUMAN_TEMPLATE,provenance.origin)
+        assertTrue(provenance.pendingReview)
+    }
+
     @Test fun aLaterHumanIgnoreRevokesTheFinancialTemplateWithoutAutoIgnoringNewMessages() {
         val body="سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
         val f=requireNotNull(LabFamilyAssist.clean(body).features)
