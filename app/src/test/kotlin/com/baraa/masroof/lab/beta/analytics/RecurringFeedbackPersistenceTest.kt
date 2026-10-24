@@ -23,7 +23,7 @@ class RecurringFeedbackPersistenceTest {
         }
         val database = AnalyticsDatabase.open(context)
         try {
-            val payload = RecurringFeedbackPayload("series", listOf("a", "b", "c"), List(8) { 0.0 }, "NONE")
+            val payload = RecurringFeedbackPayload("series", listOf("a", "b", "c"), "NONE")
             val row = RecurringFeedbackRow("series", "NOT_RECURRING", AnalyticsJson.format.encodeToString(payload), 100)
             database.analytics().feedback(row)
             val archive = AnalyticsArchiveStore.export(database)

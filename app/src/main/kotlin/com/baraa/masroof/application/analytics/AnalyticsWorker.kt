@@ -109,10 +109,6 @@ object LabAnalyticsBackup {
             }
         }
         archive.models.forEach { row ->
-            if (row.id.startsWith("recurring:")) {
-                json.decodeFromString<StoredRecurringModel>(row.payload).model()
-                return@forEach
-            }
             if (row.id.startsWith("baseline:")) {
                 val b = json.decodeFromString(StoredBaseline.serializer(), row.payload)
                 require(b.kind == "WEEKDAY_MEDIAN" && b.medians.size == 7 && b.medians.all { it >= 0 } && b.from <= b.through)
@@ -132,7 +128,6 @@ object LabAnalyticsBackup {
             require(row.status in setOf("SUGGESTED", "ACCEPTED", "REJECTED"))
             if (c.seriesKey != null) {
                 require(c.seriesKey.matches(Regex("[0-9a-f]{64}")))
-                com.baraa.masroof.lab.analytics.RecurringLearning.requireFeatures(c.features)
             }
         }
         archive.feedback.forEach { row ->

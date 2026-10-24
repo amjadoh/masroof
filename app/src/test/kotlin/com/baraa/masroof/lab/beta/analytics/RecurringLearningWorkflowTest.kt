@@ -11,7 +11,7 @@ class RecurringLearningWorkflowTest {
     private val facts = (0..3).map { FinancialFact("payment-$it", it * 7L, 1000, false, true, "Service", true, "BANK:account:1234") }
     private fun feedback(kind: String, label: String?): RecurringFeedbackRow {
         val series = RecurringDetector.series(facts).single()
-        val payload = RecurringFeedbackPayload(series.key, series.rows.map { it.id }, series.features, label)
+        val payload = RecurringFeedbackPayload(series.key, series.rows.map { it.id }, label)
         return RecurringFeedbackRow(series.key, kind, AnalyticsJson.format.encodeToString(payload), 100)
     }
     @Test fun dismissalIsNotANegativeTrainingLabelButExplicitCorrectionIs() {

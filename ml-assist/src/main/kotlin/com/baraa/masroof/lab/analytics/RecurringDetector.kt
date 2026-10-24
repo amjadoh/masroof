@@ -7,7 +7,7 @@ import kotlin.math.roundToLong
 data class RecurringPattern(val key: String, val name: String, val cadence: String, val nextDay: Long,
     val estimate: Long, val lower: Long, val upper: Long, val sourceIds: List<String>,
     val latestAmount: Long, val referenceAmount: Long?, val amountIncreased: Boolean,
-    val seriesKey: String = "", val features: List<Double> = emptyList(), val origin: String = "RULES", val modelVersion: String? = null)
+    val seriesKey: String = "", val origin: String = "RULES", val modelVersion: String? = null)
 
 data class RecurringSeries(val key: String, val rows: List<FinancialFact>) {
     val dates = rows.takeLast(6).map { LocalDate.ofEpochDay(it.day) }
@@ -61,6 +61,6 @@ object RecurringDetector {
             RecurringPattern(hash("${series.key}|$cadence"), ordered.last().merchant!!, cadence, due.toEpochDay(),
                 smoothed.roundToLong(), (smoothed - margin).roundToLong().coerceAtLeast(0), (smoothed + margin).roundToLong(),
                 ordered.map { it.id }, last, reference?.roundToLong(), reference != null && last - reference >= maxOf(reference * .2, 1000.0),
-                series.key, series.features, prediction.origin, prediction.modelVersion)
+                series.key, prediction.origin, prediction.modelVersion)
         }.sortedBy { it.nextDay }
 }
