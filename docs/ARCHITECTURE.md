@@ -52,13 +52,13 @@ The engine uses rules first. Eligible local family inference never supplies an a
 
 `masroof.db` remains schema 18 with its fourteen tables, full migrations and importable backup hashes. Existing preference files, Keystore alias, app id and worker names remain stable. `learning.db` stores labels/provenance; `analytics.db` stores advisory results and preferences. Old Lab files are neither imported nor deleted automatically.
 
-The learning store is schema 2 and the analytics store is schema 3. Posted type edits atomically update the financial transaction and its latest `USER_FINANCIAL_TYPE` review decision in the unchanged financial schema. Learning rebuilds from durable decisions before enabling personal assistance; no derived model cache is written or loaded. Exact template suppressions include bank and feature identity and revoke both statistical and human-template assistance. Financial `EXPENSE`/`INCOME`, ownership decisions and field-only edits do not invent family labels. Unsupported or ambiguous decisions have an explicit feedback disposition.
+The learning store is schema 2 and the analytics store is schema 4. Posted type edits atomically update the financial transaction and its latest `USER_FINANCIAL_TYPE` review decision in the unchanged financial schema. Message learning rebuilds from durable decisions before enabling personal assistance; no derived message-model cache is written or loaded. Exact template suppressions include bank and feature identity and revoke both statistical and human-template assistance. Financial `EXPENSE`/`INCOME`, ownership decisions and field-only edits do not invent family labels. Unsupported or ambiguous decisions have an explicit feedback disposition.
 
 `USER_EXTERNAL_TRANSFER` now teaches an incoming/outgoing family from the external type committed with the resolved review, including compatible retained decisions. The UI sends the direction explicitly displayed by its action. A changed direction is rejected before assembly; a changed effective evidence snapshot is rejected inside the financial write transaction. The refreshed detail explains the rejection. Missing decision evidence remains pending; later contradictory edits supersede the label and can suppress the template. Broad financial types still do not count as learned family corrections. Classifier features and score calibration are unchanged; activation gates, rather than a new estimator, restrict automatic use.
 
 Automatic reconciliation compares its assembled evidence with current effective evidence and human decisions inside the financial write transaction. A stale model version or a concurrent correction cannot post an older interpretation. Feedback failures remain retryable without undoing the financial correction. Model refresh work synchronizes feedback before selecting a version and only refreshes eligible unposted evidence. Each refreshed parse commits an existing `HISTORICAL_BATCH` processing-retry marker in the same financial transaction. One scoped derived-recovery pass clears the marker only after reconciliation and review completion; retries also run that pass when all interpretations are already current. The worker holds a database access lease across the full operation, and container shutdown drains admitted operations before closing the financial or learning database.
 
-Family activation uses naturally reached rule-fallback cases, current score/margin/coverage thresholds, at least eight distinct accepted validation templates that pass financial validation, and zero accepted wrong validation families. Frozen test groups cannot choose thresholds or activation; an accepted wrong final-test family blocks artifact generation. The current small corpus does not meet activation support, so statistical families are suspended while rules and consistent explicit human templates remain available. The report distinguishes suggestion, validation and assembly, while device lifecycle tests verify persistence and later corrections.
+Family activation uses naturally reached rule-fallback cases, current score/margin/coverage thresholds, at least eight distinct accepted validation templates that pass financial validation, and zero accepted wrong validation families. Frozen test groups cannot choose thresholds or activation; an accepted wrong final-test family or fewer than eight independent accepted final-test templates per enabled family blocks artifact generation. The current small corpus does not meet activation support, so statistical families are suspended while rules and consistent explicit human templates remain available. The report distinguishes suggestion, validation and assembly, while device lifecycle tests verify persistence and later corrections.
 
 Startup blocks financial screens while required maintenance is incomplete. Dashboards read persisted scoped evidence without parsing SMS or writing FX. Analysis reads approved financial inputs and writes only advisory results; a suggested commitment needs explicit confirmation through the existing commitment workflow.
 
@@ -79,3 +79,38 @@ See [AGENTS.md](../AGENTS.md) for enforced boundaries and [ANALYTICS.md](ANALYTI
 ### Closing SQLite-backed services
 
 Application shutdown stops producers and drains admitted startup/database work before closing Room. Never cancel a first-open Room continuation and assume SQLite has stopped: its connection callback can still own the open-helper monitor while invalidation setup requests the Room close read lock. Taking Room's close write lock at that point deadlocks. Startup, learning/audit and analytics drain normally; the database access gate also drains independent WorkManager leases. `StartupQueryShutdownTest` controls that native first-open boundary.
+
+## Continuous local personalization
+
+Message statistics hold out stable bank-qualified template groups (20%) while
+exact human-template memory remains separate. A personal candidate must improve
+correct fallback coverage, add no wrong accepted families and retain the seed
+validation gate. Seed-ineligible families cannot be enabled by local fitting.
+Revoked/conflicted decisions are removed before rebuilding; held-out template
+answers never enter personal statistical training or its evaluation lookup.
+
+Recurring detection has a small numerical L2-regularized softmax classifier,
+shared by offline training and on-device fitting. Entire series are held out;
+only explicit human recurrence decisions and currently saved human commitments
+supply labels. Prediction, rejection-by-absence and ordinary dismissal do not.
+Series identities include the existing bank-qualified source container. Rules
+remain the fallback when neither seed nor personal model is eligible; an eligible
+model's abstention never falls through to rules. Amount/date estimates remain
+deterministic. The current reviewed recurring seed corpus is empty, and its
+artifact explicitly reports ineligibility, rather than shipping invented training
+labels or forcing activation.
+
+Analytics schema 4 adds durable recurring feedback, including an intent recorded
+before the financial save. A later pass completes that intent only when the
+saved commitment's source/cadence agrees. Feedback failure cannot undo a saved
+financial commitment. Legacy rejection remains dismissal, not a negative label.
+Explicit negative preferences remain until undone; missing evidence disqualifies
+them from statistical training. Removing/changing a confirmed commitment revokes
+its earlier training label. Stored numerical candidates are diagnostic data and
+are rebuilt from current facts; restores never blindly enable cached models.
+Archive 4 retains compatibility with archives 1-3 and financial schema 18.
+
+Forecast replay uses the existing forecaster on a strict historical prefix with
+an empty origin day; later actuals are evaluation targets only. Replay results
+never become published forecast history. Existing readiness and live performance
+rollback gates are unchanged.
