@@ -21,23 +21,21 @@ object AccountsDashboardProjection {
                 sarEquivalents = sarEquivalents,
                 debitCardScope = debitCardScope,
             )
+            val fleet = CurrentAccountSummaryCalculator.summarize(
+                transactions = transactions,
+                parsedRecords = parsedRecords,
+                primaryCurrency = primaryCurrency,
+                sarEquivalents = sarEquivalents,
+                ownedAccountContainerIds = ownedAccountContainerIds,
+                ownedAccountLast4s = ownedAccountLast4s,
+                debitCardScope = debitCardScope,
+            )
             AccountsDashboardSection(
-                fleet = CurrentAccountSummaryCalculator.summarize(
-                    transactions = transactions,
-                    parsedRecords = parsedRecords,
-                    primaryCurrency = primaryCurrency,
-                    sarEquivalents = sarEquivalents,
-                    ownedAccountContainerIds = ownedAccountContainerIds,
-                    ownedAccountLast4s = ownedAccountLast4s,
-                    debitCardScope = debitCardScope,
-                ),
+                fleet = fleet,
                 spendingSplit = CurrentAccountSummaryCalculator.spendingSplit(
                     transactions = transactions,
-                    parsedRecords = parsedRecords,
-                    primaryCurrency = primaryCurrency,
+                    currentAccount = fleet,
                     sarEquivalents = sarEquivalents,
-                    ownedAccountContainerIds = ownedAccountContainerIds,
-                    ownedAccountLast4s = ownedAccountLast4s,
                     debitCardScope = debitCardScope,
                 ),
                 perAccount = perAccount,

@@ -1,8 +1,5 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.ui.theme.MasroofSpacing
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,30 +26,25 @@ fun DebitCardDetailScreen(
         state = state,
         onBack = onBack,
         showPeriod = false,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            DebitCardDetailSummaryCard(
-                debit = debit,
-                network = cardNetwork,
-                modifier = Modifier.fillMaxWidth(),
-                trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
-            )
+    ) {
+        DebitCardDetailSummaryCard(
+            debit = debit,
+            network = cardNetwork,
+            modifier = Modifier.fillMaxWidth(),
+            trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
+        )
 
-            val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit))
-            trend?.let { CardReferenceAverage(it) }
-            SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
-                role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
-                explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_mada_trend_basis),
-                chartKey = "card:${CardOwnershipKey.of(debit)}", scopeLabel = debit.displayLabel)
-            DashboardSummaryTransactionsSection(
-                transactions = cardTransactions,
-                onOpenTransaction = onOpenTransaction,
-                ownedCards = state.ownedCards,
-                title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_card_movements),
-            )
-        }
+        val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit))
+        trend?.let { CardReferenceAverage(it) }
+        SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
+            role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
+            explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_mada_trend_basis),
+            chartKey = "card:${CardOwnershipKey.of(debit)}", scopeLabel = debit.displayLabel)
+        DashboardSummaryTransactionsSection(
+            transactions = cardTransactions,
+            onOpenTransaction = onOpenTransaction,
+            ownedCards = state.ownedCards,
+            title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_card_movements),
+        )
     }
 }

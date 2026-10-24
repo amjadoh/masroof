@@ -14,11 +14,6 @@ object RegistryDisplayLabels {
         return "Account ••${accountLast4(entry.maskedNumber)}"
     }
 
-    fun accountSubtitle(entry: AccountRegistryEntry): String {
-        val last4 = accountLast4(entry.maskedNumber)
-        return "${entry.bank.id} · ••$last4"
-    }
-
     fun cardLabel(entry: CardRegistryEntry): String {
         val custom = entry.displayName?.trim().orEmpty()
         if (custom.isNotEmpty()) return custom

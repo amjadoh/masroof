@@ -51,7 +51,7 @@ class ApprovedDesignScreenTest {
                 MasroofTheme(darkTheme = dark.value) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         if (selected.value == null) {
-                            CardsSummaryScreen(state, onBack = {}, onManageCards = {},
+                            CardsSummaryScreen(state, onBack = {},
                                 cardNetworksByLast4 = state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork },
                                 onOpenCard = { selected.value = it }, onOpenDebit = {})
                         } else {
@@ -145,7 +145,7 @@ class ApprovedDesignScreenTest {
                 MasroofTheme(darkTheme = dark.value) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         if (selected.value) AccountDetailScreen(account, state, onBack = { selected.value = false }, onOpenTransaction = {})
-                        else AccountsSummaryScreen(state, onBack = {}, onManageAccounts = {}, onOpenAccount = { selected.value = true })
+                        else AccountsSummaryScreen(state, onBack = {}, onOpenAccount = { selected.value = true })
                     }
                 }
             }
@@ -173,7 +173,7 @@ class ApprovedDesignScreenTest {
             CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
                 MasroofTheme(darkTheme = false) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                        CardsSummaryScreen(state.value, onBack = {}, onManageCards = {}, onOpenCard = {},
+                        CardsSummaryScreen(state.value, onBack = {}, onOpenCard = {},
                             onOpenDebit = {}, cardNetworksByLast4 = emptyMap())
                     }
                 }
@@ -208,7 +208,7 @@ class ApprovedDesignScreenTest {
             CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
                 MasroofTheme(darkTheme = false) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                        CardsSummaryScreen(state, onBack = {}, onManageCards = {}, onOpenCard = {}, onOpenDebit = {},
+                        CardsSummaryScreen(state, onBack = {}, onOpenCard = {}, onOpenDebit = {},
                             cardNetworksByLast4 = mapOf("${bank.id}:2210" to CardNetwork.MADA))
                     }
                 }

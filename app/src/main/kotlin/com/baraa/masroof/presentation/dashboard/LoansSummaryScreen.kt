@@ -2,10 +2,7 @@ package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -30,9 +27,7 @@ fun LoansSummaryRoute(
     detailBackExitsSummary: Boolean = false,
     onInitialSelectionConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onManageLoans: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    onOpenAllTransactions: (TransactionListFilterState) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedLoanKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -78,7 +73,6 @@ fun LoansSummaryRoute(
             LoansSummaryScreen(
                 state = state,
                 onBack = onBack,
-                onManageLoans = onManageLoans,
                 onOpenLoan = { loan -> selectedLoanKey = LoanOwnershipKey.of(loan) },
             )
         }
@@ -89,7 +83,6 @@ fun LoansSummaryRoute(
 fun LoansSummaryScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
-    onManageLoans: () -> Unit,
     onOpenLoan: (LoanOverview) -> Unit,
 ) {
     val followedLoans = state.followedLoansOverview()
@@ -99,25 +92,20 @@ fun LoansSummaryScreen(
         state = state,
         onBack = onBack,
         showPeriod = false,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            if (followedLoans == null || !followedLoans.hasContent) {
-                Text(
-                    stringResource(R.string.dashboard_loans_summary_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        if (followedLoans == null || !followedLoans.hasContent) {
+            Text(
+                stringResource(R.string.dashboard_loans_summary_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            DashboardSummaryHeroCard(spec = loansSummaryHeroSpec(overview = followedLoans))
+            followedLoans.loans.forEach { loan ->
+                LoanCompactListRow(
+                    loan = loan,
+                    onClick = { onOpenLoan(loan) },
                 )
-            } else {
-                DashboardSummaryHeroCard(spec = loansSummaryHeroSpec(overview = followedLoans))
-                followedLoans.loans.forEach { loan ->
-                    LoanCompactListRow(
-                        loan = loan,
-                        onClick = { onOpenLoan(loan) },
-                    )
-                }
             }
         }
     }

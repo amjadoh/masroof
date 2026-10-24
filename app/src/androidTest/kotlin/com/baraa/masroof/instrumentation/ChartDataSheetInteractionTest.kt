@@ -77,9 +77,9 @@ class ChartDataSheetInteractionTest {
                             when (page.value) {
                                 "homePurchases", "homeOverall" -> Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                                     .padding(MasroofSpacing.screenHorizontal)) { HomeSpendingTrendSection(trends) }
-                                "accounts" -> AccountsSummaryScreen(state, {}, {}, {})
+                                "accounts" -> AccountsSummaryScreen(state, {}, {})
                                 "accountDetail" -> AccountDetailScreen(state.ownedAccounts.first(), state, {}, {})
-                                "credit" -> CardsSummaryScreen(state, {}, {}, {}, {}, state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork })
+                                "credit" -> CardsSummaryScreen(state, {}, {}, {}, state.ownedCards.associate { CardOwnershipKey.of(it) to it.cardNetwork })
                                 "primary" -> CardDetailScreen(facility.primary, state, {}, {})
                                 "supplementary" -> CardDetailScreen(facility.supplementaries.first(), state, {}, {})
                                 "mada" -> DebitCardDetailScreen(mada, state, com.baraa.masroof.domain.model.CardNetwork.MADA, {}, {})

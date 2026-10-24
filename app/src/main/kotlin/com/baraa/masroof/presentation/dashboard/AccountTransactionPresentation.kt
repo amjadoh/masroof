@@ -51,7 +51,7 @@ object AccountTransactionPresentation {
         }
     }
 
-    private fun matchesAccountContainer(
+    internal fun matchesAccountContainer(
         containerId: String?,
         ownedContainerId: String,
         ownedLast4s: Set<String>,

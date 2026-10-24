@@ -1,8 +1,5 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.ui.theme.MasroofSpacing
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,22 +24,17 @@ fun LoanDetailScreen(
         state = state,
         onBack = onBack,
         showPeriod = false,
-    ) { contentModifier ->
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
-        ) {
-            LoanDetailSummaryCard(
-                loan = loan,
-                modifier = Modifier.fillMaxWidth(),
-            )
+    ) {
+        LoanDetailSummaryCard(
+            loan = loan,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-            DashboardSummaryTransactionsSection(
-                transactions = loanTransactions,
-                onOpenTransaction = onOpenTransaction,
-                ownedCards = state.ownedCards,
-                title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_loan_movements),
-            )
-        }
+        DashboardSummaryTransactionsSection(
+            transactions = loanTransactions,
+            onOpenTransaction = onOpenTransaction,
+            ownedCards = state.ownedCards,
+            title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_loan_movements),
+        )
     }
 }

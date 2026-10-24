@@ -44,7 +44,7 @@ fun SmsRescanStatusNotice(
                     modifier = Modifier.size(MasroofSizes.size18),
                 )
                 Text(
-                    rescanStatusMessage(status),
+                    smsRescanStatusMessage(status),
                     modifier = Modifier.padding(start = MasroofSpacing.cardInnerGap),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -57,7 +57,7 @@ fun SmsRescanStatusNotice(
 }
 
 @Composable
-private fun rescanStatusMessage(status: SmsRescanStatus): String =
+internal fun smsRescanStatusMessage(status: SmsRescanStatus): String =
     stringResource(
         when (status) {
             SmsRescanStatus.OK -> R.string.dashboard_rescan_ok

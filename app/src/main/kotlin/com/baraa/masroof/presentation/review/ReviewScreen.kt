@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.baraa.masroof.application.review.ExternalTransferDirection
 import com.baraa.masroof.R
+import com.baraa.masroof.presentation.common.toUiLabelRes
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
 import com.baraa.masroof.presentation.common.formatCardLast4

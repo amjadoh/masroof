@@ -39,12 +39,11 @@ object PurchaseForecaster {
         val chosen = model?.takeIf { it.accepted && allowPersonal }
         val predictions = predict(if (chosen == null) history else training, today, periodEnd - 1, phase, chosen)
         val todayGross = data.days.firstOrNull { it.day == today }?.gross ?: 0
-        val remaining = predictions.fold(0L) { sum, point -> Math.addExact(sum,
+        fun remainingFor(points: List<ForecastPoint>) = points.fold(0L) { sum, point -> Math.addExact(sum,
             if (point.day == today) (point.gross - todayGross).coerceAtLeast(0) else point.gross) }
+        val remaining = remainingFor(predictions)
         val total = Math.addExact(actual, remaining)
-        fun projectedTotal(points: List<ForecastPoint>) = Math.addExact(actual, points.fold(0L) { sum, point ->
-            Math.addExact(sum, if(point.day == today) (point.gross - todayGross).coerceAtLeast(0) else point.gross)
-        })
+        fun projectedTotal(points: List<ForecastPoint>) = Math.addExact(actual, remainingFor(points))
         val baselineTotal = projectedTotal(predict(history,today,periodEnd - 1,phase,null))
         val personalTotal = model?.takeIf { it.accepted }?.let { projectedTotal(predict(training,today,periodEnd - 1,phase,it)) }
         val horizon = (periodEnd - today - 1).toInt()

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.baraa.masroof.data.room.ExchangeRatePairWrite
 import com.baraa.masroof.data.room.entity.FinancialTransactionEntity
 import com.baraa.masroof.data.room.entity.FinancialTransactionRawSmsLinkEntity
@@ -14,39 +15,20 @@ interface FinancialTransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTransactionIfAbsent(entity: FinancialTransactionEntity): Long
 
-    @Query(
-        """
-        UPDATE financial_transaction SET
-          type = :type,
-          amountDecimal = :amountDecimal,
-          amountCurrency = :amountCurrency,
-          occurredAtEpochMillis = :occurredAtEpochMillis,
-          sourceContainerId = :sourceContainerId,
-          destinationContainerId = :destinationContainerId,
-          merchant = :merchant,
-          counterparty = :counterparty,
-          categoryId = :categoryId,
-          appliedExchangeRate = :appliedExchangeRate,
-          exchangeRateSource = :exchangeRateSource,
-          occurredAtZone = :occurredAtZone
-        WHERE id = :id
-        """,
-    )
-    suspend fun updateTransaction(
-        id: String,
-        type: String,
-        amountDecimal: String,
-        amountCurrency: String,
-        occurredAtEpochMillis: Long,
-        sourceContainerId: String?,
-        destinationContainerId: String?,
-        merchant: String?,
-        counterparty: String?,
-        categoryId: String?,
-        appliedExchangeRate: String?,
-        exchangeRateSource: String?,
-        occurredAtZone: String?,
-    ): Int
+    @Update
+    suspend fun updateTransaction(entity: FinancialTransactionEntity): Int
+
+    /** Preserve a complete FX pair while refreshing the remaining stored fields. */
+    suspend fun updatePreservingExchangeRate(entity: FinancialTransactionEntity): Int {
+        val existing = getById(entity.id) ?: return 0
+        val (rate, source) = ExchangeRatePairWrite.storedOrIncoming(
+            storedRate = existing.appliedExchangeRate,
+            storedSource = existing.exchangeRateSource,
+            incomingRate = entity.appliedExchangeRate,
+            incomingSource = entity.exchangeRateSource,
+        )
+        return updateTransaction(entity.copy(appliedExchangeRate = rate, exchangeRateSource = source))
+    }
 
     @Query(
         """
@@ -282,28 +264,7 @@ interface FinancialTransactionDao {
         if (inserted == -1L) {
             // Same id already present — refresh columns (idempotent re-save).
             // A complete exchange-rate pair stays; a partial pair is replaced whole.
-            val existing = getById(entity.id)
-            val (rate, source) = ExchangeRatePairWrite.storedOrIncoming(
-                storedRate = existing?.appliedExchangeRate,
-                storedSource = existing?.exchangeRateSource,
-                incomingRate = entity.appliedExchangeRate,
-                incomingSource = entity.exchangeRateSource,
-            )
-            updateTransaction(
-                id = entity.id,
-                type = entity.type,
-                amountDecimal = entity.amountDecimal,
-                amountCurrency = entity.amountCurrency,
-                occurredAtEpochMillis = entity.occurredAtEpochMillis,
-                sourceContainerId = entity.sourceContainerId,
-                destinationContainerId = entity.destinationContainerId,
-                merchant = entity.merchant,
-                counterparty = entity.counterparty,
-                categoryId = entity.categoryId,
-                appliedExchangeRate = rate,
-                exchangeRateSource = source,
-                occurredAtZone = entity.occurredAtZone,
-            )
+            updatePreservingExchangeRate(entity)
         }
 
         var allLinksAlreadyPresent = inserted == -1L

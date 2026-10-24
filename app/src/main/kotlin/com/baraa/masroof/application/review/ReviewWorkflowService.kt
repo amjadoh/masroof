@@ -6,6 +6,7 @@ import com.baraa.masroof.application.logging.AppLogFormatting
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.transaction.ReconciliationCompletionPolicy
 import com.baraa.masroof.application.transaction.ReconciliationIncompleteException
+import com.baraa.masroof.application.transaction.ReconciliationReport
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import kotlinx.coroutines.CancellationException
 import com.baraa.masroof.core.money.Money
@@ -88,6 +89,11 @@ class ReviewWorkflowService(
         } catch (_: Exception) {
             throw incomplete(emptyList(), failureCount = 1)
         }
+        completeReconciliation(report)
+    }
+
+    /** Completes a maintenance pass that already reconciled; never starts a second sweep. */
+    internal suspend fun completeReconciliation(report: ReconciliationReport) {
         try {
             reviewQueueUpdater.applyReport(report)
         } catch (e: CancellationException) {

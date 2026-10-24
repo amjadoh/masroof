@@ -100,6 +100,44 @@ class SettingsViewModelTest {
         assertEquals(0, reconciles)
     }
 
+    @Test
+    fun renamingOwnedEntitiesOnlyUpdatesTheirLabels() = runTest {
+        val cards = FakeCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234"))
+        val accounts = FakeAccountRegistry(AccountRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "3001"))
+        val vm = viewModel(cards = cards, accounts = accounts,
+            onRefreshReviewQueue = { error("Renaming must not reconcile financial history") })
+        vm.refresh()
+        advanceUntilIdle()
+        vm.openRenameCard(vm.uiState.value.followedCards.single())
+        vm.saveCardDisplayName("  Travel  ")
+        advanceUntilIdle()
+        vm.openRenameAccount(vm.uiState.value.followedAccounts.single())
+        vm.saveAccountDisplayName("  Salary  ")
+        advanceUntilIdle()
+        assertEquals("Travel", vm.uiState.value.followedCards.single().displayName)
+        assertEquals("Salary", vm.uiState.value.followedAccounts.single().displayName)
+        assertNull(vm.uiState.value.error)
+        assertFalse(vm.uiState.value.updating)
+    }
+
+    @Test
+    fun completedReparseReloadsRegistriesWithoutAnotherFinancialPass() = runTest {
+        val vm = viewModel(onRefreshReviewQueue = { error("Reparse already completed derived work") })
+        vm.reparseStoredMessages()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.error)
+        assertFalse(vm.uiState.value.reparsingStored)
+    }
+
+    @Test
+    fun completedImportReloadsRegistriesWithoutAnotherFinancialPass() = runTest {
+        val vm = viewModel(onRefreshReviewQueue = { error("Import already completed derived work") })
+        vm.importSmsFromPhone()
+        advanceUntilIdle()
+        assertEquals(SmsImportMessage.NO_MESSAGES, vm.uiState.value.smsImportMessage)
+        assertFalse(vm.uiState.value.importingSms)
+    }
+
     private val dispatcher = StandardTestDispatcher()
 
     @Before
@@ -792,7 +830,10 @@ class SettingsViewModelTest {
 
         override suspend fun listAll(): List<CardRegistryEntry> = entries.toList()
 
-        override suspend fun updateDisplayName(reference: CardReference, displayName: String?) = Unit
+        override suspend fun updateDisplayName(reference: CardReference, displayName: String?) {
+            val index = entries.indexOfFirst { it.bank == reference.bank && it.last4 == reference.last4 }
+            if (index >= 0) entries[index] = entries[index].copy(displayName = displayName)
+        }
 
         override suspend fun updateCardNetwork(reference: CardReference, network: com.baraa.masroof.domain.model.CardNetwork?) = Unit
 
@@ -878,7 +919,10 @@ class SettingsViewModelTest {
 
         override suspend fun listAll(): List<AccountRegistryEntry> = entries.toList()
 
-        override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) = Unit
+        override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) {
+            val index = entries.indexOfFirst { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }
+            if (index >= 0) entries[index] = entries[index].copy(displayName = displayName)
+        }
 
         override suspend fun updateAccountType(
             reference: AccountReference,

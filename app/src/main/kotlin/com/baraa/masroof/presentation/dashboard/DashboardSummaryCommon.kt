@@ -4,6 +4,7 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -22,7 +23,7 @@ fun DashboardSummaryScaffold(
     state: DashboardUiState,
     onBack: () -> Unit,
     showPeriod: Boolean = true,
-    content: @Composable (Modifier) -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val context = LocalContext.current
     val periodRangeLabel = state.period?.let {
@@ -60,7 +61,7 @@ fun DashboardSummaryScaffold(
                     androidx.compose.material3.CircularProgressIndicator()
                 }
             } else if (state.error == null || state.currentAccount != null) {
-                content(Modifier.fillMaxWidth())
+                content()
             }
         }
     }
