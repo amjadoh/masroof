@@ -27,6 +27,7 @@ import com.baraa.masroof.presentation.analytics.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.ui.theme.MasroofTheme
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -520,8 +521,7 @@ class AnalyticsJourneyTest {
         var showing by mutableStateOf(true)
         try {
             runBlocking { c.awaitPostStartupBackgroundWorkForTesting(); seed(c) }
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot?.candidates?.isNotEmpty() == true }
-            val candidate = c.labAnalytics.state.value.snapshot!!.candidates.first()
+            val candidate = awaitAnalysis(c.labAnalytics) { it.snapshot?.candidates?.isNotEmpty() == true }.snapshot!!.candidates.first()
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalLabAnalyticsWorkflow provides c.labAnalytics) {
@@ -530,17 +530,152 @@ class AnalyticsJourneyTest {
             } }
             compose.onNodeWithTag("analysis-tab-2").performClick()
             compose.onNodeWithTag("recurring-not-${candidate.key}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.seriesKey == candidate.seriesKey } }
-            val corrected = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            val corrected = awaitAnalysis(c.labAnalytics) { state -> state.recurringCorrections.any {
+                it.seriesKey == candidate.seriesKey && it.kind == "NOT_RECURRING"
+            } }.snapshot!!.recurringLearning!!
             assertEquals(1, corrected.trainingSeries + corrected.validationSeries)
             compose.onNodeWithTag("recurring-undo-${candidate.seriesKey}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.snapshot!!.candidates.any { it.key == candidate.key } }
+            awaitAnalysis(c.labAnalytics) { state -> state.snapshot!!.candidates.any { it.key == candidate.key } &&
+                state.recurringCorrections.none { it.seriesKey == candidate.seriesKey } }
             compose.onNodeWithTag("recurring-dismiss-${candidate.key}").performScrollTo().performClick()
-            compose.waitUntil(90_000) { !c.labAnalytics.state.value.updating && c.labAnalytics.state.value.recurringCorrections.any { it.kind == "DISMISSED" } }
-            val dismissed = c.labAnalytics.state.value.snapshot!!.recurringLearning!!
+            val dismissed = awaitAnalysis(c.labAnalytics) { state -> state.recurringCorrections.any {
+                it.seriesKey == candidate.seriesKey && it.kind == "DISMISSED"
+            } }.snapshot!!.recurringLearning!!
             assertEquals(0, dismissed.trainingSeries + dismissed.validationSeries)
             assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
             screen("recurring-explicit-feedback")
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
+    @Test fun personalSpendingExplainsPriorEvidenceAndForecastMethodWithoutChangingFinancialData() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand(
+            "pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var language by mutableStateOf("ar")
+        var dark by mutableStateOf(false)
+        var opened: String? = null
+        try {
+            runBlocking {
+                c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c)
+                val today = LocalDate.now()
+                for (index in 0..6) c.database.financialTransactionDao().insertTransactionIfAbsent(FinancialTransactionEntity(
+                    "observed-$index", "EXPENSE", if (index == 0) "90.00" else "40.00", "SAR",
+                    today.minusDays(index * 7L).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    "card:BANK_ALJAZIRA:1234", null, "Observation merchant", null, null))
+                c.labAnalytics.request(); c.labAnalytics.refresh()
+            }
+            val workflow = c.labAnalytics
+            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.any { it.id == "observed-0" } }
+            val observation = workflow.state.value.observations.first { it.id == "observed-0" }
+            assertEquals((1..6).map { "observed-$it" }.reversed(), observation.referenceIds)
+            val before = runBlocking { c.financialTransactionRepository.listAll() }
+            compose.setContent { if (showing) {
+                val config = Configuration(host.resources.configuration).apply { setLocale(Locale(language)); fontScale = 1.3f }
+                CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config,
+                    LocalLabAnalyticsWorkflow provides workflow) {
+                    MasroofTheme(darkTheme = dark) { MasroofScreenBackground { LabAnalyticsRoute({}, { opened = it }) } }
+                }
+            } }
+            for (locale in listOf("ar", "en")) for (isDark in listOf(false, true)) {
+                compose.runOnUiThread { language = locale; dark = isDark }
+                compose.onNodeWithTag("analysis-tab-0").performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_short, locale), substring = true).assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.analysis_merchants_scope, locale)).assertDoesNotExist()
+                val aboutMerchants = text(R.string.guidance_about, locale).format(text(R.string.analysis_merchants, locale))
+                compose.onNodeWithContentDescription(aboutMerchants).performScrollTo().performClick()
+                compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.analysis_merchants_scope, locale)).assertIsDisplayed()
+                instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isEmpty() }
+                compose.waitUntil(30_000) { compose.onAllNodesWithTag("spending-observation-chart-observed-0").fetchSemanticsNodes().size == 1 }
+                compose.onNodeWithTag("spending-observation-chart-observed-0").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithTag("spending-observation-current-observed-0").assert(hasAnyDescendant(hasText(
+                    com.baraa.masroof.application.locale.AppDigits.display(text(R.string.personal_spending_payment, locale)))))
+                compose.onNodeWithTag("spending-observation-reference-observed-0").assertIsDisplayed()
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+                screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-chart")
+                compose.onNodeWithTag("spending-observation-observed-0").performScrollTo().performClick()
+                compose.waitUntil(30_000) { compose.onAllNodesWithTag("lab-evidence-observed-0").fetchSemanticsNodes().size == 1 }
+                compose.onNodeWithTag("lab-evidence-observed-0").performScrollTo().assertIsDisplayed().performClick()
+                assertEquals("observed-0", opened)
+                compose.onNodeWithTag("lab-evidence-observed-6").performScrollTo().assertIsDisplayed()
+                screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-evidence")
+                compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, locale)).performClick()
+                compose.onNodeWithTag("analysis-tab-1").performClick()
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.personal_forecast_qualification, locale), substring = true).assertDoesNotExist()
+                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_short, locale), substring = true).assertDoesNotExist()
+                screen("$locale-${if (isDark) "dark" else "light"}-forecast-summary")
+                val aboutForecast = text(R.string.guidance_about, locale).format(text(R.string.personal_forecast_why, locale))
+                compose.onNodeWithContentDescription(aboutForecast).performClick()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+                compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+                compose.onNodeWithText(com.baraa.masroof.application.locale.AppDigits.display(
+                    text(R.string.personal_forecast_qualification, locale)), substring = true).assertIsDisplayed()
+                screen("$locale-${if (isDark) "dark" else "light"}-forecast-explanation")
+                instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isEmpty() }
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithTag("analysis-daily-bars").performScrollTo().assertIsDisplayed()
+            }
+            assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
+            runBlocking {
+                val transaction = c.financialTransactionRepository.getById("observed-0")!!
+                c.financialTransactionRepository.update(transaction.copy(amount = com.baraa.masroof.core.money.Money.of(
+                    java.math.BigDecimal("40.00"), transaction.amount.currency)))
+                workflow.request(); workflow.refresh()
+            }
+            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.none { it.id == "observed-0" } }
+            compose.onNodeWithTag("analysis-tab-0").performClick()
+            compose.onNodeWithTag("spending-observation-chart-observed-0").assertDoesNotExist()
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
+    @Test fun optionalMessageReviewShowsDistinctExamplesAndCancelDoesNotCreateDecisions() {
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var opened: String? = null
+        try {
+            runBlocking {
+                c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting()
+                val loan = "سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
+                listOf(loan, loan.replace("SAR 20", "SAR 21"), "صيغة اختبار جديدة\nمبلغ: SAR 20", "صيغة اختبار أخرى\nمبلغ: SAR 30").forEachIndexed { index, body ->
+                    c.processRawSmsUseCase.ingest(com.baraa.masroof.domain.model.RawSms("review-pattern-$index", "AlJazira", body,
+                        Instant.now(), "review-pattern-$index", com.baraa.masroof.sms.hash.SmsBodyHasher.sha256Hex(body)))
+                }
+            }
+            val examples = runBlocking { c.messageReviewWorkflow.load() }
+            assertEquals(3, examples.size)
+            val before = runBlocking { c.reviewWorkflowService.listRequiredReviews() }
+            val financial = runBlocking { c.financialTransactionRepository.listAll() }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalLabAnalyticsWorkflow provides c.labAnalytics) {
+                    MasroofTheme { MasroofScreenBackground { MessageLearningSettingsScreen(onBack = {}, onOpenExample = { opened = it }) } }
+                }
+            } }
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("learning-review-session").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").assertIsDisplayed()
+            compose.onNodeWithTag("sheet-cancel").performClick()
+            assertNull(opened)
+            assertEquals(before, runBlocking { c.reviewWorkflowService.listRequiredReviews() })
+            assertEquals(financial, runBlocking { c.financialTransactionRepository.listAll() })
+            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").performClick()
+            assertEquals(examples.first().reviewId, opened)
+            compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+            screen("optional-distinct-message-review")
         } finally {
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
             runBlocking { TestRuntime.reset(host) }
@@ -571,6 +706,11 @@ class AnalyticsJourneyTest {
         }
         c.labAnalytics.request()
     }
+    // Workflow completion is external to Compose; waiting must not pump its virtual frame clock.
+    private fun awaitAnalysis(workflow: LabAnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState = runBlocking {
+        withTimeout(90_000) { workflow.state.first { !it.updating && condition(it) } }
+    }
+
     private fun text(id: Int, language: String): String = host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale(language)) }).getString(id)
     private fun screen(name: String) {
         compose.waitForIdle()

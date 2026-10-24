@@ -11,24 +11,41 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.AnalysisSnapshot
+import com.baraa.masroof.application.analytics.AnalysisUiState
 import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
 import com.baraa.masroof.presentation.common.MasroofCard
+import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable internal fun AnalysisTransactionsScreen(snapshot: AnalysisSnapshot?, selection: String, workflow: LabAnalyticsWorkflow,
-    onBack: () -> Unit, onOpenTransaction: (String) -> Unit) {
+    onBack: () -> Unit, onOpenTransaction: (String) -> Unit, state: AnalysisUiState = AnalysisUiState()) {
+    val observation = state.observations.firstOrNull { "observation:${it.id}" == selection }
     val insights = snapshot?.insights
     val comparison = insights?.comparison
     val change = comparison?.changes?.firstOrNull { "change:${it.group.key}" == selection }
     val group = change?.group ?: (insights?.components.orEmpty() + insights?.merchants.orEmpty()).firstOrNull { it.key == selection }
-    val title = group?.let { spendingGroupName(it) } ?: stringResource(R.string.transaction_detail_title)
+    val title = observation?.merchant ?: group?.let { spendingGroupName(it) } ?: stringResource(R.string.transaction_detail_title)
     MasroofSecondaryScaffold(title, onBack, stringResource(R.string.lab_analysis_back)) { modifier ->
         Column(modifier.testTag("analysis-transactions").verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            if (snapshot == null || group == null) {
+            if (snapshot != null && observation != null && !state.updating && !state.unavailable) {
+                MasroofCard {
+                    MasroofGuidanceLabel(stringResource(R.string.personal_spending_attention), stringResource(R.string.personal_spending_hint),
+                        style = MaterialTheme.typography.titleMedium)
+                    AnalysisSpendingObservationBars(observation)
+                    EvidenceGroup(listOf(observation.id), stringResource(R.string.personal_spending_payment), workflow,
+                        snapshot.sourceHash, onOpenTransaction, collapsible = false)
+                }
+                MasroofCard {
+                    MasroofSectionHeader(stringResource(R.string.personal_spending_previous))
+                    Text(stringResource(R.string.personal_spending_reference, observation.referenceIds.size, day(observation.from), day(observation.through)))
+                    EvidenceGroup(observation.referenceIds, stringResource(R.string.personal_spending_previous), workflow,
+                        snapshot.sourceHash, onOpenTransaction, collapsible = false)
+                }
+            } else if (snapshot == null || group == null) {
                 Text(stringResource(R.string.lab_analysis_transaction_missing))
             } else if (change != null) {
                 MasroofCard {

@@ -31,7 +31,7 @@ class FamilyFeatureExportTest {
             val cleaned = LabFamilyAssist.clean(body)
             val features = cleaned.features
             if (features == null) {
-                rejected += buildJsonObject {put("id",id);put("reason",cleaned.rejection!!.name)}
+                rejected += buildJsonObject {put("id",id);put("family",family);put("reason",cleaned.rejection!!.name)}
                 return
             }
             var requested = false
