@@ -21,21 +21,12 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     else -> R.string.lab_analysis_component_purchases
 })
 
-@Composable internal fun AnalysisSpendingExplanation(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit, includeChanges: Boolean = true) {
-    val insights = snapshot.insights ?: return
-    var expanded by rememberSaveable(snapshot.periodStart) { mutableStateOf(false) }
+@Composable internal fun AnalysisSpendingExplanation(snapshot: AnalysisSnapshot, onOpenGroup: (String) -> Unit) {
+    if (snapshot.insights == null) return
     AnalysisComparisonCard(snapshot)
     MasroofCard(Modifier.testTag("analysis-spending-explanation")) {
-        AnalysisComponentBars(snapshot)
-        MasroofTextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("analysis-expand-insights")) {
-            Text(stringResource(if (expanded) R.string.lab_analysis_hide_data else R.string.lab_analysis_change_evidence))
-        }
-        if (expanded) insights.components.forEach { group ->
-            EvidenceGroup(group.ids, "${spendingGroupName(group)} · ${visualMoney(group.amount)}", workflow, snapshot.sourceHash,
-                onOpenTransaction, tag = "analysis-component-${group.key}")
-        }
+        AnalysisComponentBars(snapshot, onOpenGroup)
     }
-    if (includeChanges) AnalysisChangeCard(snapshot, workflow, onOpenTransaction)
 }
 
 @Composable internal fun AnalysisDataQuality(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit,

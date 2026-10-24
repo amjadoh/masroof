@@ -38,5 +38,6 @@
     <string name="analysis_history_trend">كيف تغيّر توقع هذه الفترة؟</string>
     <string name="analysis_view_history">عرض السجل</string>
     <string name="analysis_transaction_count">%1$d حركة</string>
+    <string name="analysis_no_transactions">لا توجد حركات ضمن هذه الفترة.</string>
     <string name="analysis_wait_eligible">لم يُحفظ توقع مؤهل للمقارنة بعد. يُحفظ أول توقع صالح من اليوم الثامن وحتى نهاية الفترة، عند اكتمال شروط النموذج والتغطية.</string>
 </resources>

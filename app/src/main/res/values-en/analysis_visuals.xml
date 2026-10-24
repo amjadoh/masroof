@@ -38,5 +38,6 @@
     <string name="analysis_history_trend">How did this period’s forecast change?</string>
     <string name="analysis_view_history">View history</string>
     <string name="analysis_transaction_count">%1$d transactions</string>
+    <string name="analysis_no_transactions">No transactions in this period.</string>
     <string name="analysis_wait_eligible">No eligible comparison forecast has been saved yet. The first valid forecast can be saved from day eight until period end, once model and coverage requirements are met.</string>
 </resources>
