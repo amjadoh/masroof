@@ -40,7 +40,8 @@ import java.time.LocalDate
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text(stringResource(forecastMethodResource(explanation.method)), modifier = Modifier.weight(1f),
+                Text(stringResource(if (state.updating) R.string.lab_analysis_updating else
+                    forecastMethodResource(if (state.unavailable) ForecastMethod.UNAVAILABLE else explanation.method)), modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall)
                 MasroofTextButton(onClick = { explaining = true }, modifier = Modifier.testTag("forecast-explanation-open")) {
                     Text(stringResource(R.string.personal_forecast_why))

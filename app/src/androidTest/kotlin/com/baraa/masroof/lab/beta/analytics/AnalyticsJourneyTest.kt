@@ -547,6 +547,109 @@ class AnalyticsJourneyTest {
         }
     }
 
+    @Test fun personalSpendingExplainsPriorEvidenceAndForecastMethodWithoutChangingFinancialData() {
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand(
+            "pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var language by mutableStateOf("ar")
+        var dark by mutableStateOf(false)
+        var opened: String? = null
+        try {
+            runBlocking {
+                c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c)
+                val today = LocalDate.now()
+                for (index in 0..6) c.database.financialTransactionDao().insertTransactionIfAbsent(FinancialTransactionEntity(
+                    "observed-$index", "EXPENSE", if (index == 0) "90.00" else "40.00", "SAR",
+                    today.minusDays(index * 7L).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    "card:BANK_ALJAZIRA:1234", null, "Observation merchant", null, null))
+                c.labAnalytics.request(); c.labAnalytics.refresh()
+            }
+            val workflow = c.labAnalytics
+            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.any { it.id == "observed-0" } }
+            val observation = workflow.state.value.observations.first { it.id == "observed-0" }
+            assertEquals((1..6).map { "observed-$it" }.reversed(), observation.referenceIds)
+            val before = runBlocking { c.financialTransactionRepository.listAll() }
+            compose.setContent { if (showing) {
+                val config = Configuration(host.resources.configuration).apply { setLocale(Locale(language)); fontScale = 1.3f }
+                CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config,
+                    LocalLabAnalyticsWorkflow provides workflow) {
+                    MasroofTheme(darkTheme = dark) { MasroofScreenBackground { LabAnalyticsRoute({}, { opened = it }) } }
+                }
+            } }
+            for (locale in listOf("ar", "en")) for (isDark in listOf(false, true)) {
+                compose.runOnUiThread { language = locale; dark = isDark }
+                compose.onNodeWithTag("analysis-tab-0").performClick()
+                compose.onNodeWithTag("spending-observation-observed-0").performScrollTo().performClick()
+                compose.onNodeWithTag("lab-evidence-observed-0").performScrollTo().assertIsDisplayed().performClick()
+                assertEquals("observed-0", opened)
+                compose.onNodeWithTag("lab-evidence-observed-6").performScrollTo().assertIsDisplayed()
+                screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-evidence")
+                compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, locale)).performClick()
+                compose.onNodeWithTag("analysis-tab-1").performClick()
+                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.personal_forecast_qualification, locale)).assertExists()
+                screen("$locale-${if (isDark) "dark" else "light"}-forecast-explanation")
+                compose.onNodeWithTag("sheet-cancel").performClick()
+                compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+            }
+            assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
+            runBlocking {
+                val transaction = c.financialTransactionRepository.getById("observed-0")!!
+                c.financialTransactionRepository.update(transaction.copy(amount = com.baraa.masroof.core.money.Money.of(
+                    java.math.BigDecimal("40.00"), transaction.amount.currency)))
+                workflow.request(); workflow.refresh()
+            }
+            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.none { it.id == "observed-0" } }
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
+    @Test fun optionalMessageReviewShowsDistinctExamplesAndCancelDoesNotCreateDecisions() {
+        runBlocking { TestRuntime.reset(host) }
+        val c = TestRuntime.container(host)
+        var showing by mutableStateOf(true)
+        var opened: String? = null
+        try {
+            runBlocking {
+                c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting()
+                val loan = "سداد تمويل خاص\nمن: 3001\nالقسط: SAR 20\nالمبلغ المتبقي: SAR 300\nلـ: تمويل شخصي\nفي: 2026-10-06 09:00"
+                listOf(loan, loan.replace("SAR 20", "SAR 21"), "صيغة اختبار جديدة\nمبلغ: SAR 20", "صيغة اختبار أخرى\nمبلغ: SAR 30").forEachIndexed { index, body ->
+                    c.processRawSmsUseCase.ingest(com.baraa.masroof.domain.model.RawSms("review-pattern-$index", "AlJazira", body,
+                        Instant.now(), "review-pattern-$index", com.baraa.masroof.sms.hash.SmsBodyHasher.sha256Hex(body)))
+                }
+            }
+            val examples = runBlocking { c.messageReviewWorkflow.load() }
+            assertEquals(3, examples.size)
+            val before = runBlocking { c.reviewWorkflowService.listRequiredReviews() }
+            val financial = runBlocking { c.financialTransactionRepository.listAll() }
+            compose.setContent { if (showing) {
+                CompositionLocalProvider(LocalLabAnalyticsWorkflow provides c.labAnalytics) {
+                    MasroofTheme { MasroofScreenBackground { MessageLearningSettingsScreen(onBack = {}, onOpenExample = { opened = it }) } }
+                }
+            } }
+            compose.waitUntil(30_000) { compose.onAllNodesWithTag("learning-review-session").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").assertIsDisplayed()
+            compose.onNodeWithTag("sheet-cancel").performClick()
+            assertNull(opened)
+            assertEquals(before, runBlocking { c.reviewWorkflowService.listRequiredReviews() })
+            assertEquals(financial, runBlocking { c.financialTransactionRepository.listAll() })
+            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").performClick()
+            assertEquals(examples.first().reviewId, opened)
+            compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
+            screen("optional-distinct-message-review")
+        } finally {
+            compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            runBlocking { TestRuntime.reset(host) }
+        }
+    }
+
     private suspend fun seed(c: AppContainer) {
         val today = LocalDate.now()
         c.onboardingPreferencesRepository.setOnboardingStarted(true)

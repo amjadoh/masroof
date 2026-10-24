@@ -26,7 +26,7 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
     val comparison = insights?.comparison
     val change = comparison?.changes?.firstOrNull { "change:${it.group.key}" == selection }
     val group = change?.group ?: (insights?.components.orEmpty() + insights?.merchants.orEmpty()).firstOrNull { it.key == selection }
-    val title = group?.let { spendingGroupName(it) } ?: stringResource(R.string.transaction_detail_title)
+    val title = observation?.merchant ?: group?.let { spendingGroupName(it) } ?: stringResource(R.string.transaction_detail_title)
     MasroofSecondaryScaffold(title, onBack, stringResource(R.string.lab_analysis_back)) { modifier ->
         Column(modifier.testTag("analysis-transactions").verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
