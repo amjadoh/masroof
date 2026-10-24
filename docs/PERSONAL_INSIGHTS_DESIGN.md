@@ -82,9 +82,12 @@ Append a compact “Higher payments than usual” section after the existing mer
 and change charts. Keep those charts and the historical-period selector intact.
 Maximum three observations, only when the evidence supports them; no empty
 “AI” card. Each merchant has paired shared bars for the current payment and prior
-median, with amounts, payment date, reference count and “View payments”. Both bars
-use the same scale within that pair. The existing evidence screen retains the
-exact comparison window, prior transactions and contextual explanation.
+median, with amounts, payment date and reference count. Tapping a merchant's
+comparison opens the existing payment evidence page; “View payments” remains an
+accessibility action rather than a visible text button. The help icon stays
+separate from navigation. Both bars use the same scale within that pair. The
+existing evidence screen retains the exact comparison window, prior transactions
+and contextual explanation.
 Long explanations of spending scope, comparison dates, merchant net amounts and
 statistical observations use the existing exclamation-mark guidance buttons.
 The chart keeps its title, amounts, dates and concise sample counts visible.
