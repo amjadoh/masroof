@@ -100,6 +100,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     val forecastScroll = rememberScrollState()
     val commitmentsScroll = rememberScrollState()
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
+    val detailScroll = key(detail) { rememberScrollState() }
+    var evidenceKey by rememberSaveable { mutableStateOf<String?>(null) }
     val displayedTab = listOf("spending", "forecasts", "commitments").indexOf(tab).coerceAtLeast(0)
     var settings by rememberSaveable { mutableStateOf(target == "settings") }
     var settingsEntry by rememberSaveable { mutableStateOf(target == "settings") }
@@ -123,6 +125,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
             catch (_: Exception) { null }
         settings = false; settingsEntry = false
         detail = null
+        evidenceKey = null
         tab = if (alert?.kind in listOf("DUE", "PAYMENT")) "commitments" else "spending"
         purchaseRange = 0
         endedAlert = alert == null || alert.resolved
@@ -133,7 +136,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         pendingTarget = null
     }
     BackHandler(enabled = !saving) {
-        when { editing != null -> editing = null; detail != null -> detail = null; settings -> if (settingsEntry) onBack() else { settings = false }; else -> onBack() }
+        when { editing != null -> editing = null; evidenceKey != null -> evidenceKey = null; detail != null -> detail = null; settings -> if (settingsEntry) onBack() else { settings = false }; else -> onBack() }
     }
     BackHandler(enabled = saving) { }
     val candidate = state.snapshot?.candidates?.firstOrNull { it.key == editing }
@@ -158,6 +161,10 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         return
     }
     if (settings) { Preferences(workflow, state, onBack = { if (settingsEntry) onBack() else settings = false }); return }
+    evidenceKey?.let { selected ->
+        key(selected) { AnalysisTransactionsScreen(state.snapshot, selected, workflow, { evidenceKey = null }, onOpenTransaction) }
+        return
+    }
     if (detail != null) {
         val title = when (detail) {
             "quality" -> R.string.analysis_quality_details
@@ -165,10 +172,10 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
             else -> R.string.analysis_performance_open
         }
         MasroofSecondaryScaffold(stringResource(title), { detail = null }, stringResource(R.string.lab_analysis_back)) { modifier ->
-            Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            Column(modifier.verticalScroll(detailScroll), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
                 when (detail) {
                     "quality" -> state.snapshot?.let { AnalysisDataQuality(it, workflow, onOpenTransaction, onOpenReview, onRequestSmsPermission, onRescan) }
-                    "merchants" -> state.snapshot?.let { AnalysisMerchantCard(it, workflow, onOpenTransaction, showAll = true) }
+                    "merchants" -> state.snapshot?.let { AnalysisMerchantCard(it, { evidenceKey = it }, showAll = true) }
                     else -> AnalysisPerformanceOverview(state, workflow)
                 }
             }
@@ -196,7 +203,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 if (endedAlert) Text(stringResource(R.string.lab_analysis_alert_ended))
                 if (state.unavailable) MasroofTextButton(onClick = workflow::request) { Text(stringResource(R.string.dashboard_retry)) }
                 when (displayedTab) {
-                    0 -> SpendingTab(state, workflow, onOpenTransaction, purchaseRange, { purchaseRange = it }, { detail = "quality" }, { detail = "merchants" })
+                    0 -> SpendingTab(state, purchaseRange, { purchaseRange = it }, { detail = "merchants" }, { evidenceKey = it })
                     1 -> ForecastTab(state, workflow, { detail = "quality" }, { detail = "performance" })
                     2 -> {
                         if (state.snapshot?.dues?.isEmpty() == true) MasroofCard {
@@ -256,8 +263,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun SpendingTab(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit,
-    range: Int, onRangeChanged: (Int) -> Unit, onQuality: () -> Unit, onMerchants: () -> Unit) {
+@Composable private fun SpendingTab(state: AnalysisUiState, range: Int, onRangeChanged: (Int) -> Unit,
+    onMerchants: () -> Unit, onOpenGroup: (String) -> Unit) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
         listOf(0 to R.string.lab_analysis_current_period, 3 to R.string.lab_analysis_last_three, 6 to R.string.lab_analysis_last_six).forEach { (value, label) ->
             MasroofChoice(label = stringResource(label), selected = range == value, onClick = { onRangeChanged(value) }, modifier = Modifier.testTag("lab-history-$value"))
@@ -270,11 +277,10 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 Amount(stringResource(R.string.lab_analysis_actual), s.actual, MasroofAmountRole.Hero)
                 Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            AnalysisSpendingExplanation(s, workflow, onOpenTransaction, includeChanges = false)
-            AnalysisMerchantCard(s, workflow, onOpenTransaction, onViewAll = onMerchants)
-            AnalysisChangeCard(s, workflow, onOpenTransaction)
+            AnalysisSpendingExplanation(s, onOpenGroup)
+            AnalysisMerchantCard(s, onOpenGroup, onViewAll = onMerchants)
+            AnalysisChangeCard(s, onOpenGroup)
         }
-        AnalysisQualityEntry(s, onQuality)
     }
 }
 

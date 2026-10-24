@@ -122,7 +122,6 @@
     <string name="lab_analysis_changes">أبرز المساهمات في الفرق</string>
     <string name="lab_analysis_changes_hint">توضح هذه المقارنات الفرق حسابيًا؛ قد تكون الجهة جزءًا من أحد المكونات، لذلك لا تُجمع الصفوف.</string>
     <string name="lab_analysis_change_value">%1$s: الفرق %2$s</string>
-    <string name="lab_analysis_change_evidence">عرض حركات المقارنة</string>
     <string name="lab_analysis_top_merchants">أعلى الجهات في المشتريات الصافية</string>
     <string name="lab_analysis_no_merchants">لا توجد مشتريات مسماة كافية لعرض الجهات.</string>
     <string name="lab_analysis_evidence">عرض الحركات</string>
