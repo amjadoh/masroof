@@ -1,5 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
+import com.baraa.masroof.testsupport.MutableCardRegistryRepository as FakeCardRegistry
+import com.baraa.masroof.testsupport.StubAccountRegistryRepository as FakeAccountRegistry
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.locale.AppLocale
@@ -27,7 +30,6 @@ import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.CardRegistryEntry
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
@@ -594,69 +596,6 @@ class DashboardViewModelTest {
 
         assertEquals(1, rescanCalls)
         assertTrue(vm.uiState.value.smsPermissionGranted)
-    }
-
-    private class FakeCardRegistry(
-        vararg initial: CardRegistryEntry,
-    ) : com.baraa.masroof.domain.repository.CardRegistryRepository {
-    override suspend fun configure(reference: com.baraa.masroof.domain.model.CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) { error("configure not used by this test double") }
-
-        val entries = initial.toMutableList()
-
-        override suspend fun observe(reference: CardReference, rawSmsId: String) = Unit
-
-        override suspend fun setOwnership(reference: CardReference, status: OwnershipStatus) {
-            val index = entries.indexOfFirst { it.bank == reference.bank && it.last4 == reference.last4 }
-            if (index >= 0) {
-                entries[index] = entries[index].copy(ownership = status)
-            }
-        }
-
-        override suspend fun resolve(reference: CardReference): OwnershipStatus =
-            entries.find { it.bank == reference.bank && it.last4 == reference.last4 }?.ownership
-                ?: OwnershipStatus.UNKNOWN
-
-        override suspend fun get(reference: CardReference) =
-            entries.find { it.bank == reference.bank && it.last4 == reference.last4 }
-
-        override suspend fun listAll(): List<CardRegistryEntry> = entries.toList()
-
-        override suspend fun updateDisplayName(reference: CardReference, displayName: String?) = Unit
-
-        override suspend fun updateCardNetwork(reference: CardReference, network: com.baraa.masroof.domain.model.CardNetwork?) = Unit
-
-        override suspend fun updateCardType(reference: CardReference, cardType: com.baraa.masroof.domain.model.CardType?) = Unit
-
-        override suspend fun linkDebitToAccount(card: CardReference, account: AccountReference) = Unit
-
-        override suspend fun markAsDebit(reference: CardReference) = Unit
-
-        override suspend fun setPrimaryCard(reference: CardReference) = Unit
-
-        override suspend fun setSupplementaryCard(reference: CardReference, primaryLast4: String) = Unit
-
-        override suspend fun clearCardRole(reference: CardReference) = Unit
-    }
-
-    private class FakeAccountRegistry(
-        vararg initial: com.baraa.masroof.domain.model.AccountRegistryEntry,
-    ) : com.baraa.masroof.domain.repository.AccountRegistryRepository {
-        private val entries = initial.toMutableList()
-
-        override suspend fun observe(reference: AccountReference, rawSmsId: String) = Unit
-
-        override suspend fun setOwnership(reference: AccountReference, status: OwnershipStatus) = Unit
-
-        override suspend fun resolve(reference: AccountReference): OwnershipStatus =
-            entries.find { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }?.ownership
-                ?: OwnershipStatus.UNKNOWN
-
-        override suspend fun get(reference: AccountReference) =
-            entries.find { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }
-
-        override suspend fun listAll() = entries.toList()
-        override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) = Unit
-            override suspend fun updateAccountType(reference: com.baraa.masroof.domain.model.AccountReference, accountType: com.baraa.masroof.domain.model.AccountType) = Unit
     }
 
     private fun assertPeriodSummaryInvariant(state: DashboardUiState) {

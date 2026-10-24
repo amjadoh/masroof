@@ -21,7 +21,6 @@ object MasroofPalette {
     val Text = Color(0xFF1A1F24)
     val Muted = Color(0xFF6B7280)
     val Border = Color(0xFFE5E7EB)
-    val MiniBackground = Color(0xFFFAFAFA)
     val HintBackground = Color(0xFFF9FAFB)
 }
 

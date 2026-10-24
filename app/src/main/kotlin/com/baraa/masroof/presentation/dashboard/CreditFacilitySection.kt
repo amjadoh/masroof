@@ -44,7 +44,7 @@ fun DebitCardDetailSummaryCard(debit: DebitCardOverview, network: CardNetwork?, 
 
 @Composable
 fun DebitCardSummaryTile(debit: DebitCardOverview, network: CardNetwork?, modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null, showNavigationIcon: Boolean = onClick != null,
+    onClick: (() -> Unit)? = null,
     trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null,
 ) {
     EntitySummaryCard(debit.displayLabel, stringResource(R.string.card_network_mada), MasroofIcons.cardPayment,

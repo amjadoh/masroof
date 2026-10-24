@@ -1,20 +1,10 @@
 package com.baraa.masroof.presentation.dashboard
 
-import com.baraa.masroof.ui.theme.MasroofOpacity
 import com.baraa.masroof.ui.theme.MasroofSpacing
-import com.baraa.masroof.ui.theme.MasroofSizes
-import com.baraa.masroof.ui.theme.MasroofComponentShapes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -30,29 +20,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun LoanIdentityBadge(
-    modifier: Modifier = Modifier,
-) {
-    val extended = MasroofThemeExtras.extendedColors
-    Box(
-        modifier = modifier
-            .size(width = MasroofSizes.size36, height = MasroofSpacing.screenPaddingLarge)
-            .clip(MasroofComponentShapes.radius6)
-            .background(extended.liability.copy(alpha = MasroofOpacity.tint)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = MasroofIcons.savings,
-            contentDescription = null,
-            tint = extended.liability,
-            modifier = Modifier.size(MasroofSpacing.compactCardContentPadding),
-        )
-    }
-}
-
-@Composable
-fun LoanSummaryTile(loan: LoanOverview, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null,
-    showNavigationIcon: Boolean = onClick != null) {
+fun LoanSummaryTile(loan: LoanOverview, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val date = DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0])
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
     EntitySummaryCard(loan.displayLabel, "", MasroofIcons.moneyMovement,
