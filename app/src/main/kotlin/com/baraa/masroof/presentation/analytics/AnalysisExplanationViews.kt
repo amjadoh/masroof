@@ -67,17 +67,7 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             com.baraa.masroof.ui.components.MasroofValueBarRow(stringResource(R.string.analysis_personal_periods),
                 com.baraa.masroof.application.locale.AppDigits.display(stringResource(R.string.analysis_progress, snapshot.completedPeriods, 4)), fraction(snapshot.completedPeriods.toLong(), 4),
                 style = com.baraa.masroof.ui.components.MasroofHorizontalBarStyle.Default)
-            if (snapshot.status == "READY") Text(stringResource(when (snapshot.modelReason) {
-                "PERSONAL_MODEL" -> R.string.lab_analysis_ready
-                "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
-                "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
-                "LIVE_BASELINE_BETTER" -> R.string.learning_forecast_paused
-                "MODEL_UNAVAILABLE" -> R.string.lab_analysis_quality_model_retry
-                "COVERAGE_GAPS" -> R.string.lab_analysis_quality_gaps
-                "NEEDS_PERIODS" -> R.string.lab_analysis_quality_periods_reason
-                "NEEDS_PURCHASE_DAYS" -> R.string.lab_analysis_quality_purchase_days_reason
-                else -> R.string.lab_analysis_quality_history_reason
-            }), style = MaterialTheme.typography.bodySmall)
+            if (snapshot.status == "READY") Text(stringResource(forecastReasonResource(snapshot.modelReason)), style = MaterialTheme.typography.bodySmall)
         }
     }
     MasroofCard {
@@ -121,6 +111,18 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
             }
         }
     }
+}
+
+internal fun forecastReasonResource(reason: String?): Int = when (reason) {
+    "PERSONAL_MODEL" -> R.string.lab_analysis_ready
+    "NEEDS_EVALUATIONS" -> R.string.lab_analysis_quality_evaluation_reason
+    "BASELINE_BETTER" -> R.string.lab_analysis_quality_baseline_reason
+    "LIVE_BASELINE_BETTER" -> R.string.learning_forecast_paused
+    "MODEL_UNAVAILABLE" -> R.string.lab_analysis_quality_model_retry
+    "COVERAGE_GAPS" -> R.string.lab_analysis_quality_gaps
+    "NEEDS_PERIODS" -> R.string.lab_analysis_quality_periods_reason
+    "NEEDS_PURCHASE_DAYS" -> R.string.lab_analysis_quality_purchase_days_reason
+    else -> R.string.lab_analysis_quality_history_reason
 }
 
 @Composable internal fun MessageLearningInsights(state: AnalysisUiState) {

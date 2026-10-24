@@ -46,6 +46,24 @@ class AnalysisPresentationBuilderTest {
             quality = state(start).snapshot!!.quality.copy(coverageDays = listOf(AnalysisCoverageDay(start, false))))
         assertNull(AnalysisPresentationBuilder.dailyBars(snapshot).single().amount)
     }
+    @Test fun forecastExplanationNeverClaimsAPersonalModelFromReadinessOrBlockedData() {
+        val snapshot = state(start).snapshot!!
+        assertEquals(ForecastMethod.INITIAL, AnalysisPresentationBuilder.forecast(snapshot).method)
+        assertEquals(ForecastMethod.PERSONAL, AnalysisPresentationBuilder.forecast(snapshot.copy(
+            method = com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL)).method)
+        assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(
+            quality = snapshot.quality.copy(blocked = true))).method)
+        assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(total = null)).method)
+        assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(method = "future-model")).method)
+    }
+    @Test fun onlyCurrentQualifiedHorizonChecksMayExplainForecastError() {
+        val snapshot = state(start).snapshot!!.copy(evaluationVersion = com.baraa.masroof.lab.analytics.AnalyticsVersion.EVALUATION,
+            evaluations = listOf(AnalysisEvaluation(7, 8, 100, -20), AnalysisEvaluation(14, 7, 20, 0),
+                AnalysisEvaluation(28, 8, -1, 0), AnalysisEvaluation(3, 20, 0, 0)))
+        assertEquals(listOf(7), AnalysisPresentationBuilder.forecast(snapshot).evaluations.map { it.horizon })
+        assertTrue(AnalysisPresentationBuilder.forecast(snapshot.copy(evaluationVersion = null)).evaluations.isEmpty())
+        assertTrue(AnalysisPresentationBuilder.forecast(snapshot.copy(status = "INSUFFICIENT_DATA")).evaluations.isEmpty())
+    }
     @Test fun chartSeparatesTodaysKnownActualFromAdditionalEstimatedSpendingAndKeepsRefundsSigned() {
         val snapshot = state(start).snapshot!!.copy(days = listOf(AnalysisDay(start, -100, null),
             AnalysisDay(start + 1, 150, null), AnalysisDay(start + 1, null, 150), AnalysisDay(start + 2, null, 50)))
