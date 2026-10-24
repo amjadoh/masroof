@@ -70,6 +70,19 @@ Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGH
 
 ## Personal insights local verification
 
+- Approved visual refinement: append shared current-payment/prior-median bars
+  after existing spending charts, retain exact evidence navigation, and expand
+  the forecast explanation inline only after a tap. No new chart dependency,
+  model activation, persistence or financial calculation was introduced.
+- This refinement passed all 1,825 app and 16 ui-kit unit tests, lint, detekt,
+  and both debug APK builds. Three API 36 journeys passed together, covering
+  Arabic/English, light/dark, enlarged text, comparison evidence, inline expansion,
+  correction refresh, ledger parity, existing charts/drafts and recurring undo.
+- CI #944 exposed permanent hint text and non-ASCII resource digits. Both failures
+  were reproduced locally and repaired through shared guidance and digit policy.
+  Its evidence-row device failure came from checking before asynchronous loading;
+  the journey now waits for the actual row and retains every evidence assertion.
+  Full CI for the updated head remains required before merge.
 - 373 focused app tests passed (analytics, dashboard, family learning, migration,
   persistence and package boundaries), plus two new message-selection tests.
   Targeted regressions were rerun after the final navigation/display corrections.

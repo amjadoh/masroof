@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.*
+import com.baraa.masroof.lab.analytics.SpendingObservation
 import com.baraa.masroof.application.dashboard.AnalysisSpendingGroup
 import com.baraa.masroof.application.locale.AppDigits
 import com.baraa.masroof.presentation.common.*
@@ -22,6 +23,36 @@ import java.math.BigDecimal
 
 @Composable internal fun visualMoney(value: Long) = formatLocalizedMoney(analysisAmount(value))
 internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.components.MasroofBarChart.progress(BigDecimal.valueOf(value), BigDecimal.valueOf(maximum))
+
+@Composable internal fun AnalysisSpendingObservations(state: AnalysisUiState, onOpenGroup: (String) -> Unit) {
+    if (state.updating || state.unavailable || state.observations.isEmpty()) return
+    MasroofCard(Modifier.testTag("spending-observations")) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            MasroofSectionHeader(stringResource(R.string.personal_spending_attention), icon = MasroofIcons.analysis)
+            state.observations.forEach { observation ->
+                Column(Modifier.testTag("spending-observation-chart-${observation.id}"),
+                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+                    Text(observation.merchant, style = MaterialTheme.typography.titleSmall)
+                    AnalysisSpendingObservationBars(observation)
+                    MasroofTextButton(onClick = { onOpenGroup("observation:${observation.id}") },
+                        modifier = Modifier.testTag("spending-observation-${observation.id}")) {
+                        Text(stringResource(R.string.personal_spending_evidence))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable internal fun AnalysisSpendingObservationBars(observation: SpendingObservation) {
+    val maximum = maxOf(observation.amount, observation.reference)
+    MasroofValueBarRow(stringResource(R.string.personal_spending_payment), visualMoney(observation.amount),
+        fraction(observation.amount, maximum), Modifier.testTag("spending-observation-current-${observation.id}"),
+        subtitle = AppDigits.display(day(observation.day)))
+    MasroofValueBarRow(stringResource(R.string.personal_spending_median), visualMoney(observation.reference),
+        fraction(observation.reference, maximum), Modifier.testTag("spending-observation-reference-${observation.id}"), previous = true,
+        subtitle = AppDigits.display(stringResource(R.string.personal_spending_sample, observation.referenceIds.size)))
+}
 
 @Composable internal fun AnalysisComparisonCard(snapshot: AnalysisSnapshot) {
     val comparison = snapshot.insights?.comparison

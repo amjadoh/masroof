@@ -78,10 +78,13 @@ base model. Do not relax gates to make the preview or private evaluation succeed
 
 Keep period selector and actual total first. Keep “How did your spending change?”
 display-only; current chart/merchant taps continue opening scoped transactions.
-Add a compact “Worth a look” section after the comparison, before merchant bars.
+Append a compact “Higher payments than usual” section after the existing merchant
+and change charts. Keep those charts and the historical-period selector intact.
 Maximum three observations, only when the evidence supports them; no empty
-“AI” card. Each observation contains one plain-language fact, the comparison
-window, the number of eligible prior observations and “View transactions”.
+“AI” card. Each merchant has paired shared bars for the current payment and prior
+median, with amounts, payment date, reference count and “View payments”. Both bars
+use the same scale within that pair. The existing evidence screen retains the
+exact comparison window, prior transactions and contextual explanation.
 
 First candidate: an unusually large payment at the same merchant within the same
 bank-qualified source scope, currency/approved SAR conversion and eligible type.
@@ -106,8 +109,10 @@ measure usefulness before introducing interruption or learned alert ranking.
 
 Keep current actual/remainder split and daily chart. In the main summary add one
 short method line: “Initial estimate” or “Personal model in use”. Next to it,
-“Why this estimate?” opens a detail sheet with method, training date range,
-usable covered days, completed periods and the current blocking reason.
+“Why this estimate?” expands details inside the summary with method, training date
+range, usable covered days, completed periods and the current blocking reason.
+Details start collapsed and the same button closes them; no automatic popup or
+new notification is introduced. The existing daily chart is retained.
 
 Use the existing quality detail for permission, review and missing-coverage
 actions. Do not turn transaction-free days into proven zero-spend days. Keep

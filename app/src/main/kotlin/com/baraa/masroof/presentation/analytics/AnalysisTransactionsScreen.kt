@@ -14,6 +14,7 @@ import com.baraa.masroof.application.analytics.AnalysisSnapshot
 import com.baraa.masroof.application.analytics.AnalysisUiState
 import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
 import com.baraa.masroof.presentation.common.MasroofCard
+import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.MasroofText as Text
@@ -32,10 +33,9 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             if (snapshot != null && observation != null && !state.updating && !state.unavailable) {
                 MasroofCard {
-                    MasroofSectionHeader(stringResource(R.string.personal_spending_attention))
-                    Text(stringResource(R.string.personal_spending_unusual, observation.merchant), style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.personal_spending_comparison, visualMoney(observation.amount), visualMoney(observation.reference)))
-                    Text(stringResource(R.string.personal_spending_hint), style = MaterialTheme.typography.bodySmall)
+                    MasroofGuidanceLabel(stringResource(R.string.personal_spending_attention), stringResource(R.string.personal_spending_hint),
+                        style = MaterialTheme.typography.titleMedium)
+                    AnalysisSpendingObservationBars(observation)
                     EvidenceGroup(listOf(observation.id), stringResource(R.string.personal_spending_payment), workflow,
                         snapshot.sourceHash, onOpenTransaction, collapsible = false)
                 }

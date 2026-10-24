@@ -233,9 +233,11 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                             }
                             }
                         }
-                        MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), icon = MasroofIcons.analysis)
-                        if (state.snapshot?.candidates?.isNotEmpty() == true) Text(stringResource(R.string.personal_recurring_decisions_hint),
-                            style = MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            MasroofSectionHeader(stringResource(R.string.lab_analysis_candidates), Modifier.weight(1f), icon = MasroofIcons.analysis)
+                            if (state.snapshot?.candidates?.isNotEmpty() == true) MasroofGuidanceButton(
+                                stringResource(R.string.lab_analysis_candidates), stringResource(R.string.personal_recurring_decisions_hint))
+                        }
                         if (state.snapshot?.candidates?.isEmpty() == true) MasroofCard {
                             com.baraa.masroof.ui.components.MasroofAnalysisEmptyState(stringResource(R.string.lab_analysis_no_candidates),
                                 stringResource(R.string.analysis_commitments_separate), MasroofIcons.calendar)
@@ -308,23 +310,9 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             AnalysisSpendingExplanation(s, onOpenGroup)
-            if (!state.updating && !state.unavailable && state.observations.isNotEmpty()) MasroofCard {
-                MasroofSectionHeader(stringResource(R.string.personal_spending_attention))
-                Text(stringResource(R.string.personal_spending_hint), style = MaterialTheme.typography.bodySmall)
-                state.observations.forEach { observation ->
-                    Text(stringResource(R.string.personal_spending_unusual, observation.merchant), style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.personal_spending_comparison, visualMoney(observation.amount), visualMoney(observation.reference)),
-                        style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.personal_spending_reference, observation.referenceIds.size, day(observation.from), day(observation.through)),
-                        style = MaterialTheme.typography.bodySmall)
-                    MasroofTextButton(onClick = { onOpenGroup("observation:${observation.id}") },
-                        modifier = Modifier.testTag("spending-observation-${observation.id}")) {
-                        Text(stringResource(R.string.personal_spending_evidence))
-                    }
-                }
-            }
             AnalysisMerchantCard(s, onOpenGroup, onViewAll = onMerchants)
             AnalysisChangeCard(s, onOpenGroup)
+            AnalysisSpendingObservations(state, onOpenGroup)
         }
     }
 }
