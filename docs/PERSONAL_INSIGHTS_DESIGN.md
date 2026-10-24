@@ -85,6 +85,9 @@ Maximum three observations, only when the evidence supports them; no empty
 median, with amounts, payment date, reference count and “View payments”. Both bars
 use the same scale within that pair. The existing evidence screen retains the
 exact comparison window, prior transactions and contextual explanation.
+Long explanations of spending scope, comparison dates, merchant net amounts and
+statistical observations use the existing exclamation-mark guidance buttons.
+The chart keeps its title, amounts, dates and concise sample counts visible.
 
 First candidate: an unusually large payment at the same merchant within the same
 bank-qualified source scope, currency/approved SAR conversion and eligible type.
@@ -109,10 +112,13 @@ measure usefulness before introducing interruption or learned alert ranking.
 
 Keep current actual/remainder split and daily chart. In the main summary add one
 short method line: “Initial estimate” or “Personal model in use”. Next to it,
-“Why this estimate?” expands details inside the summary with method, training date
-range, usable covered days, completed periods and the current blocking reason.
-Details start collapsed and the same button closes them; no automatic popup or
-new notification is introduced. The existing daily chart is retained.
+An exclamation-mark button beside the method opens concise contextual help with
+the method, current blocking reason, qualification rule and spending scope.
+No explanation expands inside the chart card. The existing guidance popup opens
+only on a tap and dismisses with Back or outside press. Detailed history coverage,
+training dates and numerical qualification requirements remain in Data quality.
+Readiness-chart explanations also use contextual guidance. The existing daily
+chart, visible availability warnings, numerical labels and legends are retained.
 
 Use the existing quality detail for permission, review and missing-coverage
 actions. Do not turn transaction-free days into proven zero-spend days. Keep

@@ -581,6 +581,14 @@ class AnalyticsJourneyTest {
             for (locale in listOf("ar", "en")) for (isDark in listOf(false, true)) {
                 compose.runOnUiThread { language = locale; dark = isDark }
                 compose.onNodeWithTag("analysis-tab-0").performClick()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_short, locale), substring = true).assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.analysis_merchants_scope, locale)).assertDoesNotExist()
+                val aboutMerchants = text(R.string.guidance_about, locale).format(text(R.string.analysis_merchants, locale))
+                compose.onNodeWithContentDescription(aboutMerchants).performScrollTo().performClick()
+                compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.analysis_merchants_scope, locale)).assertIsDisplayed()
+                instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isEmpty() }
                 compose.waitUntil(30_000) { compose.onAllNodesWithTag("spending-observation-chart-observed-0").fetchSemanticsNodes().size == 1 }
                 compose.onNodeWithTag("spending-observation-chart-observed-0").performScrollTo().assertIsDisplayed()
                 compose.onNodeWithTag("spending-observation-current-observed-0").assert(hasAnyDescendant(hasText(
@@ -597,15 +605,21 @@ class AnalyticsJourneyTest {
                 screen("$locale-${if (isDark) "dark" else "light"}-personal-spending-evidence")
                 compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, locale)).performClick()
                 compose.onNodeWithTag("analysis-tab-1").performClick()
-                compose.onNodeWithTag("forecast-explanation-details").assertDoesNotExist()
-                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
+                compose.onNodeWithText(text(R.string.personal_forecast_qualification, locale), substring = true).assertDoesNotExist()
+                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(text(R.string.lab_analysis_scope_short, locale), substring = true).assertDoesNotExist()
+                screen("$locale-${if (isDark) "dark" else "light"}-forecast-summary")
+                val aboutForecast = text(R.string.guidance_about, locale).format(text(R.string.personal_forecast_why, locale))
+                compose.onNodeWithContentDescription(aboutForecast).performClick()
                 compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
-                compose.onNodeWithTag("forecast-explanation-details").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
                 compose.onNodeWithText(com.baraa.masroof.application.locale.AppDigits.display(
-                    text(R.string.personal_forecast_qualification, locale))).performScrollTo().assertIsDisplayed()
+                    text(R.string.personal_forecast_qualification, locale)), substring = true).assertIsDisplayed()
                 screen("$locale-${if (isDark) "dark" else "light"}-forecast-explanation")
-                compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
-                compose.onNodeWithTag("forecast-explanation-details").assertDoesNotExist()
+                instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("guidance-popup").fetchSemanticsNodes().isEmpty() }
+                compose.onNodeWithTag("guidance-popup").assertDoesNotExist()
                 compose.onNodeWithTag("analysis-daily-bars").performScrollTo().assertIsDisplayed()
             }
             assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })

@@ -71,13 +71,21 @@ Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGH
 ## Personal insights local verification
 
 - Approved visual refinement: append shared current-payment/prior-median bars
-  after existing spending charts, retain exact evidence navigation, and expand
-  the forecast explanation inline only after a tap. No new chart dependency,
+  after existing spending charts and retain exact evidence navigation. Explanations
+  use shared exclamation-mark guidance, without expanding text in the chart card.
+  No new chart dependency,
   model activation, persistence or financial calculation was introduced.
-- This refinement passed all 1,825 app and 16 ui-kit unit tests, lint, detekt,
+- The initial comparison refinement passed all 1,825 app and 16 ui-kit unit tests, lint, detekt,
   and both debug APK builds. Three API 36 journeys passed together, covering
   Arabic/English, light/dark, enlarged text, comparison evidence, inline expansion,
   correction refresh, ledger parity, existing charts/drafts and recurring undo.
+- The subsequent contextual-help refinement passed 329 scoped app tests, lint,
+  detekt and both debug APK builds. Four API 36 journeys passed with system font
+  scale 1.3, covering hidden-by-default explanation, exclamation-mark opening,
+  Back dismissal, Arabic/English and light/dark, chart drilldowns, quality actions
+  and unchanged financial data. Native closed/open screenshots were inspected.
+  The new help interaction failed against the previous text-button UI before the
+  implementation. PR/CI monitoring remains stopped at the user's request.
 - CI #944 exposed permanent hint text and non-ASCII resource digits. Both failures
   were reproduced locally and repaired through shared guidance and digit policy.
   Its evidence-row device failure came from checking before asynchronous loading;

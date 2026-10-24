@@ -306,8 +306,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     state.snapshot?.let { s ->
         if (range == 0) {
             MasroofCard {
-                Amount(stringResource(R.string.lab_analysis_actual), s.actual, MasroofAmountRole.Hero)
-                Text(stringResource(R.string.lab_analysis_scope_short), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MasroofGuidanceLabel(stringResource(R.string.lab_analysis_actual), stringResource(R.string.lab_analysis_scope_short))
+                Amount("", s.actual, MasroofAmountRole.Hero)
             }
             AnalysisSpendingExplanation(s, onOpenGroup)
             AnalysisMerchantCard(s, onOpenGroup, onViewAll = onMerchants)
