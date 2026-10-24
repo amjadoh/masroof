@@ -590,7 +590,8 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithTag("analysis-tab-1").performClick()
                 compose.onNodeWithTag("forecast-explanation-open").performScrollTo().performClick()
                 compose.onNodeWithTag("masroof-bottom-sheet").assertIsDisplayed()
-                compose.onNodeWithText(text(R.string.personal_forecast_qualification, locale)).assertExists()
+                compose.onNodeWithText(com.baraa.masroof.application.locale.AppDigits.display(
+                    text(R.string.personal_forecast_qualification, locale))).performScrollTo().assertIsDisplayed()
                 screen("$locale-${if (isDark) "dark" else "light"}-forecast-explanation")
                 compose.onNodeWithTag("sheet-cancel").performClick()
                 compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
