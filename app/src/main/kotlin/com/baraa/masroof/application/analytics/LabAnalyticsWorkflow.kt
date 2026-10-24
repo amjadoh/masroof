@@ -140,7 +140,8 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
                 FinancialFact(tx.id, tx.occurredAt.atZone(zone).toLocalDate().toEpochDay(), amount,
                     tx.type == FinancialTransactionType.REFUND, tx.id in included, tx.merchant ?: tx.counterparty,
                     effective in setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE, FinancialTransactionType.BILL_PAYMENT),
-                    tx.sourceContainerId ?: tx.destinationContainerId)
+                    tx.sourceContainerId ?: tx.destinationContainerId,
+                    (tx.sourceContainerId ?: tx.destinationContainerId)?.let { "$it|${original.amount.currency}|${effective.name}" })
             }
             val onboarding = container.onboardingPreferencesRepository
             val importedFrom = if (onboarding.isHistoricalImportCompleted()) onboarding.getHistoricalImportStartEpochMillis()
@@ -329,7 +330,11 @@ class LabAnalyticsWorkflow(private val container: AppContainer, private val cont
             if (days.size.toLong() != past.periodEnd - past.periodStart || days.any { !it.covered }) null
             else past.periodStart to days.fold(0L) { sum, day -> Math.addExact(sum, day.net) }
         }.toMap()
-        mutable.update { it.copy(updating = false, unavailable = false, historyActuals = actuals, purchasePeriods = purchasePeriodHistory(input.clean, input.start)) }
+        val observations = if (input.blocked || input.reasons.isNotEmpty() || !input.clean.quality.coverageKnown) emptyList() else
+            SpendingObservationBuilder.build(input.clean.recurring, input.start, input.today,
+                input.clean.days.filter { it.covered }.map { it.day }.toSet())
+        mutable.update { it.copy(updating = false, unavailable = false, historyActuals = actuals,
+            purchasePeriods = purchasePeriodHistory(input.clean, input.start), observations = observations) }
     }
 
     private fun alerts(snapshot: AnalysisSnapshot, candidates: List<AnalysisCandidate>, previous: List<AnalysisAlertRow>, prefs: AnalysisPreferencesRow) =
