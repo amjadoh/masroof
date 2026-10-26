@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="pattern_title">أنماط رسائل البنوك</string>
-    <string name="pattern_preview_only">التعليم والمعاينة متاحان الآن. الأنماط المحفوظة لا تسجل عمليات مالية تلقائيًا بعد.</string>
+    <string name="pattern_preview_only">تُحفظ الأنماط الجديدة للمعاينة. التفسير المالي يحتاج اعتمادًا منفصلًا وتحققًا قبل التسجيل.</string>
     <string name="pattern_failed">تعذر إكمال الخطوة. تحقق من الحقول والتحديد، وأعد تحميل الإعدادات إذا تغيرت.</string>
     <string name="pattern_bank_name">اسم البنك</string>
     <string name="pattern_sender">اسم مرسل الرسائل كما يظهر</string>
@@ -28,7 +28,7 @@
     <string name="pattern_teach_from_review">تعليم نمط من هذه الرسالة</string>
     <string name="pattern_sender_mismatch">مرسل هذه الرسالة ليس ضمن مرسلي البنك المحدد. اختر البنك الصحيح؛ لن يتغير توجيه الرسالة.</string>
     <string name="pattern_pending_title">معاينة الرسائل المعلقة</string>
-    <string name="pattern_pending_scope">استخراج تجريبي فقط. العمليات المسجلة والتصحيحات اليدوية مستثناة. تبقى الرسائل في المراجعة ولا تُسجل أي عملية مالية.</string>
+    <string name="pattern_pending_scope">المعاينة لا تغيّر الرسائل. التطبيق إجراء منفصل للأنماط المعتمدة فقط؛ العمليات المسجلة والتصحيحات والقرارات اليدوية مستثناة.</string>
     <string name="pattern_pending_refresh">تحديث المعاينة</string>
     <string name="pattern_pending_limited">تُفحص أول 1000 رسالة في قائمة المراجعة، ويُعرض هنا أول 50 نتيجة للبنك. هذه ليست تغطية كاملة للرسائل.</string>
     <string name="pattern_pending_row">الرسالة %1$d — %2$s</string>
