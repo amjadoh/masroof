@@ -1,4 +1,56 @@
-# Extraction from a single annotated SMS: offline experiment
+# Generic text candidates and learned field bindings: offline experiment
+
+The first stage is now **text-only candidate discovery**:
+`GenericCandidateExtractor.extract(body)`. It receives no sender, bank, message
+family, teaching examples, semantic field names, or layout template. Common
+lexical grammars offer money-shaped strings, timestamp-shaped strings, masked or
+mixed identifiers, standalone numbers, and text fragments with original offsets.
+No financial value, account role, bank identity, time interpretation or approval
+is produced.
+
+Human binding follows discovery. The user chooses which candidate belongs in
+which field and can select a narrower range directly. The earlier learned-layout
+experiment below checks the subsequent reuse of those bindings; it is not the
+generic candidate extractor. Both stages remain in test sources only.
+
+## Text-only discovery check
+
+The ten-message private batch was scanned without passing a template or training
+input. All 40 independently selected raw value spans appeared among the
+candidates with the expected primitive kind and original offsets, including the
+SARIE examples. Masked values retain their mask rather than inventing account
+suffixes. Candidate precision and semantic interpretation were not measured;
+extra text fragments can include headings or possible labels.
+
+The full module run after adding discovery passed 85 bank-engine tests and
+95 finance-core tests, with zero failures, errors or skipped tests. A separate
+check binds human-selected candidates to semantic fields and only then teaches
+a layout; no semantic mapping is inferred by the generic extractor.
+
+```bash
+MASROOF_GENERIC_INPUT=/private/generic-input.json \
+MASROOF_GENERIC_REPORT=/private/generic-report.json \
+./gradlew :bank-engine:test --tests '*GenericCandidateExtractorTest' --rerun-tasks --no-build-cache
+```
+
+Each private input row contains `body` and independent `expected` primitive
+spans (`kind`, `raw`, `start`, `end`). Only `body` reaches the extractor. Without
+private input, the same check uses a synthetic fixture. No private text is
+committed or printed.
+
+Generic means independent of message layouts and banks, not unlimited language
+coverage. The prototype supports common SAR/SR, USD, EUR and GBP tokens and
+selected currency symbols, date/time shapes, masked/mixed identifiers and
+decimal-looking numbers. It deliberately preserves signs, precision and
+ambiguous separators for later interpretation. A date-shaped string can still
+be an invalid date, and a money-shaped string can still be a balance or a fee.
+No chosen century, timezone, canonical Money, ownership or principal amount is
+inferred. Text fragments use boundaries and an optional first-word split, not
+named-entity recognition. Direct text selection remains necessary when a desired
+value is not proposed. Inputs are bounded to 4096 UTF-16 units and candidates to
+160 normalized characters. Production validation/integration is still pending.
+
+## Subsequent learned-layout experiment
 
 This experiment checks whether human-selected field ranges can generate a
 bounded extractor for a message layout. It runs in `bank-engine` **test sources
