@@ -151,13 +151,10 @@ class DatabaseBackupService(
                     }
                     FileInputStream(plainZip).use { extractValidated(it, directory) }
                     val manifest = BackupPackageCodec.decodeManifest(File(directory, BackupPackageFormat.MANIFEST_ENTRY).readText())
-                    if (!BackupPackageCodec.validateManifestForImport(manifest, MasroofDatabase.VERSION,
-                            MasroofDatabase.IDENTITY_HASH, MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS)) {
+                    if (!BackupPackageCodec.validateManifest(manifest, MasroofDatabase.VERSION, MasroofDatabase.IDENTITY_HASH)) {
                         return@withLock BackupVerificationOutcome.INVALID_PACKAGE
                     }
-                    val expected = BackupPackageCodec.expectedIdentityHashForImport(manifest, MasroofDatabase.VERSION,
-                        MasroofDatabase.IDENTITY_HASH, MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS)
-                    if (expected == null || readIdentityHash(File(directory, BackupPackageFormat.DATABASE_ENTRY)) != expected) {
+                    if (readIdentityHash(File(directory, BackupPackageFormat.DATABASE_ENTRY)) != MasroofDatabase.IDENTITY_HASH) {
                         return@withLock BackupVerificationOutcome.INVALID_PACKAGE
                     }
                     BackupPackageCodec.decodePreferences(File(directory, BackupPackageFormat.PREFERENCES_ENTRY).readText())
@@ -269,28 +266,8 @@ class DatabaseBackupService(
                 BackupPackageCodec.decodeManifest(manifestFile.readText())
             }.getOrElse { return BackupImportOutcome.InvalidPackage }
 
-            val importableVersions = MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS
-            if (!BackupPackageCodec.validateManifestForImport(
-                    manifest = manifest,
-                    targetRoomVersion = MasroofDatabase.VERSION,
-                    targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                    importableVersions = importableVersions,
-                )
-            ) {
-                return BackupImportOutcome.InvalidPackage
-            }
-
-            val expectedDbIdentityHash = BackupPackageCodec.expectedIdentityHashForImport(
-                manifest = manifest,
-                targetRoomVersion = MasroofDatabase.VERSION,
-                targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                importableVersions = importableVersions,
-            ) ?: return BackupImportOutcome.InvalidPackage
-
-            val identityFromDb = readIdentityHash(dbFile)
-            if (identityFromDb != expectedDbIdentityHash) {
-                return BackupImportOutcome.InvalidPackage
-            }
+            if (!BackupPackageCodec.validateManifest(manifest, MasroofDatabase.VERSION, MasroofDatabase.IDENTITY_HASH) ||
+                readIdentityHash(dbFile) != MasroofDatabase.IDENTITY_HASH) return BackupImportOutcome.InvalidPackage
 
             val preferences = runCatching {
                 BackupPackageCodec.decodePreferences(prefsFile.readText())
@@ -309,7 +286,7 @@ class DatabaseBackupService(
             discardDatabaseFiles(incoming)
             try {
                 dbFile.copyTo(incoming, overwrite = false)
-                openMigrateAndValidate(incoming)
+                openAndValidate(incoming)
                 val preservedRollback = DatabaseRestoreRecovery.hasPreexistingRollback(liveDb)
                 DatabaseRestoreRecovery.writeSnapshots(
                     live = liveDb,
@@ -811,17 +788,16 @@ class DatabaseBackupService(
     }
 
     /**
-     * Migrates a copy of the backup and checks it before the live file is replaced.
+     * Checks a current-schema copy of the backup before the live file is replaced.
      * The live database stays in place until [installValidatedDatabase].
      */
-    private fun openMigrateAndValidate(dbFile: File) {
+    private fun openAndValidate(dbFile: File) {
         val opened = Room.databaseBuilder(appContext, MasroofDatabase::class.java, dbFile.name)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .build()
         try {
             val db = opened.openHelper.writableDatabase
             check(db.version == MasroofDatabase.VERSION) {
-                "Imported database did not migrate to ${MasroofDatabase.VERSION}"
+                "Imported database is not schema ${MasroofDatabase.VERSION}"
             }
             db.query("PRAGMA integrity_check").use { cursor ->
                 check(cursor.moveToFirst() && cursor.getString(0) == "ok" && !cursor.moveToNext()) {
@@ -852,6 +828,7 @@ class DatabaseBackupService(
                 null,
                 SQLiteDatabase.OPEN_READONLY,
             ).use { db ->
+                if (db.version != MasroofDatabase.VERSION) return@use null
                 db.rawQuery(
                     "SELECT identity_hash FROM room_master_table WHERE id = 42 LIMIT 1",
                     null,

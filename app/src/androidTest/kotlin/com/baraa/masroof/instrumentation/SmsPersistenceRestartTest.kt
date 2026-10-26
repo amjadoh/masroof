@@ -561,7 +561,6 @@ class SmsPersistenceRestartTest {
 
     private fun openNamedDatabase(target: Context): MasroofDatabase =
         Room.databaseBuilder(target, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
 
@@ -1029,7 +1028,6 @@ private class DeviceSmsSession(
 
     private fun openRoom(): MasroofDatabase =
         Room.databaseBuilder(context, MasroofDatabase::class.java, dbName)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
 

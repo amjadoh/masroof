@@ -54,8 +54,6 @@ import com.baraa.masroof.application.locale.AppLocaleBootstrap
 import com.baraa.masroof.application.locale.AppLocaleContextFactory
 import com.baraa.masroof.application.maintenance.MaintenanceCompletionSignal
 import com.baraa.masroof.application.maintenance.MaintenancePreferences
-import com.baraa.masroof.application.maintenance.ParsedEventFactsBackfillCoordinator
-import com.baraa.masroof.application.maintenance.ParsedEventFactsBackfillWorker
 import com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult
 import com.baraa.masroof.application.maintenance.StartupMaintenance
 import com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome
@@ -203,7 +201,6 @@ class AppContainer(
                 MasroofDatabase.NAME,
             )
                 .openHelperFactory(databaseOpenHelperFactory)
-                .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .build()
         }
 
@@ -664,7 +661,6 @@ class AppContainer(
                     appLogService = appLogService,
                 ),
             )
-            addFactory(ParsedEventFactsBackfillWorker.Factory { parsedEventFactsBackfillCoordinator })
         }
 
     val smsDataSource: SmsDataSource =
@@ -843,18 +839,6 @@ class AppContainer(
         ApkInstaller(appContext)
     }
 
-    private val parsedEventFactsBackfillCoordinator: ParsedEventFactsBackfillCoordinator by lazy {
-        ParsedEventFactsBackfillCoordinator(
-            prefs = appContext.getSharedPreferences(
-                MaintenancePreferences.PREFS_NAME,
-                Context.MODE_PRIVATE,
-            ),
-            appLogService = appLogService,
-            reparseAllStoredEvents = { reparseAllStoredEvents() },
-            completionSignal = maintenanceCompletionSignal,
-        )
-    }
-
     private val transferIntegrityRepairCoordinator: TransferIntegrityRepairCoordinator by lazy {
         TransferIntegrityRepairCoordinator(
             prefs = appContext.getSharedPreferences(
@@ -875,12 +859,7 @@ class AppContainer(
     val maintenanceCompletionSignal: MaintenanceCompletionSignal = MaintenanceCompletionSignal()
 
     private val startupMaintenance: StartupMaintenance by lazy {
-        StartupMaintenance(
-            factsBackfill = parsedEventFactsBackfillCoordinator,
-            transferIntegrityRepair = transferIntegrityRepairCoordinator,
-        ) {
-            ParsedEventFactsBackfillWorker.enqueue(WorkManager.getInstance(appContext))
-        }
+        StartupMaintenance(transferIntegrityRepair = transferIntegrityRepairCoordinator)
     }
 
     private val startupMaintenanceOutcome = kotlinx.coroutines.flow.MutableStateFlow<StartupMaintenanceOutcome?>(null)

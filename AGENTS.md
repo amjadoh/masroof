@@ -26,7 +26,7 @@
 
 **Parsing vs dashboard:** Bank-specific logic stays in `bank/*` parsers. Populate `ParsedEventDetails` at parse time (`cardSmsChannel`, balances, due dates, etc.). Dashboard code in `application/dashboard/*` reads persisted facts only — never re-parse SMS text and never import `bank.*`.
 
-**Room changes:** Migration + mapper + parser population + migration test. If existing users need the new column filled, wire backfill (see `ParsedEventFactsBackfillCoordinator`). Declare the new schema version in `SchemaFactsBackfillPolicy`: `BLOCKING` only if existing rows display incorrectly until re-parse, otherwise `BACKGROUND`. Device-test after schema/backfill merges.
+**Room changes:** The financial database supports schema v18 only. Keep its version and identity hash unchanged; reject other database/backup schemas without destructive fallback. Older-schema migrations and automatic schema-fact backfills are removed by user request. Preserve current-data integrity repair, restore rollback and retired worker identities. Any future schema change needs an explicit design, mapper/parser population and device verification.
 
 **Maintenance:** Startup waits for `BLOCKING` maintenance (`StartupMaintenance`) and fails closed if it is incomplete: never expose financial screens until a blocking retry succeeds. Only `BACKGROUND` work may run while the app is open; it must be idempotent, keep failed rows retryable, and emit `MaintenanceCompletionSignal` so screens refresh.
 
@@ -46,7 +46,7 @@
 
 **New bank:** Implement `BankSmsAdapter`, add fixture tests under `testdata/`, and register a `BankSmsAdapterContractCase` (real financial + non-financial fixtures, positive/negative senders) in `BankSmsAdapterContractTest`; no sample may be claimed by more than one adapter.
 
-**PRs:** Target `main` only. Partial architecture merges may show broken UI until backfill lands — that is expected.
+**PRs:** Target `main` only.
 
 **Release CI:** Full tests run in PR/main **CI** only. Do not add `testDebugUnitTest` back to `release.yml`; release verifies green CI then builds the APK.
 
