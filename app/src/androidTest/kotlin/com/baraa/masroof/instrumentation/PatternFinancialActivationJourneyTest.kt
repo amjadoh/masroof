@@ -41,6 +41,7 @@ class PatternFinancialActivationJourneyTest {
         val context = TestStorageContext(compose.activity, "financial-pattern-${java.util.UUID.randomUUID()}")
         val c = AppContainer(context)
         try {
+            val approvedGeneration = c.messagePatternsWorkflow.load().generation + 1
             c.processRawSmsUseCase.ingest(sms("pending", "10"))
             val dark = mutableStateOf(false)
             compose.setContent {
@@ -79,7 +80,7 @@ class PatternFinancialActivationJourneyTest {
             ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-financial", "explicit-reference-dark")
             compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().size == 6 }
-            assertTrue(c.messagePatternsWorkflow.load().banks.single().currentPatterns.all { it.factContract == null })
+            assertTrue(c.messagePatternsWorkflow.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.all { it.factContract == null })
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
             click(R.string.pattern_financial_select_operation)
@@ -91,7 +92,7 @@ class PatternFinancialActivationJourneyTest {
             click(R.string.pattern_financial_validate)
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
-            compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().generation == 2L } }
+            compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().generation == approvedGeneration } }
             click(R.string.pattern_apply_pending)
             compose.waitUntil(15_000) { runBlocking {
                 c.financialTransactionRepository.listAll().size == 1 && c.reviewRepository.findByRawSmsId("pending")?.status == ReviewStatus.RESOLVED
@@ -101,7 +102,7 @@ class PatternFinancialActivationJourneyTest {
             val evidence = c.parsedEventRepository.findByRawSmsId("pending")
             c.processRawSmsUseCase.ingest(sms("future", "20"))
             assertEquals(2, c.financialTransactionRepository.listAll().size)
-            c.messagePatternsWorkflow.setEnabled(2, "BANK_STC", "stc-internal-in", false)
+            c.messagePatternsWorkflow.setEnabled(approvedGeneration, "BANK_STC", "stc-internal-in", false)
             c.processRawSmsUseCase.ingest(sms("disabled", "30"))
             c.processStoredSmsUseCase.process("pending")
             assertEquals(evidence, c.parsedEventRepository.findByRawSmsId("pending"))

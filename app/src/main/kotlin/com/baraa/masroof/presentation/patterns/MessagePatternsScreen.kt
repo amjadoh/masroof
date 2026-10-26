@@ -147,26 +147,39 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         }
                         bank.currentPatterns.forEach { pattern ->
                             val operationIndex = PatternOperation.entries.indexOfFirst { it.name == pattern.label }
-                            Text(stringResource(R.string.pattern_revision, operationNames.getOrNull(operationIndex) ?: pattern.label, pattern.revision))
-                            Text(pattern.parts.joinToString("") { part ->
+                            val operationName = operationNames.getOrNull(operationIndex) ?: when (pattern.label) {
+                                "FINANCING_INSTALLMENT" -> stringResource(R.string.review_family_financing_installment)
+                                "FEE" -> stringResource(R.string.review_family_fee)
+                                "NON_FINANCIAL" -> stringResource(R.string.review_reason_non_financial)
+                                "BALANCE_NOTICE" -> stringResource(R.string.pattern_balance_notice)
+                                else -> pattern.label
+                            }
+                            Text(stringResource(R.string.pattern_revision, operationName, pattern.revision))
+                            Text((pattern.roleProfile?.rules?.single()?.phrases?.joinToString(" · ") ?: pattern.parts.joinToString("") { part ->
                                 when (part) {
                                     is com.baraa.masroof.engine.bank.patterns.StaticText -> part.value
                                     is com.baraa.masroof.engine.bank.patterns.FieldSlot -> "…"
                                 }
-                            }.take(240), style = MaterialTheme.typography.bodySmall)
-                            Text(pattern.parts.filterIsInstance<com.baraa.masroof.engine.bank.patterns.FieldSlot>()
+                            }).take(240), style = MaterialTheme.typography.bodySmall)
+                            if (pattern.roleProfile == null) Text(pattern.parts.filterIsInstance<com.baraa.masroof.engine.bank.patterns.FieldSlot>()
                                 .filterNot { it.ignored }.joinToString { fieldName(it.field) })
-                            Text(stringResource(if (pattern.factContract == null) R.string.pattern_financial_preview_status else R.string.pattern_financial_approved_status))
-                            if (workflow.canApprove(bank.bankId)) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
+                            Text(stringResource(when {
+                                pattern.roleProfile != null -> R.string.pattern_bundled_status
+                                pattern.factContract == null -> R.string.pattern_financial_preview_status
+                                else -> R.string.pattern_financial_approved_status
+                            }))
+                            if (pattern.roleProfile == null && workflow.canApprove(bank.bankId)) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
                                 Text(stringResource(R.string.pattern_financial_approve))
                             }
                             MasroofTextButton(onClick = { work {
                                 snapshot = workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)
-                            } }, enabled = !busy) { Text(stringResource(if (pattern.enabled) R.string.pattern_disable else R.string.pattern_enable)) }
+                            } }, enabled = !busy, modifier = Modifier.testTag("pattern-toggle-${bank.bankId}-${pattern.id}")) {
+                                Text(stringResource(if (pattern.enabled) R.string.pattern_disable else R.string.pattern_enable)) }
                             bank.patterns.filter { it.id == pattern.id && it.revision < pattern.revision }.forEach { old ->
                                 MasroofTextButton(onClick = { work {
                                     snapshot = workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, old.revision)
-                                } }, enabled = !busy) { Text(stringResource(R.string.pattern_restore_revision, old.revision)) }
+                                } }, enabled = !busy, modifier = Modifier.testTag("pattern-restore-${bank.bankId}-${pattern.id}-${old.revision}")) {
+                                    Text(stringResource(R.string.pattern_restore_revision, old.revision)) }
                             }
                         }
                         if (bankScope == null) MasroofTextButton(onClick = { selectedBank = null }, enabled = !busy) {

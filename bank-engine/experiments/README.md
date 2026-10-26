@@ -12,7 +12,8 @@ The text-only extractor and the declarative pattern builder/compiler now live in
 imports that implementation directly; it keeps no compatibility wrappers or second
 copy. No runtime dependency was added. `Preview` still carries no financial
 authority. Configured new banks now feed the existing intake/ledger path after
-explicit financial approval; AlJazira's primary adapter remains unchanged.
+explicit financial approval. AlJazira now uses the shared adapter/store with
+preapproved role patterns, preserving its flexible layouts and existing facts.
 Pattern labels are raw teaching metadata, not production financial families.
 
 The optional [fact contract and write gate](PATTERN_FACT_CONTRACT.md) now convert
@@ -23,9 +24,9 @@ scoped import, pending application and protected live processing are wired throu
 the existing workflows. Partial-reference links require a confirmed four-digit
 account; unknown references remain reviewable.
 
-The application now reads the unchanged AlJazira literal-rule profile from
-`app/src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`. The same profile is
-injected into both production interpretation and ML fallback qualification.
+The application now reads AlJazira's shared definitions from
+`app/src/main/assets/bank-patterns/BANK_ALJAZIRA.patterns.json`. The same snapshot
+feeds production interpretation and ML fallback qualification.
 The strict codec rejects unknown fields/operators/versions and oversized input.
 Round-trip tests pin full schema equality and the unchanged refresh fingerprint;
 the candidate in the parity harness reads the bundled JSON rather than calling
@@ -34,7 +35,9 @@ the frozen reference. These are 13 classification rules across 11 families, not
 13 automatically learned message layouts. Bank pattern management is available
 through message-learning settings and the bank page. Teaching is preview-only;
 financial approval, pending application and scoped import are separate actions.
-AlJazira learned-pattern cutover remains pending.
+AlJazira's shared-pattern cutover and preservation checks are described in
+[ALJAZIRA_SHARED_PATTERNS.md](ALJAZIRA_SHARED_PATTERNS.md). Its generic role matcher
+is retained alongside learned typed slots, rather than narrowing it to fixture templates.
 
 The current milestone covers financial approval, exact partial-reference links,
 dynamic routing, scoped import and protected pending/live processing. Verification

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pattern_bundled_status">تفسير مدمج جاهز</string>
+    <string name="pattern_balance_notice">إشعار رصيد</string>
     <string name="pattern_title">أنماط رسائل البنوك</string>
     <string name="pattern_preview_only">تُحفظ الأنماط الجديدة للمعاينة. التفسير المالي يحتاج اعتمادًا منفصلًا وتحققًا قبل التسجيل.</string>
     <string name="pattern_failed">تعذر إكمال الخطوة. تحقق من الحقول والتحديد، وأعد تحميل الإعدادات إذا تغيرت.</string>
