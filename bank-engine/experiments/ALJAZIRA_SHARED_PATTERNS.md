@@ -74,7 +74,10 @@ accounts known only by partial references remain separate capability work. The p
 generic role matcher is intentionally retained; this milestone does not rewrite those
 declarations as whole-message example templates.
 
-The cutover is verified against current v18 data. Older upgrades with unfinished
-v10/v11 fact backfills need dedicated fact-only migration handling before release:
-normal shared processing intentionally resumes protected successful rows, so a bulk
-reparse cannot be treated as proof that missing historical detail columns were filled.
+The current release targets the sole user's existing v18 setup. At the user's
+request, support for older schemas with unfinished v10/v11 fact backfills is deferred
+and is not a release gate for this scope. If that support is needed later, it requires
+dedicated fact-only migration handling: normal shared processing intentionally resumes
+protected successful rows, so a bulk reparse cannot prove that missing historical
+detail columns were filled. Upgrade and recovery checks for the current v18 setup
+remain in scope.
