@@ -19,16 +19,14 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         if (interpretation.evidenceId != input.evidenceId) blockers += "ENGINE_EVIDENCE_MISMATCH"
         if (interpretation.evidence.any { it.end > input.body.length }) blockers += "ENGINE_EVIDENCE_RANGE_INVALID"
         val pattern = interpretation.patternProvenance
-        val rolePattern = pattern?.roleProfile == true
-        val expectedRules = pattern?.let { if (it.roleProfile) "${it.configurationFingerprint}:${it.patternId}:${it.revision}" else it.configurationFingerprint }
-        val expectedEngine = if (rolePattern) "message-pattern-roles-v1" else "message-pattern-facts-v1"
-        if (pattern != null && (interpretation.version.engine != expectedEngine ||
-                interpretation.version.rules != expectedRules)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
-        if (interpretation.version.engine in setOf("message-pattern-facts-v1", "message-pattern-roles-v1") &&
+        val stamp = pattern?.let { PatternInterpretationStamp(it.configurationFingerprint, it.patternId, it.revision, it.roleProfile) }
+        if (stamp != null && (interpretation.version.engine != stamp.engine ||
+                interpretation.version.rules != stamp.rules)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
+        if (interpretation.version.engine in setOf(PatternInterpretationStamp.FACT_ENGINE, PatternInterpretationStamp.ROLE_ENGINE) &&
             interpretation.status == com.baraa.masroof.engine.bank.ParseStatus.SUCCESS && pattern == null) blockers += "ENGINE_PATTERN_PROVENANCE_MISSING"
         // Role definitions retain the original evidence/finding representation; their complete stamp lives in rules:.
         val patternReasons = pattern?.takeUnless { it.roleProfile }?.let {
-            listOf("pattern_config:${it.configurationFingerprint}", "pattern_revision:${it.patternId}:${it.revision}") +
+            requireNotNull(stamp).definitionReasons() +
                 it.definitionFacts.sorted().map { field -> "pattern_source:$field:definition" } +
                 interpretation.evidence.map { e -> "pattern_source:${e.field}:message:${e.start}:${e.end}" } +
                 if (it.usesReceiptTime) listOf("pattern_source:OCCURRED_AT:receipt") else emptyList()
