@@ -28,7 +28,7 @@
 
 **Room changes:** The financial database supports schema v18 only. Keep its version and identity hash unchanged; reject other database/backup schemas without destructive fallback. Older-schema migrations and automatic schema-fact backfills are removed by user request. Preserve current-data integrity repair, restore rollback and retired worker identities. Any future schema change needs an explicit design, mapper/parser population and device verification.
 
-**Maintenance:** Startup waits for `BLOCKING` maintenance (`StartupMaintenance`) and fails closed if it is incomplete: never expose financial screens until a blocking retry succeeds. Only `BACKGROUND` work may run while the app is open; it must be idempotent, keep failed rows retryable, and emit `MaintenanceCompletionSignal` so screens refresh.
+**Maintenance:** Startup waits for current-data integrity repair (`StartupMaintenance`) and fails closed if it is incomplete: never expose financial screens until a required retry succeeds. Work safe to run in the background must be idempotent, keep failed rows retryable, and emit `MaintenanceCompletionSignal` so screens refresh.
 
 **Parse-status gate:** Only `ParseStatus.SUCCESS`, an explicit automation-confirming correction (message family/amount), or an explicit `USER_FINANCIAL_TYPE` resolution may create/pair/post a `FinancialTransaction` (`TransactionAssembler.isAutomationEligible`). Merchant/counterparty-only edits never lift the gate. Never bypass it in reconciliation passes.
 

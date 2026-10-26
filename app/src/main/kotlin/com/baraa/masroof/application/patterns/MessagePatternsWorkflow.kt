@@ -24,7 +24,7 @@ class MessagePatternsWorkflow(
 ) {
     val canPreviewPending: Boolean get() = pendingPreview != null
     val canApplyPending: Boolean get() = pendingPreview?.canApply == true
-    fun canApprove(bankId: String) = activation?.supports(bankId) == true
+    val canApprove: Boolean get() = activation != null
     val canImportBank: Boolean get() = importBank != null
     suspend fun importBank(bankId: String) = requireNotNull(importBank).invoke(bankId)
     suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
@@ -94,17 +94,6 @@ class MessagePatternsWorkflow(
             val bank = current.banks.single { it.bankId == preview.bankId }
             require(preview.pattern.sender in bank.senders)
             store.saveBank(preview.generation, bank.copy(patterns = listOf(preview.pattern)))
-        }
-    }
-
-    /** All matches are shown: no first-match winner hides an ambiguous definition. */
-    suspend fun match(bankId: String, sender: String, body: String) = withContext(ioDispatcher) {
-        accessGate.withAccess {
-            store.load().banks.singleOrNull { it.bankId == bankId }?.currentPatterns.orEmpty().mapNotNull { pattern ->
-                pattern.preview(bankId, sender, body)?.let {
-                    PatternMatch(pattern.id, pattern.revision, pattern.label, it.fields.displayFields())
-                }
-            }
         }
     }
 

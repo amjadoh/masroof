@@ -25,15 +25,17 @@ class MessagePatternsWorkflowTest {
             assertNull(workflow.tryPreview(preview, "OTHER", body))
             val saved = workflow.saveTeaching(preview)
             val id = saved.banks.single().currentPatterns.single().id
-            assertEquals(1, workflow.match("STC", "STC Bank", body).size)
-            assertTrue(workflow.match("OTHER", "STC Bank", body).isEmpty())
+            val stored = saved.banks.single().currentPatterns.single()
+            assertNotNull(stored.preview("STC", "STC Bank", body))
+            assertNull(stored.preview("OTHER", "STC Bank", body))
             workflow.setEnabled(2, "STC", id, false)
-            assertTrue(workflow.match("STC", "STC Bank", body).isEmpty())
+            assertNull(workflow.load().banks.single().currentPatterns.single().preview("STC", "STC Bank", body))
             assertTrue(runCatching { workflow.saveTeaching(preview) }.isFailure)
             workflow.restoreRevision(3, "STC", id, 1)
-            val versions = workflow.load().banks.single().patterns
+            val restored = workflow.load().banks.single()
+            val versions = restored.patterns
             assertEquals(listOf(1, 2, 3), versions.map { it.revision })
-            assertEquals(1, workflow.match("STC", "STC Bank", body).size)
+            assertNotNull(restored.currentPatterns.single().preview("STC", "STC Bank", body))
             assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,
                 listOf(PatternBinding("merchant", body.indexOf("SHOP"), body.length))) }.isFailure)
             assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,

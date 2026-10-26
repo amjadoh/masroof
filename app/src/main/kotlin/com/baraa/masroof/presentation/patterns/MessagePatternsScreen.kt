@@ -168,7 +168,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                 pattern.factContract == null -> R.string.pattern_financial_preview_status
                                 else -> R.string.pattern_financial_approved_status
                             }))
-                            if (pattern.roleProfile == null && workflow.canApprove(bank.bankId)) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
+                            if (pattern.roleProfile == null && workflow.canApprove) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
                                 Text(stringResource(R.string.pattern_financial_approve))
                             }
                             MasroofTextButton(onClick = { work {
