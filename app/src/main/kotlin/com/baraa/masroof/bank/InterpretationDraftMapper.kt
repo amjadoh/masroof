@@ -19,11 +19,15 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         if (interpretation.evidenceId != input.evidenceId) blockers += "ENGINE_EVIDENCE_MISMATCH"
         if (interpretation.evidence.any { it.end > input.body.length }) blockers += "ENGINE_EVIDENCE_RANGE_INVALID"
         val pattern = interpretation.patternProvenance
-        if (pattern != null && (interpretation.version.engine != "message-pattern-facts-v1" ||
-                interpretation.version.rules != pattern.configurationFingerprint)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
-        if (interpretation.version.engine == "message-pattern-facts-v1" &&
+        val rolePattern = pattern?.roleProfile == true
+        val expectedRules = pattern?.let { if (it.roleProfile) "${it.configurationFingerprint}:${it.patternId}:${it.revision}" else it.configurationFingerprint }
+        val expectedEngine = if (rolePattern) "message-pattern-roles-v1" else "message-pattern-facts-v1"
+        if (pattern != null && (interpretation.version.engine != expectedEngine ||
+                interpretation.version.rules != expectedRules)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
+        if (interpretation.version.engine in setOf("message-pattern-facts-v1", "message-pattern-roles-v1") &&
             interpretation.status == com.baraa.masroof.engine.bank.ParseStatus.SUCCESS && pattern == null) blockers += "ENGINE_PATTERN_PROVENANCE_MISSING"
-        val patternReasons = pattern?.let {
+        // Role definitions retain the original evidence/finding representation; their complete stamp lives in rules:.
+        val patternReasons = pattern?.takeUnless { it.roleProfile }?.let {
             listOf("pattern_config:${it.configurationFingerprint}", "pattern_revision:${it.patternId}:${it.revision}") +
                 it.definitionFacts.sorted().map { field -> "pattern_source:$field:definition" } +
                 interpretation.evidence.map { e -> "pattern_source:${e.field}:message:${e.start}:${e.end}" } +

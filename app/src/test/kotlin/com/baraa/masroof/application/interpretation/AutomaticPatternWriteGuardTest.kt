@@ -32,6 +32,33 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class AutomaticPatternWriteGuardTest {
+    @Test fun rolePatternStampIsCheckedAndInvalidatedByDisableOrSameGenerationRestore() = runBlocking {
+        val directory = Files.createTempDirectory("role-pattern-guard-").toFile()
+        try {
+            val store = MessagePatternStore(directory.resolve("patterns.json"))
+            val definition = com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current()
+                .asMessagePatterns("BANK_ALJAZIRA", listOf("AlJazira"))
+            val snapshot = store.saveBank(0, definition)
+            val input = MessageInput("role-guard", "AlJazira", "Purchase\nAmount:10 SAR\nCard:1234", Instant.parse("2026-10-15T10:00:00Z"), true)
+            val result = InterpretationDraftMapper().map(input,
+                PatternFactInterpreter(snapshot).interpretRouted(input, BankId(definition.bankId)), Bank.BANK_ALJAZIRA) as ParseResult.Success
+            val record = ParsedEventRecord(result.event, result.details)
+            val policy = PatternInterpretationWritePolicy(store)
+            assertTrue(PatternInterpretationWritePolicy.isPatternDerived(record))
+            assertTrue(policy.isCurrent(record))
+            val purchase = definition.patterns.single { it.id == "bank.purchase" }
+            val changed = snapshot.copy(banks = listOf(definition.copy(patterns = definition.patterns.map {
+                if (it.id == purchase.id) it.copy(revision = 2, enabled = false) else it
+            })))
+            store.restoreRaw(com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.encode(changed))
+            assertFalse(policy.isCurrent(record))
+            store.restoreRaw(com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.encode(snapshot))
+            assertTrue(policy.isCurrent(record))
+            store.saveBank(snapshot.generation, definition.copy(patterns = listOf(purchase.copy(revision = 2, enabled = false))))
+            assertFalse(policy.isCurrent(record))
+        } finally { directory.deleteRecursively() }
+    }
+
     private val bank = BankId("BANK_STC")
     private val body = "Purchase\nAmount:10SAR"
     private val input = MessageInput("pattern-sms", "BANK", body, Instant.parse("2026-10-15T10:00:00Z"), true)

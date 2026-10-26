@@ -19,8 +19,7 @@ import java.time.LocalDate
 
 class AlJaziraParseParityTest {
     @Test fun allCurrentFixturesMatchFrozenProductionFacts() {
-        val adapter = engineFixtureAdapter(profile = com.baraa.masroof.data.patterns.BankRuleProfileCodec.decode(
-            File("src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json").readText()))
+        val adapter = bundledAlJaziraPatternAdapter()
         val cases = NewEngineFixtureTest.cases().map { files ->
             val row = Json.parseToJsonElement(files.single().readText()).jsonObject
             SmsParseInput(row.getValue("id").jsonPrimitive.content, row.getValue("sender").jsonPrimitive.content,

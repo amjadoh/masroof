@@ -13,7 +13,11 @@ object MessagePatternConfigurationCodec {
     private val json = Json
 
     fun encode(configuration: MessagePatternConfiguration): String = buildJsonObject {
-        val schema = if (configuration.banks.any { bank -> bank.patterns.any { it.factContract != null } }) 2 else 1
+        val schema = when {
+            configuration.banks.any { bank -> bank.patterns.any { it.roleProfile != null } } -> 3
+            configuration.banks.any { bank -> bank.patterns.any { it.factContract != null } } -> 2
+            else -> 1
+        }
         put("schema", schema); put("normalization", 1); put("generation", configuration.generation)
         putJsonArray("banks") { configuration.banks.sortedBy { it.bankId }.forEach { bank -> add(buildJsonObject {
             put("bankId", bank.bankId); put("displayName", bank.displayName?.let(::JsonPrimitive) ?: JsonNull)
@@ -23,7 +27,7 @@ object MessagePatternConfigurationCodec {
                 add(buildJsonObject {
                     put("id", pattern.id); put("sender", pattern.sender); put("label", pattern.label)
                     put("revision", pattern.revision); put("enabled", pattern.enabled)
-                    if (schema == 2) put("factContract", pattern.factContract?.let { contract -> buildJsonObject {
+                    if (schema >= 2) put("factContract", pattern.factContract?.let { contract -> buildJsonObject {
                         put("version", contract.version); put("family", contract.family.name); put("direction", contract.direction.name)
                         put("currency", contract.currency?.name?.let(::JsonPrimitive) ?: JsonNull)
                         put("sourceAccountBank", contract.sourceAccountBank?.value?.let(::JsonPrimitive) ?: JsonNull)
@@ -38,6 +42,7 @@ object MessagePatternConfigurationCodec {
                             put("contextReferences", JsonArray(contract.contextReferences.sorted().map(::JsonPrimitive)))
                         }
                     } } ?: JsonNull)
+                    if (schema >= 3) put("roleProfile", pattern.roleProfile?.let { json.parseToJsonElement(BankRuleProfileCodec.encode(it)) } ?: JsonNull)
                     putJsonArray("parts") { pattern.parts.forEach { part -> add(buildJsonObject {
                         when (part) {
                             is StaticText -> put("literal", part.value)
@@ -57,7 +62,7 @@ object MessagePatternConfigurationCodec {
         val root = json.parseToJsonElement(raw).jsonObject
         root.only("schema", "normalization", "generation", "banks")
         val schema = root.number("schema")
-        require(schema in 1L..2L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
+        require(schema in 1L..3L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
         val generation = root.number("generation").also { require(it >= 0) }
         val rows = root.getValue("banks").jsonArray
         require(rows.size <= 64)
@@ -75,8 +80,9 @@ object MessagePatternConfigurationCodec {
             require(patterns.size <= 128)
             val definitions = patterns.map { element ->
                 val p = element.jsonObject
-                p.only(*(listOf("id", "sender", "label", "revision", "enabled", "parts") +
-                    if (schema == 2L) listOf("factContract") else emptyList()).toTypedArray())
+                p.only(*((listOf("id", "sender", "label", "revision", "enabled", "parts") +
+                    if (schema >= 2L) listOf("factContract") else emptyList()) +
+                    (if (schema >= 3L) listOf("roleProfile") else emptyList())).toTypedArray())
                 require(validLabel(p.text("sender")) && validLabel(p.text("label")))
                 val parts = p.getValue("parts").jsonArray.map { entry ->
                     val part = entry.jsonObject
@@ -86,7 +92,7 @@ object MessagePatternConfigurationCodec {
                     }
                 }
                 SavedMessagePattern(p.text("id"), bankId, p.text("sender"), p.text("label"), p.integer("revision"),
-                    p.flag("enabled"), parts, if (schema == 2L) p.getValue("factContract").takeUnless { it == JsonNull }?.let {
+                    p.flag("enabled"), parts, if (schema >= 2L) p.getValue("factContract").takeUnless { it == JsonNull }?.let {
                         val c = it.jsonObject
                         val version = c.integer("version")
                         require(version in 1..2) { "Unsupported pattern fact contract" }
@@ -107,6 +113,8 @@ object MessagePatternConfigurationCodec {
                             if (version == 2) c.getValue("contextReferences").jsonArray.also { require(it.size <= 5) }.map {
                                 it.jsonPrimitive.also { p -> require(p.isString) }.content
                             }.also { require(it.distinct().size == it.size) }.toSet() else emptySet())
+                    } else null, if (schema >= 3L) p.getValue("roleProfile").takeUnless { it == JsonNull }?.let {
+                        BankRuleProfileCodec.decode(json.encodeToString(JsonElement.serializer(), it))
                     } else null).also { it.validate() }
             }
             require(definitions.map { it.id to it.revision }.distinct().size == definitions.size) { "Duplicate pattern revision" }
