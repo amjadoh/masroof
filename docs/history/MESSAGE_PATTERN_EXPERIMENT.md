@@ -4,7 +4,7 @@
 
 The production integration proposal, including AlJazira parity gates, automatic
 seed preparation, bank-scoped import, persistence/restore and rollout tasks, is
-documented in [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md).
+documented in [PRODUCTION_MIGRATION_PLAN.md](../PRODUCTION_MIGRATION_PLAN.md).
 It is a plan; the offline results below do not establish production parity.
 
 ## Implementation checkpoint: shared pure core
@@ -18,7 +18,7 @@ explicit financial approval. AlJazira now uses the shared adapter/store with
 preapproved role patterns, preserving its flexible layouts and existing facts.
 Pattern labels are raw teaching metadata, not production financial families.
 
-The optional [fact contract and write gate](PATTERN_FACT_CONTRACT.md) now convert
+The optional [fact contract and write gate](../PATTERN_FACT_CONTRACT.md) now convert
 explicit versioned definitions through the production mapper/validator and reject
 stale configuration at write time. Existing taught patterns and the STC seed have
 no fact contracts and remain preview-only until explicitly approved. Dynamic routing,
@@ -38,7 +38,7 @@ the frozen reference. These are 13 classification rules across 11 families, not
 through message-learning settings and the bank page. Teaching is preview-only;
 financial approval, pending application and scoped import are separate actions.
 AlJazira's shared-pattern cutover and preservation checks are described in
-[ALJAZIRA_SHARED_PATTERNS.md](ALJAZIRA_SHARED_PATTERNS.md). Its generic role matcher
+[ALJAZIRA_SHARED_PATTERNS.md](../ALJAZIRA_SHARED_PATTERNS.md). Its generic role matcher
 is retained alongside learned typed slots, rather than narrowing it to fixture templates.
 
 The current milestone covers financial approval, exact partial-reference links,
