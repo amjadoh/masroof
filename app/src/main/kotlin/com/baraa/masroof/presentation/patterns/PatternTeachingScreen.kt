@@ -4,7 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +29,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun PatternTeachingScreen(
     workflow: MessagePatternsWorkflow, generation: Long, bank: PatternBankView,
-    source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onBack: () -> Unit,
+    source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
 ) {
     var step by remember { mutableIntStateOf(0) }
     var operation by remember { mutableStateOf(PatternOperation.PURCHASE) }
@@ -76,6 +79,10 @@ internal fun PatternTeachingScreen(
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
     }
+    LaunchedEffect(generation) {
+        preview = null
+        if (step == 2) step = 1
+    }
     BackHandler { back() }
     MasroofSecondaryScaffold(stringResource(R.string.teaching_title), ::back, stringResource(R.string.review_back)) { modifier ->
         Column(modifier.imePadding().verticalScroll(rememberScrollState()),
@@ -89,7 +96,12 @@ internal fun PatternTeachingScreen(
                 }
             }
             if (busy) CircularProgressIndicator()
-            if (failed) MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_failed), contentColor = MaterialTheme.colorScheme.error)
+            if (failed) {
+                MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_failed), contentColor = MaterialTheme.colorScheme.error)
+                MasroofTextButton(onClick = { preview = null; failed = false; onReload() }, enabled = !busy) {
+                    Text(stringResource(R.string.dashboard_retry))
+                }
+            }
             when (step) {
                 0 -> {
                     MasroofGuidanceLabel(stringResource(R.string.teaching_kind_title), stringResource(R.string.teaching_choose_message_help),
