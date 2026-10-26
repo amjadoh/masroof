@@ -17,7 +17,7 @@ import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
-fun MessageLearningSettingsScreen(onOpenExample: (String) -> Unit = {}, onBack: () -> Unit) {
+fun MessageLearningSettingsScreen(onOpenPatterns: () -> Unit = {}, onOpenExample: (String) -> Unit = {}, onBack: () -> Unit) {
     val context = LocalContext.current
     val workflow = LocalLabAnalyticsWorkflow.current ?: remember(context) { LabAnalyticsWorkflow.from(context) }
     val state by workflow.state.collectAsState()
@@ -54,6 +54,7 @@ fun MessageLearningSettingsScreen(onOpenExample: (String) -> Unit = {}, onBack: 
                 style = MaterialTheme.typography.bodyMedium,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             )
+            MasroofOutlinedButton(onClick = onOpenPatterns, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_title)) }
             MessageLearningInsights(state)
             MasroofCard {
                 MasroofSectionHeader(stringResource(R.string.personal_review_title))

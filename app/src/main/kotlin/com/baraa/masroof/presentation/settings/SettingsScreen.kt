@@ -224,6 +224,7 @@ fun SettingsRoute(
                     onOpenAccounts = { navigateTo(SettingsDestination.BankAccounts(current.bankId)) },
                     onOpenCards = { navigateTo(SettingsDestination.BankCards(current.bankId)) },
                     onOpenLoans = { navigateTo(SettingsDestination.BankLoans(current.bankId)) },
+                    onOpenPatterns = { navigateTo(SettingsDestination.MessagePatterns(current.bankId)) },
                 )
 
                 state.loading -> SettingsBankHubLoadingScreen(
@@ -381,8 +382,12 @@ fun SettingsRoute(
             onRequestExport = onRequestExportLogs,
         )
 
+        is SettingsDestination.MessagePatterns -> viewModel.messagePatternsWorkflow?.let { workflow ->
+            com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId, onBack = { popOrExit() })
+        }
         SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(
-            onBack = { popOrExit() }, onOpenExample = onOpenReviewExample)
+            onBack = { popOrExit() }, onOpenExample = onOpenReviewExample,
+            onOpenPatterns = { navigateTo(SettingsDestination.MessagePatterns()) })
         SettingsDestination.DesignCatalog -> DesignCatalogScreen(
             onBack = { popOrExit() },
         )
