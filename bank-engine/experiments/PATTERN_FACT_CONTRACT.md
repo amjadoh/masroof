@@ -2,8 +2,9 @@
 
 Configured banks now use the existing live and historical processing paths.
 Teaching and the STC bundle still create preview-only patterns: financial use needs
-separate explicit approval. AlJazira remains on its primary rules adapter; its
-learned-pattern cutover has not been activated.
+separate explicit approval. AlJazira now uses the same configured adapter and store,
+with preapproved role definitions preserving its existing behavior. See
+[the cutover record](ALJAZIRA_SHARED_PATTERNS.md).
 
 ## Definition and conversion
 
@@ -56,6 +57,9 @@ before save/restore. Changing a contract requires a new immutable pattern revisi
 The existing encrypted backup/restore path carries the same document.
 Contract v2 persists account bindings and context-reference choices in this same
 document. The encrypted export test now includes an exact partial-reference link.
+Configuration schema 3 adds immutable role-profile definitions and retains schema
+1/2 readers. It reuses the strict literal-role codec and generic extraction grammar;
+the role rule must agree with the pattern's explicit fact contract.
 
 The deterministic SHA-256 covers generation, bank identities/senders, definitions,
 enable states, revisions, contracts and history with length-prefixed encoding.
@@ -74,8 +78,8 @@ check. Existing protection of already linked manual decisions remains in force.
 
 - STC defaults are installed before the container admits work. Opening Settings is
   not required for intake. User banks, overlapping senders and disabled revisions
-  are preserved. Dynamic routing evaluates all adapters; primary banks cannot be
-  replaced by configured definitions.
+  are preserved. AlJazira defaults are merged by missing id, retaining teaching and
+  disabled revisions. Dynamic routing evaluates every adapter and retains conflicts.
 - Explicit account confirmation uses the existing ownership service. Approval
   validates the complete proposed configuration through the production finalizer,
   checks the full prior fingerprint and current ownership under exclusive access,
@@ -113,7 +117,8 @@ check. Existing protection of already linked manual decisions remains in force.
 
 ## Remaining scope
 
-AlJazira's full shared-definition cutover and parity proof remain outstanding.
+AlJazira's shared-definition cutover and frozen parity checks are complete. Its
+generic role matcher remains a supported matching form alongside taught slots.
 Approval requires a genuine four-digit canonical account; accounts known only by
 partial identifiers need an explicit identity design across core and consumers.
 Each approved template currently selects one account per role. Wider alias and

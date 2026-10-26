@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pattern_bundled_status">Ready built-in interpretation</string>
+    <string name="pattern_balance_notice">Balance notice</string>
     <string name="pattern_title">Bank message patterns</string>
     <string name="pattern_preview_only">New patterns are saved for preview. Financial interpretation requires separate approval and validation before posting.</string>
     <string name="pattern_failed">Could not complete this step. Check the fields and selection; reload if settings changed.</string>
