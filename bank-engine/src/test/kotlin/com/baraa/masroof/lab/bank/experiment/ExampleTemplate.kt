@@ -60,6 +60,11 @@ internal class ExampleTemplate private constructor(
             require(sender.isNotBlank() && label.isNotBlank() && body.length in 1..4096)
             require(selections.size in 1..16 && selections.map { it.field }.distinct().size == selections.size)
             val ordered = selections.sortedBy { it.start }.toList()
+            ordered.zipWithNext().forEach { (left, right) ->
+                require(left.end <= right.start && left.end in 0..body.length && right.start in 0..body.length)
+                // ponytail: one selected field per line; multiple fields need explicit separating evidence before expansion.
+                require('\n' in body.substring(left.end, right.start)) { "Multiple fields on one line need more evidence" }
+            }
             val first = body.indexOfFirst { !it.isWhitespace() }
             val titleEnd = body.indexOf('\n', first).let { if (it < 0) body.length else it }
             require(ordered.first().start > titleEnd) { "The experiment keeps the first title line fixed" }
