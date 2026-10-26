@@ -71,6 +71,8 @@ class HistoricalSmsBatchProcessor(
     inner class Batch internal constructor(private val bankScope: Bank?) {
         private val storedEvents = mutableListOf<StoredEvent>()
         private var finished = false
+        var reconciliationSummary: ReconciliationSummary? = null
+            private set
 
         /** Number of ParsedEvents this batch stored and will observe in [finish]. */
         val storedEventCount: Int get() = storedEvents.size
@@ -88,6 +90,14 @@ class HistoricalSmsBatchProcessor(
                 is BankSmsCaptureResult.Captured ->
                     processStored.parseAndStore(captured.rawSms, captured.route, logOutcome = false)
             }
+            result.storedEvent(rawSms.receivedAt)?.let(storedEvents::add)
+            return result
+        }
+
+        /** Already captured, eligible pending evidence uses the same parser and one batch-derived pass. */
+        suspend fun reprocess(rawSms: RawSms): SmsIngestionResult {
+            check(!finished) { "Batch already finished" }
+            val result = processStored.reparseAndStore(rawSms, historicalBatch = true)
             result.storedEvent(rawSms.receivedAt)?.let(storedEvents::add)
             return result
         }
@@ -126,6 +136,7 @@ class HistoricalSmsBatchProcessor(
                 )
                 return HistoricalBatchDerivedResult.Incomplete(DerivedProcessingStage.RECONCILIATION)
             }
+            reconciliationSummary = report?.summary
             if (report != null && reviewQueueUpdater != null) {
                 try {
                     reviewQueueUpdater.applyReport(report)

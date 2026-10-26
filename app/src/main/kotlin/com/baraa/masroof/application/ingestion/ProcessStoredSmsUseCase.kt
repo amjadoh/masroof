@@ -64,6 +64,7 @@ class ProcessStoredSmsUseCase(
     private val processingRecovery: ProcessingRecovery? = null,
     private val reviewRepository: ReviewRepository? = null,
     private val debugProcessHalt: DebugProcessHaltProbe = DebugProcessHaltProbe.NONE,
+    private val patternProcessing: (suspend (String, suspend () -> SmsIngestionResult, suspend () -> SmsIngestionResult) -> SmsIngestionResult)? = null,
 ) {
     /** Processes evidence captured in this same attempt, reusing the capture's [route]. */
     suspend fun process(
@@ -123,8 +124,8 @@ class ProcessStoredSmsUseCase(
      * Bulk maintenance uses this for every row, then runs ownership/reconciliation/review
      * once after the whole backlog has been parsed.
      */
-    suspend fun reparseAndStore(rawSms: RawSms): SmsIngestionResult =
-        processStoredEvidence(rawSms, logOutcome = false, deriveImmediately = false)
+    suspend fun reparseAndStore(rawSms: RawSms, historicalBatch: Boolean = false): SmsIngestionResult =
+        processStoredEvidence(rawSms, logOutcome = false, deriveImmediately = false, historicalBatch = historicalBatch)
 
     /**
      * Adapter selection for stored evidence:
@@ -139,19 +140,20 @@ class ProcessStoredSmsUseCase(
         rawSms: RawSms,
         logOutcome: Boolean,
         deriveImmediately: Boolean = true,
+        historicalBatch: Boolean = false,
     ): SmsIngestionResult {
         val selected = explicitSelectionAdapter(rawSms)
         if (selected != null) {
-            return parseAndPersist(rawSms, selected, logOutcome, deriveImmediately = deriveImmediately)
+            return parseAndPersist(rawSms, selected, logOutcome, deriveImmediately, historicalBatch)
         }
         val storedBank = parsedEventRepository.findByRawSmsId(rawSms.id)?.event?.bank
         val storedAdapter = storedBank?.let(bankSmsRegistry::adapterFor)
         if (storedAdapter != null) {
-            return parseAndPersist(rawSms, storedAdapter, logOutcome, deriveImmediately)
+            return parseAndPersist(rawSms, storedAdapter, logOutcome, deriveImmediately, historicalBatch)
         }
         return when (val route = bankSmsRegistry.route(rawSms.sender, rawSms.body)) {
             is BankRoutingResult.Matched ->
-                parseAndPersist(rawSms, route.adapter, logOutcome, deriveImmediately)
+                parseAndPersist(rawSms, route.adapter, logOutcome, deriveImmediately, historicalBatch)
             is BankRoutingResult.Ambiguous ->
                 holdAmbiguousRoute(rawSms, route, logOutcome)
             is BankRoutingResult.SuspectedBank ->
@@ -159,7 +161,7 @@ class ProcessStoredSmsUseCase(
             is BankRoutingResult.NotMatched -> {
                 val sole = bankSmsRegistry.singleAdapterOrNull()
                 if (sole != null) {
-                    parseAndPersist(rawSms, sole, logOutcome, deriveImmediately)
+                    parseAndPersist(rawSms, sole, logOutcome, deriveImmediately, historicalBatch)
                 } else {
                     SmsIngestionResult.NotRelevant(reason = route.reason)
                 }
@@ -228,7 +230,22 @@ class ProcessStoredSmsUseCase(
         logOutcome: Boolean,
         deriveImmediately: Boolean,
         historicalBatch: Boolean = false,
+        patternLease: Boolean = false,
     ): SmsIngestionResult {
+        if (adapter is com.baraa.masroof.bank.MessagePatternSmsAdapter && !patternLease) {
+            val protection = patternProcessing ?: return processingFailure(rawSms, "pattern_protection_unavailable", null, logOutcome)
+            return protection(rawSms.id,
+                { parseAndPersist(rawSms, adapter, logOutcome, deriveImmediately, historicalBatch, patternLease = true) },
+                { resumePatternEvidence(rawSms, logOutcome, deriveImmediately) })
+        }
+        // A retry resumes accepted facts; engine/configuration refresh never re-parses a successful event.
+        if (adapter is com.baraa.masroof.bank.MessagePatternSmsAdapter) {
+            if (parsedEventRepository.findByRawSmsId(rawSms.id)?.event?.parseStatus == com.baraa.masroof.domain.model.ParseStatus.SUCCESS)
+                return resumePatternEvidence(rawSms, logOutcome, deriveImmediately)
+            val active = bankSmsRegistry.adapterFor(adapter.bank) as? com.baraa.masroof.bank.MessagePatternSmsAdapter
+            if (active?.configurationFingerprint != adapter.configurationFingerprint)
+                return processingFailure(rawSms, "pattern_configuration_changed", null, logOutcome)
+        }
         val parseResult = try {
             adapter.parse(
                 SmsParseInput(
@@ -261,6 +278,16 @@ class ProcessStoredSmsUseCase(
         } catch (e: Exception) {
             processingFailure(rawSms, e.message ?: e::class.java.simpleName, e, logOutcome)
         }
+    }
+
+    private suspend fun resumePatternEvidence(raw: RawSms, logOutcome: Boolean, deriveImmediately: Boolean): SmsIngestionResult {
+        val record = parsedEventRepository.findByRawSmsId(raw.id)
+            ?: return SmsIngestionResult.Failed(raw.id, "pattern_saved_evidence_missing")
+        if (deriveImmediately) {
+            afterParsedEvent(record.event, record.details, logOutcome)?.let { return it }
+            processingRecovery?.clear(raw.id)
+        }
+        return SmsIngestionResult.Parsed(raw.id, record.event, record.details)
     }
 
     private suspend fun processingFailure(

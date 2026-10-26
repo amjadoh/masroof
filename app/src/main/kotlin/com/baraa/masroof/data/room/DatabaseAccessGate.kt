@@ -73,6 +73,11 @@ class DatabaseAccessGate {
         }
     }
 
+    /** Exclusive configuration edits may read the still-open repositories without waiting on their own gate. */
+    suspend fun <T> withExclusiveAccess(block: suspend () -> T): T = withRestore {
+        withContext(Lease(this)) { block() }
+    }
+
     /** Called under exclusive restore immediately before closing the live Room instance. */
     fun retire() {
         retired = true

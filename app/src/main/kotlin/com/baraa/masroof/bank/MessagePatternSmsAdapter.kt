@@ -12,6 +12,7 @@ import com.baraa.masroof.parsing.model.SmsParseInput
 /** A bank-scoped immutable configuration snapshot; registry detection owns sender authority. */
 class MessagePatternSmsAdapter(definition: BankMessagePatterns, private val interpreter: PatternFactInterpreter) : BankSmsAdapter {
     override val bank = Bank(definition.bankId)
+    val configurationFingerprint: String get() = interpreter.fingerprint
     private val senders = definition.senders.toSet()
     override fun detect(sender: String, body: String): BankDetectionResult =
         if (sender in senders) BankDetectionResult.Detected(bank, Confidence(1.0), listOf("configured_exact_sender"))
