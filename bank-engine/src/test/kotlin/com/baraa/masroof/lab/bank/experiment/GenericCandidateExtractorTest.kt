@@ -6,6 +6,15 @@ import org.junit.Test
 import java.io.File
 
 class GenericCandidateExtractorTest {
+    @Test fun timeFirstAndDateOnlyRemainWholeCandidatesWithOriginalOffsets() {
+        val body = "وقت:١٩:٠٥ ٢٠٢٦-٠٧-٢٦\nاستحقاق:2026-08-27\nقيمة:75SR"
+        val result = GenericCandidateExtractor.extract(body)
+        assertTrue(result.any { it.kind == CandidateKind.DATE_TIME && it.text.raw == "١٩:٠٥ ٢٠٢٦-٠٧-٢٦" })
+        assertTrue(result.any { it.kind.name == "DATE" && it.text.raw == "2026-08-27" })
+        assertEquals(emptyList<String>(), result.filter { it.kind == CandidateKind.NUMBER }.map { it.text.raw })
+        result.forEach { assertEquals(it.text.raw, body.substring(it.text.start, it.text.end)) }
+    }
+
     @Test fun discoversValuesInUnseenTextWithoutSenderTypeOrTraining() {
         val body = "صيغة تجريبية لم تُعلّم\nقيمة:٨٧٫٦٥SR\nطرف:اسم تجريبي\n2026-08-18 13:59\nمعرّف:*A9Z7"
         val candidates = GenericCandidateExtractor.extract(body)

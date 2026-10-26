@@ -168,6 +168,10 @@ internal data class TeachingExample(val label: String, val body: String, val sel
             FieldKind.DATE_DMY_SHORT -> "17/10/26 09:0$number"
             FieldKind.DATE_DMY_LONG -> "17-10-2026 09:0$number"
             FieldKind.DATE_YMD -> "2026-10-17 09:0$number"
+            FieldKind.TIME_DMY_LONG -> "09:0$number 17-10-2026"
+            FieldKind.TIME_YMD -> "09:0$number 2026-10-17"
+            FieldKind.DATE_DMY_ONLY -> "17/10/2026"
+            FieldKind.DATE_YMD_ONLY -> "2026-10-17"
         } }
         var changed = body
         selections.sortedByDescending { it.start }.forEach { changed = changed.replaceRange(it.start, it.end, values.getValue(it.field)) }

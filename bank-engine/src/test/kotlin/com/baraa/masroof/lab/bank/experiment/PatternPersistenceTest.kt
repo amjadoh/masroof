@@ -6,6 +6,37 @@ import java.nio.file.Files
 import java.io.IOException
 
 class PatternPersistenceTest {
+    @Test fun explicitUserRangesWorkWhenDiscoveryDidNotOfferTheValue() {
+        val body = "Synthetic event\nField:😀"
+        val start = body.indexOf("😀")
+        val pattern = SavedMessagePattern.fromChoices("direct", "EXAMPLE_BANK", "Sender", "USER_CHOICE", body,
+            listOf(FieldChoice("counterparty", start, start + 2)))
+        assertEquals("🚀", requireNotNull(pattern.preview("EXAMPLE_BANK", "Sender", body.replace("😀", "🚀")))
+            .fields.getValue("counterparty").raw)
+    }
+
+    @Test fun timeFirstAndStandaloneDatesBecomeTypedSlotsWithoutUserSuppliedKinds() {
+        val dates = listOf("19:05 26-07-2026" to "TIME_DMY_LONG", "19:05 2026-07-26" to "TIME_YMD",
+            "27/08/2026" to "DATE_DMY_ONLY", "2026-08-27" to "DATE_YMD_ONLY")
+        for ((date, kind) in dates) {
+            val body = "Synthetic event\nDate:$date"
+            val pattern = SavedMessagePattern.fromChoices("dates", "EXAMPLE_BANK", "Sender", "USER_CHOICE", body,
+                listOf(FieldChoice("date", body.indexOf(date), body.length)))
+            assertEquals(kind, pattern.parts.filterIsInstance<FieldSlot>().single().kind.name)
+            val directory = Files.createTempDirectory("masroof-date-pattern-").toFile()
+            try {
+                val file = directory.resolve("patterns.json").toPath()
+                PatternStore.save(file, listOf(pattern))
+                val changed = body.replace("2026", "2027")
+                assertEquals(date.replace("2026", "2027"), requireNotNull(PatternStore.load(file).single()
+                    .preview("EXAMPLE_BANK", "Sender", changed)).fields.getValue("date").raw)
+                val invalid = body.replace("26-07-2026", "31-02-2026").replace("2026-07-26", "2026-02-31")
+                    .replace("27/08/2026", "31/02/2026").replace("2026-08-27", "2026-02-31")
+                assertNull(pattern.preview("EXAMPLE_BANK", "Sender", invalid))
+            } finally { directory.deleteRecursively() }
+        }
+    }
+
     @Test fun humanChoicesNeedNoPrimitiveTypesOrManuallyAuthoredTemplate() {
         val example = syntheticExamples().first()
         val pattern = SavedMessagePattern.fromChoices("automatic", "EXAMPLE_BANK", "STC Bank", example.label,

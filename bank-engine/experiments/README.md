@@ -1,9 +1,36 @@
-# Generic text candidates and learned field bindings: offline experiment
+# Generic text candidates and learned field bindings
 
 The production integration proposal, including AlJazira parity gates, automatic
 seed preparation, bank-scoped import, persistence/restore and rollout tasks, is
 documented in [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md).
 It is a plan; the offline results below do not establish production parity.
+
+## Implementation checkpoint: shared pure core
+
+The text-only extractor and the declarative pattern builder/compiler now live in
+`bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/patterns/`. The experiment
+imports that implementation through test aliases; it no longer keeps a second
+copy. No runtime dependency was added. `Preview` still carries no financial
+authority, and the existing app adapter/intake/ledger path has not been switched.
+Pattern labels are raw teaching metadata, not production financial families.
+
+The shared core supports original UTF-16 ranges selected directly by a user even
+when discovery misses a value, time-first timestamps, and standalone date slots.
+Those slots reject impossible dates and survive save/reload using generated
+representatives rather than reopening teaching messages. File persistence and
+the CLI remain test tools; Android storage/backup/UI are still pending.
+
+The new audit of the same 64 fixtures offers all 33 expected transaction timestamps
+and both expected due dates as raw candidates. This closes the seven previously
+reported date-discovery gaps; it does not assign roles or prove financial parity.
+The fresh two-process lifecycle still verifies eight generated definitions,
+12 held-out messages, 49 fields and 36 rejection controls, with zero financial writes.
+
+The app now has a frozen pre-cutover reference for 74 inputs (2,690 checks) and
+seven financial scenarios (834 field/link/registry/projection checks). These
+reports characterize the working interpreter; a future replacement must pass
+them. The original fixture and independent financial-oracle tests remain active.
+The historical experiment results below describe earlier checkpoints.
 
 The first stage is now **text-only candidate discovery**:
 `GenericCandidateExtractor.extract(body)`. It receives no sender, bank, message
@@ -16,7 +43,8 @@ is produced.
 Human binding follows discovery. The user chooses which candidate belongs in
 which field and can select a narrower range directly. The earlier learned-layout
 experiment below checks the subsequent reuse of those bindings; it is not the
-generic candidate extractor. Both stages remain in test sources only.
+generic candidate extractor. The shared pure implementation is now in main
+sources; the persistence lifecycle runner remains in test sources.
 
 ## Text-only discovery check
 
@@ -73,9 +101,9 @@ skipped tests. No production source, financial write, or app data changed.
 ## Subsequent learned-layout experiment
 
 This experiment checks whether human-selected field ranges can generate a
-bounded extractor for a message layout. It runs in `bank-engine` **test sources
-only**. It is absent from the application runtime and APK. No application,
-adapter, intake, database, worker, model, or financial policy is modified.
+bounded extractor for a message layout. Its runner remains in `bank-engine`
+test sources and now uses the shared pure pattern compiler. The app's adapter,
+intake, database, worker, model and financial-policy wiring are unchanged.
 
 ## Full cycle with automatically generated, persisted definitions
 
@@ -127,8 +155,10 @@ are test-source tools and `patternLifecycle` uses only the test classpath.
 
 ## Contract and scope
 
-- Input: an exact sender, a human label, original message text, and non-overlapping
-  original UTF-16 selections with field names and primitive kinds.
+- Public teaching input: bank scope, exact sender, human label, original message
+  text, and non-overlapping original UTF-16 selections with field names and an
+  optional ignore choice. Primitive shapes are inferred; explicit user ranges do
+  not require discovery to have offered the value.
 - Learning: retain literal context; replace selected
   values with bounded typed slots. Escape all literals; accept no executable
   patterns or scripts from the input. Reuse the engine's `SourceText` for text
