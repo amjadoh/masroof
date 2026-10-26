@@ -6,6 +6,76 @@ import java.nio.file.Files
 import java.io.IOException
 
 class PatternPersistenceTest {
+    @Test fun identifierWidthUsesNormalizedDigitsAndKeepsOriginalEvidenceAfterReload() {
+        val directory = Files.createTempDirectory("masroof-normalized-pattern-").toFile()
+        try {
+            for (raw in listOf("1\u200F23", "١\u200E٢٣", "𝟙𝟚𝟛")) {
+                val body = "Synthetic event\nAcc:$raw"
+                val value = GenericCandidateExtractor.extract(body).single { it.kind == CandidateKind.NUMBER }.text
+                val pattern = SavedMessagePattern.fromChoices("unicode", "EXAMPLE_BANK", "Sender", "USER_CHOICE", body,
+                    listOf(FieldChoice("account", value.start, value.end)))
+                assertEquals(3, pattern.parts.filterIsInstance<FieldSlot>().single().width)
+                val file = directory.resolve("patterns.json").toPath()
+                PatternStore.save(file, listOf(pattern))
+                for (loaded in listOf(pattern, PatternStore.load(file).single())) {
+                    val original = requireNotNull(loaded.preview("EXAMPLE_BANK", "Sender", body)).fields.getValue("account")
+                    assertEquals(raw, original.raw)
+                    assertEquals(raw, body.substring(original.start, original.end))
+                    assertEquals("456", requireNotNull(loaded.preview("EXAMPLE_BANK", "Sender", body.replace(raw, "456")))
+                        .fields.getValue("account").raw)
+                    assertNull(loaded.preview("EXAMPLE_BANK", "Sender", body.replace(raw, "4567")))
+                }
+            }
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun definitionAndCopiesOwnTheirPartsAndMatchIdenticallyAfterReload() {
+        val parts = mutableListOf<PatternPart>(StaticText("Synthetic event\nAmount:"),
+            FieldSlot("amount", FieldKind.MONEY, 0, false), StaticText(""))
+        val pattern = SavedMessagePattern("immutable", "EXAMPLE_BANK", "Sender", "USER_CHOICE", parts = parts)
+        pattern.validate()
+        parts[1] = FieldSlot("amount", FieldKind.DIGITS, 2, true)
+        val copyParts = pattern.parts.toMutableList()
+        val copy = pattern.copy(parts = copyParts)
+        copyParts.clear()
+        assertThrows(UnsupportedOperationException::class.java) { (pattern.parts as MutableList<PatternPart>).clear() }
+        val directory = Files.createTempDirectory("masroof-immutable-pattern-").toFile()
+        try {
+            val file = directory.resolve("patterns.json").toPath()
+            PatternStore.save(file, listOf(pattern))
+            val loaded = PatternStore.load(file).single()
+            assertEquals(pattern, loaded)
+            assertEquals(pattern.hashCode(), loaded.hashCode())
+            for (value in listOf(pattern, copy, loaded)) {
+                assertEquals("12SAR", requireNotNull(value.preview("EXAMPLE_BANK", "Sender", "Synthetic event\nAmount:12SAR"))
+                    .fields.getValue("amount").raw)
+            }
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun bareMonetaryValuesVaryInWidthAndPrecisionWhileIdentifiersStayFixed() {
+        val body = "Synthetic event\nAmount:50\nCurrency:SAR\nAcc:007"
+        val pattern = SavedMessagePattern.fromChoices("bare-money", "EXAMPLE_BANK", "Sender", "USER_CHOICE", body,
+            listOf(FieldChoice("amount", body.indexOf("50"), body.indexOf("50") + 2),
+                FieldChoice("account", body.indexOf("007"), body.length)))
+        val directory = Files.createTempDirectory("masroof-bare-money-").toFile()
+        try {
+            val file = directory.resolve("patterns.json").toPath()
+            PatternStore.save(file, listOf(pattern))
+            for (loaded in listOf(pattern, PatternStore.load(file).single())) {
+                for (amount in listOf("5", "500", "1250.75", "1,250.50")) {
+                    val result = requireNotNull(loaded.preview("EXAMPLE_BANK", "Sender", body.replace("50", amount)))
+                    assertEquals(amount, result.fields.getValue("amount").raw)
+                    assertFalse(result.financialPostingAllowed)
+                }
+                for (invalid in listOf("-5", "5.123", "1,25", "garbage", "1".repeat(161))) {
+                    assertNull(loaded.preview("EXAMPLE_BANK", "Sender", body.replace("50", invalid)))
+                }
+                assertNull(loaded.preview("EXAMPLE_BANK", "Sender", body.replace("007", "0007")))
+            }
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun explicitUserRangesWorkWhenDiscoveryDidNotOfferTheValue() {
         val body = "Synthetic event\nField:😀"
         val start = body.indexOf("😀")

@@ -163,6 +163,7 @@ internal data class TeachingExample(val label: String, val body: String, val sel
     fun variant(number: Int): Pair<String, Map<String, String>> {
         val values = selections.associate { selection -> selection.field to when (selection.kind) {
             FieldKind.MONEY -> if (number == 1) "731.09 SAR" else "82USD"
+            FieldKind.DECIMAL -> if (number == 1) "731.09" else "82"
             FieldKind.TEXT -> if (number == 1) "DIFFERENT VALUE" else "قيمة تجريبية"
             FieldKind.DIGITS -> "0".repeat(selection.end - selection.start - 1) + number
             FieldKind.DATE_DMY_SHORT -> "17/10/26 09:0$number"
