@@ -23,6 +23,7 @@ fun SettingsBankScreen(
     onOpenAccounts: () -> Unit,
     onOpenCards: () -> Unit,
     onOpenLoans: () -> Unit,
+    onOpenPatterns: () -> Unit = {},
 ) {
     val accountsSubtitle = formatRegistryCategorySubtitle(
         state = resolveRegistryCategorySubtitle(
@@ -69,7 +70,8 @@ fun SettingsBankScreen(
                 com.baraa.masroof.presentation.common.MasroofText(settingsBankLabel(bank), style = MaterialTheme.typography.titleMedium)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_accounts_title), accountsSubtitle, MasroofIcons.moneyMovement, onOpenAccounts)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_cards_title), cardsSubtitle, MasroofIcons.cardPayment, onOpenCards)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_loans_title), loansSubtitle, MasroofIcons.savings, onOpenLoans, divider = false)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_loans_title), loansSubtitle, MasroofIcons.savings, onOpenLoans)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.pattern_title), stringResource(R.string.pattern_teach), MasroofIcons.moneyMovement, onOpenPatterns, divider = false)
             }
 
         }
