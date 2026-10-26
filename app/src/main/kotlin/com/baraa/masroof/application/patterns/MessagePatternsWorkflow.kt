@@ -20,6 +20,7 @@ class MessagePatternsWorkflow(
     private val bundledBanks: List<BankMessagePatterns> = emptyList(),
     private val activation: PatternActivationWorkflow? = null,
     private val importBank: (suspend (String) -> com.baraa.masroof.application.sms.SmsScanResult)? = null,
+    private val requiredBundledBankIds: Set<String> = emptySet(),
 ) {
     val canPreviewPending: Boolean get() = pendingPreview != null
     val canApplyPending: Boolean get() = pendingPreview?.canApply == true
@@ -41,17 +42,17 @@ class MessagePatternsWorkflow(
         val existing = accessGate.withAccess { store.load() }
         if (missingBanks(existing).isEmpty()) existing
         else accessGate.withRestore {
-            var current = store.load()
-            // Install missing banks only: updates never replace user revisions or duplicate a configured sender identity.
-            for (bank in missingBanks(current)) current = store.saveBank(current.generation, bank)
-            current
+            store.installMissingBanks(bundledBanks, requiredBundledBankIds)
         }
     }
 
     private fun missingBanks(configuration: com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration) =
-        bundledBanks.filter { bank -> configuration.banks.none {
-            it.bankId == bank.bankId || it.senders.any(bank.senders::contains)
-        } }
+        bundledBanks.filter { bank ->
+            val prior = configuration.banks.singleOrNull { it.bankId == bank.bankId }
+            if (bank.bankId in requiredBundledBankIds) prior == null ||
+                bank.patterns.any { seed -> prior.patterns.none { it.id == seed.id } } || bank.senders.any { it !in prior.senders }
+            else configuration.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }
+        }
 
     suspend fun addBank(generation: Long, name: String, sender: String, bankId: String? = null) = withContext(ioDispatcher) {
         accessGate.withRestore {

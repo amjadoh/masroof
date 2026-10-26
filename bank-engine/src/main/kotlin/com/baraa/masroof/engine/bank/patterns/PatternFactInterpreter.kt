@@ -5,6 +5,7 @@ import com.baraa.masroof.engine.bank.interpretation.SourceText
 import com.baraa.masroof.engine.bank.interpretation.otpEvidence
 import com.baraa.masroof.engine.bank.interpretation.hasUnprovenExecution
 import com.baraa.masroof.engine.bank.interpretation.hasNoticeContext
+import com.baraa.masroof.engine.bank.interpretation.hasQuotedContext
 import com.baraa.masroof.engine.bank.interpretation.FamilyAssist
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.finance.value.BankId
@@ -117,6 +118,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         fun block(code: String) { diagnostics += diagnostic(code) }
         if (hasUnprovenExecution(SourceText(input.body))) block("PATTERN_EXECUTION_NOT_PROVEN")
         if (hasNoticeContext(SourceText(input.body))) block("PATTERN_NOTICE_CONTEXT")
+        if (hasQuotedContext(SourceText(input.body))) block("PATTERN_QUOTED_MESSAGE_CONTEXT")
         fun value(field: String) = preview.fields[field]?.raw
         fun normalized(field: String) = value(field)?.let { SourceText(it).text.trim() }
         val boundFields = mutableSetOf<String>()

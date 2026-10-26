@@ -141,8 +141,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
                 }
             } }
         }
-        if (source.text.lineSequence().any { it.trimStart().let { line -> line.startsWith(">") || line.startsWith("```") || line.startsWith('"') || line.startsWith('«') || line.startsWith('“') } })
-            problem("QUOTED_MESSAGE_CONTEXT")
+        if (hasQuotedContext(source)) problem("QUOTED_MESSAGE_CONTEXT")
         if (family !in INFORMATIONAL && hasUnprovenExecution(source)) problem("EXECUTION_NOT_PROVEN")
         if (hasNoticeContext(source) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)

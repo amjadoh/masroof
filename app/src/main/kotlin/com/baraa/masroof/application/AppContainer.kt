@@ -170,18 +170,21 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val bundledPatternBanks = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
-        appContext.assets.open("bank-patterns/BANK_STC.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
+    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC").flatMap { bankId ->
+        com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+            appContext.assets.open("bank-patterns/$bankId.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
+    }
     // Restore recovery has finished and this container has not admitted work yet.
     private val messagePatternStore = com.baraa.masroof.data.patterns.MessagePatternStore(appContext).also {
-        if (bankAdapterOverride == null) it.installMissingBanks(bundledPatternBanks)
+        if (bankAdapterOverride == null) it.installMissingBanks(bundledPatternBanks, setOf(Bank.BANK_ALJAZIRA.id))
     }
 
     val messagePatternsWorkflow by lazy {
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
             messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
+            requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
             activation = com.baraa.masroof.application.patterns.PatternActivationWorkflow(messagePatternStore, databaseAccessGate,
-                accountRegistryRepository, ownershipConfirmationService, setOf(alJaziraSmsAdapter.bank.id)),
+                accountRegistryRepository, ownershipConfirmationService),
             importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
                 messagePatternStore, databaseAccessGate,
@@ -536,17 +539,15 @@ class AppContainer(
     val interpretationService = if (bankAdapterOverride==null)
         com.baraa.masroof.application.interpretation.BankInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
             userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService,
-            ruleProfile = com.baraa.masroof.data.patterns.BankRuleProfileCodec.decode(
-                appContext.assets.open("bank-patterns/BANK_ALJAZIRA.rules.json").bufferedReader(Charsets.UTF_8).use { it.readText() }),
+            patterns = messagePatternStore::load,
             onFeedbackChanged = { maintenanceCompletionSignal.notifyCompleted(); if(analyticsDelegate.isInitialized()) analytics.request() }) else null
-    private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =
-        bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(interpretationService)::interpret)
 
     private val bankSmsRegistry: BankSmsRegistry =
         BankSmsRegistry(
-            adapters = listOf(alJaziraSmsAdapter),
+            adapters = listOfNotNull(bankAdapterOverride),
             configuredAdapters = if (bankAdapterOverride != null) ({ emptyList() }) else
-                com.baraa.masroof.application.patterns.ConfiguredPatternAdapters(messagePatternStore, setOf(alJaziraSmsAdapter.bank.id))::snapshot,
+                com.baraa.masroof.application.patterns.ConfiguredPatternAdapters(messagePatternStore, alJaziraInterpret = { input, snapshot ->
+                    requireNotNull(interpretationService).interpret(input, snapshot) })::snapshot,
         )
 
     val statementReconciliationWorkflow: StatementReconciliationWorkflow =
@@ -604,7 +605,7 @@ class AppContainer(
             reviewRepository = reviewRepository,
             debugProcessHalt = debugProcessHaltProbe,
             patternProcessing = com.baraa.masroof.application.patterns.PatternEvidenceProtection(
-                reviewRepository, userCorrectionRepository, financialTransactionRepository,
+                reviewRepository, userCorrectionRepository, financialTransactionRepository, parsedEventRepository,
                 inTransaction = { work -> withDatabaseTransaction(work) })::run,
         )
 
