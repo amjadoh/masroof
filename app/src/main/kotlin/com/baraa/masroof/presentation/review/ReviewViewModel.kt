@@ -165,6 +165,27 @@ class ReviewViewModel(
         _uiState.update { it.copy(selectedDetail = null, message = null, error = null, actionErrorDetail = null) }
     }
 
+    /** Reload saved facts after teaching; returning never triggers financial reconciliation. */
+    fun refreshAfterPatternTeaching() {
+        val id = _uiState.value.selectedDetail?.id ?: return
+        viewModelScope.launch {
+            try {
+                val detail = detailLoader.loadDetail(id)
+                val resolved = detail?.review?.status == ReviewStatus.RESOLVED
+                val updated = if (detail == null || resolved) null else toDetailUi(detail, pairCandidatesFor(detail))
+                applySummaries(loadCurrentSummaries())
+                _uiState.update {
+                    if (it.selectedDetail?.id != id) it
+                    else it.copy(selectedDetail = updated, message = if (resolved) ReviewMessage.RESOLVED else null)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(error = ReviewError.LOAD_FAILED) }
+            }
+        }
+    }
+
     fun resolveAsFinancialType(type: FinancialTransactionType) {
         val reviewId = _uiState.value.selectedDetail?.id ?: return
         runAction {

@@ -5,7 +5,6 @@ import android.content.res.Configuration
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
@@ -116,14 +115,17 @@ class ReportedMessagesJourneyTest {
             val item=viewModel.uiState.value.items.single()
             compose.runOnUiThread {viewModel.openDetail(item.id)}
             compose.waitUntil(20_000) {viewModel.uiState.value.selectedDetail!=null}
+            compose.onNodeWithTag("review-why").performScrollTo().performClick()
             compose.onNodeWithTag("interpretation_provenance").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText(host.getString(R.string.lab_unresolved_source)).assertExists()
+            compose.onNodeWithTag("review-correct-type").performScrollTo().performClick()
             for(type in listOf(FinancialTransactionType.EXTERNAL_TRANSFER_OUT,FinancialTransactionType.EXTERNAL_TRANSFER_IN,FinancialTransactionType.SELF_TRANSFER))
                 compose.onNodeWithTag(reviewResolveTypeTestTag(type)).assertExists()
             val action=compose.onNodeWithTag(reviewResolveTypeTestTag(FinancialTransactionType.EXTERNAL_TRANSFER_OUT))
             action.performScrollTo()
             screenshot("manual-transfer-dark")
             action.performClick()
+            compose.onNodeWithTag("sheet-apply").performClick()
             compose.waitUntil(20_000) {viewModel.uiState.value.selectedDetail==null && viewModel.uiState.value.items.isEmpty()}
             runBlocking {
                 val rows=c.financialTransactionRepository.listAll()
@@ -228,9 +230,14 @@ class ReportedMessagesJourneyTest {
     }
 
     private fun screenshot(name: String) {
+        compose.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        android.os.SystemClock.sleep(200)
         val file=File(host.getExternalFilesDir(null),"reported-fixes/$name.png").apply {parentFile!!.mkdirs()}
-        file.outputStream().use {compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
-        val ui=InstrumentationRegistry.getInstrumentation().uiAutomation
+        val ui=instrumentation.uiAutomation
+        val bitmap = requireNotNull(ui.takeScreenshot())
+        file.outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
         fun shell(command: String): String {
             val fd=ui.executeShellCommand(command)
             return android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use {it.readText()}

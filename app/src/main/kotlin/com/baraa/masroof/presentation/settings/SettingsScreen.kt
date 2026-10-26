@@ -130,6 +130,7 @@ fun SettingsRoute(
             onOpenStatementReconciliation = { navigateTo(SettingsDestination.StatementReconciliation) },
             onOpenAbout = { navigateTo(SettingsDestination.About) },
             onOpenLearning = { navigateTo(SettingsDestination.MessageLearning) },
+            onOpenPatterns = { navigateTo(SettingsDestination.MessagePatterns()) },
         )
 
         SettingsDestination.MyAccounts -> SettingsRegistryCategoryScreen(
@@ -447,6 +448,7 @@ internal fun SettingsHubScreen(
     onOpenStatementReconciliation: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenLearning: () -> Unit = {},
+    onOpenPatterns: () -> Unit = {},
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_title),
@@ -479,6 +481,8 @@ internal fun SettingsHubScreen(
                     stringResource(R.string.settings_data_backup_hub_subtitle), MasroofIcons.backup, onOpenDataBackup)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title),
                     stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onOpenStatementReconciliation)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.teaching_title),
+                    stringResource(R.string.teaching_settings_subtitle), MasroofIcons.sms, onOpenPatterns)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.analysis_learning_settings),
                     stringResource(R.string.analysis_learning_settings_hint), MasroofIcons.analysis, onOpenLearning)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_about_section),

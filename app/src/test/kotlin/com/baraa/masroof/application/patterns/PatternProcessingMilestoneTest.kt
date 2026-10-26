@@ -33,6 +33,31 @@ class PatternProcessingMilestoneTest {
         Instant.parse("2026-10-15T10:00:00Z"), id, SmsBodyHasher.sha256Hex(body))
     private val incoming = "Internal incoming transfer\nAmount:10SAR\nFrom:TEST PERSON\nAcc:321\nAt:15/10/26 12:30"
 
+    @Test fun applyToCurrentReviewLeavesOtherPendingMessagesAndManualDecisionsUntouched() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            c.processRawSmsUseCase.ingest(sms("current-ui", incoming))
+            c.processRawSmsUseCase.ingest(sms("other-ui", incoming.replace("10SAR", "20SAR")))
+            val current = c.reviewRepository.findByRawSmsId("current-ui")!!
+            val other = c.reviewRepository.findByRawSmsId("other-ui")!!
+            val untouched = c.parsedEventRepository.findByRawSmsId("other-ui")
+            val account = w.confirmPatternAccount("BANK_STC", "4321")
+            val approved = w.saveFinancial(w.previewFinancial(w.load().generation, "BANK_STC", "stc-internal-in",
+                PatternOperation.TRANSFER_IN, account.id, incoming, "account_reference", emptySet()))
+            val result = w.applyPending("BANK_STC", approved.generation, current.id)
+            assertEquals(1, result.processed)
+            assertEquals(1, result.posted)
+            assertFalse(result.incomplete)
+            assertEquals(untouched, c.parsedEventRepository.findByRawSmsId("other-ui"))
+            assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.getById(other.id)!!.status)
+            assertEquals(0, w.applyPending("BANK_STC", approved.generation, current.id).processed)
+            c.reviewRepository.markResolved(other.id, ReviewResolutionKind.USER_NON_FINANCIAL, Instant.now(), null)
+            assertEquals(0, w.applyPending("BANK_STC", approved.generation, other.id).processed)
+            assertEquals(1, c.financialTransactionRepository.listAll().size)
+            assertEquals(untouched, c.parsedEventRepository.findByRawSmsId("other-ui"))
+        }
+    }
+
     @Test fun pendingBatchPersistsRetryIntentWithFactsBeforeItsDerivedPass() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
