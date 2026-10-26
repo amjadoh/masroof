@@ -62,8 +62,14 @@ saves that same immutable definition only if the configuration generation still
 matches. The screen supports original text selection, extracted candidates, an
 additional-message preview, disabling, and restoring an older revision as a new
 revision. Leaving discards unsaved text and bindings. Its first device journey
-uses synthetic messages only. Bank routing/import, review-queue integration and
-the pattern fingerprint in the financial write guard remain pending; taught definitions still have no posting authority.
+uses synthetic messages only. Review details now open teaching with an in-memory,
+read-only copy of the SMS and sender. The saved explicit bank selection takes
+precedence over the parsed bank; unknown banks require a user choice. Saving a
+pattern returns to the review without resolving it or rewriting evidence. A Room
+test preserves original SMS, parsed facts and a prior human decision; the device
+journey verifies immutable prefilled inputs and return navigation. Bank
+routing/import, automatic pending-message reprocessing and the pattern fingerprint
+in the financial write guard remain pending; taught definitions still have no posting authority.
 
 The new audit of the same 64 fixtures offers all 33 expected transaction timestamps
 and both expected due dates as raw candidates. This closes the seven previously
