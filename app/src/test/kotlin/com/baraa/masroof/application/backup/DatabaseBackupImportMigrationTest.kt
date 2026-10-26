@@ -14,6 +14,7 @@ import com.baraa.masroof.application.maintenance.TransferIntegrityRepairCoordina
 import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.room.MasroofDatabase
+import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.OwnershipStatus
@@ -43,6 +44,7 @@ class DatabaseBackupImportMigrationTest {
     @Before
     fun clearMaintenancePreferences() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        MessagePatternStore(context).restoreRaw(null)
         context.deleteDatabase(MasroofDatabase.NAME)
         DatabaseRestoreRecovery.deleteRestoreArtifacts(
             context.getDatabasePath(MasroofDatabase.NAME),
@@ -54,9 +56,39 @@ class DatabaseBackupImportMigrationTest {
     }
 
     @Test
+    fun unsupportedPatternsAreRejectedBeforeClosingOrChangingLiveData() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val patterns = MessagePatternStore(context)
+            val original = patternArchive("ORIGINAL")
+            patterns.restoreRaw(original)
+            val live = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
+                .allowMainThreadQueries().build()
+            val v5 = createV5DatabaseFile(context)
+            val zip = createBackupZip(v5, "{}")
+            val closed = AtomicBoolean(false)
+            try {
+                val card = CardReference(Bank.BANK_ALJAZIRA, "1111")
+                RoomCardRegistryRepository.from(live).setOwnership(card, OwnershipStatus.OWNED)
+                val service = DatabaseBackupService(context, live, { closed.set(true); live.close() }, "test",
+                    restartProcess = {})
+                assertEquals(BackupImportOutcome.InvalidPackage,
+                    service.importFrom(Uri.fromFile(zip), confirmLegacyPlaintext = true))
+                assertFalse(closed.get())
+                assertEquals(original, patterns.captureRaw())
+                assertEquals(OwnershipStatus.OWNED, RoomCardRegistryRepository.from(live).get(card)!!.ownership)
+            } finally {
+                if (live.isOpen) live.close()
+                v5.delete(); zip.delete()
+            }
+        }
+    }
+
+    @Test
     fun importV5Backup_resetsParseFactsAndTransferIntegrityMarkers() {
         runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        MessagePatternStore(context).restoreRaw(patternArchive("STC"))
         context.getSharedPreferences(MaintenancePreferences.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt(MaintenancePreferences.KEY_LAST_REPARSED_SCHEMA_VERSION, MasroofDatabase.VERSION)
@@ -99,6 +131,7 @@ class DatabaseBackupImportMigrationTest {
 
         assertEquals(BackupImportOutcome.SuccessNeedsRestart, outcome)
         assertTrue(restartRequested.get())
+        assertTrue(MessagePatternStore(context).load().banks.isEmpty())
 
         backupZip.delete()
         v5DbFile.delete()
@@ -274,6 +307,7 @@ class DatabaseBackupImportMigrationTest {
                 DatabaseRestoreRecovery.Stage.COMMITTED to "imported",
             )
             for ((stage, expectedOwner) in stages) {
+                MessagePatternStore(context).restoreRaw(patternArchive("ORIGINAL"))
                 context.deleteDatabase(MasroofDatabase.NAME)
                 DatabaseRestoreRecovery.deleteRestoreArtifacts(context.getDatabasePath(MasroofDatabase.NAME))
                 context.getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
@@ -289,7 +323,7 @@ class DatabaseBackupImportMigrationTest {
                     OwnershipStatus.OWNED,
                 )
                 val v5DbFile = createV5DatabaseFile(context)
-                val backupZip = createBackupZip(v5DbFile)
+                val backupZip = createBackupZip(v5DbFile, patternArchive("IMPORTED"))
                 val backupService = DatabaseBackupService(
                     appContext = context,
                     database = liveDatabase,
@@ -308,6 +342,8 @@ class DatabaseBackupImportMigrationTest {
                     assertEquals(stage.name, error.message?.substringAfterLast(' '))
                 }
                 DatabaseRestoreRecovery.recover(context)
+                assertEquals(patternArchive(if (expectedOwner == "original") "ORIGINAL" else "IMPORTED"),
+                    MessagePatternStore(context).captureRaw())
                 val reopened = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
                     .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                     .allowMainThreadQueries()
@@ -390,7 +426,7 @@ class DatabaseBackupImportMigrationTest {
         return exported
     }
 
-    private fun createBackupZip(v5DbFile: File): File {
+    private fun createBackupZip(v5DbFile: File, messagePatterns: String? = null): File {
         val zipFile = File.createTempFile("masroof-v5-backup", ".masroof")
         val manifest = BackupManifest(
             formatVersion = BackupPackageFormat.FORMAT_VERSION,
@@ -400,6 +436,7 @@ class DatabaseBackupImportMigrationTest {
             exportedAtEpochMillis = 1_700_000_000_000L,
         )
         val preferences = BackupPreferencesSnapshot(
+            messagePatterns = messagePatterns,
             onboardingStarted = true,
             onboardingCompleted = true,
             historicalImportStartEpochMillis = null,
