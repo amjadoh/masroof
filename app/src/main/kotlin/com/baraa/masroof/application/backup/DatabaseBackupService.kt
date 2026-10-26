@@ -101,7 +101,7 @@ class DatabaseBackupService(
                     File(staging, BackupPackageFormat.PREFERENCES_ENTRY)
                         .writeText(BackupPackageCodec.encodePreferences(capturePreferences()))
 
-                    com.baraa.masroof.application.analytics.LabAnalyticsBackup.validateExportSize(staging, archiveLimits)
+                    com.baraa.masroof.application.analytics.AnalyticsBackup.validateExportSize(staging, archiveLimits)
                     writeEncryptedPackage(staging, destination, secret)
                 } finally {
                     SensitiveFileCleanup.delete(staging)
@@ -616,7 +616,7 @@ class DatabaseBackupService(
             null
         }
         return BackupPreferencesSnapshot(
-            labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(appContext),
+            labAnalysis = com.baraa.masroof.application.analytics.AnalyticsBackup.capture(appContext),
             messagePatterns = com.baraa.masroof.application.patterns.MessagePatternBackup.capture(appContext),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
@@ -635,7 +635,7 @@ class DatabaseBackupService(
 
     private fun restorePreferences(snapshot: BackupPreferencesSnapshot) {
         com.baraa.masroof.application.patterns.MessagePatternBackup.restore(appContext, snapshot.messagePatterns)
-        com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(appContext, snapshot.labAnalysis)
+        com.baraa.masroof.application.analytics.AnalyticsBackup.restore(appContext, snapshot.labAnalysis)
         val onboarding = appContext.getSharedPreferences(
             SharedPrefsOnboardingPreferencesRepository.PREFS_NAME,
             Context.MODE_PRIVATE,

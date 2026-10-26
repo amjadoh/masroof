@@ -11,7 +11,7 @@ dependencies {
 tasks.register<JavaExec>("patternLifecycle") {
     dependsOn(tasks.testClasses)
     classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("com.baraa.masroof.lab.bank.experiment.PatternLifecycleCli")
+    mainClass.set("com.baraa.masroof.engine.bank.experiment.PatternLifecycleCli")
 }
 
 // Boundary tests inspect files outside this module. Include those files in the test cache key.

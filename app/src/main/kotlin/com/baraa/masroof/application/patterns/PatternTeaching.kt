@@ -1,8 +1,8 @@
 package com.baraa.masroof.application.patterns
 
-import com.baraa.masroof.lab.bank.patterns.FieldChoice
-import com.baraa.masroof.lab.bank.patterns.SavedMessagePattern
-import com.baraa.masroof.lab.bank.patterns.TextSpan
+import com.baraa.masroof.engine.bank.patterns.FieldChoice
+import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
+import com.baraa.masroof.engine.bank.patterns.TextSpan
 
 /** Teaching roles are explicit user choices, not posting authority or ownership decisions. */
 enum class PatternOperation(val fields: List<String>) {

@@ -8,7 +8,7 @@ It is a plan; the offline results below do not establish production parity.
 ## Implementation checkpoint: shared pure core
 
 The text-only extractor and the declarative pattern builder/compiler now live in
-`bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/patterns/`. The experiment
+`bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/patterns/`. The experiment
 imports that implementation directly; it keeps no compatibility wrappers or second
 copy. No runtime dependency was added. `Preview` still carries no financial
 authority, and the existing app adapter/intake/ledger path has not been switched.

@@ -10,7 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.*
-import com.baraa.masroof.lab.analytics.SpendingObservation
+import com.baraa.masroof.analytics.SpendingObservation
 import com.baraa.masroof.application.dashboard.AnalysisSpendingGroup
 import com.baraa.masroof.application.locale.AppDigits
 import com.baraa.masroof.presentation.common.*

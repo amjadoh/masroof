@@ -1,7 +1,7 @@
 package com.baraa.masroof.bank
 
-import com.baraa.masroof.lab.bank.Interpretation
-import com.baraa.masroof.lab.bank.MessageInput
+import com.baraa.masroof.engine.bank.Interpretation
+import com.baraa.masroof.engine.bank.MessageInput
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.model.*
@@ -22,15 +22,15 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         if (pattern != null && (interpretation.version.engine != "message-pattern-facts-v1" ||
                 interpretation.version.rules != pattern.configurationFingerprint)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
         if (interpretation.version.engine == "message-pattern-facts-v1" &&
-            interpretation.status == com.baraa.masroof.lab.bank.ParseStatus.SUCCESS && pattern == null) blockers += "ENGINE_PATTERN_PROVENANCE_MISSING"
+            interpretation.status == com.baraa.masroof.engine.bank.ParseStatus.SUCCESS && pattern == null) blockers += "ENGINE_PATTERN_PROVENANCE_MISSING"
         val patternReasons = pattern?.let {
             listOf("pattern_config:${it.configurationFingerprint}", "pattern_revision:${it.patternId}:${it.revision}") +
                 it.definitionFacts.sorted().map { field -> "pattern_source:$field:definition" } +
                 interpretation.evidence.map { e -> "pattern_source:${e.field}:message:${e.start}:${e.end}" } +
                 if (it.usesReceiptTime) listOf("pattern_source:OCCURRED_AT:receipt") else emptyList()
         }.orEmpty()
-        val automatic = interpretation.status == com.baraa.masroof.lab.bank.ParseStatus.SUCCESS && blockers.isEmpty()
-        if (!automatic && interpretation.status != com.baraa.masroof.lab.bank.ParseStatus.NON_FINANCIAL && blockers.isEmpty()) blockers += "ENGINE_NOT_AUTOMATIC"
+        val automatic = interpretation.status == com.baraa.masroof.engine.bank.ParseStatus.SUCCESS && blockers.isEmpty()
+        if (!automatic && interpretation.status != com.baraa.masroof.engine.bank.ParseStatus.NON_FINANCIAL && blockers.isEmpty()) blockers += "ENGINE_NOT_AUTOMATIC"
         val rawFamily = MessageFamily.valueOf(facts.family.name)
         val family = if (blockers.isNotEmpty() && rawFamily in setOf(MessageFamily.OTP,MessageFamily.NON_FINANCIAL,MessageFamily.BALANCE_NOTICE)) MessageFamily.UNKNOWN else rawFamily
         val amount = facts.amount?.money()
@@ -38,7 +38,7 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         val selected = amount?.let { AmountCandidate(it,
             amountEvidence?.let { evidence -> "${evidence.ruleId}:${evidence.start}:${evidence.end}" } ?: "engine:unproven-amount",
             if (amountEvidence != null) AmountSourceKind.TRANSACTION_AMOUNT else AmountSourceKind.OTHER) }
-        fun bank(id: com.baraa.masroof.lab.finance.value.BankId?): Bank = id?.let { Bank.fromId(it.value) } ?: Bank.UNKNOWN
+        fun bank(id: com.baraa.masroof.finance.value.BankId?): Bank = id?.let { Bank.fromId(it.value) } ?: Bank.UNKNOWN
         val details = ParsedEventDetails(transactionReference = facts.transactionReference,
             availableBalance = facts.availableBalance?.money(),outstandingBalance = facts.outstandingBalance?.money(),
             biller = facts.biller,billerCode = facts.billerCode,occurredAtLocal = facts.occurredAtLocal,
@@ -65,5 +65,5 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         }
         return ParseFinalizer(validator).finalize(draft,"evt-${input.evidenceId}")
     }
-    private fun com.baraa.masroof.lab.finance.value.Money.money() = Money.of(amount,Currency.valueOf(currency.name))
+    private fun com.baraa.masroof.finance.value.Money.money() = Money.of(amount,Currency.valueOf(currency.name))
 }

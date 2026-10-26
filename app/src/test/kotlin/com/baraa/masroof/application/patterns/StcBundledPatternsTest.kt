@@ -3,7 +3,7 @@ package com.baraa.masroof.application.patterns
 import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
-import com.baraa.masroof.lab.bank.patterns.*
+import com.baraa.masroof.engine.bank.patterns.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.Assert.*

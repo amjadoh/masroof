@@ -166,9 +166,9 @@ class ReviewDetailLoaderTest {
         try {
             val store = com.baraa.masroof.data.patterns.MessagePatternStore(directory.resolve("patterns.json"))
             val body = "Payment\nAmount:10SAR"
-            val pattern = com.baraa.masroof.lab.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
-                listOf(com.baraa.masroof.lab.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
-            val bank = com.baraa.masroof.lab.bank.patterns.BankMessagePatterns("STC", listOf("STC Bank"), patterns = listOf(pattern))
+            val pattern = com.baraa.masroof.engine.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
+                listOf(com.baraa.masroof.engine.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+            val bank = com.baraa.masroof.engine.bank.patterns.BankMessagePatterns("STC", listOf("STC Bank"), patterns = listOf(pattern))
             store.saveBank(0, bank)
             val inputs = listOf("first", "second", "no-match", "posted", "corrected", "resolved", "other-bank")
             for (id in inputs) {
@@ -199,7 +199,7 @@ class ReviewDetailLoaderTest {
             val conflict = preview.preview("STC", 2)
             assertEquals(2, conflict.rows.count { it.status == com.baraa.masroof.application.patterns.PendingPatternStatus.PATTERN_CONFLICT })
             org.junit.Assert.assertTrue(runCatching { preview.preview("STC", 1) }.isFailure)
-            store.saveBank(2, com.baraa.masroof.lab.bank.patterns.BankMessagePatterns("COLLISION", listOf("STC Bank")))
+            store.saveBank(2, com.baraa.masroof.engine.bank.patterns.BankMessagePatterns("COLLISION", listOf("STC Bank")))
             assertEquals(setOf(com.baraa.masroof.application.patterns.PendingPatternStatus.BANK_CONFLICT),
                 preview.preview("STC", 3).rows.map { it.status }.toSet())
             assertEquals(originalReviews, reviewRepo.listAll())

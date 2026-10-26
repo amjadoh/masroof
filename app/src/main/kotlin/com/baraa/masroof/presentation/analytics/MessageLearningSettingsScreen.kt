@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxWidth
 import com.baraa.masroof.R
-import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
+import com.baraa.masroof.application.analytics.AnalyticsWorkflow
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -19,7 +19,7 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 @Composable
 fun MessageLearningSettingsScreen(onOpenPatterns: () -> Unit = {}, onOpenExample: (String) -> Unit = {}, onBack: () -> Unit) {
     val context = LocalContext.current
-    val workflow = LocalLabAnalyticsWorkflow.current ?: remember(context) { LabAnalyticsWorkflow.from(context) }
+    val workflow = LocalAnalyticsWorkflow.current ?: remember(context) { AnalyticsWorkflow.from(context) }
     val state by workflow.state.collectAsState()
     var examples by remember { mutableStateOf<List<com.baraa.masroof.application.interpretation.MessageReviewExample>?>(null) }
     var failed by remember { mutableStateOf(false) }

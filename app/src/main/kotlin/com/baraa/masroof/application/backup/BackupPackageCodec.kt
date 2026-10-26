@@ -24,7 +24,7 @@ object BackupPackageCodec {
 
     fun decodePreferences(raw: String): BackupPreferencesSnapshot =
         json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw).also {
-            com.baraa.masroof.application.analytics.LabAnalyticsBackup.validate(it.labAnalysis)
+            com.baraa.masroof.application.analytics.AnalyticsBackup.validate(it.labAnalysis)
             com.baraa.masroof.application.patterns.MessagePatternBackup.validate(it.messagePatterns)
         }
 

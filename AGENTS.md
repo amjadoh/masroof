@@ -16,7 +16,7 @@
 
 **Layers:** `presentation` → `application` → `domain` / `parsing` / `data` / `sms` / `bank`. Dependencies point inward. Rules are enforced in `PackageDependencyRulesTest` — do not add exceptions; fix the import instead.
 
-**Financial core:** `finance-core` owns production `core.money`, financial value models, period/time policies, container/transaction identities, financial classification/impact, transfer matching/assembly and statement matching. Their original `com.baraa.masroof.core.money` / `com.baraa.masroof.domain.*` packages are preserved. Do not recreate these implementations in `app`. Core receives facts and returns in-memory decisions; repository access, ownership discovery/confirmation, reconciliation writes/retries, CSV I/O and dashboard aggregation remain in `app`. `bank-engine` may import only the existing `lab.finance.value` contracts, never the financial decision policies. Both current Money contracts remain distinct. Extraction adds no schema migration, backfill or reparse.
+**Financial core:** `finance-core` owns production `core.money`, financial value models, period/time policies, container/transaction identities, financial classification/impact, transfer matching/assembly and statement matching. Their original `com.baraa.masroof.core.money` / `com.baraa.masroof.domain.*` packages are preserved. Do not recreate these implementations in `app`. Core receives facts and returns in-memory decisions; repository access, ownership discovery/confirmation, reconciliation writes/retries, CSV I/O and dashboard aggregation remain in `app`. `bank-engine` may import only the existing `finance.value` contracts, never the financial decision policies. Both current Money contracts remain distinct. Extraction adds no schema migration, backfill or reparse.
 
 **ViewModels:** Call `application/*Workflow` facades only. No direct use of `domain.repository`, `domain.ownership`, or `domain.period` from presentation.
 
@@ -52,7 +52,7 @@
 
 **Reference:** `docs/ARCHITECTURE.md` describes the current production modules; `docs/ANALYTICS.md` describes advisory analysis. Follow this file when historical records disagree.
 
-**Production cutover:** Keep `masroof.db` schema v18, preference names, Keystore alias, worker identities and the original application id. No Lab UI, generated application replica or parallel intake may ship. Pure module package names may retain their historical `lab` segment; this is not a second runtime. Engine/model refreshes must not reparse posted evidence or override human decisions.
+**Production cutover:** Keep `masroof.db` schema v18, preference names, Keystore alias, worker identities and the original application id. No Lab UI, generated application replica or parallel intake may ship. Pure modules use production namespaces (`engine.bank`, `finance.value`, `ml`, `analytics`); application integration tests live under `integration`. Do not reintroduce `lab` or `beta` source paths. Historical persisted keys and retired-work identifiers stay compatible. Engine/model refreshes must not reparse posted evidence or override human decisions.
 
 ## Dashboard calculations
 

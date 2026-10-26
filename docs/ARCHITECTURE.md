@@ -10,6 +10,12 @@ Masroof has one Android application, one financial database and one bank interpr
 - `ml-assist`: local family classifier, cleaned human templates, forecasting and recurring-pattern detection. The engine consumes an injected assistance contract rather than depending on ML implementation.
 - `ui-kit`: shared theme, typography, fonts, cards and charts. It cannot access financial storage.
 
+Source namespaces use `com.baraa.masroof.engine.bank`, `com.baraa.masroof.finance.value`,
+`com.baraa.masroof.ml` and `com.baraa.masroof.analytics`. Application integration
+tests use `com.baraa.masroof.integration`. Historical `lab`/`beta` source paths and
+source file prefixes have been removed. Existing serialized backup keys and retired
+work identifiers keep their original spelling for upgrade compatibility.
+
 ## Financial policy ownership
 
 The extracted sources keep their original `com.baraa.masroof.core.money` and
@@ -18,7 +24,7 @@ Classification consumes `ClassificationEvidence` with resolved container facts;
 production and policy tests use the same input contract.
 Only the value models needed by those policies move. The two existing Money
 contracts are not unified. `bank-engine` may still reference only
-`com.baraa.masroof.lab.finance.value`; depending on the core module does not give
+`com.baraa.masroof.finance.value`; depending on the core module does not give
 it authority to classify, match or assemble financial transactions.
 
 Ownership lookup/discovery/confirmation, repository ports, reconciliation,

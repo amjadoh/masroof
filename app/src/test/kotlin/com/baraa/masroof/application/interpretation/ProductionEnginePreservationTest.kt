@@ -27,7 +27,7 @@ class ProductionEnginePreservationTest {
             c.onboardingOwnershipWorkflow.confirmCardOwned(CardReference(Bank.BANK_ALJAZIRA, "7271"))
             fun raw(id: String, body: String) = RawSms(id, "AlJazira", body, Instant.now(), id, SmsBodyHasher.sha256Hex(body))
             c.processRawSmsUseCase.ingest(raw("posted", "شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nمبلغ: SAR 12\nلدى: TEST_SHOP"))
-            val service = requireNotNull(c.labInterpretationService)
+            val service = requireNotNull(c.interpretationService)
             assertNotNull(c.financialTransactionRepository.findByRawSmsId("posted"))
             assertFalse(service.mayRefresh("posted"))
             val ledger = c.financialTransactionRepository.listAll()

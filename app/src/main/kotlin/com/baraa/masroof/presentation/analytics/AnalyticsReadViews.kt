@@ -66,7 +66,7 @@ import java.time.ZoneId
     }
 }
 
-@Composable internal fun EvidenceGroup(ids: List<String>, reason: String, workflow: LabAnalyticsWorkflow,
+@Composable internal fun EvidenceGroup(ids: List<String>, reason: String, workflow: AnalyticsWorkflow,
     source: String, onOpenTransaction: (String) -> Unit, collapsible: Boolean = true) {
     var expanded by rememberSaveable(reason) { mutableStateOf(!collapsible) }
     var visible by rememberSaveable(reason) { mutableIntStateOf(20) }
@@ -111,11 +111,11 @@ import java.time.ZoneId
 }
 
 /** Original and analytics rows share one list/card. Analytics read state remains in its existing store. */
-@Composable fun LabUnifiedNotificationContent(state: NotificationCenterUiState, modifier: Modifier,
+@Composable fun AnalysisNotificationContent(state: NotificationCenterUiState, modifier: Modifier,
     originalRow: @Composable (NotificationItem, Boolean) -> Unit) {
     // The original notification screen also renders independently in the design matrix.
     // Only expose analysis actions when its workflow is supplied by the app root.
-    val workflow = LocalLabAnalyticsWorkflow.current
+    val workflow = LocalAnalyticsWorkflow.current
     val analysis = workflow?.state?.collectAsState()?.value ?: AnalysisUiState()
     val scope = rememberCoroutineScope()
     val now = currentAnalysisTime()
@@ -164,7 +164,7 @@ import java.time.ZoneId
     return now
 }
 
-@Composable fun LabEvidenceDetailFallback(loading: Boolean, onBack: () -> Unit) {
+@Composable fun AnalysisEvidenceDetailFallback(loading: Boolean, onBack: () -> Unit) {
     MasroofScreenBackground {
         MasroofSecondaryScaffold(stringResource(R.string.transaction_detail_title), onBack,
             stringResource(R.string.lab_analysis_back)) { modifier ->

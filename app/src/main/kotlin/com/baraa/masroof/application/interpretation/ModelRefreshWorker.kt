@@ -22,7 +22,7 @@ class ModelRefreshWorker(context: Context, params: WorkerParameters) : Coroutine
             Result.retry()
         } else container.databaseAccessGate.withAccess {
             // Keep this container alive across all stages, including the separate learning database.
-            val service = container.labInterpretationService
+            val service = container.interpretationService
             service?.synchronizeFeedback()
             val expected = inputData.getString("interpretationVersion")
             val versionMatches = service != null && if (expected != null) expected == service.refreshVersion

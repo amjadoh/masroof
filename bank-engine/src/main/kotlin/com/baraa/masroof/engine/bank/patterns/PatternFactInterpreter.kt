@@ -1,0 +1,169 @@
+package com.baraa.masroof.engine.bank.patterns
+
+import com.baraa.masroof.engine.bank.*
+import com.baraa.masroof.engine.bank.interpretation.SourceText
+import com.baraa.masroof.engine.bank.interpretation.otpEvidence
+import com.baraa.masroof.engine.bank.interpretation.hasUnprovenExecution
+import com.baraa.masroof.engine.bank.interpretation.hasNoticeContext
+import com.baraa.masroof.finance.value.BankId
+import com.baraa.masroof.finance.value.Currency
+import com.baraa.masroof.finance.value.Money
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.security.MessageDigest
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.ResolverStyle
+import java.util.Locale
+
+/** Explicit observations, independently versioned from the preview label. Never ownership or ledger type. */
+data class PatternFactContract(
+    val family: MessageFamily,
+    val direction: MoneyDirection,
+    val currency: Currency? = null,
+    val sourceAccountBank: BankId? = null,
+    val destinationAccountBank: BankId? = null,
+    val cardBank: BankId? = null,
+    val version: Int = 1,
+)
+
+/** Values stay in Facts / original message spans; durable reasons contain only metadata and offsets. */
+data class PatternProvenance(val configurationFingerprint: String, val patternId: String, val revision: Int,
+    val definitionFacts: Set<String>, val usesReceiptTime: Boolean)
+
+/** Immutable configuration snapshot. Routing has already selected the bank; sender detection is not repeated. */
+class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
+    private val snapshot = configuration.copy(banks = configuration.banks.map {
+        it.copy(senders = it.senders.toList(), patterns = it.patterns.toList())
+    })
+    val fingerprint: String = fingerprint(snapshot)
+
+    fun interpretRouted(input: MessageInput, bank: BankId): Interpretation {
+        val version = InterpretationVersion(1, "message-pattern-facts-v1", fingerprint)
+        fun unresolved(code: String, blocker: Blocker = Blocker.UNKNOWN_FAMILY) = Interpretation(input.evidenceId,
+            version, bank, Facts(MessageFamily.UNKNOWN), ParseStatus.REVIEW_REQUIRED, null, emptyList(),
+            setOf(blocker, Blocker.UNKNOWN_FAMILY), listOf(diagnostic(code)))
+        val definition = snapshot.banks.singleOrNull { it.bankId == bank.value }
+            ?: return unresolved("PATTERN_BANK_MISSING", Blocker.UNKNOWN_BANK)
+        val matches = definition.currentPatterns.mapNotNull { pattern ->
+            // Use the pattern's declared sender only to invoke its body compiler, after routing.
+            pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
+        }
+        if (matches.isEmpty()) return unresolved("PATTERN_NOT_MATCHED")
+        if (matches.size != 1) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
+        val (pattern, preview) = matches.single()
+        val contract = pattern.factContract ?: return unresolved("PATTERN_CONTRACT_MISSING")
+        if (contract.version != 1) return unresolved("PATTERN_CONTRACT_UNSUPPORTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
+        val security = otpEvidence(SourceText(input.body))
+        if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
+            ParseStatus.NON_FINANCIAL, null, security, emptySet())
+
+        val evidence = preview.fields.map { (field, span) -> Evidence(pattern.id, field.uppercase(Locale.ROOT), span.start, span.end) }.toMutableList()
+        val diagnostics = mutableListOf<InterpretationDiagnostic>()
+        val definitionFacts = mutableSetOf("FAMILY", "DIRECTION")
+        fun block(code: String) { diagnostics += diagnostic(code) }
+        if (hasUnprovenExecution(SourceText(input.body))) block("PATTERN_EXECUTION_NOT_PROVEN")
+        if (hasNoticeContext(SourceText(input.body))) block("PATTERN_NOTICE_CONTEXT")
+        fun value(field: String) = preview.fields[field]?.raw
+        fun normalized(field: String) = value(field)?.let { SourceText(it).text.trim() }
+        fun money(field: String): Money? {
+            val raw = normalized(field) ?: return null
+            val match = MONEY.matchEntire(raw)
+            val number = match?.groups?.get(1)?.value ?: match?.groups?.get(4)?.value
+            val currencyText = match?.groups?.get(2)?.value ?: match?.groups?.get(3)?.value
+            val observedCurrency = currencyText?.let { if (it == "sr") Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
+            val declaredCurrency = contract.currency.takeIf { field == "amount" }
+            if (observedCurrency != null && declaredCurrency != null && observedCurrency != declaredCurrency) {
+                block("PATTERN_CURRENCY_CONFLICT"); return null
+            }
+            val currency = observedCurrency ?: declaredCurrency
+            val magnitude = number ?: raw.takeIf { DECIMAL.matches(it) }
+            if (currency == null || magnitude == null) { block("PATTERN_MONEY_INCOMPLETE"); return null }
+            if (observedCurrency == null) definitionFacts += "${field.uppercase(Locale.ROOT)}_CURRENCY"
+            else evidence += evidence.first { it.field == field.uppercase(Locale.ROOT) }.copy(field = "${field.uppercase(Locale.ROOT)}_CURRENCY")
+            return Money.of(magnitude.replace(",", ""), currency)
+        }
+        fun account(field: String, referenceBank: BankId?): AccountReference? {
+            val raw = normalized(field) ?: return null
+            if (!SUFFIX.matches(raw) || referenceBank == null) { block("PATTERN_ACCOUNT_REFERENCE_UNRESOLVED"); return null }
+            definitionFacts += "${field.uppercase(Locale.ROOT)}_BANK"
+            return AccountReference(referenceBank, raw)
+        }
+        val time = normalized("occurred_at")?.let { raw ->
+            val kind = pattern.parts.filterIsInstance<FieldSlot>().single { it.field == "occurred_at" }.kind
+            val parsed = kind.dateFormat?.let { format -> runCatching {
+                LocalDateTime.parse(raw, DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT))
+            }.getOrNull() }
+            if (parsed == null) block("PATTERN_TIME_INCOMPLETE")
+            parsed
+        }
+        val card = normalized("card")?.let {
+            if (!SUFFIX.matches(it) || contract.cardBank == null) { block("PATTERN_CARD_REFERENCE_UNRESOLVED"); null }
+            else { definitionFacts += "CARD_BANK"; CardReference(contract.cardBank, it) }
+        }
+        preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
+        // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
+        if (preview.fields.keys.any { it in NEUTRAL_REFERENCES }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
+        val receiptTime = "occurred_at" !in preview.fields
+        if (receiptTime && !input.durableSmsReceipt) block("PATTERN_RECEIPT_NOT_DURABLE")
+        if (contract.family == MessageFamily.UNKNOWN) block("PATTERN_FAMILY_UNKNOWN")
+        val facts = Facts(contract.family, amount = money("amount"), direction = contract.direction,
+            sourceAccount = account("source_account", contract.sourceAccountBank),
+            destinationAccount = account("destination_account", contract.destinationAccountBank), card = card,
+            merchant = value("merchant"), counterparty = value("counterparty"), biller = value("biller"),
+            billerCode = value("biller_code"), transactionReference = value("reference"), occurredAtLocal = time,
+            occurredAt = input.receivedAt.takeIf { receiptTime && input.durableSmsReceipt },
+            availableBalance = money("available_balance"), outstandingBalance = money("outstanding_balance"),
+            internationalFee = money("international_fee"), labeledForeignAmount = money("foreign_amount"))
+        if (facts.amount == null) block("PATTERN_AMOUNT_MISSING")
+        val blockers = buildSet {
+            if (diagnostics.isNotEmpty()) add(Blocker.VALIDATION_ERROR)
+            if (facts.family == MessageFamily.UNKNOWN) add(Blocker.UNKNOWN_FAMILY)
+        }
+        return Interpretation(input.evidenceId, version, bank, facts,
+            if (blockers.isEmpty()) ParseStatus.SUCCESS else ParseStatus.REVIEW_REQUIRED,
+            Confidence(1.0, emptyList()), evidence, blockers, diagnostics,
+            patternProvenance = PatternProvenance(fingerprint, pattern.id, pattern.revision, definitionFacts.toSet(), receiptTime))
+    }
+
+    companion object {
+        private val DECIMAL = Regex("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?")
+        private val MONEY = Regex("(?:(${DECIMAL.pattern}) *(sar|sr|usd|eur|gbp)|(sar|sr|usd|eur|gbp) *(${DECIMAL.pattern}))")
+        private val SUFFIX = Regex("[0-9]{4}")
+        private val NEUTRAL_REFERENCES = setOf("account_reference", "funding_reference", "counterparty_bank")
+        private val SUPPORTED_FIELDS = setOf("amount", "merchant", "counterparty", "biller", "biller_code", "reference",
+            "occurred_at", "source_account", "destination_account", "card", "available_balance", "outstanding_balance",
+            "international_fee", "foreign_amount") + NEUTRAL_REFERENCES
+        private fun diagnostic(code: String) = InterpretationDiagnostic(code, code, DiagnosticSeverity.ERROR)
+
+        /** Length-prefixed encoding includes history and generation, so restores and enable cycles cannot reuse a stamp. */
+        private fun fingerprint(configuration: MessagePatternConfiguration): String {
+            val bytes = ByteArrayOutputStream()
+            DataOutputStream(bytes).use { out ->
+                out.writeUTF("message-pattern-facts-v1"); out.writeLong(configuration.generation)
+                out.writeInt(configuration.banks.size)
+                configuration.banks.sortedBy { it.bankId }.forEach { bank ->
+                    out.writeUTF(bank.bankId); out.writeUTF(bank.displayName.orEmpty()); out.writeInt(bank.senders.size)
+                    bank.senders.sorted().forEach(out::writeUTF)
+                    out.writeInt(bank.patterns.size)
+                    bank.patterns.sortedWith(compareBy({ it.id }, { it.revision })).forEach { pattern ->
+                        out.writeUTF(pattern.id); out.writeUTF(pattern.sender); out.writeUTF(pattern.label)
+                        out.writeInt(pattern.revision); out.writeBoolean(pattern.enabled); out.writeInt(pattern.parts.size)
+                        pattern.parts.forEach { part -> when (part) {
+                            is StaticText -> { out.writeByte(0); out.writeUTF(part.value) }
+                            is FieldSlot -> { out.writeByte(1); out.writeUTF(part.field); out.writeUTF(part.kind.name)
+                                out.writeInt(part.width); out.writeBoolean(part.ignored) }
+                        } }
+                        out.writeBoolean(pattern.factContract != null)
+                        pattern.factContract?.let {
+                            out.writeInt(it.version); out.writeUTF(it.family.name); out.writeUTF(it.direction.name)
+                            out.writeUTF(it.currency?.name.orEmpty()); out.writeUTF(it.sourceAccountBank?.value.orEmpty())
+                            out.writeUTF(it.destinationAccountBank?.value.orEmpty()); out.writeUTF(it.cardBank?.value.orEmpty())
+                        }
+                    }
+                }
+            }
+            return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(it) }
+        }
+    }
+}

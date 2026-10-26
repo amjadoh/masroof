@@ -123,7 +123,7 @@ object DatabaseRestoreRecovery {
             null
         }
         return PreferenceSnapshot(
-            labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(context),
+            labAnalysis = com.baraa.masroof.application.analytics.AnalyticsBackup.capture(context),
             messagePatterns = com.baraa.masroof.application.patterns.MessagePatternBackup.captureOriginal(context),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
@@ -504,7 +504,7 @@ object DatabaseRestoreRecovery {
 
     private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot, validatePatterns: Boolean = true) {
         com.baraa.masroof.application.patterns.MessagePatternBackup.restore(context, snapshot.messagePatterns, validatePatterns)
-        com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(context, snapshot.labAnalysis)
+        com.baraa.masroof.application.analytics.AnalyticsBackup.restore(context, snapshot.labAnalysis)
         val onboarding = prefs(context, SharedPrefsOnboardingPreferencesRepository.PREFS_NAME)
         val locale = prefs(context, SharedPrefsAppLocaleRepository.PREFS_NAME)
         val theme = prefs(context, SharedPrefsThemePreferencesRepository.PREFS_NAME)

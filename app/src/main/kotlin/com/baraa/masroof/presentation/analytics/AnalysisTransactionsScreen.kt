@@ -12,7 +12,7 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.AnalysisSnapshot
 import com.baraa.masroof.application.analytics.AnalysisUiState
-import com.baraa.masroof.application.analytics.LabAnalyticsWorkflow
+import com.baraa.masroof.application.analytics.AnalyticsWorkflow
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
@@ -20,7 +20,7 @@ import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
-@Composable internal fun AnalysisTransactionsScreen(snapshot: AnalysisSnapshot?, selection: String, workflow: LabAnalyticsWorkflow,
+@Composable internal fun AnalysisTransactionsScreen(snapshot: AnalysisSnapshot?, selection: String, workflow: AnalyticsWorkflow,
     onBack: () -> Unit, onOpenTransaction: (String) -> Unit, state: AnalysisUiState = AnalysisUiState()) {
     val observation = state.observations.firstOrNull { "observation:${it.id}" == selection }
     val insights = snapshot?.insights

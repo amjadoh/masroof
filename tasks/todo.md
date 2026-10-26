@@ -23,7 +23,7 @@ Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGH
 - [x] D. Connect one observation to Spending and evidence (3–5 files).
   - Accept: at most three useful observations; exact drilldown; correction/deletion refresh.
   - Verify: application analytics tests, ledger parity and Arabic/English device journey.
-  - Areas: `LabAnalyticsWorkflow`, snapshot/result, `LabAnalyticsScreen`, strings/tests.
+  - Areas: `AnalyticsWorkflow`, snapshot/result, `AnalyticsScreen`, strings/tests.
   - Dependency: C; preserve current comparison and transaction navigation.
 - [x] Checkpoint B–D: inspect observations privately; build/lint,
   data-quality states and unchanged financial totals before expanding the feature.

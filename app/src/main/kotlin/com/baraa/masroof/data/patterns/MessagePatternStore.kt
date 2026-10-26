@@ -1,8 +1,8 @@
 package com.baraa.masroof.data.patterns
 
 import android.content.Context
-import com.baraa.masroof.lab.bank.patterns.BankMessagePatterns
-import com.baraa.masroof.lab.bank.patterns.MessagePatternConfiguration
+import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

@@ -17,7 +17,7 @@ class DashboardViewModelFactory(
         require(modelClass.isAssignableFrom(DashboardViewModel::class.java))
         return DashboardViewModel(
             overviewLoader = container.dashboardService,
-            labAnalytics = container.labAnalytics,
+            analytics = container.analytics,
             dashboardRegistryWorkflow = container.dashboardRegistryWorkflow,
             dashboardPeriodWorkflow = container.dashboardPeriodWorkflow,
             layoutPreferencesRepository = container.dashboardLayoutPreferencesRepository,

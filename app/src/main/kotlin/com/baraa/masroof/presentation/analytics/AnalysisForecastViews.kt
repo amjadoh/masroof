@@ -31,7 +31,7 @@ import java.time.LocalDate
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable internal fun ForecastTab(state: AnalysisUiState, workflow: LabAnalyticsWorkflow, onQuality: () -> Unit, onPerformance: () -> Unit) {
+@Composable internal fun ForecastTab(state: AnalysisUiState, workflow: AnalyticsWorkflow, onQuality: () -> Unit, onPerformance: () -> Unit) {
     val s = state.snapshot ?: return
     val explanation = remember(s) { AnalysisPresentationBuilder.forecast(s) }
     MasroofCard {
@@ -86,7 +86,7 @@ import java.time.LocalDate
     }
 }
 
-@Composable internal fun AnalysisPerformanceOverview(state: AnalysisUiState, workflow: LabAnalyticsWorkflow) {
+@Composable internal fun AnalysisPerformanceOverview(state: AnalysisUiState, workflow: AnalyticsWorkflow) {
     val explanation = workflow.comparisonExplanation()
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {

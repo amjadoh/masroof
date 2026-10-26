@@ -1,6 +1,6 @@
 package com.baraa.masroof.bank.patterns
 
-import com.baraa.masroof.lab.beta.bank.NewEngineFixtureTest
+import com.baraa.masroof.integration.bank.NewEngineFixtureTest
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.model.*

@@ -28,7 +28,7 @@ class AnalysisPresentationBuilderTest {
     }
     @Test fun latePublishedAndLegacyComparisonsRetainTheirLifecycleAndEligibility() {
         val pair = com.baraa.masroof.data.analytics.ForecastComparisonRow("late", start, start + 30, 1,
-            "a".repeat(64), com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL, ForecastPerformancePolicy.VERSION,
+            "a".repeat(64), com.baraa.masroof.analytics.AnalyticsVersion.MODEL, ForecastPerformancePolicy.VERSION,
             120, 130, originDay = start + 25)
         val published = state(start + 25).copy(forecastComparisons = listOf(pair))
         assertEquals(ForecastComparisonStatus.WAITING_FOR_PERIOD, AnalysisPresentationBuilder.comparison(published, start + 26, zone).status)
@@ -50,14 +50,14 @@ class AnalysisPresentationBuilderTest {
         val snapshot = state(start).snapshot!!
         assertEquals(ForecastMethod.INITIAL, AnalysisPresentationBuilder.forecast(snapshot).method)
         assertEquals(ForecastMethod.PERSONAL, AnalysisPresentationBuilder.forecast(snapshot.copy(
-            method = com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL)).method)
+            method = com.baraa.masroof.analytics.AnalyticsVersion.MODEL)).method)
         assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(
             quality = snapshot.quality.copy(blocked = true))).method)
         assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(total = null)).method)
         assertEquals(ForecastMethod.UNAVAILABLE, AnalysisPresentationBuilder.forecast(snapshot.copy(method = "future-model")).method)
     }
     @Test fun onlyCurrentQualifiedHorizonChecksMayExplainForecastError() {
-        val snapshot = state(start).snapshot!!.copy(evaluationVersion = com.baraa.masroof.lab.analytics.AnalyticsVersion.EVALUATION,
+        val snapshot = state(start).snapshot!!.copy(evaluationVersion = com.baraa.masroof.analytics.AnalyticsVersion.EVALUATION,
             evaluations = listOf(AnalysisEvaluation(7, 8, 100, -20), AnalysisEvaluation(14, 7, 20, 0),
                 AnalysisEvaluation(28, 8, -1, 0), AnalysisEvaluation(3, 20, 0, 0)))
         assertEquals(listOf(7), AnalysisPresentationBuilder.forecast(snapshot).evaluations.map { it.horizon })

@@ -1,7 +1,7 @@
 package com.baraa.masroof.application.interpretation
 
 import com.baraa.masroof.data.patterns.MessagePatternStore
-import com.baraa.masroof.lab.bank.patterns.PatternFactInterpreter
+import com.baraa.masroof.engine.bank.patterns.PatternFactInterpreter
 import com.baraa.masroof.parsing.repository.ParsedEventRecord
 import kotlinx.coroutines.CancellationException
 
