@@ -8,20 +8,24 @@ import java.time.format.ResolverStyle
 /** Offline experiment only: human-selected spans produce raw candidates, never financial facts. */
 internal enum class FieldKind(val dateFormat: String? = null) {
     MONEY, TEXT, DIGITS,
-    DATE_DMY_SHORT("dd/MM/uu HH:mm"), DATE_DMY_LONG("dd-MM-uuuu HH:mm"), DATE_YMD("uuuu-MM-dd HH:mm");
+    DATE_DMY_SHORT("dd/MM/uu HH:mm"), DATE_DMY_LONG("dd-MM-uuuu HH:mm"), DATE_YMD("uuuu-MM-dd HH:mm[:ss]");
 
     fun pattern(example: String): String = when (this) {
-        MONEY -> "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})? *(?:sar|sr|usd|eur|gbp)"
+        MONEY -> {
+            val number = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
+            val currency = "(?:sar|sr|usd|eur|gbp)"
+            "(?:$number *$currency|$currency *$number)"
+        }
         TEXT -> "[^\\n]{1,160}"
         DIGITS -> "[0-9]{${example.length}}"
         DATE_DMY_SHORT -> "[0-9]{2}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}"
         DATE_DMY_LONG -> "[0-9]{2}-[0-9]{2}-[0-9]{4} [0-9]{2}:[0-9]{2}"
-        DATE_YMD -> "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}"
+        DATE_YMD -> "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}(?::[0-9]{2})?"
     }
 
     fun accepts(value: String): Boolean = when {
         this == MONEY -> runCatching {
-            value.takeWhile { it.isDigit() || it == '.' || it == ',' }.replace(",", "").toBigDecimal().signum() > 0
+            Regex("[0-9][0-9.,]*").find(value)!!.value.replace(",", "").toBigDecimal().signum() > 0
         }.getOrDefault(false)
         dateFormat != null -> runCatching {
             // Explicit preview convention: reduced years use 2000–2099. Never produces a transaction time/zone.
@@ -60,14 +64,17 @@ internal class ExampleTemplate private constructor(
             require(sender.isNotBlank() && label.isNotBlank() && body.length in 1..4096)
             require(selections.size in 1..16 && selections.map { it.field }.distinct().size == selections.size)
             val ordered = selections.sortedBy { it.start }.toList()
+            ordered.forEach { require(it.start in 0 until it.end && it.end <= body.length) }
             ordered.zipWithNext().forEach { (left, right) ->
                 require(left.end <= right.start && left.end in 0..body.length && right.start in 0..body.length)
-                // ponytail: one selected field per line; multiple fields need explicit separating evidence before expansion.
-                require('\n' in body.substring(left.end, right.start)) { "Multiple fields on one line need more evidence" }
+                val gap = body.substring(left.end, right.start)
+                require('\n' in gap || gap.isNotBlank()) { "Fields need literal separating evidence" }
             }
-            val first = body.indexOfFirst { !it.isWhitespace() }
-            val titleEnd = body.indexOf('\n', first).let { if (it < 0) body.length else it }
-            require(ordered.first().start > titleEnd) { "The experiment keeps the first title line fixed" }
+            // One free-text slot per line keeps adjacent text splits conservative; numeric/time slots may share a line.
+            require(ordered.filter { it.kind == FieldKind.TEXT }.groupBy { selection ->
+                body.substring(0, selection.start).count { it == '\n' }
+            }.values.all { it.size <= 1 }) { "Multiple text fields on one line need more evidence" }
+            require(body.substring(0, ordered.first().start).any(Char::isLetter)) { "A literal anchor must precede fields" }
             val source = SourceText(body)
             var cursor = 0
             val expression = buildString {

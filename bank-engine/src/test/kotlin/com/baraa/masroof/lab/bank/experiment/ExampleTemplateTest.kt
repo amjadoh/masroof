@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ExampleTemplateTest {
+    @Test fun inlineBindingsAreLearnedAutomaticallyIncludingPrefixMoneyAndSeconds() {
+        val example = markedExample("PURCHASE", "Purchase Card:([[card|DIGITS|4567]]) Value:[[amount|MONEY|SAR 32.50]] at [[merchant|TEXT|EXAMPLE SHOP]] on:[[time|DATE_YMD|2026-10-05 19:40:25]]")
+        val changed = "Purchase Card:(8910) Value:USD 75.20 at ANOTHER SHOP on:2026-10-07 11:15:30"
+        val result = requireNotNull(example.learn().preview("STC Bank", changed))
+        assertEquals("8910", result.fields.getValue("card").raw)
+        assertEquals("USD 75.20", result.fields.getValue("amount").raw)
+        assertEquals("ANOTHER SHOP", result.fields.getValue("merchant").raw)
+        assertEquals("2026-10-07 11:15:30", result.fields.getValue("time").raw)
+        assertFalse(result.financialPostingAllowed)
+    }
+
     @Test fun oneAnnotatedExampleExtractsNewValuesRatherThanCopyingTheTeacher() {
         val body = "Internal incoming transfer\nAmount:123.45SR\nFrom:EXAMPLE PERSON\nAcc:007\nAt:14/10/26 12:21"
         fun select(field: String, kind: FieldKind, value: String): Selection {
