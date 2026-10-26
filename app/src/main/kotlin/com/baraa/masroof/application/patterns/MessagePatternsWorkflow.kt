@@ -1,7 +1,5 @@
 package com.baraa.masroof.application.patterns
 
-import android.content.Context
-import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
@@ -16,9 +14,9 @@ class MessagePatternsWorkflow(
     private val store: MessagePatternStore,
     private val accessGate: DatabaseAccessGate,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val pendingPreview: PendingPatternPreviewWorkflow? = null,
+    private val pendingPreview: PendingPatternsWorkflow? = null,
     private val bundledBanks: List<BankMessagePatterns> = emptyList(),
-    private val activation: PatternActivationWorkflow? = null,
+    private val activation: PatternApprovalWorkflow? = null,
     private val importBank: (suspend (String) -> com.baraa.masroof.application.sms.SmsScanResult)? = null,
     private val requiredBundledBankIds: Set<String> = emptySet(),
 ) {
@@ -119,12 +117,4 @@ class MessagePatternsWorkflow(
         // ponytail: reuse the existing exclusive gate for rare edits; no second financial/configuration lock hierarchy.
         accessGate.withRestore { store.saveBank(expectedGeneration, bank) }
     }
-}
-
-/** Backup export runs under an access lease; restore/recovery already own exclusive access. */
-object MessagePatternBackup {
-    fun capture(context: Context): String? = captureOriginal(context).also(::validate)
-    fun captureOriginal(context: Context): String? = MessagePatternStore(context).captureRaw()
-    fun validate(raw: String?) { if (raw != null) MessagePatternConfigurationCodec.decode(raw) }
-    fun restore(context: Context, raw: String?, validate: Boolean = true) = MessagePatternStore(context).restoreRaw(raw, validate)
 }

@@ -18,6 +18,6 @@ tasks.register<JavaExec>("patternLifecycle") {
 tasks.test {
     inputs.files(rootProject.fileTree(".") {
         include("*/build.gradle.kts", "bank-engine/src/main/kotlin/**/*.kt",
-            "finance-core/src/main/kotlin/**/*.kt", "ml-assist/src/main/kotlin/**/*.kt", "beta/src/main/kotlin/**/*.kt", "app/src/main/kotlin/**/*.kt")
+            "finance-core/src/main/kotlin/**/*.kt", "ml-assist/src/main/kotlin/**/*.kt", "app/src/main/kotlin/**/*.kt")
     }, rootProject.file("app/build.gradle.kts")).withPathSensitivity(PathSensitivity.RELATIVE)
 }

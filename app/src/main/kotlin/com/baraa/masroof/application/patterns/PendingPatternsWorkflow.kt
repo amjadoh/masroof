@@ -25,7 +25,7 @@ data class PendingPatternReport(val generation: Long, val bankId: String, val ro
 data class PendingPatternApplyReport(val processed: Int, val posted: Int, val failed: Int?, val incomplete: Boolean, val limited: Boolean)
 
 /** Read-only preview; explicit apply rechecks eligibility and delegates to the existing batch pipeline. */
-class PendingPatternPreviewWorkflow(
+class PendingPatternsWorkflow(
     private val store: MessagePatternStore,
     private val accessGate: DatabaseAccessGate,
     private val reviews: ReviewRepository,

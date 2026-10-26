@@ -145,7 +145,7 @@ class DashboardLedgerWorld(
             reviewQueueUpdater = reviewQueueUpdater,
             processingRecovery = processingRecovery,
             ingestionReviewService = IngestionReviewService(reviewRepo, importClock),
-            patternProcessing = com.baraa.masroof.application.patterns.PatternEvidenceProtection(
+            patternProcessing = com.baraa.masroof.application.ingestion.PatternEvidenceProtection(
                 reviewRepo, RoomUserCorrectionRepository(db.userCorrectionDao()), ftRepo, parsedRepo,
                 inTransaction = { work -> db.withTransaction { work() } })::run,
             exchangeRateEnrichmentScheduler = exchangeRateEnrichment?.let { workflow ->

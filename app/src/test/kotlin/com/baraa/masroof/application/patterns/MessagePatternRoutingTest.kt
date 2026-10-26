@@ -1,5 +1,7 @@
 package com.baraa.masroof.application.patterns
 
+import com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters
+
 import com.baraa.masroof.bank.*
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.domain.model.Bank

@@ -93,7 +93,7 @@ check. Existing protection of already linked manual decisions remains in force.
   row, then one discovery/reconciliation/review pass. Eligibility is rechecked in
   the transaction. Posted, corrected, resolved and already-successful events are
   excluded. Bank/pattern conflicts stay in review. The current limit is the first
-  1,000 required review rows; up to 50 results are displayed and considered per
+  1,000 required review rows; up to 50 results are displayed; eligible rows in the bounded preview are considered per
   application, with a partial-scope notice. Successful unposted evidence with a revoked definition needs explicit
   manual review rather than an automatic reparse.
 - Import uses the existing scanner and permission flow with bank scope. Scope never

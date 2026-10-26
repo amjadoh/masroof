@@ -1,6 +1,5 @@
-package com.baraa.masroof.application.patterns
+package com.baraa.masroof.application.ingestion
 
-import com.baraa.masroof.application.ingestion.SmsIngestionResult
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
 import com.baraa.masroof.domain.repository.ReviewRepository
 import com.baraa.masroof.domain.repository.UserCorrectionRepository

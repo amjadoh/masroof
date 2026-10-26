@@ -181,10 +181,10 @@ class AppContainer(
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
             messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
             requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
-            activation = com.baraa.masroof.application.patterns.PatternActivationWorkflow(messagePatternStore, databaseAccessGate,
+            activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
                 accountRegistryRepository, ownershipConfirmationService),
             importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
-            pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
+            pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 messagePatternStore, databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
                 financialTransactionRepository, bankSmsRegistry, historicalSmsBatchProcessor,
@@ -543,7 +543,7 @@ class AppContainer(
         BankSmsRegistry(
             adapters = listOfNotNull(bankAdapterOverride),
             configuredAdapters = if (bankAdapterOverride != null) ({ emptyList() }) else
-                com.baraa.masroof.application.patterns.ConfiguredPatternAdapters(messagePatternStore, alJaziraInterpret = { input, snapshot ->
+                com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(messagePatternStore, alJaziraInterpret = { input, snapshot ->
                     requireNotNull(interpretationService).interpret(input, snapshot) })::snapshot,
         )
 
@@ -601,7 +601,7 @@ class AppContainer(
             processingRecovery = processingRecovery,
             reviewRepository = reviewRepository,
             debugProcessHalt = debugProcessHaltProbe,
-            patternProcessing = com.baraa.masroof.application.patterns.PatternEvidenceProtection(
+            patternProcessing = com.baraa.masroof.application.ingestion.PatternEvidenceProtection(
                 reviewRepository, userCorrectionRepository, financialTransactionRepository, parsedEventRepository,
                 inTransaction = { work -> withDatabaseTransaction(work) })::run,
         )

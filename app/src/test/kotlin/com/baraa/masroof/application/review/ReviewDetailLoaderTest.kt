@@ -184,7 +184,7 @@ class ReviewDetailLoaderTest {
             val guardedTransactions = object : com.baraa.masroof.domain.repository.FinancialTransactionRepository by transactions {
                 override suspend fun isRawSmsLinked(rawSmsId: String) = rawSmsId == "posted"
             }
-            val preview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(store,
+            val preview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(store,
                 com.baraa.masroof.data.room.DatabaseAccessGate(), reviewRepo, rawRepo,
                 RoomParsedEventRepository(db.parsedEventDao()), corrections, guardedTransactions,
                 com.baraa.masroof.bank.BankSmsRegistry(emptyList()))
