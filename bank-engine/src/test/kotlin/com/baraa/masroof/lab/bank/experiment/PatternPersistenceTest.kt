@@ -1,5 +1,6 @@
 package com.baraa.masroof.lab.bank.experiment
 
+import com.baraa.masroof.lab.bank.patterns.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.nio.file.Files
