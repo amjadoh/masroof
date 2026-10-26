@@ -10,6 +10,7 @@ import com.baraa.masroof.sms.datasource.SmsDataSource
 import com.baraa.masroof.sms.datasource.SmsPermissionException
 import com.baraa.masroof.sms.datasource.SmsProviderException
 import com.baraa.masroof.sms.mapper.AndroidSmsMapper
+import com.baraa.masroof.domain.model.Bank
 import java.time.Instant
 import com.baraa.masroof.application.ingestion.DerivedProcessingStage
 import kotlinx.coroutines.CoroutineDispatcher
@@ -61,11 +62,15 @@ class HistoricalSmsScanner(
     private val coverageCompleted: suspend (Instant?, Instant) -> Unit = { _, _ -> },
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
 ) {
-    suspend fun scan(receivedAfter: Instant? = null): SmsScanResult = withContext(ioDispatcher) {
-        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter) }
+    /** A bank scope filters through the existing router, not a user-selected-bank override.
+     * Unattributed suspicions remain the responsibility of the full inbox scan.
+     * Scoped scans never certify whole-inbox analysis coverage.
+     */
+    suspend fun scan(receivedAfter: Instant? = null, bankScope: Bank? = null): SmsScanResult = withContext(ioDispatcher) {
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, bankScope) }
     }
 
-    private suspend fun scanOnDispatcher(receivedAfter: Instant?): SmsScanResult {
+    private suspend fun scanOnDispatcher(receivedAfter: Instant?, bankScope: Bank?): SmsScanResult {
         val scanStartedAt = clock.instant()
         appLogService?.info(
             AppLogCategories.SCAN,
@@ -98,7 +103,7 @@ class HistoricalSmsScanner(
             failure = failure,
         )
 
-        val batch = batchProcessor.startBatch()
+        val batch = batchProcessor.startBatch(bankScope)
 
         suspend fun finishAfterFailure(failure: SmsScanFailure): SmsScanResult {
             if (batch.storedEventCount > 0) {
@@ -177,7 +182,7 @@ class HistoricalSmsScanner(
             SmsScanFailure.DerivedIncomplete(it.stage)
         }
         val result = snapshot(failure)
-        if(result.failure == null && result.failed == 0 && result.skippedMalformed == 0) {
+        if(bankScope == null && result.failure == null && result.failed == 0 && result.skippedMalformed == 0) {
             try { coverageCompleted(receivedAfter, scanStartedAt) }
             catch(e: kotlinx.coroutines.CancellationException) { throw e }
             catch(_: Exception) { appLogService?.warn(AppLogCategories.SCAN, "Coverage receipt pending; rescan required") }
