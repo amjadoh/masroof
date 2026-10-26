@@ -61,6 +61,7 @@ class PatternCurrentMessageJourneyTest {
             compose.onNodeWithText("2026-10-15 12:30").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
             click(R.string.pattern_preview)
+            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
             click(R.string.pattern_save)
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.teaching_saved_title)).fetchSemanticsNodes().isNotEmpty() }
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
