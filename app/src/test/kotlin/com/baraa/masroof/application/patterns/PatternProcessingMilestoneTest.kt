@@ -218,7 +218,7 @@ class PatternProcessingMilestoneTest {
                 account.id, incoming, "account_reference", emptySet())
             c.accountRegistryRepository.setOwnership(AccountReference(Bank("BANK_STC"), "4321"), OwnershipStatus.EXTERNAL)
             assertTrue(runCatching { w.saveFinancial(preview) }.isFailure)
-            assertNull(w.load().banks.single().currentPatterns.single { it.id == "stc-internal-in" }.factContract)
+            assertNull(w.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.single { it.id == "stc-internal-in" }.factContract)
             w.confirmPatternAccount("BANK_STC", "4321")
             w.setEnabled(w.load().generation, "BANK_STC", "stc-internal-in", false)
             assertTrue(runCatching { w.saveFinancial(preview) }.isFailure)

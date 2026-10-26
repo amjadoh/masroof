@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.InvalidationTracker
 import com.baraa.masroof.engine.bank.*
 import com.baraa.masroof.engine.bank.interpretation.*
+import com.baraa.masroof.engine.bank.patterns.*
 import com.baraa.masroof.ml.family.*
 import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.application.logging.AppLogService
@@ -29,8 +30,8 @@ class BankInterpretationService(
     private val transactions: FinancialTransactionRepository,
     private val scope: CoroutineScope,
     private val log: AppLogService,
-    private val ruleProfile: BankRuleSchema,
     private val onFeedbackChanged: () -> Unit = {},
+    private val patterns: () -> MessagePatternConfiguration,
 ) : AutoCloseable {
     private val store = LearningStore(context)
     private val auditJob = SupervisorJob(scope.coroutineContext[Job])
@@ -47,7 +48,8 @@ class BankInterpretationService(
     private data class Attempt(val classifier: FamilyClassifier?, var requested: Boolean = false,
         var outcome: String = "RULES", var prediction: FamilyModel.Prediction? = null)
     private val attempt = ThreadLocal<Attempt>()
-    private val engine = RuleInterpreter(ruleProfile,FamilyAssist { input,title ->
+    private fun engine() = PatternFactInterpreter(patterns())
+    private val familyAssist = FamilyAssist { input,title ->
         val trace = attempt.get()
         trace?.requested = true
         val features = FamilyAssistBridge.clean(input.body).features
@@ -60,7 +62,7 @@ class BankInterpretationService(
             else -> "SUGGESTED"
         }
         result
-    })
+    }
     private val mutex = Mutex()
     private val changes = Channel<Unit>(Channel.CONFLATED)
     private var job: Job? = null
@@ -73,12 +75,12 @@ class BankInterpretationService(
     }
     val modelVersion: String? get() = classifier?.version
     val statisticalFamilyCount: Int get() = classifier?.model?.enabledFamilies?.size ?: 0
-    val refreshVersion: String get() = "${engine.version}|${modelVersion ?: "rules-only"}"
-    fun interpret(input: MessageInput): Interpretation {
+    val refreshVersion: String get() = "${engine().fingerprint}|${modelVersion ?: "rules-only"}"
+    fun interpret(input: MessageInput, snapshot: PatternFactInterpreter = engine()): Interpretation {
         val trace = Attempt(classifier)
         val activeModel = trace.classifier?.version
         attempt.set(trace)
-        val result = try { engine.interpretRouted(input,BankId(BANK)) } finally { attempt.remove() }
+        val result = try { snapshot.interpretRouted(input,BankId(BANK),familyAssist) } finally { attempt.remove() }
         val interpretedAt = System.currentTimeMillis()
         // Advisory audit writes never decide whether a transaction may be posted.
         if(!closed) auditScope.launch {
@@ -227,11 +229,12 @@ class BankInterpretationService(
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
         val eligibleTemplates = mutableSetOf<String>()
         var requested = false
-        val probe = RuleInterpreter(ruleProfile, FamilyAssist { _, _ -> requested = true; null })
+        val probe = engine()
+        val probeAssist = FamilyAssist { _, _ -> requested = true; null }
         learned.forEach { label ->
             val message = evidence[label.rawId] ?: return@forEach
             requested = false
-            probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(BANK))
+            probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(BANK), probeAssist)
             if (requested) eligibleTemplates += label.template
         }
         val rebuilt = FamilyPersonalization.rebuild(seed.model, learned, seed.evaluation, blocks, eligibleTemplates)
@@ -266,10 +269,14 @@ class BankInterpretationService(
         if (pending) ModelRefreshWorker.enqueue(context, version)
         check(prefs.edit().putString("scheduled_interpretation", version).commit())
     }
-    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean =
-        record.event.messageFamily.name == "UNKNOWN" ||
-            (record.event.parseStatus.name != "SUCCESS" && "rules:${engine.version.rules}" !in record.event.confidence.reasons) ||
+    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean {
+        // Successful facts resume derived work; this service supplies family assistance for AlJazira only.
+        if (record.event.bank.id != BANK || record.event.parseStatus.name == "SUCCESS") return false
+        val fingerprint = engine().fingerprint
+        return record.event.messageFamily.name == "UNKNOWN" ||
+            record.event.confidence.reasons.none { it == "rules:$fingerprint" || it.startsWith("rules:$fingerprint:") } ||
             (record.event.confidence.reasons.any { it.startsWith("family_origin:") } && "model:$modelVersion" !in record.event.confidence.reasons)
+    }
     /** Do not re-interpret posted evidence or human decisions on engine/model upgrades. */
     suspend fun mayRefresh(rawSmsId: String): Boolean =
         !transactions.isRawSmsLinked(rawSmsId) && corrections.latestForRawSmsId(rawSmsId) == null &&

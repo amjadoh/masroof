@@ -18,10 +18,18 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
     }
 
     /** Startup-only before this container admits work; interactive installation uses the exclusive access gate. */
-    fun installMissingBanks(bundled: List<BankMessagePatterns>): MessagePatternConfiguration = synchronized(lock) {
+    fun installMissingBanks(bundled: List<BankMessagePatterns>, mergeBankIds: Set<String> = emptySet()): MessagePatternConfiguration = synchronized(lock) {
         var current = load()
-        for (bank in bundled) if (current.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }) {
-            current = saveBank(current.generation, bank)
+        for (bank in bundled) {
+            val prior = current.banks.singleOrNull { it.bankId == bank.bankId }
+            if (bank.bankId in mergeBankIds) {
+                val missing = bank.patterns.filter { seed -> prior?.patterns.orEmpty().none { it.id == seed.id } }
+                val senders = (prior?.senders.orEmpty() + bank.senders).distinct()
+                if (prior == null || missing.isNotEmpty() || senders != prior.senders)
+                    current = saveBank(current.generation, (prior ?: bank).copy(senders = senders, patterns = missing))
+            } else if (current.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }) {
+                current = saveBank(current.generation, bank)
+            }
         }
         current
     }

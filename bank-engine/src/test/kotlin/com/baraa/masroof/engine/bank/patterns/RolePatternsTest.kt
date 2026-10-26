@@ -52,4 +52,14 @@ class RolePatternsTest {
         assertEquals(before, PatternFactInterpreter(MessagePatternConfiguration(banks = listOf(definition))).fingerprint)
         assertTrue(runCatching { definition.patterns.single().copy(factContract = PatternFactContract(MessageFamily.REFUND, MoneyDirection.INCOMING)) }.isFailure)
     }
+
+    @Test fun aLearnedDefinitionCannotBypassQuotedContextWhenTheBuiltInRoleIsDisabled() {
+        val quoted = ">" + body
+        val taught = SavedMessagePattern.fromChoices("quoted", bank.bankId, "OTHER", "PURCHASE", quoted,
+            listOf("amount" to "10 SAR", "card" to "1234", "occurred_at" to "2026-10-15 12:30").map { (field, value) ->
+                FieldChoice(field, quoted.indexOf(value), quoted.indexOf(value) + value.length)
+            }).copy(factContract = PatternFactContract(MessageFamily.PURCHASE, MoneyDirection.OUTGOING, cardBank = BankId(bank.bankId)))
+        val disabled = bank.copy(patterns = bank.patterns.map { if (it.id == "bank.purchase") it.copy(enabled = false) else it } + taught)
+        assertEquals(ParseStatus.REVIEW_REQUIRED, parse(disabled, quoted).status)
+    }
 }
