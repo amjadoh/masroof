@@ -5,7 +5,6 @@ import androidx.room.InvalidationTracker
 import com.baraa.masroof.lab.bank.*
 import com.baraa.masroof.lab.bank.interpretation.*
 import com.baraa.masroof.lab.ml.family.*
-import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.data.learning.*
@@ -30,6 +29,7 @@ class LabInterpretationService(
     private val transactions: FinancialTransactionRepository,
     private val scope: CoroutineScope,
     private val log: AppLogService,
+    private val ruleProfile: BankRuleSchema,
     private val onFeedbackChanged: () -> Unit = {},
 ) : AutoCloseable {
     private val store = LabLearningStore(context)
@@ -47,7 +47,7 @@ class LabInterpretationService(
     private data class Attempt(val classifier: FamilyClassifier?, var requested: Boolean = false,
         var outcome: String = "RULES", var prediction: FamilyModel.Prediction? = null)
     private val attempt = ThreadLocal<Attempt>()
-    private val engine = RuleInterpreter(AlJaziraRuleProfile.current(),FamilyAssist { input,title ->
+    private val engine = RuleInterpreter(ruleProfile,FamilyAssist { input,title ->
         val trace = attempt.get()
         trace?.requested = true
         val features = LabFamilyAssist.clean(input.body).features
@@ -227,7 +227,7 @@ class LabInterpretationService(
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
         val eligibleTemplates = mutableSetOf<String>()
         var requested = false
-        val probe = RuleInterpreter(AlJaziraRuleProfile.current(), FamilyAssist { _, _ -> requested = true; null })
+        val probe = RuleInterpreter(ruleProfile, FamilyAssist { _, _ -> requested = true; null })
         learned.forEach { label ->
             val message = evidence[label.rawId] ?: return@forEach
             requested = false

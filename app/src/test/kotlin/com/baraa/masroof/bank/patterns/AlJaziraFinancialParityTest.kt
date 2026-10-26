@@ -27,7 +27,9 @@ class AlJaziraFinancialParityTest {
             val context = ApplicationProvider.getApplicationContext<Context>()
             // Separate databases, identical inputs/ownership/clock. The candidate can change without changing the oracle.
             DashboardLedgerWorld(context, engineFixtureAdapter()).use { reference ->
-                DashboardLedgerWorld(context, engineFixtureAdapter()).use { candidate ->
+                val profile = com.baraa.masroof.data.patterns.BankRuleProfileCodec.decode(
+                    File("src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json").readText())
+                DashboardLedgerWorld(context, engineFixtureAdapter(profile = profile)).use { candidate ->
                     GoldenLedgerRunner.prepare(reference, scenario)
                     GoldenLedgerRunner.prepare(candidate, scenario)
                     val expected = snapshot(reference, scenario)

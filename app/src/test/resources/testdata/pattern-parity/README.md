@@ -27,3 +27,27 @@ These checks establish the current reference and comparison harness. Passing the
 before enabling a replacement is not proof that learned patterns have reached
 production parity. Device upgrade, backup/restore and learned-pattern cutover
 remain separate acceptance gates in `PRODUCTION_MIGRATION_PLAN.md`.
+
+The candidate now reads `src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`;
+the reference retains the original compiled profile. Both match the frozen files.
+`BankRuleProfileCodecTest` additionally requires complete profile equality and
+the exact same refresh fingerprint before the production container loads the asset.
+
+On this host, mixed Robolectric test classes can fail loading native SQLite.
+The qualified run keeps native SQLite and the original assertions, and isolates
+test classes using a temporary Gradle init script:
+
+```groovy
+gradle.projectsEvaluated {
+    rootProject.project(':app').tasks.withType(org.gradle.api.tasks.testing.Test).configureEach {
+        doFirst {
+            forkEvery = 1
+            maxParallelForks = 1
+        }
+    }
+}
+```
+
+Pass it with `--init-script /path/to/isolation.gradle`; the repository's CI and
+release configuration are unchanged. This is test-process isolation, not an
+Android device/upgrade qualification or a substitute SQLite implementation.

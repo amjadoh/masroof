@@ -14,6 +14,21 @@ copy. No runtime dependency was added. `Preview` still carries no financial
 authority, and the existing app adapter/intake/ledger path has not been switched.
 Pattern labels are raw teaching metadata, not production financial families.
 
+The application now reads the unchanged AlJazira literal-rule profile from
+`app/src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`. The same profile is
+injected into both production interpretation and ML fallback qualification.
+The strict codec rejects unknown fields/operators/versions and oversized input.
+Round-trip tests pin full schema equality and the unchanged refresh fingerprint;
+the candidate in the parity harness reads the bundled JSON rather than calling
+the old profile builder. All 74 parse inputs and seven financial scenarios match
+the frozen reference. These are 13 classification rules across 11 families, not
+13 automatically learned message layouts. Taught-pattern financial activation,
+bank routing/import settings and pattern-management UI remain pending.
+
+The latest targeted checks passed 98 bank-engine tests and 41 app tests, including
+financial oracles, manual/posted preservation, refresh recovery and package
+boundaries; the debug APK builds. No APK was installed on the user's device.
+
 The shared core supports original UTF-16 ranges selected directly by a user even
 when discovery misses a value, time-first timestamps, and standalone date slots.
 Those slots reject impossible dates and survive save/reload using generated
