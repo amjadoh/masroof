@@ -331,3 +331,18 @@ does not establish a general accuracy rate or production financial eligibility.
 Next evidence needed: more independent layouts and cases involving structural
 variation or conflict. Integration, persistence/restore, revocation and production
 safeguards remain separate increments.
+
+## Pending-message preview checkpoint
+
+The bank page now reads pending review evidence and runs current saved patterns
+against each message independently. Posted evidence, manual corrections/decisions
+and successful interpretations are excluded. Explicit selections and stored banks
+win; otherwise configured exact senders are considered alongside every current
+router candidate, preserving bank collisions. Multiple matching patterns remain
+conflicts rather than choosing the first. The preview never saves interpreted
+facts, posts transactions or removes reviews. It checks the first 1,000 review
+rows and displays up to 50 bank results with a partial-coverage notice. Results
+refresh when configuration changes and link back to the original review message.
+Unit and API 36 device checks cover different extracted values, pattern/bank
+conflicts, stale generations, protected rows and disabling patterns. This is a
+read-only preview, not financial activation or a full inbox import.
