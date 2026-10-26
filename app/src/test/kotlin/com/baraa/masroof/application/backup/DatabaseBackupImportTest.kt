@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import androidx.room.Room
-import androidx.sqlite.db.SupportSQLiteDatabase
-import androidx.sqlite.db.SupportSQLiteOpenHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.maintenance.MaintenancePreferences
@@ -19,10 +16,6 @@ import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.OwnershipStatus
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -40,7 +33,36 @@ import java.util.zip.ZipOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
-class DatabaseBackupImportMigrationTest {
+class DatabaseBackupImportTest {
+    @Test fun olderManifestAndDisguisedOlderDatabaseAreRejectedBeforeTouchingLiveData() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val patterns = MessagePatternStore(context)
+        val original = patternArchive("ORIGINAL")
+        patterns.restoreRaw(original)
+        val prefs = context.getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("onboarding_completed", false).commit()
+        val live = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME).allowMainThreadQueries().build()
+        val card = CardReference(Bank.BANK_ALJAZIRA, "1111")
+        try {
+            RoomCardRegistryRepository.from(live).setOwnership(card, OwnershipStatus.OWNED)
+            for (disguised in listOf(false, true)) {
+                val imported = createCurrentDatabaseFile(context)
+                if (disguised) android.database.sqlite.SQLiteDatabase.openDatabase(imported.path, null,
+                    android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { it.version = 17 }
+                val zip = createBackupZip(imported, roomVersion = if (disguised) 18 else 17)
+                var closed = false
+                try {
+                    val service = DatabaseBackupService(context, live, { closed = true; live.close() }, "test", restartProcess = {})
+                    assertEquals(BackupImportOutcome.InvalidPackage, service.importFrom(Uri.fromFile(zip), confirmLegacyPlaintext = true))
+                    assertFalse(closed)
+                    assertEquals(original, patterns.captureRaw())
+                    assertFalse(prefs.getBoolean("onboarding_completed", true))
+                    assertEquals(OwnershipStatus.OWNED, RoomCardRegistryRepository.from(live).get(card)!!.ownership)
+                } finally { imported.delete(); zip.delete() }
+            }
+        } finally { live.close() }
+    }
+
     @Before
     fun clearMaintenancePreferences() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -64,8 +86,8 @@ class DatabaseBackupImportMigrationTest {
             patterns.restoreRaw(original)
             val live = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
                 .allowMainThreadQueries().build()
-            val v5 = createV5DatabaseFile(context)
-            val zip = createBackupZip(v5, "{}")
+            val imported = createCurrentDatabaseFile(context)
+            val zip = createBackupZip(imported, "{}")
             val closed = AtomicBoolean(false)
             try {
                 val card = CardReference(Bank.BANK_ALJAZIRA, "1111")
@@ -79,13 +101,13 @@ class DatabaseBackupImportMigrationTest {
                 assertEquals(OwnershipStatus.OWNED, RoomCardRegistryRepository.from(live).get(card)!!.ownership)
             } finally {
                 if (live.isOpen) live.close()
-                v5.delete(); zip.delete()
+                imported.delete(); zip.delete()
             }
         }
     }
 
     @Test
-    fun importV5Backup_resetsParseFactsAndTransferIntegrityMarkers() {
+    fun importCurrentBackup_resetsTransferIntegrityMarkers() {
         runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MessagePatternStore(context).restoreRaw(patternArchive("STC"))
@@ -98,12 +120,11 @@ class DatabaseBackupImportMigrationTest {
             )
             .commit()
 
-        val v5DbFile = createV5DatabaseFile(context)
-        val backupZip = createBackupZip(v5DbFile)
+        val importedDbFile = createCurrentDatabaseFile(context)
+        val backupZip = createBackupZip(importedDbFile)
         val restartRequested = AtomicBoolean(false)
 
         val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
 
@@ -134,7 +155,7 @@ class DatabaseBackupImportMigrationTest {
         assertTrue(MessagePatternStore(context).load().banks.isEmpty())
 
         backupZip.delete()
-        v5DbFile.delete()
+        importedDbFile.delete()
         }
     }
 
@@ -151,11 +172,10 @@ class DatabaseBackupImportMigrationTest {
                 )
                 .commit()
 
-            val v5DbFile = createV5DatabaseFile(context)
-            val backupZip = createBackupZip(v5DbFile)
+            val importedDbFile = createCurrentDatabaseFile(context)
+            val backupZip = createBackupZip(importedDbFile)
             val restartRequested = AtomicBoolean(false)
             val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-                .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .allowMainThreadQueries()
                 .build()
             val backupService = DatabaseBackupService(
@@ -181,22 +201,21 @@ class DatabaseBackupImportMigrationTest {
                 prefs.getInt(MaintenancePreferences.KEY_TRANSFER_INTEGRITY_REPAIR_VERSION, 0),
             )
             backupZip.delete()
-            v5DbFile.delete()
+            importedDbFile.delete()
         }
     }
 
     @Test
-    fun importV5Backup_migratesToCurrentVersionOnNextOpen() {
+    fun importCurrentBackup_reopensWithOwnershipIntact() {
         runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase(MasroofDatabase.NAME)
 
-        val v5DbFile = createV5DatabaseFile(context)
-        val backupZip = createBackupZip(v5DbFile)
+        val importedDbFile = createCurrentDatabaseFile(context)
+        val backupZip = createBackupZip(importedDbFile)
         val restartRequested = AtomicBoolean(false)
 
         val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
 
@@ -215,7 +234,6 @@ class DatabaseBackupImportMigrationTest {
         assertTrue(restartRequested.get())
 
         val migrated = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
         try {
@@ -227,7 +245,7 @@ class DatabaseBackupImportMigrationTest {
             migrated.close()
             context.deleteDatabase(MasroofDatabase.NAME)
             backupZip.delete()
-            v5DbFile.delete()
+            importedDbFile.delete()
         }
         }
     }
@@ -242,7 +260,6 @@ class DatabaseBackupImportMigrationTest {
                 .commit()
 
             val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-                .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .allowMainThreadQueries()
                 .build()
             RoomCardRegistryRepository.from(liveDatabase).setOwnership(
@@ -250,8 +267,8 @@ class DatabaseBackupImportMigrationTest {
                 OwnershipStatus.OWNED,
             )
 
-            val v5DbFile = createV5DatabaseFile(context)
-            val backupZip = createBackupZip(v5DbFile)
+            val importedDbFile = createCurrentDatabaseFile(context)
+            val backupZip = createBackupZip(importedDbFile)
             val restartRequested = AtomicBoolean(false)
             val validated = DatabaseRestoreRecovery.incomingFile(
                 context.getDatabasePath(MasroofDatabase.NAME),
@@ -277,7 +294,6 @@ class DatabaseBackupImportMigrationTest {
             )
 
             val restored = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-                .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                 .allowMainThreadQueries()
                 .build()
             try {
@@ -291,7 +307,7 @@ class DatabaseBackupImportMigrationTest {
                 restored.close()
                 context.deleteDatabase(MasroofDatabase.NAME)
                 backupZip.delete()
-                v5DbFile.delete()
+                importedDbFile.delete()
             }
         }
     }
@@ -315,15 +331,14 @@ class DatabaseBackupImportMigrationTest {
                     .putBoolean("onboarding_completed", false)
                     .commit()
                 val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-                    .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                     .allowMainThreadQueries()
                     .build()
                 RoomCardRegistryRepository.from(liveDatabase).setOwnership(
                     CardReference(Bank.BANK_ALJAZIRA, "1111"),
                     OwnershipStatus.OWNED,
                 )
-                val v5DbFile = createV5DatabaseFile(context)
-                val backupZip = createBackupZip(v5DbFile, patternArchive("IMPORTED"))
+                val importedDbFile = createCurrentDatabaseFile(context)
+                val backupZip = createBackupZip(importedDbFile, patternArchive("IMPORTED"))
                 val backupService = DatabaseBackupService(
                     appContext = context,
                     database = liveDatabase,
@@ -345,7 +360,6 @@ class DatabaseBackupImportMigrationTest {
                 assertEquals(patternArchive(if (expectedOwner == "original") "ORIGINAL" else "IMPORTED"),
                     MessagePatternStore(context).captureRaw())
                 val reopened = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-                    .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
                     .allowMainThreadQueries()
                     .build()
                 try {
@@ -379,60 +393,32 @@ class DatabaseBackupImportMigrationTest {
                     context.deleteDatabase(MasroofDatabase.NAME)
                     DatabaseRestoreRecovery.deleteRestoreArtifacts(context.getDatabasePath(MasroofDatabase.NAME))
                     backupZip.delete()
-                    v5DbFile.delete()
+                    importedDbFile.delete()
                 }
             }
         }
     }
 
-    private fun createV5DatabaseFile(context: Context): File {
-        val schema5 = File("schemas/com.baraa.masroof.data.room.MasroofDatabase/5.json")
-        assertTrue(schema5.isFile)
-        val dbName = "v5-export.db"
-        context.deleteDatabase(dbName)
-
-        val openHelper = FrameworkSQLiteOpenHelperFactory().create(
-            SupportSQLiteOpenHelper.Configuration.builder(context)
-                .name(dbName)
-                .callback(
-                    object : SupportSQLiteOpenHelper.Callback(5) {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            applyExportedSchema(db, schema5, expectedVersion = 5)
-                            db.execSQL(
-                                """
-                                INSERT INTO card_registry
-                                (bankId, last4, ownershipStatus, firstSeenRawSmsId, lastSeenRawSmsId)
-                                VALUES ('BANK_ALJAZIRA', '7271', 'OWNED', 'sms-1', 'sms-1')
-                                """.trimIndent(),
-                            )
-                        }
-
-                        override fun onUpgrade(
-                            db: SupportSQLiteDatabase,
-                            oldVersion: Int,
-                            newVersion: Int,
-                        ) = Unit
-                    },
-                )
-                .build(),
-        )
-
-        openHelper.writableDatabase.close()
-        openHelper.close()
-
-        val exported = File(context.cacheDir, "v5-backup.db")
-        context.getDatabasePath(dbName).copyTo(exported, overwrite = true)
-        context.deleteDatabase(dbName)
+    private suspend fun createCurrentDatabaseFile(context: Context): File {
+        val name = "current-export.db"
+        context.deleteDatabase(name)
+        val db = Room.databaseBuilder(context, MasroofDatabase::class.java, name).allowMainThreadQueries().build()
+        try {
+            RoomCardRegistryRepository.from(db).setOwnership(CardReference(Bank.BANK_ALJAZIRA, "7271"), OwnershipStatus.OWNED)
+        } finally { db.close() }
+        val exported = File(context.cacheDir, "current-backup.db")
+        context.getDatabasePath(name).copyTo(exported, overwrite = true)
+        context.deleteDatabase(name)
         return exported
     }
 
-    private fun createBackupZip(v5DbFile: File, messagePatterns: String? = null): File {
-        val zipFile = File.createTempFile("masroof-v5-backup", ".masroof")
+    private fun createBackupZip(importedDbFile: File, messagePatterns: String? = null, roomVersion: Int = MasroofDatabase.VERSION): File {
+        val zipFile = File.createTempFile("masroof-current-backup", ".masroof")
         val manifest = BackupManifest(
             formatVersion = BackupPackageFormat.FORMAT_VERSION,
             appVersionName = "test",
-            roomVersion = MasroofDatabase.LEGACY_VERSION_5,
-            identityHash = MasroofDatabase.LEGACY_IDENTITY_HASH_5,
+            roomVersion = roomVersion,
+            identityHash = MasroofDatabase.IDENTITY_HASH,
             exportedAtEpochMillis = 1_700_000_000_000L,
         )
         val preferences = BackupPreferencesSnapshot(
@@ -451,7 +437,7 @@ class DatabaseBackupImportMigrationTest {
             zip.closeEntry()
 
             zip.putNextEntry(ZipEntry(BackupPackageFormat.DATABASE_ENTRY))
-            v5DbFile.inputStream().use { input -> input.copyTo(zip) }
+            importedDbFile.inputStream().use { input -> input.copyTo(zip) }
             zip.closeEntry()
 
             zip.putNextEntry(ZipEntry(BackupPackageFormat.PREFERENCES_ENTRY))
@@ -459,33 +445,6 @@ class DatabaseBackupImportMigrationTest {
             zip.closeEntry()
         }
         return zipFile
-    }
-
-    private fun applyExportedSchema(
-        db: SupportSQLiteDatabase,
-        schemaFile: File,
-        expectedVersion: Int,
-    ) {
-        val root = Json.parseToJsonElement(schemaFile.readText()).jsonObject
-        val database = root.getValue("database").jsonObject
-        assertEquals(expectedVersion, database.getValue("version").jsonPrimitive.content.toInt())
-        for (entityEl in database.getValue("entities").jsonArray) {
-            val entity = entityEl.jsonObject
-            val tableName = entity.getValue("tableName").jsonPrimitive.content
-            db.execSQL(
-                entity.getValue("createSql").jsonPrimitive.content
-                    .replace("\${TABLE_NAME}", tableName),
-            )
-            for (indexEl in entity["indices"]?.jsonArray.orEmpty()) {
-                db.execSQL(
-                    indexEl.jsonObject.getValue("createSql").jsonPrimitive.content
-                        .replace("\${TABLE_NAME}", tableName),
-                )
-            }
-        }
-        for (setupEl in database["setupQueries"]?.jsonArray.orEmpty()) {
-            db.execSQL(setupEl.jsonPrimitive.content)
-        }
     }
 
     private class CommitFailsPreferences(

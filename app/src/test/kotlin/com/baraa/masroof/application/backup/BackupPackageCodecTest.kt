@@ -82,92 +82,12 @@ class BackupPackageCodecTest {
     }
 
     @Test
-    fun validateManifestForImport_acceptsPreviousRoomVersion() {
+    fun validateManifest_rejectsEveryOlderSchemaAndFutureSchemas() {
+        for (version in (1..17) + listOf(19, 99)) {
         val manifest = BackupManifest(
             formatVersion = BackupPackageFormat.FORMAT_VERSION,
             appVersionName = "0.2.0",
-            roomVersion = MasroofDatabase.PREVIOUS_VERSION,
-            identityHash = MasroofDatabase.PREVIOUS_IDENTITY_HASH,
-            exportedAtEpochMillis = 1L,
-        )
-        assertTrue(
-            BackupPackageCodec.validateManifestForImport(
-                manifest = manifest,
-                targetRoomVersion = MasroofDatabase.VERSION,
-                targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                importableVersions = mapOf(
-                    MasroofDatabase.PREVIOUS_VERSION to MasroofDatabase.PREVIOUS_IDENTITY_HASH,
-                ),
-            ),
-        )
-    }
-
-    @Test
-    fun expectedIdentityHashForImport_mapsPreviousVersion() {
-        val manifest = BackupManifest(
-            formatVersion = BackupPackageFormat.FORMAT_VERSION,
-            appVersionName = "0.2.0",
-            roomVersion = MasroofDatabase.PREVIOUS_VERSION,
-            identityHash = MasroofDatabase.PREVIOUS_IDENTITY_HASH,
-            exportedAtEpochMillis = 1L,
-        )
-        assertEquals(
-            MasroofDatabase.PREVIOUS_IDENTITY_HASH,
-            BackupPackageCodec.expectedIdentityHashForImport(
-                manifest = manifest,
-                targetRoomVersion = MasroofDatabase.VERSION,
-                targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                importableVersions = mapOf(
-                    MasroofDatabase.PREVIOUS_VERSION to MasroofDatabase.PREVIOUS_IDENTITY_HASH,
-                ),
-            ),
-        )
-    }
-
-    @Test
-    fun validateManifestForImport_acceptsV9RoomVersion() {
-        val manifest = BackupManifest(
-            formatVersion = BackupPackageFormat.FORMAT_VERSION,
-            appVersionName = "0.2.0",
-            roomVersion = MasroofDatabase.LEGACY_VERSION_9,
-            identityHash = MasroofDatabase.LEGACY_IDENTITY_HASH_9,
-            exportedAtEpochMillis = 1L,
-        )
-        assertTrue(
-            BackupPackageCodec.validateManifestForImport(
-                manifest = manifest,
-                targetRoomVersion = MasroofDatabase.VERSION,
-                targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                importableVersions = MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS,
-            ),
-        )
-    }
-
-    @Test
-    fun validateManifestForImport_acceptsV8RoomVersion() {
-        val manifest = BackupManifest(
-            formatVersion = BackupPackageFormat.FORMAT_VERSION,
-            appVersionName = "0.2.0",
-            roomVersion = MasroofDatabase.LEGACY_VERSION_8,
-            identityHash = MasroofDatabase.LEGACY_IDENTITY_HASH_8,
-            exportedAtEpochMillis = 1L,
-        )
-        assertTrue(
-            BackupPackageCodec.validateManifestForImport(
-                manifest = manifest,
-                targetRoomVersion = MasroofDatabase.VERSION,
-                targetIdentityHash = MasroofDatabase.IDENTITY_HASH,
-                importableVersions = MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS,
-            ),
-        )
-    }
-
-    @Test
-    fun validateManifest_rejectsWrongRoomVersion() {
-        val manifest = BackupManifest(
-            formatVersion = BackupPackageFormat.FORMAT_VERSION,
-            appVersionName = "0.2.0",
-            roomVersion = 1,
+            roomVersion = version,
             identityHash = MasroofDatabase.IDENTITY_HASH,
             exportedAtEpochMillis = 1L,
         )
@@ -178,6 +98,7 @@ class BackupPackageCodecTest {
                 expectedIdentityHash = MasroofDatabase.IDENTITY_HASH,
             ),
         )
+    }
     }
 
     @Test

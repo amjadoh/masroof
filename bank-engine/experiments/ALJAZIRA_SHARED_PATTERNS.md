@@ -74,10 +74,16 @@ accounts known only by partial references remain separate capability work. The p
 generic role matcher is intentionally retained; this milestone does not rewrite those
 declarations as whole-message example templates.
 
-The current release targets the sole user's existing v18 setup. At the user's
-request, support for older schemas with unfinished v10/v11 fact backfills is deferred
-and is not a release gate for this scope. If that support is needed later, it requires
-dedicated fact-only migration handling: normal shared processing intentionally resumes
-protected successful rows, so a bulk reparse cannot prove that missing historical
-detail columns were filled. Upgrade and recovery checks for the current v18 setup
-remain in scope.
+The financial database now supports v18 only, as requested by its sole user.
+Older-schema migrations, schema exports, import hashes and automatic fact backfills
+are removed. Older databases and backups are rejected without erasing live data.
+The v18 schema/hash, encryption, restore/rollback and current-data integrity repair
+remain unchanged. A retired backfill worker completes already queued requests without
+opening or reparsing financial data; its persisted identity and old journal preference
+key remain solely for safe retirement and interrupted v18 restore recovery.
+
+Removal verification passed 194 targeted app tests and 15 API 36 device tests,
+with both APKs built. Coverage retains encrypted v18 verification/import, restore
+interruption and rollback, startup blocking, live retries and both bank flows.
+Older files and disguised older backups are rejected before live data is changed;
+the unchanged v18 schema export remains pinned by its original SHA-256 test.

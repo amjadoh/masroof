@@ -64,29 +64,11 @@ class M0ProductionBaselineTest {
     }
 
     @Test
-    fun roomV18_andImportableBackupSchemas_areTheBaseline() {
+    fun roomV18Identity_isTheBaseline() {
         assertEquals(18, MasroofDatabase.VERSION)
         assertEquals("masroof.db", MasroofDatabase.NAME)
         assertEquals("71f1193767b3aa12bcb6cc6e7ce77147", MasroofDatabase.IDENTITY_HASH)
-        assertEquals(
-            mapOf(
-                5 to "d192ca81655b31f5e6c203239148ad42",
-                6 to "bae309478a1209a31e06cfcbde30b56f",
-                7 to "5b63e94003a7d853d7896f020bbec1ec",
-                8 to "051d1cf4633e66c7ae6b851428871ab4",
-                9 to "a673ee53e423dc6952d5514ed2d14206",
-                10 to "7e3a9698a7d188a855b1e6736a1fd073",
-                11 to "7ab199e3e48084cea08345da07a0daeb",
-                12 to "7e4054824f833d3869883fe0565893db",
-                13 to "91c2c7a8f0b96cf4a9dc6088ba92e085",
-                14 to "91c2c7a8f0b96cf4a9dc6088ba92e085",
-                15 to "50ee81de5b142c23e1fe6afe86cae53d",
-                16 to "9ca34d4e25b5d478101c5b89add2cc70",
-                17 to "f18e84acb2bf790d0355fdb694267a1a",
-                18 to "71f1193767b3aa12bcb6cc6e7ce77147",
-            ),
-            MasroofDatabase.IMPORTABLE_BACKUP_VERSIONS,
-        )
+
     }
 
     @Test

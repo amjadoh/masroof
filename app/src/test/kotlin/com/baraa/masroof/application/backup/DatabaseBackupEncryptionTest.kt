@@ -526,7 +526,6 @@ class DatabaseBackupEncryptionTest {
 
     private fun openDatabase(): MasroofDatabase =
         Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
 
@@ -541,7 +540,6 @@ class DatabaseBackupEncryptionTest {
         val sourceName = "legacy-source"
         context.deleteDatabase(sourceName)
         val source = Room.databaseBuilder(context, MasroofDatabase::class.java, sourceName)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
         try {
