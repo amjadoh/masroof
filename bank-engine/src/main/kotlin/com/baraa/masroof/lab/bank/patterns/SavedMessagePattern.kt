@@ -1,6 +1,7 @@
 package com.baraa.masroof.lab.bank.patterns
 
 import com.baraa.masroof.lab.bank.interpretation.SourceText
+import java.util.Collections
 
 data class FieldChoice(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
 internal data class UserFieldBinding(val selection: Selection, val ignored: Boolean = false, val directlySelected: Boolean = false)
@@ -13,6 +14,7 @@ data class FieldSlot(val field: String, val kind: FieldKind, val width: Int, val
     }
     fun representative(): String = when (kind) {
         FieldKind.MONEY -> "1SAR"
+        FieldKind.DECIMAL -> "1.00"
         FieldKind.TEXT -> "x"
         FieldKind.DIGITS -> "0".repeat(width)
         FieldKind.DATE_DMY_SHORT -> "01/01/00 00:00"
@@ -26,22 +28,24 @@ data class FieldSlot(val field: String, val kind: FieldKind, val width: Int, val
 }
 
 /** Only declarative literals and typed slots survive; original selected values are not stored. */
-data class SavedMessagePattern(val id: String, val bankId: String, val sender: String, val label: String,
-    val revision: Int = 1, val enabled: Boolean = true, val parts: List<PatternPart>) {
+class SavedMessagePattern(val id: String, val bankId: String, val sender: String, val label: String,
+    val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>) {
+    val parts: List<PatternPart> = Collections.unmodifiableList(parts.toList())
+
     init {
         require(id.matches(Regex("[A-Za-z0-9_.-]{1,64}")) && bankId.isNotBlank() && bankId != "UNKNOWN")
         require(sender.length in 1..128 && label.length in 1..64 && revision > 0)
-        require(parts.size in 3..33 && parts.size % 2 == 1)
-        require(parts.withIndex().all { (index, part) -> if (index % 2 == 0) part is StaticText else part is FieldSlot })
-        require(parts.filterIsInstance<StaticText>().sumOf { it.value.length } <= 4096)
-        val slots = parts.filterIsInstance<FieldSlot>()
+        require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
+        require(this.parts.withIndex().all { (index, part) -> if (index % 2 == 0) part is StaticText else part is FieldSlot })
+        require(this.parts.filterIsInstance<StaticText>().sumOf { it.value.length } <= 4096)
+        val slots = this.parts.filterIsInstance<FieldSlot>()
         require(slots.map { it.field }.distinct().size == slots.size)
     }
 
     private val compiled: ExampleTemplate by lazy {
         val selections = mutableListOf<Selection>()
         val synthetic = buildString {
-            parts.forEach { part -> when (part) {
+            this@SavedMessagePattern.parts.forEach { part -> when (part) {
                 is StaticText -> append(part.value)
                 is FieldSlot -> {
                     val start = length
@@ -56,6 +60,16 @@ data class SavedMessagePattern(val id: String, val bankId: String, val sender: S
 
     fun validate() { compiled }
 
+    fun copy(id: String = this.id, bankId: String = this.bankId, sender: String = this.sender,
+        label: String = this.label, revision: Int = this.revision, enabled: Boolean = this.enabled,
+        parts: List<PatternPart> = this.parts) = SavedMessagePattern(id, bankId, sender, label, revision, enabled, parts)
+
+    override fun equals(other: Any?): Boolean = other is SavedMessagePattern && id == other.id &&
+        bankId == other.bankId && sender == other.sender && label == other.label && revision == other.revision &&
+        enabled == other.enabled && parts == other.parts
+
+    override fun hashCode(): Int = listOf(id, bankId, sender, label, revision, enabled, parts).hashCode()
+
     fun preview(bankId: String, sender: String, body: String): Preview? {
         if (!enabled || bankId != this.bankId) return null
         val result = compiled.preview(sender, body) ?: return null
@@ -64,12 +78,16 @@ data class SavedMessagePattern(val id: String, val bankId: String, val sender: S
     }
 
     companion object {
+        private val numericMoneyFields = setOf("amount", "available_balance", "outstanding_balance",
+            "international_fee", "foreign_amount", "due_amount")
+
         fun fromChoices(id: String, bankId: String, sender: String, label: String, body: String,
             choices: List<FieldChoice>): SavedMessagePattern {
             val bindings = choices.map { choice ->
                 require(choice.start in 0 until choice.end && choice.end <= body.length)
                 val raw = SourceText(body.substring(choice.start, choice.end)).text
                 val kind = when {
+                    choice.field in numericMoneyFields && raw.matches(Regex(FieldKind.DECIMAL.pattern(raw))) -> FieldKind.DECIMAL
                     raw.matches(Regex("[0-9]+")) -> FieldKind.DIGITS
                     raw.matches(Regex(FieldKind.MONEY.pattern(raw))) && FieldKind.MONEY.accepts(raw) -> FieldKind.MONEY
                     else -> FieldKind.values().firstOrNull { it.dateFormat != null && raw.matches(Regex(it.pattern(raw))) && it.accepts(raw) }
@@ -95,7 +113,8 @@ data class SavedMessagePattern(val id: String, val bankId: String, val sender: S
                     val selection = binding.selection
                     add(StaticText(body.substring(cursor, selection.start)))
                     add(FieldSlot(selection.field, selection.kind,
-                        if (selection.kind == FieldKind.DIGITS) selection.end - selection.start else 0, binding.ignored))
+                        if (selection.kind == FieldKind.DIGITS) SourceText(body.substring(selection.start, selection.end)).text.length else 0,
+                        binding.ignored))
                     cursor = selection.end
                 }
                 add(StaticText(body.substring(cursor)))

@@ -6,19 +6,21 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
 
+private const val DECIMAL_PATTERN = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
+
 /** Primitive shapes for raw text spans. No ownership, transaction time or financial authority. */
 enum class FieldKind(internal val dateFormat: String? = null, private val dateOnly: Boolean = false) {
-    MONEY, TEXT, DIGITS,
+    MONEY, DECIMAL, TEXT, DIGITS,
     DATE_DMY_SHORT("dd/MM/uu HH:mm"), DATE_DMY_LONG("dd-MM-uuuu HH:mm"), DATE_YMD("uuuu-MM-dd HH:mm[:ss]"),
     TIME_DMY_LONG("HH:mm[:ss] dd-MM-uuuu"), TIME_YMD("HH:mm[:ss] uuuu-MM-dd"),
     DATE_DMY_ONLY("dd/MM/uuuu", true), DATE_YMD_ONLY("uuuu-MM-dd", true);
 
     fun pattern(example: String): String = when (this) {
         MONEY -> {
-            val number = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
             val currency = "(?:sar|sr|usd|eur|gbp)"
-            "(?:$number *$currency|$currency *$number)"
+            "(?:$DECIMAL_PATTERN *$currency|$currency *$DECIMAL_PATTERN)"
         }
+        DECIMAL -> DECIMAL_PATTERN
         TEXT -> "[^\\n]{1,160}"
         DIGITS -> "[0-9]{${example.length}}"
         DATE_DMY_SHORT -> "[0-9]{2}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}"
@@ -31,6 +33,7 @@ enum class FieldKind(internal val dateFormat: String? = null, private val dateOn
     }
 
     fun accepts(value: String): Boolean = when {
+        this == DECIMAL -> runCatching { value.replace(",", "").toBigDecimal().signum() >= 0 }.getOrDefault(false)
         this == MONEY -> runCatching {
             Regex("[0-9][0-9.,]*").find(value)!!.value.replace(",", "").toBigDecimal().signum() > 0
         }.getOrDefault(false)
@@ -59,7 +62,7 @@ internal class ExampleTemplate private constructor(
         val match = pattern.matchEntire(source.text) ?: return null
         val fields = selections.mapIndexed { index, selection ->
             val group = requireNotNull(match.groups[index + 1])
-            if (!selection.kind.accepts(group.value)) return null
+            if (group.value.length > 160 || !selection.kind.accepts(group.value)) return null
             val evidence = source.evidence("example-preview", selection.field, group.range)
             selection.field to TextSpan(source.original(group.range), evidence.start, evidence.end)
         }.toMap()
