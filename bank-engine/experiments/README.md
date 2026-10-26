@@ -11,13 +11,17 @@ The text-only extractor and the declarative pattern builder/compiler now live in
 `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/patterns/`. The experiment
 imports that implementation directly; it keeps no compatibility wrappers or second
 copy. No runtime dependency was added. `Preview` still carries no financial
-authority, and the existing app adapter/intake/ledger path has not been switched.
+authority. Configured new banks now feed the existing intake/ledger path after
+explicit financial approval; AlJazira's primary adapter remains unchanged.
 Pattern labels are raw teaching metadata, not production financial families.
 
 The optional [fact contract and write gate](PATTERN_FACT_CONTRACT.md) now convert
 explicit versioned definitions through the production mapper/validator and reject
 stale configuration at write time. Existing taught patterns and the STC seed have
-no fact contracts and remain preview-only; routing/financial activation is pending.
+no fact contracts and remain preview-only until explicitly approved. Dynamic routing,
+scoped import, pending application and protected live processing are wired through
+the existing workflows. Partial-reference links require a confirmed four-digit
+account; unknown references remain reviewable.
 
 The application now reads the unchanged AlJazira literal-rule profile from
 `app/src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`. The same profile is
@@ -27,14 +31,15 @@ Round-trip tests pin full schema equality and the unchanged refresh fingerprint;
 the candidate in the parity harness reads the bundled JSON rather than calling
 the old profile builder. All 74 parse inputs and seven financial scenarios match
 the frozen reference. These are 13 classification rules across 11 families, not
-13 automatically learned message layouts. Taught-pattern financial activation,
-bank routing/import settings and automatic financial use remain pending. A bank
-pattern-management and teaching screen is now available through message-learning
-settings and the bank page; its saved patterns are for preview only.
+13 automatically learned message layouts. Bank pattern management is available
+through message-learning settings and the bank page. Teaching is preview-only;
+financial approval, pending application and scoped import are separate actions.
+AlJazira learned-pattern cutover remains pending.
 
-The latest targeted checks passed 101 bank-engine tests and 126 app tests, including
-financial oracles, manual/posted preservation, refresh recovery and package
-boundaries; the debug APK builds. No APK was installed on the user's device.
+The current milestone covers financial approval, exact partial-reference links,
+dynamic routing, scoped import and protected pending/live processing. Verification
+counts and remaining release gates are recorded in the migration plan. No APK was
+installed on the user's device.
 
 Three review regressions now cover normalized identifier widths (including hidden
 direction marks and supplementary Unicode digits), immutable owned pattern parts
@@ -72,9 +77,9 @@ read-only copy of the SMS and sender. The saved explicit bank selection takes
 precedence over the parsed bank; unknown banks require a user choice. Saving a
 pattern returns to the review without resolving it or rewriting evidence. A Room
 test preserves original SMS, parsed facts and a prior human decision; the device
-journey verifies immutable prefilled inputs and return navigation. Bank
-routing/import, automatic pending-message reprocessing and the pattern fingerprint
-in the financial write guard remain pending; taught definitions still have no posting authority.
+journey verifies immutable prefilled inputs and return navigation. Routing/import,
+explicit pending application and the pattern fingerprint guard are now connected;
+teaching alone still grants no posting authority.
 
 The new audit of the same 64 fixtures offers all 33 expected transaction timestamps
 and both expected due dates as raw candidates. This closes the seven previously

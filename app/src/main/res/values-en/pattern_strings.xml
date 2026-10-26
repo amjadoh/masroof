@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="pattern_title">Bank message patterns</string>
-    <string name="pattern_preview_only">Teaching and preview are available. Saved patterns do not yet post financial transactions automatically.</string>
+    <string name="pattern_preview_only">New patterns are saved for preview. Financial interpretation requires separate approval and validation before posting.</string>
     <string name="pattern_failed">Could not complete this step. Check the fields and selection; reload if settings changed.</string>
     <string name="pattern_bank_name">Bank name</string>
     <string name="pattern_sender">Exact SMS sender</string>
@@ -28,7 +28,7 @@
     <string name="pattern_teach_from_review">Teach a pattern from this message</string>
     <string name="pattern_sender_mismatch">This sender is not configured for the selected bank. Choose the correct bank; message routing will not change.</string>
     <string name="pattern_pending_title">Pending message preview</string>
-    <string name="pattern_pending_scope">Extraction preview only. Posted transactions and manual corrections are excluded. Messages stay in review; no financial transactions are posted.</string>
+    <string name="pattern_pending_scope">Preview does not change messages. Applying approved patterns is a separate action; posted evidence, corrections and manual decisions are excluded.</string>
     <string name="pattern_pending_refresh">Refresh preview</string>
     <string name="pattern_pending_limited">The first 1,000 review messages are checked; up to 50 bank results are shown. This is not full message coverage.</string>
     <string name="pattern_pending_row">Message %1$d — %2$s</string>
