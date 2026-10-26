@@ -346,3 +346,22 @@ refresh when configuration changes and link back to the original review message.
 Unit and API 36 device checks cover different extracted values, pattern/bank
 conflicts, stale generations, protected rows and disabling patterns. This is a
 read-only preview, not financial activation or a full inbox import.
+
+## Bundled STC preview patterns
+
+`app/src/main/assets/bank-patterns/BANK_STC.patterns.json` contains six definitions
+produced by the shared `SavedMessagePattern.fromChoices` learner: internal incoming,
+internal outgoing, account top-up, local credit transfer, SARIE incoming and paid
+qattah. `StcBundledPatternsTest` regenerates the exact bundle from explicit bindings
+and checks all nine held-out message layouts, a synthetic local-transfer variant,
+and wrong-bank/sender/extra-text rejection. Personal names and identifier values in
+the fixtures are anonymized; the layout, amount and timestamp formats are retained.
+The local-credit-transfer format has only one user-supplied example, so its separate
+generalization check is synthetic. Selected teaching values do not survive in the
+bundle. Ambiguous account and funding references retain neutral roles and masks.
+
+Opening the pattern workflow installs the bundle only when its bank and sender
+identity are absent; subsequent loads and updates preserve user definitions and
+disabled revisions. The bundle is included in the APK, and installation uses the
+same versioned store and backup path. No bank adapter, financial posting authority,
+self-transfer ownership or income classification is enabled by this seed.
