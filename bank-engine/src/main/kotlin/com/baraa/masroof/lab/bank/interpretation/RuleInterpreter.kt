@@ -61,9 +61,9 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val source = SourceText(input.body)
         fun contains(term: String) = source.phrase(term).containsMatchIn(source.text)
         // Security/non-execution gates are built in; a custom bank rule cannot exclude them.
-        val security = SECURITY.flatMap { term -> source.phrase(term).findAll(source.text).toList() }
+        val security = otpEvidence(source)
         if (security.isNotEmpty()) {
-            security.forEach { evidence += source.evidence("security.otp", "family", it.range) }
+            evidence += security
             return result(Facts(MessageFamily.OTP), ParseStatus.NON_FINANCIAL)
         }
         source.segmentInlinePurchase()
@@ -143,8 +143,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         }
         if (source.text.lineSequence().any { it.trimStart().let { line -> line.startsWith(">") || line.startsWith("```") || line.startsWith('"') || line.startsWith('«') || line.startsWith('“') } })
             problem("QUOTED_MESSAGE_CONTEXT")
-        if (family !in INFORMATIONAL && BLOCKED.any(::contains)) problem("EXECUTION_NOT_PROVEN")
-        if (CONTEXT.any(::contains) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
+        if (family !in INFORMATIONAL && hasUnprovenExecution(source)) problem("EXECUTION_NOT_PROVEN")
+        if (hasNoticeContext(source) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
         if ((family == MessageFamily.TRANSFER_IN && OUTGOING.any(::contains)) ||
             (family == MessageFamily.TRANSFER_OUT && INCOMING.any(::contains)) ||
@@ -239,9 +239,6 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     companion object {
         const val VERSION = "bank-rules-independent-v14"
         private const val MAX_BODY = 16000
-        private val SECURITY = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin", "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق", "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
-        private val BLOCKED = listOf("declined", "rejected", "unsuccessful", "failed", "pending", "request", "cancelled", "canceled", "not", "never", "لم", "لن", "لا", "غير", "رفض", "مرفوض", "مرفوضة", "طلب", "قيد التنفيذ", "تعذر", "الغاء")
-        private val CONTEXT = listOf("statement", "كشف حساب", "beneficiary added", "اضافة مستفيد", "advertisement", "offer", "عرض", "minimum payment", "payment due date", "تاريخ الاستحقاق")
         private val INCOMING = RuleLibrary.incomingTransferPhrases()
         private val OUTGOING = RuleLibrary.outgoingTransferPhrases()
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")

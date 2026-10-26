@@ -29,7 +29,8 @@ data class FieldSlot(val field: String, val kind: FieldKind, val width: Int, val
 
 /** Only declarative literals and typed slots survive; original selected values are not stored. */
 class SavedMessagePattern(val id: String, val bankId: String, val sender: String, val label: String,
-    val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>) {
+    val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>,
+    val factContract: PatternFactContract? = null) {
     val parts: List<PatternPart> = Collections.unmodifiableList(parts.toList())
 
     init {
@@ -62,13 +63,14 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
 
     fun copy(id: String = this.id, bankId: String = this.bankId, sender: String = this.sender,
         label: String = this.label, revision: Int = this.revision, enabled: Boolean = this.enabled,
-        parts: List<PatternPart> = this.parts) = SavedMessagePattern(id, bankId, sender, label, revision, enabled, parts)
+        parts: List<PatternPart> = this.parts, factContract: PatternFactContract? = this.factContract) =
+        SavedMessagePattern(id, bankId, sender, label, revision, enabled, parts, factContract)
 
     override fun equals(other: Any?): Boolean = other is SavedMessagePattern && id == other.id &&
         bankId == other.bankId && sender == other.sender && label == other.label && revision == other.revision &&
-        enabled == other.enabled && parts == other.parts
+        enabled == other.enabled && parts == other.parts && factContract == other.factContract
 
-    override fun hashCode(): Int = listOf(id, bankId, sender, label, revision, enabled, parts).hashCode()
+    override fun hashCode(): Int = listOf(id, bankId, sender, label, revision, enabled, parts, factContract).hashCode()
 
     fun preview(bankId: String, sender: String, body: String): Preview? {
         if (!enabled || bankId != this.bankId) return null

@@ -14,6 +14,11 @@ copy. No runtime dependency was added. `Preview` still carries no financial
 authority, and the existing app adapter/intake/ledger path has not been switched.
 Pattern labels are raw teaching metadata, not production financial families.
 
+The optional [fact contract and write gate](PATTERN_FACT_CONTRACT.md) now convert
+explicit versioned definitions through the production mapper/validator and reject
+stale configuration at write time. Existing taught patterns and the STC seed have
+no fact contracts and remain preview-only; routing/financial activation is pending.
+
 The application now reads the unchanged AlJazira literal-rule profile from
 `app/src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`. The same profile is
 injected into both production interpretation and ML fallback qualification.
