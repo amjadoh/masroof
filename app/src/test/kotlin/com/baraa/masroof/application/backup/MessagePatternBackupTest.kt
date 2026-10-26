@@ -30,7 +30,7 @@ class MessagePatternBackupTest {
         val gate = DatabaseAccessGate()
         val store = MessagePatternStore(context)
         val workflow = MessagePatternsWorkflow(store, gate, Dispatchers.Unconfined)
-        val original = patternArchive("STC")
+        val original = patternArchive("STC", withBindings = true)
         store.restoreRaw(original)
         val database = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
             .allowMainThreadQueries().build()
@@ -103,10 +103,15 @@ class MessagePatternBackupTest {
     }
 }
 
-internal fun patternArchive(bank: String): String {
-    val body = "Synthetic event\nAmount:10SAR"
+internal fun patternArchive(bank: String, withBindings: Boolean = false): String {
+    val body = "Synthetic event\nAmount:10SAR" + if (withBindings) "\nAcc:321" else ""
     val pattern = SavedMessagePattern.fromChoices("pattern", bank, "Sender $bank", "PURCHASE", body,
-        listOf(FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+        listOf(FieldChoice("amount", body.indexOf("10SAR"), body.indexOf("10SAR") + 5)) +
+            if (withBindings) listOf(FieldChoice("account_reference", body.indexOf("321"), body.length)) else emptyList()).let {
+        if (!withBindings) it else it.copy(factContract = PatternFactContract(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
+            com.baraa.masroof.engine.bank.MoneyDirection.OUTGOING, version = 2,
+            accountBindings = listOf(PatternAccountBinding(PatternAccountRole.SOURCE, com.baraa.masroof.finance.value.BankId(bank), "4321", "account_reference", "321"))))
+    }
     return MessagePatternConfigurationCodec.encode(MessagePatternConfiguration(1,
         listOf(BankMessagePatterns(bank, listOf(pattern.sender), patterns = listOf(pattern)))))
 }

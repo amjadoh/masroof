@@ -11,15 +11,28 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Configuration only. No routing, reprocessing, ownership or ledger writes are activated here. */
+/** Teaching stays preview-only; financial approval, import and eligible pending application are explicit actions. */
 class MessagePatternsWorkflow(
     private val store: MessagePatternStore,
     private val accessGate: DatabaseAccessGate,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val pendingPreview: PendingPatternPreviewWorkflow? = null,
     private val bundledBanks: List<BankMessagePatterns> = emptyList(),
+    private val activation: PatternActivationWorkflow? = null,
+    private val importBank: (suspend (String) -> com.baraa.masroof.application.sms.SmsScanResult)? = null,
 ) {
     val canPreviewPending: Boolean get() = pendingPreview != null
+    val canApplyPending: Boolean get() = pendingPreview?.canApply == true
+    fun canApprove(bankId: String) = activation?.supports(bankId) == true
+    val canImportBank: Boolean get() = importBank != null
+    suspend fun importBank(bankId: String) = requireNotNull(importBank).invoke(bankId)
+    suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
+    suspend fun confirmPatternAccount(bankId: String, last4: String) = requireNotNull(activation).confirmAccount(bankId, last4)
+    suspend fun previewFinancial(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String,
+        body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.finance.value.Currency? = null) =
+        requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency)
+    suspend fun saveFinancial(preview: PatternFinancialPreview) = requireNotNull(activation).save(preview)
+    suspend fun applyPending(bankId: String, generation: Long) = requireNotNull(pendingPreview).apply(bankId, generation)
 
     suspend fun previewPending(bankId: String, generation: Long) =
         requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)

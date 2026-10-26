@@ -15,9 +15,7 @@ class BankSmsRegistry(
     private val adapters: List<BankSmsAdapter>,
     private val configuredAdapters: () -> List<BankSmsAdapter> = { emptyList() },
 ) {
-    private fun snapshot(): List<BankSmsAdapter> = (adapters + configuredAdapters()).also {
-        require(it.map { adapter -> adapter.bank }.distinct().size == it.size) { "Duplicate bank adapters" }
-    }
+    private fun snapshot(): List<BankSmsAdapter> = adapters + configuredAdapters()
     fun route(sender: String, body: String): BankRoutingResult {
         val matches = mutableListOf<BankRoutingResult.Matched>()
         val suspicions = mutableListOf<String>()
@@ -52,5 +50,5 @@ class BankSmsRegistry(
 
     /** Registered banks, sorted by id. Registration order is not an identity. */
     fun banks(): List<Bank> =
-        snapshot().map { it.bank }.sortedBy { it.id }
+        snapshot().map { it.bank }.distinct().sortedBy { it.id }
 }

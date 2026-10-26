@@ -170,15 +170,26 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
+    private val bundledPatternBanks = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+        appContext.assets.open("bank-patterns/BANK_STC.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
+    // Restore recovery has finished and this container has not admitted work yet.
+    private val messagePatternStore = com.baraa.masroof.data.patterns.MessagePatternStore(appContext).also {
+        if (bankAdapterOverride == null) it.installMissingBanks(bundledPatternBanks)
+    }
+
     val messagePatternsWorkflow by lazy {
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
-            com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
-            bundledBanks = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
-                appContext.assets.open("bank-patterns/BANK_STC.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks,
+            messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
+            activation = com.baraa.masroof.application.patterns.PatternActivationWorkflow(messagePatternStore, databaseAccessGate,
+                accountRegistryRepository, ownershipConfirmationService, setOf(alJaziraSmsAdapter.bank.id)),
+            importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
-                com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
+                messagePatternStore, databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
-                financialTransactionRepository, bankSmsRegistry))
+                financialTransactionRepository, bankSmsRegistry, historicalSmsBatchProcessor,
+                inTransaction = { work -> withDatabaseTransaction(work) },
+                markParseFailed = processStoredSmsUseCase::recordExhaustedDerivedProcessing,
+                onChanged = { maintenanceCompletionSignal.notifyCompleted(); liveSmsIntake.schedulePendingProcessing() }))
     }
 
     internal val database: MasroofDatabase =
@@ -324,7 +335,7 @@ class AppContainer(
             inferenceCurrent = { interpretationService?.isInferenceCurrent(it) != false },
             inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
             patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
-                com.baraa.masroof.data.patterns.MessagePatternStore(appContext))::isCurrent)
+                messagePatternStore, accountRegistryRepository)::isCurrent)
     }
 
     val transactionReconciliationService: TransactionReconciliationService =
@@ -534,6 +545,8 @@ class AppContainer(
     private val bankSmsRegistry: BankSmsRegistry =
         BankSmsRegistry(
             adapters = listOf(alJaziraSmsAdapter),
+            configuredAdapters = if (bankAdapterOverride != null) ({ emptyList() }) else
+                com.baraa.masroof.application.patterns.ConfiguredPatternAdapters(messagePatternStore, setOf(alJaziraSmsAdapter.bank.id))::snapshot,
         )
 
     val statementReconciliationWorkflow: StatementReconciliationWorkflow =
@@ -590,6 +603,9 @@ class AppContainer(
             processingRecovery = processingRecovery,
             reviewRepository = reviewRepository,
             debugProcessHalt = debugProcessHaltProbe,
+            patternProcessing = com.baraa.masroof.application.patterns.PatternEvidenceProtection(
+                reviewRepository, userCorrectionRepository, financialTransactionRepository,
+                inTransaction = { work -> withDatabaseTransaction(work) })::run,
         )
 
     val explicitBankSelectionWorkflow: ExplicitBankSelectionWorkflow =

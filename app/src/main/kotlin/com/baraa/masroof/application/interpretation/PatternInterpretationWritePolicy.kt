@@ -6,8 +6,9 @@ import com.baraa.masroof.parsing.repository.ParsedEventRecord
 import kotlinx.coroutines.CancellationException
 
 /** Called under the financial transaction's access lease, which excludes configuration edits / restores. */
-class PatternInterpretationWritePolicy(private val store: MessagePatternStore) {
-    fun isCurrent(record: ParsedEventRecord): Boolean {
+class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
+    private val accounts: com.baraa.masroof.domain.repository.AccountRegistryRepository? = null) {
+    suspend fun isCurrent(record: ParsedEventRecord): Boolean {
         if (!isPatternDerived(record)) return true
         val reasons = record.event.confidence.reasons
         if (reasons.count { it == "engine:message-pattern-facts-v1" } != 1) return false
@@ -19,8 +20,17 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore) {
             val configuration = store.load()
             val pattern = configuration.banks.singleOrNull { it.bankId == record.event.bank.id }?.currentPatterns
                 ?.singleOrNull { it.id == identity[1] } ?: return false
-            pattern.enabled && pattern.factContract != null && pattern.revision.toString() == identity[2] &&
-                PatternFactInterpreter(configuration).fingerprint == expected
+            val contract = pattern.factContract ?: return false
+            if (!pattern.enabled || pattern.revision.toString() != identity[2] ||
+                PatternFactInterpreter(configuration).fingerprint != expected) return false
+            for (binding in contract.accountBindings) {
+                val reference = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
+                val account = accounts?.get(reference) ?: return false
+                if (account.bank != reference.bank || account.maskedNumber != binding.last4 || account.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
+                val observed = if (binding.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.SOURCE) record.event.sourceAccountRef else record.event.destinationAccountRef
+                if (observed != reference) return false
+            }
+            true
         } catch (e: CancellationException) { throw e }
           catch (_: Exception) { false } // Corrupt / unsupported definitions cannot grant a financial write.
     }

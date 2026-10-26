@@ -1,0 +1,5 @@
+{
+  "source": "User-provided STC Bank non-financial message; OTP removed before saving",
+  "sender": "STC Bank",
+  "body": "[REDACTED] is your OTP\nFor: Transfer to contact\nAmount: 200.00 SAR\n*Do not share the code"
+}
