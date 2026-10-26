@@ -84,7 +84,7 @@ class AnalyticsJourneyTest {
             runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); seed(container) }
             val workflow = container.analytics
             runBlocking { workflow.refresh() }
-            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.snapshot?.status == "READY" }
+            awaitAnalysis(workflow) { it.snapshot?.status == "READY" }
             runBlocking {
                 val overview = container.dashboardService.loadOverview(container.dashboardPeriodWorkflow.currentPeriod())
                 val expected = overview.spendingTrends!!.purchases.totalSpending.amount.movePointRight(2).longValueExact()
@@ -189,7 +189,7 @@ class AnalyticsJourneyTest {
             compose.onNodeWithTag("lab-analysis-settings").performClick()
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-budget"))).performTextReplacement("1200")
             compose.onNodeWithText(text(R.string.lab_analysis_save, "en")).performScrollTo().performClick()
-            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.preferences.budget == 120000L }
+            awaitAnalysis(workflow) { it.preferences.budget == 120000L }
             val candidate = workflow.state.value.snapshot!!.candidates.first()
             val originalCommitments = runBlocking { container.commitmentRepository.listAll() }
             compose.onNodeWithText(text(R.string.lab_analysis_commitments, "en"), useUnmergedTree = true).performClick()
@@ -231,7 +231,7 @@ class AnalyticsJourneyTest {
                     "card:BANK_ALJAZIRA:1234", null, "استرداد اختبار", null, null))
                 workflow.request(); workflow.refresh()
             }
-            compose.waitUntil(30_000) { !workflow.state.value.updating && (workflow.state.value.snapshot?.actual ?: 0) < 0 }
+            awaitAnalysis(workflow) { (it.snapshot?.actual ?: 0) < 0 }
             screen("en-light-negative-net")
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
             val beforeReopen = runBlocking { container.financialTransactionRepository.listAll() }
@@ -264,7 +264,7 @@ class AnalyticsJourneyTest {
         try {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
             val workflow = c.analytics
-            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.snapshot != null }
+            awaitAnalysis(workflow) { it.snapshot != null }
             compose.setContent { if (showing) {
                 val registryOwner = requireNotNull(LocalActivityResultRegistryOwner.current)
                 val config = Configuration(host.resources.configuration).apply { setLocale(Locale(language)); fontScale = if (language == "en") 1.3f else 1f }
@@ -301,9 +301,9 @@ class AnalyticsJourneyTest {
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-budget"))).performScrollTo().performTextReplacement("١٢٠٠٫٥٠")
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-reminder"))).performScrollTo().performTextReplacement("٣")
             compose.onNodeWithText(text(R.string.lab_analysis_save, "en")).performScrollTo().performClick()
-            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.preferences.budget == 120050L }
+            awaitAnalysis(workflow) { it.preferences.budget == 120050L }
             runBlocking { workflow.updatePreferences(workflow.state.value.preferences.copy(budget = 1)); workflow.refresh() }
-            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.alerts.any { it.kind == "ACTUAL" } }
+            awaitAnalysis(workflow) { it.alerts.any { alert -> alert.kind == "ACTUAL" } }
             val alert = workflow.state.value.alerts.first { it.kind == "ACTUAL" }
             compose.runOnUiThread { center = true }
             for (locale in listOf("ar", "en")) for (isDark in listOf(false, true)) {
@@ -315,11 +315,11 @@ class AnalyticsJourneyTest {
             compose.runOnUiThread { language = "en"; dark = false }
             compose.onNodeWithTag("lab-alert-${alert.id}").performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, "en")).assertIsSelected()
-            compose.waitUntil(30_000) { workflow.state.value.alerts.first { it.id == alert.id }.read }
+            awaitAnalysis(workflow) { it.alerts.first { row -> row.id == alert.id }.read }
             compose.runOnUiThread { center = true }
             compose.onNode(hasText(text(R.string.lab_analysis_actions, "en")) and hasAnyAncestor(hasTestTag("lab-alert-container-${alert.id}"))).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_snooze, "en")).performClick()
-            compose.waitUntil(30_000) { workflow.state.value.alerts.first { it.id == alert.id }.snoozedUntil > 0 }
+            awaitAnalysis(workflow) { it.alerts.first { row -> row.id == alert.id }.snoozedUntil > 0 }
             compose.onNodeWithTag("lab-alert-${alert.id}").assertDoesNotExist()
             compose.onNodeWithText(text(R.string.lab_analysis_settings, "en")).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_budget_section, "en")).assertIsDisplayed()
@@ -337,7 +337,7 @@ class AnalyticsJourneyTest {
         try {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
             val workflow = c.analytics
-            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.snapshot != null }
+            awaitAnalysis(workflow) { it.snapshot != null }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot)
             val insights = requireNotNull(snapshot.insights)
@@ -427,7 +427,7 @@ class AnalyticsJourneyTest {
         try {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
             val workflow = c.analytics
-            compose.waitUntil(30_000) { !workflow.state.value.updating && workflow.state.value.snapshot != null }
+            awaitAnalysis(workflow) { it.snapshot != null }
             val original = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot).let { it.copy(quality = it.quality.copy(
                 pendingReviews = 1, blocked = true, reasons = listOf("SMS_PERMISSION", "PROCESSING_RETRY"))) }
@@ -475,7 +475,7 @@ class AnalyticsJourneyTest {
         var showing by mutableStateOf(true)
         try {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
-            compose.waitUntil(30_000) { !c.analytics.state.value.updating }
+            awaitAnalysis(c.analytics) { true }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")); fontScale = 1.3f }
             compose.setContent { if (showing) {
@@ -570,7 +570,7 @@ class AnalyticsJourneyTest {
                 c.analytics.request(); c.analytics.refresh()
             }
             val workflow = c.analytics
-            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.any { it.id == "observed-0" } }
+            awaitAnalysis(workflow) { it.observations.any { row -> row.id == "observed-0" } }
             val observation = workflow.state.value.observations.first { it.id == "observed-0" }
             assertEquals((1..6).map { "observed-$it" }.reversed(), observation.referenceIds)
             val before = runBlocking { c.financialTransactionRepository.listAll() }
@@ -640,7 +640,7 @@ class AnalyticsJourneyTest {
                     java.math.BigDecimal("40.00"), transaction.amount.currency)))
                 workflow.request(); workflow.refresh()
             }
-            compose.waitUntil(90_000) { !workflow.state.value.updating && workflow.state.value.observations.none { it.id == "observed-0" } }
+            awaitAnalysis(workflow) { it.observations.none { row -> row.id == "observed-0" } }
             compose.onNodeWithTag("analysis-tab-0").performClick()
             compose.onNodeWithTag("spending-observation-chart-observed-0").assertDoesNotExist()
         } finally {
