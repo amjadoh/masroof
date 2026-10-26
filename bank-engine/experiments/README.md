@@ -25,7 +25,7 @@ the frozen reference. These are 13 classification rules across 11 families, not
 13 automatically learned message layouts. Taught-pattern financial activation,
 bank routing/import settings and pattern-management UI remain pending.
 
-The latest targeted checks passed 101 bank-engine tests and 41 app tests, including
+The latest targeted checks passed 101 bank-engine tests and 126 app tests, including
 financial oracles, manual/posted preservation, refresh recovery and package
 boundaries; the debug APK builds. No APK was installed on the user's device.
 
@@ -41,8 +41,22 @@ The two-process lifecycle was rerun after the fixes: 12 held-out messages,
 The shared core supports original UTF-16 ranges selected directly by a user even
 when discovery misses a value, time-first timestamps, and standalone date slots.
 Those slots reject impossible dates and survive save/reload using generated
-representatives rather than reopening teaching messages. File persistence and
-the CLI remain test tools; Android storage/backup/UI are still pending.
+representatives rather than reopening teaching messages. The CLI and its file
+store remain test tools. Android now has a separate private-file
+`MessagePatternStore` and `MessagePatternsWorkflow`, exposed through AppContainer.
+The validated document records bank aliases, immutable pattern revision history
+and an optimistic editor generation; atomic replacement preserves the old file
+on write failure. The latest revision, including a disabled revision, is current.
+
+Pattern configuration is included in encrypted backup preferences, keeping the
+same three archive entries and Room v18. Existing database access coordination
+keeps export and pattern edits consistent. Import validates before touching live
+data; older backups clear pattern configuration. Restore journals pair original
+or incoming definitions with the corresponding database after interruption.
+Rollback preserves even invalid original bytes rather than silently discarding
+them; normal reads still reject invalid configuration. Tests cover these paths.
+Bank routing/import, teaching UI, and the pattern fingerprint in the financial
+write guard remain pending; taught definitions still have no posting authority.
 
 The new audit of the same 64 fixtures offers all 33 expected transaction timestamps
 and both expected due dates as raw candidates. This closes the seven previously
