@@ -1,16 +1,33 @@
 package com.baraa.masroof.testsupport
 
 import com.baraa.masroof.bank.BankSmsAdapter
-import com.baraa.masroof.bank.NewEngineSmsAdapter
+import com.baraa.masroof.bank.MessagePatternSmsAdapter
+import com.baraa.masroof.bank.InterpretationDraftMapper
+import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.lab.bank.interpretation.RuleInterpreter
-import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
-import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.engine.bank.BankRuleSchema
+import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
+import com.baraa.masroof.engine.bank.patterns.PatternFactInterpreter
+import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.parsing.parser.SmsParseGateway
 
-fun engineFixtureAdapter(pipeline: SmsParseGateway? = null, detector: com.baraa.masroof.parsing.detector.BankDetector? = null): BankSmsAdapter {
-    val engine = RuleInterpreter(AlJaziraRuleProfile.current())
-    val adapter = NewEngineSmsAdapter { engine.interpretRouted(it, BankId(Bank.BANK_ALJAZIRA.id)) }
+private fun bundledConfiguration() = MessagePatternConfigurationCodec.decode(
+    java.io.File("src/main/assets/bank-patterns/BANK_ALJAZIRA.patterns.json").readText())
+
+/** Default integration setup follows production. Pass a profile only for an explicit reference test. */
+fun engineFixtureAdapter(
+    pipeline: SmsParseGateway? = null,
+    detector: com.baraa.masroof.parsing.detector.BankDetector? = null,
+    profile: BankRuleSchema? = null,
+): BankSmsAdapter {
+    val adapter = if (profile != null) {
+        val engine = RuleInterpreter(profile)
+        InterpretationTestAdapter { engine.interpretRouted(it, BankId(Bank.BANK_ALJAZIRA.id)) }
+    } else {
+        val configuration = bundledConfiguration()
+        MessagePatternSmsAdapter(configuration.banks.single(), PatternFactInterpreter(configuration))
+    }
+    // Narrow pipeline tests may replace parsing/detection; production preservation journeys use AppContainer.
     return object : BankSmsAdapter by adapter {
         override fun detect(sender: String, body: String) = detector?.detect(sender, body) ?: adapter.detect(sender, body)
         override fun parse(input: com.baraa.masroof.parsing.model.SmsParseInput) = pipeline?.parse(input) ?: adapter.parse(input)
@@ -20,9 +37,9 @@ fun engineFixtureAdapter(pipeline: SmsParseGateway? = null, detector: com.baraa.
 class EngineFixtureParser(
     private val validator: com.baraa.masroof.parsing.validator.ParsedEventValidator = com.baraa.masroof.parsing.validator.DefaultParsedEventValidator(),
 ) : SmsParseGateway {
-    private val engine = RuleInterpreter(AlJaziraRuleProfile.current())
+    private val engine = PatternFactInterpreter(bundledConfiguration())
     override fun parse(input: com.baraa.masroof.parsing.model.SmsParseInput): com.baraa.masroof.parsing.model.ParseResult {
-        val message = com.baraa.masroof.lab.bank.MessageInput(input.rawSmsId, input.sender, input.body, input.receivedAt, durableSmsReceipt = true)
-        return com.baraa.masroof.bank.InterpretationDraftMapper(validator).map(message, engine.interpretRouted(message, BankId(Bank.BANK_ALJAZIRA.id)), Bank.BANK_ALJAZIRA)
+        val message = com.baraa.masroof.engine.bank.MessageInput(input.rawSmsId, input.sender, input.body, input.receivedAt, durableSmsReceipt = true)
+        return InterpretationDraftMapper(validator).map(message, engine.interpretRouted(message, BankId(Bank.BANK_ALJAZIRA.id)), Bank.BANK_ALJAZIRA)
     }
 }

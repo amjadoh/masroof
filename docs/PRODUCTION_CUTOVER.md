@@ -17,54 +17,54 @@
 ### `bank-engine/`
 
 - `bank-engine/build.gradle.kts`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/Interpretation.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/NetworkRules.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/RuleSchema.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/DateGrammar.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/DetailExtractor.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyAssist.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/FamilyTextPreparation.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/MoneyGrammar.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/ObservationExtractor.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RoleLineReader.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/RuleInterpreter.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/SourceText.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/interpretation/TransferNetworkResolver.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/AlJaziraRuleProfile.kt`
-- `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/rules/RuleLibrary.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/IndependentRuleInterpreterTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/InterpretationContractTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/M8StatementAuthorityTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/MessageLayoutCoverageTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/ModuleBoundaryTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/ObservationRulesTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/RoleBoundDetailsTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/RuleSchemaTest.kt`
-- `bank-engine/src/test/kotlin/com/baraa/masroof/lab/bank/TransferNetworkTest.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/Interpretation.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/NetworkRules.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/RuleSchema.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/DateGrammar.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/DetailExtractor.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/FamilyAssist.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/FamilyTextPreparation.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/MoneyGrammar.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/ObservationExtractor.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/RoleLineReader.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/RuleInterpreter.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/SourceText.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/interpretation/TransferNetworkResolver.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/rules/AlJaziraRuleProfile.kt`
+- `bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/rules/RuleLibrary.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/IndependentRuleInterpreterTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/InterpretationContractTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/M8StatementAuthorityTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/MessageLayoutCoverageTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/ModuleBoundaryTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/ObservationRulesTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/RoleBoundDetailsTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/RuleSchemaTest.kt`
+- `bank-engine/src/test/kotlin/com/baraa/masroof/engine/bank/TransferNetworkTest.kt`
 
 ### `finance-core/`
 
 - `finance-core/build.gradle.kts`
-- `finance-core/src/main/kotlin/com/baraa/masroof/lab/finance/value/Values.kt`
-- `finance-core/src/test/kotlin/com/baraa/masroof/lab/finance/ValueContractTest.kt`
+- `finance-core/src/main/kotlin/com/baraa/masroof/finance/value/Values.kt`
+- `finance-core/src/test/kotlin/com/baraa/masroof/finance/ValueContractTest.kt`
 
 ### `ml-assist/`
 
 - `ml-assist/.gitignore`
 - `ml-assist/ML_SEED_EVALUATION.json`
 - `ml-assist/build.gradle.kts`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/analytics/AnalyticsData.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/analytics/PurchaseForecaster.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/analytics/RecurringDetector.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/catalog/ModelManifest.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyClassifier.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyContracts.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyInputCleaner.kt`
-- `ml-assist/src/main/kotlin/com/baraa/masroof/lab/ml/family/FamilyModel.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/analytics/AnalyticsData.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/analytics/PurchaseForecaster.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/analytics/RecurringDetector.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/ml/catalog/ModelManifest.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/ml/family/FamilyClassifier.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/ml/family/FamilyContracts.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/ml/family/FamilyInputCleaner.kt`
+- `ml-assist/src/main/kotlin/com/baraa/masroof/ml/family/FamilyModel.kt`
 - `ml-assist/src/main/resources/ml/family-seed.json`
-- `ml-assist/src/test/kotlin/com/baraa/masroof/lab/analytics/AnalyticsEngineTest.kt`
-- `ml-assist/src/test/kotlin/com/baraa/masroof/lab/ml/family/FamilyClassifierTest.kt`
-- `ml-assist/src/test/kotlin/com/baraa/masroof/lab/ml/family/FamilyInputCleanerTest.kt`
+- `ml-assist/src/test/kotlin/com/baraa/masroof/analytics/AnalyticsEngineTest.kt`
+- `ml-assist/src/test/kotlin/com/baraa/masroof/ml/family/FamilyClassifierTest.kt`
+- `ml-assist/src/test/kotlin/com/baraa/masroof/ml/family/FamilyInputCleanerTest.kt`
 - `ml-assist/tools/baseline-evaluation.json`
 - `ml-assist/tools/corpus-splits.json`
 - `ml-assist/tools/test_training.py`
@@ -80,21 +80,21 @@
 - `app/src/main/kotlin/com/baraa/masroof/application/analytics/AnalyticsModels.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/analytics/AnalyticsWorker.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/analytics/FinancialAnalysisReader.kt`
-- `app/src/main/kotlin/com/baraa/masroof/application/analytics/LabAnalyticsWorkflow.kt`
+- `app/src/main/kotlin/com/baraa/masroof/application/analytics/AnalyticsWorkflow.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/interpretation/InterpretationProvenanceWorkflow.kt`
-- `app/src/main/kotlin/com/baraa/masroof/application/interpretation/LabFamilyAssist.kt`
-- `app/src/main/kotlin/com/baraa/masroof/application/interpretation/LabInterpretationService.kt`
+- `app/src/main/kotlin/com/baraa/masroof/application/interpretation/FamilyAssistBridge.kt`
+- `app/src/main/kotlin/com/baraa/masroof/application/interpretation/BankInterpretationService.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/interpretation/ModelRefreshWorker.kt`
-- `app/src/main/kotlin/com/baraa/masroof/application/maintenance/RetiredLabWorkCleanup.kt`
+- `app/src/main/kotlin/com/baraa/masroof/application/maintenance/RetiredWorkCleanup.kt`
 - `app/src/main/kotlin/com/baraa/masroof/bank/InterpretationDraftMapper.kt`
 - `app/src/main/kotlin/com/baraa/masroof/bank/NewEngineSmsAdapter.kt`
 - `app/src/main/kotlin/com/baraa/masroof/data/analytics/AnalyticsDatabase.kt`
 - `app/src/main/kotlin/com/baraa/masroof/data/learning/FamilyModelCodec.kt`
-- `app/src/main/kotlin/com/baraa/masroof/data/learning/LabLearningStore.kt`
+- `app/src/main/kotlin/com/baraa/masroof/data/learning/LearningStore.kt`
 - `app/src/main/kotlin/com/baraa/masroof/data/learning/LearningDatabase.kt`
 - `app/src/main/kotlin/com/baraa/masroof/data/room/PreservingOpenHelperFactory.kt`
 - `app/src/main/kotlin/com/baraa/masroof/presentation/analytics/AnalyticsReadViews.kt`
-- `app/src/main/kotlin/com/baraa/masroof/presentation/analytics/LabAnalyticsScreen.kt`
+- `app/src/main/kotlin/com/baraa/masroof/presentation/analytics/AnalyticsScreen.kt`
 - `app/src/main/kotlin/com/baraa/masroof/presentation/interpretation/InterpretationProvenanceCard.kt`
 - `app/src/main/res/values-en/analytics.xml`
 - `app/src/main/res/values-en/replica.xml`
@@ -178,7 +178,7 @@
 
 ## الاختبارات والتشغيل المستمر
 
-- اختبارات الميزات المنقولة: `app/src/test/kotlin/com/baraa/masroof/lab/beta/` و`app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/`. أسماء الحزم تاريخية، وكلها تستهدف الفعلي.
+- اختبارات الميزات المنقولة: `app/src/test/kotlin/com/baraa/masroof/integration/` و`app/src/androidTest/kotlin/com/baraa/masroof/integration/`. أُزيلت أسماء Lab/Beta من مسارات المصدر والحزم؛ كلها تستهدف التطبيق الفعلي. مفاتيح النسخ الاحتياطي وهويات العمل القديمة بقيت للتوافق.
 - أدوات العزل الاصطناعي في `app/src/androidTest/kotlin/com/baraa/masroof/testsupport/` لا تُشحن في APK التطبيق.
 - اختبار حفظ الحركات والقرارات: `app/src/test/kotlin/com/baraa/masroof/application/interpretation/ProductionEnginePreservationTest.kt`.
 - اختبار تحديث APK الفعلي: `app/src/androidTest/kotlin/com/baraa/masroof/instrumentation/upgrade/AppUpgradePreservationTest.kt` و`scripts/app-apk-upgrade.sh`.
@@ -196,12 +196,12 @@
 - `.gitignore`
 - `app/src/androidTest/kotlin/com/baraa/masroof/instrumentation/LiveRetryRestartTest.kt`
 - `app/src/androidTest/kotlin/com/baraa/masroof/instrumentation/SmsPersistenceRestartTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/analytics/AnalyticsJourneyTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/learning/ReplicaMachineLearningTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/replica/ReplicaFinancialParityTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/replica/ReplicaSetupJourneyTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/replica/ReplicaStorageRecoveryTest.kt`
-- `app/src/androidTest/kotlin/com/baraa/masroof/lab/beta/replica/ReportedMessagesJourneyTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/analytics/AnalyticsJourneyTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/learning/ReplicaMachineLearningTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/replica/ReplicaFinancialParityTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/replica/ReplicaSetupJourneyTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/replica/ReplicaStorageRecoveryTest.kt`
+- `app/src/androidTest/kotlin/com/baraa/masroof/integration/replica/ReportedMessagesJourneyTest.kt`
 - `app/src/androidTest/kotlin/com/baraa/masroof/testsupport/EngineFixtureParser.kt`
 - `app/src/androidTest/kotlin/com/baraa/masroof/testsupport/FinancialHistoryFixture.kt`
 - `app/src/androidTest/kotlin/com/baraa/masroof/testsupport/TestRuntime.kt`
@@ -225,15 +225,15 @@
 - `app/src/test/kotlin/com/baraa/masroof/data/repository/RoomRawSmsRepositoryTest.kt`
 - `app/src/test/kotlin/com/baraa/masroof/domain/loan/FinancingInstallmentAssemblyTest.kt`
 - `app/src/test/kotlin/com/baraa/masroof/integrity/IntegrityLedger.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/analytics/AnalyticsPersistenceTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/analytics/AnalyticsReadModelsTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/bank/DeviceReportedMessagesTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/bank/NewEngineFixtureTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/bank/NewEngineGateTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/learning/FamilyFeatureExportTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/learning/FamilyLearningTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/learning/InterpretationProvenanceTest.kt`
-- `app/src/test/kotlin/com/baraa/masroof/lab/beta/learning/LearningPersistenceTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/analytics/AnalyticsPersistenceTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/analytics/AnalyticsReadModelsTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/bank/DeviceReportedMessagesTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/bank/NewEngineFixtureTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/bank/NewEngineGateTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/learning/FamilyFeatureExportTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/learning/FamilyLearningTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/learning/InterpretationProvenanceTest.kt`
+- `app/src/test/kotlin/com/baraa/masroof/integration/learning/LearningPersistenceTest.kt`
 - `app/src/test/kotlin/com/baraa/masroof/parsing/fixtures/AlJaziraFixtureLoader.kt`
 - `app/src/test/kotlin/com/baraa/masroof/parsing/fixtures/AlJaziraFixtureParseHarness.kt`
 - `app/src/test/kotlin/com/baraa/masroof/presentation/navigation/SettingsDestinationNavigationTest.kt`

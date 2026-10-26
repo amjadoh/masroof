@@ -148,7 +148,7 @@ internal fun DashboardScreen(
             AnalyticsNavigation.setAnalysisVisible(true)
             onDispose { AnalyticsNavigation.setAnalysisVisible(false) }
         }
-        com.baraa.masroof.presentation.analytics.LabAnalyticsRoute(
+        com.baraa.masroof.presentation.analytics.AnalyticsRoute(
             onBack = { labAnalysisOpen = false; AnalyticsNavigation.finish() },
             onOpenTransaction = onOpenTransaction,
             onOpenReview = onOpenReview, onRequestSmsPermission = onRequestSmsPermission, onRescan = onRescan,
@@ -338,7 +338,7 @@ private fun DashboardCustomizableSections(
                     )
                     if (state.isCurrentPeriod) {
                         androidx.compose.foundation.layout.Spacer(Modifier.height(MasroofSpacing.sectionGap))
-                        com.baraa.masroof.presentation.analytics.LabForecastCard(onOpenAnalytics)
+                        com.baraa.masroof.presentation.analytics.ForecastCard(onOpenAnalytics)
                     }
                 }
 

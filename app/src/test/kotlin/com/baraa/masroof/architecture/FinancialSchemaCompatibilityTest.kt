@@ -14,7 +14,7 @@ class FinancialSchemaCompatibilityTest {
         assertEquals(18, MasroofDatabase.VERSION)
         assertEquals("71f1193767b3aa12bcb6cc6e7ce77147", MasroofDatabase.IDENTITY_HASH)
         val schemas = File("schemas/com.baraa.masroof.data.room.MasroofDatabase")
-        assertEquals((1..18).toSet(), schemas.listFiles()!!.map { it.nameWithoutExtension.toInt() }.toSet())
+        assertEquals(setOf(18), schemas.listFiles()!!.map { it.nameWithoutExtension.toInt() }.toSet())
         val digest = MessageDigest.getInstance("SHA-256").digest(File(schemas, "18.json").readBytes())
             .joinToString("") { "%02x".format(it) }
         assertEquals("10d89f9fa6411036dd4470592a25de89c987e332512a4918bceab3de40d849a7", digest)

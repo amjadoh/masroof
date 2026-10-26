@@ -1,6 +1,6 @@
 package com.baraa.masroof.application.analytics
 
-import com.baraa.masroof.lab.analytics.*
+import com.baraa.masroof.analytics.*
 import com.baraa.masroof.data.analytics.AnalysisAlertRow
 import com.baraa.masroof.data.analytics.AnalysisPreferencesRow
 import kotlinx.serialization.Serializable

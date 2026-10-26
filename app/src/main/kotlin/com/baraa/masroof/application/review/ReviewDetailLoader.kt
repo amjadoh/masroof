@@ -37,6 +37,7 @@ class ReviewDetailLoader(
         val counterparty: String?,
         val cardRef: CardReference?,
         val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
+        val bankId: String? = null,
     )
 
     /**
@@ -118,6 +119,8 @@ class ReviewDetailLoader(
             counterparty = event?.counterparty,
             cardRef = event?.cardRef,
             provenance = provenanceWorkflow?.load(review.rawSmsId),
+            bankId = (com.baraa.masroof.domain.model.ExplicitBankSelection.selectedBankId(review.reasons)
+                ?: event?.bank?.id)?.takeUnless { it == com.baraa.masroof.domain.model.Bank.UNKNOWN.id },
         )
     }
 }

@@ -113,10 +113,100 @@ class ReviewDetailLoaderTest {
         assertEquals(receivedAt, detail.receivedAt)
         assertNull(detail.messageFamily)
         assertNull(detail.amount)
+        assertNull(detail.bankId) // No bank may be guessed from the sender or quoted message text.
+        val selected = reviewRepo.upsertRequired(review.rawSmsId, review.kind,
+            review.reasons + "user_selected_bank:STC", clock.now())
+        assertEquals("STC", loader.loadDetail(review.id)!!.bankId)
+        assertEquals(selected, reviewRepo.getById(review.id))
+        assertEquals(body, rawRepo.getById(review.rawSmsId)!!.body)
 
         val summary = loader.loadSummaries().single()
         assertEquals(review.id, summary.review.id)
         assertEquals(body, summary.body)
-        assertEquals(listOf("unsupported_bank_message_format"), summary.review.reasons)
+        assertEquals(selected.reasons, summary.review.reasons)
     }
+    @Test fun teachingUsesSelectedBankAndNeverChangesTheReviewedEvidenceOrDecision() = runBlocking {
+        val body = "Payment\nAmount:10SAR"
+        val raw = RawSms("teaching-source", "Sender", body, clock.now(), "teaching-provider", SmsBodyHasher.sha256Hex(body))
+        rawRepo.insertIfAbsent(raw)
+        val parsed = RoomParsedEventRepository(db.parsedEventDao())
+        val event = com.baraa.masroof.domain.model.ParsedEvent("event-teaching", raw.id,
+            com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA, com.baraa.masroof.domain.model.MessageFamily.UNKNOWN,
+            null, null, null, null, null, null, null, null, null, null,
+            com.baraa.masroof.domain.model.Confidence(0.0), com.baraa.masroof.domain.model.ParseStatus.REVIEW_REQUIRED)
+        parsed.save(event)
+        val review = ingestionReviews.requireReview(raw.id, IngestionReviewService.REASON_UNSUPPORTED_FORMAT)
+        assertEquals("BANK_ALJAZIRA", loader.loadDetail(review.id)!!.bankId)
+        reviewRepo.upsertRequired(raw.id, review.kind, review.reasons + "user_selected_bank:STC", clock.now())
+        val decision = reviewRepo.markResolved(review.id,
+            com.baraa.masroof.domain.model.ReviewResolutionKind.USER_NON_FINANCIAL, clock.now(), null)
+        val detail = loader.loadDetail(review.id)!!
+        assertEquals("STC", detail.bankId)
+        val directory = java.nio.file.Files.createTempDirectory("review-teaching-").toFile()
+        try {
+            val patterns = com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
+                com.baraa.masroof.data.patterns.MessagePatternStore(directory.resolve("patterns.json")),
+                com.baraa.masroof.data.room.DatabaseAccessGate())
+            patterns.addBank(0, "Synthetic bank", detail.sender!!, detail.bankId)
+            val preview = patterns.teach(1, detail.bankId!!, detail.sender,
+                com.baraa.masroof.application.patterns.PatternOperation.PURCHASE, detail.body!!,
+                listOf(com.baraa.masroof.application.patterns.PatternBinding("amount", body.indexOf("10SAR"), body.length)))
+            patterns.saveTeaching(preview)
+            assertEquals(decision, reviewRepo.getById(review.id))
+            assertEquals(raw, rawRepo.getById(raw.id))
+            assertEquals(event, parsed.findByRawSmsId(raw.id)!!.event)
+            assertEquals(emptyList<com.baraa.masroof.domain.model.FinancialTransaction>(),
+                RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()).listAll())
+        } finally { directory.deleteRecursively() }
+        Unit
+    }
+
+    @Test fun pendingPatternPreviewExtractsEachMessageAndAbstainsOnConflictsWithoutWrites() = runBlocking {
+        val directory = java.nio.file.Files.createTempDirectory("pending-patterns-").toFile()
+        try {
+            val store = com.baraa.masroof.data.patterns.MessagePatternStore(directory.resolve("patterns.json"))
+            val body = "Payment\nAmount:10SAR"
+            val pattern = com.baraa.masroof.engine.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
+                listOf(com.baraa.masroof.engine.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+            val bank = com.baraa.masroof.engine.bank.patterns.BankMessagePatterns("STC", listOf("STC Bank"), patterns = listOf(pattern))
+            store.saveBank(0, bank)
+            val inputs = listOf("first", "second", "no-match", "posted", "corrected", "resolved", "other-bank")
+            for (id in inputs) {
+                val text = when(id) { "second" -> body.replace("10SAR", "250SAR"); "no-match" -> "Different wording"; else -> body }
+                rawRepo.insertIfAbsent(RawSms(id, "STC Bank", text, clock.now(), id, SmsBodyHasher.sha256Hex(text)))
+                val review = ingestionReviews.requireReview(id, IngestionReviewService.REASON_UNSUPPORTED_FORMAT)
+                if (id == "resolved") reviewRepo.markResolved(review.id, com.baraa.masroof.domain.model.ReviewResolutionKind.USER_NON_FINANCIAL, clock.now(), null)
+                if (id == "other-bank") reviewRepo.upsertRequired(id, review.kind, review.reasons + "user_selected_bank:OTHER", clock.now())
+            }
+            val corrections = RoomUserCorrectionRepository(db.userCorrectionDao())
+            corrections.save(com.baraa.masroof.domain.model.UserCorrection("correction", "corrected", null, null, "USER", null, clock.now()))
+            val transactions = RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao())
+            val guardedTransactions = object : com.baraa.masroof.domain.repository.FinancialTransactionRepository by transactions {
+                override suspend fun isRawSmsLinked(rawSmsId: String) = rawSmsId == "posted"
+            }
+            val preview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(store,
+                com.baraa.masroof.data.room.DatabaseAccessGate(), reviewRepo, rawRepo,
+                RoomParsedEventRepository(db.parsedEventDao()), corrections, guardedTransactions,
+                com.baraa.masroof.bank.BankSmsRegistry(emptyList()))
+            val originalReviews = reviewRepo.listAll()
+            val originalRaw = rawRepo.getByIds(inputs)
+            val result = preview.preview("STC", 1)
+            assertEquals(3, result.rows.size)
+            val matches = result.rows.flatMap { it.matches }.map { it.fields.getValue("amount").text }.sorted()
+            assertEquals(listOf("10SAR", "250SAR"), matches)
+            assertEquals(1, result.rows.count { it.status == com.baraa.masroof.application.patterns.PendingPatternStatus.NO_MATCH })
+            store.saveBank(1, bank.copy(patterns = listOf(pattern.copy(id = "competing"))))
+            val conflict = preview.preview("STC", 2)
+            assertEquals(2, conflict.rows.count { it.status == com.baraa.masroof.application.patterns.PendingPatternStatus.PATTERN_CONFLICT })
+            org.junit.Assert.assertTrue(runCatching { preview.preview("STC", 1) }.isFailure)
+            store.saveBank(2, com.baraa.masroof.engine.bank.patterns.BankMessagePatterns("COLLISION", listOf("STC Bank")))
+            assertEquals(setOf(com.baraa.masroof.application.patterns.PendingPatternStatus.BANK_CONFLICT),
+                preview.preview("STC", 3).rows.map { it.status }.toSet())
+            assertEquals(originalReviews, reviewRepo.listAll())
+            assertEquals(originalRaw, rawRepo.getByIds(inputs))
+            assertEquals(emptyList<com.baraa.masroof.domain.model.FinancialTransaction>(), transactions.listAll())
+        } finally { directory.deleteRecursively() }
+        Unit
+    }
+
 }

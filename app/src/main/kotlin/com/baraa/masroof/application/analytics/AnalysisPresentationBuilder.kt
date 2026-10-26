@@ -1,6 +1,6 @@
 package com.baraa.masroof.application.analytics
 
-import com.baraa.masroof.lab.analytics.CleanData
+import com.baraa.masroof.analytics.CleanData
 import java.time.Instant
 import java.time.ZoneId
 
@@ -16,11 +16,11 @@ object AnalysisPresentationBuilder {
         val method = when {
             snapshot.quality.blocked || snapshot.status != "READY" || snapshot.total == null -> ForecastMethod.UNAVAILABLE
             snapshot.method == "WEEKDAY_MEDIAN" -> ForecastMethod.INITIAL
-            snapshot.method == com.baraa.masroof.lab.analytics.AnalyticsVersion.MODEL -> ForecastMethod.PERSONAL
+            snapshot.method == com.baraa.masroof.analytics.AnalyticsVersion.MODEL -> ForecastMethod.PERSONAL
             else -> ForecastMethod.UNAVAILABLE
         }
         val evaluations = if (method == ForecastMethod.UNAVAILABLE ||
-            snapshot.evaluationVersion != com.baraa.masroof.lab.analytics.AnalyticsVersion.EVALUATION) emptyList() else
+            snapshot.evaluationVersion != com.baraa.masroof.analytics.AnalyticsVersion.EVALUATION) emptyList() else
             snapshot.evaluations.filter { it.horizon in setOf(1, 7, 14, 28) && it.count >= 8 && it.mae >= 0 }
                 .distinctBy { it.horizon }.sortedBy { it.horizon }
         return ForecastExplanation(method, evaluations)

@@ -2,6 +2,7 @@ package com.baraa.masroof.testsupport
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import com.baraa.masroof.application.dashboard.DashboardEvidence
 import com.baraa.masroof.application.dashboard.DashboardEvidenceScope
 import com.baraa.masroof.application.dashboard.DashboardEvidenceSource
@@ -84,7 +85,10 @@ import kotlin.random.Random
  * statements, balances, installments, exchange rates and card evidence fall outside any
  * single displayed period.
  */
-class DashboardLedgerWorld(context: Context) : AutoCloseable {
+class DashboardLedgerWorld(
+    context: Context,
+    adapter: com.baraa.masroof.bank.BankSmsAdapter = engineFixtureAdapter(),
+) : AutoCloseable {
     val zone: ZoneId = ZoneId.of("Asia/Riyadh")
     val clock: Clock = Clock.fixed(Instant.parse("2026-09-15T09:00:00Z"), zone)
     val db: MasroofDatabase = Room.inMemoryDatabaseBuilder(context, MasroofDatabase::class.java)
@@ -108,7 +112,7 @@ class DashboardLedgerWorld(context: Context) : AutoCloseable {
     }
 
     private val importClock = InstantClock { Instant.parse("2026-09-01T00:00:00Z") }
-    private val registry = BankSmsRegistry(listOf(engineFixtureAdapter()))
+    private val registry = BankSmsRegistry(listOf(adapter))
     private val discovery = OwnershipDiscoveryService(accounts, cards, loans)
     private val reconciliation = TransactionReconciliationService(
         parsedEventRepository = parsedRepo,
@@ -141,6 +145,9 @@ class DashboardLedgerWorld(context: Context) : AutoCloseable {
             reviewQueueUpdater = reviewQueueUpdater,
             processingRecovery = processingRecovery,
             ingestionReviewService = IngestionReviewService(reviewRepo, importClock),
+            patternProcessing = com.baraa.masroof.application.ingestion.PatternEvidenceProtection(
+                reviewRepo, RoomUserCorrectionRepository(db.userCorrectionDao()), ftRepo, parsedRepo,
+                inTransaction = { work -> db.withTransaction { work() } })::run,
             exchangeRateEnrichmentScheduler = exchangeRateEnrichment?.let { workflow ->
                 com.baraa.masroof.application.sms.ImmediateExchangeRateEnrichmentScheduler(
                     com.baraa.masroof.application.sms.PendingExchangeRateEnricher { workflow.enrichPending() },

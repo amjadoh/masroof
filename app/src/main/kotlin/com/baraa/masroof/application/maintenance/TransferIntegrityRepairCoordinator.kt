@@ -34,13 +34,6 @@ class TransferIntegrityRepairCoordinator(
 ) {
     private val mutex = Mutex()
 
-    fun pendingRequirement(): MaintenanceRequirement? =
-        if (lastRepairVersion() >= CURRENT_VERSION) {
-            null
-        } else {
-            MaintenanceRequirement.BLOCKING
-        }
-
     suspend fun runIfNeeded(): BackfillOutcome = mutex.withLock {
         if (lastRepairVersion() >= CURRENT_VERSION) return@withLock BackfillOutcome.UP_TO_DATE
 

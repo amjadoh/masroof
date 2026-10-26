@@ -24,6 +24,9 @@ class SettingsDestinationNavigationTest {
             decodeSettingsDestination("statement_reconciliation"),
         )
         assertEquals(SettingsDestination.MessageLearning, decodeSettingsDestination(SettingsDestination.MessageLearning.encode()))
+        listOf(SettingsDestination.MessagePatterns(), SettingsDestination.MessagePatterns("BANK_ALJAZIRA")).forEach {
+            assertEquals(it, decodeSettingsDestination(it.encode()))
+        }
         assertEquals(SettingsDestination.DesignCatalog, decodeSettingsDestination("design_catalog"))
         assertEquals(SettingsDestination.About, decodeSettingsDestination(SettingsDestination.About.encode()))
     }

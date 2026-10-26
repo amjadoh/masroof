@@ -113,7 +113,7 @@ class RestoreConcurrencyTest {
 
     private fun open(context: Context): MasroofDatabase =
         Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS).build()
+            .build()
 
     private fun message() = RawSms(
         "restore-concurrent-capture", "AlJazira", "test-only-evidence", Instant.parse("2026-08-03T10:00:00Z"),

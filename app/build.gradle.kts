@@ -125,9 +125,7 @@ android {
         }
     }
 
-    // Room schema export for migrations (new rewrite schema only).
-    // androidTest assets point at the canonical schemas/ directory for future
-    // MigrationTestHelper use — no duplicate committed copies.
+    // Canonical Room schema exports used by device verification.
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
         getByName("androidTest").assets.srcDir("src/test/resources/testdata")
@@ -169,6 +167,9 @@ dependencies {
 
     implementation(libs.okhttp)
     implementation(libs.androidx.work.runtime.ktx)
+
+    testImplementation(testFixtures(project(":bank-engine")))
+    androidTestImplementation(testFixtures(project(":bank-engine")))
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.serialization.json)

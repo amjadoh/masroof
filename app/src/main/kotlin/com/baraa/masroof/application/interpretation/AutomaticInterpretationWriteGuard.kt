@@ -14,17 +14,21 @@ class AutomaticInterpretationWriteGuard(
     private val transactions: FinancialTransactionRepository,
     private val inferenceCurrent: suspend (ParsedEventRecord) -> Boolean,
     private val inTransaction: suspend (suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult,
+    private val patternsCurrent: suspend (ParsedEventRecord) -> Boolean = { !PatternInterpretationWritePolicy.isPatternDerived(it) },
 ) {
     suspend fun write(expected: List<ParsedEventRecord>, mutation: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult = inTransaction {
+        var reason = "stale_family_inference"
         val stale = expected.firstOrNull { prior ->
             val id=prior.event.rawSmsId
             val review=reviews.findByRawSmsId(id)
             val current=events.findEffectiveByRawSmsId(id)
             val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && transactions.isRawSmsLinked(id)
-            protected || current != prior || (review?.resolutionKind != ReviewResolutionKind.USER_FINANCIAL_TYPE &&
-                current != null && !inferenceCurrent(current))
+            if (protected || current != prior) true
+            else if (current.automationConfirmed || review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE) false
+            else if (!patternsCurrent(current)) { reason = "stale_pattern_definition"; true }
+            else !inferenceCurrent(current)
         }
-        if(stale != null) FinancialTransactionSaveResult.Conflict(stale.event.rawSmsId,"stale_family_inference")
+        if(stale != null) FinancialTransactionSaveResult.Conflict(stale.event.rawSmsId,reason)
         else mutation()
     }
 }

@@ -177,7 +177,6 @@ class PreVacuumBackupSnapshotTest {
 
     private fun openDatabase(): MasroofDatabase =
         Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .allowMainThreadQueries()
             .build()

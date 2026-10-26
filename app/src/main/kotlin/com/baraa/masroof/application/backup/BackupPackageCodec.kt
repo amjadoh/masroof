@@ -23,42 +23,15 @@ object BackupPackageCodec {
         json.encodeToString(BackupPreferencesSnapshot.serializer(), snapshot)
 
     fun decodePreferences(raw: String): BackupPreferencesSnapshot =
-        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw).also { com.baraa.masroof.application.analytics.LabAnalyticsBackup.validate(it.labAnalysis) }
+        json.decodeFromString(BackupPreferencesSnapshot.serializer(), raw).also {
+            com.baraa.masroof.application.analytics.AnalyticsBackup.validate(it.labAnalysis)
+            com.baraa.masroof.application.backup.MessagePatternBackup.validate(it.messagePatterns)
+        }
 
     fun validateManifest(
         manifest: BackupManifest,
         expectedRoomVersion: Int,
         expectedIdentityHash: String,
-    ): Boolean = validateManifestForImport(
-        manifest = manifest,
-        targetRoomVersion = expectedRoomVersion,
-        targetIdentityHash = expectedIdentityHash,
-    )
-
-    /**
-     * Accepts backups at [targetRoomVersion] or any [importableVersions] entry (e.g. v5 → v6 upgrade).
-     */
-    fun validateManifestForImport(
-        manifest: BackupManifest,
-        targetRoomVersion: Int,
-        targetIdentityHash: String,
-        importableVersions: Map<Int, String> = emptyMap(),
-    ): Boolean {
-        if (manifest.formatVersion != BackupPackageFormat.FORMAT_VERSION) return false
-        if (manifest.roomVersion == targetRoomVersion) {
-            return manifest.identityHash == targetIdentityHash
-        }
-        val expectedHash = importableVersions[manifest.roomVersion] ?: return false
-        return manifest.identityHash == expectedHash
-    }
-
-    fun expectedIdentityHashForImport(
-        manifest: BackupManifest,
-        targetRoomVersion: Int,
-        targetIdentityHash: String,
-        importableVersions: Map<Int, String> = emptyMap(),
-    ): String? = when {
-        manifest.roomVersion == targetRoomVersion -> targetIdentityHash
-        else -> importableVersions[manifest.roomVersion]
-    }
+    ): Boolean = manifest.formatVersion == BackupPackageFormat.FORMAT_VERSION &&
+        manifest.roomVersion == expectedRoomVersion && manifest.identityHash == expectedIdentityHash
 }

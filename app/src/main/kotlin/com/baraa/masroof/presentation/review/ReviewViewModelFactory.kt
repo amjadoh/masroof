@@ -18,6 +18,7 @@ class ReviewViewModelFactory(
             provenanceWorkflow = container.interpretationProvenanceWorkflow,
         )
         return ReviewViewModel(
+            messagePatternsWorkflow = container.messagePatternsWorkflow,
             reviewWorkflowService = container.reviewWorkflowService,
             detailLoader = loader,
             reviewOwnershipWorkflow = container.reviewOwnershipWorkflow,

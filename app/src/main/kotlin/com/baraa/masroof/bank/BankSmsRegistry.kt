@@ -13,12 +13,14 @@ import com.baraa.masroof.parsing.model.BankDetectionResult
  */
 class BankSmsRegistry(
     private val adapters: List<BankSmsAdapter>,
+    private val configuredAdapters: () -> List<BankSmsAdapter> = { emptyList() },
 ) {
+    private fun snapshot(): List<BankSmsAdapter> = adapters + configuredAdapters()
     fun route(sender: String, body: String): BankRoutingResult {
         val matches = mutableListOf<BankRoutingResult.Matched>()
         val suspicions = mutableListOf<String>()
         var unmatchedReason: String? = null
-        for (adapter in adapters) {
+        for (adapter in snapshot()) {
             when (val detection = adapter.detect(sender, body)) {
                 is BankDetectionResult.Detected ->
                     matches += BankRoutingResult.Matched(adapter, detection)
@@ -41,12 +43,12 @@ class BankSmsRegistry(
     }
 
     fun adapterFor(bank: Bank): BankSmsAdapter? =
-        adapters.firstOrNull { it.bank == bank }
+        snapshot().singleOrNull { it.bank == bank }
 
     fun singleAdapterOrNull(): BankSmsAdapter? =
-        adapters.singleOrNull()
+        snapshot().singleOrNull()
 
     /** Registered banks, sorted by id. Registration order is not an identity. */
     fun banks(): List<Bank> =
-        adapters.map { it.bank }.distinct().sortedBy { it.id }
+        snapshot().map { it.bank }.distinct().sortedBy { it.id }
 }

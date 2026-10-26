@@ -1,7 +1,7 @@
 package com.baraa.masroof.application.analytics
 
 import com.baraa.masroof.data.analytics.ForecastComparisonRow
-import com.baraa.masroof.lab.analytics.AnalyticsVersion
+import com.baraa.masroof.analytics.AnalyticsVersion
 import java.math.BigDecimal
 
 data class ForecastPerformance(val allowPersonal: Boolean = true, val periods: Int = 0,

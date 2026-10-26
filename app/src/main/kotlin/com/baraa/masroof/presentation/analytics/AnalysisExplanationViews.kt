@@ -29,7 +29,7 @@ import com.baraa.masroof.presentation.locale.formatLocalizedMoney
     }
 }
 
-@Composable internal fun AnalysisDataQuality(snapshot: AnalysisSnapshot, workflow: LabAnalyticsWorkflow, onOpenTransaction: (String) -> Unit,
+@Composable internal fun AnalysisDataQuality(snapshot: AnalysisSnapshot, workflow: AnalyticsWorkflow, onOpenTransaction: (String) -> Unit,
     onOpenReview: () -> Unit, onRequestSmsPermission: () -> Unit, onRescan: () -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val quality = snapshot.quality
