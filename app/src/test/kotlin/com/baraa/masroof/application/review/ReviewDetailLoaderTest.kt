@@ -161,4 +161,52 @@ class ReviewDetailLoaderTest {
         Unit
     }
 
+    @Test fun pendingPatternPreviewExtractsEachMessageAndAbstainsOnConflictsWithoutWrites() = runBlocking {
+        val directory = java.nio.file.Files.createTempDirectory("pending-patterns-").toFile()
+        try {
+            val store = com.baraa.masroof.data.patterns.MessagePatternStore(directory.resolve("patterns.json"))
+            val body = "Payment\nAmount:10SAR"
+            val pattern = com.baraa.masroof.lab.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
+                listOf(com.baraa.masroof.lab.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+            val bank = com.baraa.masroof.lab.bank.patterns.BankMessagePatterns("STC", listOf("STC Bank"), patterns = listOf(pattern))
+            store.saveBank(0, bank)
+            val inputs = listOf("first", "second", "no-match", "posted", "corrected", "resolved", "other-bank")
+            for (id in inputs) {
+                val text = when(id) { "second" -> body.replace("10SAR", "250SAR"); "no-match" -> "Different wording"; else -> body }
+                rawRepo.insertIfAbsent(RawSms(id, "STC Bank", text, clock.now(), id, SmsBodyHasher.sha256Hex(text)))
+                val review = ingestionReviews.requireReview(id, IngestionReviewService.REASON_UNSUPPORTED_FORMAT)
+                if (id == "resolved") reviewRepo.markResolved(review.id, com.baraa.masroof.domain.model.ReviewResolutionKind.USER_NON_FINANCIAL, clock.now(), null)
+                if (id == "other-bank") reviewRepo.upsertRequired(id, review.kind, review.reasons + "user_selected_bank:OTHER", clock.now())
+            }
+            val corrections = RoomUserCorrectionRepository(db.userCorrectionDao())
+            corrections.save(com.baraa.masroof.domain.model.UserCorrection("correction", "corrected", null, null, "USER", null, clock.now()))
+            val transactions = RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao())
+            val guardedTransactions = object : com.baraa.masroof.domain.repository.FinancialTransactionRepository by transactions {
+                override suspend fun isRawSmsLinked(rawSmsId: String) = rawSmsId == "posted"
+            }
+            val preview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(store,
+                com.baraa.masroof.data.room.DatabaseAccessGate(), reviewRepo, rawRepo,
+                RoomParsedEventRepository(db.parsedEventDao()), corrections, guardedTransactions,
+                com.baraa.masroof.bank.BankSmsRegistry(emptyList()))
+            val originalReviews = reviewRepo.listAll()
+            val originalRaw = rawRepo.getByIds(inputs)
+            val result = preview.preview("STC", 1)
+            assertEquals(3, result.rows.size)
+            val matches = result.rows.flatMap { it.matches }.map { it.fields.getValue("amount").text }.sorted()
+            assertEquals(listOf("10SAR", "250SAR"), matches)
+            assertEquals(1, result.rows.count { it.status == com.baraa.masroof.application.patterns.PendingPatternStatus.NO_MATCH })
+            store.saveBank(1, bank.copy(patterns = listOf(pattern.copy(id = "competing"))))
+            val conflict = preview.preview("STC", 2)
+            assertEquals(2, conflict.rows.count { it.status == com.baraa.masroof.application.patterns.PendingPatternStatus.PATTERN_CONFLICT })
+            org.junit.Assert.assertTrue(runCatching { preview.preview("STC", 1) }.isFailure)
+            store.saveBank(2, com.baraa.masroof.lab.bank.patterns.BankMessagePatterns("COLLISION", listOf("STC Bank")))
+            assertEquals(setOf(com.baraa.masroof.application.patterns.PendingPatternStatus.BANK_CONFLICT),
+                preview.preview("STC", 3).rows.map { it.status }.toSet())
+            assertEquals(originalReviews, reviewRepo.listAll())
+            assertEquals(originalRaw, rawRepo.getByIds(inputs))
+            assertEquals(emptyList<com.baraa.masroof.domain.model.FinancialTransaction>(), transactions.listAll())
+        } finally { directory.deleteRecursively() }
+        Unit
+    }
+
 }

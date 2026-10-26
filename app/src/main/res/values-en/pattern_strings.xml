@@ -27,4 +27,11 @@
     <string name="pattern_ignore">Variable value to ignore</string>
     <string name="pattern_teach_from_review">Teach a pattern from this message</string>
     <string name="pattern_sender_mismatch">This sender is not configured for the selected bank. Choose the correct bank; message routing will not change.</string>
+    <string name="pattern_pending_title">Pending message preview</string>
+    <string name="pattern_pending_scope">Extraction preview only. Posted transactions and manual corrections are excluded. Messages stay in review; no financial transactions are posted.</string>
+    <string name="pattern_pending_refresh">Refresh preview</string>
+    <string name="pattern_pending_limited">The first 1,000 review messages are checked; up to 50 bank results are shown. This is not full message coverage.</string>
+    <string name="pattern_pending_row">Message %1$d — %2$s</string>
+    <string-array name="pattern_pending_statuses"><item>One match</item><item>No match</item><item>Pattern conflict</item><item>Bank conflict</item></string-array>
+    <string name="pattern_pending_open">Open review message</string>
 </resources>

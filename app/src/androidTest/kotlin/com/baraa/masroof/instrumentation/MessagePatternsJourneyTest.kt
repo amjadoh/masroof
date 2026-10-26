@@ -120,6 +120,54 @@ class MessagePatternsJourneyTest {
         Unit
     }
 
+    @Test fun bankPagePreviewsPendingMessagesWithoutRemovingReviews() = runBlocking {
+        val context = compose.activity
+        val db = androidx.room.Room.inMemoryDatabaseBuilder(context, com.baraa.masroof.data.room.MasroofDatabase::class.java)
+            .allowMainThreadQueries().build()
+        val file = context.cacheDir.resolve("synthetic-pending-patterns.json")
+        file.delete()
+        try {
+            val store = MessagePatternStore(file)
+            val gate = DatabaseAccessGate()
+            val raw = com.baraa.masroof.data.repository.RoomRawSmsRepository(db.rawSmsDao())
+            val reviews = com.baraa.masroof.data.repository.RoomReviewRepository(db.reviewItemDao())
+            val ingestion = com.baraa.masroof.application.review.IngestionReviewService(reviews,
+                com.baraa.masroof.sms.time.InstantClock { java.time.Instant.parse("2026-08-01T00:00:00Z") })
+            val body = "Payment\nAmount:10SAR"
+            val pattern = com.baraa.masroof.lab.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
+                listOf(com.baraa.masroof.lab.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+            store.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank"), "بنك التجربة", listOf(pattern)))
+            for ((index, amount) in listOf("10", "250").withIndex()) {
+                val text = body.replace("10SAR", "${amount}SAR")
+                raw.insertIfAbsent(com.baraa.masroof.domain.model.RawSms("pending-$index", "STC Bank", text,
+                    java.time.Instant.parse("2026-08-01T00:00:00Z"), "pending-$index", com.baraa.masroof.sms.hash.SmsBodyHasher.sha256Hex(text)))
+                ingestion.requireReview("pending-$index", com.baraa.masroof.application.review.IngestionReviewService.REASON_UNSUPPORTED_FORMAT)
+            }
+            val workflow = MessagePatternsWorkflow(store, gate, pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
+                store, gate, reviews, raw, com.baraa.masroof.data.repository.RoomParsedEventRepository(db.parsedEventDao()),
+                com.baraa.masroof.data.repository.RoomUserCorrectionRepository(db.userCorrectionDao()),
+                com.baraa.masroof.data.repository.RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()),
+                com.baraa.masroof.bank.BankSmsRegistry(emptyList())))
+            var openedReview: String? = null
+            compose.setContent {
+                val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+                CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                    MasroofTheme { Surface { MessagePatternsScreen(workflow, "STC", onOpenReview = { openedReview = it }, onBack = {}) } }
+                }
+            }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("مبلغ العملية: 250SAR").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("مبلغ العملية: 250SAR").performScrollTo().assertIsDisplayed()
+            capture("pattern-pending-results")
+            compose.onAllNodesWithText(ar(R.string.pattern_pending_open))[0].performScrollTo().performClick()
+            assertTrue(reviews.getById(requireNotNull(openedReview))!!.rawSmsId in listOf("pending-0", "pending-1"))
+            assertEquals(2, reviews.listRequired().size)
+            click(R.string.pattern_disable)
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(2, reviews.listRequired().size)
+        } finally { db.close(); file.delete() }
+        Unit
+    }
+
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
     private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick(); compose.waitForIdle() }
     private fun capture(name: String) {

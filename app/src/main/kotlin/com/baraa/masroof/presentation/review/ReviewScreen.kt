@@ -65,7 +65,8 @@ fun ReviewRoute(
     val patterns = viewModel.messagePatternsWorkflow
     val source = teachingSource
     if (source != null && patterns != null) {
-        com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns, source = source, onBack = { teachingSource = null })
+        com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns, source = source,
+            onOpenReview = { id -> teachingSource = null; viewModel.openDetail(id) }, onBack = { teachingSource = null })
         return
     }
     if (state.selectedDetail != null) {

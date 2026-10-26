@@ -27,4 +27,11 @@
     <string name="pattern_ignore">قيمة متغيرة لا نحتاجها</string>
     <string name="pattern_teach_from_review">تعليم نمط من هذه الرسالة</string>
     <string name="pattern_sender_mismatch">مرسل هذه الرسالة ليس ضمن مرسلي البنك المحدد. اختر البنك الصحيح؛ لن يتغير توجيه الرسالة.</string>
+    <string name="pattern_pending_title">معاينة الرسائل المعلقة</string>
+    <string name="pattern_pending_scope">استخراج تجريبي فقط. العمليات المسجلة والتصحيحات اليدوية مستثناة. تبقى الرسائل في المراجعة ولا تُسجل أي عملية مالية.</string>
+    <string name="pattern_pending_refresh">تحديث المعاينة</string>
+    <string name="pattern_pending_limited">تُفحص أول 1000 رسالة في قائمة المراجعة، ويُعرض هنا أول 50 نتيجة للبنك. هذه ليست تغطية كاملة للرسائل.</string>
+    <string name="pattern_pending_row">الرسالة %1$d — %2$s</string>
+    <string-array name="pattern_pending_statuses"><item>مطابقة واحدة</item><item>غير مطابق</item><item>تعارض الأنماط</item><item>تعارض البنك</item></string-array>
+    <string name="pattern_pending_open">فتح رسالة المراجعة</string>
 </resources>

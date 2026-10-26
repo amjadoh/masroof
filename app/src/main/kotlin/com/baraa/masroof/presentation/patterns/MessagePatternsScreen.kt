@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 /** Drafts live only on this screen; leaving discards them. Saving requires a generated preview. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null, source: PatternTeachingSource? = null, onBack: () -> Unit) {
+fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null, source: PatternTeachingSource? = null, onOpenReview: ((String) -> Unit)? = null, onBack: () -> Unit) {
     val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<MessagePatternConfiguration?>(null) }
     var selectedBank by remember { mutableStateOf(bankScope) }
@@ -72,6 +72,17 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     }
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
+    var pending by remember(selectedBank, snapshot?.generation) { mutableStateOf<PendingPatternReport?>(null) }
+    var pendingFailed by remember(selectedBank, snapshot?.generation) { mutableStateOf(false) }
+    var pendingReload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(bank?.bankId, snapshot?.generation, teaching, pendingReload) {
+        if (bank != null && !teaching && workflow.canPreviewPending) {
+            pending = null; pendingFailed = false
+            try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { pendingFailed = true }
+        }
+    }
     MasroofSecondaryScaffold(stringResource(R.string.pattern_title), { back() }, stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             Text(stringResource(R.string.pattern_preview_only), style = MaterialTheme.typography.bodyMedium)
@@ -127,6 +138,38 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         }
                         if (bankScope == null) MasroofTextButton(onClick = { selectedBank = null }, enabled = !busy) {
                             Text(stringResource(R.string.pattern_add_bank))
+                        }
+                    }
+                }
+            }
+            if (bank != null && !teaching && workflow.canPreviewPending) {
+                MasroofCard {
+                    MasroofSectionHeader(stringResource(R.string.pattern_pending_title))
+                    Text(stringResource(R.string.pattern_pending_scope), style = MaterialTheme.typography.bodySmall)
+                    MasroofTextButton(onClick = { work { snapshot = workflow.load(); pendingReload++ } }, enabled = !busy) { Text(stringResource(R.string.pattern_pending_refresh)) }
+                    when {
+                        pendingFailed -> Text(stringResource(R.string.pattern_failed), color = MaterialTheme.colorScheme.error)
+                        pending == null -> CircularProgressIndicator()
+                        else -> {
+                            val report = requireNotNull(pending)
+                            val statusNames = stringArrayResource(R.array.pattern_pending_statuses)
+                            PendingPatternStatus.entries.forEach { status ->
+                                Text("${statusNames[status.ordinal]}: ${report.rows.count { it.status == status }}")
+                            }
+                            if (report.limited || report.rows.size > 50) Text(stringResource(R.string.pattern_pending_limited))
+                            report.rows.take(50).forEachIndexed { index, row ->
+                                Text(stringResource(R.string.pattern_pending_row, index + 1, statusNames[row.status.ordinal]), style = MaterialTheme.typography.titleSmall)
+                                if (onOpenReview != null) MasroofTextButton(onClick = { onOpenReview(row.reviewId) }, enabled = !busy) {
+                                    Text(stringResource(R.string.pattern_pending_open))
+                                }
+                                // Competing candidates stay visible; none becomes an accepted financial interpretation.
+                                row.matches.forEach { match ->
+                                    Text(stringResource(R.string.pattern_revision,
+                                        operationNames.getOrNull(PatternOperation.entries.indexOfFirst { it.name == match.operation }) ?: match.operation,
+                                        match.revision))
+                                    match.fields.forEach { (key, value) -> Text("${fieldName(key)}: ${value.text}") }
+                                }
+                            }
                         }
                     }
                 }

@@ -16,7 +16,13 @@ class MessagePatternsWorkflow(
     private val store: MessagePatternStore,
     private val accessGate: DatabaseAccessGate,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val pendingPreview: PendingPatternPreviewWorkflow? = null,
 ) {
+    val canPreviewPending: Boolean get() = pendingPreview != null
+
+    suspend fun previewPending(bankId: String, generation: Long) =
+        requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)
+
     suspend fun load() = withContext(ioDispatcher) { accessGate.withAccess { store.load() } }
 
     suspend fun addBank(generation: Long, name: String, sender: String, bankId: String? = null) = withContext(ioDispatcher) {
