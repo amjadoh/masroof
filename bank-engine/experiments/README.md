@@ -23,7 +23,9 @@ the candidate in the parity harness reads the bundled JSON rather than calling
 the old profile builder. All 74 parse inputs and seven financial scenarios match
 the frozen reference. These are 13 classification rules across 11 families, not
 13 automatically learned message layouts. Taught-pattern financial activation,
-bank routing/import settings and pattern-management UI remain pending.
+bank routing/import settings and automatic financial use remain pending. A bank
+pattern-management and teaching screen is now available through message-learning
+settings and the bank page; its saved patterns are for preview only.
 
 The latest targeted checks passed 101 bank-engine tests and 126 app tests, including
 financial oracles, manual/posted preservation, refresh recovery and package
@@ -55,8 +57,13 @@ data; older backups clear pattern configuration. Restore journals pair original
 or incoming definitions with the corresponding database after interruption.
 Rollback preserves even invalid original bytes rather than silently discarding
 them; normal reads still reject invalid configuration. Tests cover these paths.
-Bank routing/import, teaching UI, and the pattern fingerprint in the financial
-write guard remain pending; taught definitions still have no posting authority.
+The teaching workflow now generates a preview from explicit field bindings and
+saves that same immutable definition only if the configuration generation still
+matches. The screen supports original text selection, extracted candidates, an
+additional-message preview, disabling, and restoring an older revision as a new
+revision. Leaving discards unsaved text and bindings. Its first device journey
+uses synthetic messages only. Bank routing/import, review-queue integration and
+the pattern fingerprint in the financial write guard remain pending; taught definitions still have no posting authority.
 
 The new audit of the same 64 fixtures offers all 33 expected transaction timestamps
 and both expected due dates as raw candidates. This closes the seven previously
