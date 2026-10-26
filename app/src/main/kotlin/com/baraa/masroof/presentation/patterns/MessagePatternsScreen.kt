@@ -7,7 +7,11 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -95,7 +99,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             onSaved = { preview, body ->
                 teaching = false; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
                 work { snapshot = workflow.catalog() }
-            }, onBack = { if (source != null) onBack() else teaching = false })
+            }, onReload = { work { snapshot = workflow.catalog() } },
+            onBack = { if (source != null) onBack() else teaching = false })
         return
     }
     if (pattern != null && approving) {
@@ -172,10 +177,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                 Text(pluralStringResource(R.plurals.teaching_patterns_count, patterns.size, patterns.size), style = MaterialTheme.typography.labelMedium)
                             }
                             patterns.forEachIndexed { index, item ->
-                                val fields = item.fields.map { patternFieldName(it) }.joinToString(" · ")
                                 MasroofReferenceNavigationRow(
                                     title = item.example.lineSequence().firstOrNull { it.isNotBlank() }?.take(80) ?: patternOperationName(item.label),
-                                    subtitle = fields.ifBlank { stringResource(R.string.pattern_revision, patternOperationName(item.label), item.revision) },
+                                    subtitle = stringResource(R.string.pattern_revision, patternOperationName(item.label), item.revision),
                                     status = patternStatusName(item), icon = MasroofIcons.sms,
                                     onClick = { if (!busy) { selectedPattern = item.id; applied = null } },
                                     divider = index != patterns.lastIndex,
