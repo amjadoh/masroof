@@ -6,6 +6,28 @@
 التاريخ: 2026-10-26.
 مكان العمل: فرع التجربة؛ لا تعديل أو تثبيت على نسخة المستخدم الفعلية.
 
+## Architecture cleanup — 2026-10-26
+
+- Current ownership and stable package locations are recorded in `ARCHITECTURE.md`.
+  Approval and pending application stay in `application/patterns`; ingestion
+  protection, runtime composition and backup handling live with their respective owners.
+- Pattern screens consume `PatternCatalog` display models. The mapper and write
+  guard share `PatternInterpretationStamp`, preserving the existing reason strings.
+- Bundled JSON is the production definition source. Independent Kotlin reference
+  profiles live in `bank-engine/src/testFixtures`; the injectable reference adapter
+  is test-only. Default integration helpers use bundled definitions, while frozen
+  financial comparisons explicitly retain the independent reference profile.
+- The earlier CI UI-boundary failures are corrected. Protection now commits the
+  evidence check and parse/store before derived processing and durability probes;
+  the earlier process-death failure exposed that transaction boundary.
+- Local validation: focused app/engine checks, frozen parse/financial comparisons,
+  lint/detekt and both debug APK builds passed. Ten process-death journeys and a
+  separate final run of 18 pattern/reference/learning device tests passed. Full
+  suites remain in PR/main CI; the pushed cleanup head requires a new CI run.
+- Schema v18, bundled definitions, frozen baselines and persisted identifiers are
+  unchanged. Broader card/statement teaching and signed current-data release
+  rehearsal remain outside this architecture cleanup.
+
 ## نتيجة المرحلة الحالية — الجزيرة على الأنماط المشتركة
 
 نُقلت تعريفات الجزيرة الثلاثة عشر إلى `BANK_ALJAZIRA.patterns.json` ومخزن

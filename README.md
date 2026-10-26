@@ -32,7 +32,7 @@ Use JDK 17 and an Android SDK configured in `local.properties` (`sdk.dir=...`).
 
 ```bash
 ./gradlew :app:assembleDebug
-./gradlew testDebugUnitTest :bank-engine:test :finance-core:test :ml-assist:test
+./gradlew :app:testDebugUnitTest --tests '*MessagePatternsWorkflowTest'
 ./gradlew lintDebug detekt
 python3 ml-assist/tools/train_family_model.py --check
 python3 ml-assist/tools/test_training.py
