@@ -72,6 +72,30 @@ class GenericCandidateExtractorTest {
         assertTrue(result.any { it.kind == CandidateKind.IDENTIFIER && it.text.raw == "AB123" })
     }
 
+    @Test fun inlineTextBeforeATrailingColonRetainsTheWholeValueCandidate() {
+        val body = "شراء تجريبي\nبطاقة تجريبية (4321) بمبلغ (007) SAR 72.10 لدى EXAMPLE MARKET LTD في: 2026-10-05 19:40:25."
+        val result = GenericCandidateExtractor.extract(body)
+        assertTrue(result.any { it.kind == CandidateKind.TEXT && it.text.raw == "EXAMPLE MARKET LTD" })
+        assertEquals(listOf("4321", "007"), result.filter { it.kind == CandidateKind.NUMBER }.map { it.text.raw })
+        assertEquals(listOf("SAR 72.10"), result.filter { it.kind == CandidateKind.MONEY }.map { it.text.raw })
+        assertEquals(listOf("2026-10-05 19:40:25"), result.filter { it.kind == CandidateKind.DATE_TIME }.map { it.text.raw })
+        result.forEach { assertEquals(it.text.raw, body.substring(it.text.start, it.text.end)) }
+    }
+
+    @Test fun everyColonPreservesTextOnBothSidesAcrossLanguagesAndLayouts() {
+        listOf(
+            "prefix ALPHA BETA at: 2026-10-05 19:40:25\nextra: GAMMA DELTA" to "ALPHA BETA",
+            "عنوان: 20SR عند متجر تجريبي بتاريخ: 2026-10-05 19:40:25" to "متجر تجريبي",
+        ).forEach { (body, raw) ->
+            val result = GenericCandidateExtractor.extract(body)
+            assertTrue(result.any { it.kind == CandidateKind.TEXT && it.text.raw == raw })
+            assertTrue(result.any { it.kind == CandidateKind.DATE_TIME && it.text.raw == "2026-10-05 19:40:25" })
+        }
+        val inline = GenericCandidateExtractor.extract("prefix ALPHA BETA at:2026-10-05 19:40:25; extra:GAMMA DELTA")
+        assertTrue(inline.any { it.kind == CandidateKind.TEXT && it.text.raw == "ALPHA BETA" })
+        assertTrue(inline.any { it.kind == CandidateKind.TEXT && it.text.raw == "GAMMA DELTA" })
+    }
+
     @Test fun unsupportedSizeAndEmptyTextReturnNoCandidates() {
         assertTrue(GenericCandidateExtractor.extract("").isEmpty())
         assertTrue(GenericCandidateExtractor.extract(" ".repeat(4097)).isEmpty())

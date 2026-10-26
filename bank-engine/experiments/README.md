@@ -45,10 +45,25 @@ decimal-looking numbers. It deliberately preserves signs, precision and
 ambiguous separators for later interpretation. A date-shaped string can still
 be an invalid date, and a money-shaped string can still be a balance or a fee.
 No chosen century, timezone, canonical Money, ownership or principal amount is
-inferred. Text fragments use boundaries and an optional first-word split, not
-named-entity recognition. Direct text selection remains necessary when a desired
+inferred. Text fragments use boundaries and up to four literal windows, optionally
+excluding a word at either edge, not named-entity recognition. Direct text selection remains necessary when a desired
 value is not proposed. Inputs are bounded to 4096 UTF-16 units and candidates to
 160 normalized characters. Production validation/integration is still pending.
+
+An inline-message regression exposed a lost text fragment: the initial splitter
+started after the first unprotected colon, discarding a merchant before a late
+time label. Two new tests reproduced this before the fix. Text scanning now
+starts at the beginning of each line and visits both sides of every unprotected
+colon; protected timestamps and numeric tokens keep their original spans. The
+additional literal windows can expose a value between two context words, without
+hardcoding a bank, sender, message title, merchant, or language-specific label.
+
+The follow-up private run covered eleven messages and all 45 selected raw value
+spans, including the full previously missing merchant. The inline message now
+offers 20 candidates, including extra context fragments; this is recall of the
+selected values, not an evaluated precision or automatic semantic assignment.
+87 bank-engine and 95 finance-core tests passed, with zero failures, errors or
+skipped tests. No production source, financial write, or app data changed.
 
 ## Subsequent learned-layout experiment
 

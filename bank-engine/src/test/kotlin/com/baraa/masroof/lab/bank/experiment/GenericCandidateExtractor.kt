@@ -44,19 +44,21 @@ internal object GenericCandidateExtractor {
             if (start > end || end - start + 1 > 160) return
             val value = source.text.substring(start, end + 1)
             if (value.none(Char::isLetter)) return
-            hits += CandidateKind.TEXT to start..end
-            // ponytail: offer a whole fragment and a possible value after its first word; no entity-name claim.
-            val space = value.indexOf(' ')
-            if (space >= 0) {
-                var tail = start + space + 1
-                while (tail <= end && source.text[tail].isWhitespace()) tail++
-                if (tail <= end && source.text.substring(tail, end + 1).any(Char::isLetter)) hits += CandidateKind.TEXT to tail..end
-            }
+            val words = Regex("\\S+").findAll(value).map { it.range }.toList()
+            // ponytail: at most four literal windows, optionally excluding an edge word; these are hints, not entity decisions.
+            val starts = listOf(0, words.getOrNull(1)?.first).filterNotNull().distinct()
+            val ends = listOf(value.lastIndex, words.getOrNull(words.lastIndex - 1)?.last).filterNotNull().distinct()
+            starts.forEach { first -> ends.forEach { last ->
+                if (first <= last && value.substring(first, last + 1).any(Char::isLetter))
+                    hits += CandidateKind.TEXT to (start + first)..(start + last)
+            } }
         }
         Regex("[^\\n]+").findAll(source.text).forEach { line ->
-            val colon = line.range.firstOrNull { source.text[it] == ':' && protected.none { span -> it in span } }
-            var cursor = colon?.plus(1) ?: line.range.first
-            protected.filter { overlaps(it, cursor..line.range.last) }.forEach { span ->
+            val separators = line.range.filter { source.text[it] == ':' && protected.none { span -> it in span } }.map { it..it }
+            val blocks = (protected.filter { overlaps(it, line.range) } + separators).sortedBy { it.first }
+            // Every fragment survives. A late label must not discard text preceding its colon.
+            var cursor = line.range.first
+            blocks.forEach { span ->
                 if (cursor < span.first) text(cursor until span.first)
                 cursor = maxOf(cursor, span.last + 1)
             }
