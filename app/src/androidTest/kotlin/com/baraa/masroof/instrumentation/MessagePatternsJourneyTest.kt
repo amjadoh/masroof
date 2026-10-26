@@ -68,6 +68,16 @@ class MessagePatternsJourneyTest {
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:30SAR")
         click(R.string.pattern_extract)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("30SAR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(ar(R.string.pattern_extract)).assertIsEnabled()
+        // IME dismissal is asynchronous; Back must reach the screen, not dismiss Gboard.
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.waitUntil(10_000) {
+            compose.runOnUiThread {
+                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == false
+            }
+        }
         androidx.test.espresso.Espresso.pressBack()
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_teach)).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(2, store.load().banks.single().patterns.size)
