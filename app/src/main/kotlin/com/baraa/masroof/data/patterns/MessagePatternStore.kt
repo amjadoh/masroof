@@ -17,6 +17,15 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
         captureRaw()?.let(MessagePatternConfigurationCodec::decode) ?: MessagePatternConfiguration()
     }
 
+    /** Startup-only before this container admits work; interactive installation uses the exclusive access gate. */
+    fun installMissingBanks(bundled: List<BankMessagePatterns>): MessagePatternConfiguration = synchronized(lock) {
+        var current = load()
+        for (bank in bundled) if (current.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }) {
+            current = saveBank(current.generation, bank)
+        }
+        current
+    }
+
     fun saveBank(expectedGeneration: Long, bank: BankMessagePatterns): MessagePatternConfiguration = synchronized(lock) {
         val current = load()
         check(current.generation == expectedGeneration) { "Pattern configuration changed" }
