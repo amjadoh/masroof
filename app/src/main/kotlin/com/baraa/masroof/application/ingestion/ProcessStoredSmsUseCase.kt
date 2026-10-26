@@ -64,6 +64,7 @@ class ProcessStoredSmsUseCase(
     private val processingRecovery: ProcessingRecovery? = null,
     private val reviewRepository: ReviewRepository? = null,
     private val debugProcessHalt: DebugProcessHaltProbe = DebugProcessHaltProbe.NONE,
+    private val patternProcessing: (suspend (String, suspend () -> SmsIngestionResult, suspend () -> SmsIngestionResult) -> SmsIngestionResult)? = null,
 ) {
     /** Processes evidence captured in this same attempt, reusing the capture's [route]. */
     suspend fun process(
@@ -123,8 +124,8 @@ class ProcessStoredSmsUseCase(
      * Bulk maintenance uses this for every row, then runs ownership/reconciliation/review
      * once after the whole backlog has been parsed.
      */
-    suspend fun reparseAndStore(rawSms: RawSms): SmsIngestionResult =
-        processStoredEvidence(rawSms, logOutcome = false, deriveImmediately = false)
+    suspend fun reparseAndStore(rawSms: RawSms, historicalBatch: Boolean = false): SmsIngestionResult =
+        processStoredEvidence(rawSms, logOutcome = false, deriveImmediately = false, historicalBatch = historicalBatch)
 
     /**
      * Adapter selection for stored evidence:
@@ -139,19 +140,20 @@ class ProcessStoredSmsUseCase(
         rawSms: RawSms,
         logOutcome: Boolean,
         deriveImmediately: Boolean = true,
+        historicalBatch: Boolean = false,
     ): SmsIngestionResult {
         val selected = explicitSelectionAdapter(rawSms)
         if (selected != null) {
-            return parseAndPersist(rawSms, selected, logOutcome, deriveImmediately = deriveImmediately)
+            return parseAndPersist(rawSms, selected, logOutcome, deriveImmediately, historicalBatch)
         }
         val storedBank = parsedEventRepository.findByRawSmsId(rawSms.id)?.event?.bank
         val storedAdapter = storedBank?.let(bankSmsRegistry::adapterFor)
         if (storedAdapter != null) {
-            return parseAndPersist(rawSms, storedAdapter, logOutcome, deriveImmediately)
+            return parseAndPersist(rawSms, storedAdapter, logOutcome, deriveImmediately, historicalBatch)
         }
         return when (val route = bankSmsRegistry.route(rawSms.sender, rawSms.body)) {
             is BankRoutingResult.Matched ->
-                parseAndPersist(rawSms, route.adapter, logOutcome, deriveImmediately)
+                parseAndPersist(rawSms, route.adapter, logOutcome, deriveImmediately, historicalBatch)
             is BankRoutingResult.Ambiguous ->
                 holdAmbiguousRoute(rawSms, route, logOutcome)
             is BankRoutingResult.SuspectedBank ->
@@ -159,7 +161,7 @@ class ProcessStoredSmsUseCase(
             is BankRoutingResult.NotMatched -> {
                 val sole = bankSmsRegistry.singleAdapterOrNull()
                 if (sole != null) {
-                    parseAndPersist(rawSms, sole, logOutcome, deriveImmediately)
+                    parseAndPersist(rawSms, sole, logOutcome, deriveImmediately, historicalBatch)
                 } else {
                     SmsIngestionResult.NotRelevant(reason = route.reason)
                 }
@@ -229,6 +231,39 @@ class ProcessStoredSmsUseCase(
         deriveImmediately: Boolean,
         historicalBatch: Boolean = false,
     ): SmsIngestionResult {
+        if (adapter !is com.baraa.masroof.bank.MessagePatternSmsAdapter)
+            return parseAndStore(rawSms, adapter, logOutcome, deriveImmediately, historicalBatch)
+        val protection = patternProcessing ?: return processingFailure(rawSms, "pattern_protection_unavailable", null, logOutcome)
+        val result = protection(rawSms.id, {
+            if (parsedEventRepository.findByRawSmsId(rawSms.id)?.event?.parseStatus == com.baraa.masroof.domain.model.ParseStatus.SUCCESS) {
+                resumePatternEvidence(rawSms, logOutcome, deriveImmediately = false)
+            } else {
+                val active = bankSmsRegistry.adapterFor(adapter.bank) as? com.baraa.masroof.bank.MessagePatternSmsAdapter
+                if (active?.configurationFingerprint != adapter.configurationFingerprint)
+                    processingFailure(rawSms, "pattern_configuration_changed", null, logOutcome)
+                else parseAndStore(rawSms, adapter, logOutcome, deriveImmediately = false, historicalBatch, deferCompletion = true)
+            }
+        }, { resumePatternEvidence(rawSms, logOutcome, deriveImmediately = false) })
+        // Protection owns only the evidence check and parse/store transaction. Derived writes
+        // and durable-stage probes must run after commit so process death cannot roll them back.
+        val saved = when (result) {
+            is SmsIngestionResult.Parsed -> result.event to result.details
+            is SmsIngestionResult.ReviewRequired -> result.event?.let { it to result.details }
+            is SmsIngestionResult.NonFinancial -> result.event?.let { it to result.details }
+            else -> null
+        }
+        if (saved != null) completeSavedEvent(saved.first, saved.second, logOutcome, deriveImmediately)?.let { return it }
+        return result
+    }
+
+    private suspend fun parseAndStore(
+        rawSms: RawSms,
+        adapter: BankSmsAdapter,
+        logOutcome: Boolean,
+        deriveImmediately: Boolean,
+        historicalBatch: Boolean,
+        deferCompletion: Boolean = false,
+    ): SmsIngestionResult {
         val parseResult = try {
             adapter.parse(
                 SmsParseInput(
@@ -255,12 +290,22 @@ class ProcessStoredSmsUseCase(
         }
 
         return try {
-            mapAndSave(rawSms, parseResult, logOutcome, deriveImmediately, historicalBatch)
+            mapAndSave(rawSms, parseResult, logOutcome, deriveImmediately, historicalBatch, deferCompletion)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             processingFailure(rawSms, e.message ?: e::class.java.simpleName, e, logOutcome)
         }
+    }
+
+    private suspend fun resumePatternEvidence(raw: RawSms, logOutcome: Boolean, deriveImmediately: Boolean): SmsIngestionResult {
+        val record = parsedEventRepository.findByRawSmsId(raw.id)
+            ?: return SmsIngestionResult.Failed(raw.id, "pattern_saved_evidence_missing")
+        if (deriveImmediately) {
+            afterParsedEvent(record.event, record.details, logOutcome)?.let { return it }
+            processingRecovery?.clear(raw.id)
+        }
+        return SmsIngestionResult.Parsed(raw.id, record.event, record.details)
     }
 
     private suspend fun processingFailure(
@@ -288,9 +333,10 @@ class ProcessStoredSmsUseCase(
         logOutcome: Boolean,
         deriveImmediately: Boolean,
         historicalBatch: Boolean,
+        deferCompletion: Boolean,
     ): SmsIngestionResult {
         suspend fun save(event: ParsedEvent, details: ParsedEventDetails, outcome: String) =
-            saveEvent(rawSms, event, details, outcome, logOutcome, deriveImmediately, historicalBatch)
+            saveEvent(rawSms, event, details, outcome, logOutcome, deriveImmediately, historicalBatch, deferCompletion)
 
         return when (parseResult) {
             is ParseResult.Success -> {
@@ -400,27 +446,29 @@ class ProcessStoredSmsUseCase(
         logOutcome: Boolean,
         deriveImmediately: Boolean,
         historicalBatch: Boolean,
+        deferCompletion: Boolean,
     ): SmsIngestionResult.DerivedIncomplete? {
         if (historicalBatch) {
             parsedEventRepository.saveForHistoricalBatch(event, details, rawSms.receivedAt)
         } else {
             parsedEventRepository.save(event, details)
         }
+        val incomplete = if (deferCompletion) null else completeSavedEvent(event, details, logOutcome, deriveImmediately)
+        if (logOutcome) logParsedOutcome(rawSms, event.messageFamily, outcome)
+        return incomplete
+    }
+
+    private suspend fun completeSavedEvent(
+        event: ParsedEvent,
+        details: ParsedEventDetails,
+        logOutcome: Boolean,
+        deriveImmediately: Boolean,
+    ): SmsIngestionResult.DerivedIncomplete? {
         debugProcessHalt.afterDurableWrite(DebugProcessHalt.PARSED)
-        val incomplete = if (deriveImmediately) {
-            afterParsedEvent(event, details, logOutcome)
-        } else {
-            null
-        }
-        if (incomplete == null && deriveImmediately) {
-            processingRecovery?.clear(event.rawSmsId)
-        }
-        // Marker is written only after clear() was skipped, so a reader that sees it
-        // observes the processing-retry row that this attempt left in place.
+        val incomplete = if (deriveImmediately) afterParsedEvent(event, details, logOutcome) else null
+        if (incomplete == null && deriveImmediately) processingRecovery?.clear(event.rawSmsId)
+        // A reader seeing this marker must observe the retained processing-retry row.
         debugProcessHalt.markIfReconcileHeld()
-        if (logOutcome) {
-            logParsedOutcome(rawSms, event.messageFamily, outcome)
-        }
         return incomplete
     }
 

@@ -5,10 +5,55 @@ Masroof has one Android application, one financial database and one bank interpr
 ## Modules
 
 - `app`: presentation → application workflows → domain/parsing/data/SMS/bank ports and the pure financial core. `AppContainer` wires the only production runtime.
-- `bank-engine`: pure Kotlin interpretation and literal rules, depending only on `finance-core` value contracts. `NewEngineSmsAdapter` maps its output through `InterpretationDraftMapper` and the production `ParseFinalizer`.
+- `bank-engine`: pure Kotlin message-pattern matching, literal-role interpretation and extraction evidence, depending only on `finance-core` value contracts. `MessagePatternSmsAdapter` maps its output through `InterpretationDraftMapper` and the production `ParseFinalizer`.
 - `finance-core`: production money/value models, salary and statement periods, bank transaction time, deterministic container/transaction identities, financial classification/impact, transfer matching and assembly, and statement matching. Policies consume supplied facts and return decisions or transactions in memory; there is no ledger, repository, Android dependency or I/O. Existing engine value contracts remain available separately.
 - `ml-assist`: local family classifier, cleaned human templates, forecasting and recurring-pattern detection. The engine consumes an injected assistance contract rather than depending on ML implementation.
 - `ui-kit`: shared theme, typography, fonts, cards and charts. It cannot access financial storage.
+
+Source namespaces use `com.baraa.masroof.engine.bank`, `com.baraa.masroof.finance.value`,
+`com.baraa.masroof.ml` and `com.baraa.masroof.analytics`. Application integration
+tests use `com.baraa.masroof.integration`. Historical `lab`/`beta` source paths and
+source file prefixes have been removed. Existing serialized backup keys and retired
+work identifiers keep their original spelling for upgrade compatibility.
+
+## Message-pattern ownership
+
+Keep the existing five modules. Organize by responsibility; a filename containing
+`Pattern` does not mean its approval, storage or UI belongs in the engine.
+
+| Location (under `com.baraa.masroof`) | Owns |
+| --- | --- |
+| `bank-engine: engine.bank.patterns` | Immutable definitions, compilation, matching, extracted facts and provenance |
+| `bank-engine: engine.bank.interpretation` | Shared role, text, money, date and safety primitives |
+| `app: bank` | Bank routing/detection and mapping engine output into validated parser drafts |
+| `app: application.patterns` | Teaching, revisions, financial approval, pending preview/application and display models |
+| `app: application.interpretation` | Configured adapter snapshots, family assistance and automatic-write eligibility |
+| `app: application.ingestion` | Durable processing, protected evidence and retry/resume orchestration |
+| `app: data.patterns` | Strict JSON codecs, immutable revision persistence and atomic file replacement |
+| `app: application.backup` | Pattern capture, restore and rollback integration |
+| `app: presentation.patterns` | Render application models and collect user input |
+| `finance-core` | Financial classification, matching and assembly from supplied facts |
+
+`AppContainer` loads `app/src/main/assets/bank-patterns/*.patterns.json`, installs
+missing bundled definitions before admitting work, and wires the store into
+`ConfiguredPatternAdapters`. Each routing attempt receives a complete immutable
+snapshot. `BankSmsRegistry` evaluates every adapter; only a resolved bank reaches
+`PatternFactInterpreter`. AlJazira uses the generic role interpreter within that
+snapshot; STC's six bundled templates require explicit financial approval.
+
+A match is never posting authority. The mapper/finalizer validates facts;
+application guards check the current fingerprint, revision, ownership and human
+decisions inside the financial transaction before existing financial policies run.
+Protected evidence resumes without parsing again. Approval and pending application
+are separate actions and reuse existing ownership/intake/reconciliation services.
+
+Keep integration fixtures on the bundled production definitions. Kotlin rule
+profiles live only in `bank-engine/src/testFixtures/`, shared through Gradle's built-in test-fixtures support. The offline CLI is an explicit test tool. Neither
+is another production definition source. Preserve the frozen AlJazira baselines.
+The current handoff is [Production migration plan](PRODUCTION_MIGRATION_PLAN.md);
+[Pattern facts](PATTERN_FACT_CONTRACT.md) describes the write contract, and
+[AlJazira cutover](ALJAZIRA_SHARED_PATTERNS.md) records compatibility. Historical
+experiment notes live in [history](history/MESSAGE_PATTERN_EXPERIMENT.md).
 
 ## Financial policy ownership
 
@@ -18,7 +63,7 @@ Classification consumes `ClassificationEvidence` with resolved container facts;
 production and policy tests use the same input contract.
 Only the value models needed by those policies move. The two existing Money
 contracts are not unified. `bank-engine` may still reference only
-`com.baraa.masroof.lab.finance.value`; depending on the core module does not give
+`com.baraa.masroof.finance.value`; depending on the core module does not give
 it authority to classify, match or assemble financial transactions.
 
 Ownership lookup/discovery/confirmation, repository ports, reconciliation,
@@ -50,7 +95,7 @@ The engine uses rules first. Eligible local family inference never supplies an a
 
 ## Data and recovery
 
-`masroof.db` remains schema 18 with its fourteen tables, full migrations and importable backup hashes. Existing preference files, Keystore alias, app id and worker names remain stable. `learning.db` stores labels/provenance; `analytics.db` stores advisory results and preferences. Old Lab files are neither imported nor deleted automatically.
+`masroof.db` supports schema 18 only, with its fourteen tables and unchanged identity hash. Older database and backup schemas are rejected without migration or destructive fallback. Automatic schema-fact backfill is removed; already queued backfill work completes without parsing or writing. Existing preference files, Keystore alias, app id and worker names remain stable. `learning.db` stores labels/provenance; `analytics.db` stores advisory results and preferences. Old Lab files are neither imported nor deleted automatically.
 
 The learning store is schema 2 and the analytics store is schema 4. Posted type edits atomically update the financial transaction and its latest `USER_FINANCIAL_TYPE` review decision in the unchanged financial schema. Message learning rebuilds from durable decisions before enabling personal assistance; no derived message-model cache is written or loaded. Exact template suppressions include bank and feature identity and revoke both statistical and human-template assistance. Financial `EXPENSE`/`INCOME`, ownership decisions and field-only edits do not invent family labels. Unsupported or ambiguous decisions have an explicit feedback disposition.
 
@@ -72,7 +117,7 @@ review updates using that same report. Settings reloads registries after a compl
 reparse or rescan; it does not start another financial pass. A failed report remains
 incomplete and durably retryable even if a second pass could succeed.
 
-Encrypted backups retain the existing envelope and financial migration support. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learning state is invalidated and reconstructed from retained human decisions.
+Encrypted backups retain the existing envelope and accept financial schema 18 only. Optional analysis is included in the durable restore journal for commit/rollback. Restoring an older backup clears stale analysis and rebuilds available results. Learning state is invalidated and reconstructed from retained human decisions.
 
 See [AGENTS.md](../AGENTS.md) for enforced boundaries and [ANALYTICS.md](ANALYTICS.md) for model and alert policy.
 

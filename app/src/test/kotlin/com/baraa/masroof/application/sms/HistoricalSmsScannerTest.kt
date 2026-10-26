@@ -80,6 +80,58 @@ class HistoricalSmsScannerTest {
         assertTrue(receipts.isEmpty())
     }
 
+    @Test fun bankScopeKeepsCollisionsReviewableAndDoesNotClaimWholeInboxCoverage() = runBlocking {
+        val base = engineFixtureAdapter()
+        val other = object : com.baraa.masroof.bank.BankSmsAdapter by base {
+            override val bank = Bank("OTHER")
+            override fun detect(sender: String, body: String) =
+                if (sender == "OtherBank" || sender == "AlJazira")
+                    com.baraa.masroof.parsing.model.BankDetectionResult.Detected(bank,
+                        com.baraa.masroof.domain.model.Confidence(1.0), emptyList())
+                else com.baraa.masroof.parsing.model.BankDetectionResult.Unknown(emptyList())
+            override fun parse(input: com.baraa.masroof.parsing.model.SmsParseInput): com.baraa.masroof.parsing.model.ParseResult =
+                error("A foreign or ambiguous message must not be parsed")
+        }
+        val registry = BankSmsRegistry(listOf(base, other))
+        val rows = listOf("AlJazira", "OtherBank").mapIndexed { index, sender ->
+            InboxRow.Valid(ProviderSmsRecord("scope-$index", sender, purchaseBody(), Instant.parse("2026-08-01T10:00:00Z")))
+        }
+        var coverage = 0
+        val scanner = HistoricalSmsScanner(FakeSmsDataSource(rows),
+            batchProcessor(RoomRawSmsRepository(db.rawSmsDao()), registry), coverageCompleted = { _, _ -> coverage++ })
+        val result = scanner.scan(bankScope = Bank.BANK_ALJAZIRA)
+        assertEquals(1, result.reviewRequired)
+        assertEquals(1, result.notRelevant)
+        assertEquals(0, result.parsed)
+        assertEquals(1, db.rawSmsDao().count())
+        assertEquals(0, coverage)
+        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(1, db.rawSmsDao().count())
+    }
+
+    @Test fun bankScopeImportsMatchedMessagesAndDoesNotReparseExistingEvidence() = runBlocking {
+        val source = FakeSmsDataSource(listOf(InboxRow.Valid(ProviderSmsRecord(
+            "scoped-purchase", "AlJazira", purchaseBody(), Instant.parse("2026-08-01T10:00:00Z")))))
+        val scanner = HistoricalSmsScanner(source, batchProcessor)
+        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).parsed)
+        val repository = RoomParsedEventRepository(db.parsedEventDao())
+        val original = repository.listAll()
+        assertEquals(1, original.size)
+        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(original, repository.listAll())
+    }
+
+    @Test fun unsupportedBankScopeFailsBeforeReadingOrWritingInbox() = runBlocking {
+        var queried = false
+        val scanner = HistoricalSmsScanner(FakeSmsDataSource(emptyList(), onQuery = { queried = true }), batchProcessor)
+        try {
+            scanner.scan(bankScope = Bank("NOT_REGISTERED"))
+            org.junit.Assert.fail("Unsupported bank must be rejected")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(false, queried)
+        assertEquals(0, db.rawSmsDao().count())
+    }
+
     private lateinit var db: MasroofDatabase
     private lateinit var batchProcessor: HistoricalSmsBatchProcessor
 

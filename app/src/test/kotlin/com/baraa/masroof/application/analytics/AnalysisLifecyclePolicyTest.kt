@@ -1,7 +1,7 @@
 package com.baraa.masroof.application.analytics
 
 import com.baraa.masroof.data.analytics.*
-import com.baraa.masroof.lab.analytics.AnalyticsVersion
+import com.baraa.masroof.analytics.AnalyticsVersion
 import org.junit.Assert.*
 import org.junit.Test
 

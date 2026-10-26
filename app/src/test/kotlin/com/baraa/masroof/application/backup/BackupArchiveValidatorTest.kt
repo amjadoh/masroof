@@ -386,7 +386,6 @@ class BoundedZipImportTest {
         val liveFile = context.getDatabasePath(MasroofDatabase.NAME)
         DatabaseRestoreRecovery.deleteRestoreArtifacts(liveFile)
         val live = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
         try {

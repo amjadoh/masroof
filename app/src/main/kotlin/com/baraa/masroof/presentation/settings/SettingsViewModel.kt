@@ -66,6 +66,7 @@ class SettingsViewModel(
     private val apkInstaller: ApkInstaller,
     private val canInstallPackages: () -> Boolean,
     private val onRequestInstallPermission: () -> Unit = {},
+    val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
     private val historicalMerchantRateCorrectionWorkflow: HistoricalMerchantRateCorrectionWorkflow? = null,
 ) : ViewModel() {
     private var updatableCorrectionIds: List<String> = emptyList()

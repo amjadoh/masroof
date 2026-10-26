@@ -5,8 +5,8 @@ import com.baraa.masroof.domain.model.ReviewStatus
 import com.baraa.masroof.domain.repository.RawSmsRepository
 import com.baraa.masroof.domain.repository.ReviewRepository
 import com.baraa.masroof.domain.rules.InformationalMessagePolicy
-import com.baraa.masroof.lab.bank.interpretation.FamilyTextPreparation
-import com.baraa.masroof.lab.ml.family.FamilyInputCleaner
+import com.baraa.masroof.engine.bank.interpretation.FamilyTextPreparation
+import com.baraa.masroof.ml.family.FamilyInputCleaner
 import com.baraa.masroof.parsing.repository.ParsedEventRepository
 
 data class MessageReviewExample(val reviewId: String, val receivedAt: Long, val unsupportedWording: Boolean)
@@ -24,7 +24,7 @@ class MessageReviewWorkflow(private val reviews: ReviewRepository, private val r
             val message = messages[review.rawSmsId] ?: return@mapNotNull null
             val event = events[review.rawSmsId]?.event
             if (InformationalMessagePolicy.shouldAutoIgnore(event?.messageFamily)) return@mapNotNull null
-            val cleaned = LabFamilyAssist.clean(message.body)
+            val cleaned = FamilyAssistBridge.clean(message.body)
             val bank = event?.bank?.id?.takeIf { it != "UNKNOWN" } ?: "unrouted:${FamilyInputCleaner.sha256(message.sender)}"
             val template = cleaned.features?.template ?: FamilyInputCleaner.sha256(FamilyTextPreparation.prepare(message.body).title)
             MessageReviewCandidate(MessageReviewExample(review.id, message.receivedAt.toEpochMilli(), cleaned.features == null), bank, template)

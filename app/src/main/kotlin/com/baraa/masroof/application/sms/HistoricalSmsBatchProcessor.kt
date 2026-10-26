@@ -14,6 +14,7 @@ import com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflow
 import com.baraa.masroof.application.transaction.ReconciliationCompletionPolicy
 import com.baraa.masroof.application.transaction.ReconciliationSummary
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
+import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.LoanType
 import com.baraa.masroof.domain.model.ParseStatus
 import com.baraa.masroof.domain.model.ParsedEvent
@@ -62,18 +63,23 @@ class HistoricalSmsBatchProcessor(
     private val batchRecoveryScheduler: HistoricalBatchRecoveryScheduler? = null,
     private val appLogService: AppLogService? = null,
 ) {
-    fun startBatch(): Batch = Batch()
+    fun startBatch(bankScope: Bank? = null): Batch {
+        bankScope?.let(capture::requireSupportedBank)
+        return Batch(bankScope)
+    }
 
-    inner class Batch internal constructor() {
+    inner class Batch internal constructor(private val bankScope: Bank?) {
         private val storedEvents = mutableListOf<StoredEvent>()
         private var finished = false
+        var reconciliationSummary: ReconciliationSummary? = null
+            private set
 
         /** Number of ParsedEvents this batch stored and will observe in [finish]. */
         val storedEventCount: Int get() = storedEvents.size
 
         suspend fun ingest(rawSms: RawSms): SmsIngestionResult {
             check(!finished) { "Batch already finished" }
-            val result = when (val captured = capture.capture(rawSms, logOutcome = false)) {
+            val result = when (val captured = capture.capture(rawSms, logOutcome = false, bankScope = bankScope)) {
                 is BankSmsCaptureResult.NotRelevant -> SmsIngestionResult.NotRelevant(reason = captured.reason)
                 BankSmsCaptureResult.Duplicate -> SmsIngestionResult.Duplicate
                 is BankSmsCaptureResult.Failed -> SmsIngestionResult.Failed(
@@ -84,6 +90,14 @@ class HistoricalSmsBatchProcessor(
                 is BankSmsCaptureResult.Captured ->
                     processStored.parseAndStore(captured.rawSms, captured.route, logOutcome = false)
             }
+            result.storedEvent(rawSms.receivedAt)?.let(storedEvents::add)
+            return result
+        }
+
+        /** Already captured, eligible pending evidence uses the same parser and one batch-derived pass. */
+        suspend fun reprocess(rawSms: RawSms): SmsIngestionResult {
+            check(!finished) { "Batch already finished" }
+            val result = processStored.reparseAndStore(rawSms, historicalBatch = true)
             result.storedEvent(rawSms.receivedAt)?.let(storedEvents::add)
             return result
         }
@@ -122,6 +136,7 @@ class HistoricalSmsBatchProcessor(
                 )
                 return HistoricalBatchDerivedResult.Incomplete(DerivedProcessingStage.RECONCILIATION)
             }
+            reconciliationSummary = report?.summary
             if (report != null && reviewQueueUpdater != null) {
                 try {
                     reviewQueueUpdater.applyReport(report)

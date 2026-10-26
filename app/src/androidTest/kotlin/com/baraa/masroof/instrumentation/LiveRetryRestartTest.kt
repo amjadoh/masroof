@@ -72,7 +72,6 @@ class LiveRetryRestartTest {
     fun openDatabase() {
         context.deleteDatabase(dbName)
         db = Room.databaseBuilder(context, MasroofDatabase::class.java, dbName)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS)
             .allowMainThreadQueries()
             .build()
     }

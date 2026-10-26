@@ -59,6 +59,16 @@ fun ReviewRoute(
         viewModel.refresh()
     }
     val state by viewModel.uiState.collectAsState()
+    var teachingSource by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<com.baraa.masroof.application.patterns.PatternTeachingSource?>(null)
+    }
+    val patterns = viewModel.messagePatternsWorkflow
+    val source = teachingSource
+    if (source != null && patterns != null) {
+        com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns, source = source,
+            onOpenReview = { id -> teachingSource = null; viewModel.openDetail(id) }, onBack = { teachingSource = null })
+        return
+    }
     if (state.selectedDetail != null) {
         ReviewDetailScreen(
             detail = state.selectedDetail!!,
@@ -75,6 +85,11 @@ fun ReviewRoute(
             onConfirmOwnershipCardOwned = viewModel::confirmOwnershipCardOwned,
             onMarkOwnershipCardExternal = viewModel::markOwnershipCardExternal,
             onRestoreIgnored = viewModel::restoreIgnoredMessage,
+            onTeachPattern = if (patterns != null) ({
+                val detail = state.selectedDetail!!
+                teachingSource = com.baraa.masroof.application.patterns.PatternTeachingSource(
+                    detail.bankId, requireNotNull(detail.sender), detail.body)
+            }) else null,
         )
     } else {
         ReviewListScreen(
@@ -275,6 +290,7 @@ private fun ReviewDetailScreen(
     onConfirmOwnershipCardOwned: () -> Unit,
     onMarkOwnershipCardExternal: () -> Unit,
     onRestoreIgnored: (FinancialTransactionType?) -> Unit,
+    onTeachPattern: (() -> Unit)? = null,
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.review_detail_title),
@@ -400,6 +416,12 @@ private fun ReviewDetailScreen(
                     textAlign = TextAlign.Start,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+            }
+
+            if (onTeachPattern != null && !detail.sender.isNullOrBlank() && detail.body.isNotBlank()) {
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton(
+                    onClick = onTeachPattern, enabled = !resolving, modifier = Modifier.fillMaxWidth().testTag("review-teach-pattern"),
+                ) { Text(stringResource(R.string.pattern_teach_from_review)) }
             }
 
             if (detail.bankChoices.isNotEmpty()) {

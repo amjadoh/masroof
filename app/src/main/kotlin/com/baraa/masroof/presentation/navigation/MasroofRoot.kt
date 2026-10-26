@@ -76,11 +76,11 @@ fun MasroofRoot(
     var generation by rememberSaveable { mutableStateOf(0) }
     fun navigate(destination: HomeDestination) { requested = destination; generation++ }
     androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.dashboard.LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow,
-        com.baraa.masroof.presentation.analytics.LocalLabAnalyticsWorkflow provides dashboardViewModel.labAnalytics) {
+        com.baraa.masroof.presentation.analytics.LocalAnalyticsWorkflow provides dashboardViewModel.analytics) {
     Column(Modifier.fillMaxSize()) {
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
-                if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.labUnreadAlerts(dashboardViewModel.labAnalytics),
+                if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.unreadAnalysisAlerts(dashboardViewModel.analytics),
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
         }
@@ -551,7 +551,7 @@ private fun showTransactionDetail(
         return true
     }
     if (overlayOnList) {
-        com.baraa.masroof.presentation.analytics.LabEvidenceDetailFallback(dashboardState.selectedTransactionSmsLoading, onBack)
+        com.baraa.masroof.presentation.analytics.AnalysisEvidenceDetailFallback(dashboardState.selectedTransactionSmsLoading, onBack)
         return true
     }
     // Keep the detail destination while a refresh reloads rows for the same period.

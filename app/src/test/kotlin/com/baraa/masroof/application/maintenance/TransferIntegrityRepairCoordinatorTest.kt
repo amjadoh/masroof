@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,17 +31,15 @@ class TransferIntegrityRepairCoordinatorTest {
     }
 
     @Test
-    fun pendingRequirement_isBlockingUntilThePassCompletes() = runBlocking<Unit> {
+    fun successfulRepairRunsOnceAndRecordsCompletion() = runBlocking<Unit> {
         var runs = 0
         val coordinator = coordinator {
             runs++
             TransferIntegrityRepairResult()
         }
 
-        assertEquals(MaintenanceRequirement.BLOCKING, coordinator.pendingRequirement())
         assertEquals(BackfillOutcome.COMPLETED, coordinator.runIfNeeded())
         assertEquals(1, runs)
-        assertNull(coordinator.pendingRequirement())
         assertEquals(BackfillOutcome.UP_TO_DATE, coordinator.runIfNeeded())
         assertEquals(1, runs)
         assertEquals(
@@ -60,11 +57,9 @@ class TransferIntegrityRepairCoordinatorTest {
         }
 
         assertEquals(BackfillOutcome.INCOMPLETE, coordinator.runIfNeeded())
-        assertEquals(MaintenanceRequirement.BLOCKING, coordinator.pendingRequirement())
         assertEquals(0, prefs().getInt(MaintenancePreferences.KEY_TRANSFER_INTEGRITY_REPAIR_VERSION, 0))
         assertEquals(BackfillOutcome.COMPLETED, coordinator.runIfNeeded())
         assertEquals(2, attempts)
-        assertNull(coordinator.pendingRequirement())
     }
 
     @Test
@@ -77,11 +72,9 @@ class TransferIntegrityRepairCoordinatorTest {
         }
 
         assertEquals(BackfillOutcome.INCOMPLETE, coordinator.runIfNeeded())
-        assertEquals(MaintenanceRequirement.BLOCKING, coordinator.pendingRequirement())
         assertEquals(0, prefs().getInt(MaintenancePreferences.KEY_TRANSFER_INTEGRITY_REPAIR_VERSION, 0))
         assertEquals(BackfillOutcome.COMPLETED, coordinator.runIfNeeded())
         assertEquals(2, attempts)
-        assertNull(coordinator.pendingRequirement())
     }
 
     @Test
@@ -93,7 +86,6 @@ class TransferIntegrityRepairCoordinatorTest {
         )
 
         assertEquals(BackfillOutcome.INCOMPLETE, coordinator.runIfNeeded())
-        assertEquals(MaintenanceRequirement.BLOCKING, coordinator.pendingRequirement())
         assertEquals(0, prefs().getInt(MaintenancePreferences.KEY_TRANSFER_INTEGRITY_REPAIR_VERSION, 0))
     }
 

@@ -15,6 +15,7 @@ class SettingsViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(SettingsViewModel::class.java))
         return SettingsViewModel(
+            messagePatternsWorkflow = container.messagePatternsWorkflow,
             settingsRegistryWorkflow = container.settingsRegistryWorkflow,
             settingsCommitmentsWorkflow = container.settingsCommitmentsWorkflow,
             appLocaleRepository = container.appLocaleRepository,

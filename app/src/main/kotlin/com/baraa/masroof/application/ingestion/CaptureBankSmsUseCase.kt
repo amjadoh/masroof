@@ -5,6 +5,7 @@ import com.baraa.masroof.application.logging.AppLogFormatting
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.bank.BankRoutingResult
 import com.baraa.masroof.bank.BankSmsRegistry
+import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.RawSms
 import com.baraa.masroof.domain.repository.RawSmsInsertResult
 import com.baraa.masroof.domain.repository.RawSmsRepository
@@ -28,8 +29,19 @@ class CaptureBankSmsUseCase(
 ) {
     private val insertMutex = Mutex()
 
-    suspend fun capture(rawSms: RawSms, logOutcome: Boolean = true): BankSmsCaptureResult {
+    fun requireSupportedBank(bank: Bank) {
+        require(bankSmsRegistry.adapterFor(bank) != null) { "Bank scope is not registered" }
+    }
+
+    suspend fun capture(rawSms: RawSms, logOutcome: Boolean = true, bankScope: Bank? = null): BankSmsCaptureResult {
+        bankScope?.let(::requireSupportedBank)
         val route = bankSmsRegistry.route(rawSms.sender, rawSms.body)
+        // Scope filters evidence; it never selects an adapter or resolves a collision.
+        if (bankScope != null && !when (route) {
+                is BankRoutingResult.Matched -> route.adapter.bank == bankScope
+                is BankRoutingResult.Ambiguous -> bankScope in route.banks
+                is BankRoutingResult.SuspectedBank, is BankRoutingResult.NotMatched -> false
+            }) return BankSmsCaptureResult.NotRelevant(reason = "outside_bank_scope")
         if (route is BankRoutingResult.NotMatched) {
             if (logOutcome) {
                 appLogService?.info(

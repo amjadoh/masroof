@@ -21,7 +21,7 @@ class AnalyticsWorker(context: Context, params: WorkerParameters) : CoroutineWor
     override suspend fun doWork(): Result = try {
         val container = (applicationContext as MasroofApplication).container
         if (container.awaitStartupMaintenance() != com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome.READY) Result.retry()
-        else { container.labAnalytics.refresh(); Result.success() }
+        else { container.analytics.refresh(); Result.success() }
     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
       catch (_: Exception) { Result.retry() }
     companion object {
@@ -70,7 +70,7 @@ object AnalyticsNotifications {
 }
 
 /** Included in the existing durable financial restore journal, including rollback. */
-object LabAnalyticsBackup {
+object AnalyticsBackup {
     fun validateExportSize(directory: java.io.File, limits: com.baraa.masroof.application.backup.BackupArchiveLimits) {
         val names = listOf("masroof.db", "manifest.json", "preferences.json")
         require(names.all { java.io.File(directory, it).isFile }) { "Incomplete backup package" }

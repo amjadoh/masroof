@@ -2,7 +2,7 @@ package com.baraa.masroof.application.analytics
 
 import com.baraa.masroof.data.analytics.AnalyticsJson
 import com.baraa.masroof.data.analytics.RecurringFeedbackRow
-import com.baraa.masroof.lab.analytics.*
+import com.baraa.masroof.analytics.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 

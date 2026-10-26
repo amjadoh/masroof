@@ -32,7 +32,7 @@ class LearningProcessDeathJourneyTest {
         val c=app.container
         c.awaitPostStartupBackgroundWorkForTesting()
         c.onboardingOwnershipWorkflow.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA,"3001"))
-        val service=requireNotNull(c.labInterpretationService)
+        val service=requireNotNull(c.interpretationService)
         service.synchronizeFeedback()
         c.processRawSmsUseCase.ingest(sms("death-teach",20))
         val review=requireNotNull(c.reviewRepository.findByRawSmsId("death-teach"))
@@ -57,7 +57,7 @@ class LearningProcessDeathJourneyTest {
     @Test(timeout=120_000) fun resumeFinancialCorrectionAndBlockNextTemplate() = runBlocking {
         val c=app.container
         c.awaitPostStartupBackgroundWorkForTesting()
-        val service=requireNotNull(c.labInterpretationService)
+        val service=requireNotNull(c.interpretationService)
         service.synchronizeFeedback()
         assertEquals(FinancialTransactionType.EXPENSE,c.financialTransactionRepository.findByRawSmsId("death-corrected")!!.type)
         assertEquals(LearningFeedbackState.BLOCKED,service.feedbackStatus("death-corrected")!!.state)

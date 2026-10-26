@@ -16,7 +16,7 @@
 
 **Layers:** `presentation` → `application` → `domain` / `parsing` / `data` / `sms` / `bank`. Dependencies point inward. Rules are enforced in `PackageDependencyRulesTest` — do not add exceptions; fix the import instead.
 
-**Financial core:** `finance-core` owns production `core.money`, financial value models, period/time policies, container/transaction identities, financial classification/impact, transfer matching/assembly and statement matching. Their original `com.baraa.masroof.core.money` / `com.baraa.masroof.domain.*` packages are preserved. Do not recreate these implementations in `app`. Core receives facts and returns in-memory decisions; repository access, ownership discovery/confirmation, reconciliation writes/retries, CSV I/O and dashboard aggregation remain in `app`. `bank-engine` may import only the existing `lab.finance.value` contracts, never the financial decision policies. Both current Money contracts remain distinct. Extraction adds no schema migration, backfill or reparse.
+**Financial core:** `finance-core` owns production `core.money`, financial value models, period/time policies, container/transaction identities, financial classification/impact, transfer matching/assembly and statement matching. Their original `com.baraa.masroof.core.money` / `com.baraa.masroof.domain.*` packages are preserved. Do not recreate these implementations in `app`. Core receives facts and returns in-memory decisions; repository access, ownership discovery/confirmation, reconciliation writes/retries, CSV I/O and dashboard aggregation remain in `app`. `bank-engine` may import only the existing `finance.value` contracts, never the financial decision policies. Both current Money contracts remain distinct. Extraction adds no schema migration, backfill or reparse.
 
 **ViewModels:** Call `application/*Workflow` facades only. No direct use of `domain.repository`, `domain.ownership`, or `domain.period` from presentation.
 
@@ -26,9 +26,9 @@
 
 **Parsing vs dashboard:** Bank-specific logic stays in `bank/*` parsers. Populate `ParsedEventDetails` at parse time (`cardSmsChannel`, balances, due dates, etc.). Dashboard code in `application/dashboard/*` reads persisted facts only — never re-parse SMS text and never import `bank.*`.
 
-**Room changes:** Migration + mapper + parser population + migration test. If existing users need the new column filled, wire backfill (see `ParsedEventFactsBackfillCoordinator`). Declare the new schema version in `SchemaFactsBackfillPolicy`: `BLOCKING` only if existing rows display incorrectly until re-parse, otherwise `BACKGROUND`. Device-test after schema/backfill merges.
+**Room changes:** The financial database supports schema v18 only. Keep its version and identity hash unchanged; reject other database/backup schemas without destructive fallback. Older-schema migrations and automatic schema-fact backfills are removed by user request. Preserve current-data integrity repair, restore rollback and retired worker identities. Any future schema change needs an explicit design, mapper/parser population and device verification.
 
-**Maintenance:** Startup waits for `BLOCKING` maintenance (`StartupMaintenance`) and fails closed if it is incomplete: never expose financial screens until a blocking retry succeeds. Only `BACKGROUND` work may run while the app is open; it must be idempotent, keep failed rows retryable, and emit `MaintenanceCompletionSignal` so screens refresh.
+**Maintenance:** Startup waits for current-data integrity repair (`StartupMaintenance`) and fails closed if it is incomplete: never expose financial screens until a required retry succeeds. Work safe to run in the background must be idempotent, keep failed rows retryable, and emit `MaintenanceCompletionSignal` so screens refresh.
 
 **Parse-status gate:** Only `ParseStatus.SUCCESS`, an explicit automation-confirming correction (message family/amount), or an explicit `USER_FINANCIAL_TYPE` resolution may create/pair/post a `FinancialTransaction` (`TransactionAssembler.isAutomationEligible`). Merchant/counterparty-only edits never lift the gate. Never bypass it in reconciliation passes.
 
@@ -40,19 +40,19 @@
 
 **SMS text matching:** Match on `NormalizedSms.comparisonBody` with `comparisonRegex(...)` / `containsComparison(...)` (Arabic-folded patterns); never display `comparisonBody` — slice display values with `normalizedSlice(range)`.
 
-**Classification:** Bank interpretation lives in `bank-engine/`, using `RuleLibrary` / `AlJaziraRuleProfile` and explicit evidence/blockers. Competing families stay UNKNOWN and reviewable. OTP security wins over quoted financial wording; refunds retain refund authority. Add regression coverage for role or classification changes. The retired AlJazira parser/classifier/extractor implementation must not return, including test-only copies. Local ML in `ml-assist/` supplies family assistance only, never money, ownership or posting authority.
+**Classification:** Bank interpretation lives in `bank-engine/`, using `PatternFactInterpreter` / the shared `RuleInterpreter` and explicit evidence/blockers. Production definitions live in `app/src/main/assets/bank-patterns/`; Kotlin rule profiles live only in `bank-engine/src/testFixtures` as interpreter/reference test vocabulary. Pattern approval stays in `application/patterns`, processing protection in `application/ingestion`, runtime adapter composition/write guards in `application/interpretation`, storage in `data/patterns`, and backup integration in `application/backup`. Pattern screens consume application display models, never engine definitions. Do not add a parallel pattern runtime or relocate packages without updating the ownership table in `docs/ARCHITECTURE.md`. Competing families stay UNKNOWN and reviewable. OTP security wins over quoted financial wording; refunds retain refund authority. Add regression coverage for role or classification changes. The retired AlJazira parser/classifier/extractor implementation must not return, including test-only copies. Local ML in `ml-assist/` supplies family assistance only, never money, ownership or posting authority.
 
 **Validation firewall:** Only `ParseFinalizer` may emit `ParseResult.Success`, and only when `DefaultParsedEventValidator` reports no ERROR findings. Tighten automatic use through validator rules / `AutomaticUsePolicy`, not by special-casing parsers; validators never resolve ownership or transaction type.
 
 **New bank:** Implement `BankSmsAdapter`, add fixture tests under `testdata/`, and register a `BankSmsAdapterContractCase` (real financial + non-financial fixtures, positive/negative senders) in `BankSmsAdapterContractTest`; no sample may be claimed by more than one adapter.
 
-**PRs:** Target `main` only. Partial architecture merges may show broken UI until backfill lands — that is expected.
+**PRs:** Target `main` only.
 
 **Release CI:** Full tests run in PR/main **CI** only. Do not add `testDebugUnitTest` back to `release.yml`; release verifies green CI then builds the APK.
 
 **Reference:** `docs/ARCHITECTURE.md` describes the current production modules; `docs/ANALYTICS.md` describes advisory analysis. Follow this file when historical records disagree.
 
-**Production cutover:** Keep `masroof.db` schema v18, preference names, Keystore alias, worker identities and the original application id. No Lab UI, generated application replica or parallel intake may ship. Pure module package names may retain their historical `lab` segment; this is not a second runtime. Engine/model refreshes must not reparse posted evidence or override human decisions.
+**Production cutover:** Keep `masroof.db` schema v18, preference names, Keystore alias, worker identities and the original application id. No Lab UI, generated application replica or parallel intake may ship. Pure modules use production namespaces (`engine.bank`, `finance.value`, `ml`, `analytics`); application integration tests live under `integration`. Do not reintroduce `lab` or `beta` source paths. Historical persisted keys and retired-work identifiers stay compatible. Engine/model refreshes must not reparse posted evidence or override human decisions.
 
 ## Dashboard calculations
 

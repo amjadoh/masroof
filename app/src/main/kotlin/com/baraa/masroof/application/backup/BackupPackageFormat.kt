@@ -20,6 +20,7 @@ data class BackupPreferencesSnapshot(
     val languageTag: String,
     val themeMode: String,
     val labAnalysis: String? = null,
+    val messagePatterns: String? = null,
 )
 
 enum class BackupImportOutcome {

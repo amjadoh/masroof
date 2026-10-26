@@ -25,7 +25,7 @@ class BackupPreviewVerificationTest {
         val name = "fidelity-verification-test.db"
         context.deleteDatabase(name)
         val database = Room.databaseBuilder(context, MasroofDatabase::class.java, name)
-            .addMigrations(*MasroofDatabase.ALL_MIGRATIONS).allowMainThreadQueries().build()
+            .allowMainThreadQueries().build()
         val closed = AtomicBoolean(false)
         val file = File(context.cacheDir, "fidelity-verification.masroof")
         try {

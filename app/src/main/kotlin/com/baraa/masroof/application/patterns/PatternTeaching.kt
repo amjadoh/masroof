@@ -1,0 +1,36 @@
+package com.baraa.masroof.application.patterns
+
+import com.baraa.masroof.engine.bank.patterns.FieldChoice
+import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
+import com.baraa.masroof.engine.bank.patterns.TextSpan
+
+/** Teaching roles are explicit user choices, not posting authority or ownership decisions. */
+enum class PatternOperation(val fields: List<String>) {
+    PURCHASE(listOf("amount", "merchant", "card", "occurred_at", "available_balance")),
+    TRANSFER_IN(listOf("amount", "counterparty", "account_reference", "funding_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
+    TRANSFER_OUT(listOf("amount", "counterparty", "account_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
+    BILL_PAYMENT(listOf("amount", "biller", "source_account", "occurred_at", "reference")),
+    CARD_PAYMENT(listOf("amount", "card", "source_account", "occurred_at")),
+    REFUND(listOf("amount", "merchant", "card", "occurred_at")),
+    WITHDRAWAL(listOf("amount", "source_account", "card", "occurred_at")),
+}
+
+/** In-memory source only: never saved in navigation state or written back to RawSms. */
+data class PatternTeachingSource(val bankId: String?, val sender: String, val body: String)
+
+data class PatternBinding(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
+data class PatternText(val text: String, val start: Int, val end: Int)
+data class PatternMatch(val patternId: String, val revision: Int, val operation: String, val fields: Map<String, PatternText>)
+
+/** Immutable preview token retains the exact compiled definition reviewed before save. */
+class PatternTeachingPreview internal constructor(
+    val generation: Long,
+    internal val pattern: SavedMessagePattern,
+    val fields: Map<String, PatternText>,
+) {
+    val bankId get() = pattern.bankId
+    val operation get() = pattern.label
+}
+
+internal fun Map<String, TextSpan>.displayFields() = mapValues { (_, span) -> PatternText(span.raw, span.start, span.end) }
+internal fun List<PatternBinding>.choices() = map { FieldChoice(it.field, it.start, it.end, it.ignored) }

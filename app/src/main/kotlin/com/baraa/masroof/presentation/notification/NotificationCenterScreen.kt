@@ -61,7 +61,7 @@ internal fun NotificationCenterScreen(
         onBack = onBack,
         backContentDescription = stringResource(R.string.review_back),
     ) { contentModifier ->
-        com.baraa.masroof.presentation.analytics.LabUnifiedNotificationContent(state, contentModifier) { item, divider ->
+        com.baraa.masroof.presentation.analytics.AnalysisNotificationContent(state, contentModifier) { item, divider ->
             NotificationCenterRow(item, { onOpenNotification(item) }, divider)
         }
     }

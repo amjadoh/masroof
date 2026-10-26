@@ -1,7 +1,7 @@
 package com.baraa.masroof.data.learning
 
-import com.baraa.masroof.lab.ml.catalog.ModelManifest
-import com.baraa.masroof.lab.ml.family.*
+import com.baraa.masroof.ml.catalog.ModelManifest
+import com.baraa.masroof.ml.family.*
 import kotlinx.serialization.json.*
 
 /** Data-only codec. No model/configuration can supply code, monetary facts or ownership. */
