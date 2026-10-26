@@ -72,11 +72,59 @@ bounded extractor for a message layout. It runs in `bank-engine` **test sources
 only**. It is absent from the application runtime and APK. No application,
 adapter, intake, database, worker, model, or financial policy is modified.
 
+## Full cycle with automatically generated, persisted definitions
+
+`SavedMessagePattern.fromChoices` takes text, scope/type metadata selected by a
+user, and only field names plus original start/end selections (and an optional
+ignore choice). It runs generic candidate discovery, validates selection coverage,
+infers supported primitive field shapes from the selected text, and automatically
+constructs alternating literal/slot parts. The writer accepts no primitive type,
+regex, literal-part list or manually authored template in its field-choice input.
+
+`PatternStore` saves schema/normalization versions, scope, id, revision, enabled
+state, literals and typed slots to JSON. Selected example values are not persisted.
+Loading compiles the declarative definition using generated primitive placeholder
+tokens and the trusted compiler; it does not reopen the original teaching SMS.
+No executable regex is accepted from disk. Saves sync a new file before an atomic
+replacement; write-failure injection verifies that the previous file survives.
+The prototype serializes writes in one JVM; concurrent application writers and
+Android encrypted backup integration are not covered by this file experiment.
+
+The actual private lifecycle run used two separate JVM invocations:
+
+```bash
+./gradlew :bank-engine:patternLifecycle --args='teach /private/lifecycle'
+# After the first process exits, remove teachers.json from its expected path.
+./gradlew :bank-engine:patternLifecycle --args='verify /private/lifecycle'
+```
+
+The first process generated eight definitions from 37 human field choices, saved
+`patterns.json`, and recorded its PID, definition fingerprint and teaching-body
+hashes. The teaching input was then renamed and made unreadable. A new process
+verified a different PID, loaded definitions without teaching input, rejected
+any test body duplicating a teacher, and interpreted 12 held-out messages with
+all 49 expected field values and original offsets correct. Those cases comprise
+nine supplied STC messages, one separate AlJazira repository fixture, and two
+synthetic mutations of the inline purchase example. The inline example's bank
+and sender scope was simulated as a user selection; bank detection is not tested.
+Thirty-six wrong-scope, wrong-sender and structurally changed controls abstained.
+
+The user-binding step was simulated from explicit field selections; pattern
+construction and primitive-shape inference were automatic. No saved definition
+was hand-authored. Unit tests additionally cover disable/revision persistence,
+conflicting matches in either order, unsupported/corrupt data, executable-part
+rejection, interrupted writes, ignored varying fields and a local file snapshot
+restore. This does not test the app's production backup/restore workflow.
+
+The full module runs passed 95 bank-engine and 95 finance-core tests with zero
+failures, errors or skipped tests. Financial writes remain zero. All new classes
+are test-source tools and `patternLifecycle` uses only the test classpath.
+
 ## Contract and scope
 
 - Input: an exact sender, a human label, original message text, and non-overlapping
   original UTF-16 selections with field names and primitive kinds.
-- Learning: retain literal context and the first title line; replace selected
+- Learning: retain literal context; replace selected
   values with bounded typed slots. Escape all literals; accept no executable
   patterns or scripts from the input. Reuse the engine's `SourceText` for text
   normalization and original evidence offsets.
@@ -143,8 +191,10 @@ zeroes. These counts are behavior checks, **not a real-world accuracy estimate**
 
 ## Limits before application integration
 
-The prototype allows one selected field per line, keeps the observed identifier
-width and date format, and abstains on unseen field omissions or structural
+The prototype allows at most one free-text slot per line; other typed slots can
+share a line when distinct literal separators remain. A literal anchor must precede
+the first selected field. It keeps the observed identifier width and supported
+date shape, and abstains on unseen field omissions or structural
 changes. Reduced years explicitly validate against 2000–2099 for this preview;
 no canonical transaction timestamp or zone is produced. Money is a raw typed
 string; it is not normalized into either production Money contract.
