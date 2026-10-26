@@ -1,17 +1,11 @@
 package com.baraa.masroof.lab.bank.experiment
 
+import com.baraa.masroof.lab.bank.patterns.*
 import kotlinx.serialization.json.*
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-
-internal typealias FieldChoice = com.baraa.masroof.lab.bank.patterns.FieldChoice
-internal typealias UserFieldBinding = com.baraa.masroof.lab.bank.patterns.UserFieldBinding
-internal typealias PatternPart = com.baraa.masroof.lab.bank.patterns.PatternPart
-internal typealias StaticText = com.baraa.masroof.lab.bank.patterns.StaticText
-internal typealias FieldSlot = com.baraa.masroof.lab.bank.patterns.FieldSlot
-internal typealias SavedMessagePattern = com.baraa.masroof.lab.bank.patterns.SavedMessagePattern
 
 internal object PatternStore {
     @Synchronized fun save(path: Path, patterns: List<SavedMessagePattern>, beforeReplace: () -> Unit = {}) {
