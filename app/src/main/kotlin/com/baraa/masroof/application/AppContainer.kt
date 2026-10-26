@@ -322,7 +322,9 @@ class AppContainer(
         com.baraa.masroof.application.interpretation.AutomaticInterpretationWriteGuard(
             effectiveParsedEventProvider,reviewRepository,financialTransactionRepository,
             inferenceCurrent = { labInterpretationService?.isInferenceCurrent(it) != false },
-            inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } })
+            inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
+            patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
+                com.baraa.masroof.data.patterns.MessagePatternStore(appContext))::isCurrent)
     }
 
     val transactionReconciliationService: TransactionReconciliationService =

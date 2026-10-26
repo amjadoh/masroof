@@ -18,6 +18,17 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
         if (interpretation.bank?.value != routedBank.id) blockers += "ENGINE_BANK_MISMATCH"
         if (interpretation.evidenceId != input.evidenceId) blockers += "ENGINE_EVIDENCE_MISMATCH"
         if (interpretation.evidence.any { it.end > input.body.length }) blockers += "ENGINE_EVIDENCE_RANGE_INVALID"
+        val pattern = interpretation.patternProvenance
+        if (pattern != null && (interpretation.version.engine != "message-pattern-facts-v1" ||
+                interpretation.version.rules != pattern.configurationFingerprint)) blockers += "ENGINE_PATTERN_PROVENANCE_INVALID"
+        if (interpretation.version.engine == "message-pattern-facts-v1" &&
+            interpretation.status == com.baraa.masroof.lab.bank.ParseStatus.SUCCESS && pattern == null) blockers += "ENGINE_PATTERN_PROVENANCE_MISSING"
+        val patternReasons = pattern?.let {
+            listOf("pattern_config:${it.configurationFingerprint}", "pattern_revision:${it.patternId}:${it.revision}") +
+                it.definitionFacts.sorted().map { field -> "pattern_source:$field:definition" } +
+                interpretation.evidence.map { e -> "pattern_source:${e.field}:message:${e.start}:${e.end}" } +
+                if (it.usesReceiptTime) listOf("pattern_source:OCCURRED_AT:receipt") else emptyList()
+        }.orEmpty()
         val automatic = interpretation.status == com.baraa.masroof.lab.bank.ParseStatus.SUCCESS && blockers.isEmpty()
         if (!automatic && interpretation.status != com.baraa.masroof.lab.bank.ParseStatus.NON_FINANCIAL && blockers.isEmpty()) blockers += "ENGINE_NOT_AUTOMATIC"
         val rawFamily = MessageFamily.valueOf(facts.family.name)
@@ -43,7 +54,7 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
             occurredAt = facts.occurredAt,bankNetworkType = facts.bankNetwork?.let { BankNetworkType.valueOf(it.name) },
             confidence = Confidence(if (automatic) interpretation.confidence?.score ?: 1.0 else 0.0,
                 listOf("engine:${interpretation.version.engine}","rules:${interpretation.version.rules}")+
-                    interpretation.familyInference?.let {listOf("family_origin:${it.origin}","model:${it.modelVersion}")}.orEmpty()+blockers),
+                    interpretation.familyInference?.let {listOf("family_origin:${it.origin}","model:${it.modelVersion}")}.orEmpty()+patternReasons+blockers),
             parseStatus = if (automatic) ParseStatus.SUCCESS else ParseStatus.REVIEW_REQUIRED,
             details = details,amountCandidates = listOfNotNull(selected),selectedAmount = selected)
         val validator = object : ParsedEventValidator {

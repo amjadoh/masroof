@@ -9,6 +9,27 @@ import java.io.IOException
 import java.nio.file.Files
 
 class MessagePatternStoreTest {
+    @Test fun explicitFactContractsRoundTripAndCannotRewriteAPriorRevision() = withFile { file ->
+        val contract = PatternFactContract(com.baraa.masroof.lab.bank.MessageFamily.PURCHASE,
+            com.baraa.masroof.lab.bank.MoneyDirection.OUTGOING, com.baraa.masroof.lab.finance.value.Currency.SAR)
+        val first = pattern("STC", "STC Bank").copy(factContract = contract)
+        val store = MessagePatternStore(file)
+        store.saveBank(0, bank(first))
+        assertEquals(first, MessagePatternStore(file).load().banks.single().patterns.single())
+        val raw = file.readText()
+        assertThrows(IllegalArgumentException::class.java) {
+            store.saveBank(1, bank(first.copy(factContract = contract.copy(currency = com.baraa.masroof.lab.finance.value.Currency.USD))))
+        }
+        assertEquals(raw, file.readText())
+        assertThrows(IllegalArgumentException::class.java) {
+            MessagePatternConfigurationCodec.decode(raw.replace("\"version\":1", "\"version\":99"))
+        }
+        // Existing v1 definitions stay preview-only, including after they are exported again.
+        assertNull(MessagePatternConfigurationCodec.decode(MessagePatternConfigurationCodec.encode(
+            MessagePatternConfiguration(banks = listOf(bank(first.copy(factContract = null))))))
+            .banks.single().patterns.single().factContract)
+    }
+
     @Test fun versionsBankScopeDisableAndRollbackSurviveFreshStoreInstances() = withFile { file ->
         val store = MessagePatternStore(file)
         val first = pattern("STC", "STC Bank")
