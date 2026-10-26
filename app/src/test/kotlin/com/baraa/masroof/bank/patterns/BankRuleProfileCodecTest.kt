@@ -1,8 +1,8 @@
 package com.baraa.masroof.bank.patterns
 
 import com.baraa.masroof.data.patterns.BankRuleProfileCodec
-import com.baraa.masroof.lab.bank.interpretation.RuleInterpreter
-import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
+import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
+import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test

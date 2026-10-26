@@ -13,7 +13,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.MessagePatternsWorkflow
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
-import com.baraa.masroof.lab.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.presentation.patterns.MessagePatternsScreen
 import com.baraa.masroof.testsupport.ScreenshotArtifactWriter
@@ -134,8 +134,8 @@ class MessagePatternsJourneyTest {
             val ingestion = com.baraa.masroof.application.review.IngestionReviewService(reviews,
                 com.baraa.masroof.sms.time.InstantClock { java.time.Instant.parse("2026-08-01T00:00:00Z") })
             val body = "Payment\nAmount:10SAR"
-            val pattern = com.baraa.masroof.lab.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
-                listOf(com.baraa.masroof.lab.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
+            val pattern = com.baraa.masroof.engine.bank.patterns.SavedMessagePattern.fromChoices("purchase", "STC", "STC Bank", "PURCHASE", body,
+                listOf(com.baraa.masroof.engine.bank.patterns.FieldChoice("amount", body.indexOf("10SAR"), body.length)))
             store.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank"), "بنك التجربة", listOf(pattern)))
             for ((index, amount) in listOf("10", "250").withIndex()) {
                 val text = body.replace("10SAR", "${amount}SAR")

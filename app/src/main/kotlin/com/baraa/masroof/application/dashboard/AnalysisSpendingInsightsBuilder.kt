@@ -56,7 +56,7 @@ object AnalysisSpendingInsightsBuilder {
 
 /** Historical money aggregates stay in the application calculation layer. */
 object AnalysisPeriodHistoryCalculator {
-    fun period(start: Long, end: Long, days: List<com.baraa.masroof.lab.analytics.PurchaseDay>): com.baraa.masroof.application.analytics.AnalysisPeriod {
+    fun period(start: Long, end: Long, days: List<com.baraa.masroof.analytics.PurchaseDay>): com.baraa.masroof.application.analytics.AnalysisPeriod {
         val covered = days.count { it.covered }
         return com.baraa.masroof.application.analytics.AnalysisPeriod(start, end,
             if (covered == 0) null else days.fold(0L) { sum, day -> Math.addExact(sum, day.net) }, covered, (end - start).toInt())

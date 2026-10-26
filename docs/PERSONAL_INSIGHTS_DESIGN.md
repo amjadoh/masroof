@@ -47,9 +47,9 @@ materially harm these results.
 | Recurrence | Numerical classifier plus deterministic rules, durable decisions and undo in #329 | Retain; evidence-first review and explicit feedback semantics |
 | Messages | Rules first, exact human-template memory, gated statistical personalization | Retain; review unsupported formulations and select diverse examples |
 
-Current sources: `LabAnalyticsScreen.kt`, `AnalysisSpendingCharts.kt`,
+Current sources: `AnalyticsScreen.kt`, `AnalysisSpendingCharts.kt`,
 `AnalysisForecastViews.kt`, `AnalysisExplanationViews.kt`,
-`FinancialAnalysisReader.kt`, `LabAnalyticsWorkflow.kt`,
+`FinancialAnalysisReader.kt`, `AnalyticsWorkflow.kt`,
 `PurchaseForecaster.kt`, `RecurringLearning.kt`, `FamilyPersonalization.kt`.
 Readiness must come from current production workflow output, not the backup's
 calendar span alone. Archived snapshots are not independent accuracy samples.

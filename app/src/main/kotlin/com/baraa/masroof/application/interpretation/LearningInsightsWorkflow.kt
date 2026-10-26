@@ -13,7 +13,7 @@ data class LearningInsights(val pending: Boolean = false, val attempted: Int = 0
     val personalReason: String = "NEEDS_EVALUATIONS")
 
 /** Operational counts have denominators. No correction does not prove a prediction correct. */
-class LearningInsightsWorkflow(private val learning: LabInterpretationService?,
+class LearningInsightsWorkflow(private val learning: BankInterpretationService?,
     private val parsed: ParsedEventRepository, private val transactions: FinancialTransactionRepository,
     private val reviews: ReviewRepository) {
     suspend fun load(): LearningInsights {

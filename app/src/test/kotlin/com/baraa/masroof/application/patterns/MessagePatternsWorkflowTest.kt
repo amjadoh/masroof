@@ -3,7 +3,7 @@ package com.baraa.masroof.application.patterns
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.data.room.DatabaseRestartRequiredException
-import com.baraa.masroof.lab.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test

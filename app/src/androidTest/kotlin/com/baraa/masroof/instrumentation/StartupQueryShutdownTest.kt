@@ -31,7 +31,7 @@ class StartupQueryShutdownTest {
         val context = TestStorageContext(host, "analytics-before-startup-close")
         val c = AppContainer(context)
         try {
-            val refresh = launch(start = CoroutineStart.UNDISPATCHED) { c.labAnalytics.refresh() }
+            val refresh = launch(start = CoroutineStart.UNDISPATCHED) { c.analytics.refresh() }
             assertFalse("Refresh is suspended on the startup authority", refresh.isCompleted)
             c.close()
             refresh.join()

@@ -10,7 +10,7 @@ import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.data.room.MasroofDatabase
-import com.baraa.masroof.lab.bank.patterns.*
+import com.baraa.masroof.engine.bank.patterns.*
 import com.baraa.masroof.testsupport.TestStorageContext
 import kotlinx.coroutines.*
 import org.junit.Assert.*

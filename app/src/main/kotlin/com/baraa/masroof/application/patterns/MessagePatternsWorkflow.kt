@@ -4,9 +4,9 @@ import android.content.Context
 import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
-import com.baraa.masroof.lab.bank.patterns.BankMessagePatterns
-import com.baraa.masroof.lab.bank.patterns.GenericCandidateExtractor
-import com.baraa.masroof.lab.bank.patterns.SavedMessagePattern
+import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.GenericCandidateExtractor
+import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,7 +35,7 @@ class MessagePatternsWorkflow(
         }
     }
 
-    private fun missingBanks(configuration: com.baraa.masroof.lab.bank.patterns.MessagePatternConfiguration) =
+    private fun missingBanks(configuration: com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration) =
         bundledBanks.filter { bank -> configuration.banks.none {
             it.bankId == bank.bankId || it.senders.any(bank.senders::contains)
         } }

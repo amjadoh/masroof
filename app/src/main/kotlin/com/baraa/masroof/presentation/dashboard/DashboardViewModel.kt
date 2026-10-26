@@ -62,7 +62,7 @@ class DashboardViewModel(
     maintenanceCompletions: Flow<Unit> = emptyFlow(),
     val chartDataWorkflow: com.baraa.masroof.application.dashboard.ChartDataWorkflow =
         com.baraa.masroof.application.dashboard.ChartDataWorkflow(com.baraa.masroof.application.dashboard.InMemoryChartDataPreferencesRepository()),
-    val labAnalytics: com.baraa.masroof.application.analytics.LabAnalyticsWorkflow? = null,
+    val analytics: com.baraa.masroof.application.analytics.AnalyticsWorkflow? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -320,7 +320,7 @@ class DashboardViewModel(
         viewModelScope.launch {
             val outsidePeriod = _uiState.value.allTransactions.none { it.id == transactionId } && _uiState.value.recentTransactions.none { it.id == transactionId }
             val labRow = if (!outsidePeriod) null else try {
-                labAnalytics?.evidence(listOf(transactionId))?.firstOrNull()?.let { item -> item.transaction?.let { toPreview(it, item.facts) } }
+                analytics?.evidence(listOf(transactionId))?.firstOrNull()?.let { item -> item.transaction?.let { toPreview(it, item.facts) } }
             } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }
             val evidence = try {
                 smsEvidenceLoader.loadForTransaction(transactionId).map { item ->

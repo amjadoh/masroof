@@ -1,6 +1,6 @@
 package com.baraa.masroof.data.patterns
 
-import com.baraa.masroof.lab.bank.patterns.*
+import com.baraa.masroof.engine.bank.patterns.*
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -10,15 +10,15 @@ import java.nio.file.Files
 
 class MessagePatternStoreTest {
     @Test fun explicitFactContractsRoundTripAndCannotRewriteAPriorRevision() = withFile { file ->
-        val contract = PatternFactContract(com.baraa.masroof.lab.bank.MessageFamily.PURCHASE,
-            com.baraa.masroof.lab.bank.MoneyDirection.OUTGOING, com.baraa.masroof.lab.finance.value.Currency.SAR)
+        val contract = PatternFactContract(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
+            com.baraa.masroof.engine.bank.MoneyDirection.OUTGOING, com.baraa.masroof.finance.value.Currency.SAR)
         val first = pattern("STC", "STC Bank").copy(factContract = contract)
         val store = MessagePatternStore(file)
         store.saveBank(0, bank(first))
         assertEquals(first, MessagePatternStore(file).load().banks.single().patterns.single())
         val raw = file.readText()
         assertThrows(IllegalArgumentException::class.java) {
-            store.saveBank(1, bank(first.copy(factContract = contract.copy(currency = com.baraa.masroof.lab.finance.value.Currency.USD))))
+            store.saveBank(1, bank(first.copy(factContract = contract.copy(currency = com.baraa.masroof.finance.value.Currency.USD))))
         }
         assertEquals(raw, file.readText())
         assertThrows(IllegalArgumentException::class.java) {

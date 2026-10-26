@@ -1,6 +1,6 @@
 package com.baraa.masroof.data.patterns
 
-import com.baraa.masroof.lab.bank.*
+import com.baraa.masroof.engine.bank.*
 import kotlinx.serialization.json.*
 
 /** Closed literal profile format. Never accepts executable operators or silently drops capabilities. */

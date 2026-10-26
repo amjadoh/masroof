@@ -1,7 +1,7 @@
 package com.baraa.masroof.bank
 
-import com.baraa.masroof.lab.bank.Interpretation
-import com.baraa.masroof.lab.bank.MessageInput
+import com.baraa.masroof.engine.bank.Interpretation
+import com.baraa.masroof.engine.bank.MessageInput
 import com.baraa.masroof.bank.aljazira.AlJaziraBankDetector
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.parsing.model.*

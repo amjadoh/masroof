@@ -3,15 +3,15 @@ package com.baraa.masroof.testsupport
 import com.baraa.masroof.bank.BankSmsAdapter
 import com.baraa.masroof.bank.NewEngineSmsAdapter
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.lab.bank.interpretation.RuleInterpreter
-import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
-import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
+import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
+import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.parsing.parser.SmsParseGateway
 
 fun engineFixtureAdapter(
     pipeline: SmsParseGateway? = null,
     detector: com.baraa.masroof.parsing.detector.BankDetector? = null,
-    profile: com.baraa.masroof.lab.bank.BankRuleSchema = AlJaziraRuleProfile.current(),
+    profile: com.baraa.masroof.engine.bank.BankRuleSchema = AlJaziraRuleProfile.current(),
 ): BankSmsAdapter {
     val engine = RuleInterpreter(profile)
     val adapter = NewEngineSmsAdapter { engine.interpretRouted(it, BankId(Bank.BANK_ALJAZIRA.id)) }
@@ -26,7 +26,7 @@ class EngineFixtureParser(
 ) : SmsParseGateway {
     private val engine = RuleInterpreter(AlJaziraRuleProfile.current())
     override fun parse(input: com.baraa.masroof.parsing.model.SmsParseInput): com.baraa.masroof.parsing.model.ParseResult {
-        val message = com.baraa.masroof.lab.bank.MessageInput(input.rawSmsId, input.sender, input.body, input.receivedAt, durableSmsReceipt = true)
+        val message = com.baraa.masroof.engine.bank.MessageInput(input.rawSmsId, input.sender, input.body, input.receivedAt, durableSmsReceipt = true)
         return com.baraa.masroof.bank.InterpretationDraftMapper(validator).map(message, engine.interpretRouted(message, BankId(Bank.BANK_ALJAZIRA.id)), Bank.BANK_ALJAZIRA)
     }
 }

@@ -2,9 +2,9 @@ package com.baraa.masroof.bank.patterns
 
 import com.baraa.masroof.bank.InterpretationDraftMapper
 import com.baraa.masroof.domain.model.Bank
-import com.baraa.masroof.lab.bank.*
-import com.baraa.masroof.lab.bank.patterns.*
-import com.baraa.masroof.lab.finance.value.BankId
+import com.baraa.masroof.engine.bank.*
+import com.baraa.masroof.engine.bank.patterns.*
+import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.parsing.model.ParseResult
 import org.junit.Assert.*
 import org.junit.Test

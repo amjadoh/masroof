@@ -14,7 +14,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
-import com.baraa.masroof.lab.bank.patterns.MessagePatternConfiguration
+import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -121,11 +121,11 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             Text(stringResource(R.string.pattern_revision, operationNames.getOrNull(operationIndex) ?: pattern.label, pattern.revision))
                             Text(pattern.parts.joinToString("") { part ->
                                 when (part) {
-                                    is com.baraa.masroof.lab.bank.patterns.StaticText -> part.value
-                                    is com.baraa.masroof.lab.bank.patterns.FieldSlot -> "…"
+                                    is com.baraa.masroof.engine.bank.patterns.StaticText -> part.value
+                                    is com.baraa.masroof.engine.bank.patterns.FieldSlot -> "…"
                                 }
                             }.take(240), style = MaterialTheme.typography.bodySmall)
-                            Text(pattern.parts.filterIsInstance<com.baraa.masroof.lab.bank.patterns.FieldSlot>()
+                            Text(pattern.parts.filterIsInstance<com.baraa.masroof.engine.bank.patterns.FieldSlot>()
                                 .filterNot { it.ignored }.joinToString { fieldName(it.field) })
                             MasroofTextButton(onClick = { work {
                                 snapshot = workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)

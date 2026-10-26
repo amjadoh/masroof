@@ -321,7 +321,7 @@ class AppContainer(
     private val automaticInterpretationWriteGuard by lazy {
         com.baraa.masroof.application.interpretation.AutomaticInterpretationWriteGuard(
             effectiveParsedEventProvider,reviewRepository,financialTransactionRepository,
-            inferenceCurrent = { labInterpretationService?.isInferenceCurrent(it) != false },
+            inferenceCurrent = { interpretationService?.isInferenceCurrent(it) != false },
             inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
             patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
                 com.baraa.masroof.data.patterns.MessagePatternStore(appContext))::isCurrent)
@@ -522,14 +522,14 @@ class AppContainer(
             },
         )
 
-    val labInterpretationService = if (bankAdapterOverride==null)
-        com.baraa.masroof.application.interpretation.LabInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
+    val interpretationService = if (bankAdapterOverride==null)
+        com.baraa.masroof.application.interpretation.BankInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
             userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService,
             ruleProfile = com.baraa.masroof.data.patterns.BankRuleProfileCodec.decode(
                 appContext.assets.open("bank-patterns/BANK_ALJAZIRA.rules.json").bufferedReader(Charsets.UTF_8).use { it.readText() }),
-            onFeedbackChanged = { maintenanceCompletionSignal.notifyCompleted(); if(analyticsDelegate.isInitialized()) labAnalytics.request() }) else null
+            onFeedbackChanged = { maintenanceCompletionSignal.notifyCompleted(); if(analyticsDelegate.isInitialized()) analytics.request() }) else null
     private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =
-        bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(labInterpretationService)::interpret)
+        bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(interpretationService)::interpret)
 
     private val bankSmsRegistry: BankSmsRegistry =
         BankSmsRegistry(
@@ -737,7 +737,7 @@ class AppContainer(
         shutdownStage = "ANALYTICS_DRAINING"
         stopLabAnalytics()
         shutdownStage = "LEARNING_DRAINING"
-        labInterpretationService?.close()
+        interpretationService?.close()
         shutdownStage = "APPLICATION_DRAINING"
         runBlocking(Dispatchers.IO) {
             applicationJob.complete()
@@ -764,7 +764,7 @@ class AppContainer(
             restartProcess = restartAfterRestore,
             beforeValidatedInstall = {
                 stopLabAnalytics()
-                labInterpretationService?.invalidateForRestore()
+                interpretationService?.invalidateForRestore()
                 com.baraa.masroof.application.analytics.AnalyticsNotifications.clear(appContext)
             },
         )
@@ -873,15 +873,15 @@ class AppContainer(
      * Startup releases financial UI only after correctness-blocking maintenance succeeds.
      */
     val interpretationProvenanceWorkflow by lazy { com.baraa.masroof.application.interpretation.InterpretationProvenanceWorkflow(effectiveParsedEventProvider, reviewRepository,
-        feedback = { labInterpretationService?.feedbackStatus(it) }) }
+        feedback = { interpretationService?.feedbackStatus(it) }) }
     val learningInsightsWorkflow by lazy { com.baraa.masroof.application.interpretation.LearningInsightsWorkflow(
-        labInterpretationService, parsedEventRepository, financialTransactionRepository, reviewRepository) }
+        interpretationService, parsedEventRepository, financialTransactionRepository, reviewRepository) }
     val messageReviewWorkflow by lazy { com.baraa.masroof.application.interpretation.MessageReviewWorkflow(
         reviewRepository, rawSmsRepository, parsedEventRepository) }
 
-    private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.LabAnalyticsWorkflow(this, appContext) }
-    val labAnalytics get() = analyticsDelegate.value
-    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) labAnalytics.close() }
+    private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.AnalyticsWorkflow(this, appContext) }
+    val analytics get() = analyticsDelegate.value
+    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) analytics.close() }
     fun runStartupMaintenance() {
         startupMaintenanceJob = applicationScope.launch {
             val outcome = runStartupMaintenanceAttempt()
@@ -916,8 +916,8 @@ class AppContainer(
         }
 
     private suspend fun runPostStartupBackgroundWork() {
-        labInterpretationService?.startLearning(database.invalidationTracker)
-        labAnalytics.start()
+        interpretationService?.startLearning(database.invalidationTracker)
+        analytics.start()
         liveSmsIntake.schedulePendingProcessing()
         enrichExchangeRatesBestEffort()
     }
