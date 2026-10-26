@@ -45,11 +45,12 @@ class MessagePatternsJourneyTest {
         capture("pattern-bank")
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:10SAR\nTo:SHOP")
-        click(R.string.pattern_extract)
+        click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("10SAR").performScrollTo().performClick()
-        click(R.string.pattern_bind)
+        compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
         click(R.string.pattern_preview)
+        click(R.string.teaching_try_another)
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-sample").fetchSemanticsNodes().isNotEmpty() }
         assertTrue(store.load().banks.single().patterns.isEmpty())
         compose.onNodeWithTag("pattern-sample").performScrollTo().performTextInput("Payment\nAmount:250SAR\nTo:SHOP")
@@ -65,11 +66,12 @@ class MessagePatternsJourneyTest {
         capture("pattern-disabled")
         compose.runOnIdle { dark.value = true }
         capture("pattern-disabled-dark")
+        click(R.string.teaching_saved_patterns)
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:30SAR")
-        click(R.string.pattern_extract)
+        click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("30SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText(ar(R.string.pattern_extract)).assertIsEnabled()
+        compose.onNodeWithTag("pattern-body").assertExists()
         // IME dismissal is asynchronous; Back must reach the screen, not dismiss Gboard.
         androidx.test.espresso.Espresso.closeSoftKeyboard()
         compose.waitUntil(10_000) {
@@ -78,6 +80,8 @@ class MessagePatternsJourneyTest {
                     ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == false
             }
         }
+        androidx.test.espresso.Espresso.pressBack()
+        compose.waitForIdle()
         androidx.test.espresso.Espresso.pressBack()
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_teach)).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(2, store.load().banks.single().patterns.size)
@@ -108,20 +112,20 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithText("STC Bank").assertExists()
         compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
         click(R.string.pattern_add_bank)
-        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_teach)).fetchSemanticsNodes().isNotEmpty() }
-        click(R.string.pattern_teach)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("pattern-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
             it(androidx.compose.ui.text.AnnotatedString("changed body"))
         }
         compose.onNodeWithTag("pattern-body").assertTextContains(source.body)
-        click(R.string.pattern_extract)
+        click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("73SAR").performScrollTo().performClick()
-        click(R.string.pattern_bind)
+        compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
         click(R.string.pattern_preview)
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
         capture("pattern-from-review")
         click(R.string.pattern_save)
+        click(R.string.teaching_return_review)
         compose.waitUntil(10_000) { returned.value }
         assertEquals(listOf("STC Bank"), store.load().banks.single().senders)
         assertEquals(1, store.load().banks.single().patterns.size)
@@ -165,13 +169,16 @@ class MessagePatternsJourneyTest {
                     MasroofTheme { Surface { MessagePatternsScreen(workflow, "STC", onOpenReview = { openedReview = it }, onBack = {}) } }
                 }
             }
+            click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("مبلغ العملية: 250SAR").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("مبلغ العملية: 250SAR").performScrollTo().assertIsDisplayed()
             capture("pattern-pending-results")
             compose.onAllNodesWithText(ar(R.string.pattern_pending_open))[0].performScrollTo().performClick()
             assertTrue(reviews.getById(requireNotNull(openedReview))!!.rawSmsId in listOf("pending-0", "pending-1"))
             assertEquals(2, reviews.listRequired().size)
+            compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
             click(R.string.pattern_disable)
+            click(R.string.teaching_saved_patterns)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)
         } finally { db.close(); file.delete() }
@@ -191,10 +198,11 @@ class MessagePatternsJourneyTest {
                     MasroofTheme { Surface { MessagePatternsScreen(workflow, "BANK_STC", onBack = {}) } }
                 }
             }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_disable)).fetchSemanticsNodes().size == 6 }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-internal-in").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(6, workflow.load().banks.single().currentPatterns.size)
             capture("stc-ready-patterns")
-            compose.onAllNodesWithText(ar(R.string.pattern_disable))[0].performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
+            click(R.string.pattern_disable)
             compose.waitUntil(10_000) { MessagePatternStore(file).load().generation == 2L }
             val reopened = MessagePatternsWorkflow(MessagePatternStore(file), DatabaseAccessGate(), bundledBanks = banks).load()
             assertEquals(2L, reopened.generation)

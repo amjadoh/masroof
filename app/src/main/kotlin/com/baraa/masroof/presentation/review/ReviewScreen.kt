@@ -66,7 +66,10 @@ fun ReviewRoute(
     val source = teachingSource
     if (source != null && patterns != null) {
         com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns, source = source,
-            onOpenReview = { id -> teachingSource = null; viewModel.openDetail(id) }, onBack = { teachingSource = null })
+            onOpenReview = { id -> teachingSource = null; viewModel.openDetail(id) }, onBack = {
+                teachingSource = null
+                viewModel.refreshAfterPatternTeaching()
+            })
         return
     }
     if (state.selectedDetail != null) {
@@ -88,7 +91,7 @@ fun ReviewRoute(
             onTeachPattern = if (patterns != null) ({
                 val detail = state.selectedDetail!!
                 teachingSource = com.baraa.masroof.application.patterns.PatternTeachingSource(
-                    detail.bankId, requireNotNull(detail.sender), detail.body)
+                    detail.bankId, requireNotNull(detail.sender), detail.body, detail.id)
             }) else null,
         )
     } else {
@@ -275,7 +278,7 @@ internal fun ReviewListCard(item: ReviewListItemUi, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReviewDetailScreen(
+internal fun ReviewDetailScreen(
     detail: ReviewDetailUi,
     resolving: Boolean,
     message: ReviewMessage?,
@@ -292,6 +295,15 @@ private fun ReviewDetailScreen(
     onRestoreIgnored: (FinancialTransactionType?) -> Unit,
     onTeachPattern: (() -> Unit)? = null,
 ) {
+    var showTypeSheet by androidx.compose.runtime.remember(detail.id) { androidx.compose.runtime.mutableStateOf(false) }
+    var showWhy by androidx.compose.runtime.remember(detail.id) { androidx.compose.runtime.mutableStateOf(false) }
+    val unfamiliar = !detail.showRestoreActions && detail.messageFamily in listOf(null, MessageFamily.UNKNOWN) &&
+        detail.reasonLabels.any { it in setOf("unknown_message_family", "unsupported_bank_message_format", "parse_review_required", "parse_partial") }
+    if (showTypeSheet) {
+        val reasonLabel = actionErrorDetail?.let { ReviewReasonLabels.labelRes(it) }
+        ReviewTypeSheet(resolving, { if (!resolving) showTypeSheet = false }, onResolveType,
+            error = if (error == ReviewError.ACTION_FAILED) stringResource(reasonLabel ?: R.string.review_action_failed) else null)
+    }
     MasroofSecondaryScaffold(
         title = stringResource(R.string.review_detail_title),
         onBack = onBack,
@@ -303,36 +315,23 @@ private fun ReviewDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
+            if (unfamiliar) {
+                Text(stringResource(R.string.teaching_review_title), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.teaching_review_pending), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                detail.reasonLabels.firstOrNull()?.let { reason ->
+                    ReviewReasonLabels.labelRes(reason)?.let { label ->
+                        Text(stringResource(label), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             MasroofCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = MasroofIcons.messageFamily(detail.messageFamily),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(MasroofIconSizes.logo),
-                    )
-                    Spacer(Modifier.size(MasroofSpacing.carouselGap))
-                    Text(
-                        stringResource(detail.kindLabelRes),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                detail.amountLabel?.let {
-                    MasroofAmountText(
-                        amount = it,
-                        role = MasroofAmountRole.Hero,
-                        modifier = Modifier.padding(top = MasroofSpacing.sectionHeaderGap),
-                    )
-                }
+                if (!unfamiliar) Text(stringResource(detail.kindLabelRes), style = MaterialTheme.typography.titleMedium)
+                detail.amountLabel?.let { MasroofAmountText(it, MasroofAmountRole.Hero) }
+                detail.sender?.let { IconLabelRow(MasroofIcons.sender, stringResource(R.string.review_sender, it)) }
+                IconLabelRow(MasroofIcons.calendar, stringResource(R.string.review_date, detail.dateLabel))
+                Text(detail.body, textAlign = TextAlign.Start, color = MaterialTheme.colorScheme.onSurface)
             }
-            detail.sender?.let {
-                IconLabelRow(icon = MasroofIcons.sender, label = stringResource(R.string.review_sender, it))
-            }
-            IconLabelRow(
-                icon = MasroofIcons.calendar,
-                label = stringResource(R.string.review_date, detail.dateLabel),
-            )
             detail.resolvedAtLabel?.let {
                 IconLabelRow(
                     icon = MasroofIcons.success,
@@ -373,18 +372,6 @@ private fun ReviewDetailScreen(
                 IconLabelRow(icon = MasroofIcons.counterparty, label = stringResource(R.string.review_counterparty, it))
             }
 
-            MasroofSectionHeader(
-                title = stringResource(R.string.review_reasons_title),
-                icon = MasroofIcons.warning,
-            )
-            detail.reasonLabels.forEach { reason ->
-                val reasonRes = ReviewReasonLabels.labelRes(reason)
-                Text(
-                    "• ${reasonRes?.let { stringResource(it) } ?: reason}",
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
             if (detail.showOwnershipActions && detail.ownershipCard?.last4 != null) {
                 MasroofSectionHeader(
                     title = stringResource(R.string.review_ownership_prompt_title),
@@ -405,25 +392,12 @@ private fun ReviewDetailScreen(
                 )
             }
 
-            MasroofSectionHeader(
-                title = stringResource(R.string.review_sms_body),
-                icon = MasroofIcons.sms,
-            )
-            com.baraa.masroof.presentation.interpretation.InterpretationProvenanceCard(detail.provenance)
-            MasroofCard {
-                Text(
-                    detail.body,
-                    textAlign = TextAlign.Start,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
             if (onTeachPattern != null && !detail.sender.isNullOrBlank() && detail.body.isNotBlank()) {
-                com.baraa.masroof.presentation.common.MasroofOutlinedButton(
-                    onClick = onTeachPattern, enabled = !resolving, modifier = Modifier.fillMaxWidth().testTag("review-teach-pattern"),
-                ) { Text(stringResource(R.string.pattern_teach_from_review)) }
+                com.baraa.masroof.presentation.common.MasroofButton(
+                    onClick = onTeachPattern, enabled = !resolving,
+                    modifier = Modifier.fillMaxWidth().testTag("review-teach-pattern"),
+                ) { Text(stringResource(R.string.teaching_review_action)) }
             }
-
             if (detail.bankChoices.isNotEmpty()) {
                 MasroofSectionHeader(
                     title = stringResource(R.string.review_bank_choice_title),
@@ -441,34 +415,28 @@ private fun ReviewDetailScreen(
                 }
             }
 
-            if (detail.showDismissNonFinancialAction) {
-                IconTextButton(
-                    onClick = onDismissNonFinancial,
-                    enabled = !resolving,
-                    icon = MasroofIcons.warning,
-                    text = stringResource(R.string.review_action_ignore),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
             if (detail.showFinancialTypeActions) {
-                MasroofSectionHeader(
-                    title = stringResource(R.string.review_actions_title),
-                    icon = MasroofIcons.reviewQueue,
-                )
-                REVIEW_RESOLUTION_TYPE_ACTIONS.forEach { type ->
-                    IconTextButton(
-                        onClick = { onResolveType(type) },
-                        enabled = !resolving,
-                        icon = MasroofIcons.transactionType(type),
-                        text = stringResource(type.toUiLabelRes()),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(reviewResolveTypeTestTag(type)),
-                    )
-                }
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton(
+                    onClick = { showTypeSheet = true }, enabled = !resolving,
+                    modifier = Modifier.fillMaxWidth().testTag("review-correct-type"),
+                ) { Text(stringResource(R.string.teaching_correct_type)) }
             }
-
+            if (detail.showDismissNonFinancialAction) {
+                com.baraa.masroof.presentation.common.MasroofTextButton(
+                    onClick = onDismissNonFinancial, enabled = !resolving,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.teaching_not_financial)) }
+            }
+            com.baraa.masroof.presentation.common.MasroofTextButton(
+                onClick = { showWhy = !showWhy }, modifier = Modifier.testTag("review-why"),
+            ) { Text(stringResource(R.string.teaching_review_why)) }
+            if (showWhy) {
+                detail.reasonLabels.forEach { reason ->
+                    val label = ReviewReasonLabels.labelRes(reason)
+                    Text(label?.let { stringResource(it) } ?: reason)
+                }
+                com.baraa.masroof.presentation.interpretation.InterpretationProvenanceCard(detail.provenance)
+            }
             val externalDirection = when (detail.messageFamily) {
                 MessageFamily.TRANSFER_IN -> ExternalTransferDirection.INCOMING
                 MessageFamily.TRANSFER_OUT -> ExternalTransferDirection.OUTGOING

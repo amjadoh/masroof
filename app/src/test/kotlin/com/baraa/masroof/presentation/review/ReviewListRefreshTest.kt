@@ -236,6 +236,34 @@ class ReviewListRefreshTest {
         }
     }
 
+    @Test
+    fun returnFromTeachingKeepsPendingDetailUntilProcessingActuallyResolvesIt() = runTest {
+        World().use { world ->
+            val id = world.requireReview("teaching-return", "unsupported_format")
+            world.viewModel.openDetail(id)
+            advanceUntilIdle()
+            world.parsed.reset()
+            world.viewModel.refreshAfterPatternTeaching()
+            advanceUntilIdle()
+            assertEquals(id, world.viewModel.uiState.value.selectedDetail?.id)
+            assertNull(world.viewModel.uiState.value.message)
+            assertNull(world.transactions.findByRawSmsId("teaching-return"))
+            world.viewModel.refreshAfterPatternTeaching()
+            world.viewModel.closeDetail()
+            advanceUntilIdle()
+            assertNull(world.viewModel.uiState.value.selectedDetail)
+            world.viewModel.openDetail(id)
+            advanceUntilIdle()
+            world.reviewRepo.markResolved(id, ReviewResolutionKind.USER_FINANCIAL_TYPE, clock.now(), null)
+            world.viewModel.refreshAfterPatternTeaching()
+            advanceUntilIdle()
+            assertNull(world.viewModel.uiState.value.selectedDetail)
+            assertTrue(world.viewModel.uiState.value.items.isEmpty())
+            assertEquals(ReviewMessage.RESOLVED, world.viewModel.uiState.value.message)
+            assertEquals(0, world.parsed.listAllCalls)
+        }
+    }
+
     private class World : AutoCloseable {
         private val clock = InstantClock { Instant.parse("2026-08-11T12:00:00Z") }
         private val db: MasroofDatabase = Room.inMemoryDatabaseBuilder(

@@ -20,7 +20,6 @@ import com.baraa.masroof.application.patterns.*
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -32,7 +31,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     var accountId by remember { mutableStateOf<String?>(null) }
     var newAccount by remember { mutableStateOf("") }
     var ownershipConfirmed by remember { mutableStateOf(false) }
-    var operation by remember { mutableStateOf<PatternOperation?>(null) }
+    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == pattern.label }) }
     var body by remember { mutableStateOf(initialBody) }
     var reference by remember { mutableStateOf<String?>(null) }
     var contextFields by remember { mutableStateOf(emptySet<String>()) }
@@ -65,9 +64,9 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     BackHandler { if (!busy) onBack() }
     MasroofSecondaryScaffold(stringResource(R.string.pattern_financial_approve), { if (!busy) onBack() }, stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            Text(stringResource(R.string.pattern_financial_explanation))
+            MasroofGuidanceLabel(stringResource(R.string.pattern_financial_approve), stringResource(R.string.pattern_financial_explanation))
             if (busy) CircularProgressIndicator()
-            if (failed) Text(stringResource(R.string.pattern_financial_blocked), color = MaterialTheme.colorScheme.error)
+            if (failed) MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_financial_blocked), contentColor = MaterialTheme.colorScheme.error)
             MasroofCard {
                 val select = stringResource(R.string.pattern_financial_select_operation)
                 PatternChoice(listOf(select) + operationNames, operation?.let { operationNames[it.ordinal] } ?: select, !busy) {
@@ -78,7 +77,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 PatternChoice(listOf(chooseAccount) + names, accounts.indexOfFirst { it.id == accountId }.takeIf { it >= 0 }?.let { names[it] } ?: chooseAccount, !busy) {
                     accountId = accounts.getOrNull(it - 1)?.id; preview = null
                 }
-                Text(stringResource(R.string.pattern_financial_account_help), style = MaterialTheme.typography.bodySmall)
+                MasroofGuidanceButton(stringResource(R.string.pattern_financial_select_account), stringResource(R.string.pattern_financial_account_help))
                 OutlinedTextField(newAccount, { newAccount = it.filter(Char::isDigit).take(4); ownershipConfirmed = false },
                     label = { Text(stringResource(R.string.pattern_financial_account_last4)) }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().testTag("pattern-account-last4"))
@@ -98,7 +97,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 PatternChoice(listOf(fromMessage) + Currency.entries.map { it.name }, currency?.name ?: fromMessage, !busy) {
                     currency = Currency.entries.getOrNull(it - 1); preview = null
                 }
-                Text(stringResource(R.string.pattern_financial_reference_help), style = MaterialTheme.typography.bodySmall)
+                MasroofGuidanceButton(stringResource(R.string.pattern_financial_fixed_account), stringResource(R.string.pattern_financial_reference_help))
                 val constant = stringResource(R.string.pattern_financial_fixed_account)
                 PatternChoice(listOf(constant) + bindingOptions.map(::fieldName), reference?.let(::fieldName) ?: constant, !busy) {
                     reference = bindingOptions.getOrNull(it - 1); contextFields = contextFields - setOfNotNull(reference); preview = null
@@ -121,7 +120,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                     MasroofAmountText("${validated.amount.amount.toPlainString()} ${validated.amount.currency}", MasroofAmountRole.Card)
                     Text(validated.occurredAt)
                     validated.reference?.let { Text(stringResource(R.string.pattern_financial_mapping, it, accounts.single { a -> a.id == accountId }.last4)) }
-                    Text(stringResource(R.string.pattern_financial_save_help), style = MaterialTheme.typography.bodySmall)
+                    MasroofGuidanceLabel(stringResource(R.string.pattern_financial_approve), stringResource(R.string.pattern_financial_save_help))
                     MasroofButton(onClick = { work { workflow.saveFinancial(validated); onSaved(workflow.catalog()) } }, enabled = !busy,
                         modifier = Modifier.testTag("pattern-financial-save")) { Text(stringResource(R.string.pattern_financial_approve)) }
                 }
