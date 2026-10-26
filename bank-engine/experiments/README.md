@@ -89,6 +89,42 @@ mapping, and commitment settlement still require the existing production
 authorities and an integration design. No amount/account/time interpretation
 from this prototype can post, pair transactions, or clear review.
 
-Next evidence needed: new real messages from the same layouts, excluded from
-teaching. Integration, persistence/restore, revocation and production safeguards
-are separate increments after that evidence is reviewed.
+## First real held-out batch
+
+The next supplied batch contained ten messages, manually separated at their
+message headings. The original five teaching examples and `ExampleTemplate.kt`
+were unchanged (both file hashes verified before and after evaluation).
+Only the private evaluation harness changed; all private text stays outside Git.
+
+| Frozen original templates | Result |
+| --- | --- |
+| Completed person payments | 3/3 raw field maps correct |
+| Account funding | 1/1 raw field map correct |
+| Internal outward transfers | 3/3 raw field maps correct |
+| Internal incoming transfers | 1/1 raw field map correct |
+| Previously unseen SARIE layout | 2/2 abstained with no match |
+| Wrong accepted field maps in this batch | 0 |
+
+A separate incremental experiment then selected fields in **one** SARIE message
+to teach an additional template, and tested the **other** SARIE message without
+teaching from it. All six fields matched their independently specified expected
+slices: amount, counterparty, counterparty bank, account identifier, time and
+reference. The original templates still reproduced their teaching examples.
+The new teaching message is not counted as an independent successful holdout.
+
+To repeat the frozen evaluation, supply `MASROOF_PATTERN_INPUT` as before plus
+`MASROOF_PATTERN_HOLDOUT` and optionally `MASROOF_PATTERN_HOLDOUT_REPORT`.
+Holdouts are a JSON array of `id`, `sender`, `body`, and `expected` (either null
+for an expected no-match, or an object with `label` and a raw `fields` map).
+The incremental check additionally accepts `MASROOF_PATTERN_NEW_TEACHER` (one
+annotated example), `MASROOF_PATTERN_NEW_HOLDOUT`, and optionally
+`MASROOF_PATTERN_NEW_REPORT`. Use `--rerun-tasks --no-build-cache` for private runs.
+
+Verification after adding these checks: 74 bank-engine and 95 finance-core
+tests passed, with zero failures, errors or skipped tests. Financial writes
+remain zero. This small batch supports the narrow extraction experiment; it
+does not establish a general accuracy rate or production financial eligibility.
+
+Next evidence needed: more independent layouts and cases involving structural
+variation or conflict. Integration, persistence/restore, revocation and production
+safeguards remain separate increments.
