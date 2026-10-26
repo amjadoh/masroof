@@ -27,9 +27,7 @@ class PatternFinancialPreview internal constructor(internal val generation: Long
 
 /** Explicit approval writes configuration only. Account identity and ownership stay in the existing registry. */
 class PatternActivationWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
-    private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService,
-    private val reservedBankIds: Set<String> = emptySet()) {
-    fun supports(bankId: String) = bankId !in reservedBankIds
+    private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService) {
 
     suspend fun accounts(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {
         gate.withAccess { ownedAccounts(bankId).map { PatternAccountOption(it.id, it.displayName, it.maskedNumber) } }
@@ -40,7 +38,7 @@ class PatternActivationWorkflow(private val store: MessagePatternStore, private 
 
     suspend fun confirmAccount(bankId: String, last4: String): PatternAccountOption = withContext(Dispatchers.IO) {
         gate.withAccess {
-            require(supports(bankId) && store.load().banks.any { it.bankId == bankId })
+            require(store.load().banks.any { it.bankId == bankId })
             val canonical = com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(last4).comparisonBody.trim()
             require(canonical.matches(Regex("[0-9]{4}")))
             ownership.confirmAccountOwned(AccountReference(Bank(bankId), canonical))
@@ -52,7 +50,6 @@ class PatternActivationWorkflow(private val store: MessagePatternStore, private 
     suspend fun preview(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String,
         body: String, referenceField: String?, contextReferences: Set<String>, currency: Currency?): PatternFinancialPreview = withContext(Dispatchers.IO) {
         gate.withAccess {
-            require(supports(bankId)) { "Primary bank migration is not approved" }
             val current = store.load()
             check(current.generation == generation) { "Pattern configuration changed" }
             val bank = current.banks.single { it.bankId == bankId }

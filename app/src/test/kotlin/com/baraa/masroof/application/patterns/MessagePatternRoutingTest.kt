@@ -47,7 +47,7 @@ class MessagePatternRoutingTest {
         } finally { directory.deleteRecursively() }
     }
 
-    @Test fun configuredSendersPreserveBankCollisionsAndCannotReplacePrimaryAdapters() {
+    @Test fun configuredSendersPreserveBankCollisions() {
         val directory = Files.createTempDirectory("pattern-collision-").toFile()
         try {
             val store = MessagePatternStore(directory.resolve("patterns.json"))
@@ -57,11 +57,6 @@ class MessagePatternRoutingTest {
             val provider = ConfiguredPatternAdapters(store)
             val registry = BankSmsRegistry(emptyList(), provider::snapshot)
             assertEquals(listOf("BANK_STC", "OTHER"), (registry.route("Shared", body) as BankRoutingResult.Ambiguous).banks.map { it.id })
-            val primary = registry.adapterFor(Bank("BANK_STC"))!!
-            val reserved = ConfiguredPatternAdapters(store, setOf("BANK_STC"))
-            val mixed = BankSmsRegistry(listOf(primary), reserved::snapshot)
-            assertEquals(2, (mixed.route("Shared", body) as BankRoutingResult.Ambiguous).banks.size)
-            assertSame(primary, mixed.adapterFor(Bank("BANK_STC")))
         } finally { directory.deleteRecursively() }
     }
 }

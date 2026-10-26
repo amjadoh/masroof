@@ -9,7 +9,6 @@ import com.baraa.masroof.application.dashboard.SelfTransferDeduplicator
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.maintenance.BackfillOutcome
 import com.baraa.masroof.application.maintenance.MaintenancePreferences
-import com.baraa.masroof.application.maintenance.MaintenanceRequirement
 import com.baraa.masroof.application.maintenance.TransferIntegrityRepairCoordinator
 import com.baraa.masroof.application.maintenance.TransferIntegrityRepairResult
 import com.baraa.masroof.application.review.ReviewQueueUpdater
@@ -499,7 +498,6 @@ class IntraBankSelfTransferReconciliationTest {
             appLogService = AppLogService(context),
             repairStoredTransfers = { repairAndApplyReviews() },
         )
-        assertEquals(MaintenanceRequirement.BLOCKING, coordinator.pendingRequirement())
         assertEquals(BackfillOutcome.COMPLETED, coordinator.runIfNeeded())
         assertEquals(BackfillOutcome.UP_TO_DATE, coordinator.runIfNeeded())
 

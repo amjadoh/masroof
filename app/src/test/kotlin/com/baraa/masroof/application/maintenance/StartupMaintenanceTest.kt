@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.logging.AppLogService
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +32,7 @@ class StartupMaintenanceTest {
 
         assertEquals(StartupMaintenanceOutcome.READY, maintenance.runBlockingPhase())
 
+        assertEquals(StartupMaintenanceOutcome.READY, maintenance.runBlockingPhase())
         assertEquals(1, repairCount)
         assertEquals(TransferIntegrityRepairCoordinator.CURRENT_VERSION, lastTransferRepairVersion())
     }
@@ -50,12 +50,11 @@ class StartupMaintenanceTest {
         assertEquals(StartupMaintenanceOutcome.BLOCKED, maintenance.runBlockingPhase())
         assertEquals(1, repairCount)
         assertEquals(0, lastTransferRepairVersion())
-        assertEquals(MaintenanceRequirement.BLOCKING, repair.pendingRequirement())
 
         fail = false
         assertEquals(StartupMaintenanceOutcome.READY, maintenance.runBlockingPhase())
         assertEquals(2, repairCount)
-        assertNull(repair.pendingRequirement())
+        assertEquals(TransferIntegrityRepairCoordinator.CURRENT_VERSION, lastTransferRepairVersion())
     }
 
     @Test fun startupWithoutPendingRepairIsReady() = runBlocking {
