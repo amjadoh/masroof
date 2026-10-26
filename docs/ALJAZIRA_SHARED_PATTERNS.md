@@ -87,3 +87,11 @@ with both APKs built. Coverage retains encrypted v18 verification/import, restor
 interruption and rollback, startup blocking, live retries and both bank flows.
 Older files and disguised older backups are rejected before live data is changed;
 the unchanged v18 schema export remains pinned by its original SHA-256 test.
+
+## Reference test ownership
+
+Bundled JSON is the production definition source. The unchanged Kotlin profiles
+are retained under `bank-engine/src/testFixtures/` for independent interpreter and
+financial-reference tests. Ordinary app fixture helpers use the bundled pattern
+adapter by default; reference comparisons opt into the Kotlin profile explicitly.
+The injectable `InterpretationTestAdapter` is compiled only into app tests.

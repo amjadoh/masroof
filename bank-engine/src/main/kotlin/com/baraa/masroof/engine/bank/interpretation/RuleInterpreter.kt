@@ -1,7 +1,6 @@
 package com.baraa.masroof.engine.bank.interpretation
 
 import com.baraa.masroof.engine.bank.*
-import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import java.security.MessageDigest
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
@@ -238,8 +237,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     companion object {
         const val VERSION = "bank-rules-independent-v14"
         private const val MAX_BODY = 16000
-        private val INCOMING = RuleLibrary.incomingTransferPhrases()
-        private val OUTGOING = RuleLibrary.outgoingTransferPhrases()
+        private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
+        private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
         private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)

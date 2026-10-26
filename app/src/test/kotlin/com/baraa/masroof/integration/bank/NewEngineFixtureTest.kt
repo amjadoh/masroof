@@ -4,7 +4,7 @@ import com.baraa.masroof.engine.bank.MessageInput
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.finance.value.BankId
-import com.baraa.masroof.bank.NewEngineSmsAdapter
+import com.baraa.masroof.testsupport.InterpretationTestAdapter
 import com.baraa.masroof.parsing.model.*
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
@@ -22,7 +22,7 @@ class NewEngineFixtureTest(private val file: File) {
         val input = SmsParseInput(fixture.getValue("id").jsonPrimitive.content,fixture.getValue("sender").jsonPrimitive.content,
             fixture.getValue("body").jsonPrimitive.content,Instant.parse("2026-10-20T12:00:00Z"))
         val engine = RuleInterpreter(AlJaziraRuleProfile.current())
-        val actual = NewEngineSmsAdapter { engine.interpretRouted(it,BankId("BANK_ALJAZIRA")) }.parse(input)
+        val actual = InterpretationTestAdapter { engine.interpretRouted(it,BankId("BANK_ALJAZIRA")) }.parse(input)
         fun event(r: ParseResult) = when(r) { is ParseResult.Success -> r.event; is ParseResult.NonFinancial -> r.event; is ParseResult.ReviewRequired -> r.event; is ParseResult.Partial -> r.event; else -> null }
         fun details(r: ParseResult) = when(r) { is ParseResult.Success -> r.details; is ParseResult.NonFinancial -> r.details; is ParseResult.ReviewRequired -> r.details; is ParseResult.Partial -> r.details; else -> null }
         val e = event(actual)

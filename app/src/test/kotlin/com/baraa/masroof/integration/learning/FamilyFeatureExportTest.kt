@@ -1,5 +1,7 @@
 package com.baraa.masroof.integration.learning
 
+import com.baraa.masroof.testsupport.InterpretationTestAdapter
+
 import com.baraa.masroof.ml.family.FamilyInputCleaner
 import com.baraa.masroof.application.interpretation.FamilyAssistBridge
 import kotlinx.serialization.json.*
@@ -41,7 +43,7 @@ class FamilyFeatureExportTest {
                     requested = true
                     FamilySuggestion(com.baraa.masroof.engine.bank.MessageFamily.valueOf(candidate.name), 1.0, "evaluation", FamilyOrigin.ML)
                 })
-                val adapter = NewEngineSmsAdapter { engine.interpretRouted(it, BankId("BANK_ALJAZIRA")) }
+                val adapter = InterpretationTestAdapter { engine.interpretRouted(it, BankId("BANK_ALJAZIRA")) }
                 val route = BankSmsRegistry(listOf(adapter)).route("AlJazira", body)
                 val received = Instant.parse("2026-10-06T09:00:00Z")
                 val parse = (route as? BankRoutingResult.Matched)?.adapter?.parse(SmsParseInput(id,"AlJazira",body,received))

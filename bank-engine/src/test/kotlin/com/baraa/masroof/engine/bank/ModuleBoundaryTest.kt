@@ -84,4 +84,17 @@ class ModuleBoundaryTest {
         assertFalse(File(root, "settings.gradle.kts").readText().contains(":lab:"))
         assertFalse(File(root, "app/build.gradle.kts").readText().contains("generateProductionReplica"))
     }
+
+    @Test fun referenceProfilesAndTestAdapterStayOutsideProductionSources() {
+        val production = listOf("bank-engine", "app").flatMap { module ->
+            File(root, "$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
+        }
+        assertFalse("Reference vocabulary or adapter returned to production", production.any {
+            it.name in setOf("RuleLibrary.kt", "AlJaziraRuleProfile.kt", "NewEngineSmsAdapter.kt", "InterpretationTestAdapter.kt")
+        })
+        for (name in listOf("RuleLibrary.kt", "AlJaziraRuleProfile.kt")) {
+            assertTrue("Independent reference missing: $name", File(root,
+                "bank-engine/src/testFixtures/kotlin/com/baraa/masroof/engine/bank/rules/$name").isFile)
+        }
+    }
 }

@@ -34,7 +34,7 @@ class ReplicaFinancialParityTest {
             listOf("supported_withdrawal_en","supported_fee_title") +
             listOf("same_bank_other_out","same_bank_other_in","same_bank_own","other_bank_same_suffix").map { "supported_transfer_$it" }
         val source = ReferenceHistory.source(host,names)
-        val reference = AppContainer(context,bankAdapterOverride = engineFixtureAdapter(),smsDataSourceOverride = source)
+        val reference = AppContainer(context,bankAdapterOverride = engineFixtureAdapter(profile = com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current()),smsDataSourceOverride = source)
         var actual = AppContainer(TestStorageContext(host),smsDataSourceOverride = source)
         try {
             for (c in listOf(reference,actual)) {
@@ -73,7 +73,7 @@ class ReplicaFinancialParityTest {
         val referenceContext = TestStorageContext(host,"lab_reference_")
         referenceContext.databaseList().forEach { referenceContext.deleteDatabase(it) }
         val source = ReferenceHistory.source(host,names)
-        val expected = AppContainer(referenceContext,bankAdapterOverride = engineFixtureAdapter(),smsDataSourceOverride = source)
+        val expected = AppContainer(referenceContext,bankAdapterOverride = engineFixtureAdapter(profile = com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current()),smsDataSourceOverride = source)
         var actual = AppContainer(TestStorageContext(host),smsDataSourceOverride = source)
         try {
             for (container in listOf(expected,actual)) {

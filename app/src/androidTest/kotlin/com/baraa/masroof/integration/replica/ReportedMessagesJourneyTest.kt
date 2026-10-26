@@ -24,7 +24,7 @@ import com.baraa.masroof.presentation.onboarding.*
 import com.baraa.masroof.presentation.review.*
 import com.baraa.masroof.presentation.dashboard.*
 import com.baraa.masroof.sms.hash.SmsBodyHasher
-import com.baraa.masroof.bank.NewEngineSmsAdapter
+import com.baraa.masroof.testsupport.InterpretationTestAdapter
 import com.baraa.masroof.parsing.model.ParseResult
 import com.baraa.masroof.parsing.model.SmsParseInput
 import com.baraa.masroof.ui.theme.MasroofTheme
@@ -204,7 +204,7 @@ class ReportedMessagesJourneyTest {
             c.onboardingOwnershipWorkflow.confirmCardOwned(card)
             c.settingsRegistryWorkflow.markCardAsDebit(card)
             c.settingsRegistryWorkflow.linkDebitToAccount(card,account)
-            val adapter=NewEngineSmsAdapter(requireNotNull(c.interpretationService)::interpret)
+            val adapter=InterpretationTestAdapter(requireNotNull(c.interpretationService)::interpret)
             for(name in names) {
                 val f=ReferenceHistory.fixture(name)
                 val evidence=raw(name,f.getValue("body").jsonPrimitive.content)

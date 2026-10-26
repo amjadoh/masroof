@@ -168,6 +168,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.work.runtime.ktx)
 
+    testImplementation(testFixtures(project(":bank-engine")))
+    androidTestImplementation(testFixtures(project(":bank-engine")))
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlinx.coroutines.test)

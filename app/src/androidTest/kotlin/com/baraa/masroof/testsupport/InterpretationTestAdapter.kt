@@ -1,4 +1,7 @@
-package com.baraa.masroof.bank
+package com.baraa.masroof.testsupport
+
+import com.baraa.masroof.bank.BankSmsAdapter
+import com.baraa.masroof.bank.InterpretationDraftMapper
 
 import com.baraa.masroof.engine.bank.Interpretation
 import com.baraa.masroof.engine.bank.MessageInput
@@ -6,8 +9,8 @@ import com.baraa.masroof.bank.aljazira.AlJaziraBankDetector
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.parsing.model.*
 
-/** Bank routing contract; interpretation is supplied by the production composition root. */
-class NewEngineSmsAdapter(private val interpret: (MessageInput) -> Interpretation) : BankSmsAdapter {
+/** Explicit interpreter/reference tests only; ordinary integration fixtures use the bundled patterns. */
+class InterpretationTestAdapter(private val interpret: (MessageInput) -> Interpretation) : BankSmsAdapter {
     override val bank = Bank.BANK_ALJAZIRA
     private val detector = AlJaziraBankDetector()
     override fun detect(sender: String, body: String) = detector.detect(sender, body)

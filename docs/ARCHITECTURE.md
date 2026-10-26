@@ -48,8 +48,8 @@ Protected evidence resumes without parsing again. Approval and pending applicati
 are separate actions and reuse existing ownership/intake/reconciliation services.
 
 Keep integration fixtures on the bundled production definitions. Kotlin rule
-profiles and the offline CLI are explicit interpreter/reference test tools, not
-another production definition source. Preserve the frozen AlJazira baselines.
+profiles live only in `bank-engine/src/testFixtures/`, shared through Gradle's built-in test-fixtures support. The offline CLI is an explicit test tool. Neither
+is another production definition source. Preserve the frozen AlJazira baselines.
 The current handoff is [Production migration plan](PRODUCTION_MIGRATION_PLAN.md);
 [Pattern facts](PATTERN_FACT_CONTRACT.md) describes the write contract, and
 [AlJazira cutover](ALJAZIRA_SHARED_PATTERNS.md) records compatibility. Historical
