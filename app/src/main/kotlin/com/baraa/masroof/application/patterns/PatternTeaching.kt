@@ -15,6 +15,9 @@ enum class PatternOperation(val fields: List<String>) {
     WITHDRAWAL(listOf("amount", "source_account", "card", "occurred_at")),
 }
 
+/** In-memory source only: never saved in navigation state or written back to RawSms. */
+data class PatternTeachingSource(val bankId: String?, val sender: String, val body: String)
+
 data class PatternBinding(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
 data class PatternText(val text: String, val start: Int, val end: Int)
 data class PatternMatch(val patternId: String, val revision: Int, val operation: String, val fields: Map<String, PatternText>)

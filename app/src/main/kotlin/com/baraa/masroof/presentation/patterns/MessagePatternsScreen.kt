@@ -24,13 +24,14 @@ import kotlinx.coroutines.launch
 /** Drafts live only on this screen; leaving discards them. Saving requires a generated preview. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null, onBack: () -> Unit) {
+fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null, source: PatternTeachingSource? = null, onBack: () -> Unit) {
+    val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<MessagePatternConfiguration?>(null) }
-    var selectedBank by remember { mutableStateOf(initialBankId) }
+    var selectedBank by remember { mutableStateOf(bankScope) }
     var teaching by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var sender by remember { mutableStateOf("") }
-    var body by remember { mutableStateOf(TextFieldValue()) }
+    var sender by remember { mutableStateOf(source?.sender.orEmpty()) }
+    var body by remember { mutableStateOf(TextFieldValue(source?.body.orEmpty())) }
     var operation by remember { mutableStateOf(PatternOperation.PURCHASE) }
     var role by remember { mutableStateOf("amount") }
     var bindings by remember { mutableStateOf(emptyList<PatternBinding>()) }
@@ -49,10 +50,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     val fieldNames = stringArrayResource(R.array.pattern_field_names)
     fun fieldName(key: String) = fieldNames.getOrNull(fieldKeys.indexOf(key)) ?: key
     fun resetTeaching() {
-        teaching = false; body = TextFieldValue(); bindings = emptyList(); candidates = emptyList()
+        teaching = false; body = TextFieldValue(source?.body.orEmpty()); bindings = emptyList(); candidates = emptyList()
         preview = null; sample = ""; sampleResult = null; sampleChecked = false; failed = false
     }
-    fun back() { if (!busy) { if (teaching) resetTeaching() else onBack() } }
+    fun back() { if (!busy) { if (teaching && source == null) resetTeaching() else onBack() } }
     fun work(action: suspend () -> Unit) {
         if (busy) return
         keyboard?.hide(); focus.clearFocus()
@@ -84,23 +85,24 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             val configuration = snapshot
             if (configuration != null && !teaching) {
                 MasroofCard {
-                    if (bank == null) configuration.banks.forEach { item ->
+                    if (bank == null && bankScope == null) configuration.banks.forEach { item ->
                         MasroofOutlinedButton(onClick = { selectedBank = item.bankId }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                             Text(item.displayName ?: item.bankId)
                         }
                     }
                     if (bank == null) {
                         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.pattern_bank_name)) }, enabled = !busy)
-                        OutlinedTextField(sender, { sender = it }, label = { Text(stringResource(R.string.pattern_sender)) }, enabled = !busy)
+                        OutlinedTextField(sender, { sender = it }, label = { Text(stringResource(R.string.pattern_sender)) }, enabled = !busy, readOnly = source != null)
                         MasroofButton(onClick = { work {
-                            snapshot = workflow.addBank(configuration.generation, name, sender, initialBankId)
+                            snapshot = workflow.addBank(configuration.generation, name, sender, bankScope)
                             selectedBank = snapshot!!.banks.lastOrNull { it.bankId !in configuration.banks.map { old -> old.bankId } }?.bankId
                             name = ""; sender = ""
                         } }, enabled = !busy && name.isNotBlank() && sender.isNotBlank()) { Text(stringResource(R.string.pattern_add_bank)) }
                     } else {
                         MasroofSectionHeader(bank.displayName ?: bank.bankId)
                         Text(bank.senders.joinToString())
-                        MasroofButton(onClick = { resetTeaching(); sender = bank.senders.first(); teaching = true }, enabled = !busy) {
+                        if (source != null && source.sender !in bank.senders) Text(stringResource(R.string.pattern_sender_mismatch))
+                        MasroofButton(onClick = { resetTeaching(); sender = source?.sender ?: bank.senders.first(); teaching = true }, enabled = !busy && (source == null || source.sender in bank.senders)) {
                             Text(stringResource(R.string.pattern_teach))
                         }
                         bank.currentPatterns.forEach { pattern ->
@@ -123,7 +125,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                 } }, enabled = !busy) { Text(stringResource(R.string.pattern_restore_revision, old.revision)) }
                             }
                         }
-                        if (initialBankId == null) MasroofTextButton(onClick = { selectedBank = null }, enabled = !busy) {
+                        if (bankScope == null) MasroofTextButton(onClick = { selectedBank = null }, enabled = !busy) {
                             Text(stringResource(R.string.pattern_add_bank))
                         }
                     }
@@ -134,12 +136,12 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     PatternChoice(operationNames.toList(), operationNames[operation.ordinal], !busy) { index ->
                         operation = PatternOperation.entries[index]; role = "amount"; bindings = emptyList(); preview = null
                     }
-                    PatternChoice(bank.senders, sender, !busy) { sender = bank.senders[it]; preview = null }
+                    PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it]; preview = null }
                     Text(stringResource(R.string.pattern_selection_hint))
                     OutlinedTextField(body, { value ->
                         if (value.text != body.text) { bindings = emptyList(); candidates = emptyList(); preview = null }
                         body = value
-                    }, label = { Text(stringResource(R.string.pattern_message)) }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-body"))
+                    }, label = { Text(stringResource(R.string.pattern_message)) }, enabled = !busy, readOnly = source != null, modifier = Modifier.fillMaxWidth().testTag("pattern-body"))
                     MasroofOutlinedButton(onClick = { work { candidates = workflow.candidates(body.text) } }, enabled = !busy && body.text.isNotBlank()) {
                         Text(stringResource(R.string.pattern_extract))
                     }
@@ -179,7 +181,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         } }, enabled = !busy && sample.isNotBlank()) { Text(stringResource(R.string.pattern_test)) }
                         if (sampleChecked && sampleResult == null) Text(stringResource(R.string.pattern_no_match))
                         sampleResult?.forEach { (key, value) -> Text("${fieldName(key)}: ${value.text}") }
-                        MasroofButton(onClick = { work { snapshot = workflow.saveTeaching(reviewed); resetTeaching() } }, enabled = !busy) {
+                        MasroofButton(onClick = { work { snapshot = workflow.saveTeaching(reviewed); if (source != null) onBack() else resetTeaching() } }, enabled = !busy) {
                             Text(stringResource(R.string.pattern_save))
                         }
                     }

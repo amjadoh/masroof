@@ -42,6 +42,7 @@ class ReviewViewModel(
     private val appLocaleRepository: AppLocaleRepository,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     maintenanceCompletions: Flow<Unit> = emptyFlow(),
+    val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReviewUiState())
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
@@ -482,6 +483,7 @@ class ReviewViewModel(
             sender = detail.sender,
             body = detail.body.orEmpty(),
             provenance = detail.provenance,
+            bankId = detail.bankId,
             dateLabel = dateLabel,
             messageFamilyLabel = family?.name,
             messageFamily = family,

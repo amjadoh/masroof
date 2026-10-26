@@ -50,6 +50,7 @@ data class ReviewDetailUi(
     val resolvedAtLabel: String? = null,
     val bankChoices: List<ReviewBankChoiceUi> = emptyList(),
     val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
+    val bankId: String? = null,
 )
 
 enum class ReviewListMode {
