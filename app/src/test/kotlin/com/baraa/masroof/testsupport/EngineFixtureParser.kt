@@ -8,8 +8,12 @@ import com.baraa.masroof.lab.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.lab.finance.value.BankId
 import com.baraa.masroof.parsing.parser.SmsParseGateway
 
-fun engineFixtureAdapter(pipeline: SmsParseGateway? = null, detector: com.baraa.masroof.parsing.detector.BankDetector? = null): BankSmsAdapter {
-    val engine = RuleInterpreter(AlJaziraRuleProfile.current())
+fun engineFixtureAdapter(
+    pipeline: SmsParseGateway? = null,
+    detector: com.baraa.masroof.parsing.detector.BankDetector? = null,
+    profile: com.baraa.masroof.lab.bank.BankRuleSchema = AlJaziraRuleProfile.current(),
+): BankSmsAdapter {
+    val engine = RuleInterpreter(profile)
     val adapter = NewEngineSmsAdapter { engine.interpretRouted(it, BankId(Bank.BANK_ALJAZIRA.id)) }
     return object : BankSmsAdapter by adapter {
         override fun detect(sender: String, body: String) = detector?.detect(sender, body) ?: adapter.detect(sender, body)

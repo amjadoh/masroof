@@ -1,0 +1,1485 @@
+{
+    "schema": 1,
+    "revision": 13,
+    "rules": [
+        {
+            "id": "bank.purchase",
+            "family": "PURCHASE",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "شراء",
+                "purchase",
+                "credit card purchase",
+                "debit card purchase"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "fee.sar_unlabeled": [
+                    "رسوم العمليات الدولية"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "purchase.pos": [
+                    "pos",
+                    "نقاط البيع"
+                ],
+                "purchase.online": [
+                    "online",
+                    "internet",
+                    "عبر الانترنت"
+                ]
+            }
+        },
+        {
+            "id": "bank.refund",
+            "family": "REFUND",
+            "direction": "INCOMING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "استرداد",
+                "refund",
+                "استرداد مبلغ عملية شراء عبر نقاط البيع",
+                "بطاقة ائتمانية: استرداد مبلغ",
+                "credit card: refund",
+                "debit card: refund"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account",
+                    "الى",
+                    "المعرف البديل \\الايبان",
+                    "رقم حساب/معرف المستفيد"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at",
+                    "من",
+                    "from"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "fee.sar_unlabeled": [
+                    "رسوم العمليات الدولية"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ]
+            }
+        },
+        {
+            "id": "bank.withdrawal",
+            "family": "WITHDRAWAL",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "سحب نقدي",
+                "cash withdrawal",
+                "withdrawal"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "حساب رقم",
+                    "account number"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ]
+            }
+        },
+        {
+            "id": "bank.fee",
+            "family": "FEE",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "خصم رسوم",
+                "fee charged",
+                "رسوم",
+                "رسوم خدمة",
+                "رسوم حوالة",
+                "transfer fee"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ]
+            }
+        },
+        {
+            "id": "bank.balance",
+            "family": "BALANCE_NOTICE",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "اشعار رصيد",
+                "balance notification"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "حساب",
+                    "account"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ]
+            }
+        },
+        {
+            "id": "bank.notice",
+            "family": "NON_FINANCIAL",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "تم تسجيل الدخول",
+                "login notification",
+                "حالة: غير نشط",
+                "حالة: نشط",
+                "status: inactive",
+                "status: active"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ]
+            }
+        },
+        {
+            "id": "bank.card.payment",
+            "family": "CARD_PAYMENT",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "سداد بطاقة",
+                "card payment",
+                "بطاقة ائتمانية: تسديد"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "من"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ]
+            }
+        },
+        {
+            "id": "bank.bill.payment",
+            "family": "BILL_PAYMENT",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "سداد فاتورة",
+                "bill payment"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "من"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference",
+                    "رقم الفاتورة"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller",
+                    "الخدمة"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code",
+                    "مفوتر"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ]
+            }
+        },
+        {
+            "id": "bank.installment",
+            "family": "FINANCING_INSTALLMENT",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "قسط تمويل",
+                "خصم: قسط",
+                "loan repayment"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value",
+                    "القسط"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "من"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty",
+                    "لـ"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "loan.personal": [
+                    "personal",
+                    "شخصي"
+                ],
+                "loan.auto": [
+                    "auto",
+                    "سيارة",
+                    "مركبة",
+                    "اوتو"
+                ],
+                "loan.mortgage": [
+                    "mortgage",
+                    "عقاري",
+                    "عقار",
+                    "مسكن",
+                    "رهن"
+                ],
+                "loan.generic": [
+                    "تمويل"
+                ]
+            }
+        },
+        {
+            "id": "bank.transfer.in",
+            "family": "TRANSFER_IN",
+            "direction": "INCOMING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "حوالة واردة",
+                "حوالة مالية واردة",
+                "حوالة فورية واردة",
+                "تحويل وارد",
+                "incoming transfer",
+                "fund transfer credited",
+                "salary credited"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "من"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account",
+                    "الى",
+                    "المعرف البديل \\الايبان",
+                    "رقم حساب/معرف المستفيد"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty",
+                    "اسم المرسل",
+                    "من",
+                    "from"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "network.intra": [
+                    "intra-bank",
+                    "داخل البنك",
+                    "داخلية",
+                    "الى حسابك الجاري"
+                ],
+                "network.inter": [
+                    "inter-bank",
+                    "بين البنوك"
+                ],
+                "income.salary": [
+                    "salary",
+                    "راتب"
+                ]
+            }
+        },
+        {
+            "id": "bank.transfer.out",
+            "family": "TRANSFER_OUT",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "حوالة صادرة",
+                "حوالة مالية صادرة",
+                "حوالة فورية صادرة",
+                "تحويل صادر",
+                "outgoing transfer",
+                "fund transfer debited",
+                "transfer sent"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب",
+                    "من"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account",
+                    "الى",
+                    "المعرف البديل \\الايبان",
+                    "رقم حساب/معرف المستفيد"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty",
+                    "اسم المستفيد",
+                    "الى"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "network.intra": [
+                    "intra-bank",
+                    "داخل البنك",
+                    "داخلية",
+                    "الى حسابك الجاري"
+                ],
+                "network.inter": [
+                    "inter-bank",
+                    "بين البنوك"
+                ]
+            }
+        },
+        {
+            "id": "bank.statement",
+            "family": "NON_FINANCIAL",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "اصدار كشف حساب",
+                "بطاقة ائتمانية: اصدار كشف حساب",
+                "حالة: غير نشط",
+                "حالة: نشط",
+                "status: inactive",
+                "status: active"
+            ],
+            "excludes": [],
+            "labels": {
+                "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "amount",
+                    "of",
+                    "القيمة",
+                    "value"
+                ],
+                "CARD": [
+                    "بطاقة",
+                    "card",
+                    "credit card",
+                    "debit card",
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة (مدى)",
+                    "بطاقة (ائتمانية)",
+                    "بطاقة مدى رقم",
+                    "بطاقة ائتمانية رقم"
+                ],
+                "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "from account",
+                    "رقم حساب المرسل",
+                    "خصمت من حساب"
+                ],
+                "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "to account",
+                    "اودعت الى حساب",
+                    "deposited to account"
+                ],
+                "MERCHANT": [
+                    "لدى",
+                    "merchant",
+                    "at"
+                ],
+                "AVAILABLE_BALANCE": [
+                    "الرصيد المتاح",
+                    "رصيد",
+                    "available balance",
+                    "available balance is"
+                ]
+            },
+            "detailLabels": {
+                "dueAmount": [
+                    "المبلغ المستحق",
+                    "اجمالي المبلغ المستحق",
+                    "اجمالي المستحق",
+                    "المبلغ المتبقي",
+                    "outstanding balance",
+                    "due amount"
+                ],
+                "foreignAmount": [
+                    "المبلغ الاجنبي",
+                    "foreign amount"
+                ],
+                "counterparty": [
+                    "جهة التمويل",
+                    "counterparty"
+                ],
+                "transactionReference": [
+                    "رقم المعاملة",
+                    "transaction reference"
+                ],
+                "biller": [
+                    "المفوتر",
+                    "biller"
+                ],
+                "billerCode": [
+                    "رمز المفوتر",
+                    "biller code"
+                ],
+                "paymentDueDate": [
+                    "تاريخ الاستحقاق",
+                    "payment due date"
+                ]
+            },
+            "observations": {
+                "card.debit_source": [
+                    "خصمت من حساب"
+                ],
+                "card.credit": [
+                    "credit",
+                    "credit card",
+                    "ائتمانية"
+                ],
+                "card.debit": [
+                    "debit",
+                    "debit card",
+                    "مدى"
+                ],
+                "card.statement": [
+                    "statement",
+                    "كشف"
+                ],
+                "card.available_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ],
+                "card.credit_balance": [
+                    "available balance",
+                    "الرصيد المتاح"
+                ]
+            }
+        },
+        {
+            "id": "bank.loyalty",
+            "family": "NON_FINANCIAL",
+            "direction": "OUTGOING",
+            "operator": "CONTAINS_TOKEN_PHRASE",
+            "phrases": [
+                "مكافاتي",
+                "رصيد نقاطك",
+                "برنامج مكاف"
+            ],
+            "excludes": [],
+            "labels": {},
+            "detailLabels": {},
+            "observations": {}
+        }
+    ],
+    "network": {
+        "bankAliases": {
+            "BANK_ALJAZIRA": [
+                "AlJazira",
+                "Bank AlJazira",
+                "AlJazira Bank",
+                "بنك الجزيرة",
+                "بنك الجزيره"
+            ],
+            "BANK_D360": [
+                "بنك دال ثلاثمائة وستون",
+                "D360 Bank",
+                "D360 بنك"
+            ],
+            "BANK_RIYAD": [
+                "بنك الرياض",
+                "Riyad Bank"
+            ],
+            "BANK_ANB": [
+                "البنك العربي الوطني",
+                "Arab National Bank"
+            ],
+            "BANK_SNB": [
+                "البنك الاهلي السعودي",
+                "Saudi National Bank"
+            ]
+        },
+        "sourceBankLabels": [
+            "source bank",
+            "from bank",
+            "بنك المرسل",
+            "البنك المرسل"
+        ],
+        "destinationBankLabels": [
+            "destination bank",
+            "to bank",
+            "بنك المستفيد",
+            "البنك المستفيد"
+        ],
+        "standaloneDestinationBrackets": true,
+        "networkLabels": [
+            "bank network",
+            "network",
+            "شبكة الحوالة"
+        ],
+        "standaloneSourceBrackets": true,
+        "unidentifiedExternalBankMarkers": [
+            "بنك",
+            "bank"
+        ]
+    }
+}

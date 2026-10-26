@@ -512,6 +512,8 @@ class AppContainer(
     val labInterpretationService = if (bankAdapterOverride==null)
         com.baraa.masroof.application.interpretation.LabInterpretationService(appContext,rawSmsRepository,parsedEventRepository,
             userCorrectionRepository,reviewRepository,financialTransactionRepository,applicationScope,appLogService,
+            ruleProfile = com.baraa.masroof.data.patterns.BankRuleProfileCodec.decode(
+                appContext.assets.open("bank-patterns/BANK_ALJAZIRA.rules.json").bufferedReader(Charsets.UTF_8).use { it.readText() }),
             onFeedbackChanged = { maintenanceCompletionSignal.notifyCompleted(); if(analyticsDelegate.isInitialized()) labAnalytics.request() }) else null
     private val alJaziraSmsAdapter: com.baraa.masroof.bank.BankSmsAdapter =
         bankAdapterOverride ?: com.baraa.masroof.bank.NewEngineSmsAdapter(requireNotNull(labInterpretationService)::interpret)
