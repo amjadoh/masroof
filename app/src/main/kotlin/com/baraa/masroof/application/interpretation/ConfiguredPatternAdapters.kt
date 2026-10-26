@@ -1,4 +1,4 @@
-package com.baraa.masroof.application.patterns
+package com.baraa.masroof.application.interpretation
 
 import com.baraa.masroof.bank.BankSmsAdapter
 import com.baraa.masroof.bank.MessagePatternSmsAdapter

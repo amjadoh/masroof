@@ -143,7 +143,7 @@ class MessagePatternsJourneyTest {
                     java.time.Instant.parse("2026-08-01T00:00:00Z"), "pending-$index", com.baraa.masroof.sms.hash.SmsBodyHasher.sha256Hex(text)))
                 ingestion.requireReview("pending-$index", com.baraa.masroof.application.review.IngestionReviewService.REASON_UNSUPPORTED_FORMAT)
             }
-            val workflow = MessagePatternsWorkflow(store, gate, pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
+            val workflow = MessagePatternsWorkflow(store, gate, pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 store, gate, reviews, raw, com.baraa.masroof.data.repository.RoomParsedEventRepository(db.parsedEventDao()),
                 com.baraa.masroof.data.repository.RoomUserCorrectionRepository(db.userCorrectionDao()),
                 com.baraa.masroof.data.repository.RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()),

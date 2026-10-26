@@ -26,7 +26,7 @@ class PatternFinancialPreview internal constructor(internal val generation: Long
     val amount: Money, val occurredAt: String, val reference: String?)
 
 /** Explicit approval writes configuration only. Account identity and ownership stay in the existing registry. */
-class PatternActivationWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
+class PatternApprovalWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
     private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService) {
 
     suspend fun accounts(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {

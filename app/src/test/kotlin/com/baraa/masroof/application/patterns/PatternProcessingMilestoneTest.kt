@@ -1,5 +1,7 @@
 package com.baraa.masroof.application.patterns
 
+import com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.baraa.masroof.application.AppContainer

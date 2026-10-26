@@ -1,5 +1,7 @@
 # Generic text candidates and learned field bindings
 
+> Historical experiment checkpoints. For current production ownership and processing, see [Architecture](../ARCHITECTURE.md) and [Pattern facts](../PATTERN_FACT_CONTRACT.md). Prototype CLI persistence is test tooling, not the application store.
+
 The production integration proposal, including AlJazira parity gates, automatic
 seed preparation, bank-scoped import, persistence/restore and rollout tasks, is
 documented in [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md).
