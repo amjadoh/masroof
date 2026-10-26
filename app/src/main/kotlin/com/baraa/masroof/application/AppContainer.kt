@@ -173,6 +173,8 @@ class AppContainer(
     val messagePatternsWorkflow by lazy {
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
             com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
+            bundledBanks = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+                appContext.assets.open("bank-patterns/BANK_STC.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks,
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
                 com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,

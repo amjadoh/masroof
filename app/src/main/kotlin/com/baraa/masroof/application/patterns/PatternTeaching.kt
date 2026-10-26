@@ -7,8 +7,8 @@ import com.baraa.masroof.lab.bank.patterns.TextSpan
 /** Teaching roles are explicit user choices, not posting authority or ownership decisions. */
 enum class PatternOperation(val fields: List<String>) {
     PURCHASE(listOf("amount", "merchant", "card", "occurred_at", "available_balance")),
-    TRANSFER_IN(listOf("amount", "counterparty", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
-    TRANSFER_OUT(listOf("amount", "counterparty", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
+    TRANSFER_IN(listOf("amount", "counterparty", "account_reference", "funding_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
+    TRANSFER_OUT(listOf("amount", "counterparty", "account_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
     BILL_PAYMENT(listOf("amount", "biller", "source_account", "occurred_at", "reference")),
     CARD_PAYMENT(listOf("amount", "card", "source_account", "occurred_at")),
     REFUND(listOf("amount", "merchant", "card", "occurred_at")),

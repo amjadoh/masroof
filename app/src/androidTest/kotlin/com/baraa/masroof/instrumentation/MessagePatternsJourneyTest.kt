@@ -168,6 +168,31 @@ class MessagePatternsJourneyTest {
         Unit
     }
 
+    @Test fun stcBundledPatternsAppearWithoutTeachingAndKeepUserDisable() = runBlocking {
+        val file = compose.activity.cacheDir.resolve("synthetic-stc-bundle.json")
+        file.delete()
+        try {
+            val banks = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+                compose.activity.assets.open("bank-patterns/BANK_STC.patterns.json").bufferedReader().use { it.readText() }).banks
+            val workflow = MessagePatternsWorkflow(MessagePatternStore(file), DatabaseAccessGate(), bundledBanks = banks)
+            compose.setContent {
+                val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+                CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                    MasroofTheme { Surface { MessagePatternsScreen(workflow, "BANK_STC", onBack = {}) } }
+                }
+            }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_disable)).fetchSemanticsNodes().size == 6 }
+            assertEquals(6, workflow.load().banks.single().currentPatterns.size)
+            capture("stc-ready-patterns")
+            compose.onAllNodesWithText(ar(R.string.pattern_disable))[0].performScrollTo().performClick()
+            compose.waitUntil(10_000) { MessagePatternStore(file).load().generation == 2L }
+            val reopened = MessagePatternsWorkflow(MessagePatternStore(file), DatabaseAccessGate(), bundledBanks = banks).load()
+            assertEquals(2L, reopened.generation)
+            assertEquals(1, reopened.banks.single().currentPatterns.count { !it.enabled })
+        } finally { file.delete() }
+        Unit
+    }
+
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
     private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick(); compose.waitForIdle() }
     private fun capture(name: String) {
