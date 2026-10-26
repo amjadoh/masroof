@@ -7,7 +7,12 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -17,7 +22,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
-import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -29,7 +33,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null, source: PatternTeachingSource? = null, onOpenReview: ((String) -> Unit)? = null, onBack: () -> Unit) {
     val bankScope = source?.bankId ?: initialBankId
-    var snapshot by remember { mutableStateOf<MessagePatternConfiguration?>(null) }
+    var snapshot by remember { mutableStateOf<PatternCatalog?>(null) }
     var selectedBank by remember { mutableStateOf(bankScope) }
     var teaching by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -80,7 +84,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         else imported = com.baraa.masroof.application.sms.SmsScanResult(failure = com.baraa.masroof.application.sms.SmsScanFailure.PermissionDenied)
     } else null
     LaunchedEffect(workflow) {
-        try { snapshot = workflow.load() }
+        try { snapshot = workflow.catalog() }
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
     }
@@ -109,7 +113,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             if (busy) CircularProgressIndicator()
             if (failed) {
                 Text(stringResource(R.string.pattern_failed), color = MaterialTheme.colorScheme.error)
-                MasroofTextButton(onClick = { work { snapshot = workflow.load(); preview = null } }, enabled = !busy) {
+                MasroofTextButton(onClick = { work { snapshot = workflow.catalog(); preview = null } }, enabled = !busy) {
                     Text(stringResource(R.string.dashboard_retry))
                 }
             }
@@ -125,7 +129,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.pattern_bank_name)) }, enabled = !busy)
                         OutlinedTextField(sender, { sender = it }, label = { Text(stringResource(R.string.pattern_sender)) }, enabled = !busy, readOnly = source != null)
                         MasroofButton(onClick = { work {
-                            snapshot = workflow.addBank(configuration.generation, name, sender, bankScope)
+                            workflow.addBank(configuration.generation, name, sender, bankScope)
+                            snapshot = workflow.catalog()
                             selectedBank = snapshot!!.banks.lastOrNull { it.bankId !in configuration.banks.map { old -> old.bankId } }?.bankId
                             name = ""; sender = ""
                         } }, enabled = !busy && name.isNotBlank() && sender.isNotBlank()) { Text(stringResource(R.string.pattern_add_bank)) }
@@ -155,31 +160,27 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                 else -> pattern.label
                             }
                             Text(stringResource(R.string.pattern_revision, operationName, pattern.revision))
-                            Text((pattern.roleProfile?.rules?.single()?.phrases?.joinToString(" · ") ?: pattern.parts.joinToString("") { part ->
-                                when (part) {
-                                    is com.baraa.masroof.engine.bank.patterns.StaticText -> part.value
-                                    is com.baraa.masroof.engine.bank.patterns.FieldSlot -> "…"
-                                }
-                            }).take(240), style = MaterialTheme.typography.bodySmall)
-                            if (pattern.roleProfile == null) Text(pattern.parts.filterIsInstance<com.baraa.masroof.engine.bank.patterns.FieldSlot>()
-                                .filterNot { it.ignored }.joinToString { fieldName(it.field) })
-                            Text(stringResource(when {
-                                pattern.roleProfile != null -> R.string.pattern_bundled_status
-                                pattern.factContract == null -> R.string.pattern_financial_preview_status
-                                else -> R.string.pattern_financial_approved_status
+                            Text(pattern.example, style = MaterialTheme.typography.bodySmall)
+                            if (pattern.canApprove) Text(pattern.fields.joinToString { fieldName(it) })
+                            Text(stringResource(when (pattern.status) {
+                                PatternApprovalStatus.BUNDLED -> R.string.pattern_bundled_status
+                                PatternApprovalStatus.PREVIEW_ONLY -> R.string.pattern_financial_preview_status
+                                PatternApprovalStatus.APPROVED -> R.string.pattern_financial_approved_status
                             }))
-                            if (pattern.roleProfile == null && workflow.canApprove) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
+                            if (pattern.canApprove && workflow.canApprove) MasroofOutlinedButton(onClick = { approving = pattern.id }, enabled = !busy && pattern.enabled) {
                                 Text(stringResource(R.string.pattern_financial_approve))
                             }
                             MasroofTextButton(onClick = { work {
-                                snapshot = workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)
+                                workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)
+                                snapshot = workflow.catalog()
                             } }, enabled = !busy, modifier = Modifier.testTag("pattern-toggle-${bank.bankId}-${pattern.id}")) {
                                 Text(stringResource(if (pattern.enabled) R.string.pattern_disable else R.string.pattern_enable)) }
-                            bank.patterns.filter { it.id == pattern.id && it.revision < pattern.revision }.forEach { old ->
+                            pattern.priorRevisions.forEach { revision ->
                                 MasroofTextButton(onClick = { work {
-                                    snapshot = workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, old.revision)
-                                } }, enabled = !busy, modifier = Modifier.testTag("pattern-restore-${bank.bankId}-${pattern.id}-${old.revision}")) {
-                                    Text(stringResource(R.string.pattern_restore_revision, old.revision)) }
+                                    workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, revision)
+                                    snapshot = workflow.catalog()
+                                } }, enabled = !busy, modifier = Modifier.testTag("pattern-restore-${bank.bankId}-${pattern.id}-${revision}")) {
+                                    Text(stringResource(R.string.pattern_restore_revision, revision)) }
                             }
                         }
                         if (bankScope == null) MasroofTextButton(onClick = { selectedBank = null }, enabled = !busy) {
@@ -192,10 +193,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                 MasroofCard {
                     MasroofSectionHeader(stringResource(R.string.pattern_pending_title))
                     Text(stringResource(R.string.pattern_pending_scope), style = MaterialTheme.typography.bodySmall)
-                    MasroofTextButton(onClick = { work { snapshot = workflow.load(); pendingReload++ } }, enabled = !busy) { Text(stringResource(R.string.pattern_pending_refresh)) }
+                    MasroofTextButton(onClick = { work { snapshot = workflow.catalog(); pendingReload++ } }, enabled = !busy) { Text(stringResource(R.string.pattern_pending_refresh)) }
                     if (workflow.canApplyPending) MasroofButton(onClick = { work {
                         applied = workflow.applyPending(bank.bankId, requireNotNull(snapshot).generation); pendingReload++
-                    } }, enabled = !busy && bank.currentPatterns.any { it.enabled && it.factContract != null }) { Text(stringResource(R.string.pattern_apply_pending)) }
+                    } }, enabled = !busy && bank.currentPatterns.any { it.canApply }) { Text(stringResource(R.string.pattern_apply_pending)) }
                     applied?.let { Text(stringResource(R.string.pattern_apply_result, it.processed, it.posted,
                         it.failed?.toString() ?: stringResource(R.string.pattern_failure_count_unknown)))
                         if (it.limited) Text(stringResource(R.string.pattern_pending_limited))
@@ -233,7 +234,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         operation = PatternOperation.entries[index]; role = "amount"; bindings = emptyList(); preview = null
                     }
                     PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it]; preview = null }
-                    Text(stringResource(R.string.pattern_selection_hint))
+                    MasroofGuidanceButton(stringResource(R.string.pattern_teach), stringResource(R.string.pattern_selection_hint))
                     OutlinedTextField(body, { value ->
                         if (value.text != body.text) { bindings = emptyList(); candidates = emptyList(); preview = null }
                         body = value
@@ -277,7 +278,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         } }, enabled = !busy && sample.isNotBlank()) { Text(stringResource(R.string.pattern_test)) }
                         if (sampleChecked && sampleResult == null) Text(stringResource(R.string.pattern_no_match))
                         sampleResult?.forEach { (key, value) -> Text("${fieldName(key)}: ${value.text}") }
-                        MasroofButton(onClick = { work { snapshot = workflow.saveTeaching(reviewed); if (source != null) onBack() else resetTeaching() } }, enabled = !busy) {
+                        MasroofButton(onClick = { work { workflow.saveTeaching(reviewed); snapshot = workflow.catalog(); if (source != null) onBack() else resetTeaching() } }, enabled = !busy) {
                             Text(stringResource(R.string.pattern_save))
                         }
                     }
