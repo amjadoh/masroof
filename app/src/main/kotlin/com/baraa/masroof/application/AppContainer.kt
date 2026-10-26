@@ -172,7 +172,11 @@ class AppContainer(
 
     val messagePatternsWorkflow by lazy {
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
-            com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate)
+            com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
+            pendingPreview = com.baraa.masroof.application.patterns.PendingPatternPreviewWorkflow(
+                com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate,
+                reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
+                financialTransactionRepository, bankSmsRegistry))
     }
 
     internal val database: MasroofDatabase =

@@ -383,7 +383,7 @@ fun SettingsRoute(
         )
 
         is SettingsDestination.MessagePatterns -> viewModel.messagePatternsWorkflow?.let { workflow ->
-            com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId, onBack = { popOrExit() })
+            com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId, onOpenReview = onOpenReviewExample, onBack = { popOrExit() })
         }
         SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(
             onBack = { popOrExit() }, onOpenExample = onOpenReviewExample,
