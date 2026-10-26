@@ -46,7 +46,7 @@ Unknown roles block use; explicitly ignored slots remain ignored.
 Every mapped value has original UTF-16 evidence offsets, a definition source
 (family, direction, currency, reference bank) or a durable receipt source.
 `InterpretationDraftMapper` preserves hash, pattern id/revision and source metadata
-in existing confidence reasons and always uses `ParseFinalizer` and the production
+in existing confidence reasons via `parsing/model/PatternInterpretationStamp` and always uses `ParseFinalizer` and the production
 validator. No financial schema change is needed.
 
 ## Persistence and write checks
@@ -125,3 +125,7 @@ Each approved template currently selects one account per role. Wider alias and
 card/statement-role authoring still needs coverage. Signed APK upgrade, process-death
 recovery, complete restore/rollback rehearsal and PR/main CI remain release gates.
 No user phone has been changed.
+
+The protection transaction covers evidence checks and parse/store only. Live
+derived processing and durability probes run after commit, so process death at a
+reported durable stage cannot roll back the preceding evidence or ledger write.

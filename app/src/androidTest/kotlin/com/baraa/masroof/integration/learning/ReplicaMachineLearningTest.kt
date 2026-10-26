@@ -53,7 +53,7 @@ class ReplicaMachineLearningTest {
             // Seed durable pending evidence as retained from an earlier import,
             // without running automatic reconciliation before the explicit action.
             val engine=com.baraa.masroof.engine.bank.interpretation.RuleInterpreter(com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current())
-            val adapter=com.baraa.masroof.bank.NewEngineSmsAdapter {
+            val adapter=com.baraa.masroof.testsupport.InterpretationTestAdapter {
                 engine.interpretRouted(it,com.baraa.masroof.finance.value.BankId("BANK_ALJAZIRA"))
             }
             val parsed=adapter.parse(com.baraa.masroof.parsing.model.SmsParseInput("external-out","AlJazira",outgoing,Instant.now()))

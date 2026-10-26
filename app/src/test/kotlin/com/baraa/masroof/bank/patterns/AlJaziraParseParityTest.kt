@@ -18,6 +18,15 @@ import java.time.Instant
 import java.time.LocalDate
 
 class AlJaziraParseParityTest {
+    @Test fun defaultIntegrationFixtureUsesBundledProductionDefinitions() {
+        val result = engineFixtureAdapter().parse(SmsParseInput("default-fixture", "AlJazira",
+            "Purchase\nAmount:10 SAR\nFrom account:4321\nMerchant:SHOP\nOn:2026-10-15 12:30",
+            Instant.parse("2026-10-20T12:00:00Z")))
+        assertTrue(result is com.baraa.masroof.parsing.model.ParseResult.Success)
+        val parsed = result as com.baraa.masroof.parsing.model.ParseResult.Success
+        assertTrue("engine:message-pattern-roles-v1" in parsed.event.confidence.reasons)
+    }
+
     @Test fun allCurrentFixturesMatchFrozenProductionFacts() {
         val adapter = bundledAlJaziraPatternAdapter()
         val cases = NewEngineFixtureTest.cases().map { files ->

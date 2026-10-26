@@ -4,7 +4,7 @@ import com.baraa.masroof.engine.bank.*
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.finance.value.BankId
-import com.baraa.masroof.bank.NewEngineSmsAdapter
+import com.baraa.masroof.testsupport.InterpretationTestAdapter
 import com.baraa.masroof.parsing.model.*
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
@@ -23,7 +23,7 @@ class DeviceReportedMessagesTest {
     @Test fun reportedMessagesPassTheProductionValidationGateWithCorrectRolesAndBankTime() {
         for(name in listOf("device_instant_transfer","device_google_pay","device_water_bill")) {
             val f=fixture(name); val expected=f.getValue("expected").jsonObject
-            val result=NewEngineSmsAdapter {engine.interpretRouted(it,bank)}.parse(SmsParseInput(name,"AlJazira",body(name),Instant.parse("2026-10-21T00:00:00Z")))
+            val result=InterpretationTestAdapter {engine.interpretRouted(it,bank)}.parse(SmsParseInput(name,"AlJazira",body(name),Instant.parse("2026-10-21T00:00:00Z")))
             assertTrue("$name $result",result is ParseResult.Success)
             val success=result as ParseResult.Success
             assertEquals(expected.getValue("messageFamily").jsonPrimitive.content,success.event.messageFamily.name)

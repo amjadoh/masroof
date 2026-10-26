@@ -1,4 +1,7 @@
-plugins { kotlin("jvm") }
+plugins {
+    kotlin("jvm")
+    `java-test-fixtures`
+}
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
 kotlin { jvmToolchain(17) }
 dependencies {

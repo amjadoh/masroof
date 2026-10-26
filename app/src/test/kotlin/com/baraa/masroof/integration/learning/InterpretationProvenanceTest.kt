@@ -4,7 +4,7 @@ import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.application.interpretation.*
-import com.baraa.masroof.bank.NewEngineSmsAdapter
+import com.baraa.masroof.testsupport.InterpretationTestAdapter
 import com.baraa.masroof.domain.model.*
 import com.baraa.masroof.parsing.model.*
 import com.baraa.masroof.parsing.repository.ParsedEventRecord
@@ -21,7 +21,7 @@ import java.time.Instant
 class InterpretationProvenanceTest {
     private fun record(origin: String? = "ML", status: ParseStatus = ParseStatus.SUCCESS): ParsedEventRecord {
         val engine = RuleInterpreter(AlJaziraRuleProfile.current())
-        val result = NewEngineSmsAdapter { engine.interpretRouted(it, BankId("BANK_ALJAZIRA")) }.parse(
+        val result = InterpretationTestAdapter { engine.interpretRouted(it, BankId("BANK_ALJAZIRA")) }.parse(
             SmsParseInput("provenance", "AlJazira", "شراء عبر الانترنت\nبطاقة ائتمانية: 7271\nمبلغ: SAR 60.99\nلدى: TEST\nفي: 2026-10-06 13:57", Instant.parse("2026-10-06T12:00:00Z"))) as ParseResult.Success
         return ParsedEventRecord(result.event.copy(parseStatus = status, confidence = Confidence(0.99,
             listOf("engine:current", "rules:current") + origin?.let { listOf("family_origin:$it", "model:test-model") }.orEmpty())), result.details)

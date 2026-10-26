@@ -26,7 +26,7 @@ class AlJaziraFinancialParityTest {
             assertEquals("Unqualified oracle: ${scenario.id}", "ACTIVE", scenario.status)
             val context = ApplicationProvider.getApplicationContext<Context>()
             // Separate databases, identical inputs/ownership/clock. The candidate can change without changing the oracle.
-            DashboardLedgerWorld(context, engineFixtureAdapter()).use { reference ->
+            DashboardLedgerWorld(context, engineFixtureAdapter(profile = com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current())).use { reference ->
                 DashboardLedgerWorld(context, bundledAlJaziraPatternAdapter()).use { candidate ->
                     GoldenLedgerRunner.prepare(reference, scenario)
                     GoldenLedgerRunner.prepare(candidate, scenario)
