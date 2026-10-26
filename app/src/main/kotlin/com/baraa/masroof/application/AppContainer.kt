@@ -170,6 +170,11 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
+    val messagePatternsWorkflow by lazy {
+        com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
+            com.baraa.masroof.data.patterns.MessagePatternStore(appContext), databaseAccessGate)
+    }
+
     internal val database: MasroofDatabase =
         databaseRestoreRecovered.let {
             Room.databaseBuilder(
