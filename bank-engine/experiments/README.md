@@ -9,7 +9,7 @@ It is a plan; the offline results below do not establish production parity.
 
 The text-only extractor and the declarative pattern builder/compiler now live in
 `bank-engine/src/main/kotlin/com/baraa/masroof/lab/bank/patterns/`. The experiment
-imports that implementation through test aliases; it no longer keeps a second
+imports that implementation directly; it keeps no compatibility wrappers or second
 copy. No runtime dependency was added. `Preview` still carries no financial
 authority, and the existing app adapter/intake/ledger path has not been switched.
 Pattern labels are raw teaching metadata, not production financial families.
@@ -25,9 +25,18 @@ the frozen reference. These are 13 classification rules across 11 families, not
 13 automatically learned message layouts. Taught-pattern financial activation,
 bank routing/import settings and pattern-management UI remain pending.
 
-The latest targeted checks passed 98 bank-engine tests and 41 app tests, including
+The latest targeted checks passed 101 bank-engine tests and 41 app tests, including
 financial oracles, manual/posted preservation, refresh recovery and package
 boundaries; the debug APK builds. No APK was installed on the user's device.
+
+Three review regressions now cover normalized identifier widths (including hidden
+direction marks and supplementary Unicode digits), immutable owned pattern parts
+and copies, and variable-width currency-free monetary values. The last are raw
+`DECIMAL` slots for monetary field names, without inventing a currency or financial
+authority; account/card digit widths remain fixed. The same snapshot drives
+compilation, preview and persistence. All three tests failed before their fixes.
+The two-process lifecycle was rerun after the fixes: 12 held-out messages,
+49 fields and 36 rejection controls still pass, with zero financial writes.
 
 The shared core supports original UTF-16 ranges selected directly by a user even
 when discovery misses a value, time-first timestamps, and standalone date slots.
