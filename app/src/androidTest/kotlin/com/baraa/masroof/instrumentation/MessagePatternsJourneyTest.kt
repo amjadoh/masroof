@@ -75,6 +75,51 @@ class MessagePatternsJourneyTest {
         Unit
     }
 
+    @Test fun reviewSourcePrefillsImmutableTextAndReturnsWithoutResolvingReview() = runBlocking {
+        val file = compose.activity.cacheDir.resolve("synthetic-review-pattern-journey.json")
+        file.delete()
+        val store = MessagePatternStore(file)
+        val workflow = MessagePatternsWorkflow(store, DatabaseAccessGate())
+        val source = com.baraa.masroof.application.patterns.PatternTeachingSource(null, "STC Bank", "Payment\nAmount:73SAR")
+        val returned = androidx.compose.runtime.mutableStateOf(false)
+        compose.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme { Surface {
+                    if (returned.value) androidx.compose.material3.Text("Review remains pending")
+                    else MessagePatternsScreen(workflow, source = source, onBack = { returned.value = true })
+                } }
+            }
+        }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_add_bank)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("STC Bank").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
+            it(androidx.compose.ui.text.AnnotatedString("changed sender"))
+        }
+        compose.onNodeWithText("STC Bank").assertExists()
+        compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
+        click(R.string.pattern_add_bank)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_teach)).fetchSemanticsNodes().isNotEmpty() }
+        click(R.string.pattern_teach)
+        compose.onNodeWithTag("pattern-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
+            it(androidx.compose.ui.text.AnnotatedString("changed body"))
+        }
+        compose.onNodeWithTag("pattern-body").assertTextContains(source.body)
+        click(R.string.pattern_extract)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("73SAR").performScrollTo().performClick()
+        click(R.string.pattern_bind)
+        click(R.string.pattern_preview)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
+        capture("pattern-from-review")
+        click(R.string.pattern_save)
+        compose.waitUntil(10_000) { returned.value }
+        assertEquals(listOf("STC Bank"), store.load().banks.single().senders)
+        assertEquals(1, store.load().banks.single().patterns.size)
+        assertEquals("Payment\nAmount:73SAR", source.body)
+        file.delete()
+        Unit
+    }
+
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
     private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick(); compose.waitForIdle() }
     private fun capture(name: String) {
