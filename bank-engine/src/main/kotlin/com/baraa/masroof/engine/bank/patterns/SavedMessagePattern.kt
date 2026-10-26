@@ -1,6 +1,7 @@
 package com.baraa.masroof.engine.bank.patterns
 
 import com.baraa.masroof.engine.bank.interpretation.SourceText
+import com.baraa.masroof.engine.bank.BankRuleSchema
 import java.util.Collections
 
 data class FieldChoice(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
@@ -30,15 +31,20 @@ data class FieldSlot(val field: String, val kind: FieldKind, val width: Int, val
 /** Only declarative literals and typed slots survive; original selected values are not stored. */
 class SavedMessagePattern(val id: String, val bankId: String, val sender: String, val label: String,
     val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>,
-    factContract: PatternFactContract? = null) {
+    factContract: PatternFactContract? = null, roleProfile: BankRuleSchema? = null) {
     val parts: List<PatternPart> = Collections.unmodifiableList(parts.toList())
     val factContract = factContract?.copy(accountBindings = Collections.unmodifiableList(factContract.accountBindings.toList()),
         contextReferences = Collections.unmodifiableSet(factContract.contextReferences.toSet()))
+    val roleProfile: BankRuleSchema? = roleProfile?.frozen()
 
     init {
         require(id.matches(Regex("[A-Za-z0-9_.-]{1,64}")) && bankId.isNotBlank() && bankId != "UNKNOWN")
         require(sender.length in 1..128 && label.length in 1..64 && revision > 0)
-        require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
+        if (this.roleProfile != null) {
+            this.roleProfile.validate()
+            val rule = this.roleProfile.rules.single()
+            require(this.parts.isEmpty() && rule.id == id && this.factContract == PatternFactContract(rule.family, rule.direction))
+        } else require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
         require(this.parts.withIndex().all { (index, part) -> if (index % 2 == 0) part is StaticText else part is FieldSlot })
         require(this.parts.filterIsInstance<StaticText>().sumOf { it.value.length } <= 4096)
         val slots = this.parts.filterIsInstance<FieldSlot>()
@@ -61,21 +67,23 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
         ExampleTemplate.learn(sender, label, synthetic, selections)
     }
 
-    fun validate() { compiled }
+    fun validate() { if (roleProfile == null) compiled else roleProfile.validate() }
 
     fun copy(id: String = this.id, bankId: String = this.bankId, sender: String = this.sender,
         label: String = this.label, revision: Int = this.revision, enabled: Boolean = this.enabled,
-        parts: List<PatternPart> = this.parts, factContract: PatternFactContract? = this.factContract) =
-        SavedMessagePattern(id, bankId, sender, label, revision, enabled, parts, factContract)
+        parts: List<PatternPart> = this.parts, factContract: PatternFactContract? = this.factContract,
+        roleProfile: BankRuleSchema? = this.roleProfile) =
+        SavedMessagePattern(id, bankId, sender, label, revision, enabled, parts, factContract, roleProfile)
 
     override fun equals(other: Any?): Boolean = other is SavedMessagePattern && id == other.id &&
         bankId == other.bankId && sender == other.sender && label == other.label && revision == other.revision &&
-        enabled == other.enabled && parts == other.parts && factContract == other.factContract
+        enabled == other.enabled && parts == other.parts && factContract == other.factContract && roleProfile == other.roleProfile
 
-    override fun hashCode(): Int = listOf(id, bankId, sender, label, revision, enabled, parts, factContract).hashCode()
+    override fun hashCode(): Int = listOf(id, bankId, sender, label, revision, enabled, parts, factContract, roleProfile).hashCode()
 
     fun preview(bankId: String, sender: String, body: String): Preview? {
         if (!enabled || bankId != this.bankId) return null
+        if (roleProfile != null) return if (sender == this.sender) previewRoles(body) else null
         val result = compiled.preview(sender, body) ?: return null
         val ignored = parts.filterIsInstance<FieldSlot>().filter { it.ignored }.map { it.field }.toSet()
         return result.copy(fields = result.fields.filterKeys { it !in ignored })

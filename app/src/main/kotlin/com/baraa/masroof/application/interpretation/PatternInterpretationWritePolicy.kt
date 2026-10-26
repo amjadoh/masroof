@@ -11,16 +11,21 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
     suspend fun isCurrent(record: ParsedEventRecord): Boolean {
         if (!isPatternDerived(record)) return true
         val reasons = record.event.confidence.reasons
-        if (reasons.count { it == "engine:message-pattern-facts-v1" } != 1) return false
-        val expected = reasons.filter { it.startsWith("pattern_config:") }.singleOrNull()?.removePrefix("pattern_config:") ?: return false
-        val identity = reasons.filter { it.startsWith("pattern_revision:") }.singleOrNull()?.split(':') ?: return false
+        val roles = reasons.count { it == "engine:message-pattern-roles-v1" } == 1
+        if (reasons.count { it.startsWith("engine:") } != 1 || (!roles && "engine:message-pattern-facts-v1" !in reasons)) return false
+        val roleStamp = if (roles) reasons.filter { it.startsWith("rules:") }.singleOrNull()?.removePrefix("rules:")?.split(':') ?: return false else null
+        if (roleStamp != null && roleStamp.size != 3) return false
+        val expected = roleStamp?.first() ?: reasons.filter { it.startsWith("pattern_config:") }.singleOrNull()?.removePrefix("pattern_config:") ?: return false
+        val identity = roleStamp?.let { listOf("pattern_revision", it[1], it[2]) }
+            ?: reasons.filter { it.startsWith("pattern_revision:") }.singleOrNull()?.split(':') ?: return false
         if (!expected.matches(Regex("[0-9a-f]{64}")) || identity.size != 3) return false
-        if (reasons.count { it == "rules:$expected" } != 1) return false
+        if (!roles && reasons.count { it == "rules:$expected" } != 1) return false
         return try {
             val configuration = store.load()
             val pattern = configuration.banks.singleOrNull { it.bankId == record.event.bank.id }?.currentPatterns
                 ?.singleOrNull { it.id == identity[1] } ?: return false
             val contract = pattern.factContract ?: return false
+            if (roles != (pattern.roleProfile != null)) return false
             if (!pattern.enabled || pattern.revision.toString() != identity[2] ||
                 PatternFactInterpreter(configuration).fingerprint != expected) return false
             for (binding in contract.accountBindings) {
@@ -37,7 +42,7 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
 
     companion object {
         fun isPatternDerived(record: ParsedEventRecord) = record.event.confidence.reasons.any {
-            it == "engine:message-pattern-facts-v1" || it.startsWith("pattern_")
+            it in setOf("engine:message-pattern-facts-v1", "engine:message-pattern-roles-v1") || it.startsWith("pattern_")
         }
     }
 }

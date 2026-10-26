@@ -2,6 +2,7 @@ package com.baraa.masroof.testsupport
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import com.baraa.masroof.application.dashboard.DashboardEvidence
 import com.baraa.masroof.application.dashboard.DashboardEvidenceScope
 import com.baraa.masroof.application.dashboard.DashboardEvidenceSource
@@ -144,6 +145,9 @@ class DashboardLedgerWorld(
             reviewQueueUpdater = reviewQueueUpdater,
             processingRecovery = processingRecovery,
             ingestionReviewService = IngestionReviewService(reviewRepo, importClock),
+            patternProcessing = com.baraa.masroof.application.patterns.PatternEvidenceProtection(
+                reviewRepo, RoomUserCorrectionRepository(db.userCorrectionDao()), ftRepo,
+                inTransaction = { work -> db.withTransaction { work() } })::run,
             exchangeRateEnrichmentScheduler = exchangeRateEnrichment?.let { workflow ->
                 com.baraa.masroof.application.sms.ImmediateExchangeRateEnrichmentScheduler(
                     com.baraa.masroof.application.sms.PendingExchangeRateEnricher { workflow.enrichPending() },
