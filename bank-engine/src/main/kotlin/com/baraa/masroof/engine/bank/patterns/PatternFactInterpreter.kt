@@ -25,7 +25,34 @@ data class PatternFactContract(
     val destinationAccountBank: BankId? = null,
     val cardBank: BankId? = null,
     val version: Int = 1,
-)
+    val accountBindings: List<PatternAccountBinding> = emptyList(),
+    val contextReferences: Set<String> = emptySet(),
+) {
+    init {
+        require(accountBindings.size <= 2 && accountBindings.map { it.role }.distinct().size == accountBindings.size)
+        require(contextReferences.all { it in PATTERN_REFERENCE_FIELDS })
+        require(accountBindings.mapNotNull { it.field }.distinct().size == accountBindings.mapNotNull { it.field }.size)
+        require(accountBindings.none { it.field in contextReferences })
+    }
+}
+
+enum class PatternAccountRole { SOURCE, DESTINATION }
+
+/** Exact user link to an existing canonical account. It declares no ownership. Null field is a definition constant. */
+data class PatternAccountBinding(val role: PatternAccountRole, val bank: BankId, val last4: String,
+    val field: String? = null, val observedValue: String? = null) {
+    init {
+        require(last4.matches(Regex("[0-9]{4}")))
+        require((field == null) == (observedValue == null))
+        require(field == null || field in setOf("source_account", "destination_account", "account_reference"))
+        require(field != "source_account" || role == PatternAccountRole.SOURCE)
+        require(field != "destination_account" || role == PatternAccountRole.DESTINATION)
+        require(observedValue == null || observedValue.matches(Regex("[0-9]{1,4}")))
+        require(observedValue == null || observedValue.length < 4 || observedValue == last4)
+    }
+}
+
+private val PATTERN_REFERENCE_FIELDS = setOf("source_account", "destination_account", "account_reference", "funding_reference", "counterparty_bank")
 
 /** Values stay in Facts / original message spans; durable reasons contain only metadata and offsets. */
 data class PatternProvenance(val configurationFingerprint: String, val patternId: String, val revision: Int,
@@ -45,7 +72,10 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             setOf(blocker, Blocker.UNKNOWN_FAMILY), listOf(diagnostic(code)))
         val definition = snapshot.banks.singleOrNull { it.bankId == bank.value }
             ?: return unresolved("PATTERN_BANK_MISSING", Blocker.UNKNOWN_BANK)
-        val matches = definition.currentPatterns.mapNotNull { pattern ->
+        val security = otpEvidence(SourceText(input.body))
+        if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
+            ParseStatus.NON_FINANCIAL, null, security, emptySet())
+        val matches = definition.currentPatterns.filter { it.sender in definition.senders }.mapNotNull { pattern ->
             // Use the pattern's declared sender only to invoke its body compiler, after routing.
             pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
         }
@@ -53,10 +83,8 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         if (matches.size != 1) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
         val (pattern, preview) = matches.single()
         val contract = pattern.factContract ?: return unresolved("PATTERN_CONTRACT_MISSING")
-        if (contract.version != 1) return unresolved("PATTERN_CONTRACT_UNSUPPORTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
-        val security = otpEvidence(SourceText(input.body))
-        if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
-            ParseStatus.NON_FINANCIAL, null, security, emptySet())
+        if (contract.version !in 1..2 || (contract.version == 1 && (contract.accountBindings.isNotEmpty() || contract.contextReferences.isNotEmpty())))
+            return unresolved("PATTERN_CONTRACT_UNSUPPORTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
 
         val evidence = preview.fields.map { (field, span) -> Evidence(pattern.id, field.uppercase(Locale.ROOT), span.start, span.end) }.toMutableList()
         val diagnostics = mutableListOf<InterpretationDiagnostic>()
@@ -66,6 +94,19 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         if (hasNoticeContext(SourceText(input.body))) block("PATTERN_NOTICE_CONTEXT")
         fun value(field: String) = preview.fields[field]?.raw
         fun normalized(field: String) = value(field)?.let { SourceText(it).text.trim() }
+        val boundFields = mutableSetOf<String>()
+        fun boundAccount(role: PatternAccountRole): AccountReference? {
+            val binding = contract.accountBindings.singleOrNull { it.role == role } ?: return null
+            if (binding.field != null) {
+                if (normalized(binding.field) != binding.observedValue) { block("PATTERN_ACCOUNT_BINDING_MISMATCH"); return null }
+                boundFields += binding.field
+            }
+            definitionFacts += "${role.name}_ACCOUNT_IDENTITY"
+            definitionFacts += "${role.name}_ACCOUNT_BANK"
+            return AccountReference(binding.bank, binding.last4)
+        }
+        val sourceBinding = boundAccount(PatternAccountRole.SOURCE)
+        val destinationBinding = boundAccount(PatternAccountRole.DESTINATION)
         fun money(field: String): Money? {
             val raw = normalized(field) ?: return null
             val match = MONEY.matchEntire(raw)
@@ -84,6 +125,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             return Money.of(magnitude.replace(",", ""), currency)
         }
         fun account(field: String, referenceBank: BankId?): AccountReference? {
+            if (field in contract.contextReferences || field in boundFields) return null
             val raw = normalized(field) ?: return null
             if (!SUFFIX.matches(raw) || referenceBank == null) { block("PATTERN_ACCOUNT_REFERENCE_UNRESOLVED"); return null }
             definitionFacts += "${field.uppercase(Locale.ROOT)}_BANK"
@@ -103,13 +145,18 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
         // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
-        if (preview.fields.keys.any { it in NEUTRAL_REFERENCES }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
+        if (preview.fields.keys.any { it in NEUTRAL_REFERENCES && it !in boundFields && it !in contract.contextReferences }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
+        if (contract.contextReferences.any { it !in preview.fields }) block("PATTERN_REFERENCE_CONTEXT_MISSING")
         val receiptTime = "occurred_at" !in preview.fields
         if (receiptTime && !input.durableSmsReceipt) block("PATTERN_RECEIPT_NOT_DURABLE")
         if (contract.family == MessageFamily.UNKNOWN) block("PATTERN_FAMILY_UNKNOWN")
+        val sourceObserved = account("source_account", contract.sourceAccountBank)
+        val destinationObserved = account("destination_account", contract.destinationAccountBank)
+        if (sourceBinding != null && sourceObserved != null && sourceBinding != sourceObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
+        if (destinationBinding != null && destinationObserved != null && destinationBinding != destinationObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
         val facts = Facts(contract.family, amount = money("amount"), direction = contract.direction,
-            sourceAccount = account("source_account", contract.sourceAccountBank),
-            destinationAccount = account("destination_account", contract.destinationAccountBank), card = card,
+            sourceAccount = sourceBinding ?: sourceObserved,
+            destinationAccount = destinationBinding ?: destinationObserved, card = card,
             merchant = value("merchant"), counterparty = value("counterparty"), biller = value("biller"),
             billerCode = value("biller_code"), transactionReference = value("reference"), occurredAtLocal = time,
             occurredAt = input.receivedAt.takeIf { receiptTime && input.durableSmsReceipt },
@@ -159,6 +206,14 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                             out.writeInt(it.version); out.writeUTF(it.family.name); out.writeUTF(it.direction.name)
                             out.writeUTF(it.currency?.name.orEmpty()); out.writeUTF(it.sourceAccountBank?.value.orEmpty())
                             out.writeUTF(it.destinationAccountBank?.value.orEmpty()); out.writeUTF(it.cardBank?.value.orEmpty())
+                            if (it.version >= 2) {
+                                out.writeInt(it.accountBindings.size)
+                                it.accountBindings.sortedBy { binding -> binding.role.name }.forEach { binding ->
+                                    out.writeUTF(binding.role.name); out.writeUTF(binding.bank.value); out.writeUTF(binding.last4)
+                                    out.writeUTF(binding.field.orEmpty()); out.writeUTF(binding.observedValue.orEmpty())
+                                }
+                                out.writeInt(it.contextReferences.size); it.contextReferences.sorted().forEach(out::writeUTF)
+                            }
                         }
                     }
                 }

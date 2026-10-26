@@ -9,6 +9,28 @@ import java.time.Instant
 import java.time.LocalDateTime
 
 class PatternFactInterpreterTest {
+    @Test fun shortReferencesUseOnlyExplicitBankAndRoleQualifiedBindings() {
+        val body = "Incoming\nAmount:10SAR\nAccount:321"
+        val p = SavedMessagePattern.fromChoices("bound", "BANK_STC", "STC Bank", "TRANSFER_IN", body,
+            listOf(FieldChoice("amount", 16, 21), FieldChoice("account_reference", 30, 33)))
+        val binding = PatternAccountBinding(PatternAccountRole.DESTINATION, BankId("BANK_STC"), "4321", "account_reference", "321")
+        val approved = p.copy(factContract = PatternFactContract(MessageFamily.TRANSFER_IN, MoneyDirection.INCOMING,
+            version = 2, accountBindings = listOf(binding)))
+        val config = MessagePatternConfiguration(banks = listOf(BankMessagePatterns("BANK_STC", listOf("STC Bank"), patterns = listOf(approved))))
+        val input = MessageInput("bound", "STC Bank", body, Instant.EPOCH, true)
+        val engine = PatternFactInterpreter(config)
+        val result = engine.interpretRouted(input, BankId("BANK_STC"))
+        assertEquals(ParseStatus.SUCCESS, result.status)
+        assertEquals("4321", result.facts.destinationAccount!!.maskedNumber)
+        assertEquals("321", result.evidence.single { it.field == "ACCOUNT_REFERENCE" }.slice(input))
+        assertEquals(BankId("BANK_STC"), result.facts.destinationAccount!!.bank)
+        assertNull(result.facts.sourceAccount)
+        val different = engine.interpretRouted(input.copy(body = body.replace("321", "322")), BankId("BANK_STC"))
+        assertEquals(ParseStatus.REVIEW_REQUIRED, different.status)
+        assertNull(different.facts.destinationAccount)
+        assertNull(engine.interpretRouted(input, BankId("OTHER")).facts.destinationAccount)
+    }
+
     private val bank = BankId("BANK_STC")
     private val body = "Internal incoming transfer\nAmount:١٢٫٥٠SR\nAcc:٣٢١\nAt:15/10/26 12:30"
     private val input = MessageInput("sms", "STC Bank", body, Instant.parse("2026-10-15T10:00:00Z"), true)

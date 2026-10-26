@@ -1,0 +1,23 @@
+package com.baraa.masroof.bank
+
+import com.baraa.masroof.domain.model.Bank
+import com.baraa.masroof.domain.model.Confidence
+import com.baraa.masroof.engine.bank.MessageInput
+import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.PatternFactInterpreter
+import com.baraa.masroof.finance.value.BankId
+import com.baraa.masroof.parsing.model.BankDetectionResult
+import com.baraa.masroof.parsing.model.SmsParseInput
+
+/** A bank-scoped immutable configuration snapshot; registry detection owns sender authority. */
+class MessagePatternSmsAdapter(definition: BankMessagePatterns, private val interpreter: PatternFactInterpreter) : BankSmsAdapter {
+    override val bank = Bank(definition.bankId)
+    private val senders = definition.senders.toSet()
+    override fun detect(sender: String, body: String): BankDetectionResult =
+        if (sender in senders) BankDetectionResult.Detected(bank, Confidence(1.0), listOf("configured_exact_sender"))
+        else BankDetectionResult.Unknown(listOf("sender_not_in_scope"))
+
+    override fun parse(input: SmsParseInput) = MessageInput(input.rawSmsId, input.sender, input.body, input.receivedAt, true).let {
+        InterpretationDraftMapper().map(it, interpreter.interpretRouted(it, BankId(bank.id)), bank)
+    }
+}

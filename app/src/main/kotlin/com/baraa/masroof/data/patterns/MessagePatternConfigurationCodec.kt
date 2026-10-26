@@ -29,6 +29,14 @@ object MessagePatternConfigurationCodec {
                         put("sourceAccountBank", contract.sourceAccountBank?.value?.let(::JsonPrimitive) ?: JsonNull)
                         put("destinationAccountBank", contract.destinationAccountBank?.value?.let(::JsonPrimitive) ?: JsonNull)
                         put("cardBank", contract.cardBank?.value?.let(::JsonPrimitive) ?: JsonNull)
+                        if (contract.version >= 2) {
+                            putJsonArray("accountBindings") { contract.accountBindings.sortedBy { it.role.name }.forEach { binding -> add(buildJsonObject {
+                                put("role", binding.role.name); put("bankId", binding.bank.value); put("last4", binding.last4)
+                                put("field", binding.field?.let(::JsonPrimitive) ?: JsonNull)
+                                put("observedValue", binding.observedValue?.let(::JsonPrimitive) ?: JsonNull)
+                            }) } }
+                            put("contextReferences", JsonArray(contract.contextReferences.sorted().map(::JsonPrimitive)))
+                        }
                     } } ?: JsonNull)
                     putJsonArray("parts") { pattern.parts.forEach { part -> add(buildJsonObject {
                         when (part) {
@@ -80,14 +88,25 @@ object MessagePatternConfigurationCodec {
                 SavedMessagePattern(p.text("id"), bankId, p.text("sender"), p.text("label"), p.integer("revision"),
                     p.flag("enabled"), parts, if (schema == 2L) p.getValue("factContract").takeUnless { it == JsonNull }?.let {
                         val c = it.jsonObject
-                        c.only("version", "family", "direction", "currency", "sourceAccountBank", "destinationAccountBank", "cardBank")
-                        require(c.integer("version") == 1) { "Unsupported pattern fact contract" }
+                        val version = c.integer("version")
+                        require(version in 1..2) { "Unsupported pattern fact contract" }
+                        c.only(*(listOf("version", "family", "direction", "currency", "sourceAccountBank", "destinationAccountBank", "cardBank") +
+                            if (version == 2) listOf("accountBindings", "contextReferences") else emptyList()).toTypedArray())
                         fun bank(key: String) = c.optionalText(key)?.also {
                             require(it.matches(Regex("[A-Za-z0-9_-]{1,64}")) && !it.equals("UNKNOWN", ignoreCase = true))
                         }?.let(::BankId)
                         PatternFactContract(MessageFamily.valueOf(c.text("family")), MoneyDirection.valueOf(c.text("direction")),
                             c.optionalText("currency")?.let(Currency::valueOf), bank("sourceAccountBank"),
-                            bank("destinationAccountBank"), bank("cardBank"))
+                            bank("destinationAccountBank"), bank("cardBank"), version,
+                            if (version == 2) c.getValue("accountBindings").jsonArray.also { require(it.size <= 2) }.map { binding ->
+                                val b = binding.jsonObject
+                                b.only("role", "bankId", "last4", "field", "observedValue")
+                                PatternAccountBinding(PatternAccountRole.valueOf(b.text("role")), BankId(b.text("bankId")), b.text("last4"),
+                                    b.optionalText("field"), b.optionalText("observedValue"))
+                            } else emptyList(),
+                            if (version == 2) c.getValue("contextReferences").jsonArray.also { require(it.size <= 5) }.map {
+                                it.jsonPrimitive.also { p -> require(p.isString) }.content
+                            }.also { require(it.distinct().size == it.size) }.toSet() else emptySet())
                     } else null).also { it.validate() }
             }
             require(definitions.map { it.id to it.revision }.distinct().size == definitions.size) { "Duplicate pattern revision" }

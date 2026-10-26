@@ -30,8 +30,10 @@ data class FieldSlot(val field: String, val kind: FieldKind, val width: Int, val
 /** Only declarative literals and typed slots survive; original selected values are not stored. */
 class SavedMessagePattern(val id: String, val bankId: String, val sender: String, val label: String,
     val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>,
-    val factContract: PatternFactContract? = null) {
+    factContract: PatternFactContract? = null) {
     val parts: List<PatternPart> = Collections.unmodifiableList(parts.toList())
+    val factContract = factContract?.copy(accountBindings = Collections.unmodifiableList(factContract.accountBindings.toList()),
+        contextReferences = Collections.unmodifiableSet(factContract.contextReferences.toSet()))
 
     init {
         require(id.matches(Regex("[A-Za-z0-9_.-]{1,64}")) && bankId.isNotBlank() && bankId != "UNKNOWN")
