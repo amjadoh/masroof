@@ -14,6 +14,14 @@ import org.junit.Test
 class PackageDependencyRulesTest {
 
     @Test
+    fun patternPresentation_consumesApplicationModelsOnly() {
+        assertPackagesDoNotImport(
+            packages = listOf("presentation/patterns"),
+            forbiddenImports = listOf("com.baraa.masroof.engine.", "com.baraa.masroof.finance.value."),
+        )
+    }
+
+    @Test
     fun core_hasNoMasroofDependencies() {
         assertPackagesDoNotImport(
             packages = listOf("core"),

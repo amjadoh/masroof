@@ -28,13 +28,15 @@ class MessagePatternsWorkflow(
     suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
     suspend fun confirmPatternAccount(bankId: String, last4: String) = requireNotNull(activation).confirmAccount(bankId, last4)
     suspend fun previewFinancial(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String,
-        body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.finance.value.Currency? = null) =
-        requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency)
+        body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.core.money.Currency? = null) =
+        requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency?.let { com.baraa.masroof.finance.value.Currency.valueOf(it.name) })
     suspend fun saveFinancial(preview: PatternFinancialPreview) = requireNotNull(activation).save(preview)
     suspend fun applyPending(bankId: String, generation: Long) = requireNotNull(pendingPreview).apply(bankId, generation)
 
     suspend fun previewPending(bankId: String, generation: Long) =
         requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)
+
+    suspend fun catalog(): PatternCatalog = load().toCatalog()
 
     suspend fun load() = withContext(ioDispatcher) {
         val existing = accessGate.withAccess { store.load() }

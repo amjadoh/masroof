@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.*
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -14,19 +17,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
-import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
-import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
-import com.baraa.masroof.engine.bank.patterns.FieldSlot
-import com.baraa.masroof.finance.value.Currency
+import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.presentation.common.*
+import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, generation: Long, pattern: SavedMessagePattern,
-    initialBody: String, readOnlyBody: Boolean, onSaved: (MessagePatternConfiguration) -> Unit, onBack: () -> Unit) {
+internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, generation: Long, pattern: PatternDefinitionView,
+    initialBody: String, readOnlyBody: Boolean, onSaved: (PatternCatalog) -> Unit, onBack: () -> Unit) {
     var accounts by remember { mutableStateOf(emptyList<PatternAccountOption>()) }
     var accountId by remember { mutableStateOf<String?>(null) }
     var newAccount by remember { mutableStateOf("") }
@@ -44,10 +45,8 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     val fieldKeys = stringArrayResource(R.array.pattern_field_keys)
     val fieldNames = stringArrayResource(R.array.pattern_field_names)
     fun fieldName(key: String) = fieldNames.getOrNull(fieldKeys.indexOf(key)) ?: key
-    val fields = pattern.parts.filterIsInstance<FieldSlot>().filterNot { it.ignored }.map { it.field }
-    val references = fields.filter { it in setOf("source_account", "destination_account", "account_reference", "funding_reference", "counterparty_bank") }
-    val ownRole = if (operation in setOf(PatternOperation.TRANSFER_IN, PatternOperation.REFUND)) "destination_account" else "source_account"
-    val bindingOptions = references.filter { it == "account_reference" || it == ownRole }
+    val references = pattern.referenceFields
+    val bindingOptions = pattern.accountReferenceFields(operation)
     fun work(action: suspend () -> Unit) {
         if (busy) return
         busy = true; failed = false
@@ -123,7 +122,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                     Text(validated.occurredAt)
                     validated.reference?.let { Text(stringResource(R.string.pattern_financial_mapping, it, accounts.single { a -> a.id == accountId }.last4)) }
                     Text(stringResource(R.string.pattern_financial_save_help), style = MaterialTheme.typography.bodySmall)
-                    MasroofButton(onClick = { work { onSaved(workflow.saveFinancial(validated)) } }, enabled = !busy,
+                    MasroofButton(onClick = { work { workflow.saveFinancial(validated); onSaved(workflow.catalog()) } }, enabled = !busy,
                         modifier = Modifier.testTag("pattern-financial-save")) { Text(stringResource(R.string.pattern_financial_approve)) }
                 }
             }
