@@ -1,5 +1,10 @@
 # Generic text candidates and learned field bindings: offline experiment
 
+The production integration proposal, including AlJazira parity gates, automatic
+seed preparation, bank-scoped import, persistence/restore and rollout tasks, is
+documented in [PRODUCTION_MIGRATION_PLAN.md](PRODUCTION_MIGRATION_PLAN.md).
+It is a plan; the offline results below do not establish production parity.
+
 The first stage is now **text-only candidate discovery**:
 `GenericCandidateExtractor.extract(body)`. It receives no sender, bank, message
 family, teaching examples, semantic field names, or layout template. Common
