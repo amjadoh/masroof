@@ -1,0 +1,184 @@
+{
+  "note": "User-provided structures; personal names and account/card/reference values anonymized. Six teachers and nine held-out messages. Local-transfer has no independent real holdout. Labels grant no financial authority.",
+  "rows": [
+    {
+      "id": "stc-internal-in",
+      "operation": "TRANSFER_IN",
+      "body": "Internal incoming transfer\nAmount:3240.02SR\nFrom:A PERSON\nAcc:123\nAt:14/10/26 12:21",
+      "fields": {
+        "amount": "3240.02SR",
+        "counterparty": "A PERSON",
+        "account_reference": "123",
+        "occurred_at": "14/10/26 12:21"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-internal-out",
+      "operation": "TRANSFER_OUT",
+      "body": "Internal outward transfer\nAmount:54SR\nTo:B PERSON\nAcc:234\nAt:12/10/26 18:06",
+      "fields": {
+        "amount": "54SR",
+        "counterparty": "B PERSON",
+        "account_reference": "234",
+        "occurred_at": "12/10/26 18:06"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-top-up",
+      "operation": "TRANSFER_IN",
+      "body": "Adding money to account\nAmount: 300.00 SAR\nVia: *6789\nAt: 2026-10-12 18:06",
+      "fields": {
+        "amount": "300.00 SAR",
+        "funding_reference": "*6789",
+        "occurred_at": "2026-10-12 18:06"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-local-in",
+      "operation": "TRANSFER_IN",
+      "body": "Credit Local transfer\n50SR\nFrom FIRST PERSON\nFrom BJAZ\nFrom 789\n08-10-2026 14:57",
+      "fields": {
+        "amount": "50SR",
+        "counterparty": "FIRST PERSON",
+        "counterparty_bank": "BJAZ",
+        "source_account": "789",
+        "occurred_at": "08-10-2026 14:57"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-qattah",
+      "operation": "TRANSFER_OUT",
+      "body": "Pay qattah\nAmount: 84.86 SAR\nTo: SECOND PERSON\nAt: 08/10/26 12:34",
+      "fields": {
+        "amount": "84.86 SAR",
+        "counterparty": "SECOND PERSON",
+        "occurred_at": "08/10/26 12:34"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-sarie-in",
+      "operation": "TRANSFER_IN",
+      "body": "Inward transfer (SARIE)\n50.00 SAR\nFrom FIRST PERSON\nFrom BJAZ\nAccount *345\n26-07-2026 17:27\nRef. No. *AB1C",
+      "fields": {
+        "amount": "50.00 SAR",
+        "counterparty": "FIRST PERSON",
+        "counterparty_bank": "BJAZ",
+        "account_reference": "*345",
+        "occurred_at": "26-07-2026 17:27",
+        "reference": "*AB1C"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-qattah",
+      "operation": "TRANSFER_OUT",
+      "body": "Pay qattah\nAmount: 58.50 SAR\nTo: THIRD PERSON\nAt: 18/08/26 13:59",
+      "fields": {
+        "amount": "58.50 SAR",
+        "counterparty": "THIRD PERSON",
+        "occurred_at": "18/08/26 13:59"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-qattah",
+      "operation": "TRANSFER_OUT",
+      "body": "Pay qattah\nAmount: 41.30 SAR\nTo: SECOND PERSON\nAt: 11/08/26 15:14",
+      "fields": {
+        "amount": "41.30 SAR",
+        "counterparty": "SECOND PERSON",
+        "occurred_at": "11/08/26 15:14"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-qattah",
+      "operation": "TRANSFER_OUT",
+      "body": "Pay qattah\nAmount: 97.00 SAR\nTo: FOURTH PERSON\nAt: 02/07/26 07:32",
+      "fields": {
+        "amount": "97.00 SAR",
+        "counterparty": "FOURTH PERSON",
+        "occurred_at": "02/07/26 07:32"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-top-up",
+      "operation": "TRANSFER_IN",
+      "body": "Adding money to account\nAmount: 300.00 SAR\nVia: *6789\nAt: 2026-08-18 13:59",
+      "fields": {
+        "amount": "300.00 SAR",
+        "funding_reference": "*6789",
+        "occurred_at": "2026-08-18 13:59"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-internal-out",
+      "operation": "TRANSFER_OUT",
+      "body": "Internal outward transfer\nAmount:64SR\nTo:C PERSON\nAcc:456\nAt:10/08/26 10:17",
+      "fields": {
+        "amount": "64SR",
+        "counterparty": "C PERSON",
+        "account_reference": "456",
+        "occurred_at": "10/08/26 10:17"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-internal-out",
+      "operation": "TRANSFER_OUT",
+      "body": "Internal outward transfer\nAmount:66SR\nTo:B PERSON\nAcc:234\nAt:26/07/26 17:28",
+      "fields": {
+        "amount": "66SR",
+        "counterparty": "B PERSON",
+        "account_reference": "234",
+        "occurred_at": "26/07/26 17:28"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-internal-out",
+      "operation": "TRANSFER_OUT",
+      "body": "Internal outward transfer\nAmount:200SR\nTo:D PERSON\nAcc:567\nAt:30/06/26 19:32",
+      "fields": {
+        "amount": "200SR",
+        "counterparty": "D PERSON",
+        "account_reference": "567",
+        "occurred_at": "30/06/26 19:32"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-internal-in",
+      "operation": "TRANSFER_IN",
+      "body": "Internal incoming transfer\nAmount:64SR\nFrom:C PERSON\nAcc:456\nAt:03/08/26 19:45",
+      "fields": {
+        "amount": "64SR",
+        "counterparty": "C PERSON",
+        "account_reference": "456",
+        "occurred_at": "03/08/26 19:45"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-sarie-in",
+      "operation": "TRANSFER_IN",
+      "body": "Inward transfer (SARIE)\n100.00 SAR\nFrom FIRST PERSON\nFrom BJAZ\nAccount *345\n02-07-2026 07:28\nRef. No. *DE2F",
+      "fields": {
+        "amount": "100.00 SAR",
+        "counterparty": "FIRST PERSON",
+        "counterparty_bank": "BJAZ",
+        "account_reference": "*345",
+        "occurred_at": "02-07-2026 07:28",
+        "reference": "*DE2F"
+      },
+      "teach": false
+    }
+  ]
+}

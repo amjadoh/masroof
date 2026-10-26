@@ -17,13 +17,28 @@ class MessagePatternsWorkflow(
     private val accessGate: DatabaseAccessGate,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val pendingPreview: PendingPatternPreviewWorkflow? = null,
+    private val bundledBanks: List<BankMessagePatterns> = emptyList(),
 ) {
     val canPreviewPending: Boolean get() = pendingPreview != null
 
     suspend fun previewPending(bankId: String, generation: Long) =
         requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)
 
-    suspend fun load() = withContext(ioDispatcher) { accessGate.withAccess { store.load() } }
+    suspend fun load() = withContext(ioDispatcher) {
+        val existing = accessGate.withAccess { store.load() }
+        if (missingBanks(existing).isEmpty()) existing
+        else accessGate.withRestore {
+            var current = store.load()
+            // Install missing banks only: updates never replace user revisions or duplicate a configured sender identity.
+            for (bank in missingBanks(current)) current = store.saveBank(current.generation, bank)
+            current
+        }
+    }
+
+    private fun missingBanks(configuration: com.baraa.masroof.lab.bank.patterns.MessagePatternConfiguration) =
+        bundledBanks.filter { bank -> configuration.banks.none {
+            it.bankId == bank.bankId || it.senders.any(bank.senders::contains)
+        } }
 
     suspend fun addBank(generation: Long, name: String, sender: String, bankId: String? = null) = withContext(ioDispatcher) {
         accessGate.withRestore {
