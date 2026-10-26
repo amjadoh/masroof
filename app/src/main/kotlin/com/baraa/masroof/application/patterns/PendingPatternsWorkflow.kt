@@ -41,9 +41,9 @@ class PendingPatternsWorkflow(
 ) {
     val canApply: Boolean get() = batches != null && inTransaction != null
 
-    suspend fun apply(bankId: String, generation: Long): PendingPatternApplyReport = withContext(Dispatchers.IO) {
+    suspend fun apply(bankId: String, generation: Long, reviewId: String? = null): PendingPatternApplyReport = withContext(Dispatchers.IO) {
         accessGate.withAccess {
-            val report = preview(bankId, generation)
+            val report = preview(bankId, generation, reviewId)
             val current = store.load().banks.single { it.bankId == bankId }
             val approved = current.currentPatterns.filter { it.enabled && it.factContract != null }.map { it.id }.toSet()
             val batch = requireNotNull(batches).startBatch(Bank(bankId))
@@ -82,13 +82,14 @@ class PendingPatternsWorkflow(
                 failed > 0 || derived is HistoricalBatchDerivedResult.Incomplete, report.limited)
         }
     }
-    suspend fun preview(bankId: String, generation: Long): PendingPatternReport = withContext(Dispatchers.IO) {
+    suspend fun preview(bankId: String, generation: Long, reviewId: String? = null): PendingPatternReport = withContext(Dispatchers.IO) {
         accessGate.withAccess {
             val configuration = store.load()
             check(configuration.generation == generation) { "Pattern configuration changed" }
             val bank = configuration.banks.single { it.bankId == bankId }
             val patterns = bank.currentPatterns
-            val required = reviews.listRequired()
+            val required = if (reviewId == null) reviews.listRequired()
+                else listOfNotNull(reviews.getById(reviewId)?.takeIf { it.status == ReviewStatus.REQUIRED })
             val rows = mutableListOf<PendingPatternRow>()
             // ponytail: bounded interactive preview; add repository pagination if queues exceed 1,000 rows routinely.
             for (batch in required.take(1_000).chunked(200)) {

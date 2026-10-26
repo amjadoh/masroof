@@ -77,7 +77,9 @@ class HardeningJourneySmokeTest {
     fun reviewCorrection_persistsChosenTypeAndReloads() {
         openReviewQueue()
         clickText(text(R.string.reference_review_evidence), scroll = true)
+        clickTag("review-correct-type")
         clickTag(reviewResolveTypeTestTag(FinancialTransactionType.EXPENSE))
+        clickTag("sheet-apply")
         waitUntil("review queue empty or action failure") {
             textExists(text(R.string.review_empty)) ||
                 textExists(text(R.string.review_action_failed))

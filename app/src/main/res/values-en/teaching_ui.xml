@@ -1,0 +1,42 @@
+<resources>
+    <string name="teaching_title">Teach Masroof</string>
+    <string name="teaching_settings_subtitle">Your messages and taught patterns</string>
+    <string name="teaching_catalog">What you taught me</string>
+    <string name="teaching_pattern_disabled">Disabled</string>
+    <string name="teaching_pattern_ready">Ready to use</string>
+    <string name="teaching_pattern_preview">Preview only</string>
+    <string name="teaching_kind_title">What kind of operation is this?</string>
+    <string name="teaching_step_kind">Message type</string>
+    <string name="teaching_step_fields">Details</string>
+    <string name="teaching_step_confirm">Confirm</string>
+    <string name="teaching_next">Next</string>
+    <string name="teaching_field_title">Select %1$s</string>
+    <string name="teaching_field_progress">Detail %1$d of %2$d</string>
+    <string name="teaching_field_help">Tap a value from the message, or select text yourself and confirm. Skip fields that are absent. The amount is required. Mark other variable values as ignored so they do not become fixed text in the pattern.</string>
+    <string name="teaching_confirm_field">Confirm and continue</string>
+    <string name="teaching_skip_field">Not in this message</string>
+    <string name="teaching_previous">Previous</string>
+    <string name="teaching_preview_title">Did I understand correctly?</string>
+    <string name="teaching_try_another">Try another message</string>
+    <string name="teaching_saved_title">Pattern saved for preview</string>
+    <string name="teaching_saved_scope">Saving the pattern alone did not post this message. Approve its financial interpretation, then apply it to eligible messages. Conflicts and missing facts remain in review.</string>
+    <string name="teaching_return_review">Return to message review</string>
+    <string name="teaching_saved_patterns">View saved patterns</string>
+    <string name="teaching_other_values">Other variable values</string>
+    <string name="teaching_review_title">Help me understand this message</string>
+    <string name="teaching_review_pending">Unknown format; not posted as a transaction.</string>
+    <string name="teaching_review_action">Teach Masroof this message</string>
+    <string name="teaching_correct_type">Correct transaction type</string>
+    <string name="teaching_correct_type_help">Choose the transaction type for this message and save. Masroof uses the available facts; this action does not create a new message pattern or guess missing amounts or accounts.</string>
+    <string name="teaching_review_why">Why does this need review?</string>
+    <string name="teaching_not_financial">Not a financial transaction</string>
+    <string name="teaching_apply_current">Apply to this message</string>
+    <string name="teaching_no_match">The message was not posted. It may not match, may be protected by an earlier decision, or may still need review.</string>
+    <string name="teaching_apply_posted">Transaction posted successfully</string>
+    <string name="teaching_pending_help">Preview is read-only. Applying is a separate action and excludes posted transactions, corrections and manual decisions. Pattern conflicts are never resolved by guessing.</string>
+    <string name="teaching_choose_message_help">From settings: choose a bank and paste an example. From review: the message and sender are prefilled and the original text stays unchanged.</string>
+    <plurals name="teaching_patterns_count">
+        <item quantity="one">%1$d pattern</item>
+        <item quantity="other">%1$d patterns</item>
+    </plurals>
+</resources>

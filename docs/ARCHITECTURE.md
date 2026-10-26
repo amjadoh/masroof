@@ -41,6 +41,17 @@ snapshot. `BankSmsRegistry` evaluates every adapter; only a resolved bank reache
 `PatternFactInterpreter`. AlJazira uses the generic role interpreter within that
 snapshot; STC's six bundled templates require explicit financial approval.
 
+Settings exposes **Teach Masroof** directly. The bank catalog groups definitions by
+operation and opens each bank-qualified pattern separately. Teaching collects the
+message type, explicit field selections and a reviewed preview; saving that preview
+does not post a transaction. Explanations use the shared contextual guidance control.
+From review, the original sender/body remain read-only and the review id stays in
+memory. Explicit **Apply to this message** scopes the existing pending workflow to
+that review, retaining its bank, correction, ownership and posted-evidence guards.
+Returning reloads review facts without reconciliation. Type correction remains a
+type-only draft applied on Save; recorded transactions retain their existing
+reclassification path and preselected current type.
+
 A match is never posting authority. The mapper/finalizer validates facts;
 application guards check the current fingerprint, revision, ownership and human
 decisions inside the financial transaction before existing financial policies run.

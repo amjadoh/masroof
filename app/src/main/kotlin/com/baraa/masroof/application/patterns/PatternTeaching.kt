@@ -16,7 +16,7 @@ enum class PatternOperation(val fields: List<String>) {
 }
 
 /** In-memory source only: never saved in navigation state or written back to RawSms. */
-data class PatternTeachingSource(val bankId: String?, val sender: String, val body: String)
+data class PatternTeachingSource(val bankId: String?, val sender: String, val body: String, val reviewId: String? = null)
 
 data class PatternBinding(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
 data class PatternText(val text: String, val start: Int, val end: Int)
@@ -30,6 +30,7 @@ class PatternTeachingPreview internal constructor(
 ) {
     val bankId get() = pattern.bankId
     val operation get() = pattern.label
+    val patternId get() = pattern.id
 }
 
 internal fun Map<String, TextSpan>.displayFields() = mapValues { (_, span) -> PatternText(span.raw, span.start, span.end) }
