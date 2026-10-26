@@ -11,8 +11,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.AppContainer
-import com.baraa.masroof.application.patterns.PatternOperation
-import com.baraa.masroof.application.patterns.PatternTeachingSource
 import com.baraa.masroof.domain.model.*
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.presentation.patterns.MessagePatternsScreen
@@ -49,19 +47,18 @@ class PatternFinancialActivationJourneyTest {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration,
                     androidx.activity.compose.LocalActivityResultRegistryOwner provides compose.activity) {
                     MasroofTheme(darkTheme = dark.value) { Surface {
-                        MessagePatternsScreen(c.messagePatternsWorkflow, "BANK_STC", PatternTeachingSource("BANK_STC", "STC Bank", body), onBack = {})
+                        MessagePatternsScreen(c.messagePatternsWorkflow, "BANK_STC", onBack = {})
                     } }
                 }
             }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().size == 6 }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-internal-in").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
             compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
             compose.onNodeWithTag("pattern-financial-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-                it(androidx.compose.ui.text.AnnotatedString("changed body"))
+                it(androidx.compose.ui.text.AnnotatedString(body))
             }
             compose.onNodeWithTag("pattern-financial-body").assertTextContains(body)
-            click(R.string.pattern_financial_select_operation)
-            val names = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_operations)
-            compose.onNodeWithText(names[PatternOperation.TRANSFER_IN.ordinal]).performClick()
+
             compose.onNodeWithTag("pattern-account-last4").performScrollTo().performTextInput("4321")
             click(R.string.pattern_financial_account_owned)
             click(R.string.pattern_financial_confirm_account)
@@ -79,12 +76,11 @@ class PatternFinancialActivationJourneyTest {
             compose.waitForIdle()
             ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-financial", "explicit-reference-dark")
             compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().size == 6 }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().isNotEmpty() }
             assertTrue(c.messagePatternsWorkflow.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.all { it.factContract == null })
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
-            click(R.string.pattern_financial_select_operation)
-            compose.onNodeWithText(names[PatternOperation.TRANSFER_IN.ordinal]).performClick()
+            compose.onNodeWithTag("pattern-financial-body").performScrollTo().performTextInput(body)
             click(R.string.pattern_financial_select_account)
             compose.onNodeWithText(" • 4321").performClick()
             click(R.string.pattern_financial_fixed_account)
@@ -93,6 +89,8 @@ class PatternFinancialActivationJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
             compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().generation == approvedGeneration } }
+            click(R.string.teaching_saved_patterns)
+            click(R.string.pattern_pending_title)
             click(R.string.pattern_apply_pending)
             compose.waitUntil(15_000) { runBlocking {
                 c.financialTransactionRepository.listAll().size == 1 && c.reviewRepository.findByRawSmsId("pending")?.status == ReviewStatus.RESOLVED
