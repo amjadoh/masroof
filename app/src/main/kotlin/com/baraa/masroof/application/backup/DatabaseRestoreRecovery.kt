@@ -86,6 +86,7 @@ object DatabaseRestoreRecovery {
         val reparsedSchemaVersion: Int?,
         val transferIntegrityRepairVersion: Int?,
         val labAnalysis: String? = null,
+        val messagePatterns: String? = null,
     )
 
     fun recover(context: Context) {
@@ -123,6 +124,7 @@ object DatabaseRestoreRecovery {
         }
         return PreferenceSnapshot(
             labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(context),
+            messagePatterns = com.baraa.masroof.application.patterns.MessagePatternBackup.captureOriginal(context),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
             historicalImportStartEpochMillis = importStart,
@@ -150,6 +152,7 @@ object DatabaseRestoreRecovery {
             reparsedSchemaVersion = null,
             transferIntegrityRepairVersion = null,
             labAnalysis = snapshot.labAnalysis,
+            messagePatterns = snapshot.messagePatterns,
         )
 
     internal fun writeSnapshots(live: File, original: PreferenceSnapshot, incoming: PreferenceSnapshot) {
@@ -322,7 +325,7 @@ object DatabaseRestoreRecovery {
         reclaimOrphanedPreservedRollback(live)
         val originalPrefs = readPreferences(originalPrefsFile(live))
         if (originalPrefs != null) {
-            applyPreferences(context, originalPrefs)
+            applyPreferences(context, originalPrefs, validatePatterns = false)
             discardDatabase(incomingFile(live))
             deleteSnapshots(live)
             journalFile(live).delete()
@@ -461,7 +464,7 @@ object DatabaseRestoreRecovery {
             ?: throw IncompleteRestoreException(
                 "Original preference snapshot is required to pair with the original database",
             )
-        applyPreferences(context, snapshot)
+        applyPreferences(context, snapshot, validatePatterns = false)
     }
 
     private fun signalOriginalRestore(step: OriginalRestoreStep) {
@@ -499,7 +502,8 @@ object DatabaseRestoreRecovery {
         }
     }
 
-    private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot) {
+    private fun applyPreferences(context: Context, snapshot: PreferenceSnapshot, validatePatterns: Boolean = true) {
+        com.baraa.masroof.application.patterns.MessagePatternBackup.restore(context, snapshot.messagePatterns, validatePatterns)
         com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(context, snapshot.labAnalysis)
         val onboarding = prefs(context, SharedPrefsOnboardingPreferencesRepository.PREFS_NAME)
         val locale = prefs(context, SharedPrefsAppLocaleRepository.PREFS_NAME)
@@ -689,10 +693,12 @@ object DatabaseRestoreRecovery {
             reparsedSchemaVersion = values["reparsedSchemaVersion"]?.toIntOrNull(),
             transferIntegrityRepairVersion = values["transferIntegrityRepairVersion"]?.toIntOrNull(),
             labAnalysis = values["labAnalysis"]?.takeIf { it.isNotEmpty() }?.let { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) },
+            messagePatterns = values["messagePatterns"]?.takeIf { it.isNotEmpty() }?.let { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) },
         )
     }
 
     private fun encodePreferences(snapshot: PreferenceSnapshot): String = buildString {
+        appendLine("messagePatterns=${snapshot.messagePatterns?.let { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) } ?: ""}")
         appendLine("labAnalysis=${snapshot.labAnalysis?.let { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) } ?: ""}")
         appendLine("onboardingStarted=${snapshot.onboardingStarted}")
         appendLine("onboardingCompleted=${snapshot.onboardingCompleted}")

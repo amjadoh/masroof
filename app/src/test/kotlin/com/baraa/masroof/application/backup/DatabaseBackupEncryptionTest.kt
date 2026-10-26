@@ -10,6 +10,7 @@ import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.data.preferences.SharedPrefsOnboardingPreferencesRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.room.MasroofDatabase
+import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.OwnershipStatus
@@ -62,6 +63,7 @@ class DatabaseBackupEncryptionTest {
 
     @Before
     fun resetStorage() {
+        MessagePatternStore(context).restoreRaw(null)
         context.deleteDatabase(MasroofDatabase.NAME)
         DatabaseRestoreRecovery.deleteRestoreArtifacts(context.getDatabasePath(MasroofDatabase.NAME))
         context.getSharedPreferences(SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
@@ -107,9 +109,12 @@ class DatabaseBackupEncryptionTest {
             val restartRequested = AtomicBoolean(false)
             try {
                 insertProbe(live)
+                val patternStore = MessagePatternStore(context)
+                patternStore.restoreRaw(patternArchive("STC"))
                 RoomCardRegistryRepository.from(live).setOwnership(card, OwnershipStatus.OWNED)
                 val exported = service(live).exportTo(Uri.fromFile(destination), passphrase.copyOf())
                 assertTrue(exported.exceptionOrNull()?.toString(), exported.isSuccess)
+                patternStore.restoreRaw(patternArchive("OTHER"))
                 live.openHelper.writableDatabase.execSQL("DELETE FROM sms_probe")
                 RoomCardRegistryRepository.from(live).setOwnership(card, OwnershipStatus.EXTERNAL)
                 val outcome = DatabaseBackupService(
@@ -126,6 +131,7 @@ class DatabaseBackupEncryptionTest {
                 ).importFrom(Uri.fromFile(destination), passphrase.copyOf())
                 assertEquals(BackupImportOutcome.SuccessNeedsRestart, outcome)
                 assertTrue(restartRequested.get())
+                assertEquals(patternArchive("STC"), patternStore.captureRaw())
             } finally {
                 if (live.isOpen) live.close()
             }

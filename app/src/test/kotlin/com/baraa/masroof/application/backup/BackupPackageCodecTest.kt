@@ -4,9 +4,20 @@ import com.baraa.masroof.data.room.MasroofDatabase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class BackupPackageCodecTest {
+    @Test
+    fun legacyPreferencesDefaultToNoPatternsAndUnsupportedPatternsAreRejected() {
+        val legacy = """{"onboardingStarted":true,"onboardingCompleted":true,"historicalImportCompleted":true,"languageTag":"ar","themeMode":"SYSTEM"}"""
+        val old = BackupPackageCodec.decodePreferences(legacy)
+        assertNull(old.messagePatterns)
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupPackageCodec.decodePreferences(BackupPackageCodec.encodePreferences(old.copy(messagePatterns = "{}")))
+        }
+    }
     @Test
     fun encodeDecode_roundTripsManifest() {
         val manifest = BackupManifest(

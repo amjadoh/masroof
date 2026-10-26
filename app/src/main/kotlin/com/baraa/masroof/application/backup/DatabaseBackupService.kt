@@ -617,6 +617,7 @@ class DatabaseBackupService(
         }
         return BackupPreferencesSnapshot(
             labAnalysis = com.baraa.masroof.application.analytics.LabAnalyticsBackup.capture(appContext),
+            messagePatterns = com.baraa.masroof.application.patterns.MessagePatternBackup.capture(appContext),
             onboardingStarted = onboarding.getBoolean(KEY_ONBOARDING_STARTED, false),
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
             historicalImportStartEpochMillis = importStart,
@@ -633,6 +634,7 @@ class DatabaseBackupService(
     }
 
     private fun restorePreferences(snapshot: BackupPreferencesSnapshot) {
+        com.baraa.masroof.application.patterns.MessagePatternBackup.restore(appContext, snapshot.messagePatterns)
         com.baraa.masroof.application.analytics.LabAnalyticsBackup.restore(appContext, snapshot.labAnalysis)
         val onboarding = appContext.getSharedPreferences(
             SharedPrefsOnboardingPreferencesRepository.PREFS_NAME,
