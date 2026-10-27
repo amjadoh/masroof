@@ -346,7 +346,6 @@
     <string name="dashboard_total_spent">Total outflows</string>
     <string name="dashboard_self_transfer_in">In from another account</string>
     <string name="dashboard_self_transfer_out">Out to another account</string>
-<string name="dashboard_owned_accounts_badge_count">%1$d accounts</string>
 <string name="dashboard_external_in_short">Incoming transfers</string>
     <string name="dashboard_external_out_short">Outgoing transfers</string>
     <string name="dashboard_bill_payments">Bill payments</string>
