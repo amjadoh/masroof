@@ -113,7 +113,6 @@
 - `app/src/main/kotlin/com/baraa/masroof/application/backup/BackupPackageFormat.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/backup/DatabaseBackupService.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/backup/DatabaseRestoreRecovery.kt`
-- `app/src/main/kotlin/com/baraa/masroof/application/dashboard/DashboardProjection.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/dashboard/DashboardProjectionBuilder.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/dashboard/DashboardService.kt`
 - `app/src/main/kotlin/com/baraa/masroof/application/dashboard/TransactionSmsEvidenceLoader.kt`

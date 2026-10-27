@@ -54,7 +54,7 @@ class DashboardProjectionBuilder(
     suspend fun build(
         period: FinancialPeriod,
         transactions: List<FinancialTransaction>,
-    ): DashboardProjection {
+    ): DashboardOverview {
         val context = loadContext(period, transactions)
         val analysis = AnalysisDashboardProjection.build(context)
         val accounts = AccountsDashboardProjection.build(context)
@@ -67,14 +67,14 @@ class DashboardProjectionBuilder(
             loans = context.loans,
         )
 
-        return DashboardProjection(
+        return DashboardOverview(
             period = period,
             isCurrentPeriod = period == FinancialPeriodPolicy.periodContaining(context.today),
             summary = analysis.summary,
-            fleet = accounts.fleet,
+            currentAccount = accounts.fleet,
             spendingSplit = accounts.spendingSplit,
             accountsFleet = accounts.accountsFleet,
-            perAccount = accounts.perAccount,
+            ownedAccountPeriodSummaries = accounts.perAccount,
             creditFacilities = cards.creditFacilities,
             loansOverview = commitments.loansOverview,
             commitmentsOverview = commitments.commitmentsOverview,
@@ -82,7 +82,7 @@ class DashboardProjectionBuilder(
             dailySpendingTrend = analysis.dailySpendingTrend,
             spendingTrends = DashboardSpendingTrendsBuilder.build(context, accounts, cards),
             bankHierarchy = bankHierarchy,
-            flowDetail = accounts.flowDetail,
+            flowDetailGrouping = accounts.flowDetail,
             transactionAccountInvolvement = accounts.transactionAccountInvolvement,
             transactionCardInvolvement = cards.transactionCardInvolvement,
             transactionLoanInvolvement = commitments.transactionLoanInvolvement,
@@ -95,13 +95,6 @@ class DashboardProjectionBuilder(
                 loanInvolvement = commitments.transactionLoanInvolvement,
             ),
             ownedAccountContainerIds = context.ownedAccountContainerIds,
-            meta = DashboardMeta(
-                transactionCount = analysis.summary.transactionCount,
-                reviewRequiredCount = context.reviewRequiredCount,
-                excludedOtherCurrencyCount = analysis.summary.excludedOtherCurrencyCount,
-            ),
-            accountRegistry = context.ownedAccounts,
-            cardRegistry = context.cardRegistry,
         )
     }
 
