@@ -144,7 +144,8 @@ internal object ReferenceHistory {
     fun period() = FinancialPeriod(LocalDate.now().minusMonths(1).withDayOfMonth(1),LocalDate.now().plusMonths(1).withDayOfMonth(1))
     val reported = (1..5).map { "reported_" + it.toString().padStart(2,'0') }
     fun source(context: Context, names: List<String> = this.names): SmsDataSource {
-        val today = LocalDate.now().minusDays(1)
+        // The setup journeys open the current salary period, including its first day.
+        val today = LocalDate.now()
         val records = names.mapIndexed { index,name ->
             val json = fixture(name)
             var body = json.getValue("body").jsonPrimitive.content
