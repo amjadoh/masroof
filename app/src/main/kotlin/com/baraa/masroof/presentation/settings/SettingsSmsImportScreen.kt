@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.onboarding.HistoricalImportUserOutcome
 import com.baraa.masroof.application.onboarding.userOutcome
+import com.baraa.masroof.application.patterns.PatternApprovalStatus
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -26,7 +27,7 @@ import java.time.LocalDate
 fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () -> Unit,
     onImport: (Set<String>, LocalDate, LocalDate) -> Unit, onClearResult: () -> Unit,
     onRequestPermission: () -> Unit, onOpenAppSettings: () -> Unit, onOpenBank: (String) -> Unit,
-    onRetry: () -> Unit = {}) {
+    onRetry: () -> Unit = {}, onOpenPatterns: ((String) -> Unit)? = null) {
     val today = LocalDate.now()
     var fromText by rememberSaveable { mutableStateOf(today.minusDays(30).toString()) }
     var throughText by rememberSaveable { mutableStateOf(today.toString()) }
@@ -61,6 +62,9 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
             }
             SettingsImportPeriod(from, through, !busy,
                 { fromText = it.toString(); onClearResult() }, { throughText = it.toString(); onClearResult() })
+            if (banks.any { bank -> bank.bankId in selected && bank.currentPatterns.any { it.status == PatternApprovalStatus.PREVIEW_ONLY } }) {
+                MasroofCard { MasroofText(stringResource(R.string.pattern_approval_import_hint)) }
+            }
             if (busy) {
                 CircularProgressIndicator()
                 MasroofText(stringResource(R.string.onboarding_import_scanning))
@@ -84,6 +88,9 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
                         HistoricalImportUserOutcome.OK -> R.string.dashboard_rescan_ok
                     }), style = MaterialTheme.typography.titleMedium)
                     MasroofText(stringResource(R.string.settings_import_result_counts, result.inserted, result.duplicates, result.reviewRequired, result.failed))
+                    if (selected.size == 1 && onOpenPatterns != null) MasroofButton({ onOpenPatterns(selected.single()) }, enabled = !busy) {
+                        MasroofText(stringResource(R.string.pattern_approval_open_patterns))
+                    }
                     if (selected.size == 1) MasroofOutlinedButton({ onOpenBank(selected.single()) }, enabled = !busy) {
                         MasroofText(stringResource(R.string.settings_import_open_bank))
                     }

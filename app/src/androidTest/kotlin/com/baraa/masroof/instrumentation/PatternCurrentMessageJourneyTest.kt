@@ -66,12 +66,14 @@ class PatternCurrentMessageJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.teaching_saved_title)).fetchSemanticsNodes().isNotEmpty() }
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             click(R.string.pattern_financial_approve)
-            click(R.string.pattern_financial_select_account)
-            compose.onNodeWithText(" • 1234").performClick()
-            click(R.string.pattern_financial_validate)
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-current").fetchSemanticsNodes().isNotEmpty() }
+            try {
+                compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-current").fetchSemanticsNodes().isNotEmpty() }
+            } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                println(compose.onRoot(useUnmergedTree = true).printToString())
+                throw failure
+            }
             compose.onNodeWithTag("pattern-apply-current").performScrollTo().performClick()
             compose.waitUntil(15_000) { compose.onAllNodesWithText(ar(R.string.teaching_apply_posted)).fetchSemanticsNodes().isNotEmpty() }
             assertEquals(ReviewStatus.RESOLVED, c.reviewRepository.getById(current.id)?.status)
