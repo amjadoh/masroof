@@ -1,19 +1,11 @@
 <resources>
     <string name="pattern_financial_approve">Approve financial interpretation</string>
-    <string name="pattern_financial_explanation">Choose the movement and your account, then validate an example. Approval does not establish counterparty ownership or a self-transfer.</string>
     <string name="pattern_financial_select_operation">Choose the financial movement</string>
     <string name="pattern_financial_select_account">Choose your confirmed account at this bank</string>
-    <string name="pattern_financial_account_help">Select a confirmed account, or add the last four digits of your account. Do not guess digits to complete a short SMS reference.</string>
     <string name="pattern_financial_account_last4">Last four digits of your account</string>
     <string name="pattern_financial_account_owned">I confirm this account is mine</string>
     <string name="pattern_financial_confirm_account">Confirm account</string>
     <string name="pattern_financial_currency_from_message">Currency from the message</string>
-    <string name="pattern_financial_reference_help">If the message identifies your account, link that reference explicitly. Only that exact reference uses this link; other values stay in review.</string>
-    <string name="pattern_financial_fixed_account">Use the selected account for this pattern</string>
-    <string name="pattern_financial_context_reference">%1$s: context only, does not identify my account</string>
-    <string name="pattern_financial_validate">Validate financial facts</string>
-    <string name="pattern_financial_mapping">Reference %1$s is explicitly linked to account %2$s</string>
-    <string name="pattern_financial_save_help">Saving creates an approved revision for future messages. Apply it to pending messages from the bank page. Posted evidence and manual decisions are protected.</string>
     <string name="pattern_financial_blocked">These facts cannot be approved. Check movement, currency, reference roles and the example match. Uncertain messages stay in review.</string>
     <string name="pattern_financial_preview_status">Preview only</string>
     <string name="pattern_financial_approved_status">Financial interpretation approved; posting still requires validation and ownership</string>

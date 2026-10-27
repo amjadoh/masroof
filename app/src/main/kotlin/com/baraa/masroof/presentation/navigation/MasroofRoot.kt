@@ -478,6 +478,7 @@ private fun MasroofContent(
                 onPendingLaunchConsumed = { pendingSettingsLaunch = null },
                 onBack = ::returnFromSettings,
                 onOpenReview = { openReview(returnTo = HomeDestination.Settings) },
+                onOpenAccounts = { dashboardViewModel.refresh(); homeDestination = HomeDestination.AccountsSummary },
                 onOpenReviewExample = { id ->
                     pendingSettingsLaunch = SettingsLaunchRequest(SettingsDestination.MessageLearning)
                     openReview(returnTo = HomeDestination.Settings)

@@ -677,14 +677,24 @@ class AnalyticsJourneyTest {
                     MasroofTheme { MasroofScreenBackground { MessageLearningSettingsScreen(onBack = {}, onOpenExample = { opened = it }) } }
                 }
             } }
-            compose.waitUntil(30_000) { compose.onAllNodesWithTag("learning-review-session").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            fun openReviewSession() {
+                // Analytics emissions reload examples outside Compose idling, including after Cancel.
+                compose.waitUntil(30_000) {
+                    compose.onAllNodesWithTag("masroof-bottom-sheet").fetchSemanticsNodes().isEmpty() &&
+                        compose.onAllNodesWithTag("learning-review-session").fetchSemanticsNodes().size == 1
+                }
+                compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+                compose.waitUntil(30_000) {
+                    compose.onAllNodesWithTag("learning-example-${examples.first().reviewId}").fetchSemanticsNodes().size == 1
+                }
+            }
+            openReviewSession()
             compose.onNodeWithTag("learning-example-${examples.first().reviewId}").assertIsDisplayed()
             compose.onNodeWithTag("sheet-cancel").performClick()
             assertNull(opened)
             assertEquals(before, runBlocking { c.reviewWorkflowService.listRequiredReviews() })
             assertEquals(financial, runBlocking { c.financialTransactionRepository.listAll() })
-            compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
+            openReviewSession()
             compose.onNodeWithTag("learning-example-${examples.first().reviewId}").performClick()
             assertEquals(examples.first().reviewId, opened)
             compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()

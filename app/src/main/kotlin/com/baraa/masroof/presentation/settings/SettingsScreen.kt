@@ -56,6 +56,7 @@ fun SettingsRoute(
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
     onOpenReviewExample: (String) -> Unit = { onOpenReview() },
+    onOpenAccounts: (() -> Unit)? = null,
 ) {
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -221,7 +222,7 @@ fun SettingsRoute(
             onRetry = viewModel::refresh,
             onOpenAppSettings = onOpenAppSettings, onOpenBank = {
                 destinationStack = replaceSettingsTop(destinationStack, SettingsDestination.BankHub(it))
-            })
+            }, onOpenPatterns = { destinationStack = replaceSettingsTop(destinationStack, SettingsDestination.MessagePatterns(it)) })
 
         is SettingsDestination.BankHub -> {
             val bank = Bank(current.bankId)
@@ -403,7 +404,7 @@ fun SettingsRoute(
                 { navigateTo(SettingsDestination.MessagePatterns(it)) }, title = stringResource(R.string.settings_bank_teaching))
             else com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId,
                 onOpenReview = onOpenReviewExample, onBack = { popOrExit() },
-                onImportBank = { navigateTo(SettingsDestination.SmsImport(it)) })
+                onImportBank = { navigateTo(SettingsDestination.SmsImport(it)) }, onOpenAccounts = onOpenAccounts)
         }
         SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(
             onBack = { popOrExit() }, onOpenExample = onOpenReviewExample,

@@ -4,17 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
 import com.baraa.masroof.core.money.Currency
@@ -24,30 +20,32 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+/** One page: imported example, confirmed account, explicit reference meaning, then approval. */
 @Composable
 internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, generation: Long, pattern: PatternDefinitionView,
     initialBody: String, readOnlyBody: Boolean, onSaved: (PatternCatalog) -> Unit, onBack: () -> Unit) {
     var accounts by remember { mutableStateOf(emptyList<PatternAccountOption>()) }
     var cards by remember { mutableStateOf(emptyList<PatternAccountOption>()) }
+    var examples by remember { mutableStateOf(emptyList<PatternApprovalExample>()) }
+    var exampleIndex by remember { mutableStateOf<Int?>(null) }
     var cardId by remember { mutableStateOf<String?>(null) }
     var accountId by remember { mutableStateOf<String?>(null) }
-    var newAccount by remember { mutableStateOf("") }
-    var ownershipConfirmed by remember { mutableStateOf(false) }
-    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == pattern.label }) }
+    var operation by remember { mutableStateOf(pattern.approval?.operation ?: PatternOperation.entries.firstOrNull { it.name == pattern.label }) }
     var body by remember { mutableStateOf(initialBody) }
-    var reference by remember { mutableStateOf<String?>(null) }
-    var contextFields by remember { mutableStateOf(emptySet<String>()) }
-    var currency by remember { mutableStateOf<Currency?>(null) }
+    var reference by remember { mutableStateOf(pattern.approval?.referenceField) }
+    var referenceChosen by remember { mutableStateOf(pattern.referenceFields.isEmpty() || pattern.approval != null) }
+    var currency by remember { mutableStateOf(pattern.approval?.currency) }
     var preview by remember { mutableStateOf<PatternFinancialPreview?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var validating by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<PatternApprovalProblem?>(null) }
     var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val operationNames = stringArrayResource(R.array.pattern_operations)
-    val fieldKeys = stringArrayResource(R.array.pattern_field_keys)
-    val fieldNames = stringArrayResource(R.array.pattern_field_names)
-    fun fieldName(key: String) = fieldNames.getOrNull(fieldKeys.indexOf(key)) ?: key
-    val references = pattern.referenceFields
-    val bindingOptions = pattern.accountReferenceFields(operation)
+    val contextFields = if (referenceChosen) pattern.referenceFields.toSet() - setOfNotNull(reference) else emptySet()
+    val ready = !loading && operation != null && (accountId != null || cardId != null) &&
+        ("card" !in pattern.fields || cardId != null) && referenceChosen && body.isNotBlank()
     fun work(action: suspend () -> Unit) {
         if (busy) return
         busy = true; failed = false
@@ -58,83 +56,101 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             finally { busy = false }
         }
     }
+    suspend fun loadOptions(initialLoad: Boolean = false) {
+        accounts = workflow.patternAccounts(pattern.bankId)
+        cards = workflow.patternCards(pattern.bankId)
+        if (initialLoad) {
+            accountId = accounts.singleOrNull { it.last4 == pattern.approval?.accountLast4 }?.id
+                ?: accounts.singleOrNull()?.takeIf { "card" !in pattern.fields }?.id
+            if ("card" in pattern.fields) cardId = cards.singleOrNull()?.id
+        }
+        if (!initialLoad || !readOnlyBody) {
+            examples = workflow.approvalExamples(pattern.bankId, generation, pattern.id)
+            if (body.isBlank() && examples.isNotEmpty()) { exampleIndex = 0; body = examples.first().body }
+        }
+    }
     LaunchedEffect(workflow, pattern.bankId) {
-        try { accounts = workflow.patternAccounts(pattern.bankId); cards = workflow.patternCards(pattern.bankId) }
+        try { loadOptions(initialLoad = true) }
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
+        finally { loading = false }
+    }
+    // Validation is read-only. Every edit invalidates the preview before Save can be used.
+    LaunchedEffect(ready, body, operation, accountId, cardId, reference, referenceChosen, currency) {
+        preview = null; problem = null
+        if (ready) {
+            validating = true
+            try { preview = workflow.previewFinancial(generation, pattern.bankId, pattern.id, requireNotNull(operation), accountId,
+                body, reference, contextFields, currency, cardId) }
+            catch (e: CancellationException) { throw e }
+            catch (e: PatternApprovalException) { problem = e.problem }
+            catch (_: Exception) { problem = PatternApprovalProblem.VALIDATION }
+            finally { validating = false }
+        }
     }
     BackHandler { if (!busy) onBack() }
-    MasroofSecondaryScaffold(stringResource(R.string.pattern_financial_approve), { if (!busy) onBack() }, stringResource(R.string.settings_back)) { modifier ->
+    MasroofSecondaryScaffold(stringResource(R.string.pattern_approval_title), { if (!busy) onBack() }, stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofGuidanceLabel(stringResource(R.string.pattern_financial_approve), stringResource(R.string.pattern_financial_explanation))
-            if (busy) CircularProgressIndicator()
-            if (failed) MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_financial_blocked), contentColor = MaterialTheme.colorScheme.error)
+            if (loading || busy) CircularProgressIndicator()
+            if (failed) {
+                Text(stringResource(R.string.pattern_financial_blocked), color = MaterialTheme.colorScheme.error)
+                MasroofTextButton({ work { loadOptions() } }) { Text(stringResource(R.string.dashboard_retry)) }
+            }
+            PatternApprovalMessage(examples, exampleIndex, body, readOnlyBody, !busy && !loading,
+                onSelect = { index -> exampleIndex = index; body = examples[index].body; preview = null },
+                onManual = { exampleIndex = null; body = ""; preview = null },
+                onBody = { body = it; preview = null })
             MasroofCard {
                 val select = stringResource(R.string.pattern_financial_select_operation)
-                PatternChoice(listOf(select) + operationNames, operation?.let { operationNames[it.ordinal] } ?: select, !busy) {
-                    operation = PatternOperation.entries.getOrNull(it - 1); reference = null; contextFields = emptySet(); preview = null
+                PatternChoice(listOf(select) + operationNames, operation?.let { operationNames[it.ordinal] } ?: select, !busy && !loading) {
+                    operation = PatternOperation.entries.getOrNull(it - 1); reference = null
+                    referenceChosen = pattern.referenceFields.isEmpty(); preview = null
                 }
+                PatternApprovalAccounts(accounts, accountId, !busy && !loading,
+                    onChoose = { accountId = it; preview = null }, onConfirm = { last4 -> work {
+                        val account = workflow.confirmPatternAccount(pattern.bankId, last4)
+                        accounts = workflow.patternAccounts(pattern.bankId); accountId = account.id; preview = null
+                    } })
                 if ("card" in pattern.fields) {
-                    val chooseCard = stringResource(R.string.settings_pattern_select_card)
-                    val cardNames = cards.map { "${it.name.orEmpty()} • ${it.last4}" }
-                    PatternChoice(listOf(chooseCard) + cardNames,
-                        cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { cardNames[it] } ?: chooseCard, !busy) {
+                    val choose = stringResource(R.string.settings_pattern_select_card)
+                    val names = cards.map { "${it.name.orEmpty()} • ${it.last4}" }
+                    PatternChoice(listOf(choose) + names, cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { names[it] } ?: choose, !busy) {
                         cardId = cards.getOrNull(it - 1)?.id; preview = null
                     }
-                    if (cards.isEmpty()) MasroofGuidanceLabel(stringResource(R.string.settings_card_setup), stringResource(R.string.settings_pattern_add_card_hint))
+                    if (cards.isEmpty()) MasroofGuidanceLabel(stringResource(R.string.settings_card_setup),
+                        stringResource(R.string.settings_pattern_add_card_hint))
                 }
-                val chooseAccount = stringResource(R.string.pattern_financial_select_account)
-                val names = accounts.map { "${it.name.orEmpty()} • ${it.last4}" }
-                PatternChoice(listOf(chooseAccount) + names, accounts.indexOfFirst { it.id == accountId }.takeIf { it >= 0 }?.let { names[it] } ?: chooseAccount, !busy) {
-                    accountId = accounts.getOrNull(it - 1)?.id; preview = null
-                }
-                MasroofGuidanceButton(stringResource(R.string.pattern_financial_select_account), stringResource(R.string.pattern_financial_account_help))
-                OutlinedTextField(newAccount, { newAccount = it.filter(Char::isDigit).take(4); ownershipConfirmed = false },
-                    label = { Text(stringResource(R.string.pattern_financial_account_last4)) }, enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().testTag("pattern-account-last4"))
-                Row(Modifier.fillMaxWidth().toggleable(ownershipConfirmed, enabled = !busy, role = Role.Checkbox) { ownershipConfirmed = it }) {
-                    Checkbox(ownershipConfirmed, null, enabled = !busy)
-                    Text(stringResource(R.string.pattern_financial_account_owned))
-                }
-                MasroofOutlinedButton(onClick = { work {
-                    val account = workflow.confirmPatternAccount(pattern.bankId, newAccount)
-                    accounts = workflow.patternAccounts(pattern.bankId); accountId = account.id; preview = null; newAccount = ""; ownershipConfirmed = false
-                } }, enabled = !busy && ownershipConfirmed && newAccount.length == 4) { Text(stringResource(R.string.pattern_financial_confirm_account)) }
+            }
+            if (pattern.referenceFields.isNotEmpty()) PatternApprovalReferences(pattern, operation, reference, referenceChosen,
+                !busy && !loading, examples.getOrNull(exampleIndex ?: -1)?.fields.orEmpty()) {
+                reference = it; referenceChosen = true; preview = null
             }
             MasroofCard {
-                OutlinedTextField(body, { body = it; preview = null }, label = { Text(stringResource(R.string.pattern_message)) },
-                    enabled = !busy, readOnly = readOnlyBody, modifier = Modifier.fillMaxWidth().testTag("pattern-financial-body"))
                 val fromMessage = stringResource(R.string.pattern_financial_currency_from_message)
-                PatternChoice(listOf(fromMessage) + Currency.entries.map { it.name }, currency?.name ?: fromMessage, !busy) {
+                PatternChoice(listOf(fromMessage) + Currency.entries.map { it.name }, currency?.name ?: fromMessage, !busy && !loading) {
                     currency = Currency.entries.getOrNull(it - 1); preview = null
                 }
-                MasroofGuidanceButton(stringResource(R.string.pattern_financial_fixed_account), stringResource(R.string.pattern_financial_reference_help))
-                val constant = stringResource(R.string.pattern_financial_fixed_account)
-                PatternChoice(listOf(constant) + bindingOptions.map(::fieldName), reference?.let(::fieldName) ?: constant, !busy) {
-                    reference = bindingOptions.getOrNull(it - 1); contextFields = contextFields - setOfNotNull(reference); preview = null
-                }
-                references.filter { it != reference }.forEach { field ->
-                    Row(Modifier.fillMaxWidth().toggleable(field in contextFields, enabled = !busy, role = Role.Checkbox) { checked ->
-                        contextFields = if (checked) contextFields + field else contextFields - field; preview = null
-                    }) {
-                        Checkbox(field in contextFields, null, enabled = !busy)
-                        Text(stringResource(R.string.pattern_financial_context_reference, fieldName(field)))
-                    }
-                }
-                MasroofButton(onClick = { work {
-                    preview = workflow.previewFinancial(generation, pattern.bankId, pattern.id, requireNotNull(operation), accountId,
-                        body, reference, contextFields, currency, cardId)
-                } }, enabled = !busy && operation != null && (accountId != null || cardId != null) && ("card" !in pattern.fields || cardId != null) && body.isNotBlank()) { Text(stringResource(R.string.pattern_financial_validate)) }
-            }
-            preview?.let { validated ->
-                MasroofCard {
+                if (validating) CircularProgressIndicator()
+                problem?.let { Text(stringResource(patternApprovalProblemText(it)), color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("pattern-approval-error")) }
+                preview?.let { validated ->
                     MasroofAmountText("${validated.amount.amount.toPlainString()} ${validated.amount.currency}", MasroofAmountRole.Card)
                     Text(validated.occurredAt)
-                    validated.reference?.let { Text(stringResource(R.string.pattern_financial_mapping, it, accounts.single { a -> a.id == accountId }.last4)) }
-                    MasroofGuidanceLabel(stringResource(R.string.pattern_financial_approve), stringResource(R.string.pattern_financial_save_help))
-                    MasroofButton(onClick = { work { workflow.saveFinancial(validated); onSaved(workflow.catalog()) } }, enabled = !busy,
-                        modifier = Modifier.testTag("pattern-financial-save")) { Text(stringResource(R.string.pattern_financial_approve)) }
+                    accounts.singleOrNull { it.id == accountId }?.let { Text(stringResource(R.string.pattern_approval_account_summary, it.last4)) }
+                    Text(stringResource(R.string.pattern_approval_save_scope), style = MaterialTheme.typography.bodySmall)
                 }
+                val reason = when {
+                    loading -> null
+                    body.isBlank() -> R.string.pattern_approval_need_message
+                    accountId == null && cardId == null -> R.string.pattern_approval_need_account
+                    !referenceChosen -> R.string.pattern_approval_need_reference
+                    else -> null
+                }
+                reason?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
+                MasroofButton(onClick = { preview?.let { validated -> work {
+                    workflow.saveFinancial(validated); onSaved(workflow.catalog())
+                } } }, enabled = !busy && !validating && ready && preview != null,
+                    modifier = Modifier.fillMaxWidth().testTag("pattern-financial-save")) { Text(stringResource(R.string.pattern_financial_approve)) }
             }
         }
     }

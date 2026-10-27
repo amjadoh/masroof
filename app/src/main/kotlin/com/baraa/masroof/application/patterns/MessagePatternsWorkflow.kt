@@ -32,8 +32,10 @@ class MessagePatternsWorkflow(
         body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.core.money.Currency? = null, cardId: String? = null) =
         requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency?.let { com.baraa.masroof.finance.value.Currency.valueOf(it.name) }, cardId)
     suspend fun saveFinancial(preview: PatternFinancialPreview) = requireNotNull(activation).save(preview)
-    suspend fun applyPending(bankId: String, generation: Long, reviewId: String? = null) =
-        requireNotNull(pendingPreview).apply(bankId, generation, reviewId)
+    suspend fun applyPending(bankId: String, generation: Long, reviewId: String? = null, patternId: String? = null) =
+        requireNotNull(pendingPreview).apply(bankId, generation, reviewId, patternId)
+    suspend fun approvalExamples(bankId: String, generation: Long, patternId: String) =
+        pendingPreview?.approvalExamples(bankId, generation, patternId).orEmpty()
 
     suspend fun previewPending(bankId: String, generation: Long) =
         requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)

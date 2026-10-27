@@ -85,6 +85,13 @@ check. Existing protection of already linked manual decisions remains in force.
   checks the full prior fingerprint and current ownership under exclusive access,
   then creates a revision. Save does not reparse or resolve a review. Back discards
   the approval draft; review-source text remains read-only.
+- Approval uses one page with up to ten uniquely matching, unprotected imported
+  examples from the existing bounded pending scope. The user explicitly chooses
+  whether SMS references identify their own account or only the counterparty;
+  the latter binds the selected confirmed account as a pattern constant. Inline
+  validation is read-only. Save makes approval visible and exposes separate,
+  pattern-scoped processing with bank review counts before and after. Revision
+  history is under advanced options and is not an approval indicator.
 - Protection and parse/store share a Room transaction. Posted evidence, corrections
   and resolved decisions are never re-parsed. Retries resume derived processing
   using saved events and effective human overlays. Captured adapter snapshots that

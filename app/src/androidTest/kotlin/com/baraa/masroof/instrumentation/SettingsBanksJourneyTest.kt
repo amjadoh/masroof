@@ -123,16 +123,18 @@ class SettingsBanksJourneyTest {
             click(R.string.settings_bank_accounts_title)
             click(R.string.settings_add_account_manual)
             input("manual-last4", "3001")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
             click(R.string.pattern_financial_account_owned)
-            compose.onNodeWithTag("sheet-apply").performClick()
+            compose.onNodeWithTag("sheet-apply").assertIsEnabled().performClick()
             compose.waitUntil(10_000) { runBlocking { container.accountRegistryRepository.listAll().any { it.bank.id == bankId } } }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("masroof-bottom-sheet").fetchSemanticsNodes().isEmpty() }
             back()
             click(R.string.settings_bank_cards_title)
             click(R.string.settings_add_card_manual)
             input("manual-last4", "8219")
+            androidx.test.espresso.Espresso.closeSoftKeyboard()
             click(R.string.settings_manual_card_owned)
-            compose.onNodeWithTag("sheet-apply").performClick()
+            compose.onNodeWithTag("sheet-apply").assertIsEnabled().performClick()
             compose.onNodeWithTag("card-type-CREDIT").performScrollTo().performClick()
             compose.onNodeWithTag("sheet-apply").performClick()
             compose.waitUntil(10_000) { runBlocking { container.cardRegistryRepository.get(CardReference(Bank(bankId), "8219"))?.cardType == CardType.CREDIT } }

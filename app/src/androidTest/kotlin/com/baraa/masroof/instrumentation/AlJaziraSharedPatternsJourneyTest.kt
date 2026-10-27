@@ -53,6 +53,7 @@ class AlJaziraSharedPatternsJourneyTest {
             val toggle = "pattern-toggle-$bankId-bank.purchase"
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-$bankId-bank.purchase").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-open-$bankId-bank.purchase").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             compose.onNodeWithTag(toggle).performScrollTo()
             compose.waitForIdle()
             ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-aljazira", "ready-light")
