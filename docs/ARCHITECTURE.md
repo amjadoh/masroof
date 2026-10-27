@@ -41,8 +41,42 @@ snapshot. `BankSmsRegistry` evaluates every adapter; only a resolved bank reache
 `PatternFactInterpreter`. AlJazira uses the generic role interpreter within that
 snapshot; STC's six bundled templates require explicit financial approval.
 
-Settings exposes **Teach Masroof** directly. The bank catalog groups definitions by
-operation and opens each bank-qualified pattern separately. Teaching collects the
+Settings groups bank operations under **Banks**. Configured banks remain visible
+before any account is discovered. Names and senders come from the existing pattern
+catalog; edits preserve bank-qualified identities and immutable pattern revisions.
+A bank page owns accounts, cards, loans, teaching, SMS import and CSV comparison.
+Backup/restore and stored-data maintenance remain separate; correction insights
+remain app-wide. Legacy navigation keys remain readable.
+
+First-run setup uses the same bank choices, bank editor, inclusive receipt-date
+picker, manual registry sheets and card setup as Settings. It requires an explicit
+bank selection and calls the same `BankSmsImportWorkflow`; onboarding does not run a
+second discovery/reconciliation pass after the batch. Ownership review is scoped
+to selected banks, and owned cards need a configured type before setup completes.
+Unconfigured bank patterns remain visible and can be taught/approved after setup.
+The optional `bank_setup_draft` preference preserves bank identities and both dates
+across restarts and backup/restore rollback. Existing preference names and completed
+setups remain compatible; the financial schema stays v18.
+
+Settings and dashboard historical-import actions open the common bank/date picker. `BankSmsImportWorkflow`
+converts inclusive local calendar dates to an exclusive end instant and runs one
+`HistoricalSmsScanner` batch for the selected bank set. Routing still owns sender
+detection; collisions remain reviewable. Selected-bank and upper-bounded scans never
+certify whole-inbox analysis coverage. Permission grants and dashboard refreshes do
+not import unselected history. Import completion uses the existing maintenance signal
+to refresh open screens. CSV comparison restricts known banks and exact owned account
+identities to the selected bank, and stays read-only.
+
+Discovery still creates unknown ownership candidates from parsed user-side references.
+Manual account/card entries require explicit ownership confirmation; card creation and
+configuration are atomic. Entries alone create neither balances nor transactions.
+Pattern approval can select an explicitly referenced owned, configured card with an
+optional account binding; it never invents a funding account. Approval rechecks ownership
+and the configuration generation before saving. Financial schema v18 and the existing
+ingestion, validation and posting guards are unchanged.
+
+The bank catalog groups definitions by operation and opens each bank-qualified
+pattern separately. Teaching collects the
 message type, explicit field selections and a reviewed preview; saving that preview
 does not post a transaction. Explanations use the shared contextual guidance control.
 From review, the original sender/body remain read-only and the review id stays in

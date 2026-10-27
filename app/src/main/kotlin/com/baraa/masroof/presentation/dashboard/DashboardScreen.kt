@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
-import com.baraa.masroof.presentation.common.smsRescanStatusMessage
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
 import com.baraa.masroof.application.dashboard.DebitCardOverview
 import com.baraa.masroof.application.dashboard.LoanOverview
@@ -44,7 +43,6 @@ import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofPeriodPill
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.SmsPermissionNotice
-import com.baraa.masroof.presentation.common.SmsRescanStatusNotice
 import com.baraa.masroof.presentation.common.UnregisteredCardsNotice
 import com.baraa.masroof.presentation.common.ForeignCurrencyNotice
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -69,6 +67,7 @@ fun DashboardRoute(
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
     onOpenReview: () -> Unit = {},
+    onImportSms: () -> Unit = onOpenSettings,
 ) {
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -79,8 +78,8 @@ fun DashboardRoute(
         onPrevious = viewModel::goToPreviousPeriod,
         onNext = viewModel::goToNextPeriod,
         onCurrent = viewModel::goToCurrentPeriod,
-        onRetry = viewModel::refreshWithSmsImport,
-        onRescan = viewModel::rescanSms,
+        onRetry = viewModel::refresh,
+        onRescan = onImportSms,
         onOpenAllTransactions = onOpenAllTransactions,
         onOpenTransaction = onOpenTransaction,
         onOpenCommitments = onOpenCommitments,
@@ -95,12 +94,10 @@ fun DashboardRoute(
         onRequestSmsPermission = onRequestSmsPermission,
         onOpenAppSettings = onOpenAppSettings,
         onOpenReview = onOpenReview,
-        onDismissRescanStatus = viewModel::clearRescanStatus,
         onOpenCustomize = viewModel::openCustomizeSheet,
         onDismissCustomize = viewModel::dismissCustomizeSheet,
         onSaveCustomize = viewModel::saveCustomizeLayout,
         onToggleCustomizeSection = viewModel::toggleCustomizeSection,
-        onSetCustomizeSectionSize = viewModel::setCustomizeSectionSize,
         onMoveCustomizeSection = viewModel::moveCustomizeSection,
         onToggleCustomizeQuickExpense = viewModel::toggleCustomizeQuickExpense,
         onToggleCustomizeQuickIncome = viewModel::toggleCustomizeQuickIncome,
@@ -129,12 +126,10 @@ internal fun DashboardScreen(
     onOpenDebitDetail: (DebitCardOverview) -> Unit,
     onRequestSmsPermission: () -> Unit,
     onOpenAppSettings: () -> Unit,
-    onDismissRescanStatus: () -> Unit,
     onOpenCustomize: () -> Unit,
     onDismissCustomize: () -> Unit,
     onSaveCustomize: () -> Unit,
     onToggleCustomizeSection: (DashboardSectionId) -> Unit,
-    onSetCustomizeSectionSize: (DashboardSectionId, com.baraa.masroof.application.dashboard.DashboardSectionSize) -> Unit,
     onMoveCustomizeSection: (DashboardSectionId, Int) -> Unit,
     onToggleCustomizeQuickExpense: () -> Unit,
     onToggleCustomizeQuickIncome: () -> Unit,
@@ -160,7 +155,7 @@ internal fun DashboardScreen(
     val periodRangeLabel = state.period?.let {
         FinancialPeriodUiFormatter.formatRange(context, it, compact = true)
     } ?: state.periodLabel
-    val isPullRefreshing = (state.loading && state.summary != null) || state.rescanning
+    val isPullRefreshing = state.loading && state.summary != null
     val activeLayout = state.customizeDraft ?: state.dashboardLayout
 
     if (flowDetailMode != null && state.currentAccount != null) {
@@ -183,7 +178,6 @@ internal fun DashboardScreen(
             onDismiss = onDismissCustomize,
             onSave = onSaveCustomize,
             onToggleSection = onToggleCustomizeSection,
-            onSetSectionSize = onSetCustomizeSectionSize,
             onMoveSection = onMoveCustomizeSection,
             onToggleQuickExpense = onToggleCustomizeQuickExpense,
             onToggleQuickIncome = onToggleCustomizeQuickIncome,
@@ -230,13 +224,6 @@ internal fun DashboardScreen(
                     SmsPermissionNotice(
                         onRequestPermission = onRequestSmsPermission,
                         onOpenAppSettings = onOpenAppSettings,
-                    )
-                }
-
-                state.rescanStatus?.let { status ->
-                    SmsRescanStatusNotice(
-                        status = status,
-                        onDismiss = onDismissRescanStatus,
                     )
                 }
 
@@ -382,21 +369,10 @@ private fun DashboardCustomizableSections(
                         Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
                         IconTextButton(
                             onClick = onRescan,
-                            enabled = !state.rescanning,
                             icon = MasroofIcons.rescan,
-                            text = if (state.rescanning) {
-                                stringResource(R.string.dashboard_rescanning)
-                            } else {
-                                stringResource(R.string.dashboard_rescan_sms)
-                            },
+                            text = stringResource(R.string.dashboard_rescan_sms),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        state.rescanStatus?.let { status ->
-                            Text(
-                                smsRescanStatusMessage(status),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
                     } else {
                         com.baraa.masroof.presentation.common.MasroofCard {
                             state.recentTransactions.forEach { row ->

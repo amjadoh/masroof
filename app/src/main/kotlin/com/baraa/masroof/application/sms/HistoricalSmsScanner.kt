@@ -66,11 +66,15 @@ class HistoricalSmsScanner(
      * Unattributed suspicions remain the responsibility of the full inbox scan.
      * Scoped scans never certify whole-inbox analysis coverage.
      */
-    suspend fun scan(receivedAfter: Instant? = null, bankScope: Bank? = null): SmsScanResult = withContext(ioDispatcher) {
-        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, bankScope) }
+    suspend fun scan(receivedAfter: Instant? = null, bankScope: Bank? = null,
+        receivedBefore: Instant? = null, bankScopes: Set<Bank>? = null): SmsScanResult = withContext(ioDispatcher) {
+        require(receivedAfter == null || receivedBefore == null || receivedAfter < receivedBefore)
+        require(bankScope == null || bankScopes == null)
+        val scopes = bankScopes ?: bankScope?.let(::setOf)
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, scopes) }
     }
 
-    private suspend fun scanOnDispatcher(receivedAfter: Instant?, bankScope: Bank?): SmsScanResult {
+    private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?): SmsScanResult {
         val scanStartedAt = clock.instant()
         appLogService?.info(
             AppLogCategories.SCAN,
@@ -103,7 +107,7 @@ class HistoricalSmsScanner(
             failure = failure,
         )
 
-        val batch = batchProcessor.startBatch(bankScope)
+        val batch = batchProcessor.startBatch(bankScopes = bankScopes)
 
         suspend fun finishAfterFailure(failure: SmsScanFailure): SmsScanResult {
             if (batch.storedEventCount > 0) {
@@ -117,6 +121,11 @@ class HistoricalSmsScanner(
         try {
             val rows = dataSource.queryInbox(receivedAfter)
             for (row in rows) {
+                if (row is InboxRow.Valid) {
+                    if (receivedAfter != null && row.record.receivedAt < receivedAfter) continue
+                    // Providers are ordered oldest first. The selected end date is exclusive.
+                    if (receivedBefore != null && row.record.receivedAt >= receivedBefore) break
+                }
                 scanned++
                 when (row) {
                     is InboxRow.Malformed -> {
@@ -182,7 +191,7 @@ class HistoricalSmsScanner(
             SmsScanFailure.DerivedIncomplete(it.stage)
         }
         val result = snapshot(failure)
-        if(bankScope == null && result.failure == null && result.failed == 0 && result.skippedMalformed == 0) {
+        if(bankScopes == null && receivedBefore == null && result.failure == null && result.failed == 0 && result.skippedMalformed == 0) {
             try { coverageCompleted(receivedAfter, scanStartedAt) }
             catch(e: kotlinx.coroutines.CancellationException) { throw e }
             catch(_: Exception) { appLogService?.warn(AppLogCategories.SCAN, "Coverage receipt pending; rescan required") }

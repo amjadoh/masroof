@@ -99,8 +99,6 @@ data class DashboardUiState(
     val allTransactions: List<TransactionPreviewUi> = emptyList(),
     val isCurrentPeriod: Boolean = true,
     val error: DashboardError? = null,
-    val rescanning: Boolean = false,
-    val rescanStatus: SmsRescanStatus? = null,
     val reparsingStored: Boolean = false,
     val selectedTransactionId: String? = null,
     val labSelectedTransaction: TransactionPreviewUi? = null,

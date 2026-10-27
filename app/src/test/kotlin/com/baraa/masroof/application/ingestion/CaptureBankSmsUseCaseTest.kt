@@ -42,6 +42,28 @@ import java.util.concurrent.atomic.AtomicInteger
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class CaptureBankSmsUseCaseTest {
+    @Test fun selectedBanksAcceptEitherMatchAndLeaveEveryOtherBankUncaptured() = runBlocking {
+        val base = engineFixtureAdapter()
+        fun adapter(id: String, address: String) = object : BankSmsAdapter by base {
+            override val bank = Bank(id)
+            override fun detect(sender: String, body: String) = if (sender == address)
+                BankDetectionResult.Detected(bank, Confidence(1.0), emptyList())
+            else BankDetectionResult.Unknown(emptyList())
+        }
+        val first = adapter("FIRST", "FirstBank")
+        val second = adapter("SECOND", "SecondBank")
+        val third = adapter("THIRD", "ThirdBank")
+        val capture = CaptureBankSmsUseCase(rawRepo, BankSmsRegistry(listOf(first, second, third)))
+        val selected = setOf(first.bank, second.bank)
+        listOf("FirstBank", "SecondBank", "ThirdBank").forEachIndexed { index, sender ->
+            val raw = AndroidSmsMapper.toRawSms(ProviderSmsRecord("selection-$index", sender, PURCHASE_BODY,
+                Instant.parse("2026-08-03T10:00:00Z")))
+            val result = capture.capture(raw, bankScopes = selected)
+            assertEquals(index < 2, result is BankSmsCaptureResult.Captured)
+        }
+        assertEquals(2, db.rawSmsDao().count())
+        assertEquals(0, db.financialTransactionDao().count())
+    }
     private lateinit var db: MasroofDatabase
     private lateinit var rawRepo: RoomRawSmsRepository
     private lateinit var parsedRepo: RoomParsedEventRepository

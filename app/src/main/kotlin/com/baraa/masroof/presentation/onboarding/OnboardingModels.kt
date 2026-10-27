@@ -8,6 +8,7 @@ import java.time.LocalDate
 
 enum class OnboardingStep {
     WELCOME,
+    BANKS,
     PERMISSION,
     IMPORT_DATE,
     IMPORTING,
@@ -36,6 +37,8 @@ data class OwnershipCandidateUi(
     val bank: Bank,
     val suffix: String,
     val ownership: OwnershipStatus,
+    val cardType: com.baraa.masroof.domain.model.CardType? = null,
+    val discoveredFromSms: Boolean = true,
 ) {
     enum class CandidateKind { ACCOUNT, CARD }
 }
@@ -43,7 +46,13 @@ data class OwnershipCandidateUi(
 data class OnboardingUiState(
     val step: OnboardingStep = OnboardingStep.WELCOME,
     val permissionGranted: Boolean = false,
-    val selectedDateOption: ImportDateOption = ImportDateOption.LAST_27TH,
+    val bankCatalog: com.baraa.masroof.application.patterns.PatternCatalog? = null,
+    val selectedBankIds: Set<String> = emptySet(),
+    val banksConfirmed: Boolean = false,
+    val loadingBanks: Boolean = true,
+    val updatingOwnership: Boolean = false,
+    val importThroughDate: LocalDate? = null,
+    val selectedDateOption: ImportDateOption = ImportDateOption.LAST_30_DAYS,
     val selectedImportDate: LocalDate? = null,
     val importState: ImportState = ImportState.Idle,
     val accounts: List<OwnershipCandidateUi> = emptyList(),
@@ -60,6 +69,7 @@ data class OnboardingUiState(
 ) {
     val hasUnknownCandidates: Boolean =
         (accounts + cards).any { it.ownership == OwnershipStatus.UNKNOWN }
+    val hasUnconfiguredCards: Boolean = cards.any { it.ownership == OwnershipStatus.OWNED && it.cardType == null }
 }
 
 enum class OnboardingError {
@@ -69,6 +79,8 @@ enum class OnboardingError {
     OWNERSHIP_UPDATE_FAILED,
     FINALIZATION_FAILED,
     INVALID_FUTURE_DATE,
+    INVALID_IMPORT_SELECTION,
+    BANKS_LOAD_FAILED,
     BACKUP_RESTORE_FAILED,
     BACKUP_RESTORE_INVALID,
     BACKUP_PASSPHRASE_REQUIRED,

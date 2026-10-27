@@ -24,7 +24,10 @@ class SettingsDestinationNavigationTest {
             decodeSettingsDestination("statement_reconciliation"),
         )
         assertEquals(SettingsDestination.MessageLearning, decodeSettingsDestination(SettingsDestination.MessageLearning.encode()))
-        listOf(SettingsDestination.MessagePatterns(), SettingsDestination.MessagePatterns("BANK_ALJAZIRA")).forEach {
+        listOf(SettingsDestination.MessagePatterns(), SettingsDestination.MessagePatterns("BANK_ALJAZIRA"),
+            SettingsDestination.BankEditor(), SettingsDestination.BankEditor("BANK_STC"),
+            SettingsDestination.SmsImport(), SettingsDestination.SmsImport("BANK_STC"),
+            SettingsDestination.BankStatement("BANK_STC")).forEach {
             assertEquals(it, decodeSettingsDestination(it.encode()))
         }
         assertEquals(SettingsDestination.DesignCatalog, decodeSettingsDestination("design_catalog"))

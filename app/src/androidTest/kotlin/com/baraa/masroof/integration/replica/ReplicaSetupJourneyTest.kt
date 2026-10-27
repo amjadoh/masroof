@@ -63,6 +63,9 @@ class ReplicaSetupJourneyTest {
                     onRequestPermissions = {},onOpenAppSettings = {},onLocaleChanged = {},onRequestExport = {},onRequestImport = {},onRequestExportLogs = {},onRequestRestoreBackup = {})
             } } }
             click(R.string.reference_start_setup)
+            compose.waitUntil(20_000) { onboarding.uiState.value.bankCatalog != null }
+            compose.onNodeWithTag("import-bank-${com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA.id}").performScrollTo().performClick()
+            click(R.string.teaching_next)
             click(R.string.onboarding_start_import)
             compose.waitUntil(30_000) { onboarding.uiState.value.step == OnboardingStep.OWNERSHIP }
             screenshot("01-discovered-ownership")
@@ -75,6 +78,13 @@ class ReplicaSetupJourneyTest {
             for ((index,candidate) in cards.withIndex()) {
                 selectOwnership(host.getString(R.string.onboarding_card_suffix,candidate.suffix),R.string.onboarding_is_mine_card)
                 compose.waitUntil(20_000) { onboarding.uiState.value.cards.first { it.bank==candidate.bank && it.suffix==candidate.suffix }.ownership == OwnershipStatus.OWNED }
+                compose.waitUntil(20_000) { !settings.uiState.value.loading && settings.uiState.value.followedCards.any { it.bank == candidate.bank && it.last4 == candidate.suffix } }
+                compose.runOnUiThread { settings.openCardNetworkPicker(settings.uiState.value.followedCards.single { it.bank == candidate.bank && it.last4 == candidate.suffix }) }
+                compose.waitUntil(20_000) { settings.uiState.value.cardNetworkTarget != null }
+                val type = settings.uiState.value.cardTypeSuggestion ?: com.baraa.masroof.domain.model.CardType.CREDIT
+                compose.onNodeWithTag("card-type-${type.name}").performScrollTo().performClick()
+                compose.onNodeWithTag("sheet-apply").performClick()
+                compose.waitUntil(20_000) { settings.uiState.value.cardNetworkTarget == null && onboarding.uiState.value.cards.first { it.bank == candidate.bank && it.suffix == candidate.suffix }.cardType != null }
             }
             compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text(R.string.onboarding_finalize)))
             compose.onNodeWithText(text(R.string.onboarding_finalize)).assertIsEnabled()
@@ -165,7 +175,11 @@ class ReplicaSetupJourneyTest {
             screenshot("05-review")
             click(R.string.approved_nav_settings)
             screenshot("06-settings")
-            click(R.string.settings_loans_followed)
+            click(R.string.settings_banks_title)
+            val bankName = settings.uiState.value.bankCatalog!!.banks.single { it.bankId == com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA.id }.displayName ?: text(R.string.bank_aljazira)
+            compose.onNodeWithText(bankName).performClick()
+            compose.waitForIdle()
+            click(R.string.settings_bank_loans_title)
             compose.waitUntil(20_000) { settings.uiState.value.loans.any { it.loanType == LoanType.PERSONAL && it.ownership == OwnershipStatus.OWNED } }
             assertTrue(settings.uiState.value.loans.toString(),settings.uiState.value.loans.any { it.loanType == LoanType.PERSONAL && it.ownership == OwnershipStatus.OWNED })
             compose.onNodeWithText(text(R.string.settings_loan_type_personal)).assertExists()
@@ -277,7 +291,13 @@ class ReplicaSetupJourneyTest {
         compose.waitForIdle()
     }
     private fun text(id: Int) = host.getString(id)
-    private fun click(id: Int) { compose.waitUntil(20_000) { compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().isNotEmpty() }; compose.onNodeWithText(text(id)).performClick(); compose.waitForIdle() }
+    private fun click(id: Int) {
+        compose.waitUntil(20_000) { compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().isNotEmpty() }
+        val node = compose.onNodeWithText(text(id))
+        if (!node.isDisplayed()) node.performScrollTo()
+        node.assertIsDisplayed().assertIsEnabled().performClick()
+        compose.waitForIdle()
+    }
     private fun screenshot(name: String) {
         val file = File(host.getExternalFilesDir(null),"replica-journey/$name.png").apply { parentFile!!.mkdirs() }
         compose.waitForIdle()

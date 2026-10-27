@@ -56,6 +56,16 @@ import org.robolectric.RobolectricTestRunner
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class SettingsViewModelTest {
+    @Test
+    fun manualAccountRemainsVisibleWhenReconciliationFailsAfterSavingTheDecision() = runTest {
+        val accounts = FakeAccountRegistry()
+        val vm = viewModel(accounts = accounts, onReconcileOwnership = { error("retry required") })
+        vm.addManualAccount("BANK_ALJAZIRA", "3001", "My account") {}
+        advanceUntilIdle()
+        assertEquals(SettingsError.UPDATE_FAILED, vm.uiState.value.error)
+        assertEquals("3001", vm.uiState.value.followedAccounts.single().maskedNumber)
+        assertFalse(vm.uiState.value.updating)
+    }
     @Test fun confirmingNewCardOpensSetupAfterOwnershipReconciliation() = runTest {
         val cards = FakeCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234", ownership = OwnershipStatus.UNKNOWN))
         var reconciles = 0
@@ -133,12 +143,23 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun completedImportReloadsRegistriesWithoutAnotherFinancialPass() = runTest {
-        val vm = viewModel(onRefreshReviewQueue = { error("Import already completed derived work") })
-        vm.importSmsFromPhone()
+    fun refreshingSmsPermissionDoesNotStartImportOrFinancialWork() = runTest {
+        var granted = false
+        val vm = viewModel(
+            permissionStateProvider = { granted },
+            onRefreshReviewQueue = { error("Permission changes must not reconcile") },
+        )
+        vm.refreshSmsPermissionState()
+        assertFalse(vm.uiState.value.smsPermissionGranted)
+
+        granted = true
+        vm.refreshSmsPermissionState()
         advanceUntilIdle()
-        assertEquals(SmsImportMessage.NO_MESSAGES, vm.uiState.value.smsImportMessage)
+
+        assertTrue(vm.uiState.value.smsPermissionGranted)
         assertFalse(vm.uiState.value.importingSms)
+        assertNull(vm.uiState.value.scopedSmsImportResult)
+        assertFalse(vm.uiState.value.scopedSmsImportFailed)
     }
 
     private val dispatcher = StandardTestDispatcher()
@@ -729,6 +750,7 @@ class SettingsViewModelTest {
         cards: CardRegistryRepository = FakeCardRegistry(),
         accounts: AccountRegistryRepository = FakeAccountRegistry(),
         loans: LoanRegistryRepository = FakeLoanRegistry(),
+        permissionStateProvider: () -> Boolean = { true },
         themeMode: ThemeMode = ThemeMode.SYSTEM,
         reparseResult: com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult =
             com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult(0, 0),
@@ -758,8 +780,7 @@ class SettingsViewModelTest {
             refreshReviewQueue = { onRefreshReviewQueue() },
             reconcileOwnershipChange = { onReconcileOwnership(it) },
             reparseStoredEvents = { reparseResult },
-            importSmsFromInbox = { com.baraa.masroof.application.onboarding.HistoricalImportResult() },
-            permissionStateProvider = { true },
+            permissionStateProvider = permissionStateProvider,
             appVersion = SettingsViewModelTestFixtures.APP_VERSION,
             appUpdateService = appUpdateService,
             updateCheckCoordinator = updateCheckCoordinator,
@@ -826,6 +847,8 @@ class SettingsViewModelTest {
             val masked = reference.maskedNumber ?: return
             val index = entries.indexOfFirst { it.bank == reference.bank && it.maskedNumber == masked }
             if (index >= 0) entries[index] = entries[index].copy(ownership = status)
+            else entries += AccountRegistryEntry.forTest(reference.bank, masked, status,
+                firstSeenRawSmsId = null, lastSeenRawSmsId = null)
         }
 
         override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) {

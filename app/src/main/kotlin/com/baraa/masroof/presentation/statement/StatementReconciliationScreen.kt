@@ -54,7 +54,12 @@ fun statementLineTag(status: StatementComparisonStatus, index: Int): String =
 fun StatementReconciliationRoute(
     viewModel: StatementReconciliationViewModel,
     onBack: () -> Unit,
+    bankId: String? = null,
+    bankLabel: String? = null,
 ) {
+    androidx.compose.runtime.LaunchedEffect(bankId) {
+        viewModel.selectBank(bankId)
+    }
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -63,7 +68,7 @@ fun StatementReconciliationRoute(
         if (stream == null) {
             viewModel.onUnreadable()
         } else {
-            viewModel.compare(stream)
+            viewModel.compare(stream, bankId)
         }
     }
     StatementReconciliationScreen(
@@ -72,6 +77,7 @@ fun StatementReconciliationRoute(
         onPickFile = {
             picker.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "*/*"))
         },
+        bankLabel = bankLabel,
     )
 }
 
@@ -80,6 +86,7 @@ fun StatementReconciliationScreen(
     state: StatementReconciliationUiState,
     onBack: () -> Unit,
     onPickFile: () -> Unit,
+    bankLabel: String? = null,
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_statement_reconciliation_title),
@@ -92,6 +99,10 @@ fun StatementReconciliationScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
+            bankLabel?.let { label -> MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label,
+                    stringResource(R.string.settings_statement_bank_scope_hint), style = MaterialTheme.typography.titleMedium)
+            } }
             MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_statement_reconciliation_title),
                     stringResource(R.string.settings_statement_reconciliation_intro), style = MaterialTheme.typography.titleMedium)

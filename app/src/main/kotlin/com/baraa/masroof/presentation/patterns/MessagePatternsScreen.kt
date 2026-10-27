@@ -1,9 +1,6 @@
 package com.baraa.masroof.presentation.patterns
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,7 +25,8 @@ import kotlinx.coroutines.launch
 /** Bank-scoped catalog; teaching, approval and application remain separate explicit actions. */
 @Composable
 fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null,
-    source: PatternTeachingSource? = null, onOpenReview: ((String) -> Unit)? = null, onBack: () -> Unit) {
+    source: PatternTeachingSource? = null, onOpenReview: ((String) -> Unit)? = null, onBack: () -> Unit,
+    onImportBank: ((String) -> Unit)? = null) {
     val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<PatternCatalog?>(null) }
     var selectedBank by remember { mutableStateOf(bankScope) }
@@ -45,9 +43,6 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var showPending by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
-    var imported by remember { mutableStateOf<com.baraa.masroof.application.sms.SmsScanResult?>(null) }
-    var importRequested by remember { mutableStateOf<String?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     fun work(action: suspend () -> Unit) {
         if (busy) return
@@ -73,11 +68,6 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             else -> onBack()
         }
     }
-    val readPermission = if (workflow.canImportBank) rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val id = importRequested; importRequested = null
-        if (granted && id != null) work { imported = workflow.importBank(id) }
-        else imported = com.baraa.masroof.application.sms.SmsScanResult(failure = com.baraa.masroof.application.sms.SmsScanFailure.PermissionDenied)
-    } else null
     LaunchedEffect(workflow) {
         try { snapshot = workflow.catalog() }
         catch (e: CancellationException) { throw e }
@@ -122,7 +112,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     MasroofGuidanceLabel(stringResource(R.string.teaching_catalog), stringResource(R.string.teaching_choose_message_help),
                         style = MaterialTheme.typography.titleLarge, contentColor = MaterialTheme.colorScheme.onSurface)
                     if (bankScope == null) configuration.banks.forEach { item ->
-                        MasroofNavCard(onClick = { selectedBank = item.bankId; applied = null; imported = null }, enabled = !busy) {
+                        MasroofNavCard(onClick = { selectedBank = item.bankId; applied = null }, enabled = !busy) {
                             Text(item.displayName ?: item.bankId, style = MaterialTheme.typography.titleMedium)
                             Text(item.senders.joinToString(), style = MaterialTheme.typography.bodySmall)
                         }
@@ -196,15 +186,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             applied = workflow.applyPending(bank.bankId, configuration.generation)
                             pending = workflow.previewPending(bank.bankId, configuration.generation)
                         } }) else null, onOpenReview = onOpenReview)
-                    if (workflow.canImportBank) MasroofOutlinedButton(onClick = {
-                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED)
-                            work { imported = workflow.importBank(bank.bankId) }
-                        else { importRequested = bank.bankId; readPermission?.launch(android.Manifest.permission.READ_SMS) }
-                    }, enabled = !busy) { Text(stringResource(R.string.pattern_import_bank)) }
-                    imported?.let {
-                        Text(stringResource(R.string.pattern_import_result, it.inserted, it.reviewRequired, it.failed))
-                        if (it.failure != null) Text(stringResource(R.string.pattern_import_incomplete), color = MaterialTheme.colorScheme.error)
-                    }
+                    onImportBank?.let { action -> MasroofOutlinedButton({ action(bank.bankId) }, enabled = !busy) {
+                        Text(stringResource(R.string.pattern_import_bank))
+                    } }
+
                 }
             }
         }

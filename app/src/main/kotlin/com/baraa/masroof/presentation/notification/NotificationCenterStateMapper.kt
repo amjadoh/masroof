@@ -22,7 +22,6 @@ fun notificationCenterExternalState(
     return NotificationCenterExternalState(
         periodLabel = dashboardState.periodLabel,
         excludedForeignCurrencyCount = dashboardState.summary?.excludedOtherCurrencyCount ?: 0,
-        rescanStatusName = dashboardState.rescanStatus?.name,
         updateAvailableVersion = availableVersion,
         updateReadyVersion = readyVersion,
     )

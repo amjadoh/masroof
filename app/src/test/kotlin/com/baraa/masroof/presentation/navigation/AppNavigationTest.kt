@@ -63,9 +63,9 @@ class AppNavigationTest {
     }
 
     @Test
-    fun resolvePendingDestination_legacyBanks_mapsToMyAccounts() {
+    fun resolvePendingDestination_banksOpensTheUnifiedBankList() {
         assertEquals(
-            SettingsDestination.MyAccounts,
+            SettingsDestination.Banks,
             resolvePendingDestination(SettingsDestination.Banks),
         )
     }

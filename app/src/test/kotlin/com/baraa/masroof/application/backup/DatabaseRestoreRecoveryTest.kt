@@ -164,6 +164,7 @@ class DatabaseRestoreRecoveryTest {
                     historicalImportCompleted = true,
                     languageTag = AppLocale.TAG_EN,
                     themeMode = "SYSTEM",
+                    onboardingSetup = "incoming-bank-selection",
                 ),
             ),
         )
@@ -179,6 +180,7 @@ class DatabaseRestoreRecoveryTest {
         assertEquals("imported", readMarker(live))
         assertFalse(File(live.path + ".rollback").exists())
         assertTrue(onboarding().getBoolean("onboarding_completed", false))
+        assertEquals("incoming-bank-selection", onboarding().getString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, null))
         assertEquals(AppLocale.TAG_EN, locale().getString(AppLocalePreferences.KEY_LANGUAGE_TAG, null))
         assertFalse(maintenance().contains(MaintenancePreferences.KEY_LAST_REPARSED_SCHEMA_VERSION))
         assertFalse(journal().exists())
@@ -189,11 +191,12 @@ class DatabaseRestoreRecoveryTest {
         live.writeBytes(byteArrayOf(1, 2, 3))
         writeDatabase(File(live.path + ".rollback"), "original")
         onboarding().edit().putBoolean("onboarding_completed", true).commit()
+        onboarding().edit().putString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, "original-bank-selection").commit()
         val original = DatabaseRestoreRecovery.capturePreferences(context).copy(onboardingCompleted = false)
         DatabaseRestoreRecovery.writeSnapshots(
             live = live,
             original = original,
-            incoming = original.copy(onboardingCompleted = true),
+            incoming = original.copy(onboardingCompleted = true, onboardingSetup = "incoming-bank-selection"),
         )
         DatabaseRestoreRecovery.writeJournal(
             live,
@@ -205,6 +208,7 @@ class DatabaseRestoreRecoveryTest {
 
         assertEquals("original", readMarker(live))
         assertFalse(onboarding().getBoolean("onboarding_completed", true))
+        assertEquals("original-bank-selection", onboarding().getString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, null))
         assertFalse(journal().exists())
     }
 

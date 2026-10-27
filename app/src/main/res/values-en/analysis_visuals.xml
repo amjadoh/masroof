@@ -31,7 +31,7 @@
     <string name="analysis_no_due">No outstanding dues for this period</string>
     <string name="analysis_no_due_hint">Payments appear here by due date.</string>
     <string name="analysis_commitments_separate">Commitments are separate from the spending forecast</string>
-    <string name="analysis_learning_settings">Learning message types from your corrections</string>
+    <string name="analysis_learning_settings">Message correction insights</string>
     <string name="analysis_learning_settings_hint">Learning bank message types; this does not measure spending forecast accuracy.</string>
     <string name="analysis_actual_legend">■ Actual</string>
     <string name="analysis_expected_legend">▨ Estimated</string>

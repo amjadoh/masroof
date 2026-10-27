@@ -15,10 +15,8 @@ sealed interface SettingsDestination {
         val commitmentId: String,
     ) : SettingsDestination
 
-    /** @deprecated Legacy bank list — decoded for saved navigation state only. */
     data object Banks : SettingsDestination
 
-    /** @deprecated Legacy bank hub — decoded for saved navigation state only. */
     data class BankHub(
         val bankId: String,
     ) : SettingsDestination
@@ -44,6 +42,10 @@ sealed interface SettingsDestination {
     data object DataBackup : SettingsDestination
 
     data object StatementReconciliation : SettingsDestination
+
+    data class BankStatement(val bankId: String) : SettingsDestination
+    data class BankEditor(val bankId: String? = null) : SettingsDestination
+    data class SmsImport(val bankId: String? = null) : SettingsDestination
 
     data object About : SettingsDestination
 
@@ -76,6 +78,9 @@ fun SettingsDestination.encode(): String =
         SettingsDestination.DataTools -> "data_tools"
         SettingsDestination.DataBackup -> "data_backup"
         SettingsDestination.StatementReconciliation -> "statement_reconciliation"
+        is SettingsDestination.BankStatement -> "bank_statement:$bankId"
+        is SettingsDestination.BankEditor -> "bank_editor:${bankId.orEmpty()}"
+        is SettingsDestination.SmsImport -> "sms_import:${bankId.orEmpty()}"
         SettingsDestination.About -> "about"
         SettingsDestination.Logs -> "logs"
         is SettingsDestination.MessagePatterns -> "message_patterns:${bankId.orEmpty()}"
@@ -102,6 +107,9 @@ fun decodeSettingsDestination(encoded: String): SettingsDestination {
     if (encoded == "data_tools") return SettingsDestination.DataTools
     if (encoded == "data_backup") return SettingsDestination.DataBackup
     if (encoded == "statement_reconciliation") return SettingsDestination.StatementReconciliation
+    if (encoded.startsWith("bank_statement:")) return SettingsDestination.BankStatement(encoded.substringAfter(":"))
+    if (encoded.startsWith("bank_editor:")) return SettingsDestination.BankEditor(encoded.substringAfter(":").ifEmpty { null })
+    if (encoded.startsWith("sms_import:")) return SettingsDestination.SmsImport(encoded.substringAfter(":").ifEmpty { null })
     if (encoded == "about") return SettingsDestination.About
     if (encoded == "logs") return SettingsDestination.Logs
     if (encoded.startsWith("message_patterns:")) return SettingsDestination.MessagePatterns(encoded.substringAfter(":").ifEmpty { null })

@@ -9,6 +9,7 @@ import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.repository.AccountRegistryRepository
+import com.baraa.masroof.domain.repository.CardRegistryRepository
 import com.baraa.masroof.engine.bank.MessageInput
 import com.baraa.masroof.engine.bank.MessageFamily
 import com.baraa.masroof.engine.bank.MoneyDirection
@@ -22,18 +23,26 @@ import java.time.Instant
 
 data class PatternAccountOption(val id: String, val name: String?, val last4: String)
 class PatternFinancialPreview internal constructor(internal val generation: Long, internal val priorFingerprint: String,
-    internal val pattern: SavedMessagePattern, internal val accountId: String,
-    val amount: Money, val occurredAt: String, val reference: String?)
+    internal val pattern: SavedMessagePattern, internal val accountId: String?,
+    val amount: Money, val occurredAt: String, val reference: String?, internal val cardId: String? = null)
 
 /** Explicit approval writes configuration only. Account identity and ownership stay in the existing registry. */
 class PatternApprovalWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
-    private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService) {
+    private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService,
+    private val cards: CardRegistryRepository? = null) {
 
     suspend fun accounts(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {
         gate.withAccess { ownedAccounts(bankId).map { PatternAccountOption(it.id, it.displayName, it.maskedNumber) } }
     }
     private suspend fun ownedAccounts(bankId: String) = accounts.listAll().filter {
         it.bank.id == bankId && it.ownership == OwnershipStatus.OWNED && it.maskedNumber.matches(Regex("[0-9]{4}"))
+    }
+
+    suspend fun cards(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {
+        gate.withAccess { ownedCards(bankId).map { PatternAccountOption(it.id, it.displayName, requireNotNull(it.last4)) } }
+    }
+    private suspend fun ownedCards(bankId: String) = cards?.listAll().orEmpty().filter {
+        it.bank.id == bankId && it.ownership == OwnershipStatus.OWNED && it.cardType != null && it.last4?.matches(Regex("[0-9]{4}")) == true
     }
 
     suspend fun confirmAccount(bankId: String, last4: String): PatternAccountOption = withContext(Dispatchers.IO) {
@@ -47,16 +56,25 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
         }
     }
 
-    suspend fun preview(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String,
-        body: String, referenceField: String?, contextReferences: Set<String>, currency: Currency?): PatternFinancialPreview = withContext(Dispatchers.IO) {
+    suspend fun preview(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String?,
+        body: String, referenceField: String?, contextReferences: Set<String>, currency: Currency?, cardId: String? = null): PatternFinancialPreview = withContext(Dispatchers.IO) {
         gate.withAccess {
             val current = store.load()
             check(current.generation == generation) { "Pattern configuration changed" }
             val bank = current.banks.single { it.bankId == bankId }
             val pattern = bank.currentPatterns.single { it.id == patternId }
             require(pattern.enabled)
-            val account = ownedAccounts(bankId).single { it.id == accountId }
+            val account = accountId?.let { id -> ownedAccounts(bankId).single { it.id == id } }
+            val card = cardId?.let { id -> ownedCards(bankId).single { it.id == id } }
+            require(account != null || card != null)
             val fields = requireNotNull(pattern.preview(bankId, pattern.sender, body)) { "Message does not match" }.fields
+            val cardField = fields["card"]
+            if (cardField != null) {
+                require(card != null) { "Select an owned, configured card" }
+                val suffix = com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(cardField.raw).comparisonBody.trim()
+                require(suffix == card.last4) { "Card reference does not match" }
+            } else require(card == null) { "No explicit card reference" }
+            require(referenceField == null || account != null)
             val incoming = operation in setOf(PatternOperation.TRANSFER_IN, PatternOperation.REFUND)
             val role = if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE
             val observed = referenceField?.let { field -> requireNotNull(fields[field]).raw }
@@ -64,7 +82,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             val key = observed?.let { value -> com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim() }
             val contract = PatternFactContract(MessageFamily.valueOf(operation.name),
                 if (incoming) MoneyDirection.INCOMING else MoneyDirection.OUTGOING, currency,
-                version = 2, accountBindings = listOf(PatternAccountBinding(role, BankId(bankId), account.maskedNumber, referenceField, key)),
+                version = 2, cardBank = card?.let { BankId(bankId) },
+                accountBindings = account?.let { listOf(PatternAccountBinding(role, BankId(bankId), it.maskedNumber, referenceField, key)) }.orEmpty(),
                 contextReferences = contextReferences)
             val next = pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = contract)
             val proposed = current.copy(generation = Math.addExact(generation, 1), banks = current.banks.map {
@@ -75,7 +94,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             require(result is ParseResult.Success) { "Financial facts need review" }
             PatternFinancialPreview(generation, PatternFactInterpreter(current).fingerprint, next, accountId,
                 requireNotNull(result.event.amount), result.details.occurredAtLocal?.format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(
-                    java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed)
+                    java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed, cardId)
         }
     }
 
@@ -83,8 +102,14 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
         gate.withExclusiveAccess {
             val current = store.load()
             check(current.generation == preview.generation && PatternFactInterpreter(current).fingerprint == preview.priorFingerprint) { "Preview expired" }
-            val account = ownedAccounts(preview.pattern.bankId).single { it.id == preview.accountId }
-            require(preview.pattern.factContract!!.accountBindings.single().last4 == account.maskedNumber)
+            preview.accountId?.let { id ->
+                val account = ownedAccounts(preview.pattern.bankId).single { it.id == id }
+                require(preview.pattern.factContract!!.accountBindings.single().last4 == account.maskedNumber)
+            }
+            preview.cardId?.let { id ->
+                val card = ownedCards(preview.pattern.bankId).single { it.id == id }
+                require(preview.pattern.factContract!!.cardBank?.value == card.bank.id)
+            }
             val bank = current.banks.single { it.bankId == preview.pattern.bankId }
             store.saveBank(current.generation, bank.copy(patterns = listOf(preview.pattern)))
         }

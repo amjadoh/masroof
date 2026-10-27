@@ -257,6 +257,12 @@ class StatementReconciliationSmokeTest {
         val settings = text(R.string.dashboard_open_settings)
         waitUntil("settings action") { contentDescriptionExists(settings) }
         composeRule.onNodeWithContentDescription(settings).performClick()
+        clickText(text(R.string.settings_banks_title))
+        val bankName = runBlocking {
+            application().container.messagePatternsWorkflow.catalog().banks
+                .single { it.bankId == Bank.BANK_ALJAZIRA.id }.displayName
+        } ?: text(R.string.bank_aljazira)
+        clickText(bankName)
         clickText(text(R.string.settings_statement_reconciliation_title))
         awaitTag(STATEMENT_RECONCILIATION_PICK_TAG)
     }

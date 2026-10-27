@@ -6,7 +6,7 @@ Masroof is a local-first Android personal finance app. It turns supported bank S
 
 ## Features
 
-- Historical SMS import and durable live processing, with duplicate protection and retry recovery.
+- Historical SMS import for selected banks and receipt-date ranges, plus durable live processing with duplicate protection and retry recovery.
 - A rule-based bank engine with validation and explicit ownership confirmation. AlJazira uses bundled role definitions; six STC templates require explicit financial approval.
 - Local machine learning for eligible message families and learning from explicit user corrections. It never invents amounts, ownership, or financial approval.
 - Salary-period dashboards, transaction details, a review inbox, accounts, cards, credit facilities, loans, and commitments.

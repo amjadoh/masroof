@@ -189,12 +189,9 @@ class MainActivity : ComponentActivity() {
                     ) { _ ->
                         val granted = hasSmsPermissions()
                         onboardingViewModel.onPermissionResult(granted)
+                        settingsViewModel.refreshSmsPermissionState()
                         if (container.onboardingPreferencesRepository.isOnboardingCompleted()) {
-                            if (granted) {
-                                dashboardViewModel.rescanSms()
-                            } else {
-                                dashboardViewModel.refresh()
-                            }
+                            dashboardViewModel.refresh()
                         }
                     }
 
@@ -285,6 +282,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         onboardingViewModel.reloadFromCurrentState()
         settingsViewModel.retryInstallAfterPermissionGranted()
+        settingsViewModel.refreshSmsPermissionState()
         if (startupFinancialReady &&
             container.onboardingPreferencesRepository.isOnboardingCompleted()
         ) {

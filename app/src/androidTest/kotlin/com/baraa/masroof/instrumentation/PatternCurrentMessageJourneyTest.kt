@@ -73,7 +73,8 @@ class PatternCurrentMessageJourneyTest {
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-current").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-apply-current").performScrollTo().performClick()
-            compose.waitUntil(15_000) { runBlocking { c.reviewRepository.getById(current.id)?.status == ReviewStatus.RESOLVED } }
+            compose.waitUntil(15_000) { compose.onAllNodesWithText(ar(R.string.teaching_apply_posted)).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(ReviewStatus.RESOLVED, c.reviewRepository.getById(current.id)?.status)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
             assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("ui-other")!!.status)
             assertEquals(untouched, c.parsedEventRepository.findByRawSmsId("ui-other"))

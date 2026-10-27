@@ -122,8 +122,10 @@ fun SettingsResumeTrackingButton(
 
 @Composable
 fun settingsBankLabel(bank: Bank): String =
-    if (bank == Bank.BANK_ALJAZIRA) {
+    LocalSettingsBankNames.current[bank.id] ?: if (bank == Bank.BANK_ALJAZIRA) {
         stringResource(R.string.bank_aljazira)
-    } else {
+    } else if (bank == Bank.UNKNOWN) {
         stringResource(R.string.bank_unknown)
-    }
+    } else bank.id
+
+internal val LocalSettingsBankNames = androidx.compose.runtime.staticCompositionLocalOf<Map<String, String>> { emptyMap() }

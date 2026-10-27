@@ -4,6 +4,7 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -45,6 +46,7 @@ fun SettingsBankAccountsScreen(
     onDismissAccountType: () -> Unit,
     onSelectAccountType: (com.baraa.masroof.domain.model.AccountType) -> Unit,
     onOpenBank: (() -> Unit)? = null,
+    onAddManual: (() -> Unit)? = null,
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
 
@@ -83,6 +85,10 @@ fun SettingsBankAccountsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
+            onAddManual?.let { action -> com.baraa.masroof.presentation.common.MasroofOutlinedButton(action,
+                enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_add_account_manual))
+            } }
             SettingsScreenHeader(
                 bank = bank,
                 hint = stringResource(R.string.settings_accounts_hint),

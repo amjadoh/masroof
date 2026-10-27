@@ -2,6 +2,7 @@ package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +25,10 @@ fun SettingsBankScreen(
     onOpenCards: () -> Unit,
     onOpenLoans: () -> Unit,
     onOpenPatterns: () -> Unit = {},
+    definition: com.baraa.masroof.application.patterns.PatternBankView? = null,
+    onImport: () -> Unit = {},
+    onStatement: () -> Unit = {},
+    onEditBank: () -> Unit = {},
 ) {
     val accountsSubtitle = formatRegistryCategorySubtitle(
         state = resolveRegistryCategorySubtitle(
@@ -56,7 +61,7 @@ fun SettingsBankScreen(
     }
 
     MasroofSecondaryScaffold(
-        title = stringResource(R.string.reference_bank_registered),
+        title = settingsBankLabel(bank),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
     ) { contentModifier ->
@@ -68,10 +73,30 @@ fun SettingsBankScreen(
         ) {
             com.baraa.masroof.presentation.common.MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofText(settingsBankLabel(bank), style = MaterialTheme.typography.titleMedium)
+                definition?.let {
+                    com.baraa.masroof.presentation.common.MasroofText(bankSupportLabel(it), style = MaterialTheme.typography.bodySmall)
+                    com.baraa.masroof.presentation.common.MasroofText(it.senders.joinToString(), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (definition != null) com.baraa.masroof.presentation.common.MasroofButton(onImport,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+                com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.pattern_import_bank))
+            }
+            else com.baraa.masroof.presentation.common.MasroofOutlinedButton(onEditBank,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+                com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.settings_bank_setup_messages))
+            }
+            com.baraa.masroof.presentation.common.MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_accounts_title), accountsSubtitle, MasroofIcons.moneyMovement, onOpenAccounts)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_cards_title), cardsSubtitle, MasroofIcons.cardPayment, onOpenCards)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_loans_title), loansSubtitle, MasroofIcons.savings, onOpenLoans)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.pattern_title), stringResource(R.string.pattern_teach), MasroofIcons.moneyMovement, onOpenPatterns, divider = false)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_loans_title), loansSubtitle, MasroofIcons.savings, onOpenLoans, divider = false)
+            }
+            com.baraa.masroof.presentation.common.MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title), stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onStatement, divider = definition != null)
+                if (definition != null) {
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_teaching), stringResource(R.string.pattern_teach), MasroofIcons.sms, onOpenPatterns)
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_details), stringResource(R.string.settings_bank_senders), MasroofIcons.moneyMovement, onEditBank, divider = false)
+                }
             }
 
         }

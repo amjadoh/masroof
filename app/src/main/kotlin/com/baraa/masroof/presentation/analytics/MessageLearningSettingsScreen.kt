@@ -50,7 +50,7 @@ fun MessageLearningSettingsScreen(onOpenPatterns: () -> Unit = {}, onOpenExample
         Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofGuidanceLabel(
                 label = stringResource(R.string.analysis_learning_settings),
-                message = stringResource(R.string.analysis_learning_settings_hint),
+                message = stringResource(R.string.settings_corrections_scope),
                 style = MaterialTheme.typography.bodyMedium,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             )
