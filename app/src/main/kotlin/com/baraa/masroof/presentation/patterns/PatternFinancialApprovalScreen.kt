@@ -94,7 +94,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             if (loading || busy) CircularProgressIndicator()
             if (failed) {
                 Text(stringResource(R.string.pattern_financial_blocked), color = MaterialTheme.colorScheme.error)
-                MasroofTextButton({ work { loadOptions() } }) { Text(stringResource(R.string.dashboard_retry)) }
+                MasroofOutlinedButton({ work { loadOptions() } }) { Text(stringResource(R.string.dashboard_retry)) }
             }
             PatternApprovalMessage(examples, exampleIndex, body, readOnlyBody, !busy && !loading,
                 onSelect = { index -> exampleIndex = index; body = examples[index].body; preview = null },

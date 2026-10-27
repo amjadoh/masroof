@@ -2,15 +2,23 @@ package com.baraa.masroof.presentation.patterns
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
+import com.baraa.masroof.ui.theme.MasroofIconSizes
+import com.baraa.masroof.ui.theme.MasroofSpacing
 
 @Composable
 internal fun patternStatusName(pattern: PatternDefinitionView): String = stringResource(when {
@@ -22,12 +30,19 @@ internal fun patternStatusName(pattern: PatternDefinitionView): String = stringR
 @Composable
 internal fun PatternDetailCard(
     bank: PatternBankView, pattern: PatternDefinitionView, busy: Boolean,
-    onApprove: (() -> Unit)?, onToggle: () -> Unit, onRestore: (Int) -> Unit,
+    onApprove: (() -> Unit)?, onToggle: () -> Unit, onHistory: () -> Unit,
+    onEdit: (() -> Unit)?, onDelete: () -> Unit,
 ) {
-    var advanced by remember(pattern.id) { mutableStateOf(false) }
     MasroofCard {
-        Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.bodySmall)
-        Text(patternOperationName(pattern.label), style = MaterialTheme.typography.titleLarge)
+        val toggleLabel = stringResource(if (pattern.enabled) R.string.pattern_disable else R.string.pattern_enable)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.bodySmall)
+                Text(patternOperationName(pattern.label), style = MaterialTheme.typography.titleLarge)
+            }
+            Switch(pattern.enabled, { onToggle() }, enabled = !busy,
+                modifier = Modifier.testTag("pattern-toggle-${bank.bankId}-${pattern.id}").semantics { contentDescription = toggleLabel })
+        }
         val explanation = stringResource(when (pattern.status) {
             PatternApprovalStatus.BUNDLED -> R.string.pattern_bundled_status
             PatternApprovalStatus.PREVIEW_ONLY -> R.string.pattern_preview_only
@@ -35,32 +50,34 @@ internal fun PatternDetailCard(
         })
         MasroofGuidanceLabel(patternStatusName(pattern), explanation)
         if (pattern.canApprove && onApprove != null) {
-            if (pattern.status == PatternApprovalStatus.APPROVED) MasroofTextButton(onClick = onApprove,
+            if (pattern.status == PatternApprovalStatus.APPROVED) MasroofOutlinedButton(onClick = onApprove,
                 enabled = !busy && pattern.enabled) { Text(stringResource(R.string.pattern_approval_edit)) }
             else MasroofButton(onClick = onApprove, enabled = !busy && pattern.enabled, modifier = Modifier.fillMaxWidth()) {
+                Icon(MasroofIcons.success, null, Modifier.size(MasroofIconSizes.md))
+                Spacer(Modifier.width(MasroofSpacing.inlineGap))
                 Text(stringResource(R.string.pattern_financial_approve))
             }
         }
-        if (!pattern.enabled) MasroofOutlinedButton(onClick = onToggle, enabled = !busy,
-            modifier = Modifier.fillMaxWidth().testTag("pattern-toggle-${bank.bankId}-${pattern.id}")) {
-            Text(stringResource(R.string.pattern_enable))
-        }
-        MasroofTextButton({ advanced = !advanced }, enabled = !busy, modifier = Modifier.testTag("pattern-advanced")) {
-            Text(stringResource(R.string.pattern_approval_advanced))
-        }
-        if (advanced) {
-            Text(pattern.example)
-            pattern.fields.forEach { Text(patternFieldName(it)) }
-            Text(stringResource(R.string.pattern_revision, patternOperationName(pattern.label), pattern.revision), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.pattern_approval_revision_help), style = MaterialTheme.typography.bodySmall)
-            if (pattern.enabled) MasroofOutlinedButton(onClick = onToggle, enabled = !busy,
-                modifier = Modifier.fillMaxWidth().testTag("pattern-toggle-${bank.bankId}-${pattern.id}")) { Text(stringResource(R.string.pattern_disable)) }
-            pattern.priorRevisions.forEach { revision ->
-                MasroofTextButton(onClick = { onRestore(revision) }, enabled = !busy,
-                    modifier = Modifier.testTag("pattern-restore-${bank.bankId}-${pattern.id}-$revision")) {
-                    Text(stringResource(R.string.pattern_restore_revision, revision))
-                }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+            if (onEdit != null) MasroofOutlinedButton(onClick = onEdit, enabled = !busy,
+                modifier = Modifier.weight(1f).testTag("pattern-edit")) {
+                Icon(MasroofIcons.edit, null, Modifier.size(MasroofIconSizes.md))
+                Spacer(Modifier.width(MasroofSpacing.inlineGap))
+                Text(stringResource(R.string.pattern_edit))
             }
+            MasroofOutlinedButton(onDelete, enabled = !busy && !pattern.enabled,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.weight(1f).testTag("pattern-delete")) {
+                Icon(MasroofIcons.delete, null, Modifier.size(MasroofIconSizes.md))
+                Spacer(Modifier.width(MasroofSpacing.inlineGap))
+                Text(stringResource(R.string.pattern_delete))
+            }
+        }
+        if (pattern.enabled) Text(stringResource(R.string.pattern_delete_disable_first), style = MaterialTheme.typography.bodySmall)
+        MasroofOutlinedButton(onHistory, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-advanced")) {
+            Icon(MasroofIcons.clock, null, Modifier.size(MasroofIconSizes.md))
+            Spacer(Modifier.width(MasroofSpacing.inlineGap))
+            Text(stringResource(R.string.pattern_approval_advanced))
         }
     }
 }
@@ -94,7 +111,7 @@ internal fun PatternPendingCard(
             if (report.limited || report.rows.size > 50) MasroofGuidanceLabel(stringResource(R.string.pattern_pending_title), stringResource(R.string.pattern_pending_limited))
             report.rows.take(50).forEachIndexed { index, row ->
                 Text(stringResource(R.string.pattern_pending_row, index + 1, statusNames[row.status.ordinal]), style = MaterialTheme.typography.titleSmall)
-                if (onOpenReview != null) MasroofTextButton(onClick = { onOpenReview(row.reviewId) }, enabled = !busy) {
+                if (onOpenReview != null) MasroofOutlinedButton(onClick = { onOpenReview(row.reviewId) }, enabled = !busy) {
                     Text(stringResource(R.string.pattern_pending_open))
                 }
                 row.matches.forEach { match ->

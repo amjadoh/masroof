@@ -48,7 +48,7 @@ class MessagePatternsJourneyTest {
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("10SAR").performScrollTo().performClick()
-        compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
+        compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         click(R.string.teaching_try_another)
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-sample").fetchSemanticsNodes().isNotEmpty() }
@@ -58,10 +58,11 @@ class MessagePatternsJourneyTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("مبلغ العملية: 250SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("مبلغ العملية: 250SAR").performScrollTo().assertIsDisplayed()
         capture("pattern-preview")
+        click(R.string.teaching_previous)
         click(R.string.pattern_save)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 1 }
-        compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
-        click(R.string.pattern_disable)
+        val patternId = store.load().banks.single().currentPatterns.single().id
+        compose.onNodeWithTag("pattern-toggle-STC-$patternId").performScrollTo().performClick()
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
         assertFalse(store.load().banks.single().currentPatterns.single().enabled)
         capture("pattern-disabled")
@@ -114,7 +115,7 @@ class MessagePatternsJourneyTest {
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("73SAR").performScrollTo().performClick()
-        compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
+        compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
         capture("pattern-from-review")
@@ -170,10 +171,11 @@ class MessagePatternsJourneyTest {
             compose.onAllNodesWithText(ar(R.string.pattern_pending_open))[0].performScrollTo().performClick()
             assertTrue(reviews.getById(requireNotNull(openedReview))!!.rawSmsId in listOf("pending-0", "pending-1"))
             assertEquals(2, reviews.listRequired().size)
+            click(R.string.teaching_back)
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
-            click(R.string.pattern_disable)
+            compose.onNodeWithTag("pattern-toggle-STC-purchase").performScrollTo().performClick()
             click(R.string.teaching_saved_patterns)
+            click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)
         } finally { db.close(); file.delete() }
@@ -197,8 +199,7 @@ class MessagePatternsJourneyTest {
             assertEquals(6, workflow.load().banks.single().currentPatterns.size)
             capture("stc-ready-patterns")
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
-            click(R.string.pattern_disable)
+            compose.onNodeWithTag("pattern-toggle-BANK_STC-stc-internal-in").performScrollTo().performClick()
             compose.waitUntil(10_000) { MessagePatternStore(file).load().generation == 2L }
             val reopened = MessagePatternsWorkflow(MessagePatternStore(file), DatabaseAccessGate(), bundledBanks = banks).load()
             assertEquals(2L, reopened.generation)
@@ -208,7 +209,11 @@ class MessagePatternsJourneyTest {
     }
 
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
-    private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick(); compose.waitForIdle() }
+    private fun click(id: Int) {
+        val node = compose.onNodeWithText(ar(id))
+        if (runCatching { node.assertIsDisplayed() }.isFailure) node.performScrollTo()
+        node.performClick(); compose.waitForIdle()
+    }
     private fun capture(name: String) {
         compose.waitForIdle()
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()

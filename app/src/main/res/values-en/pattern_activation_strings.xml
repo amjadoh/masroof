@@ -1,5 +1,5 @@
 <resources>
-    <string name="pattern_financial_approve">Approve financial interpretation</string>
+    <string name="pattern_financial_approve">Approve</string>
     <string name="pattern_financial_select_operation">Choose the financial movement</string>
     <string name="pattern_financial_select_account">Choose your confirmed account at this bank</string>
     <string name="pattern_financial_account_last4">Last four digits of your account</string>

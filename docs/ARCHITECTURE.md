@@ -41,6 +41,12 @@ snapshot. `BankSmsRegistry` evaluates every adapter; only a resolved bank reache
 `PatternFactInterpreter`. AlJazira uses the generic role interpreter within that
 snapshot; STC's six bundled templates require explicit financial approval.
 
+A free-text `account_reference` slot may be empty while its literal label remains
+required (for example, STC SARIE's blank `Account` line). Empty values produce no
+reference evidence. Approval may use the selected account as a definition constant;
+an exact account-reference binding still requires its observed value. Amounts,
+dates, other text slots and numeric account slots remain required.
+
 Settings groups bank operations under **Banks**. Configured banks remain visible
 before any account is discovered. Names and senders come from the existing pattern
 catalog; edits preserve bank-qualified identities and immutable pattern revisions.
@@ -91,6 +97,29 @@ application guards check the current fingerprint, revision, ownership and human
 decisions inside the financial transaction before existing financial policies run.
 Protected evidence resumes without parsing again. Approval and pending application
 are separate actions and reuse existing ownership/intake/reconciliation services.
+
+Financial pattern editing reuses teaching with the same bank-qualified pattern id
+and a new immutable revision. Matching example spans prefill the editor, including
+ignored variable slots. Saving clears financial approval and retains the enabled
+state; leaving the editor discards the draft. Supported teaching operation types
+use this editor; other built-in families retain their existing enable/revision controls.
+
+Teaching keeps one short question and its bordered navigation/answer buttons fixed
+while message content scrolls. Back returns to the previous field, retaining draft
+selections. Wide layouts use a bounded form with message and value columns; the
+geometry lives in `MasroofTeachingTokens`. Example testing and revision history use
+separate pages. Pattern controls use visible choices and bordered secondary actions,
+not expanding sections, dropdown menus or text links. Dialog actions have matching
+button geometry; account-creation drafts cancel without changing the prior selection.
+
+Permanent deletion requires a disabled latest revision and an exact pasted name
+confirmation, with a copy-name action. The store checks the disabled state and
+generation again, atomically removes every revision and retains only the deleted id
+to suppress bundled reinstallation. Pattern configuration schema 4 persists those
+bank-qualified deletion markers through backup/restore; schemas 1–3 remain readable
+and retain their existing encoding until a deletion is saved. Deletion changes no
+RawSms, parsed evidence, corrections or posted financial rows. Financial Room schema
+v18 is unchanged; deleted patterns cannot be recovered through revision restore.
 
 Keep integration fixtures on the bundled production definitions. Kotlin rule
 profiles live only in `bank-engine/src/testFixtures/`, shared through Gradle's built-in test-fixtures support. The offline CLI is an explicit test tool. Neither

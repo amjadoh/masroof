@@ -7,8 +7,8 @@
     <string name="pattern_approval_manual_message">Use another example message</string>
     <string name="pattern_approval_account_question">Which account receives this movement?</string>
     <string name="pattern_approval_confirmed_account">Your confirmed account</string>
-    <string name="pattern_approval_add_account">Add another account</string>
-    <string name="pattern_approval_cancel_account">Cancel account addition</string>
+    <string name="pattern_approval_add_account">Add account</string>
+    <string name="pattern_approval_cancel_account">Cancel</string>
     <string name="pattern_approval_reference_question">Does any number in the message identify your account?</string>
     <string name="pattern_approval_other_reference">No, the numbers identify the counterparty or funding reference</string>
     <string name="pattern_approval_other_reference_help">Use my selected account for this pattern. The other numbers do not identify my account.</string>
@@ -33,14 +33,14 @@
     <string name="pattern_approval_ready">Financially approved</string>
     <string name="pattern_approval_saved">Pattern approved for new messages</string>
     <string name="pattern_approval_saved_help">Saving alone did not process imported messages. Process matching pending messages below.</string>
-    <string name="pattern_approval_edit">Edit approved interpretation</string>
+    <string name="pattern_approval_edit">Edit approval</string>
     <string name="pattern_approval_process_matching">Process matching pending messages (%1$d)</string>
     <string name="pattern_approval_matching_count">Pending messages matching this pattern: %1$d</string>
     <string name="pattern_approval_no_pending">No eligible pending messages for this pattern in the checked scope.</string>
     <string name="pattern_approval_review_change">Bank reviews: %1$d before processing → %2$d after</string>
     <string name="pattern_approval_dashboard_scope">Posted movements appear in the matching dashboard period. Net movement is not the actual bank balance.</string>
     <string name="pattern_approval_view_accounts">View account figures</string>
-    <string name="pattern_approval_advanced">Advanced · previous revisions</string>
+    <string name="pattern_approval_advanced">History</string>
     <string name="pattern_approval_revision_help">A revision is a saved version of pattern settings. Enabling, disabling or restoring creates a new version; its number does not mean financial approval succeeded.</string>
     <string name="pattern_approval_import_hint">Some patterns at this bank need approval before posting movements. You can import now; unapproved messages remain in Review.</string>
     <string name="pattern_approval_open_patterns">Approve patterns and process pending messages</string>
