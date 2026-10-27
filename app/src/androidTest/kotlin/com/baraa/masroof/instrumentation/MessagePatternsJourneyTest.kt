@@ -58,7 +58,7 @@ class MessagePatternsJourneyTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText("مبلغ العملية: 250SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("مبلغ العملية: 250SAR").performScrollTo().assertIsDisplayed()
         capture("pattern-preview")
-        click(R.string.teaching_previous)
+        compose.onNodeWithContentDescription(ar(R.string.review_back)).performClick()
         click(R.string.pattern_save)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 1 }
         val patternId = store.load().banks.single().currentPatterns.single().id
@@ -68,7 +68,7 @@ class MessagePatternsJourneyTest {
         capture("pattern-disabled")
         compose.runOnIdle { dark.value = true }
         capture("pattern-disabled-dark")
-        click(R.string.teaching_saved_patterns)
+        compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:30SAR")
         click(R.string.teaching_next)
@@ -120,7 +120,7 @@ class MessagePatternsJourneyTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
         capture("pattern-from-review")
         click(R.string.pattern_save)
-        click(R.string.teaching_return_review)
+        compose.onNodeWithContentDescription(ar(R.string.teaching_return_review)).performClick()
         compose.waitUntil(10_000) { returned.value }
         assertEquals(listOf("STC Bank"), store.load().banks.single().senders)
         assertEquals(1, store.load().banks.single().patterns.size)
@@ -171,10 +171,10 @@ class MessagePatternsJourneyTest {
             compose.onAllNodesWithText(ar(R.string.pattern_pending_open))[0].performScrollTo().performClick()
             assertTrue(reviews.getById(requireNotNull(openedReview))!!.rawSmsId in listOf("pending-0", "pending-1"))
             assertEquals(2, reviews.listRequired().size)
-            click(R.string.teaching_back)
+            compose.onNodeWithContentDescription(ar(R.string.settings_back)).performClick()
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-toggle-STC-purchase").performScrollTo().performClick()
-            click(R.string.teaching_saved_patterns)
+            compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
             click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)

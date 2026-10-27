@@ -1,13 +1,14 @@
 package com.baraa.masroof.presentation.patterns
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -17,6 +18,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
+import com.baraa.masroof.presentation.settings.SettingsNavRow
 import com.baraa.masroof.ui.theme.MasroofIconSizes
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
@@ -49,36 +51,48 @@ internal fun PatternDetailCard(
             PatternApprovalStatus.APPROVED -> R.string.pattern_financial_approved_status
         })
         MasroofGuidanceLabel(patternStatusName(pattern), explanation)
-        if (pattern.canApprove && onApprove != null) {
-            if (pattern.status == PatternApprovalStatus.APPROVED) MasroofOutlinedButton(onClick = onApprove,
-                enabled = !busy && pattern.enabled) { Text(stringResource(R.string.pattern_approval_edit)) }
-            else MasroofButton(onClick = onApprove, enabled = !busy && pattern.enabled, modifier = Modifier.fillMaxWidth()) {
-                Icon(MasroofIcons.success, null, Modifier.size(MasroofIconSizes.md))
-                Spacer(Modifier.width(MasroofSpacing.inlineGap))
-                Text(stringResource(R.string.pattern_financial_approve))
-            }
+    }
+    MasroofCard {
+        MasroofSectionHeader(stringResource(R.string.pattern_template_preview), icon = MasroofIcons.preview)
+        PatternTemplatePreview(pattern)
+    }
+    if (onEdit != null) SettingsNavRow(
+        icon = MasroofIcons.edit, title = stringResource(R.string.pattern_message_fields),
+        subtitle = stringResource(R.string.pattern_message_fields_help), onClick = onEdit,
+        enabled = !busy, modifier = Modifier.testTag("pattern-edit"),
+    )
+    if (pattern.canApprove && onApprove != null) {
+        if (pattern.status == PatternApprovalStatus.APPROVED) SettingsNavRow(
+            icon = MasroofIcons.success, title = stringResource(R.string.pattern_financial_settings),
+            subtitle = stringResource(R.string.pattern_financial_settings_help), onClick = onApprove,
+            enabled = !busy && pattern.enabled,
+        ) else MasroofButton(onClick = onApprove, enabled = !busy && pattern.enabled, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.pattern_financial_approve))
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-            if (onEdit != null) MasroofOutlinedButton(onClick = onEdit, enabled = !busy,
-                modifier = Modifier.weight(1f).testTag("pattern-edit")) {
-                Icon(MasroofIcons.edit, null, Modifier.size(MasroofIconSizes.md))
-                Spacer(Modifier.width(MasroofSpacing.inlineGap))
-                Text(stringResource(R.string.pattern_edit))
-            }
-            MasroofOutlinedButton(onDelete, enabled = !busy && !pattern.enabled,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.weight(1f).testTag("pattern-delete")) {
-                Icon(MasroofIcons.delete, null, Modifier.size(MasroofIconSizes.md))
-                Spacer(Modifier.width(MasroofSpacing.inlineGap))
-                Text(stringResource(R.string.pattern_delete))
-            }
-        }
-        if (pattern.enabled) Text(stringResource(R.string.pattern_delete_disable_first), style = MaterialTheme.typography.bodySmall)
-        MasroofOutlinedButton(onHistory, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-advanced")) {
-            Icon(MasroofIcons.clock, null, Modifier.size(MasroofIconSizes.md))
-            Spacer(Modifier.width(MasroofSpacing.inlineGap))
-            Text(stringResource(R.string.pattern_approval_advanced))
-        }
+    }
+    SettingsNavRow(
+        icon = MasroofIcons.clock, title = stringResource(R.string.pattern_approval_advanced),
+        subtitle = stringResource(R.string.pattern_history_help), onClick = onHistory,
+        enabled = !busy, modifier = Modifier.testTag("pattern-advanced"),
+    )
+    MasroofOutlinedButton(onDelete, enabled = !busy && !pattern.enabled,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        modifier = Modifier.fillMaxWidth().testTag("pattern-delete")) {
+        Icon(MasroofIcons.delete, null, Modifier.size(MasroofIconSizes.md))
+        Spacer(Modifier.width(MasroofSpacing.inlineGap))
+        Text(stringResource(R.string.pattern_delete_action))
+    }
+}
+
+/** Read-only, always expanded; shared by details and the catalog's quick preview. */
+@Composable
+internal fun PatternTemplatePreview(pattern: PatternDefinitionView) {
+    Column(Modifier.fillMaxWidth().testTag("pattern-preview"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+        Text(stringResource(R.string.pattern_template_preview_help), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        var template = pattern.messageTemplate
+        pattern.fields.forEach { field -> template = template.replace("{$field}", "[${patternFieldName(field)}]") }
+        SelectionContainer { Text(template, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 

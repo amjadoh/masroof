@@ -35,7 +35,6 @@ internal fun PatternHistoryScreen(bank: PatternBankView, pattern: PatternDefinit
                     Text(stringResource(R.string.pattern_restore_revision, revision))
                 }
             }
-            MasroofOutlinedButton(onBack, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.teaching_back)) }
         }
     }
 }

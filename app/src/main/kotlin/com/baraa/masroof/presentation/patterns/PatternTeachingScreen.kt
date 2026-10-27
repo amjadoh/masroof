@@ -111,7 +111,12 @@ internal fun PatternTeachingScreen(
         else -> stringResource(R.string.teaching_sample_title)
     }
     MasroofSecondaryScaffold(stringResource(if (existingPattern == null) R.string.teaching_title else R.string.pattern_edit_title), ::back,
-        stringResource(R.string.review_back)) { modifier ->
+        stringResource(R.string.review_back), actions = {
+            if (step == 1) MasroofTextButton(::buildPreview,
+                enabled = !busy && bindings.any { it.field == "amount" && !it.ignored }) {
+                Text(stringResource(R.string.pattern_preview))
+            }
+        }) { modifier ->
         Box(modifier, contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = MasroofTeachingTokens.maxWidth).fillMaxSize().imePadding(),
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
@@ -170,27 +175,25 @@ internal fun PatternTeachingScreen(
                 }
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
                     when (step) {
-                        0 -> PatternTeachingNavigation(R.string.teaching_back, ::back, R.string.teaching_next,
-                            { keyboard?.hide(); focus.clearFocus(); step = 1 }, !busy, !busy && !loadingExample && body.text.isNotBlank())
+                        0 -> PatternTeachingAction(R.string.teaching_next,
+                            { keyboard?.hide(); focus.clearFocus(); step = 1 }, !busy && !loadingExample && body.text.isNotBlank())
                         1 -> {
                             Text(if (body.selection.collapsed) stringResource(R.string.teaching_select_value)
                                 else body.text.substring(body.selection.min, body.selection.max), maxLines = 2, overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                                if (field != "amount") MasroofOutlinedButton({ bindings = bindings.filterNot { it.field == field }; advance() },
-                                    enabled = !busy, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.teaching_skip_field)) }
+                                if (field != "amount") MasroofTextButton({ bindings = bindings.filterNot { it.field == field }; advance() },
+                                    enabled = !busy) { Text(stringResource(R.string.teaching_skip_field)) }
                                 MasroofButton({ bindSelection(field); advance() }, enabled = !busy && !body.selection.collapsed,
                                     modifier = Modifier.weight(1f).testTag("pattern-bind")) { Text(stringResource(R.string.teaching_confirm_field)) }
                             }
-                            PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_preview, ::buildPreview, !busy,
-                                !busy && bindings.any { it.field == "amount" && !it.ignored }, outlinedAction = true)
                         }
-                        2 -> PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_save, {
+                        2 -> PatternTeachingAction(R.string.pattern_save, {
                             preview?.let { reviewed -> work { workflow.saveTeaching(reviewed); onSaved(reviewed, body.text) } }
-                        }, !busy, !busy && preview != null)
-                        3 -> PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_test, {
+                        }, !busy && preview != null)
+                        3 -> PatternTeachingAction(R.string.pattern_test, {
                             preview?.let { reviewed -> work { sampleResult = workflow.tryPreview(reviewed, sender, sample); sampleChecked = true } }
-                        }, !busy, !busy && sample.isNotBlank())
+                        }, !busy && sample.isNotBlank())
                     }
                 }
             }

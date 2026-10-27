@@ -68,7 +68,7 @@ class AlJaziraSharedPatternsJourneyTest {
             compose.onNodeWithTag("pattern-restore-$bankId-bank.purchase-1").performScrollTo().performClick()
             compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().banks.single { it.bankId == bankId }.currentPatterns.single { it.id == "bank.purchase" }.revision == 3 } }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag(toggle).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText(AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.teaching_saved_patterns)).performScrollTo().performClick()
+            compose.onNodeWithContentDescription(AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.teaching_saved_patterns)).performClick()
             compose.onNodeWithText(AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.pattern_pending_title)).performScrollTo().performClick()
             val apply = AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.pattern_apply_pending)
             compose.onNodeWithText(apply).performScrollTo().performClick()
