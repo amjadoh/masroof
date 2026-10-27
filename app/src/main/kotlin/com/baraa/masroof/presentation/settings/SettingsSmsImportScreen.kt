@@ -63,7 +63,8 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
             SettingsImportPeriod(from, through, !busy,
                 { fromText = it.toString(); onClearResult() }, { throughText = it.toString(); onClearResult() })
             if (banks.any { bank -> bank.bankId in selected && bank.currentPatterns.any { it.status == PatternApprovalStatus.PREVIEW_ONLY } }) {
-                MasroofCard { MasroofText(stringResource(R.string.pattern_approval_import_hint)) }
+                MasroofCard { MasroofGuidanceLabel(stringResource(R.string.pattern_approval_title),
+                    stringResource(R.string.pattern_approval_import_hint)) }
             }
             if (busy) {
                 CircularProgressIndicator()
