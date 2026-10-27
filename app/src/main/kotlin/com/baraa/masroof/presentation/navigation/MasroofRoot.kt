@@ -498,6 +498,7 @@ private fun MasroofContent(
     } else {
         OnboardingRoute(
             viewModel = onboardingViewModel,
+            settingsViewModel = settingsViewModel,
             onRequestPermissions = onRequestPermissions,
             onOpenAppSettings = onOpenAppSettings,
             onRequestRestoreBackup = onRequestRestoreBackup,

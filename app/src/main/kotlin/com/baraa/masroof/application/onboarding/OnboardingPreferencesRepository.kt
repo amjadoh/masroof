@@ -1,5 +1,13 @@
 package com.baraa.masroof.application.onboarding
 
+@kotlinx.serialization.Serializable
+data class OnboardingSetupDraft(
+    val bankIds: Set<String>,
+    val from: String,
+    val through: String,
+    val banksConfirmed: Boolean = false,
+)
+
 /**
  * Small persisted onboarding setup state.
  *
@@ -21,4 +29,8 @@ interface OnboardingPreferencesRepository {
     fun isHistoricalImportCompleted(): Boolean
 
     fun setHistoricalImportCompleted(completed: Boolean)
+
+    fun getSetupDraft(): OnboardingSetupDraft?
+
+    fun setSetupDraft(draft: OnboardingSetupDraft?)
 }

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.application.onboarding.HistoricalImportGateway
 import com.baraa.masroof.application.onboarding.OnboardingPreferencesRepository
-import com.baraa.masroof.application.onboarding.toHistoricalImportResult
 
 fun onboardingViewModelFactory(
     container: AppContainer,
@@ -16,11 +15,11 @@ fun onboardingViewModelFactory(
     initializer {
         OnboardingViewModel(
             onboardingPrefs = onboardingPreferencesRepository,
-            historicalImportGateway = HistoricalImportGateway { after ->
-                container.historicalSmsScanner.scan(after).toHistoricalImportResult()
+            historicalImportGateway = HistoricalImportGateway { request ->
+                container.bankSmsImportWorkflow.import(request.bankIds, request.from, request.through)
             },
+            messagePatternsWorkflow = container.messagePatternsWorkflow,
             onboardingOwnershipWorkflow = container.onboardingOwnershipWorkflow,
-            discoverFromStoredEvents = { container.discoverFromStoredEvents() },
             refreshReviewQueue = { container.refreshReviewQueue() },
             reconcileOwnershipChange = { change ->
                 container.reviewWorkflowService.reconcileOwnershipChange(change)

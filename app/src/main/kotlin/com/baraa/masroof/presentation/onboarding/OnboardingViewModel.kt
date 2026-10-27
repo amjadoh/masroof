@@ -31,13 +31,16 @@ class OnboardingViewModel(
     private val onboardingPrefs: OnboardingPreferencesRepository,
     private val historicalImportGateway: HistoricalImportGateway,
     private val onboardingOwnershipWorkflow: OnboardingOwnershipWorkflow,
-    private val discoverFromStoredEvents: suspend () -> Int,
     private val refreshReviewQueue: suspend () -> Unit,
     private val reconcileOwnershipChange: suspend (ReviewWorkflowService.OwnershipChange) -> Unit = {},
     private val databaseBackupService: DatabaseBackupGateway,
     private val permissionStateProvider: () -> Boolean,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.systemDefaultZone(),
+    val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
+    private val loadBankCatalog: suspend () -> com.baraa.masroof.application.patterns.PatternCatalog = {
+        messagePatternsWorkflow?.catalog() ?: com.baraa.masroof.application.patterns.PatternCatalog(0, emptyList())
+    },
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -55,10 +58,21 @@ class OnboardingViewModel(
                 _uiState.update {
                     it.copy(
                         permissionGranted = permissionGranted,
-                        step = if (permissionGranted) OnboardingStep.IMPORTING else OnboardingStep.PERMISSION,
+                        step = OnboardingStep.IMPORTING,
                         importState = ImportState.Scanning,
                     )
                 }
+                return@launch
+            }
+            if (_uiState.value.updatingOwnership || _uiState.value.finalizing || _uiState.value.restoringBackup) {
+                _uiState.update { it.copy(permissionGranted = permissionGranted) }
+                return@launch
+            }
+            val catalog = try { loadBankCatalog() } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                val completed = onboardingPrefs.isOnboardingCompleted()
+                _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED,
+                    step = if (completed) OnboardingStep.HOME else it.step, onboardingCompleted = completed) }
                 return@launch
             }
             val started = onboardingPrefs.isOnboardingStarted()
@@ -68,42 +82,114 @@ class OnboardingViewModel(
                 Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate()
             }
             val importCompleted = onboardingPrefs.isHistoricalImportCompleted()
+            val draft = onboardingPrefs.getSetupDraft()
+            val selected = draft?.bankIds.orEmpty().filter { id -> catalog.banks.any { it.bankId == id } }.toSet()
+            val confirmed = draft?.banksConfirmed == true && selected.isNotEmpty() && selected == draft.bankIds
+            val from = draft?.from?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val through = draft?.through?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val today = LocalDate.now(clock)
+            val selectedDate = from ?: savedDate ?: today.minusDays(30)
 
             val step = when {
                 completed -> OnboardingStep.HOME
                 !started -> OnboardingStep.WELCOME
+                !confirmed -> OnboardingStep.BANKS
+                importCompleted -> OnboardingStep.OWNERSHIP
                 !permissionGranted -> OnboardingStep.PERMISSION
-                !importCompleted -> OnboardingStep.IMPORT_DATE
-                else -> OnboardingStep.OWNERSHIP
+                else -> OnboardingStep.IMPORT_DATE
             }
 
             _uiState.update {
                 it.copy(
                     permissionGranted = permissionGranted,
                     onboardingCompleted = completed,
-                    selectedImportDate = savedDate ?: ImportDatePolicy.last27th(LocalDate.now(clock)),
-                    selectedDateOption = if (savedDate == null) ImportDateOption.LAST_27TH else it.selectedDateOption,
+                    selectedImportDate = selectedDate,
+                    importThroughDate = through ?: today,
+                    bankCatalog = catalog, selectedBankIds = selected, banksConfirmed = confirmed, loadingBanks = false,
+                    selectedDateOption = when {
+                        through != null && through != today -> ImportDateOption.CUSTOM
+                        selectedDate == today.withDayOfMonth(1) -> ImportDateOption.CURRENT_MONTH_START
+                        selectedDate == today.minusDays(30) -> ImportDateOption.LAST_30_DAYS
+                        selectedDate == ImportDatePolicy.last27th(today) -> ImportDateOption.LAST_27TH
+                        else -> ImportDateOption.CUSTOM
+                    },
                     step = step,
                     importState = if (step == OnboardingStep.IMPORTING) ImportState.Scanning else ImportState.Idle,
                 )
             }
 
             if (step == OnboardingStep.OWNERSHIP || step == OnboardingStep.HOME) {
-                loadCandidatesAndCounts()
+                try { loadCandidatesAndCounts() }
+                catch (error: CancellationException) { throw error }
+                catch (_: Exception) { _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
             }
         }
     }
 
     fun onStartClicked() {
+        if (isBusy()) return
         onboardingPrefs.setOnboardingStarted(true)
         val permissionGranted = permissionStateProvider()
         _uiState.update {
             it.copy(
                 permissionGranted = permissionGranted,
-                step = if (permissionGranted) OnboardingStep.IMPORT_DATE else OnboardingStep.PERMISSION,
-                error = if (permissionGranted) null else OnboardingError.PERMISSION_DENIED,
+                step = OnboardingStep.BANKS,
+                error = null,
             )
         }
+    }
+
+    fun toggleBank(bankId: String) {
+        if (isBusy() || _uiState.value.bankCatalog?.banks?.none { it.bankId == bankId } != false) return
+        _uiState.update { it.copy(selectedBankIds = if (bankId in it.selectedBankIds) it.selectedBankIds - bankId else it.selectedBankIds + bankId,
+            banksConfirmed = false, error = null) }
+        onboardingPrefs.setHistoricalImportCompleted(false)
+        persistDraft()
+    }
+
+    fun continueFromBanks() {
+        if (isBusy() || _uiState.value.selectedBankIds.isEmpty() || _uiState.value.loadingBanks || _uiState.value.bankCatalog == null) return
+        val permission = permissionStateProvider()
+        _uiState.update { it.copy(banksConfirmed = true, permissionGranted = permission,
+            step = if (permission) OnboardingStep.IMPORT_DATE else OnboardingStep.PERMISSION, error = null) }
+        persistDraft()
+    }
+
+    fun onBankAdded(bankId: String) {
+        viewModelScope.launch {
+            try {
+                val catalog = loadBankCatalog()
+                _uiState.update { it.copy(bankCatalog = catalog, loadingBanks = false, error = null) }
+                if (bankId !in _uiState.value.selectedBankIds) toggleBank(bankId)
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED) } }
+        }
+    }
+
+    fun goBack() {
+        if (isBusy()) return
+        if (_uiState.value.step == OnboardingStep.OWNERSHIP) onboardingPrefs.setHistoricalImportCompleted(false)
+        _uiState.update { it.copy(step = when (it.step) {
+            OnboardingStep.BANKS -> OnboardingStep.WELCOME
+            OnboardingStep.PERMISSION -> OnboardingStep.BANKS
+            OnboardingStep.IMPORT_DATE -> if (it.permissionGranted) OnboardingStep.BANKS else OnboardingStep.PERMISSION
+            OnboardingStep.OWNERSHIP, OnboardingStep.IMPORTING -> OnboardingStep.IMPORT_DATE
+            OnboardingStep.FINALIZE -> OnboardingStep.HOME
+            else -> it.step
+        }, error = null) }
+        if (_uiState.value.step == OnboardingStep.BANKS) {
+            _uiState.update { it.copy(banksConfirmed = false) }
+            persistDraft()
+        }
+    }
+
+    private fun isBusy() = importJob?.isActive == true || _uiState.value.updatingOwnership || _uiState.value.finalizing || _uiState.value.restoringBackup
+
+    private fun persistDraft() {
+        val state = _uiState.value
+        onboardingPrefs.setSetupDraft(com.baraa.masroof.application.onboarding.OnboardingSetupDraft(state.selectedBankIds,
+            (state.selectedImportDate ?: LocalDate.now(clock).minusDays(30)).toString(),
+            (state.importThroughDate ?: LocalDate.now(clock)).toString(), state.banksConfirmed))
     }
 
     fun clearBackupError() {
@@ -237,6 +323,7 @@ class OnboardingViewModel(
                 OnboardingStep.IMPORTING,
                 -> if (granted) it.step else OnboardingStep.PERMISSION
                 OnboardingStep.WELCOME,
+                OnboardingStep.BANKS,
                 OnboardingStep.OWNERSHIP,
                 OnboardingStep.FINALIZE,
                 OnboardingStep.HOME,
@@ -257,6 +344,7 @@ class OnboardingViewModel(
     }
 
     fun selectDateOption(option: ImportDateOption) {
+        if (isBusy()) return
         val today = LocalDate.now(clock)
         val date = when (option) {
             ImportDateOption.CURRENT_MONTH_START -> today.withDayOfMonth(1)
@@ -264,10 +352,13 @@ class OnboardingViewModel(
             ImportDateOption.LAST_27TH -> ImportDatePolicy.last27th(today)
             ImportDateOption.CUSTOM -> _uiState.value.selectedImportDate ?: ImportDatePolicy.last27th(today)
         }
-        _uiState.update { it.copy(selectedDateOption = option, selectedImportDate = date, error = null) }
+        _uiState.update { it.copy(selectedDateOption = option, selectedImportDate = date,
+            importThroughDate = if (option == ImportDateOption.CUSTOM) it.importThroughDate else today, error = null) }
+        persistDraft()
     }
 
     fun selectCustomDate(date: LocalDate) {
+        if (isBusy()) return
         val today = LocalDate.now(clock)
         if (date.isAfter(today)) {
             _uiState.update { it.copy(error = OnboardingError.INVALID_FUTURE_DATE) }
@@ -280,31 +371,48 @@ class OnboardingViewModel(
                 error = null,
             )
         }
+        persistDraft()
+    }
+
+    fun selectImportThroughDate(date: LocalDate) {
+        if (isBusy()) return
+        if (date.isAfter(LocalDate.now(clock))) { _uiState.update { it.copy(error = OnboardingError.INVALID_FUTURE_DATE) }; return }
+        _uiState.update { it.copy(importThroughDate = date, error = null) }
+        persistDraft()
     }
 
     fun startImport() {
         if (importJob?.isActive == true || _uiState.value.importState is ImportState.Scanning) {
             return
         }
+        val selection = _uiState.value
+        val from = selection.selectedImportDate ?: LocalDate.now(clock).minusDays(30)
+        val through = selection.importThroughDate ?: LocalDate.now(clock)
+        if (!selection.banksConfirmed || selection.selectedBankIds.isEmpty() || selection.bankCatalog == null ||
+            selection.selectedBankIds.any { id -> selection.bankCatalog.banks.none { it.bankId == id } } ||
+            from.isAfter(through) || through.isAfter(LocalDate.now(clock))) {
+            _uiState.update { it.copy(error = OnboardingError.INVALID_IMPORT_SELECTION) }; return
+        }
+        if (!permissionStateProvider()) { _uiState.update { it.copy(step = OnboardingStep.PERMISSION, permissionGranted = false, error = OnboardingError.PERMISSION_DENIED) }; return }
+        persistDraft()
 
         importJob = viewModelScope.launch {
             try {
-                val selectedDate = _uiState.value.selectedImportDate ?: ImportDatePolicy.last27th(LocalDate.now(clock))
+                val selectedDate = from
                 val startInstant = ImportDatePolicy.toStartOfDayInstant(selectedDate, zoneId)
 
                 onboardingPrefs.setHistoricalImportStartEpochMillis(startInstant.toEpochMilli())
                 onboardingPrefs.setHistoricalImportCompleted(false)
                 _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, error = null) }
 
-                val result = historicalImportGateway.scan(receivedAfter = startInstant)
+                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through))
                 val state = result.toImportState()
                 _uiState.update { it.copy(importState = state) }
 
                 when (state) {
                     is ImportState.Completed -> {
                         try {
-                            discoverFromStoredEvents()
-                            refreshReviewQueue()
+                            // The shared importer already completed discovery/reconciliation for this batch.
                             loadCandidatesAndCounts()
                             onboardingPrefs.setHistoricalImportCompleted(true)
                             _uiState.update { it.copy(step = OnboardingStep.OWNERSHIP) }
@@ -359,6 +467,8 @@ class OnboardingViewModel(
     }
 
     fun setAccountOwnership(candidate: OwnershipCandidateUi, owned: Boolean) {
+        if (isBusy() || candidate.bank.id !in _uiState.value.selectedBankIds) return
+        _uiState.update { it.copy(updatingOwnership = true, error = null) }
         viewModelScope.launch {
             try {
                 val ref = AccountReference(candidate.bank, candidate.suffix)
@@ -369,13 +479,17 @@ class OnboardingViewModel(
                 }
                 reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
                 loadCandidatesAndCounts()
-            } catch (_: Exception) {
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                reloadAfterOwnershipFailure()
                 _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
-            }
+            } finally { _uiState.update { it.copy(updatingOwnership = false) } }
         }
     }
 
     fun setCardOwnership(candidate: OwnershipCandidateUi, owned: Boolean) {
+        if (isBusy() || candidate.bank.id !in _uiState.value.selectedBankIds) return
+        _uiState.update { it.copy(updatingOwnership = true, error = null) }
         viewModelScope.launch {
             try {
                 val ref = CardReference(candidate.bank, candidate.suffix)
@@ -386,23 +500,27 @@ class OnboardingViewModel(
                 }
                 reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
                 loadCandidatesAndCounts()
-            } catch (_: Exception) {
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                reloadAfterOwnershipFailure()
                 _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
-            }
+            } finally { _uiState.update { it.copy(updatingOwnership = false) } }
         }
     }
 
     fun finalizeOnboarding() {
+        if (isBusy()) return
+        _uiState.update { it.copy(finalizing = true, error = null) }
         viewModelScope.launch {
-            if (onboardingOwnershipWorkflow.loadSnapshot().hasUnknownCandidates) {
-                _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
-                return@launch
-            }
-            _uiState.update { it.copy(finalizing = true, error = null) }
             try {
+                val snapshot = onboardingOwnershipWorkflow.loadSnapshot(_uiState.value.selectedBankIds)
+                if (!_uiState.value.banksConfirmed || snapshot.hasUnknownCandidates || snapshot.cards.any { it.ownership == com.baraa.masroof.domain.model.OwnershipStatus.OWNED && it.cardType == null }) {
+                    _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
+                    return@launch
+                }
                 refreshReviewQueue()
-                onboardingPrefs.setOnboardingCompleted(true)
                 loadCandidatesAndCounts()
+                onboardingPrefs.setOnboardingCompleted(true)
                 _uiState.update {
                     it.copy(
                         onboardingCompleted = true,
@@ -410,18 +528,19 @@ class OnboardingViewModel(
                         step = OnboardingStep.FINALIZE,
                     )
                 }
-            } catch (_: Exception) {
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
                 _uiState.update { it.copy(finalizing = false, error = OnboardingError.FINALIZATION_FAILED) }
-            }
+            } finally { _uiState.update { it.copy(finalizing = false) } }
         }
     }
 
     fun enterApp() {
-        _uiState.update { it.copy(step = OnboardingStep.HOME) }
+        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME) }
     }
 
     private suspend fun loadCandidatesAndCounts() {
-        val snapshot = onboardingOwnershipWorkflow.loadSnapshot()
+        val snapshot = onboardingOwnershipWorkflow.loadSnapshot(_uiState.value.selectedBankIds)
         _uiState.update {
             it.copy(
                 accounts = snapshot.accounts.map(::toOwnershipCandidateUi),
@@ -430,6 +549,21 @@ class OnboardingViewModel(
                 ownedCardsCount = snapshot.ownedCardsCount,
                 reviewRequiredCount = snapshot.reviewRequiredCount,
             )
+        }
+    }
+
+    private suspend fun reloadAfterOwnershipFailure() {
+        try { loadCandidatesAndCounts() }
+        catch (error: CancellationException) { throw error }
+        catch (_: Exception) { /* Preserve the durable decision and show the write/retry failure. */ }
+    }
+
+    fun refreshOwnership() {
+        if (_uiState.value.step != OnboardingStep.OWNERSHIP || isBusy()) return
+        viewModelScope.launch {
+            try { loadCandidatesAndCounts() }
+            catch (error: CancellationException) { throw error }
+            catch (_: Exception) { _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
         }
     }
 
@@ -446,5 +580,6 @@ class OnboardingViewModel(
             bank = candidate.bank,
             suffix = candidate.suffix,
             ownership = candidate.ownership,
+            cardType = candidate.cardType,
         )
 }

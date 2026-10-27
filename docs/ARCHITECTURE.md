@@ -48,6 +48,16 @@ A bank page owns accounts, cards, loans, teaching, SMS import and CSV comparison
 Backup/restore and stored-data maintenance remain separate; correction insights
 remain app-wide. Legacy navigation keys remain readable.
 
+First-run setup uses the same bank choices, bank editor, inclusive receipt-date
+picker, manual registry sheets and card setup as Settings. It requires an explicit
+bank selection and calls the same `BankSmsImportWorkflow`; onboarding does not run a
+second discovery/reconciliation pass after the batch. Ownership review is scoped
+to selected banks, and owned cards need a configured type before setup completes.
+Unconfigured bank patterns remain visible and can be taught/approved after setup.
+The optional `bank_setup_draft` preference preserves bank identities and both dates
+across restarts and backup/restore rollback. Existing preference names and completed
+setups remain compatible; the financial schema stays v18.
+
 Settings and dashboard historical-import actions open the common bank/date picker. `BankSmsImportWorkflow`
 converts inclusive local calendar dates to an exclusive end instant and runs one
 `HistoricalSmsScanner` batch for the selected bank set. Routing still owns sender

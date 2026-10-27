@@ -21,6 +21,7 @@ data class BackupPreferencesSnapshot(
     val themeMode: String,
     val labAnalysis: String? = null,
     val messagePatterns: String? = null,
+    val onboardingSetup: String? = null,
 )
 
 enum class BackupImportOutcome {
