@@ -5,13 +5,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.domain.model.*
+import com.baraa.masroof.domain.period.FinancialPeriod
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.presentation.patterns.MessagePatternsScreen
 import com.baraa.masroof.sms.hash.SmsBodyHasher
@@ -24,87 +25,97 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Instant
+import java.time.LocalDate
 
 @RunWith(AndroidJUnit4::class)
 class PatternFinancialActivationJourneyTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val body = "Internal incoming transfer\nAmount:10SAR\nFrom:TEST PERSON\nAcc:321\nAt:15/10/26 12:30"
-    private fun sms(id: String, amount: String) = body.replace("10SAR", "${amount}SAR").let {
+    private fun sms(id: String, amount: String, reference: String = "321") = body.replace("10SAR", "${amount}SAR").replace("Acc:321", "Acc:$reference").let {
         RawSms(id, "STC Bank", it, Instant.parse("2026-10-15T10:00:00Z"), id, SmsBodyHasher.sha256Hex(it))
     }
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
-    private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick(); compose.waitForIdle() }
+    private fun openApproval() {
+        compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
+        compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-reference-context").assertIsEnabled() }.isSuccess }
+        compose.onNodeWithTag("pattern-reference-context").performScrollTo().performClick()
+        compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
+    }
 
-    @Test fun approveExplicitReferenceThenProcessPendingAndFutureWithoutChangingPostedEvidence() = runBlocking {
+    @Test fun singlePageApprovalUsesImportedExamplesAndPostsVaryingCounterpartyReferencesToTheSelectedAccount() = runBlocking {
         val context = TestStorageContext(compose.activity, "financial-pattern-${java.util.UUID.randomUUID()}")
         val c = AppContainer(context)
         try {
-            val approvedGeneration = c.messagePatternsWorkflow.load().generation + 1
+            val w = c.messagePatternsWorkflow
+            w.confirmPatternAccount("BANK_STC", "4321")
+            val approvedGeneration = w.load().generation + 1
             c.processRawSmsUseCase.ingest(sms("pending", "10"))
+            c.processRawSmsUseCase.ingest(sms("pending-second", "20", "654"))
+            val outgoingBody = "Internal outward transfer\nAmount:5SAR\nTo:OTHER PERSON\nAcc:987\nAt:15/10/26 13:30"
+            c.processRawSmsUseCase.ingest(RawSms("other-pattern", "STC Bank", outgoingBody,
+                Instant.parse("2026-10-15T11:00:00Z"), "other-pattern", SmsBodyHasher.sha256Hex(outgoingBody)))
             val dark = mutableStateOf(false)
             compose.setContent {
                 val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration,
                     androidx.activity.compose.LocalActivityResultRegistryOwner provides compose.activity) {
-                    MasroofTheme(darkTheme = dark.value) { Surface {
-                        MessagePatternsScreen(c.messagePatternsWorkflow, "BANK_STC", onBack = {})
-                    } }
+                    MasroofTheme(darkTheme = dark.value) { Surface { MessagePatternsScreen(w, "BANK_STC", onBack = {}) } }
                 }
             }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-internal-in").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
-            compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-financial-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-                it(androidx.compose.ui.text.AnnotatedString(body))
-            }
-            compose.onNodeWithTag("pattern-financial-body").assertTextContains(body)
-
-            compose.onNodeWithTag("pattern-account-last4").performScrollTo().performTextInput("4321")
-            click(R.string.pattern_financial_account_owned)
-            click(R.string.pattern_financial_confirm_account)
-            compose.waitUntil(10_000) { runBlocking { c.accountRegistryRepository.listAll().size == 1 } }
-            click(R.string.pattern_financial_fixed_account)
-            val keys = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_field_keys)
-            val fields = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_field_names)
-            compose.onNodeWithText(fields[keys.indexOf("account_reference")]).performClick()
-            click(R.string.pattern_financial_validate)
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
+            openApproval()
+            compose.onNodeWithText(ar(R.string.pattern_approval_imported_message)).assertExists()
+            compose.onNodeWithTag("pattern-account-last4").assertDoesNotExist()
+            compose.onNodeWithText(ar(R.string.pattern_approval_add_account)).performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-account-last4").performScrollTo().performTextInput("5555")
+            compose.onNodeWithTag("pattern-financial-save").assertIsNotEnabled()
+            compose.onNodeWithText(ar(R.string.pattern_approval_cancel_account)).performScrollTo().performClick()
+            compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo()
             compose.waitForIdle()
-            ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-financial", "explicit-reference-light")
+            ScreenshotArtifactWriter.publish(compose.onRoot().captureToImage().asAndroidBitmap(), "pattern-financial", "single-page-light")
             compose.runOnIdle { dark.value = true }
             compose.waitForIdle()
-            ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-financial", "explicit-reference-dark")
+            ScreenshotArtifactWriter.publish(compose.onRoot().captureToImage().asAndroidBitmap(), "pattern-financial", "single-page-dark")
+            // Discarding a validated preview never approves or posts anything.
             compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().isNotEmpty() }
-            assertTrue(c.messagePatternsWorkflow.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.all { it.factContract == null })
+            assertTrue(w.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.all { it.factContract == null })
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
-            compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-financial-body").performScrollTo().performTextInput(body)
-            click(R.string.pattern_financial_select_account)
-            compose.onNodeWithText(" • 4321").performClick()
-            click(R.string.pattern_financial_fixed_account)
-            compose.onNodeWithText(fields[keys.indexOf("account_reference")]).performClick()
-            click(R.string.pattern_financial_validate)
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
+            openApproval()
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
-            compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().generation == approvedGeneration } }
-            click(R.string.teaching_saved_patterns)
-            click(R.string.pattern_pending_title)
-            click(R.string.pattern_apply_pending)
-            compose.waitUntil(15_000) { runBlocking {
-                c.financialTransactionRepository.listAll().size == 1 && c.reviewRepository.findByRawSmsId("pending")?.status == ReviewStatus.RESOLVED
-            } }
-            assertEquals(ReviewStatus.RESOLVED, c.reviewRepository.findByRawSmsId("pending")!!.status)
-            assertEquals(FinancialTransactionType.EXTERNAL_TRANSFER_IN, c.financialTransactionRepository.listAll().single().type)
-            val evidence = c.parsedEventRepository.findByRawSmsId("pending")
-            c.processRawSmsUseCase.ingest(sms("future", "20"))
+            compose.waitUntil(10_000) { runBlocking { w.load().generation == approvedGeneration } }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-matching").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(ar(R.string.pattern_approval_ready)).assertExists()
+            assertEquals(3, c.reviewRepository.listRequired().size)
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            compose.onNodeWithTag("pattern-apply-matching").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("pattern-review-change").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("pattern-review-change").assertTextEquals(
+                com.baraa.masroof.application.locale.AppDigits.display(AppLocaleContext.wrap(compose.activity, "ar")
+                    .getString(R.string.pattern_approval_review_change, 3, 1)))
+            compose.onNodeWithTag("pattern-apply-matching").assertDoesNotExist()
+            assertEquals(1, c.reviewRepository.listRequired().size)
+            assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("other-pattern")!!.status)
             assertEquals(2, c.financialTransactionRepository.listAll().size)
-            c.messagePatternsWorkflow.setEnabled(approvedGeneration, "BANK_STC", "stc-internal-in", false)
-            c.processRawSmsUseCase.ingest(sms("disabled", "30"))
+            val period = FinancialPeriod(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 1))
+            val account = c.dashboardService.loadOverview(period).accountsFleet!!.accounts.single { it.maskedNumber == "4321" }
+            assertEquals("30.00", account.totalIn.amount.toPlainString())
+            val evidence = c.parsedEventRepository.findByRawSmsId("pending")
+            c.processRawSmsUseCase.ingest(sms("future", "40", "999"))
+            assertEquals(3, c.financialTransactionRepository.listAll().size)
+            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-restore-BANK_STC-stc-internal-in-1").performScrollTo().performClick()
+            compose.waitUntil(10_000) { runBlocking { w.load().generation > approvedGeneration } }
+            compose.onNodeWithTag("pattern-apply-result").assertDoesNotExist()
+            compose.onNodeWithText(ar(R.string.pattern_approval_saved)).assertDoesNotExist()
+            compose.onNodeWithText(ar(R.string.pattern_approval_waiting)).assertExists()
+            w.setEnabled(w.load().generation, "BANK_STC", "stc-internal-in", false)
+            c.processRawSmsUseCase.ingest(sms("disabled", "50"))
             c.processStoredSmsUseCase.process("pending")
             assertEquals(evidence, c.parsedEventRepository.findByRawSmsId("pending"))
-            assertEquals(2, c.financialTransactionRepository.listAll().size)
+            assertEquals(3, c.financialTransactionRepository.listAll().size)
         } finally { c.close(); context.getDatabasePath("masroof.db").parentFile?.deleteRecursively() }
     }
 }
