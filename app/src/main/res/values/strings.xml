@@ -352,7 +352,6 @@
     <string name="dashboard_total_spent">إجمالي الصادر</string>
     <string name="dashboard_self_transfer_in">وارد من حساب آخر</string>
     <string name="dashboard_self_transfer_out">صادر إلى حساب آخر</string>
-<string name="dashboard_owned_accounts_badge_count">%1$d حسابات</string>
 <string name="dashboard_external_in_short">حوالات واردة</string>
     <string name="dashboard_external_out_short">تحويلات خارجية</string>
     <string name="dashboard_bill_payments">سداد فواتير</string>
