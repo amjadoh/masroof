@@ -581,5 +581,6 @@ class OnboardingViewModel(
             suffix = candidate.suffix,
             ownership = candidate.ownership,
             cardType = candidate.cardType,
+            discoveredFromSms = candidate.discoveredFromSms,
         )
 }

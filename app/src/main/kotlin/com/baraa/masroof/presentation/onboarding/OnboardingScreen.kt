@@ -75,10 +75,11 @@ fun OnboardingRoute(
     val busy = registry.updating || state.updatingOwnership || state.finalizing || state.restoringBackup || state.importState is ImportState.Scanning
     val back = { if (!busy) viewModel.goBack() }
     BackHandler(enabled = state.step != OnboardingStep.WELCOME || busy, onBack = back)
-    LaunchedEffect(state.step, state.updatingOwnership) {
+    LaunchedEffect(state.step, state.updatingOwnership, state.accounts, state.cards) {
         if (state.step == OnboardingStep.OWNERSHIP && !state.updatingOwnership) settingsViewModel.refresh()
     }
-    LaunchedEffect(state.step, registry.updating) {
+    // Fast writes can coalesce busy transitions; the persisted registry facts drive refreshes too.
+    LaunchedEffect(state.step, registry.updating, registry.followedCards, registry.followedAccounts) {
         if (!registry.updating) viewModel.refreshOwnership()
     }
     CompositionLocalProvider(LocalSettingsBankNames provides state.bankCatalog?.banks.orEmpty().mapNotNull { bank ->
@@ -540,7 +541,7 @@ private fun OwnershipStep(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Start,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (importResult.distinctSenders.isNotEmpty()) {
                         Spacer(Modifier.height(MasroofSpacing.sectionHeaderGap))
@@ -562,7 +563,7 @@ private fun OwnershipStep(
                 }
             }
         }
-        item { MasroofSectionHeader(title = stringResource(R.string.onboarding_accounts_section), icon = MasroofIcons.externalIn) }
+        item { MasroofSectionHeader(title = stringResource(R.string.settings_bank_accounts_title), icon = MasroofIcons.externalIn) }
         items(state.accounts) { candidate ->
             CandidateCard(
                 candidate = candidate,
@@ -573,7 +574,7 @@ private fun OwnershipStep(
                 busy = busy,
             )
         }
-        item { MasroofSectionHeader(title = stringResource(R.string.onboarding_cards_section), icon = MasroofIcons.cardPayment) }
+        item { MasroofSectionHeader(title = stringResource(R.string.settings_bank_cards_title), icon = MasroofIcons.cardPayment) }
         items(state.cards) { candidate ->
             CandidateCard(
                 candidate = candidate,
@@ -647,6 +648,10 @@ private fun CandidateCard(
                 stringResource(R.string.onboarding_card_suffix, candidate.suffix)
             }
             Text(label)
+            Text(stringResource(if (candidate.discoveredFromSms) R.string.onboarding_discovered_entry else R.string.onboarding_manual_entry),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            candidate.cardType?.let { type -> Text(stringResource(if (type == com.baraa.masroof.domain.model.CardType.CREDIT)
+                R.string.settings_card_type_credit else R.string.settings_card_type_debit), style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
                 IconTextButton(onClick = onOwned, icon = MasroofIcons.success, text = ownedLabel, enabled = !busy)
                 IconTextButton(onClick = onExternal, icon = MasroofIcons.warning, text = externalLabel, enabled = !busy)

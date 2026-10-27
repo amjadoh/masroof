@@ -38,6 +38,7 @@ data class OwnershipCandidateUi(
     val suffix: String,
     val ownership: OwnershipStatus,
     val cardType: com.baraa.masroof.domain.model.CardType? = null,
+    val discoveredFromSms: Boolean = true,
 ) {
     enum class CandidateKind { ACCOUNT, CARD }
 }
