@@ -11,7 +11,7 @@ data class PatternBankView(val bankId: String, val displayName: String?, val sen
     val currentPatterns: List<PatternDefinitionView>)
 enum class PatternApprovalStatus { BUNDLED, PREVIEW_ONLY, APPROVED }
 data class PatternApprovalSettings(val operation: PatternOperation?, val accountLast4: String?,
-    val referenceField: String?, val contextReferences: Set<String>, val currency: Currency?)
+    val referenceField: String?, val currency: Currency?)
 data class PatternDefinitionView(val id: String, val bankId: String, val label: String, val revision: Int,
     val enabled: Boolean, val status: PatternApprovalStatus, val example: String, val fields: List<String>,
     val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null) {
@@ -44,6 +44,6 @@ internal fun MessagePatternConfiguration.toCatalog() = PatternCatalog(generation
             pattern.factContract?.let { contract -> PatternApprovalSettings(
                 PatternOperation.entries.firstOrNull { it.name == contract.family.name },
                 contract.accountBindings.singleOrNull()?.last4, contract.accountBindings.singleOrNull()?.field,
-                contract.contextReferences, contract.currency?.let { Currency.valueOf(it.name) }) })
+                contract.currency?.let { Currency.valueOf(it.name) }) })
     })
 })

@@ -56,18 +56,22 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             finally { busy = false }
         }
     }
-    LaunchedEffect(workflow, pattern.bankId) {
-        try {
-            accounts = workflow.patternAccounts(pattern.bankId)
-            cards = workflow.patternCards(pattern.bankId)
+    suspend fun loadOptions(initialLoad: Boolean = false) {
+        accounts = workflow.patternAccounts(pattern.bankId)
+        cards = workflow.patternCards(pattern.bankId)
+        if (initialLoad) {
             accountId = accounts.singleOrNull { it.last4 == pattern.approval?.accountLast4 }?.id
                 ?: accounts.singleOrNull()?.takeIf { "card" !in pattern.fields }?.id
             if ("card" in pattern.fields) cardId = cards.singleOrNull()?.id
-            if (!readOnlyBody) {
-                examples = workflow.approvalExamples(pattern.bankId, generation, pattern.id)
-                if (body.isBlank() && examples.isNotEmpty()) { exampleIndex = 0; body = examples.first().body }
-            }
-        } catch (e: CancellationException) { throw e }
+        }
+        if (!initialLoad || !readOnlyBody) {
+            examples = workflow.approvalExamples(pattern.bankId, generation, pattern.id)
+            if (body.isBlank() && examples.isNotEmpty()) { exampleIndex = 0; body = examples.first().body }
+        }
+    }
+    LaunchedEffect(workflow, pattern.bankId) {
+        try { loadOptions(initialLoad = true) }
+        catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
         finally { loading = false }
     }
@@ -90,12 +94,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             if (loading || busy) CircularProgressIndicator()
             if (failed) {
                 Text(stringResource(R.string.pattern_financial_blocked), color = MaterialTheme.colorScheme.error)
-                MasroofTextButton({ work {
-                    accounts = workflow.patternAccounts(pattern.bankId)
-                    cards = workflow.patternCards(pattern.bankId)
-                    examples = workflow.approvalExamples(pattern.bankId, generation, pattern.id)
-                    if (body.isBlank() && examples.isNotEmpty()) { exampleIndex = 0; body = examples.first().body }
-                } }) { Text(stringResource(R.string.dashboard_retry)) }
+                MasroofTextButton({ work { loadOptions() } }) { Text(stringResource(R.string.dashboard_retry)) }
             }
             PatternApprovalMessage(examples, exampleIndex, body, readOnlyBody, !busy && !loading,
                 onSelect = { index -> exampleIndex = index; body = examples[index].body; preview = null },
