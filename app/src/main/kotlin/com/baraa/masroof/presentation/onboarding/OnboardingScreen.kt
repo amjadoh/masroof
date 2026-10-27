@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,11 +27,17 @@ import com.baraa.masroof.presentation.common.MasroofFormField as OutlinedTextFie
 import androidx.compose.material3.RadioButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.baraa.masroof.presentation.settings.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -51,9 +55,7 @@ import com.baraa.masroof.presentation.common.MasroofHintBox
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSectionHeader
 import com.baraa.masroof.presentation.common.MasroofLogo
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 
 @Composable
 fun OnboardingRoute(
@@ -61,8 +63,35 @@ fun OnboardingRoute(
     onRequestPermissions: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onRequestRestoreBackup: () -> Unit,
+    settingsViewModel: SettingsViewModel,
 ) {
     val state by viewModel.uiState.collectAsState()
+    val registry by settingsViewModel.uiState.collectAsState()
+    var editingBank by rememberSaveable { mutableStateOf(false) }
+    var choosingManual by rememberSaveable { mutableStateOf(false) }
+    var manualChoiceBank by rememberSaveable { mutableStateOf<String?>(null) }
+    var manualBankId by rememberSaveable { mutableStateOf<String?>(null) }
+    var manualCard by rememberSaveable { mutableStateOf(false) }
+    val busy = registry.updating || state.updatingOwnership || state.finalizing || state.restoringBackup || state.importState is ImportState.Scanning
+    val back = { if (!busy) viewModel.goBack() }
+    BackHandler(enabled = state.step != OnboardingStep.WELCOME || busy, onBack = back)
+    LaunchedEffect(state.step, state.updatingOwnership) {
+        if (state.step == OnboardingStep.OWNERSHIP && !state.updatingOwnership) settingsViewModel.refresh()
+    }
+    LaunchedEffect(state.step, registry.updating) {
+        if (!registry.updating) viewModel.refreshOwnership()
+    }
+    CompositionLocalProvider(LocalSettingsBankNames provides state.bankCatalog?.banks.orEmpty().mapNotNull { bank ->
+        bank.displayName?.let { bank.bankId to it }
+    }.toMap()) {
+    val workflow = viewModel.messagePatternsWorkflow
+    val catalog = state.bankCatalog
+    if (editingBank && catalog != null && workflow != null) {
+        SettingsBankEditorScreen(catalog, null, workflow, { editingBank = false }, { id ->
+            editingBank = false; viewModel.onBankAdded(id)
+        })
+        return@CompositionLocalProvider
+    }
     OnboardingScreen(
         state = state,
         onStart = viewModel::onStartClicked,
@@ -82,7 +111,35 @@ fun OnboardingRoute(
         onSetCardExternal = { c -> viewModel.setCardOwnership(c, false) },
         onFinalize = viewModel::finalizeOnboarding,
         onEnterApp = viewModel::enterApp,
+        onBack = back, onToggleBank = viewModel::toggleBank, onContinueBanks = viewModel::continueFromBanks,
+        onAddBank = { editingBank = true }, onRetryBanks = viewModel::reloadFromCurrentState,
+        onSelectThroughDate = viewModel::selectImportThroughDate,
+        onAddManual = { manualChoiceBank = state.selectedBankIds.singleOrNull(); manualCard = false; choosingManual = true }, registryBusy = registry.updating || registry.loading,
+        registryError = registry.error != null, onRetryRegistry = settingsViewModel::refresh,
+        onConfigureCard = { candidate ->
+            val card = (registry.followedCards + registry.unregisteredCards + registry.stoppedCards)
+                .firstOrNull { it.bank == candidate.bank && it.last4 == candidate.suffix }
+            if (card != null) settingsViewModel.openCardNetworkPicker(card)
+        },
     )
+    if (choosingManual) com.baraa.masroof.presentation.common.MasroofBottomSheet(
+        stringResource(R.string.onboarding_add_manual), { choosingManual = false }, { manualBankId = manualChoiceBank; choosingManual = false },
+        stringResource(R.string.teaching_next), canApply = manualChoiceBank in state.selectedBankIds) {
+        Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            com.baraa.masroof.presentation.common.MasroofSheetChoices(state.selectedBankIds.toList(), setOfNotNull(manualChoiceBank),
+                { settingsBankLabel(Bank(it)) }, { manualChoiceBank = it }, { "manual-bank-$it" })
+            com.baraa.masroof.presentation.common.MasroofSheetChoices(listOf(false, true), setOf(manualCard),
+                { stringResource(if (it) R.string.settings_add_card_manual else R.string.settings_add_account_manual) },
+                { manualCard = it }, { "manual-kind-$it" })
+        }
+    }
+    manualBankId?.let { id -> SettingsManualRegistrySheet(id, manualCard, registry,
+        { if (!registry.updating) manualBankId = null },
+        { last4, name -> settingsViewModel.addManualAccount(id, last4, name) { manualBankId = null; viewModel.refreshOwnership() } },
+        { last4, name, configuration -> settingsViewModel.addManualCard(id, last4, name, configuration) { manualBankId = null; viewModel.refreshOwnership() } }) }
+    SettingsCardSetupSheet(registry.cardNetworkTarget, registry.cardTypeSuggestion, registry.followedCards, registry.followedAccounts,
+        registry.updating, registry.error != null, { settingsViewModel.dismissCardNetworkPicker() }, { settingsViewModel.saveCardSetup(it) })
+    }
 }
 
 @Composable
@@ -105,13 +162,22 @@ internal fun OnboardingScreen(
     onSetCardExternal: (OwnershipCandidateUi) -> Unit,
     onFinalize: () -> Unit,
     onEnterApp: () -> Unit,
+    onBack: () -> Unit = {}, onToggleBank: (String) -> Unit = {}, onContinueBanks: () -> Unit = {},
+    onAddBank: () -> Unit = {}, onRetryBanks: () -> Unit = {},
+    onSelectThroughDate: (LocalDate) -> Unit = {}, onAddManual: () -> Unit = {},
+    onConfigureCard: (OwnershipCandidateUi) -> Unit = {}, registryBusy: Boolean = false,
+    registryError: Boolean = false, onRetryRegistry: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     com.baraa.masroof.presentation.common.MasroofSecondaryScaffold(stringResource(R.string.reference_initial_setup),
-        onBack = { context.onboardingActivity()?.onBackPressedDispatcher?.onBackPressed() },
+        onBack = { if (state.step == OnboardingStep.WELCOME) context.onboardingActivity()?.onBackPressedDispatcher?.onBackPressed() else onBack() },
         backContentDescription = stringResource(R.string.settings_back)) { contentModifier ->
     Column(modifier = contentModifier.fillMaxSize()) {
-        Text(stringResource(R.string.reference_setup_progress, (state.step.ordinal + 1).coerceAtMost(6)),
+        Text(stringResource(R.string.reference_setup_progress, when (state.step) {
+            OnboardingStep.WELCOME -> 1; OnboardingStep.BANKS -> 2; OnboardingStep.PERMISSION -> 3
+            OnboardingStep.IMPORT_DATE, OnboardingStep.IMPORTING -> 4; OnboardingStep.OWNERSHIP -> 5
+            OnboardingStep.FINALIZE, OnboardingStep.HOME -> 6
+        }),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(MasroofSpacing.sectionGap))
         when (state.step) {
@@ -128,6 +194,7 @@ internal fun OnboardingScreen(
                 onCancelLegacyRestore = onCancelLegacyRestore,
                 onClearBackupError = onClearBackupError,
             )
+            OnboardingStep.BANKS -> BanksStep(state, onToggleBank, onContinueBanks, onAddBank, onRetryBanks)
             OnboardingStep.PERMISSION -> PermissionStep(
                 modifier = Modifier.fillMaxSize(),
                 denied = state.error == OnboardingError.PERMISSION_DENIED,
@@ -140,6 +207,7 @@ internal fun OnboardingScreen(
                 onSelectDateOption = onSelectDateOption,
                 onSelectCustomDate = onSelectCustomDate,
                 onContinue = onStartImport,
+                onSelectThroughDate = onSelectThroughDate,
             )
             OnboardingStep.IMPORTING -> ImportingStep(Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge), state, onStartImport)
             OnboardingStep.OWNERSHIP -> OwnershipStep(
@@ -150,6 +218,8 @@ internal fun OnboardingScreen(
                 onSetCardOwned = onSetCardOwned,
                 onSetCardExternal = onSetCardExternal,
                 onFinalize = onFinalize,
+                onAddManual = onAddManual, onConfigureCard = onConfigureCard, registryBusy = registryBusy,
+                registryError = registryError, onRetryRegistry = onRetryRegistry,
             )
             OnboardingStep.FINALIZE -> CompletionStep(Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge), state, onEnterApp)
             OnboardingStep.HOME -> HomePlaceholder(Modifier.fillMaxSize(), state)
@@ -220,7 +290,7 @@ private fun WelcomeStep(
                 MasroofLogo(size = com.baraa.masroof.ui.theme.MasroofReference.aboutLogo, contentDescription = null)
                 Text(stringResource(R.string.onboarding_welcome_title), style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center)
-                Text(stringResource(R.string.reference_welcome_body), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.onboarding_banks_welcome), style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.onboarding_welcome_local_only),
                     stringResource(R.string.settings_about_privacy_body))
@@ -290,72 +360,47 @@ private fun PermissionStep(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun ImportDateStep(
-    modifier: Modifier,
-    state: OnboardingUiState,
-    onSelectDateOption: (ImportDateOption) -> Unit,
-    onSelectCustomDate: (LocalDate) -> Unit,
-    onContinue: () -> Unit,
-) {
-    var showDatePicker by remember { mutableStateOf(false) }
-    val selected = state.selectedImportDate ?: LocalDate.now()
-
-    Column(modifier = modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge)) {
-        MasroofSectionHeader(
-            title = stringResource(R.string.onboarding_import_date_title),
-            icon = MasroofIcons.calendar,
-        )
-        Spacer(Modifier.height(MasroofSpacing.screenVertical))
-        DateOptionRow(state.selectedDateOption == ImportDateOption.CURRENT_MONTH_START, stringResource(R.string.onboarding_date_current_month)) {
-            onSelectDateOption(ImportDateOption.CURRENT_MONTH_START)
+private fun BanksStep(state: OnboardingUiState, onToggle: (String) -> Unit, onContinue: () -> Unit,
+    onAdd: () -> Unit, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MasroofSpacing.screenHorizontal),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        MasroofSectionHeader(stringResource(R.string.onboarding_select_banks), icon = MasroofIcons.moneyMovement)
+        Text(stringResource(R.string.onboarding_select_banks_hint))
+        if (state.loadingBanks) CircularProgressIndicator()
+        else if (state.error == OnboardingError.BANKS_LOAD_FAILED || state.bankCatalog == null) {
+            Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
+            com.baraa.masroof.presentation.common.MasroofOutlinedButton(onRetry) { Text(stringResource(R.string.dashboard_retry)) }
+        } else {
+            SettingsImportBankChoices(state.bankCatalog.banks, state.selectedBankIds, true, onToggle)
+            com.baraa.masroof.presentation.common.MasroofOutlinedButton(onAdd, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_add_bank)) }
+            Text(stringResource(R.string.settings_bank_support_hint), style = MaterialTheme.typography.bodySmall)
         }
-        DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_30_DAYS, stringResource(R.string.onboarding_date_last_30)) {
-            onSelectDateOption(ImportDateOption.LAST_30_DAYS)
-        }
-        DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_27TH, stringResource(R.string.onboarding_date_last_27)) {
-            onSelectDateOption(ImportDateOption.LAST_27TH)
-        }
-        DateOptionRow(state.selectedDateOption == ImportDateOption.CUSTOM, stringResource(R.string.onboarding_date_custom)) {
-            onSelectDateOption(ImportDateOption.CUSTOM)
-            showDatePicker = true
-        }
-        Spacer(Modifier.height(MasroofSpacing.sectionGap))
-        Text(stringResource(R.string.onboarding_selected_date, selected.toString()))
-        Spacer(Modifier.height(MasroofSpacing.largeGap))
-        IconTextButton(
-            onClick = onContinue,
-            enabled = state.importState !is ImportState.Scanning,
-            icon = MasroofIcons.rescan,
-            text = stringResource(R.string.onboarding_start_import),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        IconTextButton(onContinue, icon = MasroofIcons.success, text = stringResource(R.string.teaching_next),
+            enabled = !state.loadingBanks && state.bankCatalog != null && state.selectedBankIds.isNotEmpty() && state.error != OnboardingError.BANKS_LOAD_FAILED,
+            modifier = Modifier.fillMaxWidth())
     }
+}
 
-    if (showDatePicker) {
-        val pickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selected.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val millis = pickerState.selectedDateMillis
-                    if (millis != null) {
-                        val date = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
-                        onSelectCustomDate(date)
-                    }
-                    showDatePicker = false
-                }) { Text(stringResource(android.R.string.ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        ) {
-            DatePicker(state = pickerState)
+@Composable
+private fun ImportDateStep(modifier: Modifier, state: OnboardingUiState,
+    onSelectDateOption: (ImportDateOption) -> Unit, onSelectCustomDate: (LocalDate) -> Unit,
+    onContinue: () -> Unit, onSelectThroughDate: (LocalDate) -> Unit) {
+    val from = state.selectedImportDate ?: LocalDate.now()
+    val through = state.importThroughDate ?: LocalDate.now()
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MasroofSpacing.screenHorizontal),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+        MasroofSectionHeader(stringResource(R.string.settings_import_period), icon = MasroofIcons.calendar)
+        MasroofCard {
+            Text(stringResource(R.string.settings_import_banks), style = MaterialTheme.typography.titleMedium)
+            state.selectedBankIds.forEach { Text(settingsBankLabel(Bank(it))) }
         }
+        SettingsImportPeriod(from, through, true, onSelectCustomDate, onSelectThroughDate)
+        DateOptionRow(state.selectedDateOption == ImportDateOption.CURRENT_MONTH_START, stringResource(R.string.onboarding_date_current_month)) { onSelectDateOption(ImportDateOption.CURRENT_MONTH_START) }
+        DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_30_DAYS, stringResource(R.string.onboarding_date_last_30)) { onSelectDateOption(ImportDateOption.LAST_30_DAYS) }
+        DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_27TH, stringResource(R.string.onboarding_date_last_27)) { onSelectDateOption(ImportDateOption.LAST_27TH) }
+        Text(stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.bodySmall)
+        IconTextButton(onContinue, icon = MasroofIcons.rescan, text = stringResource(R.string.onboarding_start_import),
+            enabled = !from.isAfter(through) && !through.isAfter(LocalDate.now()) && state.selectedBankIds.isNotEmpty(), modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -448,7 +493,10 @@ private fun OwnershipStep(
     onSetCardOwned: (OwnershipCandidateUi) -> Unit,
     onSetCardExternal: (OwnershipCandidateUi) -> Unit,
     onFinalize: () -> Unit,
+    onAddManual: () -> Unit, onConfigureCard: (OwnershipCandidateUi) -> Unit, registryBusy: Boolean,
+    registryError: Boolean, onRetryRegistry: () -> Unit,
 ) {
+    val busy = state.updatingOwnership || state.finalizing || registryBusy
     LazyColumn(modifier = modifier.fillMaxSize().padding(MasroofSpacing.screenHorizontal), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         item {
             MasroofSectionHeader(
@@ -457,6 +505,14 @@ private fun OwnershipStep(
             )
             if (state.hasUnknownCandidates) {
                 Text(stringResource(R.string.onboarding_ownership_must_resolve))
+            }
+            if (state.hasUnconfiguredCards) Text(stringResource(R.string.onboarding_configure_cards_hint))
+            if (registryError) {
+                Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton(onRetryRegistry, enabled = !busy) { Text(stringResource(R.string.dashboard_retry)) }
+            }
+            if (state.error == OnboardingError.OWNERSHIP_UPDATE_FAILED || state.error == OnboardingError.FINALIZATION_FAILED) {
+                Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
             }
             val importResult = (state.importState as? ImportState.Completed)?.result
             if (importResult != null) {
@@ -514,6 +570,7 @@ private fun OwnershipStep(
                 externalLabel = stringResource(R.string.onboarding_not_mine),
                 onOwned = { onSetAccountOwned(candidate) },
                 onExternal = { onSetAccountExternal(candidate) },
+                busy = busy,
             )
         }
         item { MasroofSectionHeader(title = stringResource(R.string.onboarding_cards_section), icon = MasroofIcons.cardPayment) }
@@ -524,12 +581,30 @@ private fun OwnershipStep(
                 externalLabel = stringResource(R.string.onboarding_not_mine),
                 onOwned = { onSetCardOwned(candidate) },
                 onExternal = { onSetCardExternal(candidate) },
+                busy = busy,
             )
+            if (candidate.ownership == OwnershipStatus.OWNED) com.baraa.masroof.presentation.common.MasroofOutlinedButton(
+                { onConfigureCard(candidate) }, Modifier.fillMaxWidth(), enabled = !busy) {
+                Text(stringResource(R.string.settings_card_setup))
+            }
+        }
+        item {
+            if (state.accounts.isEmpty() && state.cards.isEmpty()) Text(stringResource(R.string.onboarding_no_candidates))
+            state.bankCatalog?.banks.orEmpty().filter { it.bankId in state.selectedBankIds && it.currentPatterns.none { pattern -> pattern.canApply } }.forEach { bank ->
+                MasroofCard {
+                    Text(settingsBankLabel(Bank(bank.bankId)), style = MaterialTheme.typography.titleMedium)
+                    Text(bankSupportLabel(bank))
+                    Text(stringResource(R.string.onboarding_bank_teach_later), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            com.baraa.masroof.presentation.common.MasroofOutlinedButton(onAddManual, Modifier.fillMaxWidth(), enabled = !busy) {
+                Text(stringResource(R.string.onboarding_add_manual))
+            }
         }
         item {
             IconTextButton(
                 onClick = onFinalize,
-                enabled = !state.hasUnknownCandidates && !state.finalizing,
+                enabled = !state.hasUnknownCandidates && !state.hasUnconfiguredCards && !busy,
                 icon = MasroofIcons.success,
                 text = stringResource(R.string.onboarding_finalize),
                 modifier = Modifier.fillMaxWidth(),
@@ -545,6 +620,7 @@ private fun CandidateCard(
     externalLabel: String,
     onOwned: () -> Unit,
     onExternal: () -> Unit,
+    busy: Boolean,
 ) {
     MasroofCard(
     ) {
@@ -562,8 +638,7 @@ private fun CandidateCard(
                 )
                 Spacer(Modifier.size(MasroofSpacing.sectionHeaderGap))
                 Text(
-                    if (candidate.bank == Bank.BANK_ALJAZIRA) stringResource(R.string.bank_aljazira)
-                    else stringResource(R.string.bank_unknown),
+                    settingsBankLabel(candidate.bank),
                 )
             }
             val label = if (candidate.kind == OwnershipCandidateUi.CandidateKind.ACCOUNT) {
@@ -573,8 +648,8 @@ private fun CandidateCard(
             }
             Text(label)
             Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                IconTextButton(onClick = onOwned, icon = MasroofIcons.success, text = ownedLabel)
-                IconTextButton(onClick = onExternal, icon = MasroofIcons.warning, text = externalLabel)
+                IconTextButton(onClick = onOwned, icon = MasroofIcons.success, text = ownedLabel, enabled = !busy)
+                IconTextButton(onClick = onExternal, icon = MasroofIcons.warning, text = externalLabel, enabled = !busy)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val statusIcon = when (candidate.ownership) {
@@ -622,6 +697,10 @@ private fun CompletionStep(modifier: Modifier, state: OnboardingUiState, onEnter
         Text(stringResource(R.string.onboarding_done_title), style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(MasroofSpacing.sectionGap))
         Text(stringResource(R.string.onboarding_done_counts, state.ownedAccountsCount, state.ownedCardsCount, state.reviewRequiredCount))
+        if (state.bankCatalog?.banks.orEmpty().any { it.bankId in state.selectedBankIds && it.currentPatterns.none { pattern -> pattern.canApply } }) {
+            Spacer(Modifier.height(MasroofSpacing.sectionGap))
+            Text(stringResource(R.string.onboarding_bank_teach_later), style = MaterialTheme.typography.bodySmall)
+        }
         Spacer(Modifier.height(MasroofSpacing.largeGap))
         IconTextButton(
             onClick = onEnterApp,

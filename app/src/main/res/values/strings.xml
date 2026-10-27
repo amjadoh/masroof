@@ -19,9 +19,9 @@
     <string name="onboarding_start_import">بدء الاستيراد</string>
     <string name="onboarding_import_scanning">جاري فحص الرسائل…</string>
     <string name="onboarding_import_done">اكتمل الاستيراد</string>
-    <string name="onboarding_import_counts">تم فحص %1$d • مستورد %2$d • مكرر %3$d • فشل %4$d • غير بنك الجزيرة %5$d</string>
+    <string name="onboarding_import_counts">تم فحص %1$d • محلّل %2$d • مكرر %3$d • فشل %4$d • خارج البنوك المحددة %5$d</string>
     <string name="onboarding_import_empty_inbox">لم يُعثر على رسائل في الفترة المحددة. جرّب تاريخًا أقدم.</string>
-    <string name="onboarding_import_no_bank_sms">لم يُعثر على رسائل بنك الجزيرة. تأكّد أن رسائل البنك موجودة في صندوق الوارد.</string>
+    <string name="onboarding_import_no_bank_sms">لم يُعثر على رسائل للبنوك المحددة. تأكّد من الفترة وأسماء المرسلين ووجود الرسائل في صندوق الوارد.</string>
     <string name="onboarding_import_senders_seen">أسماء المرسلين التي وُجدت في الرسائل:</string>
     <string name="onboarding_import_no_transactions">وُجدت رسائل لكن لم تُحوَّل إلى حركات. قد تحتاج تأكيد الملكية أو مراجعة لاحقة.</string>
     <string name="onboarding_provider_error">تعذر قراءة الرسائل</string>

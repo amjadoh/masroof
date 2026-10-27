@@ -87,6 +87,7 @@ object DatabaseRestoreRecovery {
         val transferIntegrityRepairVersion: Int?,
         val labAnalysis: String? = null,
         val messagePatterns: String? = null,
+        val onboardingSetup: String? = null,
     )
 
     fun recover(context: Context) {
@@ -129,6 +130,7 @@ object DatabaseRestoreRecovery {
             onboardingCompleted = onboarding.getBoolean(KEY_ONBOARDING_COMPLETED, false),
             historicalImportStartEpochMillis = importStart,
             historicalImportCompleted = onboarding.getBoolean(KEY_IMPORT_COMPLETED, false),
+            onboardingSetup = onboarding.getString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, null),
             languageTag = locale.getString(AppLocalePreferences.KEY_LANGUAGE_TAG, AppLocale.DEFAULT_TAG)
                 ?: AppLocale.DEFAULT_TAG,
             themeMode = theme.getString(SharedPrefsThemePreferencesRepository.KEY_THEME_MODE, ThemeMode.DEFAULT.name)
@@ -147,6 +149,7 @@ object DatabaseRestoreRecovery {
             onboardingCompleted = snapshot.onboardingCompleted,
             historicalImportStartEpochMillis = snapshot.historicalImportStartEpochMillis,
             historicalImportCompleted = snapshot.historicalImportCompleted,
+            onboardingSetup = snapshot.onboardingSetup,
             languageTag = snapshot.languageTag,
             themeMode = snapshot.themeMode,
             reparsedSchemaVersion = null,
@@ -513,6 +516,7 @@ object DatabaseRestoreRecovery {
         onboardingEditor.putBoolean(KEY_ONBOARDING_STARTED, snapshot.onboardingStarted)
         onboardingEditor.putBoolean(KEY_ONBOARDING_COMPLETED, snapshot.onboardingCompleted)
         onboardingEditor.putBoolean(KEY_IMPORT_COMPLETED, snapshot.historicalImportCompleted)
+        onboardingEditor.putString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, snapshot.onboardingSetup)
         val start = snapshot.historicalImportStartEpochMillis
         if (start == null) {
             onboardingEditor.remove(KEY_IMPORT_START_EPOCH_MILLIS)
@@ -688,6 +692,7 @@ object DatabaseRestoreRecovery {
             onboardingCompleted = values["onboardingCompleted"] == "true",
             historicalImportStartEpochMillis = values["historicalImportStartEpochMillis"]?.toLongOrNull(),
             historicalImportCompleted = values["historicalImportCompleted"] == "true",
+            onboardingSetup = values["onboardingSetup"]?.takeIf { it.isNotEmpty() }?.let { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) },
             languageTag = values["languageTag"].orEmpty().ifBlank { AppLocale.DEFAULT_TAG },
             themeMode = values["themeMode"].orEmpty().ifBlank { ThemeMode.DEFAULT.name },
             reparsedSchemaVersion = values["reparsedSchemaVersion"]?.toIntOrNull(),
@@ -704,6 +709,7 @@ object DatabaseRestoreRecovery {
         appendLine("onboardingCompleted=${snapshot.onboardingCompleted}")
         appendLine("historicalImportStartEpochMillis=${snapshot.historicalImportStartEpochMillis ?: ""}")
         appendLine("historicalImportCompleted=${snapshot.historicalImportCompleted}")
+        appendLine("onboardingSetup=${snapshot.onboardingSetup?.let { java.util.Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) } ?: ""}")
         appendLine("languageTag=${snapshot.languageTag}")
         appendLine("themeMode=${snapshot.themeMode}")
         appendLine("reparsedSchemaVersion=${snapshot.reparsedSchemaVersion ?: ""}")

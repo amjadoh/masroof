@@ -68,6 +68,8 @@ class OnboardingBackupRestoreTest {
                 override fun setHistoricalImportStartEpochMillis(epochMillis: Long?) = Unit
                 override fun isHistoricalImportCompleted() = false
                 override fun setHistoricalImportCompleted(completed: Boolean) = Unit
+                override fun getSetupDraft(): com.baraa.masroof.application.onboarding.OnboardingSetupDraft? = null
+                override fun setSetupDraft(draft: com.baraa.masroof.application.onboarding.OnboardingSetupDraft?) = Unit
             },
             historicalImportGateway = HistoricalImportGateway {
                 com.baraa.masroof.application.onboarding.HistoricalImportResult(scanned = 0, parsed = 0, duplicates = 0)
@@ -78,7 +80,6 @@ class OnboardingBackupRestoreTest {
                     cards = cards,
                     reviewRepository = EmptyReviewRepo(),
                 ),
-            discoverFromStoredEvents = { 0 },
             refreshReviewQueue = {},
             databaseBackupService = backup,
             permissionStateProvider = { false },

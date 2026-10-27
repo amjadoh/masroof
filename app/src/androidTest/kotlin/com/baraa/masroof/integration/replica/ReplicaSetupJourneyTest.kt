@@ -63,6 +63,9 @@ class ReplicaSetupJourneyTest {
                     onRequestPermissions = {},onOpenAppSettings = {},onLocaleChanged = {},onRequestExport = {},onRequestImport = {},onRequestExportLogs = {},onRequestRestoreBackup = {})
             } } }
             click(R.string.reference_start_setup)
+            compose.waitUntil(20_000) { onboarding.uiState.value.bankCatalog != null }
+            compose.onNodeWithTag("import-bank-${com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA.id}").performScrollTo().performClick()
+            click(R.string.teaching_next)
             click(R.string.onboarding_start_import)
             compose.waitUntil(30_000) { onboarding.uiState.value.step == OnboardingStep.OWNERSHIP }
             screenshot("01-discovered-ownership")
@@ -75,6 +78,13 @@ class ReplicaSetupJourneyTest {
             for ((index,candidate) in cards.withIndex()) {
                 selectOwnership(host.getString(R.string.onboarding_card_suffix,candidate.suffix),R.string.onboarding_is_mine_card)
                 compose.waitUntil(20_000) { onboarding.uiState.value.cards.first { it.bank==candidate.bank && it.suffix==candidate.suffix }.ownership == OwnershipStatus.OWNED }
+                compose.waitUntil(20_000) { !settings.uiState.value.loading && settings.uiState.value.followedCards.any { it.bank == candidate.bank && it.last4 == candidate.suffix } }
+                compose.runOnUiThread { settings.openCardNetworkPicker(settings.uiState.value.followedCards.single { it.bank == candidate.bank && it.last4 == candidate.suffix }) }
+                compose.waitUntil(20_000) { settings.uiState.value.cardNetworkTarget != null }
+                val type = settings.uiState.value.cardTypeSuggestion ?: com.baraa.masroof.domain.model.CardType.CREDIT
+                compose.onNodeWithTag("card-type-${type.name}").performScrollTo().performClick()
+                compose.onNodeWithTag("sheet-apply").performClick()
+                compose.waitUntil(20_000) { settings.uiState.value.cardNetworkTarget == null && onboarding.uiState.value.cards.first { it.bank == candidate.bank && it.suffix == candidate.suffix }.cardType != null }
             }
             compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text(R.string.onboarding_finalize)))
             compose.onNodeWithText(text(R.string.onboarding_finalize)).assertIsEnabled()

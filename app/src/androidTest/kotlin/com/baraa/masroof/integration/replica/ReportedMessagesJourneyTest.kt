@@ -147,11 +147,17 @@ class ReportedMessagesJourneyTest {
         var dark by mutableStateOf(true)
         try {
             lateinit var viewModel: OnboardingViewModel
-            compose.runOnUiThread {viewModel=ViewModelProvider(store,onboardingViewModelFactory(c,c.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]}
+            lateinit var settings: com.baraa.masroof.presentation.settings.SettingsViewModel
+            compose.runOnUiThread {
+                viewModel=ViewModelProvider(store,onboardingViewModelFactory(c,c.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]
+                settings=ViewModelProvider(store,com.baraa.masroof.presentation.settings.settingsViewModelFactory(c,"test",{true}))[com.baraa.masroof.presentation.settings.SettingsViewModel::class.java]
+            }
             compose.setContent {CompositionLocalProvider(LocalContext provides arabic,LocalConfiguration provides configuration) {
-                MasroofTheme(darkTheme=dark) {MasroofScreenBackground {OnboardingRoute(viewModel,{},{},{})}}
+                MasroofTheme(darkTheme=dark) {MasroofScreenBackground {OnboardingRoute(viewModel,{},{},{}, settings)}}
             }}
             compose.runOnUiThread {viewModel.onStartClicked()}
+            compose.waitUntil(20_000) {viewModel.uiState.value.bankCatalog != null}
+            compose.runOnUiThread {viewModel.toggleBank(com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA.id);viewModel.continueFromBanks()}
             compose.waitUntil(20_000) {viewModel.uiState.value.step==OnboardingStep.IMPORT_DATE}
             val labels=listOf(R.string.onboarding_date_current_month,R.string.onboarding_date_last_30)
             for(isDark in listOf(true,false)) {
