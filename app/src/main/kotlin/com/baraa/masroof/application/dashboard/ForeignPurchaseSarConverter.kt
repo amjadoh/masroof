@@ -9,20 +9,6 @@ import java.math.RoundingMode
  * Estimates SAR impact for foreign-currency purchases using persisted parse-time facts.
  */
 object ForeignPurchaseSarConverter {
-    fun toSarEquivalent(
-        foreignAmount: Money,
-        exchangeRate: BigDecimal,
-        internationalFee: Money? = null,
-        targetCurrency: Currency = Currency.SAR,
-        includeInternationalFee: Boolean = true,
-    ): Money? =
-        foreignToSar(
-            foreignAmount = foreignAmount,
-            exchangeRate = exchangeRate,
-            internationalFee = if (includeInternationalFee) internationalFee else null,
-            targetCurrency = targetCurrency,
-        )
-
     fun foreignToSar(
         foreignAmount: Money,
         exchangeRate: BigDecimal,
