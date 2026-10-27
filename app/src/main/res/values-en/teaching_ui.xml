@@ -20,7 +20,7 @@
     <string name="teaching_ignore_value">Ignore value</string>
     <string name="teaching_sample_title">Does another message match?</string>
     <string name="teaching_field_help">Tap a value from the message, or select text yourself and confirm. Skip fields that are absent. The amount is required. Mark other variable values as ignored so they do not become fixed text in the pattern.</string>
-    <string name="teaching_confirm_field">Confirm</string>
+    <string name="teaching_confirm_field">Confirm and continue</string>
     <string name="teaching_skip_field">Not present</string>
     <string name="teaching_previous">Previous</string>
     <string name="teaching_preview_title">Are these details correct?</string>

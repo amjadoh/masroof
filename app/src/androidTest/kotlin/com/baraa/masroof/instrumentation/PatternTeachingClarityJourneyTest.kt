@@ -40,6 +40,7 @@ class PatternTeachingClarityJourneyTest {
     private fun select(value: String) {
         val start = body.indexOf(value)
         compose.onNodeWithTag("pattern-candidate-$start-${start + value.length}").performScrollTo().performClick()
+        if (value == "100.00 SAR") capture("selected-value")
         compose.onNodeWithTag("pattern-bind").assertIsDisplayed().performClick()
     }
 
@@ -61,10 +62,12 @@ class PatternTeachingClarityJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-operation-TRANSFER_IN").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-operation-TRANSFER_IN").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-question").assertIsDisplayed()
+            compose.onNodeWithText(ar(R.string.teaching_back)).assertDoesNotExist()
             capture("message")
             click(R.string.teaching_next)
+            compose.onNodeWithText(ar(R.string.teaching_previous)).assertDoesNotExist()
             select("100.00 SAR")
-            compose.onNodeWithText(ar(R.string.teaching_previous)).assertIsDisplayed().performClick()
+            compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed().performClick()
             compose.onNodeWithTag("pattern-question").assertTextContains("مبلغ العملية", substring = true)
             compose.onNodeWithTag("pattern-bind").performClick()
             repeat(5) { click(R.string.teaching_skip_field) }
@@ -72,7 +75,7 @@ class PatternTeachingClarityJourneyTest {
             compose.onNodeWithTag("pattern-candidates").performTouchInput { swipeUp() }
             compose.onNodeWithTag("pattern-question").assertIsDisplayed()
             compose.onNodeWithText(ar(R.string.teaching_skip_field)).assertIsDisplayed()
-            compose.onNodeWithText(ar(R.string.teaching_previous)).assertIsDisplayed()
+            compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed()
             capture("bank-question")
             select("BJAZ")
             select("02-09-2026 08:01")
@@ -81,7 +84,7 @@ class PatternTeachingClarityJourneyTest {
             capture("review")
             click(R.string.teaching_try_another)
             compose.onNodeWithTag("pattern-sample").assertIsDisplayed()
-            click(R.string.teaching_previous)
+            compose.onNodeWithContentDescription(ar(R.string.review_back)).performClick()
             compose.onNodeWithText(ar(R.string.pattern_save)).assertIsDisplayed()
             assertTrue(store.load().banks.single().patterns.isEmpty())
             click(R.string.pattern_save)

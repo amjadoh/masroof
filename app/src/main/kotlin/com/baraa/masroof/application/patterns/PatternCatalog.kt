@@ -14,7 +14,8 @@ data class PatternApprovalSettings(val operation: PatternOperation?, val account
     val referenceField: String?, val currency: Currency?)
 data class PatternDefinitionView(val id: String, val bankId: String, val label: String, val revision: Int,
     val enabled: Boolean, val status: PatternApprovalStatus, val example: String, val fields: List<String>,
-    val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null, val sender: String = "") {
+    val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null, val sender: String = "",
+    val messageTemplate: String = example) {
     val canApprove: Boolean get() = status != PatternApprovalStatus.BUNDLED
     val canEdit: Boolean get() = PatternOperation.entries.any { it.name == label }
     val canApply: Boolean get() = enabled && status != PatternApprovalStatus.PREVIEW_ONLY
@@ -45,6 +46,10 @@ internal fun MessagePatternConfiguration.toCatalog() = PatternCatalog(generation
             pattern.factContract?.let { contract -> PatternApprovalSettings(
                 PatternOperation.entries.firstOrNull { it.name == contract.family.name },
                 contract.accountBindings.singleOrNull()?.last4, contract.accountBindings.singleOrNull()?.field,
-                contract.currency?.let { Currency.valueOf(it.name) }) }, sender = pattern.sender)
+                contract.currency?.let { Currency.valueOf(it.name) }) }, sender = pattern.sender,
+            messageTemplate = if (pattern.roleProfile != null) example else pattern.parts.joinToString("") { part -> when (part) {
+                is StaticText -> part.value
+                is FieldSlot -> if (part.ignored) "…" else "{${part.field}}"
+            } })
     })
 })

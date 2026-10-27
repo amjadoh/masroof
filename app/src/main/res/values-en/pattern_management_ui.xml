@@ -8,4 +8,13 @@
     <string name="pattern_delete_copy">Copy pattern name</string>
     <string name="pattern_delete_name">Pattern name</string>
     <string name="pattern_delete_confirmation">Paste name to confirm</string>
+    <string name="pattern_message_fields">Message fields</string>
+    <string name="pattern_message_fields_help">Choose the amount, date and other values in the message</string>
+    <string name="pattern_financial_settings">Financial approval</string>
+    <string name="pattern_financial_settings_help">Transaction type, linked account and currency</string>
+    <string name="pattern_history_help">View previous versions and restore a version</string>
+    <string name="pattern_template_preview">Pattern preview</string>
+    <string name="pattern_template_preview_help">Values in brackets change between messages. Previewing does not post a transaction.</string>
+    <string name="pattern_delete_action">Delete pattern</string>
+    <string name="pattern_preview_done">Done</string>
 </resources>

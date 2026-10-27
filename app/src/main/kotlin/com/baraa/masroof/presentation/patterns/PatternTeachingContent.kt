@@ -35,13 +35,13 @@ internal fun PatternTeachingHeader(step: Int, question: String, fieldIndex: Int,
             }
         }
     }
-    MasroofCard {
+    Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
         if (step == 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(stringResource(R.string.teaching_field_progress, fieldIndex + 1, fieldCount), style = MaterialTheme.typography.labelMedium)
             Text(stringResource(if (required) R.string.teaching_required else R.string.teaching_optional), style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(question, style = MaterialTheme.typography.headlineSmall,
+        Text(question, style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.fillMaxWidth().testTag("pattern-question").semantics { heading() })
     }
 }
@@ -58,7 +58,7 @@ internal fun PatternTeachingValues(body: TextFieldValue, candidates: List<Patter
     onBody: (TextFieldValue) -> Unit, onCandidate: (PatternText) -> Unit, canIgnore: Boolean, onIgnore: () -> Unit) {
     @Composable fun message() {
         TeachingMessage(body, true, enabled, onBody)
-        MasroofOutlinedButton(onIgnore, enabled = canIgnore, modifier = Modifier.fillMaxWidth()) {
+        MasroofTextButton(onIgnore, enabled = canIgnore) {
             Text(stringResource(R.string.teaching_ignore_value))
         }
     }
@@ -101,11 +101,8 @@ internal fun PatternTeachingReview(preview: PatternTeachingPreview, onRemove: (S
 }
 
 @Composable
-internal fun PatternTeachingNavigation(backLabel: Int, onBack: () -> Unit, actionLabel: Int, onAction: () -> Unit,
-    enabled: Boolean, actionEnabled: Boolean = enabled, outlinedAction: Boolean = false) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-        MasroofOutlinedButton(onBack, enabled = enabled, modifier = Modifier.weight(1f)) { Text(stringResource(backLabel)) }
-        if (outlinedAction) MasroofOutlinedButton(onAction, enabled = actionEnabled, modifier = Modifier.weight(1f)) { Text(stringResource(actionLabel)) }
-        else MasroofButton(onAction, enabled = actionEnabled, modifier = Modifier.weight(1f)) { Text(stringResource(actionLabel)) }
+internal fun PatternTeachingAction(actionLabel: Int, onAction: () -> Unit, enabled: Boolean) {
+    MasroofButton(onAction, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(actionLabel))
     }
 }
