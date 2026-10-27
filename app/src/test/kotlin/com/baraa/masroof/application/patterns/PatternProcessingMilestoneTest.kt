@@ -65,6 +65,8 @@ class PatternProcessingMilestoneTest {
             assertTrue(c.accountRegistryRepository.listAll().none { it.bank.id == bankId })
             assertEquals(ref, c.parsedEventRepository.findByRawSmsId("card-pending")?.event?.cardRef)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
+            assertEquals(com.baraa.masroof.domain.ids.FinancialContainerIdFactory.cardId(ref),
+                c.financialTransactionRepository.listAll().single().sourceContainerId)
         }
     }
 

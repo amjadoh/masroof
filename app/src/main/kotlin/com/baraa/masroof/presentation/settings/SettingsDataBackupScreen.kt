@@ -184,7 +184,7 @@ fun SettingsDataBackupScreen(
             BackupPage.Hub -> R.string.reference_backup_title
             BackupPage.Export -> R.string.reference_export_title
             BackupPage.Restore -> R.string.reference_restore_title
-            BackupPage.Tools -> R.string.reference_data_tools_title
+            BackupPage.Tools -> R.string.settings_data_tools_title
         }),
         onBack = onBack,
         backContentDescription = stringResource(R.string.settings_back),
@@ -204,19 +204,15 @@ fun SettingsDataBackupScreen(
                         stringResource(R.string.settings_import_subtitle), MasroofIcons.importBackup, { onOpenPage(BackupPage.Restore) })
                 }
                 com.baraa.masroof.presentation.common.MasroofCard {
-                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.reference_data_tools_title),
-                        stringResource(R.string.settings_reparse_title), MasroofIcons.sms, { onOpenPage(BackupPage.Tools) })
+                    com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_data_tools_title),
+                        stringResource(R.string.settings_data_tools_hint), MasroofIcons.sms, { onOpenPage(BackupPage.Tools) })
                 }
                 return@Column
             }
             if (page == BackupPage.Tools) {
-                if (!state.smsPermissionGranted) SmsPermissionNotice(onRequestPermission = onRequestSmsPermission, onOpenAppSettings = onOpenAppSettings)
                 com.baraa.masroof.presentation.common.MasroofCard {
-                    Text(stringResource(R.string.reference_data_tools_title), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_data_tools_title), style = MaterialTheme.typography.titleMedium)
                     Column(verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap)) {
-                        com.baraa.masroof.presentation.common.MasroofButton(onImportSms, Modifier.fillMaxWidth(), enabled = !state.importingSms && !state.reparsingStored) {
-                            Text(stringResource(R.string.settings_import_sms_title))
-                        }
                         com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_reparse_title),
                             stringResource(R.string.settings_reparse_stored_hint) + "\n\n" + stringResource(R.string.settings_reparse_stored_example))
                         com.baraa.masroof.presentation.common.MasroofOutlinedButton(onReparseStored, Modifier.fillMaxWidth(), enabled = !state.reparsingStored && !state.importingSms) {

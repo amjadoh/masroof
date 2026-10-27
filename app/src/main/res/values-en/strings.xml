@@ -118,7 +118,7 @@
     <string name="settings_app_section">App</string>
     <string name="settings_app_hub_subtitle">%1$s • %2$s</string>
     <string name="settings_data_backup_section">Data &amp; backup</string>
-    <string name="settings_data_backup_hub_subtitle">SMS import, reparse, and backup</string>
+    <string name="settings_data_backup_hub_subtitle">Backup, restore, and data tools</string>
     <string name="settings_fx_rate_correction_title">Correct old merchant rates</string>
     <string name="settings_fx_rate_correction_confirm_title">Update stored exchange rates?</string>
     <string name="settings_fx_rate_correction_confirm_body">Replaces the stored merchant rate with the dated rate for %1$d transaction(s). Rows with no dated rate stay unchanged.</string>

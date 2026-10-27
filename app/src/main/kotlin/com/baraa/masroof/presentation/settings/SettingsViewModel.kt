@@ -68,6 +68,7 @@ class SettingsViewModel(
     private val onRequestInstallPermission: () -> Unit = {},
     val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
     private val historicalMerchantRateCorrectionWorkflow: HistoricalMerchantRateCorrectionWorkflow? = null,
+    private val bankSmsImportWorkflow: com.baraa.masroof.application.sms.BankSmsImportWorkflow? = null,
 ) : ViewModel() {
     private var updatableCorrectionIds: List<String> = emptyList()
     private val _uiState = MutableStateFlow(
@@ -108,6 +109,8 @@ class SettingsViewModel(
             }
             restorePendingUpdateState()
             try {
+                val catalog = messagePatternsWorkflow?.catalog()
+                _uiState.update { it.copy(bankCatalog = catalog) }
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
                 val commitments = settingsCommitmentsWorkflow.listAll()
                 applyRegistries(
@@ -433,6 +436,38 @@ class SettingsViewModel(
 
     fun clearSmsImportMessage() {
         _uiState.update { it.copy(smsImportMessage = null) }
+    }
+
+    fun clearScopedSmsImportResult() {
+        if (!_uiState.value.importingSms) _uiState.update { it.copy(scopedSmsImportResult = null, scopedSmsImportFailed = false) }
+    }
+
+    fun refreshSmsPermissionState() {
+        _uiState.update { it.copy(smsPermissionGranted = permissionStateProvider()) }
+    }
+
+    fun importSelectedBankSms(bankIds: Set<String>, from: java.time.LocalDate, through: java.time.LocalDate) {
+        val workflow = bankSmsImportWorkflow ?: return
+        if (_uiState.value.importingSms || _uiState.value.reparsingStored || _uiState.value.updating) return
+        if (!permissionStateProvider()) {
+            _uiState.update { it.copy(smsPermissionGranted = false, scopedSmsImportFailed = true) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(importingSms = true, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
+            try {
+                val result = workflow.import(bankIds, from, through)
+                _uiState.update { it.copy(scopedSmsImportResult = result) }
+                val snapshot = settingsRegistryWorkflow.loadSnapshot()
+                applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                _uiState.update { it.copy(scopedSmsImportFailed = true) }
+            } finally {
+                _uiState.update { it.copy(importingSms = false) }
+            }
+        }
     }
 
     private fun mapSmsImportMessage(result: HistoricalImportResult): SmsImportMessage =
@@ -967,8 +1002,34 @@ class SettingsViewModel(
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {
+                // A manual decision may already be durable even when its reconciliation needs a retry.
+                try {
+                    val snapshot = settingsRegistryWorkflow.loadSnapshot()
+                    applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
+                } catch (error: CancellationException) { throw error }
+                catch (_: Exception) { /* Keep the prior snapshot and the visible error. */ }
                 _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
             }
+        }
+    }
+
+    fun addManualAccount(bankId: String, last4: String, name: String?, onSaved: () -> Unit) {
+        if (_uiState.value.bankCatalog != null && _uiState.value.bankSummaries.none { it.bank.id == bankId }) {
+            _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }; return
+        }
+        updateRegistry(onSaved) {
+            val ref = settingsRegistryWorkflow.addAccount(bankId, last4, name)
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
+        }
+    }
+
+    fun addManualCard(bankId: String, last4: String, name: String?, configuration: com.baraa.masroof.domain.model.CardConfiguration, onSaved: () -> Unit) {
+        if (_uiState.value.bankCatalog != null && _uiState.value.bankSummaries.none { it.bank.id == bankId }) {
+            _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }; return
+        }
+        updateRegistry(onSaved) {
+            val ref = settingsRegistryWorkflow.addCard(bankId, last4, name, configuration)
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
         }
     }
 
@@ -1223,15 +1284,12 @@ class SettingsViewModel(
         val bankIds = (
             accounts.map { it.bank.id } +
                 cards.map { it.bank.id } +
-                loans.map { it.bank.id }
+                loans.map { it.bank.id } + _uiState.value.bankCatalog?.banks.orEmpty().map { it.bankId }
         ).distinct().sorted()
         return bankIds.mapNotNull { bankId ->
             val bankAccounts = accounts.filter { it.bank.id == bankId }
             val bankCards = cards.filter { it.bank.id == bankId }
             val bankLoans = loans.filter { it.bank.id == bankId }
-            if (bankAccounts.isEmpty() && bankCards.isEmpty() && bankLoans.isEmpty()) {
-                return@mapNotNull null
-            }
             SettingsBankSummaryUi(
                 bank = Bank(bankId),
                 followedAccountCount = bankAccounts.count { it.ownership == OwnershipStatus.OWNED },

@@ -15,6 +15,7 @@ fun settingsViewModelFactory(
     initializer {
         SettingsViewModel(
             messagePatternsWorkflow = container.messagePatternsWorkflow,
+            bankSmsImportWorkflow = container.bankSmsImportWorkflow,
             settingsRegistryWorkflow = container.settingsRegistryWorkflow,
             settingsCommitmentsWorkflow = container.settingsCommitmentsWorkflow,
             appLocaleRepository = container.appLocaleRepository,

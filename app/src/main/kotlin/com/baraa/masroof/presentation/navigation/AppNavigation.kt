@@ -44,7 +44,7 @@ internal fun ManageSettingsTarget.toRegistryCategory(): SettingsRegistryCategory
     }
 
 internal fun resolvePendingDestination(pending: SettingsDestination): SettingsDestination =
-    if (pending == SettingsDestination.Banks) SettingsDestination.MyAccounts else pending
+    pending
 
 internal fun resolveManageSettingsLaunch(
     state: SettingsUiState,

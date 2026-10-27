@@ -205,13 +205,9 @@ class DashboardViewModel(
 
     fun onAppResumed() {
         val granted = permissionStateProvider()
-        val wasGranted = _uiState.value.smsPermissionGranted
         _uiState.update { it.copy(smsPermissionGranted = granted) }
-        if (granted && !wasGranted) {
-            rescanSms()
-        } else {
-            refresh()
-        }
+        // Granting SMS access does not select banks or authorise a historical import.
+        refresh()
     }
 
     fun clearRescanStatus() {

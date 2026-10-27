@@ -573,7 +573,7 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun onAppResumed_afterPermissionGranted_triggersRescan() = runTest {
+    fun onAppResumed_afterPermissionGrantedRefreshesWithoutImportingUnselectedBanks() = runTest {
         val loader = FakeLoader()
         loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
         var permissionGranted = false
@@ -594,7 +594,7 @@ class DashboardViewModelTest {
         vm.onAppResumed()
         advanceUntilIdle()
 
-        assertEquals(1, rescanCalls)
+        assertEquals(0, rescanCalls)
         assertTrue(vm.uiState.value.smsPermissionGranted)
     }
 

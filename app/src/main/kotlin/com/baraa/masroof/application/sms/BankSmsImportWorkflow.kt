@@ -9,14 +9,15 @@ import java.time.LocalDate
 class BankSmsImportWorkflow(
     private val scanner: HistoricalSmsScanner,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val onChanged: () -> Unit = {},
 ) {
     suspend fun import(bankIds: Set<String>, from: LocalDate, through: LocalDate) = run {
         require(bankIds.isNotEmpty() && bankIds.all { it.isNotBlank() && it != Bank.UNKNOWN.id })
         require(!from.isAfter(through) && !through.isAfter(LocalDate.now(clock)))
-        scanner.scan(
+        try { scanner.scan(
             receivedAfter = from.atStartOfDay(clock.zone).toInstant(),
             receivedBefore = through.plusDays(1).atStartOfDay(clock.zone).toInstant(),
             bankScopes = bankIds.map(::Bank).toSet(),
-        ).toHistoricalImportResult()
+        ).toHistoricalImportResult() } finally { onChanged() }
     }
 }

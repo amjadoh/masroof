@@ -668,7 +668,8 @@ class AppContainer(
         smsDataSourceOverride ?: AndroidSmsDataSource(appContext.contentResolver)
 
     val bankSmsImportWorkflow by lazy {
-        com.baraa.masroof.application.sms.BankSmsImportWorkflow(historicalSmsScanner)
+        com.baraa.masroof.application.sms.BankSmsImportWorkflow(historicalSmsScanner,
+            onChanged = { maintenanceCompletionSignal.notifyCompleted() })
     }
 
     val historicalSmsBatchProcessor: HistoricalSmsBatchProcessor = HistoricalSmsBatchProcessor(

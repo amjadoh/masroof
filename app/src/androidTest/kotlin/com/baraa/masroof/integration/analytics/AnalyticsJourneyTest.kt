@@ -488,8 +488,8 @@ class AnalyticsJourneyTest {
                     MasroofTheme { MasroofScreenBackground {
                         when (mode) {
                             0 -> com.baraa.masroof.presentation.settings.SettingsHubScreen(
-                                com.baraa.masroof.presentation.settings.SettingsUiState(loading = false), 0,
-                                {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, onOpenLearning = { mode = 1 })
+                                com.baraa.masroof.presentation.settings.SettingsUiState(loading = false),
+                                {}, {}, {}, {}, {}, {}, onOpenLearning = { mode = 1 })
                             1 -> MessageLearningSettingsScreen { mode = 0 }
                             else -> com.baraa.masroof.presentation.debug.DesignCatalogScreen { mode = 0 }
                         }
@@ -497,13 +497,13 @@ class AnalyticsJourneyTest {
                 }
             } }
             compose.onNodeWithText(text(R.string.analysis_learning_settings, "en")).performScrollTo().performClick()
-            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.settings_corrections_scope, "en")).assertDoesNotExist()
             val learningHelp = text(R.string.guidance_about, "en").format(text(R.string.analysis_learning_settings, "en"))
             compose.onNodeWithContentDescription(learningHelp).performScrollTo().performClick()
-            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertIsDisplayed()
+            compose.onNodeWithText(text(R.string.settings_corrections_scope, "en")).assertIsDisplayed()
             instrument.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
             compose.waitForIdle()
-            compose.onNodeWithText(text(R.string.analysis_learning_settings_hint, "en")).assertDoesNotExist()
+            compose.onNodeWithText(text(R.string.settings_corrections_scope, "en")).assertDoesNotExist()
             compose.onNodeWithTag("learning-insights").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("forecast-performance").assertDoesNotExist()
             screen("en-learning-settings-large-font")
