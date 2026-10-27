@@ -10,6 +10,22 @@ import org.junit.Test
 import java.nio.file.Files
 
 class MessagePatternsWorkflowTest {
+    @Test fun bankEditsKeepIdentityAndRejectCrossBankSendersWithoutChangingTheCatalog() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-banks-").toFile()
+        try {
+            val workflow = MessagePatternsWorkflow(MessagePatternStore(directory.resolve("patterns.json")), DatabaseAccessGate())
+            workflow.addBank(0, "First bank", "FIRST", "FIRST_BANK")
+            workflow.addBank(1, "Second bank", "SECOND", "SECOND_BANK")
+            workflow.updateBank(2, "FIRST_BANK", "Renamed bank", listOf("FIRST", "FIRST_ALIAS"))
+            val saved = workflow.catalog()
+            assertEquals("Renamed bank", saved.banks.single { it.bankId == "FIRST_BANK" }.displayName)
+            assertEquals(listOf("FIRST", "FIRST_ALIAS"), saved.banks.single { it.bankId == "FIRST_BANK" }.senders)
+            assertTrue(runCatching { workflow.updateBank(3, "FIRST_BANK", "Conflict", listOf("SECOND")) }.isFailure)
+            assertTrue(runCatching { workflow.addBank(3, "Duplicate", "FIRST_ALIAS") }.isFailure)
+            assertEquals(saved, workflow.catalog())
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun teachingRequiresPreviewAndPreservesRevisionsWithoutFinancialWrites() = runBlocking {
         val directory = Files.createTempDirectory("masroof-teaching-").toFile()
         try {

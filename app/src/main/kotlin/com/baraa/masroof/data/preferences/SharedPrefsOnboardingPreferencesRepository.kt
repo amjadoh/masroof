@@ -2,6 +2,9 @@ package com.baraa.masroof.data.preferences
 
 import android.content.SharedPreferences
 import com.baraa.masroof.application.onboarding.OnboardingPreferencesRepository
+import com.baraa.masroof.application.onboarding.OnboardingSetupDraft
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class SharedPrefsOnboardingPreferencesRepository(
     private val prefs: SharedPreferences,
@@ -44,8 +47,17 @@ class SharedPrefsOnboardingPreferencesRepository(
         prefs.edit().putBoolean(KEY_IMPORT_COMPLETED, completed).apply()
     }
 
+    override fun getSetupDraft(): OnboardingSetupDraft? = runCatching {
+        prefs.getString(KEY_SETUP_DRAFT, null)?.let { Json.decodeFromString<OnboardingSetupDraft>(it) }
+    }.getOrNull()
+
+    override fun setSetupDraft(draft: OnboardingSetupDraft?) {
+        prefs.edit().putString(KEY_SETUP_DRAFT, draft?.let { Json.encodeToString(it) }).apply()
+    }
+
     companion object {
         const val PREFS_NAME: String = "onboarding_prefs"
+        const val KEY_SETUP_DRAFT: String = "bank_setup_draft"
         private const val KEY_ONBOARDING_STARTED = "onboarding_started"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_IMPORT_START_EPOCH_MILLIS = "historical_import_start_epoch_millis"

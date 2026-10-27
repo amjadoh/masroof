@@ -59,6 +59,43 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun startWithoutBankSelection_waitsForExplicitBanks_andDoesNotScan() = runTest {
+        val fixture = Fixture()
+        advanceUntilIdle()
+        fixture.prefs.draft = null
+        val vm = fixture.newViewModel()
+        advanceUntilIdle()
+        vm.onStartClicked()
+        vm.startImport()
+        advanceUntilIdle()
+        assertEquals(OnboardingStep.BANKS, vm.uiState.value.step)
+        assertEquals(LocalDate.parse("2026-07-12"), vm.uiState.value.selectedImportDate)
+        assertEquals(LocalDate.parse("2026-08-11"), vm.uiState.value.importThroughDate)
+        assertEquals(0, fixture.gateway.calls)
+    }
+
+    @Test
+    fun selectedBanksAndInclusivePeriod_surviveRestart_andReachSharedImport() = runTest {
+        val fixture = Fixture()
+        advanceUntilIdle()
+        fixture.vm.toggleBank(Bank.BANK_ALJAZIRA.id)
+        fixture.vm.toggleBank("stc_bank")
+        fixture.vm.continueFromBanks()
+        fixture.vm.selectCustomDate(LocalDate.parse("2026-08-02"))
+        fixture.vm.selectImportThroughDate(LocalDate.parse("2026-08-09"))
+        val restarted = fixture.newViewModel()
+        advanceUntilIdle()
+        assertEquals(setOf("stc_bank"), restarted.uiState.value.selectedBankIds)
+        assertEquals(LocalDate.parse("2026-08-09"), restarted.uiState.value.importThroughDate)
+        assertEquals(0, fixture.gateway.calls)
+        restarted.startImport()
+        advanceUntilIdle()
+        assertEquals(setOf("stc_bank"), fixture.gateway.lastRequest?.bankIds)
+        assertEquals(LocalDate.parse("2026-08-02"), fixture.gateway.lastRequest?.from)
+        assertEquals(LocalDate.parse("2026-08-09"), fixture.gateway.lastRequest?.through)
+    }
+
+    @Test
     fun last27th_beforeAndAfter27() {
         assertEquals(
             LocalDate.parse("2026-07-27"),
@@ -78,6 +115,25 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun unselectedUnknownAccounts_doNotBlockSetup_butOwnedCardWithoutTypeDoes() = runTest {
+        val cardRows = mutableListOf(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "8219", OwnershipStatus.OWNED,
+            firstSeenRawSmsId = null, lastSeenRawSmsId = null))
+        val fixture = Fixture(cards = cardRows, accounts = mutableListOf(AccountRegistryEntry.forTest(
+            Bank("stc_bank"), "3001", OwnershipStatus.UNKNOWN, firstSeenRawSmsId = null, lastSeenRawSmsId = null)))
+        advanceUntilIdle()
+        fixture.vm.onStartClicked(); fixture.vm.startImport()
+        advanceUntilIdle()
+        assertTrue(fixture.vm.uiState.value.accounts.isEmpty())
+        fixture.vm.finalizeOnboarding()
+        advanceUntilIdle()
+        assertFalse(fixture.prefs.isOnboardingCompleted())
+        cardRows[0] = cardRows[0].copy(cardType = CardType.CREDIT)
+        fixture.vm.finalizeOnboarding()
+        advanceUntilIdle()
+        assertTrue(fixture.prefs.isOnboardingCompleted())
+    }
+
+    @Test
     fun freshInstall_permissionDenied_stillWelcome() = runTest {
         val fixture = Fixture(permissionGranted = false)
         advanceUntilIdle()
@@ -92,22 +148,22 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun startClicked_permissionDenied_routesPermission() = runTest {
+    fun startClicked_permissionDenied_routesBanks() = runTest {
         val fixture = Fixture(permissionGranted = false)
         advanceUntilIdle()
         fixture.vm.onStartClicked()
         advanceUntilIdle()
-        assertEquals(OnboardingStep.PERMISSION, fixture.vm.uiState.value.step)
+        assertEquals(OnboardingStep.BANKS, fixture.vm.uiState.value.step)
         assertTrue(fixture.prefs.isOnboardingStarted())
     }
 
     @Test
-    fun startClicked_permissionGranted_routesImportDate() = runTest {
+    fun startClicked_permissionGranted_routesBanks() = runTest {
         val fixture = Fixture(permissionGranted = true)
         advanceUntilIdle()
         fixture.vm.onStartClicked()
         advanceUntilIdle()
-        assertEquals(OnboardingStep.IMPORT_DATE, fixture.vm.uiState.value.step)
+        assertEquals(OnboardingStep.BANKS, fixture.vm.uiState.value.step)
         assertTrue(fixture.prefs.isOnboardingStarted())
     }
 
@@ -171,6 +227,7 @@ class OnboardingViewModelTest {
         val fixture = Fixture(permissionGranted = true)
         advanceUntilIdle()
         fixture.vm.onStartClicked()
+        fixture.vm.continueFromBanks()
         advanceUntilIdle()
         fixture.vm.onPermissionResult(false)
         advanceUntilIdle()
@@ -217,6 +274,7 @@ class OnboardingViewModelTest {
     @Test
     fun persistedIncompleteImport_restoresSavedDate() = runTest {
         val fixture = Fixture(permissionGranted = true)
+        fixture.prefs.draft = null // Previous installations have only the original start boundary.
         val savedDate = LocalDate.parse("2026-08-03")
         fixture.prefs.setOnboardingStarted(true)
         fixture.prefs.setHistoricalImportStartEpochMillis(savedDate.atStartOfDay(fixture.zone).toInstant().toEpochMilli())
@@ -276,8 +334,8 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun discoveryFailureAfterScanSuccess_doesNotPersistImportCompleted() = runTest {
-        val fixture = Fixture(permissionGranted = true, discoverShouldFail = true)
+    fun candidateLoadFailureAfterScanSuccess_doesNotPersistImportCompleted() = runTest {
+        val fixture = Fixture(permissionGranted = true, candidateLoadShouldFail = true)
         advanceUntilIdle()
         fixture.vm.onStartClicked()
         advanceUntilIdle()
@@ -288,14 +346,14 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun retryAfterDiscoveryFailure_succeedsSafely() = runTest {
-        val fixture = Fixture(permissionGranted = true, discoverShouldFail = true)
+    fun retryAfterCandidateLoadFailure_succeedsSafely() = runTest {
+        val fixture = Fixture(permissionGranted = true, candidateLoadShouldFail = true)
         advanceUntilIdle()
         fixture.vm.onStartClicked()
         advanceUntilIdle()
         fixture.vm.startImport()
         advanceUntilIdle()
-        fixture.discoverShouldFail = false
+        fixture.candidateLoadShouldFail = false
         fixture.vm.startImport()
         advanceUntilIdle()
         assertTrue(fixture.prefs.isHistoricalImportCompleted())
@@ -525,19 +583,19 @@ AccountRegistryEntry.forTest(
         now: Instant = Instant.parse("2026-08-11T08:00:00Z"),
         permissionGranted: Boolean = true,
         gateway: FakeImportGateway = FakeImportGateway(),
-        discoverShouldFail: Boolean = false,
+        candidateLoadShouldFail: Boolean = false,
         accounts: MutableList<AccountRegistryEntry> = mutableListOf(),
         cards: MutableList<CardRegistryEntry> = mutableListOf(),
     ) {
         val zone: ZoneId = ZoneId.systemDefault()
         val prefs = FakeOnboardingPrefs()
-        val accountRepo = FakeAccountRepo(accounts)
+        val accountRepo = FakeAccountRepo(accounts) { this.candidateLoadShouldFail }
         val cardRepo = FakeCardRepo(cards)
         val reviewRepo = FakeReviewRepo()
         val gateway = gateway
         val backupGateway = FakeDatabaseBackupGateway()
         var permissionGranted: Boolean = permissionGranted
-        var discoverShouldFail: Boolean = discoverShouldFail
+        var candidateLoadShouldFail: Boolean = candidateLoadShouldFail
         var refreshed: Boolean = false
 
         val vm: OnboardingViewModel = newViewModel(now)
@@ -552,15 +610,15 @@ AccountRegistryEntry.forTest(
                         cards = cardRepo,
                         reviewRepository = reviewRepo,
                     ),
-                discoverFromStoredEvents = {
-                    if (discoverShouldFail) error("discover failed")
-                    0
-                },
                 refreshReviewQueue = { refreshed = true },
                 databaseBackupService = backupGateway,
                 permissionStateProvider = { permissionGranted },
                 zoneId = zone,
                 clock = Clock.fixed(now, zone),
+                loadBankCatalog = { com.baraa.masroof.application.patterns.PatternCatalog(0, listOf(
+                    com.baraa.masroof.application.patterns.PatternBankView(Bank.BANK_ALJAZIRA.id, "AlJazira", listOf("AlJazira"), emptyList()),
+                    com.baraa.masroof.application.patterns.PatternBankView("stc_bank", "STC", listOf("STCBank"), emptyList()),
+                )) },
             )
         }
     }
@@ -586,6 +644,10 @@ AccountRegistryEntry.forTest(
     }
 
     private class FakeOnboardingPrefs : OnboardingPreferencesRepository {
+        var draft: com.baraa.masroof.application.onboarding.OnboardingSetupDraft? = com.baraa.masroof.application.onboarding.OnboardingSetupDraft(
+            setOf(Bank.BANK_ALJAZIRA.id), "2026-07-27", "2026-08-11", true)
+        override fun getSetupDraft() = draft
+        override fun setSetupDraft(draft: com.baraa.masroof.application.onboarding.OnboardingSetupDraft?) { this.draft = draft }
         var started = false
         var done = false
         var start: Long? = null
@@ -617,10 +679,12 @@ AccountRegistryEntry.forTest(
         private var result: com.baraa.masroof.application.onboarding.HistoricalImportResult = initialResult
         private var blocked: CompletableDeferred<Unit>? = null
         var lastReceivedAfter: Instant? = null
+        var lastRequest: com.baraa.masroof.application.onboarding.OnboardingImportRequest? = null
         var calls: Int = 0
-        override suspend fun scan(receivedAfter: Instant?): com.baraa.masroof.application.onboarding.HistoricalImportResult {
+        override suspend fun scan(request: com.baraa.masroof.application.onboarding.OnboardingImportRequest): com.baraa.masroof.application.onboarding.HistoricalImportResult {
             calls++
-            lastReceivedAfter = receivedAfter
+            lastRequest = request
+            lastReceivedAfter = request.from.atStartOfDay(ZoneId.systemDefault()).toInstant()
             if (blockFirstCall && calls == 1) {
                 blocked = CompletableDeferred()
                 blocked?.await()
@@ -638,6 +702,7 @@ AccountRegistryEntry.forTest(
 
     private class FakeAccountRepo(
         private val entries: MutableList<AccountRegistryEntry>,
+        private val failLoad: () -> Boolean = { false },
     ) : AccountRegistryRepository {
         override suspend fun observe(reference: AccountReference, rawSmsId: String) = Unit
         override suspend fun setOwnership(reference: AccountReference, status: OwnershipStatus) {
@@ -656,7 +721,7 @@ AccountRegistryEntry.forTest(
                 ?: OwnershipStatus.UNKNOWN
         override suspend fun get(reference: AccountReference): AccountRegistryEntry? =
             entries.firstOrNull { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }
-        override suspend fun listAll(): List<AccountRegistryEntry> = entries.toList()
+        override suspend fun listAll(): List<AccountRegistryEntry> { check(!failLoad()) { "candidate read failed" }; return entries.toList() }
         override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) = Unit
             override suspend fun updateAccountType(reference: com.baraa.masroof.domain.model.AccountReference, accountType: com.baraa.masroof.domain.model.AccountType) = Unit
         fun addUnknown(maskedNumber: String) {

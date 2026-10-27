@@ -17,9 +17,9 @@
     <string name="onboarding_start_import">Start import</string>
     <string name="onboarding_import_scanning">Scanning messages…</string>
     <string name="onboarding_import_done">Import complete</string>
-    <string name="onboarding_import_counts">Scanned %1$d • imported %2$d • duplicate %3$d • failed %4$d • non-AlJazira %5$d</string>
+    <string name="onboarding_import_counts">Scanned %1$d • parsed %2$d • duplicate %3$d • failed %4$d • outside selected banks %5$d</string>
     <string name="onboarding_import_empty_inbox">No messages found in the selected period. Try an earlier date.</string>
-    <string name="onboarding_import_no_bank_sms">No AlJazira Bank messages found. Make sure bank SMS is in your inbox.</string>
+    <string name="onboarding_import_no_bank_sms">No messages found for the selected banks. Check the period, sender names, and your inbox.</string>
     <string name="onboarding_import_senders_seen">Sender names found in messages:</string>
     <string name="onboarding_import_no_transactions">Messages were found but not converted to transactions yet. Ownership confirmation or review may be needed.</string>
     <string name="onboarding_provider_error">Could not read messages</string>
@@ -118,7 +118,7 @@
     <string name="settings_app_section">App</string>
     <string name="settings_app_hub_subtitle">%1$s • %2$s</string>
     <string name="settings_data_backup_section">Data &amp; backup</string>
-    <string name="settings_data_backup_hub_subtitle">SMS import, reparse, and backup</string>
+    <string name="settings_data_backup_hub_subtitle">Backup, restore, and data tools</string>
     <string name="settings_fx_rate_correction_title">Correct old merchant rates</string>
     <string name="settings_fx_rate_correction_confirm_title">Update stored exchange rates?</string>
     <string name="settings_fx_rate_correction_confirm_body">Replaces the stored merchant rate with the dated rate for %1$d transaction(s). Rows with no dated rate stay unchanged.</string>

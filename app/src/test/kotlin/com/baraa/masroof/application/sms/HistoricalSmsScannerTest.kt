@@ -64,6 +64,37 @@ import java.time.Instant
 @Config(sdk = [28])
 class HistoricalSmsScannerTest {
 
+    @Test fun selectedBanksAndReceiptRangeExcludeOtherEvidenceWithoutCertifyingInboxCoverage() = runBlocking {
+        val from = Instant.parse("2026-08-01T00:00:00Z")
+        val until = from.plusSeconds(86_400)
+        val rows = listOf(
+            ProviderSmsRecord("before", "AlJazira", purchaseBody(), from.minusMillis(1)),
+            ProviderSmsRecord("included", "AlJazira", purchaseBody(), from),
+            ProviderSmsRecord("foreign", "OtherBank", purchaseBody(), from.plusSeconds(1)),
+            ProviderSmsRecord("after", "AlJazira", purchaseBody(), until),
+        ).map(InboxRow::Valid)
+        var coverage = 0
+        val scanner = HistoricalSmsScanner(FakeSmsDataSource(rows), batchProcessor,
+            coverageCompleted = { _, _ -> coverage++ })
+        val result = scanner.scan(receivedAfter = from, receivedBefore = until,
+            bankScopes = setOf(Bank.BANK_ALJAZIRA))
+        assertEquals(1, result.parsed)
+        assertEquals(1, result.notRelevant)
+        assertEquals(1, db.rawSmsDao().count())
+        assertEquals(0, coverage)
+        assertEquals(1, scanner.scan(receivedAfter = from, receivedBefore = until,
+            bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
+    }
+
+    @Test fun invalidOrEmptyScopeIsRejectedBeforeInboxAccess() = runBlocking {
+        var queried = false
+        val scanner = HistoricalSmsScanner(FakeSmsDataSource(emptyList(), onQuery = { queried = true }), batchProcessor)
+        val now = Instant.parse("2026-08-01T00:00:00Z")
+        assertTrue(runCatching { scanner.scan(bankScopes = emptySet()) }.isFailure)
+        assertTrue(runCatching { scanner.scan(now, receivedBefore = now) }.isFailure)
+        assertEquals(false, queried)
+    }
+
     @Test fun coverageReceiptRequiresACompleteScanAndCarriesTheOriginalLowerBound() = runBlocking {
         val after=Instant.parse("2026-07-01T00:00:00Z")
         val started=Instant.parse("2026-08-01T12:00:00Z")

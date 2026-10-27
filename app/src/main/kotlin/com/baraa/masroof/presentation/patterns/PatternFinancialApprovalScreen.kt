@@ -28,6 +28,8 @@ import kotlinx.coroutines.launch
 internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, generation: Long, pattern: PatternDefinitionView,
     initialBody: String, readOnlyBody: Boolean, onSaved: (PatternCatalog) -> Unit, onBack: () -> Unit) {
     var accounts by remember { mutableStateOf(emptyList<PatternAccountOption>()) }
+    var cards by remember { mutableStateOf(emptyList<PatternAccountOption>()) }
+    var cardId by remember { mutableStateOf<String?>(null) }
     var accountId by remember { mutableStateOf<String?>(null) }
     var newAccount by remember { mutableStateOf("") }
     var ownershipConfirmed by remember { mutableStateOf(false) }
@@ -57,7 +59,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
         }
     }
     LaunchedEffect(workflow, pattern.bankId) {
-        try { accounts = workflow.patternAccounts(pattern.bankId) }
+        try { accounts = workflow.patternAccounts(pattern.bankId); cards = workflow.patternCards(pattern.bankId) }
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
     }
@@ -71,6 +73,15 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 val select = stringResource(R.string.pattern_financial_select_operation)
                 PatternChoice(listOf(select) + operationNames, operation?.let { operationNames[it.ordinal] } ?: select, !busy) {
                     operation = PatternOperation.entries.getOrNull(it - 1); reference = null; contextFields = emptySet(); preview = null
+                }
+                if ("card" in pattern.fields) {
+                    val chooseCard = stringResource(R.string.settings_pattern_select_card)
+                    val cardNames = cards.map { "${it.name.orEmpty()} • ${it.last4}" }
+                    PatternChoice(listOf(chooseCard) + cardNames,
+                        cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { cardNames[it] } ?: chooseCard, !busy) {
+                        cardId = cards.getOrNull(it - 1)?.id; preview = null
+                    }
+                    if (cards.isEmpty()) MasroofGuidanceLabel(stringResource(R.string.settings_card_setup), stringResource(R.string.settings_pattern_add_card_hint))
                 }
                 val chooseAccount = stringResource(R.string.pattern_financial_select_account)
                 val names = accounts.map { "${it.name.orEmpty()} • ${it.last4}" }
@@ -111,9 +122,9 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                     }
                 }
                 MasroofButton(onClick = { work {
-                    preview = workflow.previewFinancial(generation, pattern.bankId, pattern.id, requireNotNull(operation), requireNotNull(accountId),
-                        body, reference, contextFields, currency)
-                } }, enabled = !busy && operation != null && accountId != null && body.isNotBlank()) { Text(stringResource(R.string.pattern_financial_validate)) }
+                    preview = workflow.previewFinancial(generation, pattern.bankId, pattern.id, requireNotNull(operation), accountId,
+                        body, reference, contextFields, currency, cardId)
+                } }, enabled = !busy && operation != null && (accountId != null || cardId != null) && ("card" !in pattern.fields || cardId != null) && body.isNotBlank()) { Text(stringResource(R.string.pattern_financial_validate)) }
             }
             preview?.let { validated ->
                 MasroofCard {

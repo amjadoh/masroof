@@ -17,18 +17,6 @@ object DashboardRegistryLabels {
         val last4 = if (trimmed.length <= 4) trimmed else trimmed.takeLast(4)
         return formatCardLast4(last4)
     }
-
-    fun resolveAccountLabel(
-        displayName: String?,
-        maskedNumber: String,
-        last4Template: (String) -> String,
-    ): String = customName(displayName) ?: last4Template(accountLast4(maskedNumber))
-
-    fun resolveCardLabel(
-        displayName: String?,
-        last4: String,
-        last4Template: (String) -> String,
-    ): String = customName(displayName) ?: last4Template(formatCardLast4(last4))
 }
 
 @Composable

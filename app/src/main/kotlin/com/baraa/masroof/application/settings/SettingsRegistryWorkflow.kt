@@ -3,6 +3,7 @@ package com.baraa.masroof.application.settings
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.AccountRegistryEntry
 import com.baraa.masroof.domain.model.AccountType
+import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.CardRegistryEntry
 import com.baraa.masroof.domain.model.LoanReference
@@ -21,7 +22,38 @@ class SettingsRegistryWorkflow(
     private val loanRegistryRepository: LoanRegistryRepository,
     private val ownershipConfirmationService: OwnershipConfirmationService,
     private val parsedEvents: com.baraa.masroof.parsing.repository.ParsedEventRepository? = null,
+    private val inTransaction: suspend (suspend () -> Unit) -> Unit = { it() },
 ) {
+    suspend fun addAccount(bankId: String, last4: String, name: String?): AccountReference {
+        val ref = AccountReference(Bank(bankId), canonicalSuffix(last4))
+        require(ref.bank != Bank.UNKNOWN)
+        inTransaction {
+            require(accountRegistryRepository.get(ref) == null) { "Account already exists" }
+            ownershipConfirmationService.confirmAccountOwned(ref)
+            accountRegistryRepository.updateDisplayName(ref, name?.trim()?.ifEmpty { null })
+        }
+        return ref
+    }
+
+    suspend fun addCard(bankId: String, last4: String, name: String?, configuration: com.baraa.masroof.domain.model.CardConfiguration): CardReference {
+        val ref = CardReference(Bank(bankId), canonicalSuffix(last4))
+        require(ref.bank != Bank.UNKNOWN)
+        configuration.validate(ref.bank, requireNotNull(ref.last4))
+        inTransaction {
+            require(cardRegistryRepository.get(ref) == null) { "Card already exists" }
+            ownershipConfirmationService.confirmCardOwned(ref)
+            cardRegistryRepository.configure(ref, configuration)
+            cardRegistryRepository.updateDisplayName(ref, name?.trim()?.ifEmpty { null })
+        }
+        return ref
+    }
+
+    private fun canonicalSuffix(value: String): String {
+        val suffix = com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim()
+        require(suffix.matches(Regex("[0-9]{4}")))
+        return suffix
+    }
+
     suspend fun configureCard(card: CardReference, configuration: com.baraa.masroof.domain.model.CardConfiguration) {
         cardRegistryRepository.configure(card, configuration)
     }

@@ -24,6 +24,52 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PatternProcessingMilestoneTest {
+    @Test fun manualCardSetupRollsBackInvalidLinksAndNeverCreatesBalancesOrTransactions() = runBlocking {
+        fixture { c ->
+            val bank = Bank("BANK_STC")
+            val invalid = CardConfiguration(CardNetwork.MADA, CardType.DEBIT,
+                linkedAccount = AccountReference(bank, "9999"))
+            assertTrue(runCatching { c.settingsRegistryWorkflow.addCard(bank.id, "8219", null, invalid) }.isFailure)
+            assertNull(c.cardRegistryRepository.get(CardReference(bank, "8219")))
+            val account = c.settingsRegistryWorkflow.addAccount(bank.id, "٣٠٠١", "My account")
+            c.settingsRegistryWorkflow.addCard(bank.id, "8219", "My card", invalid.copy(linkedAccount = account))
+            assertEquals("3001", account.maskedNumber)
+            assertEquals(OwnershipStatus.OWNED, c.cardRegistryRepository.resolve(CardReference(bank, "8219")))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertTrue(runCatching { c.settingsRegistryWorkflow.addAccount(bank.id, "3001", "Overwrite") }.isFailure)
+            assertEquals("My account", c.accountRegistryRepository.get(account)?.displayName)
+        }
+    }
+
+    @Test fun newBankCardPatternCanBeApprovedWithoutInventingAFundingAccount() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val bankId = "CARD_BANK"
+            w.addBank(w.catalog().generation, "Card bank", "CardBank", bankId)
+            val ref = c.settingsRegistryWorkflow.addCard(bankId, "8219", null,
+                CardConfiguration(CardNetwork.VISA, CardType.CREDIT, CardRole.STANDALONE))
+            val card = requireNotNull(c.cardRegistryRepository.get(ref))
+            val body = "Purchase\nCard:8219\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            val bindings = listOf("card" to "8219", "amount" to "10SAR", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, bankId, "CardBank", PatternOperation.PURCHASE, body, bindings))
+            c.processRawSmsUseCase.ingest(sms("card-pending", body, "CardBank"))
+            val patternId = w.catalog().banks.single { it.bankId == bankId }.currentPatterns.single().id
+            val preview = w.previewFinancial(w.catalog().generation, bankId, patternId, PatternOperation.PURCHASE,
+                null, body, null, emptySet(), cardId = card.id)
+            c.settingsRegistryWorkflow.markCardExternal(ref)
+            assertTrue(runCatching { w.saveFinancial(preview) }.isFailure)
+            c.settingsRegistryWorkflow.confirmCardOwned(ref)
+            val approved = w.saveFinancial(preview)
+            assertEquals(1, w.applyPending(bankId, approved.generation).posted)
+            assertTrue(c.accountRegistryRepository.listAll().none { it.bank.id == bankId })
+            assertEquals(ref, c.parsedEventRepository.findByRawSmsId("card-pending")?.event?.cardRef)
+            assertEquals(1, c.financialTransactionRepository.listAll().size)
+            assertEquals(com.baraa.masroof.domain.ids.FinancialContainerIdFactory.cardId(ref),
+                c.financialTransactionRepository.listAll().single().sourceContainerId)
+        }
+    }
+
     private suspend fun fixture(source: com.baraa.masroof.sms.datasource.SmsDataSource? = null, block: suspend (AppContainer) -> Unit) {
         val context = TestStorageContext(ApplicationProvider.getApplicationContext<Context>(), "pattern-${java.util.UUID.randomUUID()}")
         val container = AppContainer(context, smsDataSourceOverride = source)

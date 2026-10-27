@@ -182,7 +182,7 @@ class AppContainer(
             messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
             requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
-                accountRegistryRepository, ownershipConfirmationService),
+                accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
             importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 messagePatternStore, databaseAccessGate,
@@ -412,6 +412,7 @@ class AppContainer(
             loanRegistryRepository = loanRegistryRepository,
             ownershipConfirmationService = ownershipConfirmationService,
             parsedEvents = parsedEventRepository,
+            inTransaction = { block -> withDatabaseTransaction(block) },
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =
@@ -665,6 +666,11 @@ class AppContainer(
 
     val smsDataSource: SmsDataSource =
         smsDataSourceOverride ?: AndroidSmsDataSource(appContext.contentResolver)
+
+    val bankSmsImportWorkflow by lazy {
+        com.baraa.masroof.application.sms.BankSmsImportWorkflow(historicalSmsScanner,
+            onChanged = { maintenanceCompletionSignal.notifyCompleted() })
+    }
 
     val historicalSmsBatchProcessor: HistoricalSmsBatchProcessor = HistoricalSmsBatchProcessor(
         capture = captureBankSmsUseCase,

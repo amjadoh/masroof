@@ -115,7 +115,7 @@ fun MasroofRoot(
                 com.baraa.masroof.presentation.common.MasroofNavigationItem(stringResource(label), icon,
                     selected == destination,
                     stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label))
-            }) { index -> navigate(entries[index].first) }
+            }) { index -> if (!settingsViewModel.uiState.value.importingSms) navigate(entries[index].first) }
 
         }
     }
@@ -306,6 +306,7 @@ private fun MasroofContent(
                 onOpenAllTransactions = { openTransactionList() },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenSettings = { openSettings() },
+                onImportSms = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.SmsImport())) },
                 onOpenReview = { openReview(HomeDestination.Dashboard); reviewReturnToAnalysis = true },
                 onOpenCommitments = { homeDestination = HomeDestination.CommitmentsSummary },
                 onManageCardsInSettings = {
@@ -433,7 +434,6 @@ private fun MasroofContent(
                                 launch = launch,
                             )
                         },
-                        onDismissRescanStatus = dashboardViewModel::clearRescanStatus,
                     )
                 },
             )
@@ -497,6 +497,7 @@ private fun MasroofContent(
     } else {
         OnboardingRoute(
             viewModel = onboardingViewModel,
+            settingsViewModel = settingsViewModel,
             onRequestPermissions = onRequestPermissions,
             onOpenAppSettings = onOpenAppSettings,
             onRequestRestoreBackup = onRequestRestoreBackup,
@@ -565,7 +566,6 @@ private fun handleNotificationAction(
     onOpenAppSettings: () -> Unit,
     onOpenReview: () -> Unit,
     onOpenSettings: (SettingsLaunchRequest) -> Unit,
-    onDismissRescanStatus: () -> Unit,
 ) {
     when (action) {
         NotificationAction.REQUEST_SMS_PERMISSION -> onRequestPermissions()
@@ -576,7 +576,7 @@ private fun handleNotificationAction(
         NotificationAction.OPEN_SETTINGS_ABOUT,
         -> resolveNotificationSettingsLaunch(action, settingsState)?.let(onOpenSettings)
 
-        NotificationAction.DISMISS_RESCAN -> onDismissRescanStatus()
+        NotificationAction.DISMISS_RESCAN,
         NotificationAction.MARK_READ_ONLY -> Unit
     }
 }

@@ -24,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DashboardLayoutSnapshot
 import com.baraa.masroof.application.dashboard.DashboardSectionId
-import com.baraa.masroof.application.dashboard.DashboardSectionSize
 import com.baraa.masroof.presentation.common.MasroofIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +33,6 @@ fun DashboardCustomizeBottomSheet(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onToggleSection: (DashboardSectionId) -> Unit,
-    onSetSectionSize: (DashboardSectionId, DashboardSectionSize) -> Unit,
     onMoveSection: (DashboardSectionId, Int) -> Unit,
     onToggleQuickExpense: () -> Unit,
     onToggleQuickIncome: () -> Unit,

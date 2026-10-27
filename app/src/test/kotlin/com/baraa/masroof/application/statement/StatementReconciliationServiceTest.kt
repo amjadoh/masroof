@@ -31,6 +31,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatementReconciliationServiceTest {
+    @Test fun selectedBankRejectsAnOwnedStatementFromAnotherBankBeforeReadingLedger() = runBlocking {
+        val ledger = RecordingLedger(emptyList())
+        val workflow = StatementReconciliationWorkflow(
+            ImportStatementUseCase(parser, StatementReconciliationService(ledger)), { known }, { owned })
+        val csv = statementFixture("nine_matched_one_statement_only.csv").readBytes()
+        val rejected = workflow.compare(ByteArrayInputStream(csv), "D360")
+        assertEquals(StatementImportResult.Rejected(StatementRejection.UNKNOWN_BANK), rejected)
+        assertEquals(0, ledger.rangeReads)
+        assertTrue(workflow.compare(ByteArrayInputStream(csv), "BANK_ALJAZIRA") is StatementImportResult.Compared)
+    }
     private val zone = ZoneId.of("Asia/Riyadh")
     private val known = setOf("BANK_ALJAZIRA", "D360")
     private val owned = setOf(

@@ -28,6 +28,8 @@ class OnboardingOwnershipWorkflow(
         val bank: Bank,
         val suffix: String,
         val ownership: OwnershipStatus,
+        val cardType: com.baraa.masroof.domain.model.CardType? = null,
+        val discoveredFromSms: Boolean = true,
     )
 
     data class Snapshot(
@@ -39,26 +41,29 @@ class OnboardingOwnershipWorkflow(
         val hasUnknownCandidates: Boolean,
     )
 
-    suspend fun loadSnapshot(): Snapshot {
+    suspend fun loadSnapshot(bankIds: Set<String>? = null): Snapshot {
         val accounts = accountRegistryRepository.listAll()
-            .filter { it.bank != Bank.UNKNOWN }
+            .filter { it.bank != Bank.UNKNOWN && (bankIds == null || it.bank.id in bankIds) }
             .map {
                 OwnershipCandidate(
                     kind = CandidateKind.ACCOUNT,
                     bank = it.bank,
                     suffix = it.maskedNumber,
                     ownership = it.ownership,
+                    discoveredFromSms = it.firstSeenRawSmsId != null,
                 )
             }
             .sortedBy { it.suffix }
         val cards = cardRegistryRepository.listAll()
-            .filter { it.bank != Bank.UNKNOWN }
+            .filter { it.bank != Bank.UNKNOWN && (bankIds == null || it.bank.id in bankIds) }
             .map {
                 OwnershipCandidate(
                     kind = CandidateKind.CARD,
                     bank = it.bank,
                     suffix = it.last4,
                     ownership = it.ownership,
+                    cardType = it.cardType,
+                    discoveredFromSms = it.firstSeenRawSmsId != null,
                 )
             }
             .sortedBy { it.suffix }

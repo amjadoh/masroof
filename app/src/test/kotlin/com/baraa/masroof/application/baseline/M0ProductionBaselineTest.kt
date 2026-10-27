@@ -106,9 +106,9 @@ class M0ProductionBaselineTest {
     }
 
     @Test
-    fun userPaths_areDiscoveryThenReview_notManualCreation() {
+    fun userPaths_selectBanksThenDiscoverAndReview() {
         assertEquals(
-            listOf("WELCOME", "PERMISSION", "IMPORT_DATE", "IMPORTING", "OWNERSHIP", "FINALIZE", "HOME"),
+            listOf("WELCOME", "BANKS", "PERMISSION", "IMPORT_DATE", "IMPORTING", "OWNERSHIP", "FINALIZE", "HOME"),
             OnboardingStep.values().map { it.name },
         )
         assertEquals("my_accounts", SettingsDestination.MyAccounts.encode())

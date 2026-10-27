@@ -68,6 +68,8 @@ fun SettingsAboutScreen(
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
     onClearUpdateMessage: () -> Unit,
+    bankCatalog: com.baraa.masroof.application.patterns.PatternCatalog? = null,
+    onOpenBanks: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val updateMessageText = updateMessage?.let { resolveUpdateMessage(it) }
@@ -112,11 +114,15 @@ fun SettingsAboutScreen(
                 body = stringResource(R.string.settings_about_privacy_body),
                 contextualExplanation = true,
             )
-            AboutInfoCard(
-                icon = MasroofIcons.externalIn,
-                title = stringResource(R.string.settings_about_banks_title),
-                body = stringResource(R.string.bank_aljazira),
-            )
+            MasroofCard {
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_bank_support_title),
+                    stringResource(R.string.settings_bank_support_hint), style = MaterialTheme.typography.titleMedium)
+                bankCatalog?.banks.orEmpty().forEach { bank ->
+                    Text(bank.displayName ?: settingsBankLabel(com.baraa.masroof.domain.model.Bank(bank.bankId)), style = MaterialTheme.typography.titleSmall)
+                    Text(bankSupportLabel(bank), style = MaterialTheme.typography.bodySmall)
+                }
+                OutlinedButton(onOpenBanks, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_bank_manage)) }
+            }
 
             if (BuildConfig.ENABLE_DESIGN_CATALOG) {
                 SettingsNavRow(
