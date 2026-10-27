@@ -13,6 +13,9 @@ import com.baraa.masroof.domain.model.ReviewKind
  * For the Masroof brand mark, prefer [MasroofLogo] / [MasroofLogoMark] composables.
  */
 object MasroofIcons {
+    val edit: ImageVector = MasroofOutlineIcons.Pencil
+    val delete: ImageVector = MasroofOutlineIcons.Trash2
+    val copy: ImageVector = MasroofOutlineIcons.Copy
     val dashboard: ImageVector = MasroofOutlineIcons.LayoutDashboard
     val palette: ImageVector = MasroofOutlineIcons.Palette
     val sun: ImageVector = MasroofOutlineIcons.Sun

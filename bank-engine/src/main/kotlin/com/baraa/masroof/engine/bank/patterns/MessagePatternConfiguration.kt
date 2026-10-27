@@ -9,7 +9,13 @@ data class BankMessagePatterns(
     val displayName: String? = null,
     /** Immutable revisions are retained. Only the latest revision of each id can be active. */
     val patterns: List<SavedMessagePattern> = emptyList(),
+    /** Identifiers only: prevents bundled definitions from returning after an explicit permanent deletion. */
+    val deletedPatternIds: Set<String> = emptySet(),
 ) {
+    init {
+        require(deletedPatternIds.size <= 512 && deletedPatternIds.all { it.matches(Regex("[A-Za-z0-9_.-]{1,64}")) })
+        require(patterns.none { it.id in deletedPatternIds }) { "Deleted patterns cannot be restored as revisions" }
+    }
     val currentPatterns: List<SavedMessagePattern>
         get() = patterns.groupBy { it.id }.values.map { versions -> versions.maxBy { it.revision } }.sortedBy { it.id }
 }

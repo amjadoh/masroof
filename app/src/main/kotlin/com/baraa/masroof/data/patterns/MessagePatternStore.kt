@@ -23,7 +23,8 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
         for (bank in bundled) {
             val prior = current.banks.singleOrNull { it.bankId == bank.bankId }
             if (bank.bankId in mergeBankIds) {
-                val missing = bank.patterns.filter { seed -> prior?.patterns.orEmpty().none { it.id == seed.id } }
+                val missing = bank.patterns.filter { seed -> seed.id !in prior?.deletedPatternIds.orEmpty() &&
+                    prior?.patterns.orEmpty().none { it.id == seed.id } }
                 val senders = (prior?.senders.orEmpty() + bank.senders).distinct()
                 if (prior == null || missing.isNotEmpty() || senders != prior.senders)
                     current = saveBank(current.generation, (prior ?: bank).copy(senders = senders, patterns = missing))
@@ -38,6 +39,8 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
         val current = load()
         check(current.generation == expectedGeneration) { "Pattern configuration changed" }
         val prior = current.banks.singleOrNull { it.bankId == bank.bankId }
+        val deletedIds = prior?.deletedPatternIds.orEmpty() + bank.deletedPatternIds
+        require(bank.patterns.none { it.id in deletedIds }) { "Pattern was permanently deleted" }
         val versions = prior?.patterns.orEmpty().associateBy { it.id to it.revision }.toMutableMap()
         bank.patterns.sortedBy { it.revision }.forEach { pattern ->
             val key = pattern.id to pattern.revision
@@ -50,9 +53,24 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
                 versions[key] = pattern
             }
         }
-        val updated = bank.copy(patterns = versions.values.toList())
+        val updated = bank.copy(patterns = versions.values.toList(), deletedPatternIds = deletedIds)
         val next = MessagePatternConfiguration(Math.addExact(current.generation, 1),
             current.banks.filterNot { it.bankId == bank.bankId } + updated)
+        val raw = MessagePatternConfigurationCodec.encode(next)
+        replace(raw)
+        MessagePatternConfigurationCodec.decode(raw)
+    }
+
+    fun deletePattern(expectedGeneration: Long, bankId: String, patternId: String): MessagePatternConfiguration = synchronized(lock) {
+        val current = load()
+        check(current.generation == expectedGeneration) { "Pattern configuration changed" }
+        val bank = current.banks.single { it.bankId == bankId }
+        val pattern = bank.currentPatterns.single { it.id == patternId }
+        require(!pattern.enabled) { "Disable the pattern before deleting it" }
+        val updated = bank.copy(patterns = bank.patterns.filterNot { it.id == patternId },
+            deletedPatternIds = bank.deletedPatternIds + patternId)
+        val next = current.copy(generation = Math.addExact(current.generation, 1),
+            banks = current.banks.map { if (it.bankId == bankId) updated else it })
         val raw = MessagePatternConfigurationCodec.encode(next)
         replace(raw)
         MessagePatternConfigurationCodec.decode(raw)

@@ -14,8 +14,9 @@ data class PatternApprovalSettings(val operation: PatternOperation?, val account
     val referenceField: String?, val currency: Currency?)
 data class PatternDefinitionView(val id: String, val bankId: String, val label: String, val revision: Int,
     val enabled: Boolean, val status: PatternApprovalStatus, val example: String, val fields: List<String>,
-    val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null) {
+    val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null, val sender: String = "") {
     val canApprove: Boolean get() = status != PatternApprovalStatus.BUNDLED
+    val canEdit: Boolean get() = PatternOperation.entries.any { it.name == label }
     val canApply: Boolean get() = enabled && status != PatternApprovalStatus.PREVIEW_ONLY
     val referenceFields: List<String> get() = fields.filter {
         it in setOf("source_account", "destination_account", "account_reference", "funding_reference", "counterparty_bank")
@@ -44,6 +45,6 @@ internal fun MessagePatternConfiguration.toCatalog() = PatternCatalog(generation
             pattern.factContract?.let { contract -> PatternApprovalSettings(
                 PatternOperation.entries.firstOrNull { it.name == contract.family.name },
                 contract.accountBindings.singleOrNull()?.last4, contract.accountBindings.singleOrNull()?.field,
-                contract.currency?.let { Currency.valueOf(it.name) }) })
+                contract.currency?.let { Currency.valueOf(it.name) }) }, sender = pattern.sender)
     })
 })

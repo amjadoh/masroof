@@ -1,5 +1,5 @@
 <resources>
-    <string name="pattern_financial_approve">اعتماد التفسير المالي</string>
+    <string name="pattern_financial_approve">اعتماد مالي</string>
     <string name="pattern_financial_select_operation">اختر نوع الحركة المالية</string>
     <string name="pattern_financial_select_account">اختر حسابك المؤكد في هذا البنك</string>
     <string name="pattern_financial_account_last4">آخر أربعة أرقام من حسابك</string>

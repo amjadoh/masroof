@@ -27,7 +27,11 @@ import java.time.Instant
 class PatternCurrentMessageJourneyTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
-    private fun click(id: Int) { compose.onNodeWithText(ar(id)).performScrollTo().performClick() }
+    private fun click(id: Int) {
+        val node = compose.onNodeWithText(ar(id))
+        if (runCatching { node.assertIsDisplayed() }.isFailure) node.performScrollTo()
+        node.performClick()
+    }
 
     @Test fun teachApproveAndApplyFromReviewPostsOnlyTheExplicitCurrentMessage() = runBlocking {
         val context = TestStorageContext(compose.activity, "ui-current-${java.util.UUID.randomUUID()}")
@@ -55,11 +59,11 @@ class PatternCurrentMessageJourneyTest {
             click(R.string.teaching_next)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("10SAR").performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.teaching_skip_field)
             click(R.string.teaching_skip_field)
             compose.onNodeWithText("2026-10-15 12:30").performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-bind").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.pattern_preview)
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
             click(R.string.pattern_save)
