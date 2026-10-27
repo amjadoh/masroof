@@ -60,19 +60,20 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
         body: String, referenceField: String?, contextReferences: Set<String>, currency: Currency?, cardId: String? = null): PatternFinancialPreview = withContext(Dispatchers.IO) {
         gate.withAccess {
             val current = store.load()
-            check(current.generation == generation) { "Pattern configuration changed" }
+            if (current.generation != generation) throw PatternApprovalException(PatternApprovalProblem.CONFIGURATION_CHANGED)
             val bank = current.banks.single { it.bankId == bankId }
             val pattern = bank.currentPatterns.single { it.id == patternId }
             require(pattern.enabled)
             val account = accountId?.let { id -> ownedAccounts(bankId).single { it.id == id } }
             val card = cardId?.let { id -> ownedCards(bankId).single { it.id == id } }
-            require(account != null || card != null)
-            val fields = requireNotNull(pattern.preview(bankId, pattern.sender, body)) { "Message does not match" }.fields
+            if (account == null && card == null) throw PatternApprovalException(PatternApprovalProblem.ACCOUNT_REQUIRED)
+            val fields = pattern.preview(bankId, pattern.sender, body)?.fields
+                ?: throw PatternApprovalException(PatternApprovalProblem.MESSAGE_MISMATCH)
             val cardField = fields["card"]
             if (cardField != null) {
-                require(card != null) { "Select an owned, configured card" }
+                if (card == null) throw PatternApprovalException(PatternApprovalProblem.CARD_MISMATCH)
                 val suffix = com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(cardField.raw).comparisonBody.trim()
-                require(suffix == card.last4) { "Card reference does not match" }
+                if (suffix != card.last4) throw PatternApprovalException(PatternApprovalProblem.CARD_MISMATCH)
             } else require(card == null) { "No explicit card reference" }
             require(referenceField == null || account != null)
             val incoming = operation in setOf(PatternOperation.TRANSFER_IN, PatternOperation.REFUND)
@@ -80,6 +81,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             val observed = referenceField?.let { field -> requireNotNull(fields[field]).raw }
             // A three-digit key must be mapped explicitly; a full suffix must already identify the chosen account.
             val key = observed?.let { value -> com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim() }
+            if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))
+                throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH)
             val contract = PatternFactContract(MessageFamily.valueOf(operation.name),
                 if (incoming) MoneyDirection.INCOMING else MoneyDirection.OUTGOING, currency,
                 version = 2, cardBank = card?.let { BankId(bankId) },
@@ -90,8 +93,26 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 if (it.bankId == bankId) it.copy(patterns = it.patterns + next) else it
             })
             val input = MessageInput("financial-pattern-preview", pattern.sender, body, Instant.now())
-            val result = InterpretationDraftMapper().map(input, PatternFactInterpreter(proposed).interpretRouted(input, BankId(bankId)), Bank(bankId))
-            require(result is ParseResult.Success) { "Financial facts need review" }
+            val interpretation = PatternFactInterpreter(proposed).interpretRouted(input, BankId(bankId))
+            val result = InterpretationDraftMapper().map(input, interpretation, Bank(bankId))
+            if (result !is ParseResult.Success) {
+                val codes = interpretation.diagnostics.map { it.code }.toSet()
+                val problem = when {
+                    interpretation.facts.family == MessageFamily.OTP -> PatternApprovalProblem.NON_FINANCIAL
+                    "PATTERN_CONFLICT" in codes -> PatternApprovalProblem.PATTERN_CONFLICT
+                    "PATTERN_REFERENCE_ROLE_UNRESOLVED" in codes || "PATTERN_ACCOUNT_REFERENCE_UNRESOLVED" in codes -> PatternApprovalProblem.REFERENCE_ROLE
+                    "PATTERN_ACCOUNT_BINDING_MISMATCH" in codes -> PatternApprovalProblem.REFERENCE_MISMATCH
+                    "PATTERN_CURRENCY_CONFLICT" in codes -> PatternApprovalProblem.CURRENCY_CONFLICT
+                    "PATTERN_MONEY_INCOMPLETE" in codes -> PatternApprovalProblem.CURRENCY_REQUIRED
+                    "PATTERN_TIME_INCOMPLETE" in codes -> PatternApprovalProblem.INVALID_TIME
+                    else -> when {
+                        (result as? ParseResult.ReviewRequired)?.findings?.any { it.code == "V-015" } == true -> PatternApprovalProblem.INVALID_TIME
+                        interpretation.facts.amount?.amount?.signum() != 1 -> PatternApprovalProblem.INVALID_AMOUNT
+                        else -> PatternApprovalProblem.VALIDATION
+                    }
+                }
+                throw PatternApprovalException(problem)
+            }
             PatternFinancialPreview(generation, PatternFactInterpreter(current).fingerprint, next, accountId,
                 requireNotNull(result.event.amount), result.details.occurredAtLocal?.format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(
                     java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed, cardId)
