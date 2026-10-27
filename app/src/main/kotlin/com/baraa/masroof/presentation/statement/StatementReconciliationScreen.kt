@@ -57,9 +57,8 @@ fun StatementReconciliationRoute(
     bankId: String? = null,
     bankLabel: String? = null,
 ) {
-    androidx.compose.runtime.DisposableEffect(bankId) {
-        viewModel.reset()
-        onDispose { viewModel.reset() }
+    androidx.compose.runtime.LaunchedEffect(bankId) {
+        viewModel.selectBank(bankId)
     }
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current

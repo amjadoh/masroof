@@ -25,6 +25,25 @@ import org.junit.Test
  */
 class StatementReconciliationViewModelTest {
     @Test
+    fun selectingTheSameBankKeepsState_butChangingBankClearsIt() {
+        val workflow = com.baraa.masroof.application.statement.StatementReconciliationWorkflow(
+            com.baraa.masroof.application.statement.ImportStatementUseCase(
+                com.baraa.masroof.domain.statement.StatementParser { _, _ -> error("No file selected") },
+                com.baraa.masroof.application.statement.StatementReconciliationService(
+                    com.baraa.masroof.testsupport.SettingsViewModelTestSupport.emptyFinancialTransactionRepository()),
+            ), { emptySet() }, { emptySet() },
+        )
+        val vm = StatementReconciliationViewModel(workflow)
+        vm.selectBank(Bank.BANK_ALJAZIRA.id)
+        vm.onUnreadable()
+
+        vm.selectBank(Bank.BANK_ALJAZIRA.id)
+        assertTrue(vm.uiState.value.unreadable)
+        vm.selectBank("D360")
+        assertEquals(StatementReconciliationUiState(), vm.uiState.value)
+    }
+
+    @Test
     fun rejectedFile_isVisibleAsRejectionWithoutAReport() {
         val state = statementReconciliationUiState(
             StatementImportResult.Rejected(StatementRejection.OVERSIZED),

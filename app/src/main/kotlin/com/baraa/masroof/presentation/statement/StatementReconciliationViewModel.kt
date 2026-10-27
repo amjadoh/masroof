@@ -119,13 +119,17 @@ class StatementReconciliationViewModel(
     private val _uiState = MutableStateFlow(StatementReconciliationUiState())
     val uiState: StateFlow<StatementReconciliationUiState> = _uiState.asStateFlow()
     private var comparison: kotlinx.coroutines.Job? = null
+    private var selectedBankId: String? = null
 
-    fun reset() {
+    fun selectBank(bankId: String?) {
+        if (selectedBankId == bankId) return
+        selectedBankId = bankId
         comparison?.cancel()
         _uiState.value = StatementReconciliationUiState()
     }
 
     fun compare(stream: InputStream, bankId: String? = null) {
+        selectBank(bankId)
         comparison?.cancel()
         comparison = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(busy = true, rejection = null, unreadable = false)
