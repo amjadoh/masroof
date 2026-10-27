@@ -4,6 +4,7 @@ import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
 import com.baraa.masroof.engine.bank.patterns.GenericCandidateExtractor
+import com.baraa.masroof.engine.bank.patterns.FieldSlot
 import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +55,7 @@ class MessagePatternsWorkflow(
         bundledBanks.filter { bank ->
             val prior = configuration.banks.singleOrNull { it.bankId == bank.bankId }
             if (bank.bankId in requiredBundledBankIds) prior == null ||
-                bank.patterns.any { seed -> prior.patterns.none { it.id == seed.id } } || bank.senders.any { it !in prior.senders }
+                bank.patterns.any { seed -> seed.id !in prior.deletedPatternIds && prior.patterns.none { it.id == seed.id } } || bank.senders.any { it !in prior.senders }
             else configuration.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }
         }
 
@@ -92,24 +93,43 @@ class MessagePatternsWorkflow(
         GenericCandidateExtractor.extract(body).map { PatternText(it.text.raw, it.text.start, it.text.end) }.distinct()
     }
 
+    suspend fun editBindings(generation: Long, bankId: String, patternId: String, body: String) = withContext(ioDispatcher) {
+        accessGate.withAccess {
+            val configuration = store.load()
+            check(configuration.generation == generation) { "Pattern configuration changed" }
+            val pattern = configuration.banks.single { it.bankId == bankId }.currentPatterns.single { it.id == patternId }
+            // Role evidence may include labels and multiple observations; it is not a set of teaching selections.
+            if (pattern.roleProfile != null) return@withAccess emptyList<PatternBinding>()
+            val ignored = pattern.parts.filterIsInstance<FieldSlot>().filter { it.ignored }.map { it.field }.toSet()
+            val visible = pattern.copy(enabled = true, parts = pattern.parts.map {
+                if (it is FieldSlot) it.copy(ignored = false) else it
+            })
+            visible.preview(bankId, pattern.sender, body)?.fields.orEmpty().map { (field, span) ->
+                PatternBinding(field, span.start, span.end, ignored = field in ignored)
+            }
+        }
+    }
+
     suspend fun teach(expectedGeneration: Long, bankId: String, sender: String, operation: PatternOperation,
-        body: String, bindings: List<PatternBinding>): PatternTeachingPreview = withContext(ioDispatcher) {
+        body: String, bindings: List<PatternBinding>, patternId: String? = null): PatternTeachingPreview = withContext(ioDispatcher) {
         accessGate.withAccess {
             val configuration = store.load()
             check(configuration.generation == expectedGeneration) { "Pattern configuration changed" }
             val bank = configuration.banks.single { it.bankId == bankId }
+            val prior = patternId?.let { id -> bank.currentPatterns.single { it.id == id } }
             require(sender in bank.senders) { "Select a configured sender" }
             require(bindings.any { it.field == "amount" && !it.ignored }) { "Bind the transaction amount" }
             require(bindings.all { it.ignored || it.field in operation.fields }) { "Field does not belong to operation" }
-            val pattern = SavedMessagePattern.fromChoices(java.util.UUID.randomUUID().toString(), bankId, sender,
-                operation.name, body, bindings.choices())
+            val pattern = SavedMessagePattern.fromChoices(prior?.id ?: java.util.UUID.randomUUID().toString(), bankId, sender,
+                operation.name, body, bindings.choices()).copy(revision = prior?.let { Math.addExact(it.revision, 1) } ?: 1,
+                    enabled = prior?.enabled ?: true)
             PatternTeachingPreview(configuration.generation, pattern,
-                requireNotNull(pattern.preview(bankId, sender, body)).fields.displayFields())
+                requireNotNull(pattern.copy(enabled = true).preview(bankId, sender, body)).fields.displayFields())
         }
     }
 
     suspend fun tryPreview(preview: PatternTeachingPreview, sender: String, body: String) = withContext(ioDispatcher) {
-        preview.pattern.preview(preview.bankId, sender, body)?.fields?.displayFields()
+        preview.pattern.copy(enabled = true).preview(preview.bankId, sender, body)?.fields?.displayFields()
     }
 
     suspend fun saveTeaching(preview: PatternTeachingPreview) = withContext(ioDispatcher) {
@@ -124,6 +144,10 @@ class MessagePatternsWorkflow(
 
     suspend fun setEnabled(generation: Long, bankId: String, patternId: String, enabled: Boolean) =
         revise(generation, bankId, patternId) { _, current -> current.copy(enabled = enabled) }
+
+    suspend fun deletePattern(generation: Long, bankId: String, patternId: String) = withContext(ioDispatcher) {
+        accessGate.withRestore { store.deletePattern(generation, bankId, patternId).toCatalog() }
+    }
 
     suspend fun restoreRevision(generation: Long, bankId: String, patternId: String, revision: Int) =
         revise(generation, bankId, patternId) { bank, _ -> bank.patterns.single { it.id == patternId && it.revision == revision } }

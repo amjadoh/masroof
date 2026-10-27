@@ -33,6 +33,9 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
     val revision: Int = 1, val enabled: Boolean = true, parts: List<PatternPart>,
     factContract: PatternFactContract? = null, roleProfile: BankRuleSchema? = null) {
     val parts: List<PatternPart> = Collections.unmodifiableList(parts.toList())
+    // Banks may leave the neutral account-reference line blank. Identity bindings still require an exact value.
+    internal val optionalTextFields = this.parts.filterIsInstance<FieldSlot>()
+        .filter { it.field == "account_reference" && it.kind == FieldKind.TEXT }.map { it.field }.toSet()
     val factContract = factContract?.copy(accountBindings = Collections.unmodifiableList(factContract.accountBindings.toList()),
         contextReferences = Collections.unmodifiableSet(factContract.contextReferences.toSet()))
     val roleProfile: BankRuleSchema? = roleProfile?.frozen()
@@ -59,7 +62,7 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
                 is FieldSlot -> {
                     val start = length
                     append(part.representative())
-                    selections += Selection(part.field, part.kind, start, length)
+                    selections += Selection(part.field, part.kind, start, length, allowEmpty = part.field in optionalTextFields)
                 }
             } }
         }

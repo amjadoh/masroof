@@ -24,6 +24,55 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PatternProcessingMilestoneTest {
+    @Test fun deletingAnApprovedPatternPreservesPostedEvidenceAndRejectsAStaleApproval() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val account = w.confirmPatternAccount("BANK_STC", "4321")
+            w.saveFinancial(w.previewFinancial(w.load().generation, "BANK_STC", "stc-internal-in", PatternOperation.TRANSFER_IN,
+                account.id, incoming, "account_reference", emptySet()))
+            c.processRawSmsUseCase.ingest(sms("delete-posted", incoming))
+            val evidence = c.parsedEventRepository.findByRawSmsId("delete-posted")
+            val transactions = c.financialTransactionRepository.listAll()
+            assertEquals(1, transactions.size)
+            val stale = w.previewFinancial(w.load().generation, "BANK_STC", "stc-internal-in", PatternOperation.TRANSFER_IN,
+                account.id, incoming, "account_reference", emptySet())
+            w.setEnabled(w.load().generation, "BANK_STC", "stc-internal-in", false)
+            w.deletePattern(w.load().generation, "BANK_STC", "stc-internal-in")
+            assertTrue(runCatching { w.saveFinancial(stale) }.isFailure)
+            c.processStoredSmsUseCase.process("delete-posted")
+            assertEquals(evidence, c.parsedEventRepository.findByRawSmsId("delete-posted"))
+            assertEquals(transactions, c.financialTransactionRepository.listAll())
+            assertTrue(w.load().banks.single { it.bankId == "BANK_STC" }.patterns.none { it.id == "stc-internal-in" })
+        }
+    }
+
+    @Test fun sarieTransferWithEmptyAccountCanBeApprovedAndAppliedOnlyToTheSelectedAccount() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val body = "Inward transfer (SARIE)\n100.00 SAR\nFrom TEST PERSON\nFrom BJAZ\nAccount\n02-09-2026 08:01\nRef. No. *8PJ7"
+            c.processRawSmsUseCase.ingest(sms("empty-sarie-account", body))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            val review = requireNotNull(c.reviewRepository.findByRawSmsId("empty-sarie-account"))
+            val account = w.confirmPatternAccount("BANK_STC", "1234")
+            val missingReference = runCatching {
+                w.previewFinancial(w.load().generation, "BANK_STC", "stc-sarie-in", PatternOperation.TRANSFER_IN,
+                    account.id, body, "account_reference", setOf("counterparty_bank"))
+            }.exceptionOrNull()
+            assertEquals(PatternApprovalProblem.REFERENCE_MISMATCH, (missingReference as? PatternApprovalException)?.problem)
+            val approved = w.saveFinancial(w.previewFinancial(w.load().generation, "BANK_STC", "stc-sarie-in",
+                PatternOperation.TRANSFER_IN, account.id, body, null, setOf("account_reference", "counterparty_bank")))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertEquals(1, w.applyPending("BANK_STC", approved.generation, review.id).posted)
+            val event = requireNotNull(c.parsedEventRepository.findByRawSmsId("empty-sarie-account")).event
+            assertEquals(ParseStatus.SUCCESS, event.parseStatus)
+            assertEquals(MessageFamily.TRANSFER_IN, event.messageFamily)
+            assertEquals("100.00", event.amount!!.amount.toPlainString())
+            assertEquals(AccountReference(Bank("BANK_STC"), "1234"), event.destinationAccountRef)
+            assertNull(event.sourceAccountRef)
+            assertEquals(1, c.financialTransactionRepository.listAll().size)
+        }
+    }
+
     @Test fun manualCardSetupRollsBackInvalidLinksAndNeverCreatesBalancesOrTransactions() = runBlocking {
         fixture { c ->
             val bank = Bank("BANK_STC")
