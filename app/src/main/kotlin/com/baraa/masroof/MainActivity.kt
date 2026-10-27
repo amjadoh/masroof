@@ -42,18 +42,18 @@ import com.baraa.masroof.application.theme.ThemeMode
 import com.baraa.masroof.application.update.InstallPermissionHelper
 import com.baraa.masroof.presentation.navigation.MasroofRoot
 import com.baraa.masroof.presentation.dashboard.DashboardViewModel
-import com.baraa.masroof.presentation.dashboard.DashboardViewModelFactory
+import com.baraa.masroof.presentation.dashboard.dashboardViewModelFactory
 import com.baraa.masroof.presentation.onboarding.OnboardingPermissionPolicy
 import com.baraa.masroof.presentation.onboarding.OnboardingViewModel
-import com.baraa.masroof.presentation.onboarding.OnboardingViewModelFactory
+import com.baraa.masroof.presentation.onboarding.onboardingViewModelFactory
 import com.baraa.masroof.presentation.notification.NotificationCenterViewModel
-import com.baraa.masroof.presentation.notification.NotificationCenterViewModelFactory
+import com.baraa.masroof.presentation.notification.notificationCenterViewModelFactory
 import com.baraa.masroof.presentation.review.ReviewViewModel
-import com.baraa.masroof.presentation.review.ReviewViewModelFactory
+import com.baraa.masroof.presentation.review.reviewViewModelFactory
 import com.baraa.masroof.presentation.settings.SettingsViewModel
-import com.baraa.masroof.presentation.settings.SettingsViewModelFactory
+import com.baraa.masroof.presentation.settings.settingsViewModelFactory
 import com.baraa.masroof.presentation.statement.StatementReconciliationViewModel
-import com.baraa.masroof.presentation.statement.StatementReconciliationViewModelFactory
+import com.baraa.masroof.presentation.statement.statementReconciliationViewModelFactory
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import com.baraa.masroof.ui.theme.MasroofTheme
 import com.baraa.masroof.presentation.locale.AppLocaleContext
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val onboardingViewModel: OnboardingViewModel by viewModels {
-        OnboardingViewModelFactory(
+        onboardingViewModelFactory(
             container = container,
             onboardingPreferencesRepository = container.onboardingPreferencesRepository,
             permissionStateProvider = { hasSmsPermissions() },
@@ -86,18 +86,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private val dashboardViewModel: DashboardViewModel by viewModels {
-        DashboardViewModelFactory(
+        dashboardViewModelFactory(
             container = container,
             permissionStateProvider = { hasSmsPermissions() },
         )
     }
 
     private val reviewViewModel: ReviewViewModel by viewModels {
-        ReviewViewModelFactory(container = container)
+        reviewViewModelFactory(container = container)
     }
 
     private val settingsViewModel: SettingsViewModel by viewModels {
-        SettingsViewModelFactory(
+        settingsViewModelFactory(
             container = container,
             appVersion = BuildConfig.VERSION_NAME,
             permissionStateProvider = { hasSmsPermissions() },
@@ -108,11 +108,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private val statementReconciliationViewModel: StatementReconciliationViewModel by viewModels {
-        StatementReconciliationViewModelFactory(container.statementReconciliationWorkflow)
+        statementReconciliationViewModelFactory(container.statementReconciliationWorkflow)
     }
 
     private val notificationCenterViewModel: NotificationCenterViewModel by viewModels {
-        NotificationCenterViewModelFactory(
+        notificationCenterViewModelFactory(
             container = container,
             permissionStateProvider = { hasSmsPermissions() },
         )

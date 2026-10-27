@@ -1,20 +1,19 @@
 package com.baraa.masroof.presentation.settings
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.application.onboarding.HistoricalSmsRescanService
 import com.baraa.masroof.application.update.InstallPermissionHelper
-class SettingsViewModelFactory(
-    private val container: AppContainer,
-    private val appVersion: String,
-    private val permissionStateProvider: () -> Boolean,
-    private val onRequestInstallPermission: () -> Unit = {},
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(SettingsViewModel::class.java))
-        return SettingsViewModel(
+fun settingsViewModelFactory(
+    container: AppContainer,
+    appVersion: String,
+    permissionStateProvider: () -> Boolean,
+    onRequestInstallPermission: () -> Unit = {},
+): ViewModelProvider.Factory = viewModelFactory {
+    initializer {
+        SettingsViewModel(
             messagePatternsWorkflow = container.messagePatternsWorkflow,
             settingsRegistryWorkflow = container.settingsRegistryWorkflow,
             settingsCommitmentsWorkflow = container.settingsCommitmentsWorkflow,
@@ -38,6 +37,6 @@ class SettingsViewModelFactory(
             },
             onRequestInstallPermission = onRequestInstallPermission,
             historicalMerchantRateCorrectionWorkflow = container.historicalMerchantRateCorrectionWorkflow,
-        ) as T
+        )
     }
 }
