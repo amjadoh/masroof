@@ -20,7 +20,7 @@
     <string name="teaching_ignore_value">تجاهل قيمة</string>
     <string name="teaching_sample_title">هل تطابق رسالة أخرى؟</string>
     <string name="teaching_field_help">اضغط قيمة من الرسالة، أو حدد النص بنفسك ثم أكّد. يمكنك تخطي الحقول غير الموجودة. المبلغ مطلوب. علّم القيم المتغيرة الأخرى كقيم لا نحتاجها حتى لا تصبح نصًا ثابتًا في النمط.</string>
-    <string name="teaching_confirm_field">تأكيد</string>
+    <string name="teaching_confirm_field">تأكيد ومتابعة</string>
     <string name="teaching_skip_field">غير موجود</string>
     <string name="teaching_previous">السابق</string>
     <string name="teaching_preview_title">هل البيانات صحيحة؟</string>

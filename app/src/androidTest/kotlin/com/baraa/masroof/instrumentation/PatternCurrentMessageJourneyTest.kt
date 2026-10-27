@@ -46,12 +46,13 @@ class PatternCurrentMessageJourneyTest {
             }
             val current = c.reviewRepository.findByRawSmsId("ui-current")!!
             val untouched = c.parsedEventRepository.findByRawSmsId("ui-other")
+            var returnedToReview = false
             compose.setContent {
                 val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration,
                     androidx.activity.compose.LocalActivityResultRegistryOwner provides compose.activity) {
                     MasroofTheme { Surface {
-                        MessagePatternsScreen(w, source = PatternTeachingSource("UI_BANK", "UI Bank", body, current.id), onBack = {})
+                        MessagePatternsScreen(w, source = PatternTeachingSource("UI_BANK", "UI Bank", body, current.id), onBack = { returnedToReview = true })
                     } }
                 }
             }
@@ -85,6 +86,8 @@ class PatternCurrentMessageJourneyTest {
             assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("ui-other")!!.status)
             assertEquals(untouched, c.parsedEventRepository.findByRawSmsId("ui-other"))
             compose.onNodeWithText(ar(R.string.teaching_apply_posted)).assertExists()
+            compose.onNodeWithContentDescription(ar(R.string.teaching_return_review)).performClick()
+            assertTrue(returnedToReview)
         } finally { c.close(); context.getDatabasePath("masroof.db").parentFile?.deleteRecursively() }
         Unit
     }

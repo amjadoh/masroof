@@ -19,6 +19,7 @@ class PatternCatalogTest {
             .toCatalog().banks.single().currentPatterns.single()
 
         val preview = view(listOf(pattern))
+        assertEquals("Transfer:{amount} From:{account_reference} To:{destination_account}", preview.messageTemplate)
         assertEquals("TEST", preview.sender)
         assertEquals(PatternApprovalStatus.PREVIEW_ONLY, preview.status)
         assertFalse(preview.canApply)
@@ -30,5 +31,21 @@ class PatternCatalogTest {
         assertTrue(current.canApprove)
         assertTrue(current.canApply)
         assertFalse(view(listOf(approved.copy(revision = 3, enabled = false))).canApply)
+    }
+
+    @Test fun previewKeepsTheFullTemplateAndHidesIgnoredSlots() {
+        val prefix = "Transfer " + "context ".repeat(40)
+        val body = "${prefix}10SAR ref 123 end"
+        val pattern = SavedMessagePattern.fromChoices("long", "BANK_TEST", "TEST", "TRANSFER_OUT", body,
+            listOf(FieldChoice("amount", prefix.length, prefix.length + 5),
+                FieldChoice("ignored_1", body.indexOf("123"), body.indexOf("123") + 3, ignored = true)))
+        val view = MessagePatternConfiguration(1, listOf(BankMessagePatterns("BANK_TEST", listOf("TEST"), patterns = listOf(pattern))))
+            .toCatalog().banks.single().currentPatterns.single()
+
+        assertEquals(240, view.example.length)
+        assertEquals("${prefix}{amount} ref … end", view.messageTemplate)
+        assertEquals(listOf("amount"), view.fields)
+        assertEquals(1, pattern.revision)
+        assertNull(pattern.factContract)
     }
 }

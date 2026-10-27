@@ -8,4 +8,13 @@
     <string name="pattern_delete_copy">نسخ اسم النمط</string>
     <string name="pattern_delete_name">اسم النمط</string>
     <string name="pattern_delete_confirmation">الصق الاسم للتأكيد</string>
+    <string name="pattern_message_fields">بيانات الرسالة</string>
+    <string name="pattern_message_fields_help">تحديد المبلغ والتاريخ وباقي القيم من نص الرسالة</string>
+    <string name="pattern_financial_settings">الاعتماد المالي</string>
+    <string name="pattern_financial_settings_help">نوع الحركة والحساب المرتبط والعملة</string>
+    <string name="pattern_history_help">عرض الإصدارات السابقة واستعادة إصدار</string>
+    <string name="pattern_template_preview">معاينة النمط</string>
+    <string name="pattern_template_preview_help">القيم بين الأقواس تتغيّر من رسالة لأخرى. المعاينة لا تسجّل أي عملية.</string>
+    <string name="pattern_delete_action">حذف النمط</string>
+    <string name="pattern_preview_done">تم</string>
 </resources>
