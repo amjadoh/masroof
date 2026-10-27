@@ -68,7 +68,7 @@ class DashboardFixtureCharacterizationTest {
             val debitCards = projections.flatMap { it.creditFacilities.debitCards }
             assertTrue(debitCards.any { it.last4 == "2210" && it.linkedAccountMaskedNumber == "3001" })
             assertTrue(debitCards.any { it.last4 == "6666" && it.linkedAccountMaskedNumber == "3002" })
-            val loans = projections.flatMap { it.loansOverview.loans }
+            val loans = projections.flatMap { requireNotNull(it.loansOverview).loans }
             assertTrue(loans.any { it.loanType == LoanType.PERSONAL && it.remainingBalance != null })
             assertTrue(loans.any { it.loanType == LoanType.AUTO && it.latestInstallmentAmount != null })
             assertTrue(projections.any { it.commitmentsOverview.hasContent })
@@ -112,7 +112,7 @@ class DashboardFixtureCharacterizationTest {
                 rawSmsRepository = raw,
             )
 
-            val projection = service.loadProjection(FinancialPeriodPolicy.periodContaining(LocalDate.parse("2025-11-10")))
+            val projection = service.loadOverview(FinancialPeriodPolicy.periodContaining(LocalDate.parse("2025-11-10")))
 
             assertTrue(projection.transactions.isNotEmpty())
             assertEquals(0, parsed.listAllCalls)
@@ -129,15 +129,15 @@ class DashboardFixtureCharacterizationTest {
     private suspend fun assertScopedEqualsWholeHistory(
         world: DashboardLedgerWorld,
         months: List<YearMonth>,
-    ): List<DashboardProjection> {
+    ): List<DashboardOverview> {
         val wholeHistory = world.dashboardService(
             evidenceSource = WholeHistoryDashboardEvidenceSource(world.parsedRepo, world.rawRepo),
         )
         val scoped = world.dashboardService()
         val periods = months.map { FinancialPeriodPolicy.periodContaining(it.atDay(10)) }.distinct()
         return periods.map { period ->
-            val expected = wholeHistory.loadProjection(period)
-            assertEquals("period ${period.startDate}", expected, scoped.loadProjection(period))
+            val expected = wholeHistory.loadOverview(period)
+            assertEquals("period ${period.startDate}", expected, scoped.loadOverview(period))
             expected
         }
     }

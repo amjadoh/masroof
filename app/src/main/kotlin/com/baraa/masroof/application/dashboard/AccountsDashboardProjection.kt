@@ -21,7 +21,7 @@ object AccountsDashboardProjection {
                 sarEquivalents = sarEquivalents,
                 debitCardScope = debitCardScope,
             )
-            val fleet = CurrentAccountSummaryCalculator.summarize(
+            val flowDetail = CurrentAccountFlowDetailGrouper.group(
                 transactions = transactions,
                 parsedRecords = parsedRecords,
                 primaryCurrency = primaryCurrency,
@@ -30,6 +30,7 @@ object AccountsDashboardProjection {
                 ownedAccountLast4s = ownedAccountLast4s,
                 debitCardScope = debitCardScope,
             )
+            val fleet = CurrentAccountSummaryCalculator.summarize(flowDetail, primaryCurrency, sarEquivalents)
             AccountsDashboardSection(
                 fleet = fleet,
                 spendingSplit = CurrentAccountSummaryCalculator.spendingSplit(
@@ -43,15 +44,7 @@ object AccountsDashboardProjection {
                     accounts = ownedAccounts.map { it.bank to it.maskedNumber },
                     summaries = perAccount.map { it.summary },
                 ),
-                flowDetail = CurrentAccountFlowDetailGrouper.group(
-                    transactions = transactions,
-                    parsedRecords = parsedRecords,
-                    primaryCurrency = primaryCurrency,
-                    sarEquivalents = sarEquivalents,
-                    ownedAccountContainerIds = ownedAccountContainerIds,
-                    ownedAccountLast4s = ownedAccountLast4s,
-                    debitCardScope = debitCardScope,
-                ),
+                flowDetail = flowDetail,
                 transactionAccountInvolvement = AccountTransactionInvolvementResolver.buildIndex(
                     transactions = transactions,
                     parsedRecords = parsedRecords,

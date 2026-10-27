@@ -186,7 +186,7 @@ class DashboardServiceTest {
     }
 
     @Test
-    fun loadProjection_usesBatchScopedEvidence_andIsReadOnly() = runBlocking {
+    fun loadOverview_usesBatchScopedEvidence_andIsReadOnly() = runBlocking {
         val period = FinancialPeriodPolicy.periodContaining(LocalDate.parse("2026-08-11"))
         val start = FinancialPeriodPolicy.toInclusiveStartInstant(period.startDate, zone)
         val foreign = tx("usd", FinancialTransactionType.EXPENSE, "10", start.plusSeconds(60)).copy(
@@ -222,7 +222,7 @@ class DashboardServiceTest {
         }
 
         val projection = dashboardService(ftRepo, FakeReviewRepo(), parsedRepo = parsedRepo, rawRepo = rawRepo)
-            .loadProjection(period)
+            .loadOverview(period)
 
         val shown = projection.transactions.single()
         assertEquals("AMAZON", shown.merchant)

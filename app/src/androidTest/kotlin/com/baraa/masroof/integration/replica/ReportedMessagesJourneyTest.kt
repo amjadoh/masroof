@@ -78,7 +78,7 @@ class ReportedMessagesJourneyTest {
             assertEquals(rows,c.financialTransactionRepository.listAll().sortedBy {it.id})
             assertEquals(before.summary,c.dashboardService.loadOverview(ReferenceHistory.period()).summary)
             lateinit var dashboard: DashboardViewModel
-            compose.runOnUiThread {dashboard=ViewModelProvider(store,DashboardViewModelFactory(c,{true}))[DashboardViewModel::class.java]}
+            compose.runOnUiThread {dashboard=ViewModelProvider(store,dashboardViewModelFactory(c,{true}))[DashboardViewModel::class.java]}
             compose.setContent {MasroofTheme(darkTheme=true) {MasroofScreenBackground {
                 val state by dashboard.uiState.collectAsState()
                 state.allTransactions.find {it.id==state.selectedTransactionId}?.let { selected ->
@@ -109,7 +109,7 @@ class ReportedMessagesJourneyTest {
                 c.processRawSmsUseCase.ingest(raw("manual-transfer","حركة خاصة جديدة\nمن حساب: 3001\nالى حساب: 9466\nمبلغ: SAR 55\nفي: 2026-10-06 17:43"))
             }
             lateinit var viewModel: ReviewViewModel
-            compose.runOnUiThread {viewModel=ViewModelProvider(store,ReviewViewModelFactory(c))[ReviewViewModel::class.java]}
+            compose.runOnUiThread {viewModel=ViewModelProvider(store,reviewViewModelFactory(c))[ReviewViewModel::class.java]}
             compose.setContent {MasroofTheme(darkTheme=true) {MasroofScreenBackground {ReviewRoute(viewModel,{})}}}
             compose.waitUntil(20_000) {!viewModel.uiState.value.loading && viewModel.uiState.value.items.size==1}
             val item=viewModel.uiState.value.items.single()
@@ -147,7 +147,7 @@ class ReportedMessagesJourneyTest {
         var dark by mutableStateOf(true)
         try {
             lateinit var viewModel: OnboardingViewModel
-            compose.runOnUiThread {viewModel=ViewModelProvider(store,OnboardingViewModelFactory(c,c.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]}
+            compose.runOnUiThread {viewModel=ViewModelProvider(store,onboardingViewModelFactory(c,c.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]}
             compose.setContent {CompositionLocalProvider(LocalContext provides arabic,LocalConfiguration provides configuration) {
                 MasroofTheme(darkTheme=dark) {MasroofScreenBackground {OnboardingRoute(viewModel,{},{},{})}}
             }}

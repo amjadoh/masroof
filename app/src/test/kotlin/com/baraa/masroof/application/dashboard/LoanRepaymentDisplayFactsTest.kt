@@ -19,7 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
 
-class TransactionEffectiveTypeTest {
+class LoanRepaymentDisplayFactsTest {
     @Test
     fun resolve_feeWithFinancingSms_returnsLoanRepayment() {
         val parsedRecords = listOf(financingRecord())
@@ -38,7 +38,7 @@ class TransactionEffectiveTypeTest {
 
         assertEquals(
             FinancialTransactionType.LOAN_REPAYMENT,
-            TransactionEffectiveType.resolve(tx, parsedRecords),
+            effectiveType(tx, parsedRecords),
         )
     }
 
@@ -57,7 +57,7 @@ class TransactionEffectiveTypeTest {
             linkedParsedEventIds = emptyList(),
         )
 
-        assertEquals(FinancialTransactionType.FEE, TransactionEffectiveType.resolve(tx, emptyList()))
+        assertEquals(FinancialTransactionType.FEE, effectiveType(tx, emptyList()))
     }
 
     @Test
@@ -76,8 +76,18 @@ class TransactionEffectiveTypeTest {
             linkedParsedEventIds = listOf("evt-loan"),
         )
 
-        assertEquals(FinancialTransactionType.EXPENSE, TransactionEffectiveType.resolve(tx, parsedRecords))
+        assertEquals(FinancialTransactionType.EXPENSE, effectiveType(tx, parsedRecords))
     }
+
+    private fun effectiveType(
+        transaction: FinancialTransaction,
+        parsedRecords: List<ParsedEventRecord>,
+    ): FinancialTransactionType =
+        DashboardTransactionFactsBuilder.build(
+            transactions = listOf(transaction),
+            cardInvolvement = emptyMap(),
+            loanInvolvement = LoanRepaymentAttribution.buildInvolvementIndex(listOf(transaction), parsedRecords),
+        ).getValue(transaction.id).effectiveType
 
     private fun financingRecord(): ParsedEventRecord =
         ParsedEventRecord(

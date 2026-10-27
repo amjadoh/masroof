@@ -259,7 +259,7 @@ object GoldenLedgerRunner {
 
     suspend fun read(world: DashboardLedgerWorld, scenario: GoldenLedgerScenario): GoldenLedgerSnapshot {
         val period = FinancialPeriodPolicy.periodContaining(LocalDate.parse(scenario.periodAnchor))
-        val projection = world.dashboardService().loadProjection(period)
+        val projection = world.dashboardService().loadOverview(period)
         val rawIds = world.rawRepo.listIdsByReceivedAt()
         val rawRows = rawIds.mapNotNull { world.rawRepo.getById(it) }
         val parsed = world.parsedRepo.listAll().map { record ->
@@ -282,7 +282,7 @@ object GoldenLedgerRunner {
         val displayed = projection.transactions.map { tx ->
             movementLine(movementFact(tx, linkCounts[tx.id] ?: tx.linkedParsedEventIds.size))
         }
-        val accountLines = projection.perAccount.map { summary ->
+        val accountLines = projection.ownedAccountPeriodSummaries.map { summary ->
             accountLine(
                 GoldenAccountTotals(
                     bank = summary.bank.id,
@@ -298,7 +298,7 @@ object GoldenLedgerRunner {
                 ),
             )
         }
-        val fleet = projection.accountsFleet
+        val fleet = requireNotNull(projection.accountsFleet)
         val metrics = linkedMapOf(
             "rawSmsCount" to rawRows.size.toString(),
             "parsedCount" to parsed.size.toString(),
@@ -310,7 +310,7 @@ object GoldenLedgerRunner {
             "spendingGross" to moneyText(projection.summary.spendingGross),
             "excludedOtherCurrencyCount" to projection.summary.excludedOtherCurrencyCount.toString(),
         )
-        projection.perAccount.forEach { summary ->
+        projection.ownedAccountPeriodSummaries.forEach { summary ->
             val prefix = "account:${summary.bank.id}:${summary.maskedNumber}"
             metrics["$prefix:selfTransfersIn"] = moneyText(summary.summary.inflow.selfTransfersIn)
             metrics["$prefix:selfTransfersOut"] = moneyText(summary.summary.outflow.selfTransfersOut)
