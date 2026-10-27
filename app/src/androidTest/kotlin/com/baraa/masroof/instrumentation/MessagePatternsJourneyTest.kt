@@ -72,17 +72,10 @@ class MessagePatternsJourneyTest {
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("30SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("pattern-body").assertExists()
-        // IME dismissal is asynchronous; Back must reach the screen, not dismiss Gboard.
-        androidx.test.espresso.Espresso.closeSoftKeyboard()
-        compose.waitUntil(10_000) {
-            compose.runOnUiThread {
-                androidx.core.view.ViewCompat.getRootWindowInsets(compose.activity.window.decorView)
-                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == false
-            }
-        }
-        androidx.test.espresso.Espresso.pressBack()
-        compose.waitForIdle()
-        androidx.test.espresso.Espresso.pressBack()
+        // Exercise the editor's Back action directly; Gboard may consume a hardware Back even after hiding.
+        compose.onNodeWithContentDescription(ar(R.string.review_back)).performClick()
+        compose.onNodeWithText(ar(R.string.teaching_next)).assertExists()
+        compose.onNodeWithContentDescription(ar(R.string.review_back)).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_teach)).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(2, store.load().banks.single().patterns.size)
         file.delete()
