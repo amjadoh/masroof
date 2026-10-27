@@ -60,6 +60,7 @@ class MessagePatternsJourneyTest {
         capture("pattern-preview")
         click(R.string.pattern_save)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 1 }
+        compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
         click(R.string.pattern_disable)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
         assertFalse(store.load().banks.single().currentPatterns.single().enabled)
@@ -170,6 +171,7 @@ class MessagePatternsJourneyTest {
             assertTrue(reviews.getById(requireNotNull(openedReview))!!.rawSmsId in listOf("pending-0", "pending-1"))
             assertEquals(2, reviews.listRequired().size)
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             click(R.string.pattern_disable)
             click(R.string.teaching_saved_patterns)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
@@ -195,6 +197,7 @@ class MessagePatternsJourneyTest {
             assertEquals(6, workflow.load().banks.single().currentPatterns.size)
             capture("stc-ready-patterns")
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             click(R.string.pattern_disable)
             compose.waitUntil(10_000) { MessagePatternStore(file).load().generation == 2L }
             val reopened = MessagePatternsWorkflow(MessagePatternStore(file), DatabaseAccessGate(), bundledBanks = banks).load()

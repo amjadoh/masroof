@@ -117,7 +117,8 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                     PatternChoice(listOf(choose) + names, cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { names[it] } ?: choose, !busy) {
                         cardId = cards.getOrNull(it - 1)?.id; preview = null
                     }
-                    if (cards.isEmpty()) Text(stringResource(R.string.settings_pattern_add_card_hint))
+                    if (cards.isEmpty()) MasroofGuidanceLabel(stringResource(R.string.settings_card_setup),
+                        stringResource(R.string.settings_pattern_add_card_hint))
                 }
             }
             if (pattern.referenceFields.isNotEmpty()) PatternApprovalReferences(pattern, operation, reference, referenceChosen,
