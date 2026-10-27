@@ -2,6 +2,8 @@ package com.baraa.masroof.presentation.statement
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import com.baraa.masroof.application.statement.LedgerLineComparison
 import com.baraa.masroof.application.statement.StatementCurrencyTotal
@@ -138,13 +140,11 @@ class StatementReconciliationViewModel(
     }
 }
 
-class StatementReconciliationViewModelFactory(
-    private val workflow: StatementReconciliationWorkflow,
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(StatementReconciliationViewModel::class.java))
-        return StatementReconciliationViewModel(workflow) as T
+fun statementReconciliationViewModelFactory(
+    workflow: StatementReconciliationWorkflow,
+): ViewModelProvider.Factory = viewModelFactory {
+    initializer {
+        StatementReconciliationViewModel(workflow)
     }
 }
 

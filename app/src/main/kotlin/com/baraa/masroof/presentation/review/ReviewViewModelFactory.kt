@@ -1,23 +1,22 @@
 package com.baraa.masroof.presentation.review
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.application.review.ReviewDetailLoader
 
-class ReviewViewModelFactory(
-    private val container: AppContainer,
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(ReviewViewModel::class.java))
+fun reviewViewModelFactory(
+    container: AppContainer,
+): ViewModelProvider.Factory = viewModelFactory {
+    initializer {
         val loader = ReviewDetailLoader(
             reviewWorkflowService = container.reviewWorkflowService,
             rawSmsRepository = container.rawSmsRepository,
             effectiveParsedEventProvider = container.effectiveParsedEventProvider,
             provenanceWorkflow = container.interpretationProvenanceWorkflow,
         )
-        return ReviewViewModel(
+        ReviewViewModel(
             messagePatternsWorkflow = container.messagePatternsWorkflow,
             reviewWorkflowService = container.reviewWorkflowService,
             detailLoader = loader,
@@ -36,6 +35,6 @@ class ReviewViewModelFactory(
             },
             appLocaleRepository = container.appLocaleRepository,
             maintenanceCompletions = container.maintenanceCompletionSignal.completions,
-        ) as T
+        )
     }
 }
