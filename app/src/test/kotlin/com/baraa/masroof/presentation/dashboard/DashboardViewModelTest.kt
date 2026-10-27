@@ -17,6 +17,7 @@ import com.baraa.masroof.application.dashboard.CreditFacilitiesOverview
 import com.baraa.masroof.application.dashboard.CurrentAccountFlowDetailGrouping
 import com.baraa.masroof.application.dashboard.CurrentAccountSummary
 import com.baraa.masroof.application.dashboard.DashboardOverviewLoader
+import com.baraa.masroof.application.dashboard.DashboardSectionSize
 import com.baraa.masroof.application.dashboard.DashboardSectionId
 import com.baraa.masroof.application.dashboard.DashboardTransactionFacts
 import com.baraa.masroof.application.dashboard.DashboardTransactionFactsBuilder
@@ -36,7 +37,6 @@ import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.period.FinancialPeriod
 import com.baraa.masroof.domain.period.FinancialPeriodPolicy
-import com.baraa.masroof.application.onboarding.HistoricalImportResult
 import com.baraa.masroof.testsupport.NoOpCardRegistryRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -516,76 +516,28 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun refreshWithSmsImport_withoutPermission_skipsRescanAndMarksDeniedState() = runTest {
-        val loader = FakeLoader()
-        loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
-        var rescanCalls = 0
-        val vm = viewModel(
-            loader = loader,
-            permissionGranted = false,
-            rescanService = {
-                rescanCalls++
-                HistoricalImportResult()
-            },
-        )
-        vm.refreshWithSmsImport()
-        advanceUntilIdle()
-
-        assertEquals(0, rescanCalls)
-        assertFalse(vm.uiState.value.smsPermissionGranted)
-    }
-
-    @Test
-    fun refreshWithSmsImport_withPermission_runsRescan() = runTest {
-        val loader = FakeLoader()
-        loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
-        var rescanCalls = 0
-        val vm = viewModel(
-            loader = loader,
-            permissionGranted = true,
-            rescanService = {
-                rescanCalls++
-                HistoricalImportResult(parsed = 1, scanned = 1, inserted = 1)
-            },
-        )
-        vm.refreshWithSmsImport()
-        advanceUntilIdle()
-
-        assertEquals(1, rescanCalls)
-        assertTrue(vm.uiState.value.smsPermissionGranted)
-        assertEquals(SmsRescanStatus.OK, vm.uiState.value.rescanStatus)
-    }
-
-    @Test
-    fun failedScanPreservesEachEntrypointsRefreshBehavior() = runTest {
-        for (pullToRefresh in listOf(false, true)) {
+    fun refresh_loadsExistingDataWithOrWithoutSmsPermission() = runTest {
+        for (permissionGranted in listOf(false, true)) {
             val loader = FakeLoader()
             loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
-            val vm = viewModel(loader, rescanService = { error("scan failed") })
+            val vm = viewModel(loader, permissionGranted = permissionGranted)
 
-            if (pullToRefresh) vm.refreshWithSmsImport() else vm.rescanSms()
+            vm.refresh()
             advanceUntilIdle()
 
-            assertFalse(vm.uiState.value.rescanning)
-            assertEquals(SmsRescanStatus.FAILED, vm.uiState.value.rescanStatus)
-            assertEquals(if (pullToRefresh) listOf(currentPeriod) else emptyList<FinancialPeriod>(), loader.calls)
+            assertEquals(permissionGranted, vm.uiState.value.smsPermissionGranted)
+            assertEquals(listOf(currentPeriod), loader.calls)
+            assertEquals(1, vm.uiState.value.summary!!.transactionCount)
+            assertNull(vm.uiState.value.error)
         }
     }
 
     @Test
-    fun onAppResumed_afterPermissionGrantedRefreshesWithoutImportingUnselectedBanks() = runTest {
+    fun onAppResumed_afterPermissionGrantedRefreshesExistingData() = runTest {
         val loader = FakeLoader()
         loader.put(currentPeriod, overview(currentPeriod, spending = "10.00"))
         var permissionGranted = false
-        var rescanCalls = 0
-        val vm = viewModel(
-            loader = loader,
-            permissionStateProvider = { permissionGranted },
-            rescanService = {
-                rescanCalls++
-                HistoricalImportResult(parsed = 1, scanned = 1, inserted = 1)
-            },
-        )
+        val vm = viewModel(loader, permissionStateProvider = { permissionGranted })
         vm.refresh()
         advanceUntilIdle()
         assertFalse(vm.uiState.value.smsPermissionGranted)
@@ -594,8 +546,9 @@ class DashboardViewModelTest {
         vm.onAppResumed()
         advanceUntilIdle()
 
-        assertEquals(0, rescanCalls)
         assertTrue(vm.uiState.value.smsPermissionGranted)
+        assertEquals(listOf(currentPeriod, currentPeriod), loader.calls)
+        assertEquals(1, vm.uiState.value.summary!!.transactionCount)
     }
 
     private fun assertPeriodSummaryInvariant(state: DashboardUiState) {
@@ -665,7 +618,10 @@ class DashboardViewModelTest {
 
     @Test
     fun customizeLayout_openToggleSave_persistsAndClosesSheet() = runTest {
-        val layoutRepo = FakeLayoutPreferencesRepository()
+        val savedLayout = DashboardLayoutSnapshot.default().let { layout ->
+            layout.copy(sections = layout.sections.map { it.copy(size = DashboardSectionSize.SMALL) })
+        }
+        val layoutRepo = FakeLayoutPreferencesRepository(savedLayout)
         val vm = viewModel(FakeLoader(), layoutPreferencesRepository = layoutRepo)
         advanceUntilIdle()
 
@@ -683,6 +639,9 @@ class DashboardViewModelTest {
         assertNull(vm.uiState.value.customizeDraft)
         assertFalse(vm.uiState.value.dashboardLayout.entry(DashboardSectionId.CARDS)!!.visible)
         assertFalse(layoutRepo.saved!!.entry(DashboardSectionId.CARDS)!!.visible)
+        assertEquals(savedLayout.sections.map { it.size }, layoutRepo.saved!!.sections.map { it.size })
+        val recreated = viewModel(FakeLoader(), layoutPreferencesRepository = layoutRepo)
+        assertEquals(layoutRepo.saved, recreated.uiState.value.dashboardLayout)
     }
 
     @Test
@@ -784,7 +743,6 @@ class DashboardViewModelTest {
         layoutPreferencesRepository: DashboardLayoutPreferencesRepository = FakeLayoutPreferencesRepository(),
         permissionGranted: Boolean = true,
         permissionStateProvider: () -> Boolean = { permissionGranted },
-        rescanService: suspend () -> HistoricalImportResult = { HistoricalImportResult() },
         maintenanceCompletions: kotlinx.coroutines.flow.Flow<Unit> = kotlinx.coroutines.flow.emptyFlow(),
         smsEvidenceLoader: TransactionSmsEvidenceLoader = TransactionSmsEvidenceLoader(
             financialTransactionRepository = object : com.baraa.masroof.domain.repository.FinancialTransactionRepository {
@@ -841,7 +799,6 @@ class DashboardViewModelTest {
                 zoneId = periodZoneId,
             ),
             layoutPreferencesRepository = layoutPreferencesRepository,
-            rescanService = rescanService,
             smsEvidenceLoader = smsEvidenceLoader,
             permissionStateProvider = permissionStateProvider,
             reclassificationService = TransactionReclassificationService(

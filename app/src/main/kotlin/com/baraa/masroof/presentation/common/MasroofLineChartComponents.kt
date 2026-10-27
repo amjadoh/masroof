@@ -8,16 +8,6 @@ import com.baraa.masroof.ui.theme.MasroofHeroRole
 import java.math.BigDecimal
 
 @Composable
-fun MasroofLineChart(values: List<BigDecimal>, referenceValue: BigDecimal,
-    modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
-    onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },
-    role: MasroofHeroRole = MasroofHeroRole.Brand,
-    axisLabel: (Int) -> String = { "" }, currencyLabel: String = "", showAverage: Boolean = false) {
-    MasroofInteractiveLineChart(values, referenceValue, modifier, selectedPointIndex,
-        onPointSelected, pointLabel, role, axisLabel, currencyLabel, showAverage)
-}
-
-@Composable
 fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDecimal,
     modifier: Modifier = Modifier, selectedPointIndex: Int? = null,
     onPointSelected: ((Int) -> Unit)? = null, pointLabel: (Int) -> String = { "" },

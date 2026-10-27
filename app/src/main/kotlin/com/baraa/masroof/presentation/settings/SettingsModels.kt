@@ -163,7 +163,6 @@ data class SettingsUiState(
     val cardTypeSuggestion: CardType? = null,
     val reparsingStored: Boolean = false,
     val importingSms: Boolean = false,
-    val smsImportMessage: SmsImportMessage? = null,
     val smsPermissionGranted: Boolean = true,
     val exportingBackup: Boolean = false,
     val importingBackup: Boolean = false,
@@ -202,17 +201,6 @@ enum class BackupMessage {
     IMPORT_INVALID,
     PASSPHRASE_REQUIRED,
     IMPORT_AUTH_FAILED,
-}
-
-enum class SmsImportMessage {
-    OK,
-    ALREADY_UP_TO_DATE,
-    NEEDS_REVIEW,
-    PERMISSION_DENIED,
-    NO_MESSAGES,
-    NO_BANK_SMS,
-    NO_TRANSACTIONS,
-    FAILED,
 }
 
 enum class SettingsError {

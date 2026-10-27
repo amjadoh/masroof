@@ -3,7 +3,6 @@ package com.baraa.masroof.presentation.dashboard
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.baraa.masroof.application.onboarding.HistoricalSmsRescanService
 import com.baraa.masroof.application.dashboard.TransactionSmsEvidenceLoader
 import com.baraa.masroof.application.AppContainer
 import java.time.ZoneId
@@ -21,7 +20,6 @@ fun dashboardViewModelFactory(
             dashboardPeriodWorkflow = container.dashboardPeriodWorkflow,
             layoutPreferencesRepository = container.dashboardLayoutPreferencesRepository,
             chartDataWorkflow = container.chartDataWorkflow,
-            rescanService = { HistoricalSmsRescanService(container).rescan() },
             reclassificationService = container.transactionReclassificationService,
             ignoreService = container.transactionIgnoreService,
             dashboardCommitmentsWorkflow = container.dashboardCommitmentsWorkflow,

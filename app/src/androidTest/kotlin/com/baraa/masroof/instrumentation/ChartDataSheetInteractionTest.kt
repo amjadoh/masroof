@@ -193,7 +193,7 @@ class ChartDataSheetInteractionTest {
                         if (open.value) key(language.value, dark.value, page.value) {
                             when (page.value) {
                                 "layout" -> DashboardCustomizeBottomSheet(layout.value, { open.value = false },
-                                    { saves++; open.value = false }, { }, { _, _ -> }, { _, _ -> }, {}, {})
+                                    { saves++; open.value = false }, { }, { _, _ -> }, {}, {})
                                 "filter" -> TransactionListFilterBottomSheet(true, { open.value = false }, appliedFilter.value,
                                     listOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.BILL_PAYMENT), emptyList(), emptyList(),
                                     onApply = { appliedFilter.value = it })

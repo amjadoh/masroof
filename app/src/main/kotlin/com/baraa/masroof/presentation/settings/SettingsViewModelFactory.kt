@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baraa.masroof.application.AppContainer
-import com.baraa.masroof.application.onboarding.HistoricalSmsRescanService
 import com.baraa.masroof.application.update.InstallPermissionHelper
 fun settingsViewModelFactory(
     container: AppContainer,
@@ -26,7 +25,6 @@ fun settingsViewModelFactory(
                 container.reviewWorkflowService.reconcileOwnershipChange(change)
             },
             reparseStoredEvents = { container.reparseAllStoredEvents() },
-            importSmsFromInbox = { HistoricalSmsRescanService(container).rescan() },
             permissionStateProvider = permissionStateProvider,
             appVersion = appVersion,
             appUpdateService = container.appUpdateService,

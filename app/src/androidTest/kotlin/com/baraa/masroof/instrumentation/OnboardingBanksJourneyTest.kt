@@ -50,7 +50,9 @@ class OnboardingBanksJourneyTest {
                 compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(label))
             else node.performScrollTo()
         }
-        node.performClick()
+        // Registry refreshes briefly disable actions after a manual entry is saved.
+        compose.waitUntil(10_000) { compose.onAllNodes(hasText(label) and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node.assertIsEnabled().performClick()
         compose.waitForIdle()
     }
     private fun input(tag: String, value: String) {

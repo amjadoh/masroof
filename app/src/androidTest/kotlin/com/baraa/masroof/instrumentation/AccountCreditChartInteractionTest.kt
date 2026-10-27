@@ -18,7 +18,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DailySpendingTrend
-import com.baraa.masroof.presentation.common.MasroofLineChart
 import com.baraa.masroof.presentation.dashboard.*
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.ui.theme.*
@@ -30,6 +29,37 @@ import org.junit.Test
 
 class AccountCreditChartInteractionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun registryLabelsKeepBankIdentityCustomNamesAndLastFourFallbacks() {
+        val bank = com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA
+        val other = com.baraa.masroof.domain.model.Bank("OTHER")
+        val accounts = listOf(
+            OwnedAccountUi(bank, "3001", "  Salary  "),
+            OwnedAccountUi(other, "3001", "Bills"),
+        )
+        val cards = listOf(
+            OwnedCardUi(bank, "7271", displayName = "  Travel  "),
+            OwnedCardUi(other, "7271", displayName = "Main CC"),
+        )
+        compose.setContent {
+            MasroofTheme {
+                androidx.compose.foundation.layout.Column {
+                    androidx.compose.material3.Text(accountDisplayLabel(accounts, bank, "3001"))
+                    androidx.compose.material3.Text(accountDisplayLabel(accounts, "account:OTHER:3001")!!)
+                    androidx.compose.material3.Text(cardDisplayLabel(cards, bank, "7271"))
+                    androidx.compose.material3.Text(cardDisplayLabel(cards, other, "7271"))
+                    androidx.compose.material3.Text(OwnedAccountUi(bank, "****6810", " ").displayLabel())
+                    androidx.compose.material3.Text(OwnedCardUi(bank, "5123").displayLabel())
+                }
+            }
+        }
+        for (label in listOf("Salary", "Bills", "Travel", "Main CC")) {
+            compose.onNodeWithText(label).assertExists()
+        }
+        compose.onNodeWithText(compose.activity.getString(R.string.dashboard_account_item, "6810")).assertExists()
+        compose.onNodeWithText(compose.activity.getString(R.string.dashboard_credit_card_last4, "5123")).assertExists()
+    }
 
     @Test
     fun unchangedTitles_scopesAndCreditMeanLines_workInBothLanguagesAndThemes() {

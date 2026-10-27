@@ -346,10 +346,6 @@ fun SettingsRoute(
                 BackupPage.Hub -> SettingsDestination.DataBackup
             }) },
             onReparseStored = viewModel::reparseStoredMessages,
-            onImportSms = { navigateTo(SettingsDestination.SmsImport()) },
-            onClearSmsImportMessage = viewModel::clearSmsImportMessage,
-            onRequestSmsPermission = onRequestSmsPermission,
-            onOpenAppSettings = onOpenAppSettings,
             onExportPassphraseChange = viewModel::onExportPassphraseChange,
             onImportPassphraseChange = viewModel::onImportPassphraseChange,
             onRequestExport = onRequestExport,

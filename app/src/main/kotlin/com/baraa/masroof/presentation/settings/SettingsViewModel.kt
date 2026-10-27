@@ -20,9 +20,6 @@ import com.baraa.masroof.application.update.UpdateChannel
 import com.baraa.masroof.application.update.UpdateCheckCoordinator
 import com.baraa.masroof.application.update.UpdateCheckResult
 import com.baraa.masroof.application.update.UpdateManifest
-import com.baraa.masroof.application.onboarding.HistoricalImportResult
-import com.baraa.masroof.application.onboarding.HistoricalImportUserOutcome
-import com.baraa.masroof.application.onboarding.userOutcome
 import com.baraa.masroof.application.settings.CommitmentHistoryBuilder
 import com.baraa.masroof.application.settings.CommitmentRecordBuilder
 import com.baraa.masroof.application.settings.SettingsCommitmentsWorkflow
@@ -57,7 +54,6 @@ class SettingsViewModel(
     private val refreshReviewQueue: suspend () -> Unit,
     private val reconcileOwnershipChange: suspend (ReviewWorkflowService.OwnershipChange) -> Unit = {},
     private val reparseStoredEvents: suspend () -> com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult,
-    private val importSmsFromInbox: suspend () -> HistoricalImportResult,
     private val permissionStateProvider: () -> Boolean,
     private val appVersion: String,
     private val appUpdateService: AppUpdateService,
@@ -393,51 +389,6 @@ class SettingsViewModel(
         }
     }
 
-    fun importSmsFromPhone() {
-        if (_uiState.value.importingSms || _uiState.value.reparsingStored) return
-        if (!permissionStateProvider()) {
-            _uiState.update { it.copy(smsImportMessage = SmsImportMessage.PERMISSION_DENIED) }
-            return
-        }
-        viewModelScope.launch {
-            _uiState.update { it.copy(importingSms = true, smsImportMessage = null, error = null) }
-            try {
-                val result = importSmsFromInbox()
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(
-                    cards = snapshot.cards,
-                    accounts = snapshot.accounts,
-                    loans = snapshot.loans,
-                )
-                appLogService.info(
-                    AppLogCategories.SETTINGS,
-                    "SMS import finished: scanned=${result.scanned}, inserted=${result.inserted}, " +
-                        "parsed=${result.parsed}, failed=${result.failed}",
-                )
-                _uiState.update {
-                    it.copy(
-                        importingSms = false,
-                        smsImportMessage = mapSmsImportMessage(result),
-                    )
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (error: Exception) {
-                appLogService.error(
-                    AppLogCategories.SETTINGS,
-                    "SMS import failed: ${error.message ?: error::class.java.simpleName}",
-                )
-                _uiState.update {
-                    it.copy(importingSms = false, smsImportMessage = SmsImportMessage.FAILED)
-                }
-            }
-        }
-    }
-
-    fun clearSmsImportMessage() {
-        _uiState.update { it.copy(smsImportMessage = null) }
-    }
-
     fun clearScopedSmsImportResult() {
         if (!_uiState.value.importingSms) _uiState.update { it.copy(scopedSmsImportResult = null, scopedSmsImportFailed = false) }
     }
@@ -469,18 +420,6 @@ class SettingsViewModel(
             }
         }
     }
-
-    private fun mapSmsImportMessage(result: HistoricalImportResult): SmsImportMessage =
-        when (result.userOutcome()) {
-            HistoricalImportUserOutcome.PERMISSION_DENIED -> SmsImportMessage.PERMISSION_DENIED
-            HistoricalImportUserOutcome.FAILED -> SmsImportMessage.FAILED
-            HistoricalImportUserOutcome.NO_MESSAGES -> SmsImportMessage.NO_MESSAGES
-            HistoricalImportUserOutcome.NO_BANK_SMS -> SmsImportMessage.NO_BANK_SMS
-            HistoricalImportUserOutcome.OK -> SmsImportMessage.OK
-            HistoricalImportUserOutcome.ALREADY_UP_TO_DATE -> SmsImportMessage.ALREADY_UP_TO_DATE
-            HistoricalImportUserOutcome.NEEDS_REVIEW -> SmsImportMessage.NEEDS_REVIEW
-            HistoricalImportUserOutcome.NO_NEW_TRANSACTIONS -> SmsImportMessage.NO_TRANSACTIONS
-        }
 
     fun clearUpdateMessage() {
         _uiState.update { it.copy(updateMessage = null) }
