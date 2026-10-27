@@ -11,7 +11,6 @@
     <string name="teaching_step_confirm">المراجعة</string>
     <string name="teaching_next">التالي</string>
     <string name="teaching_field_title">أين %1$s؟</string>
-    <string name="teaching_optional_field_title">هل يظهر %1$s في الرسالة؟ (اختياري)</string>
     <string name="teaching_field_progress">%1$d من %2$d</string>
     <string name="teaching_back">رجوع</string>
     <string name="teaching_required">مطلوب</string>
@@ -21,7 +20,6 @@
     <string name="teaching_ignore_value">تجاهل قيمة</string>
     <string name="teaching_sample_title">هل تطابق رسالة أخرى؟</string>
     <string name="teaching_field_help">اضغط قيمة من الرسالة، أو حدد النص بنفسك ثم أكّد. يمكنك تخطي الحقول غير الموجودة. المبلغ مطلوب. علّم القيم المتغيرة الأخرى كقيم لا نحتاجها حتى لا تصبح نصًا ثابتًا في النمط.</string>
-    <string name="teaching_account_field_help">حدّد رقم الحساب فقط إذا ظهر في نص الرسالة. إن لم يظهر، اختر «غير موجود في الرسالة». ستختار حسابك الذي تُسجّل عليه الحركة عند اعتماد التفسير المالي، ولا يلزم أن يرد رقمه في الرسالة. لا تستخدم مرجع العملية بدلًا من رقم الحساب.</string>
     <string name="teaching_confirm_field">تأكيد</string>
     <string name="teaching_skip_field">غير موجود</string>
     <string name="teaching_previous">السابق</string>

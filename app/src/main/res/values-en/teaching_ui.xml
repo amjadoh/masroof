@@ -11,7 +11,6 @@
     <string name="teaching_step_confirm">Review</string>
     <string name="teaching_next">Next</string>
     <string name="teaching_field_title">Where is %1$s?</string>
-    <string name="teaching_optional_field_title">Does %1$s appear in the message? (optional)</string>
     <string name="teaching_field_progress">%1$d of %2$d</string>
     <string name="teaching_back">Back</string>
     <string name="teaching_required">Required</string>
@@ -21,7 +20,6 @@
     <string name="teaching_ignore_value">Ignore value</string>
     <string name="teaching_sample_title">Does another message match?</string>
     <string name="teaching_field_help">Tap a value from the message, or select text yourself and confirm. Skip fields that are absent. The amount is required. Mark other variable values as ignored so they do not become fixed text in the pattern.</string>
-    <string name="teaching_account_field_help">Select the account number only if it appears in the message. Otherwise, choose “Not in this message”. You will choose your account for this movement when approving the financial interpretation; its number does not need to appear in the message. Do not use the transaction reference as an account number.</string>
     <string name="teaching_confirm_field">Confirm</string>
     <string name="teaching_skip_field">Not present</string>
     <string name="teaching_previous">Previous</string>
