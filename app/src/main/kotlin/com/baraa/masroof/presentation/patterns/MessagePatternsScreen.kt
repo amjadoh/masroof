@@ -77,6 +77,12 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
     val pattern = bank?.currentPatterns?.singleOrNull { it.id == selectedPattern }
+    fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
+        val bankId = requireNotNull(bank).bankId
+        pending = null
+        applied = workflow.applyPending(bankId, generation, reviewId, patternId)
+        pending = workflow.previewPending(bankId, generation)
+    }
     LaunchedEffect(bank?.bankId, snapshot?.generation, showPending, selectedPattern, teaching) {
         if (bank != null && workflow.canPreviewPending && !teaching &&
             (showPending && selectedPattern == null || pattern?.canApply == true)) {
@@ -153,11 +159,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             snapshot = workflow.catalog(); savedApproval = false; applied = null
                         } })
                     if (source?.reviewId != null && pattern.canApply && workflow.canApplyPending) {
-                        MasroofButton(onClick = { work {
-                            pending = null
-                            applied = workflow.applyPending(bank.bankId, configuration.generation, source.reviewId, pattern.id)
-                            pending = workflow.previewPending(bank.bankId, configuration.generation)
-                        } },
+                        MasroofButton(onClick = { applyPending(configuration.generation, source.reviewId, pattern.id) },
                             enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-current")) { Text(stringResource(R.string.teaching_apply_current)) }
                         applied?.let { PatternApplyResult(it, singleMessage = true) }
                     } else if (pattern.canApply && workflow.canApplyPending) {
@@ -167,11 +169,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             else {
                                 val count = report.matchingCount(pattern.id)
                                 Text(stringResource(if (count == 0) R.string.pattern_approval_no_pending else R.string.pattern_approval_matching_count, count))
-                                if (count > 0) MasroofButton(onClick = { work {
-                                    pending = null
-                                    applied = workflow.applyPending(bank.bankId, configuration.generation, patternId = pattern.id)
-                                    pending = workflow.previewPending(bank.bankId, configuration.generation)
-                                } }, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-matching")) {
+                                if (count > 0) MasroofButton(onClick = { applyPending(configuration.generation, patternId = pattern.id) },
+                                    enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-matching")) {
                                     Text(stringResource(R.string.pattern_approval_process_matching, count))
                                 }
                                 if (report.limited) Text(stringResource(R.string.pattern_pending_limited))
@@ -219,11 +218,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_pending_title)) }
                     if (showPending) PatternPendingCard(pending, busy, applied,
                         onRefresh = { work { pending = workflow.previewPending(bank.bankId, configuration.generation) } },
-                        onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ work {
-                            pending = null
-                            applied = workflow.applyPending(bank.bankId, configuration.generation)
-                            pending = workflow.previewPending(bank.bankId, configuration.generation)
-                        } }) else null, onOpenReview = onOpenReview)
+                        onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ applyPending(configuration.generation) })
+                            else null, onOpenReview = onOpenReview)
                     onImportBank?.let { action -> MasroofOutlinedButton({ action(bank.bankId) }, enabled = !busy) {
                         Text(stringResource(R.string.pattern_import_bank))
                     } }
