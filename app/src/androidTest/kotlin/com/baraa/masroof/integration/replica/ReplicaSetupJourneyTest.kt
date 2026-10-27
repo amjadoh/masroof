@@ -51,12 +51,12 @@ class ReplicaSetupJourneyTest {
         var analyticsVisible by mutableStateOf(true)
         try {
             compose.runOnUiThread {
-                onboarding = ViewModelProvider(store,OnboardingViewModelFactory(container,container.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]
-                dashboard = ViewModelProvider(store,DashboardViewModelFactory(container,{true}))[DashboardViewModel::class.java]
-                review = ViewModelProvider(store,ReviewViewModelFactory(container))[ReviewViewModel::class.java]
-                settings = ViewModelProvider(store,SettingsViewModelFactory(container,"test",{true}))[SettingsViewModel::class.java]
-                statement = ViewModelProvider(store,StatementReconciliationViewModelFactory(container.statementReconciliationWorkflow))[StatementReconciliationViewModel::class.java]
-                notifications = ViewModelProvider(store,NotificationCenterViewModelFactory(container,{true}))[NotificationCenterViewModel::class.java]
+                onboarding = ViewModelProvider(store,onboardingViewModelFactory(container,container.onboardingPreferencesRepository){true})[OnboardingViewModel::class.java]
+                dashboard = ViewModelProvider(store,dashboardViewModelFactory(container,{true}))[DashboardViewModel::class.java]
+                review = ViewModelProvider(store,reviewViewModelFactory(container))[ReviewViewModel::class.java]
+                settings = ViewModelProvider(store,settingsViewModelFactory(container,"test",{true}))[SettingsViewModel::class.java]
+                statement = ViewModelProvider(store,statementReconciliationViewModelFactory(container.statementReconciliationWorkflow))[StatementReconciliationViewModel::class.java]
+                notifications = ViewModelProvider(store,notificationCenterViewModelFactory(container,{true}))[NotificationCenterViewModel::class.java]
             }
             compose.setContent { CompositionLocalProvider(LocalLabAnalyticsCardsEnabled provides analyticsVisible) { MasroofTheme {
                 MasroofRoot(onboarding,dashboard,review,settings,statement,notifications,

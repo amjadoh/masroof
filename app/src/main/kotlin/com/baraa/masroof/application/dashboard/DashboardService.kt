@@ -96,10 +96,7 @@ class DashboardService(
         )
     }
 
-    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview =
-        loadProjection(period).toOverview()
-
-    suspend fun loadProjection(period: FinancialPeriod): DashboardProjection {
+    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview {
         val startInclusive = FinancialPeriodPolicy.toInclusiveStartInstant(period.startDate, zoneId)
         val endExclusive = FinancialPeriodPolicy.toExclusiveEndInstant(period.endDateExclusive, zoneId)
         val transactions = financialTransactionRepository.listOccurredBetween(

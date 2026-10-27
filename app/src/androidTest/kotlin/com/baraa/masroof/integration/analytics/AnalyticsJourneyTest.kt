@@ -41,6 +41,8 @@ class AnalyticsJourneyTest {
     @get:Rule val compose = createComposeRule()
     private val instrument = InstrumentationRegistry.getInstrumentation()
     private val host = instrument.targetContext
+    private val fixtureToday = LocalDate.of(2026, 10, 10)
+    private val fixtureClock = Clock.fixed(fixtureToday.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault())
     @Test fun publishedComparisonShowsItsActualLateOriginAndContextualHelpInBothLanguages() {
         val start=LocalDate.of(2026,10,1).toEpochDay()
         val origin=start+10
@@ -79,14 +81,14 @@ class AnalyticsJourneyTest {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
         runBlocking { TestRuntime.reset(host) }
         val container = TestRuntime.container(host)
+        val workflow = AnalyticsWorkflow(container, TestStorageContext(host), fixtureClock)
         var showing by mutableStateOf(true)
         try {
-            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); seed(container) }
-            val workflow = container.analytics
+            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); container.stopLabAnalytics(); seed(container, fixtureToday); workflow.start() }
             runBlocking { workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot?.status == "READY" }
             runBlocking {
-                val overview = container.dashboardService.loadOverview(container.dashboardPeriodWorkflow.currentPeriod())
+                val overview = container.dashboardService.loadOverview(com.baraa.masroof.domain.period.FinancialPeriodPolicy.periodContaining(fixtureToday))
                 val expected = overview.spendingTrends!!.purchases.totalSpending.amount.movePointRight(2).longValueExact()
                 assertEquals("Purchase scope exactly matches the current graph", expected, workflow.state.value.snapshot!!.actual)
                 val snapshot = workflow.state.value.snapshot!!
@@ -227,7 +229,7 @@ class AnalyticsJourneyTest {
             }
             runBlocking {
                 container.database.financialTransactionDao().insertTransactionIfAbsent(FinancialTransactionEntity(
-                    "large-refund", "REFUND", "5000.00", "SAR", Instant.now().toEpochMilli(),
+                    "large-refund", "REFUND", "5000.00", "SAR", fixtureClock.millis(),
                     "card:BANK_ALJAZIRA:1234", null, "استرداد اختبار", null, null))
                 workflow.request(); workflow.refresh()
             }
@@ -235,8 +237,9 @@ class AnalyticsJourneyTest {
             screen("en-light-negative-net")
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
             val beforeReopen = runBlocking { container.financialTransactionRepository.listAll() }
-            val period = container.dashboardPeriodWorkflow.currentPeriod()
-            val detached = runBlocking { FinancialAnalysisReader.capture(container, LocalDate.now().minusYears(1).atStartOfDay(ZoneId.systemDefault()).toInstant(), period.endDateExclusive.atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()) }
+            val period = com.baraa.masroof.domain.period.FinancialPeriodPolicy.periodContaining(fixtureToday)
+            val detached = runBlocking { FinancialAnalysisReader.capture(container, fixtureToday.minusYears(1).atStartOfDay(ZoneId.systemDefault()).toInstant(), period.endDateExclusive.atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault()) }
+            workflow.close()
             TestRuntime.close()
             runBlocking { assertTrue(detached.service.loadOverview(period).spendingTrends!!.purchases.points.isNotEmpty()) }
             val reopened = TestRuntime.container(host)
@@ -249,6 +252,7 @@ class AnalyticsJourneyTest {
             }
         } finally {
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            workflow.close()
             runBlocking { TestRuntime.reset(host) }
         }
     }
@@ -332,11 +336,11 @@ class AnalyticsJourneyTest {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(instrument.uiAutomation.executeShellCommand("pm grant ${host.packageName} android.permission.READ_SMS")).use { it.readBytes() }
         runBlocking { TestRuntime.reset(host) }
         val c = TestRuntime.container(host)
+        val workflow = AnalyticsWorkflow(c, TestStorageContext(host), fixtureClock)
         var showing by mutableStateOf(true)
         var opened: String? = null
         try {
-            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
-            val workflow = c.analytics
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); c.stopLabAnalytics(); seed(c, fixtureToday); workflow.start(); workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot != null }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot)
@@ -412,6 +416,7 @@ class AnalyticsJourneyTest {
             assertEquals(before, runBlocking { c.financialTransactionRepository.listAll() })
         } finally {
             compose.runOnUiThread { showing = false }; compose.waitForIdle()
+            workflow.close()
             runBlocking { TestRuntime.reset(host) }
         }
     }
@@ -690,8 +695,7 @@ class AnalyticsJourneyTest {
         }
     }
 
-    private suspend fun seed(c: AppContainer) {
-        val today = LocalDate.now()
+    private suspend fun seed(c: AppContainer, today: LocalDate = LocalDate.now()) {
         c.onboardingPreferencesRepository.setOnboardingStarted(true)
         c.onboardingPreferencesRepository.setOnboardingCompleted(true)
         c.onboardingPreferencesRepository.setHistoricalImportStartEpochMillis(today.minusDays(150).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli())
@@ -705,9 +709,10 @@ class AnalyticsJourneyTest {
             val dao = c.database.financialTransactionDao()
             for (ago in 1..150) dao.insertTransactionIfAbsent(entity("daily-$ago", "EXPENSE", "${20 + today.minusDays(ago.toLong()).dayOfWeek.value * 5}.00", today.minusDays(ago.toLong())))
             for (month in 0..3) dao.insertTransactionIfAbsent(entity("utility-$month", "BILL_PAYMENT", "${if (month == 0) 150 else 100}.00", today.minusMonths(month.toLong()).minusDays(2), "شركة الخدمات"))
+            // Keep today net-positive so budget alerts are exercised even on salary-period day one.
             listOf(entity("cash", "CASH_WITHDRAWAL", "50.00", today.minusDays(1)), entity("external", "EXTERNAL_TRANSFER_OUT", "40.00", today.minusDays(1)),
                 entity("refund", "REFUND", "20.00", today.minusDays(1)), entity("settlement", "CREDIT_CARD_PAYMENT", "500.00", today.minusDays(1)),
-                entity("today-spend", "EXPENSE", "10.00", today), entity("today-refund", "REFUND", "20.00", today),
+                entity("today-spend", "EXPENSE", "50.00", today), entity("today-refund", "REFUND", "20.00", today),
                 entity("loan", "LOAN_REPAYMENT", "100.00", today.minusDays(1)), entity("self", "SELF_TRANSFER", "1000.00", today.minusDays(1)),
                 entity("fx", "EXPENSE", "6.00", today.minusDays(1), currency = "USD", rate = "3.75"))
                 .forEach { dao.insertTransactionIfAbsent(it) }

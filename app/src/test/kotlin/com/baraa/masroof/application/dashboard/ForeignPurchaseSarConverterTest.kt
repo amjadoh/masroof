@@ -9,7 +9,7 @@ import org.junit.Test
 class ForeignPurchaseSarConverterTest {
     @Test
     fun usdPurchase_convertsWithFee() {
-        val sar = ForeignPurchaseSarConverter.toSarEquivalent(
+        val sar = ForeignPurchaseSarConverter.foreignToSar(
             foreignAmount = Money.of("23.00", Currency.USD),
             exchangeRate = java.math.BigDecimal("3.756957"),
             internationalFee = Money.of("1.99", Currency.SAR),
@@ -22,10 +22,9 @@ class ForeignPurchaseSarConverterTest {
 
     @Test
     fun usdRefund_withoutFeeWhenRateInSameSms() {
-        val sar = ForeignPurchaseSarConverter.toSarEquivalent(
+        val sar = ForeignPurchaseSarConverter.foreignToSar(
             foreignAmount = Money.of("6.51", Currency.USD),
             exchangeRate = java.math.BigDecimal("3.756957"),
-            includeInternationalFee = false,
         )
         assertNotNull(sar)
         assertEquals(Money.of("24.46", Currency.SAR), sar)

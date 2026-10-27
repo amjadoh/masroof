@@ -34,7 +34,7 @@ class ExchangeRateEnrichmentWorkflowTest {
             val periods = DashboardLedgerWorld.SYNTHETIC_MONTHS
                 .map { FinancialPeriodPolicy.periodContaining(it.atDay(10)) }
                 .distinct()
-            val beforeEnrichment = periods.map { service.loadProjection(it) }
+            val beforeEnrichment = periods.map { service.loadOverview(it) }
             val shownRates = beforeEnrichment.flatMap { it.transactions }
                 .filter { it.appliedExchangeRate != null }
                 .associate { it.id to (it.appliedExchangeRate to it.exchangeRateSource) }
@@ -49,7 +49,7 @@ class ExchangeRateEnrichmentWorkflowTest {
                 assertEquals(id, shown, stored.appliedExchangeRate to stored.exchangeRateSource)
             }
             assertTrue(world.ftRepo.listAwaitingAppliedExchangeRate(Currency.SAR).isEmpty())
-            assertEquals(beforeEnrichment, periods.map { service.loadProjection(it) })
+            assertEquals(beforeEnrichment, periods.map { service.loadOverview(it) })
         }
     }
 
