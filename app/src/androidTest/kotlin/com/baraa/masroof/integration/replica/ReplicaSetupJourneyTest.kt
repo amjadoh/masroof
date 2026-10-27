@@ -291,7 +291,13 @@ class ReplicaSetupJourneyTest {
         compose.waitForIdle()
     }
     private fun text(id: Int) = host.getString(id)
-    private fun click(id: Int) { compose.waitUntil(20_000) { compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().isNotEmpty() }; compose.onNodeWithText(text(id)).performClick(); compose.waitForIdle() }
+    private fun click(id: Int) {
+        compose.waitUntil(20_000) { compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().isNotEmpty() }
+        val node = compose.onNodeWithText(text(id))
+        if (!node.isDisplayed()) node.performScrollTo()
+        node.assertIsDisplayed().assertIsEnabled().performClick()
+        compose.waitForIdle()
+    }
     private fun screenshot(name: String) {
         val file = File(host.getExternalFilesDir(null),"replica-journey/$name.png").apply { parentFile!!.mkdirs() }
         compose.waitForIdle()
