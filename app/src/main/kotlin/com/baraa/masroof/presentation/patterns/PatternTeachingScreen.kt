@@ -4,37 +4,41 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import com.baraa.masroof.R
 import com.baraa.masroof.application.patterns.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.ui.theme.MasroofSpacing
+import com.baraa.masroof.ui.theme.MasroofTeachingTokens
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-/** All choices are local until the exact generated preview is explicitly saved. */
+/** Question and navigation stay visible; only message content scrolls. Drafts are saved explicitly. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PatternTeachingScreen(
     workflow: MessagePatternsWorkflow, generation: Long, bank: PatternBankView,
     source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
+    existingPattern: PatternDefinitionView? = null, initialBody: String = "",
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var operation by remember { mutableStateOf(PatternOperation.PURCHASE) }
-    var sender by remember { mutableStateOf(source?.sender ?: bank.senders.first()) }
-    var body by remember { mutableStateOf(TextFieldValue(source?.body.orEmpty())) }
+    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: PatternOperation.PURCHASE) }
+    var sender by remember { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
+    var body by remember { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
     var fieldIndex by remember { mutableIntStateOf(0) }
     var bindings by remember { mutableStateOf(emptyList<PatternBinding>()) }
     var candidates by remember { mutableStateOf(emptyList<PatternText>()) }
@@ -42,16 +46,25 @@ internal fun PatternTeachingScreen(
     var sample by remember { mutableStateOf("") }
     var sampleResult by remember { mutableStateOf<Map<String, PatternText>?>(null) }
     var sampleChecked by remember { mutableStateOf(false) }
-    var showSample by remember { mutableStateOf(false) }
-    var showIgnored by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var loadingExample by remember { mutableStateOf(existingPattern != null) }
     var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
     val operations = stringArrayResource(R.array.pattern_operations)
     val field = operation.fields[fieldIndex]
-    fun back() { if (!busy) { if (step > 0) { step--; preview = null } else onBack() } }
+    fun back() {
+        if (busy) return
+        body = body.copy(selection = TextRange.Zero)
+        when {
+            step == 3 -> step = 2
+            step == 2 -> { step = 1; preview = null }
+            step == 1 && fieldIndex > 0 -> fieldIndex--
+            step == 1 -> step = 0
+            else -> onBack()
+        }
+    }
     fun work(action: suspend () -> Unit) {
         if (busy) return
         keyboard?.hide(); focus.clearFocus()
@@ -64,142 +77,125 @@ internal fun PatternTeachingScreen(
         }
     }
     fun buildPreview() = work {
-        preview = workflow.teach(generation, bank.bankId, sender, operation, body.text, bindings)
+        preview = workflow.teach(generation, bank.bankId, sender, operation, body.text, bindings, patternId = existingPattern?.id)
         sampleChecked = false; sampleResult = null; step = 2
     }
-    fun bindSelection(key: String, ignored: Boolean = false) {
-        val start = body.selection.min
-        val end = body.selection.max
-        bindings = bindings.filterNot { it.field == key || it.start < end && start < it.end } + PatternBinding(key, start, end, ignored)
-        preview = null
+    fun advance() {
         body = body.copy(selection = TextRange.Zero)
+        if (fieldIndex < operation.fields.lastIndex) fieldIndex++ else buildPreview()
     }
-    LaunchedEffect(body.text) {
-        try { candidates = workflow.candidates(body.text) }
-        catch (e: CancellationException) { throw e }
+    fun bindSelection(key: String, ignored: Boolean = false) {
+        val start = body.selection.min; val end = body.selection.max
+        bindings = bindings.filterNot { it.field == key || it.start < end && start < it.end } + PatternBinding(key, start, end, ignored)
+        preview = null; body = body.copy(selection = TextRange.Zero)
+    }
+    LaunchedEffect(body.text, generation) {
+        loadingExample = existingPattern != null && step == 0
+        try {
+            candidates = workflow.candidates(body.text)
+            if (existingPattern != null && step == 0 && operation.name == existingPattern.label)
+                bindings = workflow.editBindings(generation, bank.bankId, existingPattern.id, body.text)
+        } catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true }
+        finally { loadingExample = false }
     }
-    LaunchedEffect(generation) {
-        preview = null
-        if (step == 2) step = 1
+    LaunchedEffect(step, fieldIndex) {
+        if (step == 1) body = body.copy(selection = bindings.singleOrNull { it.field == field }?.let { TextRange(it.start, it.end) } ?: TextRange.Zero)
     }
+    LaunchedEffect(generation) { preview = null; if (step >= 2) step = 1 }
     BackHandler { back() }
-    MasroofSecondaryScaffold(stringResource(R.string.teaching_title), ::back, stringResource(R.string.review_back)) { modifier ->
-        Column(modifier.imePadding().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                listOf(R.string.teaching_step_kind, R.string.teaching_step_fields, R.string.teaching_step_confirm).forEachIndexed { index, label ->
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
-                        LinearProgressIndicator(progress = { if (index <= step) 1f else 0f }, modifier = Modifier.fillMaxWidth())
-                        Text(stringResource(label), style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-            if (busy) CircularProgressIndicator()
-            if (failed) {
-                MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_failed), contentColor = MaterialTheme.colorScheme.error)
-                MasroofTextButton(onClick = { preview = null; failed = false; onReload() }, enabled = !busy) {
+    val question = when (step) {
+        0 -> stringResource(R.string.teaching_kind_title)
+        1 -> stringResource(R.string.teaching_field_title, patternFieldName(field))
+        2 -> stringResource(R.string.teaching_preview_title)
+        else -> stringResource(R.string.teaching_sample_title)
+    }
+    MasroofSecondaryScaffold(stringResource(if (existingPattern == null) R.string.teaching_title else R.string.pattern_edit_title), ::back,
+        stringResource(R.string.review_back)) { modifier ->
+        Box(modifier, contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = MasroofTeachingTokens.maxWidth).fillMaxSize().imePadding(),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount")
+                if (busy || loadingExample) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (failed) MasroofOutlinedButton({ preview = null; failed = false; onReload() }, enabled = !busy) {
                     Text(stringResource(R.string.dashboard_retry))
                 }
-            }
-            when (step) {
-                0 -> {
-                    MasroofGuidanceLabel(stringResource(R.string.teaching_kind_title), stringResource(R.string.teaching_choose_message_help),
-                        style = MaterialTheme.typography.titleLarge, contentColor = MaterialTheme.colorScheme.onSurface)
-                    Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.titleMedium)
-                    if (bank.senders.size > 1) PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it] }
-                    TeachingBody(body, source != null, !busy) {
-                        if (it.text != body.text) { bindings = emptyList(); preview = null }
-                        body = it
-                    }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                        PatternOperation.entries.forEach { choice ->
-                            MasroofChoice(operations[choice.ordinal], operation == choice, {
-                                operation = choice; fieldIndex = 0; bindings = emptyList(); preview = null
-                            }, enabled = !busy, modifier = Modifier.testTag("pattern-operation-${choice.name}"))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (step == 1) key(field) {
+                        PatternTeachingValues(body, candidates, !busy, { body = it },
+                            { body = body.copy(selection = TextRange(it.start, it.end)) },
+                            !busy && !body.selection.collapsed && bindings.size < 16, {
+                                val key = (1..16).firstOrNull { index -> bindings.none { it.field == "ignored_$index" } }
+                                if (key != null) bindSelection("ignored_$key", true)
+                            })
+                    } else key(step) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                            when (step) {
+                                0 -> {
+                                    Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.titleMedium)
+                                    if (bank.senders.size > 1) PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it] }
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
+                                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+                                        PatternOperation.entries.forEach { choice ->
+                                            MasroofChoice(operations[choice.ordinal], operation == choice, {
+                                                operation = choice; fieldIndex = 0; bindings = emptyList(); preview = null
+                                            }, enabled = !busy, modifier = Modifier.testTag("pattern-operation-${choice.name}"))
+                                        }
+                                    }
+                                    TeachingMessage(body, source != null, !busy) {
+                                        if (it.text != body.text) { bindings = emptyList(); preview = null }
+                                        body = it
+                                    }
+                                }
+                                2 -> preview?.let { reviewed ->
+                                    PatternTeachingReview(reviewed) { key ->
+                                        bindings = bindings.filterNot { it.field == key }; preview = null
+                                        fieldIndex = operation.fields.indexOf(key).coerceAtLeast(0); step = 1
+                                    }
+                                    MasroofOutlinedButton({ step = 3 }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                                        Text(stringResource(R.string.teaching_try_another))
+                                    }
+                                }
+                                3 -> {
+                                    OutlinedTextField(sample, { sample = it; sampleChecked = false; sampleResult = null }, minLines = 4, maxLines = 8,
+                                        label = { Text(stringResource(R.string.pattern_other_message)) }, enabled = !busy,
+                                        modifier = Modifier.fillMaxWidth().testTag("pattern-sample"))
+                                    if (sampleChecked && sampleResult == null) Text(stringResource(R.string.pattern_no_match))
+                                    sampleResult?.forEach { (key, value) -> Text("${patternFieldName(key)}: ${value.text}") }
+                                }
+                            }
                         }
-                    }
-                    MasroofButton(onClick = { keyboard?.hide(); focus.clearFocus(); step = 1 }, enabled = !busy && body.text.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.teaching_next))
                     }
                 }
-                1 -> {
-                    MasroofGuidanceLabel(stringResource(R.string.teaching_field_title, patternFieldName(field)),
-                        stringResource(R.string.teaching_field_help), style = MaterialTheme.typography.titleLarge,
-                        contentColor = MaterialTheme.colorScheme.onSurface)
-                    Text(stringResource(R.string.teaching_field_progress, fieldIndex + 1, operation.fields.size), style = MaterialTheme.typography.bodySmall)
-                    TeachingBody(body, true, !busy) { body = it }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
-                        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
-                        candidates.forEach { candidate ->
-                            MasroofChoice(candidate.text, body.selection.min == candidate.start && body.selection.max == candidate.end,
-                                { body = body.copy(selection = TextRange(candidate.start, candidate.end)) }, enabled = !busy,
-                                modifier = Modifier.testTag("pattern-candidate-${candidate.start}-${candidate.end}"))
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+                    when (step) {
+                        0 -> PatternTeachingNavigation(R.string.teaching_back, ::back, R.string.teaching_next,
+                            { keyboard?.hide(); focus.clearFocus(); step = 1 }, !busy, !busy && !loadingExample && body.text.isNotBlank())
+                        1 -> {
+                            Text(if (body.selection.collapsed) stringResource(R.string.teaching_select_value)
+                                else body.text.substring(body.selection.min, body.selection.max), maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+                                if (field != "amount") MasroofOutlinedButton({ bindings = bindings.filterNot { it.field == field }; advance() },
+                                    enabled = !busy, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.teaching_skip_field)) }
+                                MasroofButton({ bindSelection(field); advance() }, enabled = !busy && !body.selection.collapsed,
+                                    modifier = Modifier.weight(1f).testTag("pattern-bind")) { Text(stringResource(R.string.teaching_confirm_field)) }
+                            }
+                            PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_preview, ::buildPreview, !busy,
+                                !busy && bindings.any { it.field == "amount" && !it.ignored }, outlinedAction = true)
                         }
-                    }
-                    if (!body.selection.collapsed) Text(body.text.substring(body.selection.min, body.selection.max), style = MaterialTheme.typography.titleMedium)
-                    MasroofButton(onClick = {
-                        bindSelection(field)
-                        if (fieldIndex < operation.fields.lastIndex) fieldIndex++ else buildPreview()
-                    }, enabled = !busy && !body.selection.collapsed, modifier = Modifier.fillMaxWidth().testTag("pattern-bind")) {
-                        Text(stringResource(R.string.teaching_confirm_field))
-                    }
-                    if (field != "amount") MasroofTextButton(onClick = {
-                        bindings = bindings.filterNot { it.field == field }
-                        if (fieldIndex < operation.fields.lastIndex) fieldIndex++ else buildPreview()
-                    }, enabled = !busy) { Text(stringResource(R.string.teaching_skip_field)) }
-                    if (fieldIndex > 0) MasroofTextButton(onClick = { fieldIndex--; body = body.copy(selection = TextRange.Zero) }, enabled = !busy) {
-                        Text(stringResource(R.string.teaching_previous))
-                    }
-                    bindings.forEach { binding ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("${if (binding.ignored) stringResource(R.string.pattern_ignore) else patternFieldName(binding.field)}: ${body.text.substring(binding.start, binding.end)}", Modifier.weight(1f))
-                            MasroofTextButton(onClick = { bindings = bindings - binding }, enabled = !busy) { Text(stringResource(R.string.pattern_remove_binding)) }
-                        }
-                    }
-                    MasroofTextButton(onClick = { showIgnored = !showIgnored }, enabled = !busy) { Text(stringResource(R.string.teaching_other_values)) }
-                    if (showIgnored) MasroofOutlinedButton(onClick = {
-                        val key = (1..16).firstOrNull { index -> bindings.none { it.field == "ignored_$index" } }
-                        if (key != null) bindSelection("ignored_$key", ignored = true)
-                    }, enabled = !busy && !body.selection.collapsed && bindings.size < 16) { Text(stringResource(R.string.pattern_ignore)) }
-                    MasroofOutlinedButton(onClick = ::buildPreview, enabled = !busy && bindings.any { it.field == "amount" }, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.pattern_preview))
-                    }
-                }
-                2 -> preview?.let { reviewed ->
-                    Text(stringResource(R.string.teaching_preview_title), style = MaterialTheme.typography.titleLarge)
-                    MasroofCard {
-                        Text(operations[operation.ordinal], style = MaterialTheme.typography.titleMedium)
-                        reviewed.fields.forEach { (key, value) -> Text("${patternFieldName(key)}: ${value.text}") }
-                    }
-                    MasroofGuidanceLabel(stringResource(R.string.teaching_pattern_preview), stringResource(R.string.pattern_preview_only))
-                    MasroofTextButton(onClick = { showSample = !showSample }, enabled = !busy) { Text(stringResource(R.string.teaching_try_another)) }
-                    if (showSample) {
-                        OutlinedTextField(sample, { sample = it; sampleChecked = false; sampleResult = null },
-                            label = { Text(stringResource(R.string.pattern_other_message)) }, enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().testTag("pattern-sample"))
-                        MasroofOutlinedButton(onClick = { work {
-                            sampleResult = workflow.tryPreview(reviewed, sender, sample); sampleChecked = true
-                        } }, enabled = !busy && sample.isNotBlank()) { Text(stringResource(R.string.pattern_test)) }
-                        if (sampleChecked && sampleResult == null) Text(stringResource(R.string.pattern_no_match))
-                        sampleResult?.forEach { (key, value) -> Text("${patternFieldName(key)}: ${value.text}") }
-                    }
-                    MasroofButton(onClick = { work { workflow.saveTeaching(reviewed); onSaved(reviewed, body.text) } },
-                        enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_save)) }
-                    MasroofOutlinedButton(onClick = { step = 1; preview = null }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.teaching_previous))
+                        2 -> PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_save, {
+                            preview?.let { reviewed -> work { workflow.saveTeaching(reviewed); onSaved(reviewed, body.text) } }
+                        }, !busy, !busy && preview != null)
+                        3 -> PatternTeachingNavigation(R.string.teaching_previous, ::back, R.string.pattern_test, {
+                            preview?.let { reviewed -> work { sampleResult = workflow.tryPreview(reviewed, sender, sample); sampleChecked = true } }
+                        }, !busy, !busy && sample.isNotBlank())
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun TeachingBody(body: TextFieldValue, readOnly: Boolean, enabled: Boolean, onChange: (TextFieldValue) -> Unit) {
-    OutlinedTextField(body, onChange, readOnly = readOnly, enabled = enabled,
-        label = { Text(stringResource(R.string.pattern_message)) }, modifier = Modifier.fillMaxWidth().testTag("pattern-body"))
 }
 
 @Composable

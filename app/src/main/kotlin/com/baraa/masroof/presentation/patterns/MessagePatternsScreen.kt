@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
@@ -44,6 +42,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
     var savedApproval by remember { mutableStateOf(false) }
+    var editingPattern by remember { mutableStateOf<PatternDefinitionView?>(null) }
+    var editingBody by remember { mutableStateOf("") }
+    var confirmingDelete by remember { mutableStateOf(false) }
+    var history by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun work(action: suspend () -> Unit) {
         if (busy) return
@@ -58,6 +60,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     fun back() {
         if (busy) return
         when {
+            history -> history = false
             approving -> approving = false
             savedTeaching && source != null -> onBack()
             selectedPattern != null -> { selectedPattern = null; savedTeaching = false; savedApproval = false; applied = null }
@@ -95,10 +98,11 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (bank != null && teaching && (source == null || source.sender in bank.senders)) {
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
-                teaching = false; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
+                teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
                 work { snapshot = workflow.catalog() }
             }, onReload = { work { snapshot = workflow.catalog() } },
-            onBack = { if (source != null) onBack() else teaching = false })
+            onBack = { if (source != null && editingPattern == null) onBack() else { teaching = false; editingPattern = null } },
+            existingPattern = editingPattern, initialBody = editingBody)
         return
     }
     if (pattern != null && approving) {
@@ -107,12 +111,40 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             onSaved = { snapshot = it; approving = false; savedTeaching = false; savedApproval = true; applied = null }, onBack = { approving = false })
         return
     }
+    if (bank != null && pattern != null && history) {
+        PatternHistoryScreen(bank, pattern, busy, failed, { if (!busy) history = false }) { revision -> work {
+            workflow.restoreRevision(requireNotNull(snapshot).generation, bank.bankId, pattern.id, revision)
+            snapshot = workflow.catalog(); savedApproval = false; applied = null; history = false
+        } }
+        return
+    }
+    if (bank != null && pattern == null && showPending) {
+        MasroofSecondaryScaffold(stringResource(R.string.pattern_pending_title), ::back, stringResource(R.string.settings_back)) { modifier ->
+            Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                PatternPendingCard(pending, busy, applied,
+                    onRefresh = { work { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) } },
+                    onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ applyPending(requireNotNull(snapshot).generation) })
+                        else null, onOpenReview = onOpenReview)
+                MasroofOutlinedButton(::back, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.teaching_back)) }
+            }
+        }
+        return
+    }
+    if (confirmingDelete && bank != null && pattern != null) PatternDeleteDialog(
+        name = patternOperationName(pattern.label), identity = "${bank.bankId} / ${pattern.id}",
+        onDismiss = { confirmingDelete = false }, onDelete = {
+            confirmingDelete = false
+            work {
+                snapshot = workflow.deletePattern(requireNotNull(snapshot).generation, bank.bankId, pattern.id)
+                selectedPattern = null; savedTeaching = false; savedApproval = false; applied = null; pending = null; savedBody = ""
+            }
+        })
     MasroofSecondaryScaffold(stringResource(R.string.teaching_title), ::back, stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             if (busy || snapshot == null && !failed) CircularProgressIndicator()
             if (failed) {
                 MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_failed), contentColor = MaterialTheme.colorScheme.error)
-                MasroofTextButton(onClick = { work {
+                MasroofOutlinedButton(onClick = { work {
                     snapshot = workflow.catalog()
                     if (bank != null && workflow.canPreviewPending) pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation)
                 } }, enabled = !busy) { Text(stringResource(R.string.dashboard_retry)) }
@@ -154,10 +186,14 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)
                             snapshot = workflow.catalog(); savedApproval = false; applied = null
                         } },
-                        onRestore = { revision -> work {
-                            workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, revision)
-                            snapshot = workflow.catalog(); savedApproval = false; applied = null
-                        } })
+                        onEdit = if (pattern.canEdit) ({ work {
+                            editingBody = source?.body ?: savedBody.ifBlank {
+                                workflow.approvalExamples(bank.bankId, configuration.generation, pattern.id).firstOrNull()?.body.orEmpty()
+                            }
+                            editingPattern = pattern; teaching = true
+                        } }) else null,
+                        onDelete = { confirmingDelete = true },
+                        onHistory = { history = true })
                     if (source?.reviewId != null && pattern.canApply && workflow.canApplyPending) {
                         MasroofButton(onClick = { applyPending(configuration.generation, source.reviewId, pattern.id) },
                             enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-current")) { Text(stringResource(R.string.teaching_apply_current)) }
@@ -193,7 +229,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         Text(bank.senders.joinToString(), style = MaterialTheme.typography.bodySmall)
                     }
                     if (source != null && source.sender !in bank.senders) Text(stringResource(R.string.pattern_sender_mismatch), color = MaterialTheme.colorScheme.error)
-                    MasroofButton(onClick = { teaching = true; savedTeaching = false; savedBody = "" },
+                    MasroofButton(onClick = { teaching = true; editingPattern = null; editingBody = ""; savedTeaching = false; savedBody = "" },
                         enabled = !busy && (source == null || source.sender in bank.senders), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_teach)) }
                     Text(stringResource(R.string.teaching_catalog), style = MaterialTheme.typography.titleLarge)
                     bank.currentPatterns.groupBy { it.label }.forEach { (label, patterns) ->
@@ -214,12 +250,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             }
                         }
                     }
-                    if (workflow.canPreviewPending) MasroofOutlinedButton(onClick = { showPending = !showPending },
+                    if (workflow.canPreviewPending) MasroofOutlinedButton(onClick = { showPending = true },
                         enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_pending_title)) }
-                    if (showPending) PatternPendingCard(pending, busy, applied,
-                        onRefresh = { work { pending = workflow.previewPending(bank.bankId, configuration.generation) } },
-                        onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ applyPending(configuration.generation) })
-                            else null, onOpenReview = onOpenReview)
                     onImportBank?.let { action -> MasroofOutlinedButton({ action(bank.bankId) }, enabled = !busy) {
                         Text(stringResource(R.string.pattern_import_bank))
                     } }
@@ -231,12 +263,12 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun PatternChoice(options: List<String>, selected: String, enabled: Boolean, onChoose: (Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        MasroofOutlinedButton(onClick = { expanded = true }, enabled = enabled) { Text(selected) }
-        DropdownMenu(expanded, { expanded = false }) {
-            options.forEachIndexed { index, option -> DropdownMenuItem(text = { Text(option) }, onClick = { expanded = false; onChoose(index) }) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
+        verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+        options.forEachIndexed { index, option ->
+            MasroofChoice(option, option == selected, { onChoose(index) }, enabled = enabled)
         }
     }
 }

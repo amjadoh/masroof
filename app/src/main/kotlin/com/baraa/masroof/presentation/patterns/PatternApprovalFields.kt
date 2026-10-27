@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -22,7 +23,6 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 @Composable
 internal fun PatternApprovalMessage(examples: List<PatternApprovalExample>, selected: Int?, body: String,
     readOnly: Boolean, enabled: Boolean, onSelect: (Int) -> Unit, onManual: () -> Unit, onBody: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
     MasroofCard {
         MasroofSectionHeader(stringResource(if (selected != null || readOnly) R.string.pattern_approval_imported_message else R.string.pattern_message))
         if (examples.isNotEmpty() && !readOnly) {
@@ -32,9 +32,9 @@ internal fun PatternApprovalMessage(examples: List<PatternApprovalExample>, sele
         }
         if (selected != null || readOnly) {
             examples.getOrNull(selected ?: -1)?.fields?.get("amount")?.let { Text(it.text, style = MaterialTheme.typography.titleLarge) }
-            MasroofTextButton({ expanded = !expanded }, enabled = enabled) { Text(stringResource(R.string.pattern_approval_original_message)) }
-            if (expanded) Text(body, modifier = Modifier.testTag("pattern-financial-body"))
-            if (!readOnly) MasroofTextButton(onManual, enabled = enabled) { Text(stringResource(R.string.pattern_approval_manual_message)) }
+            OutlinedTextField(body, {}, readOnly = true, minLines = 3, maxLines = 8,
+                label = { Text(stringResource(R.string.pattern_message)) }, modifier = Modifier.fillMaxWidth().testTag("pattern-financial-body"))
+            if (!readOnly) MasroofOutlinedButton(onManual, enabled = enabled) { Text(stringResource(R.string.pattern_approval_manual_message)) }
         } else OutlinedTextField(body, onBody, label = { Text(stringResource(R.string.pattern_message)) },
             enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("pattern-financial-body"))
     }
@@ -47,6 +47,24 @@ internal fun PatternApprovalAccounts(accounts: List<PatternAccountOption>, selec
     var last4 by remember { mutableStateOf("") }
     var confirmed by remember { mutableStateOf(false) }
     var priorAccountId by remember { mutableStateOf<String?>(null) }
+    val addLabel = stringResource(R.string.pattern_approval_add_account)
+    val cancelLabel = stringResource(R.string.pattern_approval_cancel_account)
+    val numberLabel = stringResource(R.string.pattern_financial_account_last4)
+    val ownedLabel = stringResource(R.string.pattern_financial_account_owned)
+    val confirmLabel = stringResource(R.string.pattern_financial_confirm_account)
+    fun cancelAddition() {
+        if (!enabled) return
+        adding = false; last4 = ""; confirmed = false; onChoose(priorAccountId)
+    }
+    @Composable fun fields() {
+        OutlinedTextField(last4, { last4 = it.filter(Char::isDigit).take(4); confirmed = false },
+            label = { Text(numberLabel) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("pattern-account-last4"))
+        Row(Modifier.fillMaxWidth().toggleable(confirmed, enabled = enabled, role = Role.Checkbox) { confirmed = it },
+            verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(confirmed, null, enabled = enabled)
+            Text(ownedLabel, modifier = Modifier.weight(1f))
+        }
+    }
     LaunchedEffect(selectedId) { if (selectedId != null) { adding = false; last4 = ""; confirmed = false } }
     Text(stringResource(R.string.pattern_approval_account_question), style = MaterialTheme.typography.titleMedium)
     val names = accounts.map { "${it.name.orEmpty()} • ${it.last4}" }
@@ -57,23 +75,20 @@ internal fun PatternApprovalAccounts(accounts: List<PatternAccountOption>, selec
         accounts.indexOfFirst { it.id == selectedId }.takeIf { it >= 0 }?.let { names[it] } ?: choose, enabled) {
         onChoose(accounts.getOrNull(it - 1)?.id)
     }
-    if (accounts.isNotEmpty()) MasroofTextButton({
-        if (adding) { adding = false; last4 = ""; confirmed = false; onChoose(priorAccountId) }
-        else { priorAccountId = selectedId; adding = true; onChoose(null) }
-    }, enabled = enabled) { Text(stringResource(if (adding) R.string.pattern_approval_cancel_account else R.string.pattern_approval_add_account)) }
-    if (accounts.isEmpty() || adding) {
-        OutlinedTextField(last4, { last4 = it.filter(Char::isDigit).take(4); confirmed = false },
-            label = { Text(stringResource(R.string.pattern_financial_account_last4)) }, enabled = enabled,
-            modifier = Modifier.fillMaxWidth().testTag("pattern-account-last4"))
-        Row(Modifier.fillMaxWidth().toggleable(confirmed, enabled = enabled, role = Role.Checkbox) { confirmed = it },
-            verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(confirmed, null, enabled = enabled)
-            Text(stringResource(R.string.pattern_financial_account_owned), modifier = Modifier.weight(1f))
-        }
+    if (accounts.isNotEmpty()) MasroofOutlinedButton({ priorAccountId = selectedId; adding = true; onChoose(null) }, enabled = enabled) { Text(addLabel) }
+    if (accounts.isEmpty()) {
+        fields()
         MasroofOutlinedButton({ onConfirm(last4) }, enabled = enabled && confirmed && last4.length == 4) {
-            Text(stringResource(R.string.pattern_financial_confirm_account))
+            Text(confirmLabel)
         }
     }
+    if (adding) AlertDialog(onDismissRequest = ::cancelAddition, title = { Text(addLabel) },
+        text = { Column { fields() } }, confirmButton = {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+                MasroofOutlinedButton(::cancelAddition, enabled = enabled, modifier = Modifier.weight(1f)) { Text(cancelLabel) }
+                MasroofButton({ onConfirm(last4) }, enabled = enabled && confirmed && last4.length == 4, modifier = Modifier.weight(1f)) { Text(confirmLabel) }
+            }
+        })
 }
 
 @Composable
