@@ -42,6 +42,8 @@ internal fun SettingsManualRegistrySheet(bankId: String, card: Boolean, state: S
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofFormField(last4, { value -> last4 = value.filter(Char::isDigit).take(4) },
                 label = { MasroofText(stringResource(R.string.settings_manual_last4)) }, enabled = !state.updating,
+                trailingIcon = { MasroofGuidanceButton(stringResource(if (card) R.string.settings_add_card_manual else R.string.settings_add_account_manual),
+                    stringResource(R.string.settings_manual_registry_hint)) },
                 singleLine = true, modifier = Modifier.fillMaxWidth().testTag("manual-last4"), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
             MasroofFormField(name, { name = it }, label = { MasroofText(stringResource(R.string.settings_manual_name)) },
                 enabled = !state.updating, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("manual-name"))
@@ -49,7 +51,6 @@ internal fun SettingsManualRegistrySheet(bankId: String, card: Boolean, state: S
                 Checkbox(owned, null, enabled = !state.updating)
                 MasroofText(stringResource(if (card) R.string.settings_manual_card_owned else R.string.pattern_financial_account_owned))
             }
-            MasroofText(stringResource(R.string.settings_manual_registry_hint), style = MaterialTheme.typography.bodySmall)
             if (state.error != null) MasroofText(stringResource(R.string.settings_manual_registry_failed), color = MaterialTheme.colorScheme.error)
         }
     }

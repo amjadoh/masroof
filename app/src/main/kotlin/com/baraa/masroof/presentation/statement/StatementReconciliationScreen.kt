@@ -101,8 +101,8 @@ fun StatementReconciliationScreen(
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap),
         ) {
             bankLabel?.let { label -> MasroofCard {
-                Text(label, style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.settings_statement_bank_scope_hint), style = MaterialTheme.typography.bodySmall)
+                com.baraa.masroof.presentation.common.MasroofGuidanceLabel(label,
+                    stringResource(R.string.settings_statement_bank_scope_hint), style = MaterialTheme.typography.titleMedium)
             } }
             MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_statement_reconciliation_title),
