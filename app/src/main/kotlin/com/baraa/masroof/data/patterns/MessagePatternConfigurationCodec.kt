@@ -14,6 +14,7 @@ object MessagePatternConfigurationCodec {
 
     fun encode(configuration: MessagePatternConfiguration): String = buildJsonObject {
         val schema = when {
+            configuration.banks.any { it.deletedPatternIds.isNotEmpty() } -> 4
             configuration.banks.any { bank -> bank.patterns.any { it.roleProfile != null } } -> 3
             configuration.banks.any { bank -> bank.patterns.any { it.factContract != null } } -> 2
             else -> 1
@@ -22,6 +23,7 @@ object MessagePatternConfigurationCodec {
         putJsonArray("banks") { configuration.banks.sortedBy { it.bankId }.forEach { bank -> add(buildJsonObject {
             put("bankId", bank.bankId); put("displayName", bank.displayName?.let(::JsonPrimitive) ?: JsonNull)
             put("senders", JsonArray(bank.senders.map { JsonPrimitive(it) }))
+            if (schema >= 4) put("deletedPatternIds", JsonArray(bank.deletedPatternIds.sorted().map(::JsonPrimitive)))
             putJsonArray("patterns") { bank.patterns.sortedWith(compareBy({ it.id }, { it.revision })).forEach { pattern ->
                 require(pattern.bankId == bank.bankId) { "Pattern bank mismatch" }
                 add(buildJsonObject {
@@ -62,14 +64,18 @@ object MessagePatternConfigurationCodec {
         val root = json.parseToJsonElement(raw).jsonObject
         root.only("schema", "normalization", "generation", "banks")
         val schema = root.number("schema")
-        require(schema in 1L..3L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
+        require(schema in 1L..4L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
         val generation = root.number("generation").also { require(it >= 0) }
         val rows = root.getValue("banks").jsonArray
         require(rows.size <= 64)
         require(rows.sumOf { it.jsonObject.getValue("patterns").jsonArray.size } <= 512)
         val banks = rows.map { value ->
             val row = value.jsonObject
-            row.only("bankId", "displayName", "senders", "patterns")
+            row.only(*(listOf("bankId", "displayName", "senders", "patterns") +
+                if (schema >= 4L) listOf("deletedPatternIds") else emptyList()).toTypedArray())
+            val deletedIds = if (schema >= 4L) row.getValue("deletedPatternIds").jsonArray.also { require(it.size <= 512) }
+                .map { it.jsonPrimitive.also { p -> require(p.isString) }.content }
+                .also { require(it.distinct().size == it.size) }.toSet() else emptySet()
             val bankId = row.text("bankId")
             require(bankId.matches(Regex("[A-Za-z0-9_-]{1,64}")) && !bankId.equals("UNKNOWN", ignoreCase = true))
             val name = row.getValue("displayName").takeUnless { it == JsonNull }?.let { row.text("displayName") }
@@ -118,7 +124,7 @@ object MessagePatternConfigurationCodec {
                     } else null).also { it.validate() }
             }
             require(definitions.map { it.id to it.revision }.distinct().size == definitions.size) { "Duplicate pattern revision" }
-            BankMessagePatterns(bankId, senders, name, definitions)
+            BankMessagePatterns(bankId, senders, name, definitions, deletedIds)
         }
         require(banks.map { it.bankId }.distinct().size == banks.size) { "Duplicate bank" }
         return MessagePatternConfiguration(generation, banks)

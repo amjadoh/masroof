@@ -78,7 +78,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             require(referenceField == null || account != null)
             val incoming = operation in setOf(PatternOperation.TRANSFER_IN, PatternOperation.REFUND)
             val role = if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE
-            val observed = referenceField?.let { field -> requireNotNull(fields[field]).raw }
+            val observed = referenceField?.let { field -> fields[field]?.raw
+                ?: throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH) }
             // A three-digit key must be mapped explicitly; a full suffix must already identify the chosen account.
             val key = observed?.let { value -> com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim() }
             if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))

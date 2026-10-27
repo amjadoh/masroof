@@ -19,6 +19,7 @@ class PatternCatalogTest {
             .toCatalog().banks.single().currentPatterns.single()
 
         val preview = view(listOf(pattern))
+        assertEquals("TEST", preview.sender)
         assertEquals(PatternApprovalStatus.PREVIEW_ONLY, preview.status)
         assertFalse(preview.canApply)
         assertEquals("Transfer:… From:… To:…", preview.example)

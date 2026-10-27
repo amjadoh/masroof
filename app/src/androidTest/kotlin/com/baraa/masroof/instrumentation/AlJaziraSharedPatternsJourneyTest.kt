@@ -53,7 +53,6 @@ class AlJaziraSharedPatternsJourneyTest {
             val toggle = "pattern-toggle-$bankId-bank.purchase"
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-$bankId-bank.purchase").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-open-$bankId-bank.purchase").performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             compose.onNodeWithTag(toggle).performScrollTo()
             compose.waitForIdle()
             ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-aljazira", "ready-light")
@@ -64,8 +63,11 @@ class AlJaziraSharedPatternsJourneyTest {
             compose.waitUntil(10_000) { runBlocking { !c.messagePatternsWorkflow.load().banks.single { it.bankId == bankId }.currentPatterns.single { it.id == "bank.purchase" }.enabled } }
             c.processRawSmsUseCase.ingest(raw("pending"))
             assertEquals(1, c.financialTransactionRepository.listAll().size)
+            compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-restore-$bankId-bank.purchase-1").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-restore-$bankId-bank.purchase-1").performScrollTo().performClick()
             compose.waitUntil(10_000) { runBlocking { c.messagePatternsWorkflow.load().banks.single { it.bankId == bankId }.currentPatterns.single { it.id == "bank.purchase" }.revision == 3 } }
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag(toggle).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText(AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.teaching_saved_patterns)).performScrollTo().performClick()
             compose.onNodeWithText(AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.pattern_pending_title)).performScrollTo().performClick()
             val apply = AppLocaleContext.wrap(compose.activity, "ar").getString(R.string.pattern_apply_pending)

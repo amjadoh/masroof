@@ -68,9 +68,9 @@ class PatternFinancialActivationJourneyTest {
             compose.onNodeWithText(ar(R.string.pattern_approval_imported_message)).assertExists()
             compose.onNodeWithTag("pattern-account-last4").assertDoesNotExist()
             compose.onNodeWithText(ar(R.string.pattern_approval_add_account)).performScrollTo().performClick()
-            compose.onNodeWithTag("pattern-account-last4").performScrollTo().performTextInput("5555")
+            compose.onNodeWithTag("pattern-account-last4").performTextInput("5555")
             compose.onNodeWithTag("pattern-financial-save").assertIsNotEnabled()
-            compose.onNodeWithText(ar(R.string.pattern_approval_cancel_account)).performScrollTo().performClick()
+            compose.onNodeWithText(ar(R.string.pattern_approval_cancel_account)).performClick()
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo()
             compose.waitForIdle()

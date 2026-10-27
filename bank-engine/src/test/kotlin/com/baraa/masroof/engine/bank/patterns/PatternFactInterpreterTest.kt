@@ -9,6 +9,37 @@ import java.time.Instant
 import java.time.LocalDateTime
 
 class PatternFactInterpreterTest {
+    @Test fun deletedPatternMarkersChangeTheFingerprintAndAreCopiedIndependentlyOfSetOrder() {
+        val original = configuration(pattern())
+        val ids = linkedSetOf("deleted-a", "deleted-b")
+        val deleted = original.copy(banks = original.banks.map { it.copy(deletedPatternIds = ids) })
+        val interpreter = PatternFactInterpreter(deleted)
+        val fingerprint = interpreter.fingerprint
+        assertNotEquals(PatternFactInterpreter(original).fingerprint, fingerprint)
+        assertEquals(fingerprint, PatternFactInterpreter(deleted.copy(banks = deleted.banks.map {
+            it.copy(deletedPatternIds = linkedSetOf("deleted-b", "deleted-a"))
+        })).fingerprint)
+        ids.clear()
+        assertEquals(fingerprint, interpreter.fingerprint)
+    }
+
+    @Test fun absentTextAccountReferenceNeverSatisfiesAnExactAccountBinding() {
+        val text = "Incoming\nAmount:10SAR\nAccount:321"
+        val p = SavedMessagePattern("optional-account", "BANK_STC", "STC Bank", "TRANSFER_IN", parts = listOf(
+            StaticText("Incoming\nAmount:"), FieldSlot("amount", FieldKind.MONEY, 0, false),
+            StaticText("\nAccount:"), FieldSlot("account_reference", FieldKind.TEXT, 0, false), StaticText("")))
+            .copy(factContract = PatternFactContract(MessageFamily.TRANSFER_IN, MoneyDirection.INCOMING, version = 2,
+                accountBindings = listOf(PatternAccountBinding(PatternAccountRole.DESTINATION, BankId("BANK_STC"),
+                    "4321", "account_reference", "321"))))
+        val engine = PatternFactInterpreter(configuration(p))
+        assertEquals(ParseStatus.SUCCESS, engine.interpretRouted(input.copy(body = text), bank).status)
+        val missing = engine.interpretRouted(input.copy(body = text.replace("321", "")), bank)
+        assertEquals(ParseStatus.REVIEW_REQUIRED, missing.status)
+        assertNull(missing.facts.destinationAccount)
+        assertTrue(missing.diagnostics.any { it.code == "PATTERN_ACCOUNT_BINDING_MISMATCH" })
+        assertTrue(missing.evidence.none { it.field == "ACCOUNT_REFERENCE" })
+    }
+
     @Test fun shortReferencesUseOnlyExplicitBankAndRoleQualifiedBindings() {
         val body = "Incoming\nAmount:10SAR\nAccount:321"
         val p = SavedMessagePattern.fromChoices("bound", "BANK_STC", "STC Bank", "TRANSFER_IN", body,
