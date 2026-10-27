@@ -12,6 +12,25 @@ import java.io.File
 import java.nio.file.Files
 
 class StcBundledPatternsTest {
+    @Test fun sarieTransferMatchesAnEmptyAccountLineWithoutInventingAnAccountReference() {
+        val bank = MessagePatternConfigurationCodec.decode(File("src/main/assets/bank-patterns/BANK_STC.patterns.json").readText()).banks.single()
+        val body = "Inward transfer (SARIE)\n100.00 SAR\nFrom TEST PERSON\nFrom BJAZ\nAccount \n02-09-2026 08:01\nRef. No. *8PJ7"
+        for (accountLine in listOf("Account ", "Account", "Account   ")) {
+            val text = body.replace("Account ", accountLine)
+            val match = requireNotNull(SavedMessagePattern.unique(bank.currentPatterns, bank.bankId, "STC Bank", text))
+            assertEquals("stc-sarie-in", match.first.id)
+            assertEquals(mapOf("amount" to "100.00 SAR", "counterparty" to "TEST PERSON", "counterparty_bank" to "BJAZ",
+                "occurred_at" to "02-09-2026 08:01", "reference" to "*8PJ7"), match.second.fields.mapValues { it.value.raw })
+            match.second.fields.values.forEach { assertEquals(it.raw, text.substring(it.start, it.end)) }
+            assertFalse(match.second.financialPostingAllowed)
+        }
+        for (invalid in listOf(body.replace("Account \n", ""), body.replace("100.00 SAR", ""),
+            body.replace("TEST PERSON", ""), body.replace("BJAZ", ""), body.replace("02-09-2026 08:01", ""),
+            body.replace("*8PJ7", ""), body + "\nCancelled")) {
+            assertNull(SavedMessagePattern.unique(bank.currentPatterns, bank.bankId, "STC Bank", invalid))
+        }
+    }
+
     private val rows get() = Json.parseToJsonElement(File("src/test/resources/testdata/patterns/stc-seed-v1.json").readText())
         .jsonObject.getValue("rows").jsonArray.map { it.jsonObject }
     private fun JsonObject.text(key: String) = getValue(key).jsonPrimitive.content

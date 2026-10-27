@@ -64,7 +64,7 @@ data class PatternProvenance(val configurationFingerprint: String, val patternId
 /** Immutable configuration snapshot. Routing has already selected the bank; sender detection is not repeated. */
 class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     private val snapshot = configuration.copy(banks = configuration.banks.map {
-        it.copy(senders = it.senders.toList(), patterns = it.patterns.toList())
+        it.copy(senders = it.senders.toList(), patterns = it.patterns.toList(), deletedPatternIds = it.deletedPatternIds.toSet())
     })
     val fingerprint: String = fingerprint(snapshot)
 
@@ -173,7 +173,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
         // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
         if (preview.fields.keys.any { it in NEUTRAL_REFERENCES && it !in boundFields && it !in contract.contextReferences }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
-        if (contract.contextReferences.any { it !in preview.fields }) block("PATTERN_REFERENCE_CONTEXT_MISSING")
+        if (contract.contextReferences.any { it !in preview.fields && it !in pattern.optionalTextFields }) block("PATTERN_REFERENCE_CONTEXT_MISSING")
         val receiptTime = "occurred_at" !in preview.fields
         if (receiptTime && !input.durableSmsReceipt) block("PATTERN_RECEIPT_NOT_DURABLE")
         if (contract.family == MessageFamily.UNKNOWN) block("PATTERN_FAMILY_UNKNOWN")
@@ -244,6 +244,10 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                         }
                         // Keep the v1/v2 stamp byte-for-byte compatible when no role matcher exists.
                         pattern.roleProfile?.let { out.writeUTF("role-profile-v1"); out.writeUTF(it.toString()) }
+                    }
+                    if (bank.deletedPatternIds.isNotEmpty()) {
+                        out.writeUTF("deleted-patterns-v1"); out.writeInt(bank.deletedPatternIds.size)
+                        bank.deletedPatternIds.sorted().forEach(out::writeUTF)
                     }
                 }
             }

@@ -9,6 +9,33 @@ import java.io.IOException
 import java.nio.file.Files
 
 class MessagePatternStoreTest {
+    @Test fun deletionRemovesEveryRevisionOnlyFromItsBankAndSurvivesReloadAndFailedWrites() = withFile { file ->
+        val first = pattern("STC", "STC Bank")
+        val other = pattern("OTHER", "Other Bank")
+        val store = MessagePatternStore(file)
+        store.saveBank(0, bank(first))
+        assertThrows(IllegalArgumentException::class.java) { store.deletePattern(1, "STC", first.id) }
+        assertEquals(1L, store.load().generation)
+        store.saveBank(1, bank(first.copy(revision = 2, enabled = false)))
+        store.saveBank(2, bank(other))
+        val before = file.readBytes()
+        assertThrows(IllegalStateException::class.java) { store.deletePattern(2, "STC", first.id) }
+        assertThrows(IOException::class.java) {
+            MessagePatternStore(file, beforeReplace = { throw IOException("injected") }).deletePattern(3, "STC", first.id)
+        }
+        assertArrayEquals(before, file.readBytes())
+        val deleted = store.deletePattern(3, "STC", first.id)
+        assertEquals(4L, deleted.generation)
+        assertEquals(deleted, MessagePatternStore(file).load())
+        val stc = deleted.banks.single { it.bankId == "STC" }
+        assertTrue(stc.patterns.isEmpty())
+        assertEquals(setOf(first.id), stc.deletedPatternIds)
+        assertEquals(listOf(other), deleted.banks.single { it.bankId == "OTHER" }.patterns)
+        assertThrows(IllegalArgumentException::class.java) { store.saveBank(4, bank(first.copy(revision = 3))) }
+        assertEquals(deleted, store.load())
+        assertEquals(listOf(file.name), file.parentFile.listFiles()!!.map { it.name })
+    }
+
     @Test fun explicitFactContractsRoundTripAndCannotRewriteAPriorRevision() = withFile { file ->
         val contract = PatternFactContract(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
             com.baraa.masroof.engine.bank.MoneyDirection.OUTGOING, com.baraa.masroof.finance.value.Currency.SAR)

@@ -45,7 +45,7 @@ enum class FieldKind(internal val dateFormat: String? = null, private val dateOn
         else -> value.isNotBlank()
     }
 }
-internal data class Selection(val field: String, val kind: FieldKind, val start: Int, val end: Int)
+internal data class Selection(val field: String, val kind: FieldKind, val start: Int, val end: Int, val allowEmpty: Boolean = false)
 data class Preview(val label: String, val fields: Map<String, TextSpan>) {
     val financialPostingAllowed: Boolean get() = false
 }
@@ -60,8 +60,9 @@ internal class ExampleTemplate private constructor(
         if (sender != this.sender || body.length !in 1..4096) return null
         val source = SourceText(body)
         val match = pattern.matchEntire(source.text) ?: return null
-        val fields = selections.mapIndexed { index, selection ->
+        val fields = selections.mapIndexedNotNull { index, selection ->
             val group = requireNotNull(match.groups[index + 1])
+            if (selection.allowEmpty && group.value.isBlank()) return@mapIndexedNotNull null
             if (group.value.length > 160 || !selection.kind.accepts(group.value)) return null
             val evidence = source.evidence("example-preview", selection.field, group.range)
             selection.field to TextSpan(source.original(group.range), evidence.start, evidence.end)
@@ -90,6 +91,7 @@ internal class ExampleTemplate private constructor(
             val expression = buildString {
                 append("\\A[ \\n]*")
                 ordered.forEach { selection ->
+                    require(!selection.allowEmpty || selection.kind == FieldKind.TEXT)
                     require(selection.field.matches(Regex("[a-z][a-z0-9_]{0,47}")))
                     require(selection.start in 0 until selection.end && selection.end <= body.length)
                     require(listOf(selection.start, selection.end).none { offset ->
@@ -102,8 +104,11 @@ internal class ExampleTemplate private constructor(
                     require('\n' !in value && value.length <= 160)
                     val fieldPattern = selection.kind.pattern(value)
                     require(Regex(fieldPattern).matches(value) && selection.kind.accepts(value)) { "Invalid teaching field" }
-                    append(literal(source.text.substring(cursor, start)))
-                    append('(').append(fieldPattern).append(')')
+                    val preceding = source.text.substring(cursor, start)
+                    // Keep the label/newline anchors when an optional value and its preceding spaces are absent.
+                    append(literal(if (selection.allowEmpty) preceding.trimEnd(' ') else preceding))
+                    if (selection.allowEmpty && preceding.endsWith(' ')) append(" *")
+                    append('(').append(if (selection.allowEmpty) "[^\\n]{0,160}" else fieldPattern).append(')')
                     cursor = end
                 }
                 append(literal(source.text.substring(cursor)))
