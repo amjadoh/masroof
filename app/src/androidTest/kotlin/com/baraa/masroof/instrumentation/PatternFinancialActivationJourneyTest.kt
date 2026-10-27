@@ -108,6 +108,10 @@ class PatternFinancialActivationJourneyTest {
             compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-restore-BANK_STC-stc-internal-in-1").performScrollTo().performClick()
             compose.waitUntil(10_000) { runBlocking { w.load().generation > approvedGeneration } }
+            // Persistence completes before the catalog coroutine publishes the restored screen.
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText(ar(R.string.pattern_approval_waiting)).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithTag("pattern-apply-result").assertDoesNotExist()
             compose.onNodeWithText(ar(R.string.pattern_approval_saved)).assertDoesNotExist()
             compose.onNodeWithText(ar(R.string.pattern_approval_waiting)).assertExists()
