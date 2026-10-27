@@ -55,7 +55,7 @@ class GitHubReleaseClient(
                 .getOrNull()
                 ?.let(manifests::add)
         }
-        val best = UpdateManifestSelector.highestVersionCode(manifests)
+        val best = manifests.maxByOrNull { it.versionCode }
             ?: return Result.failure(IllegalStateException("version.json asset not found in recent releases"))
         return Result.success(best)
     }
