@@ -233,16 +233,11 @@ class ApprovedFidelityMatrixTest {
             )
             "settings" -> SettingsHubScreen(
                 state = settingsState,
-                reviewRequiredCount = 2,
                 onBack = {},
-                onOpenAccounts = {},
-                onOpenCards = {},
-                onOpenLoans = {},
+                onOpenBanks = {},
                 onOpenCommitments = {},
-                onOpenReview = {},
                 onOpenApp = {},
                 onOpenDataBackup = {},
-                onOpenStatementReconciliation = {},
                 onOpenAbout = {}
             )
             "preferences" -> SettingsAppScreen(

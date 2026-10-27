@@ -69,6 +69,7 @@ fun DashboardRoute(
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
     onOpenReview: () -> Unit = {},
+    onImportSms: () -> Unit = onOpenSettings,
 ) {
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -79,8 +80,8 @@ fun DashboardRoute(
         onPrevious = viewModel::goToPreviousPeriod,
         onNext = viewModel::goToNextPeriod,
         onCurrent = viewModel::goToCurrentPeriod,
-        onRetry = viewModel::refreshWithSmsImport,
-        onRescan = viewModel::rescanSms,
+        onRetry = viewModel::refresh,
+        onRescan = onImportSms,
         onOpenAllTransactions = onOpenAllTransactions,
         onOpenTransaction = onOpenTransaction,
         onOpenCommitments = onOpenCommitments,

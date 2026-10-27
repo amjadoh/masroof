@@ -12,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +61,8 @@ fun SettingsRoute(
         viewModel.refresh()
     }
     val state by viewModel.uiState.collectAsState()
+    var manualBankId by rememberSaveable { mutableStateOf<String?>(null) }
+    var manualCard by rememberSaveable { mutableStateOf(false) }
     var destinationStack by rememberSaveable {
         mutableStateOf(listOf(SettingsDestination.Hub.encode()))
     }
@@ -72,6 +75,7 @@ fun SettingsRoute(
     }
 
     fun popOrExit() {
+        if (state.importingSms) return
         val popped = popSettingsStack(destinationStack)
         if (popped == null) {
             onBack()
@@ -84,14 +88,6 @@ fun SettingsRoute(
         destinationStack = replaceSettingsStack(next)
     }
 
-    fun openRegistryCategory(category: SettingsRegistryCategory) {
-        category.singleBankDirectDestination(state)?.let { direct ->
-            navigateTo(direct)
-            return
-        }
-        navigateTo(category.listDestination())
-    }
-
     LaunchedEffect(pendingLaunch, state.loading, state.bankSummaries) {
         val launch = pendingLaunch ?: return@LaunchedEffect
         if (launch.destination.needsBankSummaries() && state.loading) return@LaunchedEffect
@@ -100,6 +96,7 @@ fun SettingsRoute(
     }
 
     LaunchedEffect(destination) {
+        if (destination == SettingsDestination.Banks || destination is SettingsDestination.BankHub || destination == SettingsDestination.About) viewModel.refresh()
         if (destination == SettingsDestination.About || destination == SettingsDestination.Logs) {
             viewModel.refreshLogs()
         }
@@ -115,22 +112,19 @@ fun SettingsRoute(
     val logEntries by viewModel.logEntries.collectAsState()
     val logErrorCount = logEntries.count { it.level == com.baraa.masroof.application.logging.AppLogLevel.ERROR }
 
+    CompositionLocalProvider(LocalSettingsBankNames provides state.bankCatalog?.banks.orEmpty().mapNotNull { bank ->
+        bank.displayName?.let { bank.bankId to it }
+    }.toMap()) {
     when (val current = destination) {
         SettingsDestination.Hub -> SettingsHubScreen(
             state = state,
-            reviewRequiredCount = reviewRequiredCount,
             onBack = { popOrExit() },
-            onOpenAccounts = { openRegistryCategory(SettingsRegistryCategory.Accounts) },
-            onOpenCards = { openRegistryCategory(SettingsRegistryCategory.Cards) },
-            onOpenLoans = { openRegistryCategory(SettingsRegistryCategory.Loans) },
+            onOpenBanks = { navigateTo(SettingsDestination.Banks) },
             onOpenCommitments = { navigateTo(SettingsDestination.MyCommitments) },
-            onOpenReview = onOpenReview,
             onOpenApp = { navigateTo(SettingsDestination.App) },
             onOpenDataBackup = { navigateTo(SettingsDestination.DataBackup) },
-            onOpenStatementReconciliation = { navigateTo(SettingsDestination.StatementReconciliation) },
             onOpenAbout = { navigateTo(SettingsDestination.About) },
             onOpenLearning = { navigateTo(SettingsDestination.MessageLearning) },
-            onOpenPatterns = { navigateTo(SettingsDestination.MessagePatterns()) },
         )
 
         SettingsDestination.MyAccounts -> SettingsRegistryCategoryScreen(
@@ -205,14 +199,29 @@ fun SettingsRoute(
             }
         }
 
-        SettingsDestination.Banks -> SettingsRegistryCategoryScreen(
-            category = SettingsRegistryCategory.Accounts,
-            state = state,
-            onBack = { popOrExit() },
-            onOpenBank = { summary ->
-                navigateTo(SettingsDestination.BankAccounts(summary.bank.id))
-            },
-        )
+        SettingsDestination.Banks -> SettingsBanksScreen(state, { popOrExit() },
+            onOpenBank = { navigateTo(SettingsDestination.BankHub(it)) },
+            onAddBank = { navigateTo(SettingsDestination.BankEditor()) },
+            onImport = { viewModel.clearScopedSmsImportResult(); navigateTo(SettingsDestination.SmsImport()) })
+
+        is SettingsDestination.BankEditor -> {
+            val catalog = state.bankCatalog
+            val workflow = viewModel.messagePatternsWorkflow
+            if (catalog != null && workflow != null) SettingsBankEditorScreen(catalog, current.bankId, workflow,
+                onBack = { popOrExit() }, onSaved = { id ->
+                    viewModel.refresh()
+                    destinationStack = replaceSettingsTop(destinationStack, SettingsDestination.BankHub(id))
+                })
+            else SettingsBankHubLoadingScreen(Bank(current.bankId ?: Bank.UNKNOWN.id), { popOrExit() },
+                failed = !state.loading, onRetry = viewModel::refresh)
+        }
+        is SettingsDestination.SmsImport -> SettingsSmsImportScreen(state, current.bankId,
+            onBack = { popOrExit() }, onImport = viewModel::importSelectedBankSms,
+            onClearResult = viewModel::clearScopedSmsImportResult, onRequestPermission = onRequestSmsPermission,
+            onRetry = viewModel::refresh,
+            onOpenAppSettings = onOpenAppSettings, onOpenBank = {
+                destinationStack = replaceSettingsTop(destinationStack, SettingsDestination.BankHub(it))
+            })
 
         is SettingsDestination.BankHub -> {
             val bank = Bank(current.bankId)
@@ -226,6 +235,10 @@ fun SettingsRoute(
                     onOpenCards = { navigateTo(SettingsDestination.BankCards(current.bankId)) },
                     onOpenLoans = { navigateTo(SettingsDestination.BankLoans(current.bankId)) },
                     onOpenPatterns = { navigateTo(SettingsDestination.MessagePatterns(current.bankId)) },
+                    definition = state.bankCatalog?.banks?.find { it.bankId == current.bankId },
+                    onImport = { viewModel.clearScopedSmsImportResult(); navigateTo(SettingsDestination.SmsImport(current.bankId)) },
+                    onStatement = { navigateTo(SettingsDestination.BankStatement(current.bankId)) },
+                    onEditBank = { navigateTo(SettingsDestination.BankEditor(current.bankId)) },
                 )
 
                 state.loading -> SettingsBankHubLoadingScreen(
@@ -237,7 +250,7 @@ fun SettingsRoute(
                     LaunchedEffect(current.bankId) {
                         destinationStack = replaceSettingsTop(
                             destinationStack,
-                            SettingsDestination.MyAccounts,
+                            SettingsDestination.Banks,
                         )
                     }
                     SettingsBankHubLoadingScreen(
@@ -253,6 +266,7 @@ fun SettingsRoute(
             state = state,
             onBack = { popOrExit() },
             onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
+            onAddManual = { manualBankId = current.bankId; manualCard = false },
             onConfirmOwned = viewModel::confirmAccountOwned,
             onMarkExternal = viewModel::markAccountExternal,
             onRequestStopTracking = viewModel::requestStopAccountTracking,
@@ -272,6 +286,7 @@ fun SettingsRoute(
             state = state,
             onBack = { popOrExit() },
             onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
+            onAddManual = { manualBankId = current.bankId; manualCard = true },
             onConfirmOwned = viewModel::confirmCardOwned,
             onMarkExternal = viewModel::markCardExternal,
             onRequestStopTracking = viewModel::requestStopTracking,
@@ -309,9 +324,10 @@ fun SettingsRoute(
             onSelectTheme = viewModel::setThemeMode,
         )
 
-        SettingsDestination.StatementReconciliation -> StatementReconciliationRoute(
-            viewModel = statementReconciliationViewModel,
-            onBack = { popOrExit() },
+        SettingsDestination.StatementReconciliation -> SettingsBanksScreen(state, { popOrExit() },
+            { navigateTo(SettingsDestination.BankStatement(it)) }, title = stringResource(R.string.settings_statement_reconciliation_title))
+        is SettingsDestination.BankStatement -> StatementReconciliationRoute(
+            viewModel = statementReconciliationViewModel, bankId = current.bankId, bankLabel = settingsBankLabel(Bank(current.bankId)), onBack = { popOrExit() },
         )
 
         SettingsDestination.DataBackup, SettingsDestination.ExportBackup, SettingsDestination.RestoreBackup, SettingsDestination.DataTools -> SettingsDataBackupScreen(
@@ -330,7 +346,7 @@ fun SettingsRoute(
                 BackupPage.Hub -> SettingsDestination.DataBackup
             }) },
             onReparseStored = viewModel::reparseStoredMessages,
-            onImportSms = viewModel::importSmsFromPhone,
+            onImportSms = { navigateTo(SettingsDestination.SmsImport()) },
             onClearSmsImportMessage = viewModel::clearSmsImportMessage,
             onRequestSmsPermission = onRequestSmsPermission,
             onOpenAppSettings = onOpenAppSettings,
@@ -349,6 +365,8 @@ fun SettingsRoute(
 
         SettingsDestination.About -> SettingsAboutScreen(
             appVersion = state.appVersion,
+            bankCatalog = state.bankCatalog,
+            onOpenBanks = { navigateTo(SettingsDestination.Banks) },
             isNightlyBuild = state.isNightlyBuild,
             updateChannel = state.updateChannel,
             githubTokenConfigured = state.githubTokenConfigured,
@@ -369,6 +387,7 @@ fun SettingsRoute(
         )
 
         SettingsDestination.Updates -> SettingsUpdatesScreen(
+            appVersion = state.appVersion,
             updateChannel = state.updateChannel, githubTokenConfigured = state.githubTokenConfigured,
             updateState = state.updateState, updateMessage = state.updateMessage,
             onBack = { popOrExit() }, onSelectUpdateChannel = viewModel::setUpdateChannel,
@@ -384,7 +403,11 @@ fun SettingsRoute(
         )
 
         is SettingsDestination.MessagePatterns -> viewModel.messagePatternsWorkflow?.let { workflow ->
-            com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId, onOpenReview = onOpenReviewExample, onBack = { popOrExit() })
+            if (current.bankId == null) SettingsBanksScreen(state, { popOrExit() },
+                { navigateTo(SettingsDestination.MessagePatterns(it)) }, title = stringResource(R.string.settings_bank_teaching))
+            else com.baraa.masroof.presentation.patterns.MessagePatternsScreen(workflow, current.bankId,
+                onOpenReview = onOpenReviewExample, onBack = { popOrExit() },
+                onImportBank = { navigateTo(SettingsDestination.SmsImport(it)) })
         }
         SettingsDestination.MessageLearning -> com.baraa.masroof.presentation.analytics.MessageLearningSettingsScreen(
             onBack = { popOrExit() }, onOpenExample = onOpenReviewExample,
@@ -393,6 +416,11 @@ fun SettingsRoute(
             onBack = { popOrExit() },
         )
 
+    }
+    manualBankId?.let { bankId -> SettingsManualRegistrySheet(bankId, manualCard, state,
+        onDismiss = { if (!state.updating) manualBankId = null },
+        onSaveAccount = { last4, name -> viewModel.addManualAccount(bankId, last4, name) { manualBankId = null } },
+        onSaveCard = { last4, name, configuration -> viewModel.addManualCard(bankId, last4, name, configuration) { manualBankId = null } }) }
     }
 }
 
@@ -416,6 +444,8 @@ private fun SettingsDestination.needsBankSummaries(): Boolean =
 private fun SettingsBankHubLoadingScreen(
     bank: Bank,
     onBack: () -> Unit,
+    failed: Boolean = false,
+    onRetry: () -> Unit = {},
 ) {
     MasroofSecondaryScaffold(
         title = settingsBankLabel(bank),
@@ -427,7 +457,10 @@ private fun SettingsBankHubLoadingScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            CircularProgressIndicator()
+            if (failed) {
+                Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton(onRetry) { Text(stringResource(R.string.dashboard_retry)) }
+            } else CircularProgressIndicator()
         }
     }
 }
@@ -436,19 +469,13 @@ private fun SettingsBankHubLoadingScreen(
 @Composable
 internal fun SettingsHubScreen(
     state: SettingsUiState,
-    reviewRequiredCount: Int,
     onBack: () -> Unit,
-    onOpenAccounts: () -> Unit,
-    onOpenCards: () -> Unit,
-    onOpenLoans: () -> Unit,
+    onOpenBanks: () -> Unit,
     onOpenCommitments: () -> Unit,
-    onOpenReview: () -> Unit,
     onOpenApp: () -> Unit,
     onOpenDataBackup: () -> Unit,
-    onOpenStatementReconciliation: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenLearning: () -> Unit = {},
-    onOpenPatterns: () -> Unit = {},
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_title),
@@ -464,12 +491,8 @@ internal fun SettingsHubScreen(
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap)) {
             com.baraa.masroof.presentation.common.MasroofCard {
                 Text(stringResource(R.string.reference_manage_title), style = MaterialTheme.typography.titleMedium)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_accounts_section),
-                    SettingsRegistryCategory.Accounts.hubSubtitle(state), MasroofIcons.moneyMovement, onOpenAccounts)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_cards_section),
-                    SettingsRegistryCategory.Cards.hubSubtitle(state), MasroofIcons.cardPayment, onOpenCards)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_loans_followed),
-                    SettingsRegistryCategory.Loans.hubSubtitle(state), MasroofIcons.savings, onOpenLoans)
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_banks_title),
+                    stringResource(R.string.settings_banks_subtitle), MasroofIcons.moneyMovement, onOpenBanks)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_commitments_section),
                     stringResource(R.string.settings_commitments_hub_subtitle, state.activeCommitments.size, state.disabledCommitments.size), MasroofIcons.calendar, onOpenCommitments, divider = false)
             }
@@ -479,10 +502,6 @@ internal fun SettingsHubScreen(
                     appHubSubtitle(state.languageTag, state.themeMode), MasroofIcons.palette, onOpenApp)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_data_backup_section),
                     stringResource(R.string.settings_data_backup_hub_subtitle), MasroofIcons.backup, onOpenDataBackup)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_statement_reconciliation_title),
-                    stringResource(R.string.settings_statement_reconciliation_subtitle), MasroofIcons.recentTransactions, onOpenStatementReconciliation)
-                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.teaching_title),
-                    stringResource(R.string.teaching_settings_subtitle), MasroofIcons.sms, onOpenPatterns)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.analysis_learning_settings),
                     stringResource(R.string.analysis_learning_settings_hint), MasroofIcons.analysis, onOpenLearning)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_about_section),

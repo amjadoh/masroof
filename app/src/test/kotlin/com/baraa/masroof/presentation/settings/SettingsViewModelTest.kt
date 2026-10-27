@@ -56,6 +56,16 @@ import org.robolectric.RobolectricTestRunner
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class SettingsViewModelTest {
+    @Test
+    fun manualAccountRemainsVisibleWhenReconciliationFailsAfterSavingTheDecision() = runTest {
+        val accounts = FakeAccountRegistry()
+        val vm = viewModel(accounts = accounts, onReconcileOwnership = { error("retry required") })
+        vm.addManualAccount("BANK_ALJAZIRA", "3001", "My account") {}
+        advanceUntilIdle()
+        assertEquals(SettingsError.UPDATE_FAILED, vm.uiState.value.error)
+        assertEquals("3001", vm.uiState.value.followedAccounts.single().maskedNumber)
+        assertFalse(vm.uiState.value.updating)
+    }
     @Test fun confirmingNewCardOpensSetupAfterOwnershipReconciliation() = runTest {
         val cards = FakeCardRegistry(CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234", ownership = OwnershipStatus.UNKNOWN))
         var reconciles = 0
@@ -826,6 +836,8 @@ class SettingsViewModelTest {
             val masked = reference.maskedNumber ?: return
             val index = entries.indexOfFirst { it.bank == reference.bank && it.maskedNumber == masked }
             if (index >= 0) entries[index] = entries[index].copy(ownership = status)
+            else entries += AccountRegistryEntry.forTest(reference.bank, masked, status,
+                firstSeenRawSmsId = null, lastSeenRawSmsId = null)
         }
 
         override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) {

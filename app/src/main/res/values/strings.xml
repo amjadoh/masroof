@@ -123,7 +123,7 @@
     <string name="settings_app_section">التطبيق</string>
     <string name="settings_app_hub_subtitle">%1$s • %2$s</string>
     <string name="settings_data_backup_section">البيانات والنسخ الاحتياطي</string>
-    <string name="settings_data_backup_hub_subtitle">استيراد الرسائل، إعادة التحليل، والنسخ الاحتياطي</string>
+    <string name="settings_data_backup_hub_subtitle">النسخ الاحتياطي والاستعادة وأدوات البيانات</string>
     <string name="settings_fx_rate_correction_title">تصحيح أسعار صرف التاجر القديمة</string>
     <string name="settings_fx_rate_correction_confirm_title">تحديث أسعار الصرف المخزّنة؟</string>
     <string name="settings_fx_rate_correction_confirm_body">يُستبدل سعر التاجر المخزّن بالسعر المؤرخ لـ %1$d حركة. الحركات التي لا يوجد لها سعر مؤرخ تبقى كما هي.</string>

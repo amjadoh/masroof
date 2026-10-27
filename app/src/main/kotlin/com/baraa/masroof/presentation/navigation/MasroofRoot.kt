@@ -115,7 +115,7 @@ fun MasroofRoot(
                 com.baraa.masroof.presentation.common.MasroofNavigationItem(stringResource(label), icon,
                     selected == destination,
                     stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label))
-            }) { index -> navigate(entries[index].first) }
+            }) { index -> if (!settingsViewModel.uiState.value.importingSms) navigate(entries[index].first) }
 
         }
     }
@@ -306,6 +306,7 @@ private fun MasroofContent(
                 onOpenAllTransactions = { openTransactionList() },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
                 onOpenSettings = { openSettings() },
+                onImportSms = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.SmsImport())) },
                 onOpenReview = { openReview(HomeDestination.Dashboard); reviewReturnToAnalysis = true },
                 onOpenCommitments = { homeDestination = HomeDestination.CommitmentsSummary },
                 onManageCardsInSettings = {

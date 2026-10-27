@@ -31,7 +31,7 @@
     <string name="analysis_no_due">لا توجد مستحقات معلّقة لهذه الفترة</string>
     <string name="analysis_no_due_hint">تظهر الدفعات هنا حسب موعد استحقاقها.</string>
     <string name="analysis_commitments_separate">الالتزامات منفصلة عن توقع الصرف</string>
-    <string name="analysis_learning_settings">فهم الرسائل من تصحيحاتك</string>
+    <string name="analysis_learning_settings">أثر تصحيحات الرسائل</string>
     <string name="analysis_learning_settings_hint">تعلّم نوع الرسالة البنكية؛ لا يقيس دقة توقع الصرف.</string>
     <string name="analysis_actual_legend">■ فعلي</string>
     <string name="analysis_expected_legend">▨ تقديري</string>
