@@ -61,9 +61,9 @@ data class AccountFlow(
             inflow = externalIn,
             outflow = externalOut,
             remaining = SignedMoneyAmount.difference(externalIn, externalOut),
-            internalIn = internalTransfersIn,
-            internalOut = internalTransfersOut,
-            includesInternalInTotals = false,
+            selfTransfersIn = internalTransfersIn,
+            selfTransfersOut = internalTransfersOut,
+            includesSelfTransfersInTotals = false,
         )
 
     /** Full account position: [totalIn] − [totalOut]. */
@@ -72,9 +72,9 @@ data class AccountFlow(
             inflow = totalIn,
             outflow = totalOut,
             remaining = SignedMoneyAmount.difference(totalIn, totalOut),
-            internalIn = internalTransfersIn,
-            internalOut = internalTransfersOut,
-            includesInternalInTotals = true,
+            selfTransfersIn = internalTransfersIn,
+            selfTransfersOut = internalTransfersOut,
+            includesSelfTransfersInTotals = true,
         )
 
     init {
@@ -164,18 +164,10 @@ data class AccountFlowSummary(
     val inflow: Money,
     val outflow: Money,
     val remaining: SignedMoneyAmount,
-    val internalIn: Money,
-    val internalOut: Money,
-    val includesInternalInTotals: Boolean,
-) {
-    val includesSelfTransfersInTotals: Boolean get() = includesInternalInTotals
-
-    val selfTransfersIn: Money get() = internalIn
-
-    val selfTransfersOut: Money get() = internalOut
-
-    fun toTotals(): AccountFlowTotals = this
-}
+    val selfTransfersIn: Money,
+    val selfTransfersOut: Money,
+    val includesSelfTransfersInTotals: Boolean,
+)
 
 /**
  * Fleet view: sums each account's [AccountFlow] buckets, then exposes both summaries.

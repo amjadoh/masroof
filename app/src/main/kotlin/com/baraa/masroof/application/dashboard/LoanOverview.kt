@@ -33,6 +33,3 @@ fun LoansOverview.aggregateRemainingBalance(): Money? {
     if (balances.any { it.currency != balances.first().currency }) return null
     return balances.reduce { acc, balance -> acc + balance }
 }
-
-fun LoansOverview.aggregateSalaryPeriodPayment(): SignedMoneyAmount =
-    SpendingAmounts.sum(loans.map { it.salaryPeriodPayment })

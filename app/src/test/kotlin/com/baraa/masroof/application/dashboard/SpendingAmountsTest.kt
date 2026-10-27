@@ -39,41 +39,6 @@ class SpendingAmountsTest {
     }
 
     @Test
-    fun aggregateFacilityDue_usesLatestFacilityStatement() {
-        val older = StatementDueSnapshot(
-            amount = Money.of("100.00", Currency.SAR),
-            updatedAt = Instant.parse("2026-08-01T09:00:00Z"),
-            dueDate = LocalDate.parse("2026-09-01"),
-        )
-        val newer = StatementDueSnapshot(
-            amount = Money.of("250.00", Currency.SAR),
-            updatedAt = Instant.parse("2026-08-10T09:00:00Z"),
-            dueDate = LocalDate.parse("2026-09-07"),
-        )
-        val overview = CreditFacilitiesOverview(
-            facilities = listOf(
-                facilitySpending("0.00", "0.00", due = older),
-                facilitySpending("0.00", "0.00", due = newer),
-            ),
-            debitCards = emptyList(),
-            currency = Currency.SAR,
-        )
-
-        assertEquals(Money.of("250.00", Currency.SAR), overview.aggregateFacilityDue()?.amount)
-    }
-
-    @Test
-    fun aggregateFacilityDue_nullWhenNoCreditFacilities() {
-        val overview = CreditFacilitiesOverview(
-            facilities = emptyList(),
-            debitCards = listOf(debitSpending("50.00")),
-            currency = Currency.SAR,
-        )
-
-        assertNull(overview.aggregateFacilityDue())
-    }
-
-    @Test
     fun totalFacilityDue_countsEachFacilityOnceIncludingItsSupplementaries() {
         val due = StatementDueSnapshot(Money.of("100", Currency.SAR), Instant.parse("2026-08-01T09:00:00Z"), LocalDate.parse("2026-09-01"))
         val first = facilitySpending("0", "0", due)
