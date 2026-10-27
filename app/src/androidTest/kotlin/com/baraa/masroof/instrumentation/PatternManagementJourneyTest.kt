@@ -53,7 +53,7 @@ class PatternManagementJourneyTest {
         val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
         try { ScreenshotArtifactWriter.publish(bitmap, "pattern-management", name) } finally { bitmap.recycle() }
     }
-    private fun show(workflow: MessagePatternsWorkflow) {
+    private fun show(workflow: MessagePatternsWorkflow, openPattern: Boolean = true) {
         compose.setContent {
             val context = AppLocaleContext.wrap(LocalContext.current, "ar")
             keyboard = LocalSoftwareKeyboardController.current
@@ -63,7 +63,27 @@ class PatternManagementJourneyTest {
             }
         }
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-sarie-in").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
+        if (openPattern) {
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
+            capture("pattern-overview")
+        }
+    }
+
+    @Test fun catalogPreviewIsReadOnlyAndDetailsKeepThePreviewExpanded() = runBlocking {
+        fixture { workflow, store ->
+            val before = store.load()
+            show(workflow, openPattern = false)
+            compose.onNodeWithTag("pattern-preview-BANK_STC-stc-sarie-in").performScrollTo().performClick()
+            compose.onNodeWithTag("masroof-bottom-sheet").assertIsDisplayed()
+            compose.onNodeWithTag("pattern-preview").assertIsDisplayed()
+            compose.onNodeWithTag("sheet-cancel").performClick()
+            assertEquals(before, store.load())
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-preview").performScrollTo().assertIsDisplayed().assert(hasClickAction().not())
+            compose.onNodeWithText(ar(R.string.pattern_delete_disable_first)).assertDoesNotExist()
+            compose.onNodeWithTag("pattern-delete").performScrollTo().assertIsNotEnabled()
+            assertEquals(before, store.load())
+        }
     }
 
     @Test fun disabledBundledPatternRequiresCopiedExactNameAndCanBeCancelledBeforePermanentDeletion() = runBlocking {

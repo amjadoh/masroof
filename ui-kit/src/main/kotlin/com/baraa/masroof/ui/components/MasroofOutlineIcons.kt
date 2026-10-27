@@ -10,6 +10,7 @@ import com.baraa.masroof.ui.theme.MasroofIconSizes
 
 /** Lucide outline geometry used by the approved reference. See docs/licenses/lucide.txt. */
 object MasroofOutlineIcons {
+    val Eye: ImageVector by lazy { outline("Eye", listOf("M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12", "M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0")) }
     val Pencil: ImageVector by lazy { outline("Pencil", listOf("m16 3 5 5", "M3 21l5-1L21 7a2.8 2.8 0 0 0-4-4L4 16z")) }
     val Trash2: ImageVector by lazy { outline("Trash2", listOf("M3 6h18", "M19 6v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6", "M9 6V3h6v3", "M10 10v7", "M14 10v7")) }
     val Copy: ImageVector by lazy { outline("Copy", listOf("M9 9h12v12H9z", "M5 15H3V3h12v2")) }
