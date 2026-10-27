@@ -143,12 +143,23 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun completedImportReloadsRegistriesWithoutAnotherFinancialPass() = runTest {
-        val vm = viewModel(onRefreshReviewQueue = { error("Import already completed derived work") })
-        vm.importSmsFromPhone()
+    fun refreshingSmsPermissionDoesNotStartImportOrFinancialWork() = runTest {
+        var granted = false
+        val vm = viewModel(
+            permissionStateProvider = { granted },
+            onRefreshReviewQueue = { error("Permission changes must not reconcile") },
+        )
+        vm.refreshSmsPermissionState()
+        assertFalse(vm.uiState.value.smsPermissionGranted)
+
+        granted = true
+        vm.refreshSmsPermissionState()
         advanceUntilIdle()
-        assertEquals(SmsImportMessage.NO_MESSAGES, vm.uiState.value.smsImportMessage)
+
+        assertTrue(vm.uiState.value.smsPermissionGranted)
         assertFalse(vm.uiState.value.importingSms)
+        assertNull(vm.uiState.value.scopedSmsImportResult)
+        assertFalse(vm.uiState.value.scopedSmsImportFailed)
     }
 
     private val dispatcher = StandardTestDispatcher()
@@ -739,6 +750,7 @@ class SettingsViewModelTest {
         cards: CardRegistryRepository = FakeCardRegistry(),
         accounts: AccountRegistryRepository = FakeAccountRegistry(),
         loans: LoanRegistryRepository = FakeLoanRegistry(),
+        permissionStateProvider: () -> Boolean = { true },
         themeMode: ThemeMode = ThemeMode.SYSTEM,
         reparseResult: com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult =
             com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult(0, 0),
@@ -768,8 +780,7 @@ class SettingsViewModelTest {
             refreshReviewQueue = { onRefreshReviewQueue() },
             reconcileOwnershipChange = { onReconcileOwnership(it) },
             reparseStoredEvents = { reparseResult },
-            importSmsFromInbox = { com.baraa.masroof.application.onboarding.HistoricalImportResult() },
-            permissionStateProvider = { true },
+            permissionStateProvider = permissionStateProvider,
             appVersion = SettingsViewModelTestFixtures.APP_VERSION,
             appUpdateService = appUpdateService,
             updateCheckCoordinator = updateCheckCoordinator,

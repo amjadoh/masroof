@@ -17,7 +17,6 @@ import com.baraa.masroof.application.dashboard.DashboardLayoutPreferencesReposit
 import com.baraa.masroof.application.dashboard.DashboardLayoutSnapshot
 import com.baraa.masroof.application.dashboard.DashboardOverviewLoader
 import com.baraa.masroof.application.dashboard.DashboardSectionId
-import com.baraa.masroof.application.dashboard.DashboardSectionSize
 import com.baraa.masroof.application.dashboard.DashboardTransactionFacts
 import com.baraa.masroof.application.dashboard.TransactionSmsEvidenceLoader
 import com.baraa.masroof.application.transaction.IgnoreResult
@@ -26,9 +25,6 @@ import com.baraa.masroof.application.transaction.TransactionIgnoreService
 import com.baraa.masroof.application.transaction.TransactionReclassificationService
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
-import com.baraa.masroof.application.onboarding.HistoricalImportResult
-import com.baraa.masroof.application.onboarding.HistoricalImportUserOutcome
-import com.baraa.masroof.application.onboarding.userOutcome
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -49,7 +45,6 @@ class DashboardViewModel(
     private val dashboardRegistryWorkflow: DashboardRegistryWorkflow,
     private val dashboardPeriodWorkflow: DashboardPeriodWorkflow,
     private val layoutPreferencesRepository: DashboardLayoutPreferencesRepository,
-    private val rescanService: suspend () -> HistoricalImportResult,
     private val reclassificationService: TransactionReclassificationService,
     private val ignoreService: TransactionIgnoreService,
     private val dashboardCommitmentsWorkflow: DashboardCommitmentsWorkflow,
@@ -71,7 +66,6 @@ class DashboardViewModel(
     private var followCurrentPeriod = true
 
     private var loadJob: Job? = null
-    private var rescanJob: Job? = null
 
     private val languageTag: String
         get() = appLocaleRepository.getLanguageTag()
@@ -136,16 +130,6 @@ class DashboardViewModel(
         }
     }
 
-    fun setCustomizeSectionSize(id: DashboardSectionId, size: DashboardSectionSize) {
-        mutateCustomizeDraft { snapshot ->
-            snapshot.copy(
-                sections = snapshot.sections.map { entry ->
-                    if (entry.id == id) entry.copy(size = size) else entry
-                },
-            )
-        }
-    }
-
     fun moveCustomizeSection(id: DashboardSectionId, direction: Int) {
         mutateCustomizeDraft { snapshot ->
             val sections = snapshot.sections.toMutableList()
@@ -191,27 +175,11 @@ class DashboardViewModel(
         load(activePeriod)
     }
 
-    /**
-     * Pull-to-refresh: re-import inbox SMS when permission is granted, then reload the dashboard.
-     */
-    fun refreshWithSmsImport() {
-        syncSmsPermissionState()
-        if (!permissionStateProvider()) {
-            refresh()
-            return
-        }
-        launchSmsRescan(refreshAfterFailure = true)
-    }
-
     fun onAppResumed() {
         val granted = permissionStateProvider()
         _uiState.update { it.copy(smsPermissionGranted = granted) }
         // Granting SMS access does not select banks or authorise a historical import.
         refresh()
-    }
-
-    fun clearRescanStatus() {
-        _uiState.update { it.copy(rescanStatus = null) }
     }
 
     fun goToPreviousPeriod() {
@@ -232,47 +200,9 @@ class DashboardViewModel(
         load(activePeriod, resetSelection = true)
     }
 
-    fun rescanSms() {
-        syncSmsPermissionState()
-        if (!permissionStateProvider()) {
-            _uiState.update { it.copy(rescanStatus = SmsRescanStatus.PERMISSION_DENIED) }
-            return
-        }
-        launchSmsRescan(refreshAfterFailure = false)
-    }
-
-    private fun launchSmsRescan(refreshAfterFailure: Boolean) {
-        if (rescanJob?.isActive == true) return
-        rescanJob = viewModelScope.launch {
-            _uiState.update { it.copy(rescanning = true, rescanStatus = null) }
-            try {
-                val result = rescanService()
-                _uiState.update { it.copy(rescanning = false, rescanStatus = mapRescanStatus(result)) }
-                if (!refreshAfterFailure) refresh()
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                _uiState.update { it.copy(rescanning = false, rescanStatus = SmsRescanStatus.FAILED) }
-            }
-            if (refreshAfterFailure) refresh()
-        }
-    }
-
     private fun syncSmsPermissionState() {
         _uiState.update { it.copy(smsPermissionGranted = permissionStateProvider()) }
     }
-
-    private fun mapRescanStatus(result: HistoricalImportResult): SmsRescanStatus =
-        when (result.userOutcome()) {
-            HistoricalImportUserOutcome.PERMISSION_DENIED -> SmsRescanStatus.PERMISSION_DENIED
-            HistoricalImportUserOutcome.FAILED -> SmsRescanStatus.FAILED
-            HistoricalImportUserOutcome.NO_MESSAGES -> SmsRescanStatus.NO_MESSAGES
-            HistoricalImportUserOutcome.NO_BANK_SMS -> SmsRescanStatus.NO_BANK_SMS
-            HistoricalImportUserOutcome.OK -> SmsRescanStatus.OK
-            HistoricalImportUserOutcome.ALREADY_UP_TO_DATE -> SmsRescanStatus.ALREADY_UP_TO_DATE
-            HistoricalImportUserOutcome.NEEDS_REVIEW -> SmsRescanStatus.NEEDS_REVIEW
-            HistoricalImportUserOutcome.NO_NEW_TRANSACTIONS -> SmsRescanStatus.NO_TRANSACTIONS
-        }
 
     fun openTransactionDetail(transactionId: String) {
         _uiState.update {

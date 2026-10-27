@@ -58,63 +58,6 @@ fun SettingsRegistryCategory.screenHint(): String =
     }
 
 @Composable
-fun SettingsRegistryCategory.hubSubtitle(state: SettingsUiState): String {
-    val followed = state.bankSummaries.sumOf { summary ->
-        when (this) {
-            SettingsRegistryCategory.Accounts -> summary.followedAccountCount
-            SettingsRegistryCategory.Cards -> summary.followedCardCount
-            SettingsRegistryCategory.Loans -> summary.loanCount
-        }
-    }
-    val unregistered = state.bankSummaries.sumOf { summary ->
-        when (this) {
-            SettingsRegistryCategory.Accounts -> summary.unregisteredAccountCount
-            SettingsRegistryCategory.Cards -> summary.unregisteredCardCount
-            SettingsRegistryCategory.Loans -> 0
-        }
-    }
-    val stopped = state.bankSummaries.sumOf { summary ->
-        when (this) {
-            SettingsRegistryCategory.Accounts -> summary.stoppedAccountCount
-            SettingsRegistryCategory.Cards -> summary.stoppedCardCount
-            SettingsRegistryCategory.Loans -> 0
-        }
-    }
-    return formatRegistryCategorySubtitle(
-        state = resolveRegistryCategorySubtitle(
-            followed = followed,
-            unregistered = unregistered,
-            stopped = stopped,
-        ),
-        emptyLabel = when (this) {
-            SettingsRegistryCategory.Accounts -> stringResource(R.string.settings_accounts_empty)
-            SettingsRegistryCategory.Cards -> stringResource(R.string.settings_cards_empty)
-            SettingsRegistryCategory.Loans -> stringResource(R.string.settings_loans_empty)
-        },
-        followedUnregisteredRes = when (this) {
-            SettingsRegistryCategory.Accounts -> R.string.settings_hub_accounts_subtitle
-            SettingsRegistryCategory.Cards -> R.string.settings_hub_cards_subtitle
-            SettingsRegistryCategory.Loans -> R.string.settings_hub_loans_subtitle
-        },
-        followedOnlyRes = when (this) {
-            SettingsRegistryCategory.Accounts -> R.string.settings_hub_accounts_subtitle_followed_only
-            SettingsRegistryCategory.Cards -> R.string.settings_hub_cards_subtitle_followed_only
-            SettingsRegistryCategory.Loans -> R.string.settings_hub_loans_subtitle_only
-        },
-        stoppedOnlyRes = when (this) {
-            SettingsRegistryCategory.Accounts -> R.string.settings_hub_accounts_subtitle_stopped_only
-            SettingsRegistryCategory.Cards -> R.string.settings_hub_cards_subtitle_stopped_only
-            SettingsRegistryCategory.Loans -> R.string.settings_hub_loans_subtitle_none
-        },
-        followedStoppedRes = when (this) {
-            SettingsRegistryCategory.Accounts -> R.string.settings_hub_accounts_subtitle_followed_stopped
-            SettingsRegistryCategory.Cards -> R.string.settings_hub_cards_subtitle_followed_stopped
-            SettingsRegistryCategory.Loans -> R.string.settings_hub_loans_subtitle_only
-        },
-    )
-}
-
-@Composable
 fun SettingsRegistryCategory.bankRowSubtitle(summary: SettingsBankSummaryUi): String =
     when (this) {
         SettingsRegistryCategory.Accounts -> formatRegistryCategorySubtitle(

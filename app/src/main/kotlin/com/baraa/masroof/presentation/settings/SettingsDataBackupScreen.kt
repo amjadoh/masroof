@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
-import com.baraa.masroof.presentation.common.SmsPermissionNotice
 
 enum class BackupPage { Hub, Export, Restore, Tools }
 
@@ -35,10 +34,6 @@ fun SettingsDataBackupScreen(
     state: SettingsUiState,
     onBack: () -> Unit,
     onReparseStored: () -> Unit,
-    onImportSms: () -> Unit,
-    onClearSmsImportMessage: () -> Unit,
-    onRequestSmsPermission: () -> Unit,
-    onOpenAppSettings: () -> Unit,
     onExportPassphraseChange: (String) -> Unit,
     onImportPassphraseChange: (String) -> Unit,
     onRequestExport: () -> Unit,
@@ -138,47 +133,6 @@ fun SettingsDataBackupScreen(
             },
         )
     }
-    state.smsImportMessage?.let { message ->
-        val text = when (message) {
-            SmsImportMessage.OK -> stringResource(R.string.dashboard_rescan_ok)
-            SmsImportMessage.ALREADY_UP_TO_DATE -> stringResource(R.string.dashboard_rescan_already_up_to_date)
-            SmsImportMessage.NEEDS_REVIEW -> stringResource(R.string.dashboard_rescan_needs_review)
-            SmsImportMessage.PERMISSION_DENIED -> stringResource(R.string.settings_import_sms_permission_denied)
-            SmsImportMessage.NO_MESSAGES -> stringResource(R.string.dashboard_rescan_no_messages)
-            SmsImportMessage.NO_BANK_SMS -> stringResource(R.string.dashboard_rescan_no_bank_sms)
-            SmsImportMessage.NO_TRANSACTIONS -> stringResource(R.string.dashboard_rescan_no_transactions)
-            SmsImportMessage.FAILED -> stringResource(R.string.dashboard_rescan_failed)
-        }
-        AlertDialog(
-            onDismissRequest = onClearSmsImportMessage,
-            title = { Text(stringResource(R.string.settings_import_sms_title)) },
-            text = { Text(text) },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (message == SmsImportMessage.PERMISSION_DENIED) {
-                        onRequestSmsPermission()
-                    }
-                    onClearSmsImportMessage()
-                }) {
-                    Text(
-                        if (message == SmsImportMessage.PERMISSION_DENIED) {
-                            stringResource(R.string.dashboard_sms_permission_grant)
-                        } else {
-                            stringResource(R.string.settings_cancel)
-                        },
-                    )
-                }
-            },
-            dismissButton = {
-                if (message == SmsImportMessage.PERMISSION_DENIED) {
-                    TextButton(onClick = onClearSmsImportMessage) {
-                        Text(stringResource(R.string.settings_cancel))
-                    }
-                }
-            },
-        )
-    }
-
     MasroofSecondaryScaffold(
         title = stringResource(when (page) {
             BackupPage.Hub -> R.string.reference_backup_title

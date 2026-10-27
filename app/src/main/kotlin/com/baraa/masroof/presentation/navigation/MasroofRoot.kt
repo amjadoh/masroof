@@ -434,7 +434,6 @@ private fun MasroofContent(
                                 launch = launch,
                             )
                         },
-                        onDismissRescanStatus = dashboardViewModel::clearRescanStatus,
                     )
                 },
             )
@@ -567,7 +566,6 @@ private fun handleNotificationAction(
     onOpenAppSettings: () -> Unit,
     onOpenReview: () -> Unit,
     onOpenSettings: (SettingsLaunchRequest) -> Unit,
-    onDismissRescanStatus: () -> Unit,
 ) {
     when (action) {
         NotificationAction.REQUEST_SMS_PERMISSION -> onRequestPermissions()
@@ -578,7 +576,7 @@ private fun handleNotificationAction(
         NotificationAction.OPEN_SETTINGS_ABOUT,
         -> resolveNotificationSettingsLaunch(action, settingsState)?.let(onOpenSettings)
 
-        NotificationAction.DISMISS_RESCAN -> onDismissRescanStatus()
+        NotificationAction.DISMISS_RESCAN,
         NotificationAction.MARK_READ_ONLY -> Unit
     }
 }
