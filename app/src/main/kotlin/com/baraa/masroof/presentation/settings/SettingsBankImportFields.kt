@@ -21,7 +21,8 @@ import java.time.ZoneOffset
 internal fun SettingsImportBankChoices(banks: List<PatternBankView>, selected: Set<String>, enabled: Boolean,
     onToggle: (String) -> Unit) {
     MasroofCard {
-        MasroofText(stringResource(R.string.settings_import_banks), style = MaterialTheme.typography.titleMedium)
+        MasroofGuidanceLabel(stringResource(R.string.settings_import_banks),
+            stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.titleMedium)
         MasroofSheetChoices(banks.map { it.bankId }, selected, { id ->
             val bank = banks.single { it.bankId == id }
             settingsBankLabel(Bank(id)) + "\n" + bankSupportLabel(bank)
@@ -48,12 +49,12 @@ internal fun SettingsImportPeriod(from: LocalDate, through: LocalDate, enabled: 
         }
     }
     MasroofCard {
-        MasroofText(stringResource(R.string.settings_import_period), style = MaterialTheme.typography.titleMedium)
+        MasroofGuidanceLabel(stringResource(R.string.settings_import_period),
+            stringResource(R.string.settings_import_period_hint), style = MaterialTheme.typography.titleMedium)
         MasroofReferenceNavigationRow(stringResource(R.string.settings_import_from), from.toString(), MasroofIcons.calendar,
             { if (enabled) choosingDate = "from" }, modifier = Modifier.testTag("import-from"))
         MasroofReferenceNavigationRow(stringResource(R.string.settings_import_through), through.toString(), MasroofIcons.calendar,
             { if (enabled) choosingDate = "through" }, divider = false, modifier = Modifier.testTag("import-through"))
-        MasroofText(stringResource(R.string.settings_import_period_hint), style = MaterialTheme.typography.bodySmall)
         if (from.isAfter(through) || through.isAfter(today)) MasroofText(stringResource(R.string.settings_import_invalid_period), color = MaterialTheme.colorScheme.error)
     }
 }

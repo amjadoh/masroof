@@ -45,8 +45,8 @@ fun SettingsBankEditorScreen(catalog: PatternCatalog, bankId: String?, workflow:
                 }
                 MasroofFormField(sender, { sender = it },
                     label = { MasroofText(stringResource(if (bank == null) R.string.pattern_sender else R.string.settings_bank_extra_sender)) },
+                    trailingIcon = { MasroofGuidanceButton(stringResource(R.string.pattern_sender), stringResource(R.string.settings_bank_sender_hint)) },
                     enabled = !busy, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("bank-sender"))
-                MasroofText(stringResource(R.string.settings_bank_sender_hint))
             }
             if (failed) MasroofText(stringResource(R.string.settings_bank_save_failed), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
             MasroofButton(onClick = {
@@ -66,7 +66,7 @@ fun SettingsBankEditorScreen(catalog: PatternCatalog, bankId: String?, workflow:
             }, enabled = !busy && name.isNotBlank() && (bank != null || sender.isNotBlank()), modifier = Modifier.fillMaxWidth()) {
                 MasroofText(stringResource(R.string.settings_save))
             }
-            MasroofText(stringResource(R.string.settings_bank_save_hint))
+            MasroofGuidanceLabel(stringResource(R.string.settings_bank_details), stringResource(R.string.settings_bank_save_hint))
         }
     }
 }

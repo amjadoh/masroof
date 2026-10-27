@@ -52,7 +52,8 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
                 }
             }
             if (bankId != null) MasroofCard {
-                MasroofText(stringResource(R.string.settings_import_banks), style = MaterialTheme.typography.titleMedium)
+                MasroofGuidanceLabel(stringResource(R.string.settings_import_banks),
+                    stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.titleMedium)
                 MasroofText(settingsBankLabel(Bank(bankId)))
             } else SettingsImportBankChoices(banks, selected, !busy) { id ->
                 selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
@@ -60,7 +61,6 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
             }
             SettingsImportPeriod(from, through, !busy,
                 { fromText = it.toString(); onClearResult() }, { throughText = it.toString(); onClearResult() })
-            MasroofText(stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.bodySmall)
             if (busy) {
                 CircularProgressIndicator()
                 MasroofText(stringResource(R.string.onboarding_import_scanning))

@@ -365,8 +365,8 @@ private fun BanksStep(state: OnboardingUiState, onToggle: (String) -> Unit, onCo
     onAdd: () -> Unit, onRetry: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(MasroofSpacing.screenHorizontal),
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        MasroofSectionHeader(stringResource(R.string.onboarding_select_banks), icon = MasroofIcons.moneyMovement)
-        Text(stringResource(R.string.onboarding_select_banks_hint))
+        com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.onboarding_select_banks),
+            stringResource(R.string.onboarding_select_banks_hint), style = MaterialTheme.typography.titleMedium)
         if (state.loadingBanks) CircularProgressIndicator()
         else if (state.error == OnboardingError.BANKS_LOAD_FAILED || state.bankCatalog == null) {
             Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
@@ -374,7 +374,8 @@ private fun BanksStep(state: OnboardingUiState, onToggle: (String) -> Unit, onCo
         } else {
             SettingsImportBankChoices(state.bankCatalog.banks, state.selectedBankIds, true, onToggle)
             com.baraa.masroof.presentation.common.MasroofOutlinedButton(onAdd, Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_add_bank)) }
-            Text(stringResource(R.string.settings_bank_support_hint), style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_bank_support_title),
+                stringResource(R.string.settings_bank_support_hint))
         }
         IconTextButton(onContinue, icon = MasroofIcons.success, text = stringResource(R.string.teaching_next),
             enabled = !state.loadingBanks && state.bankCatalog != null && state.selectedBankIds.isNotEmpty() && state.error != OnboardingError.BANKS_LOAD_FAILED,
@@ -392,14 +393,14 @@ private fun ImportDateStep(modifier: Modifier, state: OnboardingUiState,
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofSectionHeader(stringResource(R.string.settings_import_period), icon = MasroofIcons.calendar)
         MasroofCard {
-            Text(stringResource(R.string.settings_import_banks), style = MaterialTheme.typography.titleMedium)
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_import_banks),
+                stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.titleMedium)
             state.selectedBankIds.forEach { Text(settingsBankLabel(Bank(it))) }
         }
         SettingsImportPeriod(from, through, true, onSelectCustomDate, onSelectThroughDate)
         DateOptionRow(state.selectedDateOption == ImportDateOption.CURRENT_MONTH_START, stringResource(R.string.onboarding_date_current_month)) { onSelectDateOption(ImportDateOption.CURRENT_MONTH_START) }
         DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_30_DAYS, stringResource(R.string.onboarding_date_last_30)) { onSelectDateOption(ImportDateOption.LAST_30_DAYS) }
         DateOptionRow(state.selectedDateOption == ImportDateOption.LAST_27TH, stringResource(R.string.onboarding_date_last_27)) { onSelectDateOption(ImportDateOption.LAST_27TH) }
-        Text(stringResource(R.string.settings_import_scope_hint), style = MaterialTheme.typography.bodySmall)
         IconTextButton(onContinue, icon = MasroofIcons.rescan, text = stringResource(R.string.onboarding_start_import),
             enabled = !from.isAfter(through) && !through.isAfter(LocalDate.now()) && state.selectedBankIds.isNotEmpty(), modifier = Modifier.fillMaxWidth())
     }
@@ -507,7 +508,8 @@ private fun OwnershipStep(
             if (state.hasUnknownCandidates) {
                 Text(stringResource(R.string.onboarding_ownership_must_resolve))
             }
-            if (state.hasUnconfiguredCards) Text(stringResource(R.string.onboarding_configure_cards_hint))
+            if (state.hasUnconfiguredCards) com.baraa.masroof.presentation.common.MasroofGuidanceLabel(
+                stringResource(R.string.settings_card_setup), stringResource(R.string.onboarding_configure_cards_hint))
             if (registryError) {
                 Text(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
                 com.baraa.masroof.presentation.common.MasroofOutlinedButton(onRetryRegistry, enabled = !busy) { Text(stringResource(R.string.dashboard_retry)) }

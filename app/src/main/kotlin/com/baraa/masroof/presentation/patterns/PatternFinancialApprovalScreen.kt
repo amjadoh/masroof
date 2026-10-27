@@ -81,7 +81,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                         cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { cardNames[it] } ?: chooseCard, !busy) {
                         cardId = cards.getOrNull(it - 1)?.id; preview = null
                     }
-                    if (cards.isEmpty()) Text(stringResource(R.string.settings_pattern_add_card_hint))
+                    if (cards.isEmpty()) MasroofGuidanceLabel(stringResource(R.string.settings_card_setup), stringResource(R.string.settings_pattern_add_card_hint))
                 }
                 val chooseAccount = stringResource(R.string.pattern_financial_select_account)
                 val names = accounts.map { "${it.name.orEmpty()} • ${it.last4}" }
