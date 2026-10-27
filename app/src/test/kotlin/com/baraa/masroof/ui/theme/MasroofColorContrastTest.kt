@@ -1,5 +1,7 @@
 package com.baraa.masroof.ui.theme
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,4 +61,13 @@ class MasroofColorContrastTest {
         val dark = darkExtendedColors()
         assertTrue(meetsWcagAaLargeText(dark.outflow, dark.outflowSoft))
     }
+
+    private fun contrastRatio(foreground: Color, background: Color): Double {
+        val (darker, lighter) = listOf(foreground.luminance(), background.luminance()).sorted()
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private fun meetsWcagAaNormalText(foreground: Color, background: Color) = contrastRatio(foreground, background) >= 4.5
+
+    private fun meetsWcagAaLargeText(foreground: Color, background: Color) = contrastRatio(foreground, background) >= 3.0
 }

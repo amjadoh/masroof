@@ -36,7 +36,7 @@ class LoanOverviewAggregatesTest {
     }
 
     @Test
-    fun aggregateSalaryPeriodPayment_sumsAllLoans() {
+    fun salaryPeriodPayments_sumAcrossAllLoans() {
         val overview = LoansOverview(
             loans = listOf(
                 loan(remaining = Money.of("100000.00", Currency.SAR), payment = "1500.00"),
@@ -48,7 +48,7 @@ class LoanOverviewAggregatesTest {
 
         assertEquals(
             SignedMoneyAmount.of(Money.of("3500.25", Currency.SAR)),
-            overview.aggregateSalaryPeriodPayment(),
+            SpendingAmounts.sum(overview.loans.map { it.salaryPeriodPayment }),
         )
     }
 
