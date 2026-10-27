@@ -1,7 +1,6 @@
 <resources>
     <string name="pattern_edit">تعديل</string>
     <string name="pattern_edit_title">تعديل النمط</string>
-    <string name="pattern_edit_help">عدّل الحقول من رسالة مثال. يلزم اعتماد جديد بعد الحفظ.</string>
     <string name="pattern_delete">حذف</string>
     <string name="pattern_delete_disable_first">عطّل النمط للحذف.</string>
     <string name="pattern_delete_title">حذف النمط؟</string>
