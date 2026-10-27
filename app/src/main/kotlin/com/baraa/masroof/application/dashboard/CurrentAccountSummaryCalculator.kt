@@ -16,85 +16,46 @@ object CurrentAccountSummaryCalculator {
         ownedAccountLast4s: Set<String> = emptySet(),
         scopeMode: AccountFlowScopeMode = AccountFlowScopeMode.Fleet,
         debitCardScope: DebitCardScopeFacts = DebitCardScopeFacts(emptySet(), emptyMap()),
-    ): CurrentAccountSummary {
-        val context = AccountFlowClassifier.buildContext(
-            transactions = transactions,
-            parsedRecords = parsedRecords,
+    ): CurrentAccountSummary =
+        summarize(
+            grouping = CurrentAccountFlowDetailGrouper.group(
+                transactions = transactions,
+                parsedRecords = parsedRecords,
+                primaryCurrency = primaryCurrency,
+                sarEquivalents = sarEquivalents,
+                ownedAccountContainerIds = ownedAccountContainerIds,
+                ownedAccountLast4s = ownedAccountLast4s,
+                scopeMode = scopeMode,
+                debitCardScope = debitCardScope,
+            ),
             primaryCurrency = primaryCurrency,
             sarEquivalents = sarEquivalents,
         )
-        val scope = CurrentAccountTransactionScope(
-            ownedContainerIds = ownedAccountContainerIds,
-            ownedAccountLast4s = ownedAccountLast4s,
-            mode = scopeMode,
-            ownedDebitCardContainerIds = debitCardScope.ownedDebitCardContainerIds,
-            debitCardLinkedAccountIds = debitCardScope.debitCardLinkedAccountIds,
-        )
 
-        var salary = Money.zero(primaryCurrency)
-        var otherIncome = Money.zero(primaryCurrency)
-        var externalTransfersIn = Money.zero(primaryCurrency)
-        var accountRefunds = Money.zero(primaryCurrency)
-        var selfTransfersIn = Money.zero(primaryCurrency)
-        var selfTransfersOut = Money.zero(primaryCurrency)
-        var creditCardPayments = Money.zero(primaryCurrency)
-        var billPayments = Money.zero(primaryCurrency)
-        var externalTransfersOut = Money.zero(primaryCurrency)
-        var cashWithdrawals = Money.zero(primaryCurrency)
-        var posPurchases = Money.zero(primaryCurrency)
-        var fees = Money.zero(primaryCurrency)
-        var loanRepayments = Money.zero(primaryCurrency)
-
-        for (tx in transactions) {
-            val amount = TransactionAmountResolver.effectiveAmount(
-                tx,
-                primaryCurrency,
-                sarEquivalents,
-            ) ?: continue
-            for (assignment in AccountFlowClassifier.classify(tx, scope, context)) {
-                when (assignment) {
-                    FlowAssignment.Excluded -> Unit
-
-                    is FlowAssignment.Income -> when (assignment.category) {
-                        FlowIncomeCategory.SALARY -> salary += amount
-                        FlowIncomeCategory.OTHER_INCOME -> otherIncome += amount
-                        FlowIncomeCategory.EXTERNAL_TRANSFER_IN -> externalTransfersIn += amount
-                        FlowIncomeCategory.ACCOUNT_REFUND -> accountRefunds += amount
-                    }
-
-                    is FlowAssignment.Expense -> when (assignment.category) {
-                        FlowExpenseCategory.EXTERNAL_TRANSFER_OUT -> externalTransfersOut += amount
-                        FlowExpenseCategory.CREDIT_CARD_PAYMENT -> creditCardPayments += amount
-                        FlowExpenseCategory.CASH_WITHDRAWAL -> cashWithdrawals += amount
-                        FlowExpenseCategory.BILL_PAYMENT -> billPayments += amount
-                        FlowExpenseCategory.POS_PURCHASE -> posPurchases += amount
-                        FlowExpenseCategory.FEE -> fees += amount
-                        FlowExpenseCategory.LOAN_REPAYMENT -> loanRepayments += amount
-                    }
-
-                    is FlowAssignment.SelfTransfer -> when (assignment.leg) {
-                        SelfTransferLeg.IN -> selfTransfersIn += amount
-                        SelfTransferLeg.OUT -> selfTransfersOut += amount
-                    }
-                }
-            }
-        }
+    fun summarize(
+        grouping: CurrentAccountFlowDetailGrouping,
+        primaryCurrency: Currency = Currency.SAR,
+        sarEquivalents: Map<String, Money> = emptyMap(),
+    ): CurrentAccountSummary {
+        fun total(rows: List<FinancialTransaction>): Money =
+            rows.mapNotNull { TransactionAmountResolver.effectiveAmount(it, primaryCurrency, sarEquivalents) }
+                .fold(Money.zero(primaryCurrency), Money::plus)
 
         return CurrentAccountSummary.of(
             currency = primaryCurrency,
-            salary = salary,
-            otherIncome = otherIncome,
-            externalTransfersIn = externalTransfersIn,
-            selfTransfersIn = selfTransfersIn,
-            accountRefunds = accountRefunds,
-            creditCardPayments = creditCardPayments,
-            billPayments = billPayments,
-            externalTransfersOut = externalTransfersOut,
-            cashWithdrawals = cashWithdrawals,
-            posPurchases = posPurchases,
-            fees = fees,
-            loanRepayments = loanRepayments,
-            selfTransfersOut = selfTransfersOut,
+            salary = total(grouping.income.getValue(FlowIncomeCategory.SALARY)),
+            otherIncome = total(grouping.income.getValue(FlowIncomeCategory.OTHER_INCOME)),
+            externalTransfersIn = total(grouping.income.getValue(FlowIncomeCategory.EXTERNAL_TRANSFER_IN)),
+            selfTransfersIn = total(grouping.selfTransfersIn),
+            accountRefunds = total(grouping.income.getValue(FlowIncomeCategory.ACCOUNT_REFUND)),
+            creditCardPayments = total(grouping.expense.getValue(FlowExpenseCategory.CREDIT_CARD_PAYMENT)),
+            billPayments = total(grouping.expense.getValue(FlowExpenseCategory.BILL_PAYMENT)),
+            externalTransfersOut = total(grouping.expense.getValue(FlowExpenseCategory.EXTERNAL_TRANSFER_OUT)),
+            cashWithdrawals = total(grouping.expense.getValue(FlowExpenseCategory.CASH_WITHDRAWAL)),
+            posPurchases = total(grouping.expense.getValue(FlowExpenseCategory.POS_PURCHASE)),
+            fees = total(grouping.expense.getValue(FlowExpenseCategory.FEE)),
+            loanRepayments = total(grouping.expense.getValue(FlowExpenseCategory.LOAN_REPAYMENT)),
+            selfTransfersOut = total(grouping.selfTransfersOut),
         )
     }
 
