@@ -151,7 +151,7 @@ internal object ReferenceHistory {
             var body = json.getValue("body").jsonPrimitive.content
             body = body.replace(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}"),today.toString())
                 .replace(Regex("[0-9]{2}-[0-9]{2}-[0-9]{4}"),today.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")))
-            ProviderSmsRecord("replica-history-$index",json.getValue("sender").jsonPrimitive.content,body,today.atTime(22,0).toInstant(ZoneOffset.UTC).plusSeconds(index.toLong()))
+            ProviderSmsRecord("replica-history-$index",json.getValue("sender").jsonPrimitive.content,body,today.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().plusSeconds(index.toLong()))
         }
         return object : SmsDataSource {
             override fun queryInbox(receivedAfter: Instant?) = records.asSequence().filter { receivedAfter == null || !it.receivedAt.isBefore(receivedAfter) }.map { InboxRow.Valid(it) }

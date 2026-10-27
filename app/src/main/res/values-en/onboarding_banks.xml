@@ -5,6 +5,8 @@
     <string name="onboarding_select_banks_hint">Select the banks to import now. You can add a bank and its SMS sender.</string>
     <string name="onboarding_configure_cards_hint">Set up the type of each card you own. Linking a debit card to an account is optional.</string>
     <string name="onboarding_add_manual">Add an account or card manually</string>
+    <string name="onboarding_discovered_entry">Discovered from messages</string>
+    <string name="onboarding_manual_entry">Added manually</string>
     <string name="onboarding_no_candidates">No accounts or cards discovered yet. Add them manually or finish setting up bank messages later.</string>
     <string name="onboarding_bank_teach_later">After setup, finish teaching or approving this bank’s messages in Settings → Banks.</string>
 </resources>

@@ -175,7 +175,11 @@ class ReplicaSetupJourneyTest {
             screenshot("05-review")
             click(R.string.approved_nav_settings)
             screenshot("06-settings")
-            click(R.string.settings_loans_followed)
+            click(R.string.settings_banks_title)
+            val bankName = settings.uiState.value.bankCatalog!!.banks.single { it.bankId == com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA.id }.displayName ?: text(R.string.bank_aljazira)
+            compose.onNodeWithText(bankName).performClick()
+            compose.waitForIdle()
+            click(R.string.settings_bank_loans_title)
             compose.waitUntil(20_000) { settings.uiState.value.loans.any { it.loanType == LoanType.PERSONAL && it.ownership == OwnershipStatus.OWNED } }
             assertTrue(settings.uiState.value.loans.toString(),settings.uiState.value.loans.any { it.loanType == LoanType.PERSONAL && it.ownership == OwnershipStatus.OWNED })
             compose.onNodeWithText(text(R.string.settings_loan_type_personal)).assertExists()

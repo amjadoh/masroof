@@ -29,6 +29,7 @@ class OnboardingOwnershipWorkflow(
         val suffix: String,
         val ownership: OwnershipStatus,
         val cardType: com.baraa.masroof.domain.model.CardType? = null,
+        val discoveredFromSms: Boolean = true,
     )
 
     data class Snapshot(
@@ -49,6 +50,7 @@ class OnboardingOwnershipWorkflow(
                     bank = it.bank,
                     suffix = it.maskedNumber,
                     ownership = it.ownership,
+                    discoveredFromSms = it.firstSeenRawSmsId != null,
                 )
             }
             .sortedBy { it.suffix }
@@ -61,6 +63,7 @@ class OnboardingOwnershipWorkflow(
                     suffix = it.last4,
                     ownership = it.ownership,
                     cardType = it.cardType,
+                    discoveredFromSms = it.firstSeenRawSmsId != null,
                 )
             }
             .sortedBy { it.suffix }
