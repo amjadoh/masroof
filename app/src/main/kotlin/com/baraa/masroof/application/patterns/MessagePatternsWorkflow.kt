@@ -25,11 +25,12 @@ class MessagePatternsWorkflow(
     val canApprove: Boolean get() = activation != null
     val canImportBank: Boolean get() = importBank != null
     suspend fun importBank(bankId: String) = requireNotNull(importBank).invoke(bankId)
+    suspend fun patternCards(bankId: String) = requireNotNull(activation).cards(bankId)
     suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
     suspend fun confirmPatternAccount(bankId: String, last4: String) = requireNotNull(activation).confirmAccount(bankId, last4)
-    suspend fun previewFinancial(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String,
-        body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.core.money.Currency? = null) =
-        requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency?.let { com.baraa.masroof.finance.value.Currency.valueOf(it.name) })
+    suspend fun previewFinancial(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String?,
+        body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.core.money.Currency? = null, cardId: String? = null) =
+        requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency?.let { com.baraa.masroof.finance.value.Currency.valueOf(it.name) }, cardId)
     suspend fun saveFinancial(preview: PatternFinancialPreview) = requireNotNull(activation).save(preview)
     suspend fun applyPending(bankId: String, generation: Long, reviewId: String? = null) =
         requireNotNull(pendingPreview).apply(bankId, generation, reviewId)
@@ -60,7 +61,28 @@ class MessagePatternsWorkflow(
             val current = store.load()
             val id = bankId ?: "BANK_${java.util.UUID.randomUUID().toString().replace("-", "")}"
             require(current.banks.none { it.bankId == id }) { "Bank already configured" }
-            store.saveBank(generation, BankMessagePatterns(id, listOf(sender.trim()), name.trim()))
+            validateBankEdit(current.banks, id, name, listOf(sender.trim()))
+            store.saveBank(generation, BankMessagePatterns(id, listOf(sender.trim()), name.trim())).toCatalog()
+        }
+    }
+
+    suspend fun updateBank(generation: Long, bankId: String, name: String, senders: List<String>) = withContext(ioDispatcher) {
+        accessGate.withRestore {
+            val current = store.load()
+            val bank = current.banks.single { it.bankId == bankId }
+            val addresses = senders.map(String::trim).distinct()
+            validateBankEdit(current.banks, bankId, name, addresses)
+            require(bank.currentPatterns.all { it.sender in addresses }) { "A sender is still used by a pattern" }
+            store.saveBank(generation, bank.copy(displayName = name.trim(), senders = addresses, patterns = emptyList())).toCatalog()
+        }
+    }
+
+    private fun validateBankEdit(banks: List<BankMessagePatterns>, bankId: String, name: String, senders: List<String>) {
+        require(name.trim().isNotEmpty() && name.length <= 120)
+        require(senders.isNotEmpty() && senders.size <= 32 && senders.all { it.isNotBlank() && it.length <= 120 })
+        val existing = banks.singleOrNull { it.bankId == bankId }?.senders.orEmpty()
+        require(senders.filterNot { it in existing }.none { sender -> banks.any { it.bankId != bankId && sender in it.senders } }) {
+            "Sender belongs to another bank"
         }
     }
 

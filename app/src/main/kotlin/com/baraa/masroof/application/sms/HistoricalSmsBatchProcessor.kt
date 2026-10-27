@@ -63,12 +63,14 @@ class HistoricalSmsBatchProcessor(
     private val batchRecoveryScheduler: HistoricalBatchRecoveryScheduler? = null,
     private val appLogService: AppLogService? = null,
 ) {
-    fun startBatch(bankScope: Bank? = null): Batch {
-        bankScope?.let(capture::requireSupportedBank)
-        return Batch(bankScope)
+    fun startBatch(bankScope: Bank? = null, bankScopes: Set<Bank>? = null): Batch {
+        require(bankScope == null || bankScopes == null)
+        val scopes = bankScopes ?: bankScope?.let(::setOf)
+        scopes?.let { require(it.isNotEmpty()); it.forEach(capture::requireSupportedBank) }
+        return Batch(scopes)
     }
 
-    inner class Batch internal constructor(private val bankScope: Bank?) {
+    inner class Batch internal constructor(private val bankScopes: Set<Bank>?) {
         private val storedEvents = mutableListOf<StoredEvent>()
         private var finished = false
         var reconciliationSummary: ReconciliationSummary? = null
@@ -79,7 +81,7 @@ class HistoricalSmsBatchProcessor(
 
         suspend fun ingest(rawSms: RawSms): SmsIngestionResult {
             check(!finished) { "Batch already finished" }
-            val result = when (val captured = capture.capture(rawSms, logOutcome = false, bankScope = bankScope)) {
+            val result = when (val captured = capture.capture(rawSms, logOutcome = false, bankScopes = bankScopes)) {
                 is BankSmsCaptureResult.NotRelevant -> SmsIngestionResult.NotRelevant(reason = captured.reason)
                 BankSmsCaptureResult.Duplicate -> SmsIngestionResult.Duplicate
                 is BankSmsCaptureResult.Failed -> SmsIngestionResult.Failed(
