@@ -1,19 +1,11 @@
 <resources>
     <string name="pattern_financial_approve">اعتماد التفسير المالي</string>
-    <string name="pattern_financial_explanation">اختر نوع الحركة والحساب الذي تملكه، ثم تحقق من رسالة مثال. الاعتماد لا يثبت ملكية الطرف الآخر ولا يحسم التحويل الذاتي.</string>
     <string name="pattern_financial_select_operation">اختر نوع الحركة المالية</string>
     <string name="pattern_financial_select_account">اختر حسابك المؤكد في هذا البنك</string>
-    <string name="pattern_financial_account_help">اختر حسابًا أكدت ملكيته، أو أضف آخر أربعة أرقام من حسابك. لا تُكمل المرجع القصير في الرسالة بالتخمين.</string>
     <string name="pattern_financial_account_last4">آخر أربعة أرقام من حسابك</string>
     <string name="pattern_financial_account_owned">أؤكد أن هذا الحساب ملكي</string>
     <string name="pattern_financial_confirm_account">تأكيد الحساب</string>
     <string name="pattern_financial_currency_from_message">العملة من الرسالة</string>
-    <string name="pattern_financial_reference_help">إن كانت الرسالة تذكر مرجع حسابك، اربطه بحسابك صراحة. هذا الربط ينطبق على المرجع نفسه فقط؛ أي قيمة أخرى تبقى للمراجعة.</string>
-    <string name="pattern_financial_fixed_account">استخدام الحساب المختار لهذا النمط</string>
-    <string name="pattern_financial_context_reference">%1$s: مرجع سياقي فقط، لا يحدد حسابي</string>
-    <string name="pattern_financial_validate">التحقق من الحقائق المالية</string>
-    <string name="pattern_financial_mapping">المرجع %1$s مرتبط صراحة بالحساب %2$s</string>
-    <string name="pattern_financial_save_help">الحفظ ينشئ إصدارًا معتمدًا للرسائل المستقبلية. تطبيقه على الرسائل المعلقة يتم من صفحة البنك. الرسائل المسجلة والقرارات اليدوية محمية.</string>
     <string name="pattern_financial_blocked">تعذر اعتماد هذه الحقائق. تحقق من نوع الحركة والعملة وأدوار المراجع ومطابقة الرسالة. ما لم يُحسم يبقى للمراجعة.</string>
     <string name="pattern_financial_preview_status">للمعاينة فقط</string>
     <string name="pattern_financial_approved_status">تفسير مالي معتمد؛ التسجيل مشروط بالتحقق والملكية</string>

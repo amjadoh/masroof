@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: String? = null,
     source: PatternTeachingSource? = null, onOpenReview: ((String) -> Unit)? = null, onBack: () -> Unit,
-    onImportBank: ((String) -> Unit)? = null) {
+    onImportBank: ((String) -> Unit)? = null, onOpenAccounts: (() -> Unit)? = null) {
     val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<PatternCatalog?>(null) }
     var selectedBank by remember { mutableStateOf(bankScope) }
@@ -43,6 +43,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var showPending by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
+    var savedApproval by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun work(action: suspend () -> Unit) {
         if (busy) return
@@ -59,7 +60,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         when {
             approving -> approving = false
             savedTeaching && source != null -> onBack()
-            selectedPattern != null -> { selectedPattern = null; savedTeaching = false; applied = null }
+            selectedPattern != null -> { selectedPattern = null; savedTeaching = false; savedApproval = false; applied = null }
             teaching && source != null -> onBack()
             teaching -> teaching = false
             showPending -> showPending = false
@@ -76,8 +77,15 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
     val pattern = bank?.currentPatterns?.singleOrNull { it.id == selectedPattern }
+    fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
+        val bankId = requireNotNull(bank).bankId
+        pending = null
+        applied = workflow.applyPending(bankId, generation, reviewId, patternId)
+        pending = workflow.previewPending(bankId, generation)
+    }
     LaunchedEffect(bank?.bankId, snapshot?.generation, showPending, selectedPattern, teaching) {
-        if (bank != null && showPending && selectedPattern == null && !teaching) {
+        if (bank != null && workflow.canPreviewPending && !teaching &&
+            (showPending && selectedPattern == null || pattern?.canApply == true)) {
             pending = null
             try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
             catch (e: CancellationException) { throw e }
@@ -96,7 +104,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (pattern != null && approving) {
         PatternFinancialApprovalScreen(workflow, requireNotNull(snapshot).generation, pattern,
             source?.body ?: savedBody, source != null || savedBody.isNotBlank(),
-            onSaved = { snapshot = it; approving = false; savedTeaching = false }, onBack = { approving = false })
+            onSaved = { snapshot = it; approving = false; savedTeaching = false; savedApproval = true; applied = null }, onBack = { approving = false })
         return
     }
     MasroofSecondaryScaffold(stringResource(R.string.teaching_title), ::back, stringResource(R.string.settings_back)) { modifier ->
@@ -104,7 +112,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             if (busy || snapshot == null && !failed) CircularProgressIndicator()
             if (failed) {
                 MasroofGuidanceLabel(stringResource(R.string.review_action_failed), stringResource(R.string.pattern_failed), contentColor = MaterialTheme.colorScheme.error)
-                MasroofTextButton(onClick = { work { snapshot = workflow.catalog() } }, enabled = !busy) { Text(stringResource(R.string.dashboard_retry)) }
+                MasroofTextButton(onClick = { work {
+                    snapshot = workflow.catalog()
+                    if (bank != null && workflow.canPreviewPending) pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation)
+                } }, enabled = !busy) { Text(stringResource(R.string.dashboard_retry)) }
             }
             val configuration = snapshot
             if (configuration != null) when {
@@ -131,23 +142,48 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     } else MasroofOutlinedButton(onClick = { addingBank = true }, enabled = !busy) { Text(stringResource(R.string.pattern_add_bank)) }
                 }
                 pattern != null -> {
+                    if (savedApproval && applied == null) MasroofGuidanceLabel(stringResource(R.string.pattern_approval_saved), stringResource(R.string.pattern_approval_saved_help),
+                        contentColor = MaterialTheme.colorScheme.primary)
                     if (savedTeaching) {
                         MasroofGuidanceLabel(stringResource(R.string.teaching_saved_title), stringResource(R.string.teaching_saved_scope),
                             style = MaterialTheme.typography.titleLarge, contentColor = MaterialTheme.colorScheme.onSurface)
                     }
                     PatternDetailCard(bank, pattern, busy,
-                        onApprove = if (workflow.canApprove) ({ approving = true }) else null,
-                        onToggle = { work { workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled); snapshot = workflow.catalog() } },
-                        onRestore = { revision -> work { workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, revision); snapshot = workflow.catalog() } })
+                        onApprove = if (workflow.canApprove) ({ approving = true; applied = null; savedApproval = false }) else null,
+                        onToggle = { work {
+                            workflow.setEnabled(configuration.generation, bank.bankId, pattern.id, !pattern.enabled)
+                            snapshot = workflow.catalog(); savedApproval = false; applied = null
+                        } },
+                        onRestore = { revision -> work {
+                            workflow.restoreRevision(configuration.generation, bank.bankId, pattern.id, revision)
+                            snapshot = workflow.catalog(); savedApproval = false; applied = null
+                        } })
                     if (source?.reviewId != null && pattern.canApply && workflow.canApplyPending) {
-                        MasroofButton(onClick = { work { applied = workflow.applyPending(bank.bankId, configuration.generation, source.reviewId) } },
+                        MasroofButton(onClick = { applyPending(configuration.generation, source.reviewId, pattern.id) },
                             enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-current")) { Text(stringResource(R.string.teaching_apply_current)) }
                         applied?.let { PatternApplyResult(it, singleMessage = true) }
+                    } else if (pattern.canApply && workflow.canApplyPending) {
+                        MasroofCard {
+                            val report = pending
+                            if (report == null) CircularProgressIndicator()
+                            else {
+                                val count = report.matchingCount(pattern.id)
+                                Text(stringResource(if (count == 0) R.string.pattern_approval_no_pending else R.string.pattern_approval_matching_count, count))
+                                if (count > 0) MasroofButton(onClick = { applyPending(configuration.generation, patternId = pattern.id) },
+                                    enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-matching")) {
+                                    Text(stringResource(R.string.pattern_approval_process_matching, count))
+                                }
+                                if (report.limited) Text(stringResource(R.string.pattern_pending_limited))
+                            }
+                            applied?.let { PatternApplyResult(it) }
+                        }
                     }
+                    if ((applied?.posted ?: 0) > 0 && onOpenAccounts != null) MasroofButton(onOpenAccounts,
+                        enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_approval_view_accounts)) }
                     if (source != null) MasroofOutlinedButton(onClick = onBack, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.teaching_return_review))
                     }
-                    MasroofOutlinedButton(onClick = { selectedPattern = null; savedTeaching = false }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    MasroofOutlinedButton(onClick = { selectedPattern = null; savedTeaching = false; savedApproval = false; applied = null }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.teaching_saved_patterns))
                     }
                 }
@@ -169,9 +205,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             patterns.forEachIndexed { index, item ->
                                 MasroofReferenceNavigationRow(
                                     title = item.example.lineSequence().firstOrNull { it.isNotBlank() }?.take(80) ?: patternOperationName(item.label),
-                                    subtitle = stringResource(R.string.pattern_revision, patternOperationName(item.label), item.revision),
+                                    subtitle = patternOperationName(item.label),
                                     status = patternStatusName(item), icon = MasroofIcons.sms,
-                                    onClick = { if (!busy) { selectedPattern = item.id; applied = null } },
+                                    onClick = { if (!busy) { selectedPattern = item.id; savedBody = ""; applied = null; savedApproval = false } },
                                     divider = index != patterns.lastIndex,
                                     modifier = Modifier.testTag("pattern-open-${bank.bankId}-${item.id}"),
                                 )
@@ -182,10 +218,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_pending_title)) }
                     if (showPending) PatternPendingCard(pending, busy, applied,
                         onRefresh = { work { pending = workflow.previewPending(bank.bankId, configuration.generation) } },
-                        onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ work {
-                            applied = workflow.applyPending(bank.bankId, configuration.generation)
-                            pending = workflow.previewPending(bank.bankId, configuration.generation)
-                        } }) else null, onOpenReview = onOpenReview)
+                        onApply = if (workflow.canApplyPending && bank.currentPatterns.any { it.canApply }) ({ applyPending(configuration.generation) })
+                            else null, onOpenReview = onOpenReview)
                     onImportBank?.let { action -> MasroofOutlinedButton({ action(bank.bankId) }, enabled = !busy) {
                         Text(stringResource(R.string.pattern_import_bank))
                     } }
