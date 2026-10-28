@@ -175,6 +175,8 @@ fun TransactionListScreen(
         val compactHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat() < com.baraa.masroof.ui.theme.MasroofReference.compactScreenHeight.value
         val header = remember { CollapsingHeader() }
         header.enabled = compactHeight
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        header.onCollapse = { focusManager.clearFocus() }
         Column(
             modifier = contentModifier.fillMaxSize().then(if (compactHeight) Modifier.nestedScroll(header) else Modifier),
         ) {
@@ -265,6 +267,8 @@ private class CollapsingHeader : androidx.compose.ui.input.nestedscroll.NestedSc
     private var height = 0
     private var offset by androidx.compose.runtime.mutableFloatStateOf(0f)
     var enabled by androidx.compose.runtime.mutableStateOf(false)
+    // A collapsed header must not keep a hidden search field focused.
+    var onCollapse: () -> Unit = {}
 
     val layoutModifier: Modifier = Modifier.clipToBounds().layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
@@ -282,7 +286,7 @@ private class CollapsingHeader : androidx.compose.ui.input.nestedscroll.NestedSc
 
     // Collapse before the list scrolls up; expand only with what the list left over at its top.
     override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource) =
-        if (available.y < 0) consume(available.y) else androidx.compose.ui.geometry.Offset.Zero
+        if (available.y < 0) consume(available.y).also { if (it.y != 0f) onCollapse() } else androidx.compose.ui.geometry.Offset.Zero
 
     override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset,
         source: androidx.compose.ui.input.nestedscroll.NestedScrollSource) =
