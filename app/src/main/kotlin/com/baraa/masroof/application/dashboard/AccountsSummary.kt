@@ -62,6 +62,3 @@ data class AccountsSummary(
         }
     }
 }
-
-/** @see AccountsSummary */
-typealias OwnedAccountsFlowSummary = AccountsSummary

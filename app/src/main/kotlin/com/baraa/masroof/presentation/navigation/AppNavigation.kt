@@ -73,11 +73,3 @@ internal fun resolveNotificationSettingsLaunch(
 
         else -> null
     }
-
-internal fun SettingsDestination.recoverRegistryListDestination(): SettingsDestination? =
-    when (this) {
-        is SettingsDestination.BankAccounts -> SettingsDestination.MyAccounts
-        is SettingsDestination.BankCards -> SettingsDestination.MyCards
-        is SettingsDestination.BankLoans -> SettingsDestination.MyLoans
-        else -> null
-    }

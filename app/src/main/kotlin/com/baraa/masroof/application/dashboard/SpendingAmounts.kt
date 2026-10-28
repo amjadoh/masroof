@@ -26,9 +26,3 @@ fun CreditFacilitiesOverview.aggregateCreditStatementSpending(): SignedMoneyAmou
 
 fun CreditFacilitiesOverview.aggregateDebitSalaryPeriodSpending(): SignedMoneyAmount =
     SpendingAmounts.sum(debitCards.map { it.salaryPeriodSpendingNet })
-
-fun CreditFacilitiesOverview.aggregateFacilityDue(): StatementDueSnapshot? =
-    resolveLatestFacilityDue(facilities)
-
-fun resolveLatestFacilityDue(facilities: List<CreditFacilityOverview>): StatementDueSnapshot? =
-    facilities.mapNotNull { it.facilityDue }.maxByOrNull { it.updatedAt }
