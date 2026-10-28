@@ -248,7 +248,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     bank.currentPatterns.groupBy { it.label }.forEach { (label, patterns) ->
                         MasroofCard {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(patternOperationName(label), style = MaterialTheme.typography.titleMedium)
+                                Text(patternOperationName(label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                                 Text(pluralStringResource(R.plurals.teaching_patterns_count, patterns.size, patterns.size), style = MaterialTheme.typography.labelMedium)
                             }
                             patterns.forEachIndexed { index, item ->

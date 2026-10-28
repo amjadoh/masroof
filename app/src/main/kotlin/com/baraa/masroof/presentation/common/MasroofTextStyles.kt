@@ -78,6 +78,11 @@ fun MasroofAmountText(
     } else {
         color
     }
+    if (maxLines == 1) {
+        com.baraa.masroof.ui.components.MasroofFitText(com.baraa.masroof.application.locale.AppDigits.display(amount),
+            baseStyle.copy(color = resolvedColor), modifier, textAlign = textAlign)
+        return
+    }
     Text(
         amount,
         modifier = modifier,

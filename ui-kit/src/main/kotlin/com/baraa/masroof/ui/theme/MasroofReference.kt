@@ -21,12 +21,15 @@ object MasroofReference {
     val shortcutGap = 7.dp
     val shortcutHorizontal = 4.dp
     val shortcutVertical = 12.dp
-    val shortcutMinWidth = 90.dp
+    val shortcutMinWidth = 80.dp
     val shortcutSeparatorHeight = 66.dp
     val aboutLogo = 76.dp
     val icon = 19.dp
     val iconBox = 36.dp
     val iconButton = 38.dp
+    val statusBadgeMaxWidth = 120.dp
+    val inlineStatusMinWidth = 360.dp
+    val compactScreenHeight = 700.dp
     val rowVertical = 12.dp
     val rowGap = 11.dp
     val metadataGap = 3.dp

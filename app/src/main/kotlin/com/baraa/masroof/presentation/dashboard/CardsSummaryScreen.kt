@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.dashboard
 
 import androidx.compose.runtime.setValue
@@ -137,7 +139,7 @@ fun CardsSummaryScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), creditSelected, { creditSelected = true })
                 com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), !creditSelected, { creditSelected = false })
             }

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +71,7 @@ fun SettingsBankLoansScreen(
                 hint = stringResource(R.string.settings_loans_hint),
                 onOpenBank = onOpenBank,
             )
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
                     "stopped" to R.string.reference_stopped).forEach { (key, label) ->
                     com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })

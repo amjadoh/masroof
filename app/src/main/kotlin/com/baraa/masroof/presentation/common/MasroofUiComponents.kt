@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.common
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextAlign
 import com.baraa.masroof.ui.components.MasroofOutlineIcons
 
 import androidx.compose.foundation.BorderStroke
@@ -87,7 +89,8 @@ fun IconLabelRow(
             Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         }
         trailing?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(it, Modifier.weight(1f, fill = false).padding(start = MasroofSpacing.rowHorizontalPadding),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End)
         }
         guidance?.let { MasroofGuidanceButton(label, it) }
     }

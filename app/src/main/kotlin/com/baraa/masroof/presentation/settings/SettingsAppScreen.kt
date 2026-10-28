@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +36,7 @@ fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> U
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofCard {
                 MasroofText(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.titleMedium)
-                Row(Modifier.padding(vertical = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap)) {
+                androidx.compose.foundation.layout.FlowRow(Modifier.padding(vertical = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap)) {
                     listOf(Triple(ThemeMode.LIGHT, R.string.settings_theme_light, MasroofIcons.sun),
                         Triple(ThemeMode.DARK, R.string.settings_theme_dark, MasroofIcons.theme),
                         Triple(ThemeMode.SYSTEM, R.string.settings_theme_system, MasroofIcons.monitor)).forEach { (mode, label, icon) ->

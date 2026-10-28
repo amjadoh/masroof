@@ -32,7 +32,7 @@ fun MasroofAppBar(title: String, modifier: Modifier = Modifier, showLogo: Boolea
             navigation?.invoke()
             if (showLogo) MasroofLogo()
             Text(title, Modifier.weight(1f), style = if (showLogo) reference.brand else MaterialTheme.typography.headlineSmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, content = actions)
         }
     }

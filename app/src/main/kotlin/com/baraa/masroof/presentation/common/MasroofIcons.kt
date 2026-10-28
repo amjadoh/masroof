@@ -66,6 +66,7 @@ object MasroofIcons {
     val importBackup: ImageVector = MasroofOutlineIcons.Download
     val theme: ImageVector = MasroofOutlineIcons.Moon
     val share: ImageVector = MasroofOutlineIcons.Share2
+    val more: ImageVector = MasroofOutlineIcons.EllipsisVertical
 
     fun transactionType(type: FinancialTransactionType): ImageVector =
         when (type) {
