@@ -22,6 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -168,33 +172,35 @@ fun TransactionListScreen(
             return@MasroofSecondaryScaffold
         }
 
-        // Short screens hand the filter header's height to the list once the user scrolls into it.
         val compactHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat() < com.baraa.masroof.ui.theme.MasroofReference.compactScreenHeight.value
-        val showToolbar = !compactHeight || listState.firstVisibleItemIndex == 0
+        val header = remember { CollapsingHeader() }
+        header.enabled = compactHeight
         Column(
-            modifier = contentModifier.fillMaxSize(),
+            modifier = contentModifier.fillMaxSize().then(if (compactHeight) Modifier.nestedScroll(header) else Modifier),
         ) {
-            if (showToolbar) TransactionListToolbar(
-                periodLabel = periodLabel,
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                onOpenFilters = { filtersSheetOpen = true },
-                onClearFilters = clearFilters,
-                filteredCount = filterResult.transactions.size,
-                filterActive = filterState.isActive,
-                typeChoices = availableTypes.map { it.name to transactionTypeLabel(it) },
-                selectedType = selectedTypeNames.singleOrNull(),
-                onSelectType = { name -> selectedTypeNames = if (name.isEmpty()) emptyList() else listOf(name) },
-                sourceChoices = availableAccounts.map { "account:$it" to (accountDisplayLabel(ownedAccounts, it) ?: it) } +
-                    availableCards.map { "card:$it" to cardDisplayLabel(ownedCards, it) },
-                selectedSource = selectedAccountContainerIds.singleOrNull()?.let { "account:$it" }
-                    ?: selectedCardLast4s.singleOrNull()?.let { "card:$it" },
-                onSelectSource = { key ->
-                    selectedAccountContainerIds = if (key.startsWith("account:")) listOf(key.removePrefix("account:")) else emptyList()
-                    selectedCardLast4s = if (key.startsWith("card:")) listOf(key.removePrefix("card:")) else emptyList()
-                },
-            )
-            if (showToolbar) Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+            Column(header.layoutModifier) {
+                TransactionListToolbar(
+                    periodLabel = periodLabel,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    onOpenFilters = { filtersSheetOpen = true },
+                    onClearFilters = clearFilters,
+                    filteredCount = filterResult.transactions.size,
+                    filterActive = filterState.isActive,
+                    typeChoices = availableTypes.map { it.name to transactionTypeLabel(it) },
+                    selectedType = selectedTypeNames.singleOrNull(),
+                    onSelectType = { name -> selectedTypeNames = if (name.isEmpty()) emptyList() else listOf(name) },
+                    sourceChoices = availableAccounts.map { "account:$it" to (accountDisplayLabel(ownedAccounts, it) ?: it) } +
+                        availableCards.map { "card:$it" to cardDisplayLabel(ownedCards, it) },
+                    selectedSource = selectedAccountContainerIds.singleOrNull()?.let { "account:$it" }
+                        ?: selectedCardLast4s.singleOrNull()?.let { "card:$it" },
+                    onSelectSource = { key ->
+                        selectedAccountContainerIds = if (key.startsWith("account:")) listOf(key.removePrefix("account:")) else emptyList()
+                        selectedCardLast4s = if (key.startsWith("card:")) listOf(key.removePrefix("card:")) else emptyList()
+                    },
+                )
+                Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+            }
 
             androidx.compose.material3.Surface(modifier = Modifier.weight(1f),
                 shape = com.baraa.masroof.ui.theme.MasroofCardShape,
@@ -249,4 +255,36 @@ fun TransactionListScreen(
             },
         )
     }
+}
+
+/**
+ * Short screens slide the filter header away while the list scrolls and bring it back at the top.
+ * The header stays composed, so a focused search field keeps its focus and keyboard.
+ */
+private class CollapsingHeader : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+    private var height = 0
+    private var offset by androidx.compose.runtime.mutableFloatStateOf(0f)
+    var enabled by androidx.compose.runtime.mutableStateOf(false)
+
+    val layoutModifier: Modifier = Modifier.clipToBounds().layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        height = placeable.height
+        offset = if (enabled) offset.coerceIn(-height.toFloat(), 0f) else 0f
+        layout(placeable.width, (placeable.height + offset).roundToInt()) { placeable.place(0, offset.roundToInt()) }
+    }
+
+    private fun consume(delta: Float): androidx.compose.ui.geometry.Offset {
+        val next = (offset + delta).coerceIn(-height.toFloat(), 0f)
+        val consumed = next - offset
+        offset = next
+        return androidx.compose.ui.geometry.Offset(0f, consumed)
+    }
+
+    // Collapse before the list scrolls up; expand only with what the list left over at its top.
+    override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource) =
+        if (available.y < 0) consume(available.y) else androidx.compose.ui.geometry.Offset.Zero
+
+    override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset,
+        source: androidx.compose.ui.input.nestedscroll.NestedScrollSource) =
+        if (available.y > 0) consume(available.y) else androidx.compose.ui.geometry.Offset.Zero
 }

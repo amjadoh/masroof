@@ -28,7 +28,7 @@ object MasroofReference {
     val iconBox = 36.dp
     val iconButton = 38.dp
     val statusBadgeMaxWidth = 120.dp
-    val inlineStatusMinWidth = 360.dp
+    val inlineStatusMinWidth = 300.dp
     val compactScreenHeight = 700.dp
     val rowVertical = 12.dp
     val rowGap = 11.dp

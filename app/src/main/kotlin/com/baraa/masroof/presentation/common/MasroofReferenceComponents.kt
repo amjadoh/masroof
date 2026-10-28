@@ -51,7 +51,7 @@ fun MasroofReferenceNavigationRow(title: String, subtitle: String, icon: ImageVe
     onClick: () -> Unit, modifier: Modifier = Modifier, divider: Boolean = true,
     status: String? = null, showChevron: Boolean = true) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
-    // Narrow rows stack the badge under the subtitle so neither the title nor the status is squeezed.
+    // Narrow rows (card width, not screen width) stack the badge under the subtitle so neither text is squeezed.
     val stackStatus = maxWidth < MasroofReference.inlineStatusMinWidth
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(top = MasroofReference.rowVertical,
