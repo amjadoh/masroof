@@ -49,7 +49,7 @@ class OwnedAccountsFlowSummaryTest {
       summary3.cashPosition().remaining,
     )
 
-    val fleet = OwnedAccountsFlowSummary.fromSummaries(
+    val fleet = AccountsSummary.fromSummaries(
       accounts = listOf(
         Bank.BANK_ALJAZIRA to "3001",
         Bank.BANK_ALJAZIRA to "3002",

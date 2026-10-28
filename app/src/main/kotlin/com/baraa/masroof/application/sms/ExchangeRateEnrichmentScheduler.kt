@@ -28,23 +28,6 @@ fun interface ExchangeRateEnrichmentScheduler {
 }
 
 /**
- * Runs enrichment inline. Used by unit tests and other JVM callers without WorkManager.
- */
-class ImmediateExchangeRateEnrichmentScheduler(
-    private val enricher: PendingExchangeRateEnricher,
-) : ExchangeRateEnrichmentScheduler {
-    override fun schedule() {
-        try {
-            kotlinx.coroutines.runBlocking { enricher.enrichPending() }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best-effort, same as the live processing boundary.
-        }
-    }
-}
-
-/**
  * [ExchangeRateEnrichmentScheduler] backed by one unique WorkManager job for all pending rows.
  *
  * [ExistingWorkPolicy.KEEP] collapses schedules while work is waiting and no worker is inside

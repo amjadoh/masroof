@@ -71,23 +71,6 @@ class AppNavigationTest {
     }
 
     @Test
-    fun recoverRegistryListDestination_mapsBankScreensToCategoryLists() {
-        assertEquals(
-            SettingsDestination.MyAccounts,
-            SettingsDestination.BankAccounts("BANK_ALJAZIRA").recoverRegistryListDestination(),
-        )
-        assertEquals(
-            SettingsDestination.MyCards,
-            SettingsDestination.BankCards("BANK_ALJAZIRA").recoverRegistryListDestination(),
-        )
-        assertEquals(
-            SettingsDestination.MyLoans,
-            SettingsDestination.BankLoans("BANK_ALJAZIRA").recoverRegistryListDestination(),
-        )
-        assertNull(SettingsDestination.About.recoverRegistryListDestination())
-    }
-
-    @Test
     fun resolveNotificationSettingsLaunch_about_returnsAboutDestination() {
         val state = SettingsUiState(bankSummaries = listOf(summary(alJazira)))
 
