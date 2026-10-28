@@ -63,7 +63,6 @@ data class AccountFlow(
             remaining = SignedMoneyAmount.difference(externalIn, externalOut),
             selfTransfersIn = internalTransfersIn,
             selfTransfersOut = internalTransfersOut,
-            includesSelfTransfersInTotals = false,
         )
 
     /** Full account position: [totalIn] − [totalOut]. */
@@ -74,7 +73,6 @@ data class AccountFlow(
             remaining = SignedMoneyAmount.difference(totalIn, totalOut),
             selfTransfersIn = internalTransfersIn,
             selfTransfersOut = internalTransfersOut,
-            includesSelfTransfersInTotals = true,
         )
 
     init {
@@ -166,7 +164,6 @@ data class AccountFlowSummary(
     val remaining: SignedMoneyAmount,
     val selfTransfersIn: Money,
     val selfTransfersOut: Money,
-    val includesSelfTransfersInTotals: Boolean,
 )
 
 /**
