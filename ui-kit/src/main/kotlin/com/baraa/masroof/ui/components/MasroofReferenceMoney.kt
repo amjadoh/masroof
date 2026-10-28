@@ -26,5 +26,5 @@ fun MasroofReferenceMoney(value: String, modifier: Modifier = Modifier,
             withStyle(unit) { append(display.substring(amount.range.last + 1)) }
         }
     }
-    androidx.compose.material3.Text(annotated, modifier, style = style, color = color)
+    MasroofFitText(annotated, style, modifier, color)
 }

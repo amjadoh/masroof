@@ -1,5 +1,6 @@
 package com.baraa.masroof.ui.dashboard
 
+import com.baraa.masroof.ui.components.MasroofFitText
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -16,15 +17,15 @@ import com.baraa.masroof.ui.theme.MasroofReference
 fun DashboardHomeHero(state: DashboardHeroVisualState, icon: ImageVector,
     onIncome: () -> Unit, onOutflow: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     MasroofHeroCard(title = state.title, value = state.remaining, icon = icon, modifier = modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.clickable(enabled = enabled, onClick = onIncome), verticalArrangement = Arrangement.spacedBy(MasroofReference.heroFooterGap)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
+            Column(Modifier.weight(1f).clickable(enabled = enabled, onClick = onIncome), verticalArrangement = Arrangement.spacedBy(MasroofReference.heroFooterGap)) {
                 Text(state.inflowLabel, style = MaterialTheme.typography.bodySmall)
-                Text(state.inflow, style = MasroofReference.heroFooterValue)
+                MasroofFitText(state.inflow, MasroofReference.heroFooterValue)
             }
-            Column(Modifier.clickable(enabled = enabled, onClick = onOutflow), horizontalAlignment = Alignment.End,
+            Column(Modifier.weight(1f).clickable(enabled = enabled, onClick = onOutflow), horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(MasroofReference.heroFooterGap)) {
                 Text(state.outflowLabel, style = MaterialTheme.typography.bodySmall)
-                Text(state.outflow, style = MasroofReference.heroFooterValue)
+                MasroofFitText(state.outflow, MasroofReference.heroFooterValue)
             }
         }
     }

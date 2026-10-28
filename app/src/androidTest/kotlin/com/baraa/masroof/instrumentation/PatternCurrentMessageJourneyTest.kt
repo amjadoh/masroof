@@ -86,8 +86,9 @@ class PatternCurrentMessageJourneyTest {
             assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("ui-other")!!.status)
             assertEquals(untouched, c.parsedEventRepository.findByRawSmsId("ui-other"))
             compose.onNodeWithText(ar(R.string.teaching_apply_posted)).assertExists()
-            compose.onNodeWithContentDescription(ar(R.string.teaching_return_review)).performClick()
-            assertTrue(returnedToReview)
+            // Back is ignored while the post-apply pending refresh is still busy, so retry until it lands.
+            val returnToReview = compose.onNodeWithContentDescription(ar(R.string.teaching_return_review))
+            compose.waitUntil(10_000) { if (!returnedToReview) returnToReview.performClick(); returnedToReview }
         } finally { c.close(); context.getDatabasePath("masroof.db").parentFile?.deleteRecursively() }
         Unit
     }

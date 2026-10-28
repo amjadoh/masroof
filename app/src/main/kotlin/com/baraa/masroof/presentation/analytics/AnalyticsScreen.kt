@@ -32,6 +32,9 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.analytics.*
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.presentation.common.MasroofText as Text
+import com.baraa.masroof.ui.components.MASROOF_FIT_MIN_SCALE
+import com.baraa.masroof.ui.components.fitScale
+import com.baraa.masroof.ui.components.scaledBy
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.settings.ManagedCommitmentUi
 import com.baraa.masroof.presentation.settings.SettingsCommitmentEditorScreen
@@ -190,9 +193,24 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
             }
         }) { modifier ->
         Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            TabRow(selectedTabIndex = displayedTab) {
-                listOf(R.string.lab_analysis_spending_tab, R.string.analysis_forecasts_tab, R.string.lab_analysis_commitments).forEachIndexed { index, label ->
-                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] }, text = { Text(stringResource(label)) }, modifier = Modifier.testTag("analysis-tab-$index"))
+            // Labels shrink together, only when one does not fit, so a long English tab never breaks mid-word.
+            val tabLabels = listOf(R.string.lab_analysis_spending_tab, R.string.analysis_forecasts_tab, R.string.lab_analysis_commitments).map { stringResource(it) }
+            val tabStyle = MaterialTheme.typography.titleSmall
+            val tabMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+            val tabPadding = with(androidx.compose.ui.platform.LocalDensity.current) { (MasroofSpacing.smallGap * 2).roundToPx() }
+            BoxWithConstraints {
+                val labelWidth = constraints.maxWidth / tabLabels.size - tabPadding
+                val tabScale = remember(tabLabels, tabStyle, labelWidth) {
+                    tabLabels.minOf { tabMeasurer.fitScale(androidx.compose.ui.text.AnnotatedString(it), tabStyle, labelWidth) ?: MASROOF_FIT_MIN_SCALE }
+                }
+                TabRow(selectedTabIndex = displayedTab) {
+                    tabLabels.forEachIndexed { index, label ->
+                        Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] },
+                            modifier = Modifier.testTag("analysis-tab-$index").heightIn(min = MasroofSpacing.minimumTouchTarget)) {
+                            Text(label, Modifier.padding(horizontal = MasroofSpacing.smallGap),
+                                style = tabStyle.scaledBy(tabScale), maxLines = 1, softWrap = false)
+                        }
+                    }
                 }
             }
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(when (displayedTab) {

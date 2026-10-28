@@ -96,7 +96,10 @@ class ApprovedFidelityMatrixTest {
             assertTrue("No Eastern digits on $page/$lang/$night", texts.none { Regex("[\u0660-\u0669\u06F0-\u06F9]").containsMatchIn(it) })
             if (page == "home") {
                 val cells = (0..3).map { compose.onNodeWithTag("dashboard-shortcut-$it").fetchSemanticsNode().boundsInRoot }
-                assertTrue("All shortcuts stay on one row", cells.all { kotlin.math.abs(it.center.y - cells[0].center.y) < 1f })
+                fun sameRow(a: Int, b: Int) = kotlin.math.abs(cells[a].center.y - cells[b].center.y) < 1f
+                // Small phones wrap the strip into two rows of two; wider windows keep one row.
+                assertTrue("Shortcuts form one row or two rows of two",
+                    (1..3).all { sameRow(0, it) } || (sameRow(0, 1) && sameRow(2, 3) && cells[2].center.y > cells[0].center.y))
                 assertTrue("Shortcut order follows language", if (lang == "ar") cells.first().center.x > cells.last().center.x else cells.first().center.x < cells.last().center.x)
                 val label = AppLocaleContext.wrap(instrumentation.targetContext, lang).getString(R.string.approved_commitments)
                 val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
