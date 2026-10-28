@@ -112,7 +112,7 @@ private fun QuickChildToggle(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
         Switch(checked = checked, onCheckedChange = { onToggle() })
     }
 }

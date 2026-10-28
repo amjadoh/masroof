@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +55,7 @@ fun SettingsCommitmentsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SettingsSpacing.sectionGap),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf(CommitmentsListTab.ACTIVE to R.string.settings_commitments_tab_active,
                     CommitmentsListTab.DISABLED to R.string.settings_commitments_tab_disabled,
                     CommitmentsListTab.RECORD to R.string.settings_commitments_tab_record).forEach { (tab, label) ->
@@ -90,7 +92,7 @@ fun SettingsCommitmentsScreen(
                                 commitment.recurrence?.let { recurrenceLabel(it) } ?: stringResource(R.string.settings_commitment_recurrence_none))
                             com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.settings_commitment_transaction_date),
                                 formatLocalizedTransactionDate(commitment.transactionDate))
-                            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+                            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_edit), { onOpenCommitment(commitment) })
                                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(if (commitment.active) R.string.reference_pause else R.string.settings_commitment_enable), { onToggle(commitment) })
                                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_delete), { deleteTarget = commitment }, danger = true)

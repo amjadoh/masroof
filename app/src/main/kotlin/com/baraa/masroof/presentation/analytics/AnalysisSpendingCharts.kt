@@ -103,8 +103,9 @@ internal fun fraction(value: Long, maximum: Long) = com.baraa.masroof.ui.compone
                     Modifier.testTag("analysis-change-${change.group.key}").clickable { onOpenGroup("change:${change.group.key}") })
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.analysis_increase_axis), style = MaterialTheme.typography.labelSmall)
-                Text(stringResource(R.string.analysis_decrease_axis), style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.analysis_increase_axis), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.analysis_decrease_axis), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End)
             }
         }
     }
