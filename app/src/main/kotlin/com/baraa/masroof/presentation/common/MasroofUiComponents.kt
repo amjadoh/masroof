@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import com.baraa.masroof.presentation.common.MasroofButton as Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -70,8 +71,11 @@ fun IconLabelRow(
     iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
     guidance: String? = null,
 ) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
+    // The value is measured first but capped, so a long value cannot erase the label and a short one leaves it the rest.
+    val trailingMax = maxWidth * 0.6f
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -89,10 +93,11 @@ fun IconLabelRow(
             Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         }
         trailing?.let {
-            Text(it, Modifier.weight(1f, fill = false).padding(start = MasroofSpacing.rowHorizontalPadding),
+            Text(it, Modifier.widthIn(max = trailingMax).padding(start = MasroofSpacing.rowHorizontalPadding),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End)
         }
         guidance?.let { MasroofGuidanceButton(label, it) }
+    }
     }
 }
 
