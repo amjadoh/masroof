@@ -2,6 +2,8 @@ package com.baraa.masroof.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +42,9 @@ private fun ShortcutRow(items: List<MasroofShortcutItem>, firstIndex: Int, cellW
     val colors = MasroofThemeExtras.extendedColors
     Surface(Modifier.fillMaxWidth(), shape = MasroofCardShape, color = colors.cardSurface,
         border = BorderStroke(MasroofSpacing.borderWidth, colors.cardBorder)) {
-        Row(Modifier.padding(horizontal = MasroofReference.shortcutHorizontal), verticalAlignment = Alignment.CenterVertically) {
+        // Per-cell pixel rounding can exceed the card by a pixel; the scroll absorbs it instead of squeezing the last cell.
+        Row(Modifier.horizontalScroll(rememberScrollState())
+            .padding(horizontal = MasroofReference.shortcutHorizontal), verticalAlignment = Alignment.CenterVertically) {
             items.forEachIndexed { index, item ->
                 val tint = when (item.accent) {
                     MasroofCardAccent.Account -> colors.account
