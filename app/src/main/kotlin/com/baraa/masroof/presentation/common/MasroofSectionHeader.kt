@@ -38,7 +38,7 @@ fun MasroofSectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                MasroofSectionTitle(title = title)
+                MasroofSectionTitle(title = title, modifier = Modifier.weight(1f))
                 TextButton(onClick = onTrailingClick) {
                     Text(trailingLabel)
                 }
@@ -51,7 +51,7 @@ fun MasroofSectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                MasroofSectionTitle(title = title)
+                MasroofSectionTitle(title = title, modifier = Modifier.weight(1f))
                 TextButton(onClick = onViewAll) {
                     Text(
                         viewAllLabel,

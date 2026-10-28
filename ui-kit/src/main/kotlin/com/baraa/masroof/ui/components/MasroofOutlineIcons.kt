@@ -16,6 +16,7 @@ object MasroofOutlineIcons {
     val Copy: ImageVector by lazy { outline("Copy", listOf("M9 9h12v12H9z", "M5 15H3V3h12v2")) }
     val Wallet: ImageVector by lazy { outline("Wallet", listOf("M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1", "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4")) }
     val Info: ImageVector by lazy { outline("Info", listOf("M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0", "M12 16v-4", "M12 8h.01")) }
+    val EllipsisVertical: ImageVector by lazy { outline("EllipsisVertical", listOf("M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0", "M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0", "M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0")) }
     val CircleAlert: ImageVector by lazy { outline("CircleAlert", listOf("M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0", "M12 8L12 12", "M12 16L12.01 16")) }
     val TrendingDown: ImageVector by lazy { outline("TrendingDown", listOf("M16 17h6v-6", "m22 17-8.5-8.5-5 5L2 7")) }
     val TrendingUp: ImageVector by lazy { outline("TrendingUp", listOf("M16 7h6v6", "m22 7-8.5 8.5-5-5L2 17")) }

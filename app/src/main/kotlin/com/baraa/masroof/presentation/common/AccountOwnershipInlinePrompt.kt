@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.common
 
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -42,7 +44,7 @@ fun AccountOwnershipInlinePrompt(
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
             IconTextButton(
                 onClick = onConfirmOwned,
                 enabled = enabled,

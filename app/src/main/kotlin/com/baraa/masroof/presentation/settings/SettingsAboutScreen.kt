@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.settings
 
 import androidx.compose.runtime.setValue
@@ -171,7 +173,7 @@ internal fun UpdateSectionCard(
     MasroofCard {
         com.baraa.masroof.presentation.common.MasroofGuidanceLabel(stringResource(R.string.settings_update_channel_title),
             stringResource(R.string.settings_update_channel_hint), style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
             com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.settings_update_channel_stable),
                 updateChannel == UpdateChannel.STABLE, { onSelectUpdateChannel(UpdateChannel.STABLE) })
             com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.settings_update_channel_nightly),

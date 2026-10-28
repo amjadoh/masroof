@@ -142,7 +142,9 @@ import java.time.ZoneId
                         status = if (alert.read) null else stringResource(R.string.reference_unread), showChevron = false,
                         divider = i != alerts.lastIndex, onClick = { AnalyticsNavigation.open(alert.id, fromCenter = true) })
                     Box {
-                        MasroofTextButton(onClick = { menu = true }) { Text(stringResource(R.string.lab_analysis_actions)) }
+                        androidx.compose.material3.IconButton(onClick = { menu = true }) {
+                            androidx.compose.material3.Icon(MasroofIcons.more, stringResource(R.string.lab_analysis_actions), Modifier.size(com.baraa.masroof.ui.theme.MasroofIconSizes.md))
+                        }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             if (!alert.read) DropdownMenuItem(text = { Text(stringResource(R.string.lab_analysis_read)) }, onClick = {
                                 menu = false; scope.launch { workflow?.markAlert(alert.id) }

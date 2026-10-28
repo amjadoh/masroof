@@ -39,7 +39,7 @@ internal fun EntitySummaryCard(title: String, subtitle: String, icon: ImageVecto
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = com.baraa.masroof.ui.theme.MasroofFontWeights.semiBold), contentColor = MaterialTheme.colorScheme.onSurface)
             }
-            bankLabel?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            bankLabel?.let { Text(it, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         Spacer(Modifier.height(com.baraa.masroof.ui.theme.MasroofReference.chartHeadGap))
         if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

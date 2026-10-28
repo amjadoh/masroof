@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.settings
 
 import com.baraa.masroof.ui.theme.MasroofSpacing
@@ -94,7 +96,7 @@ fun SettingsBankAccountsScreen(
                 hint = stringResource(R.string.settings_accounts_hint),
                 onOpenBank = onOpenBank,
             )
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
                     "stopped" to R.string.reference_stopped).forEach { (key, label) ->
                     com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
@@ -217,7 +219,7 @@ internal fun SettingsRegistryAccountRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = MasroofSpacing.sectionGap))
             debitCards.forEach { debit -> Text(stringResource(R.string.dashboard_account_linked_mada_label, registryLabel(debit)),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Row(Modifier.padding(top = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), { onRenameAccount(account) }, enabled = !updating)
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_account_type_title), { onPickAccountType(account) }, enabled = !updating)
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), { onRequestStopTracking(account) }, enabled = !updating, warning = true)

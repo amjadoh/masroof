@@ -168,10 +168,13 @@ fun TransactionListScreen(
             return@MasroofSecondaryScaffold
         }
 
+        // Short screens hand the filter header's height to the list once the user scrolls into it.
+        val compactHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat() < com.baraa.masroof.ui.theme.MasroofReference.compactScreenHeight.value
+        val showToolbar = !compactHeight || listState.firstVisibleItemIndex == 0
         Column(
             modifier = contentModifier.fillMaxSize(),
         ) {
-            TransactionListToolbar(
+            if (showToolbar) TransactionListToolbar(
                 periodLabel = periodLabel,
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
@@ -191,7 +194,7 @@ fun TransactionListScreen(
                     selectedCardLast4s = if (key.startsWith("card:")) listOf(key.removePrefix("card:")) else emptyList()
                 },
             )
-            Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+            if (showToolbar) Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
 
             androidx.compose.material3.Surface(modifier = Modifier.weight(1f),
                 shape = com.baraa.masroof.ui.theme.MasroofCardShape,

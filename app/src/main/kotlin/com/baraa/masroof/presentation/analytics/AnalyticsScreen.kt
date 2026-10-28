@@ -190,9 +190,17 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
             }
         }) { modifier ->
         Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            // Labels shrink together, only when one does not fit, so a long English tab never breaks mid-word.
+            var tabScale by remember { mutableFloatStateOf(1f) }
             TabRow(selectedTabIndex = displayedTab) {
                 listOf(R.string.lab_analysis_spending_tab, R.string.analysis_forecasts_tab, R.string.lab_analysis_commitments).forEachIndexed { index, label ->
-                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] }, text = { Text(stringResource(label)) }, modifier = Modifier.testTag("analysis-tab-$index"))
+                    Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] },
+                        modifier = Modifier.testTag("analysis-tab-$index").heightIn(min = MasroofSpacing.minimumTouchTarget)) {
+                        val style = MaterialTheme.typography.titleSmall
+                        Text(stringResource(label), Modifier.padding(horizontal = MasroofSpacing.smallGap),
+                            style = style.copy(fontSize = style.fontSize * tabScale), maxLines = 1, softWrap = false,
+                            onTextLayout = { if (it.didOverflowWidth && tabScale > 0.6f) tabScale *= 0.95f })
+                    }
                 }
             }
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(when (displayedTab) {

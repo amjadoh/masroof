@@ -50,7 +50,10 @@ fun MasroofAverageBand(value: String, periodHint: String, guidance: String?,
 fun MasroofReferenceNavigationRow(title: String, subtitle: String, icon: ImageVector,
     onClick: () -> Unit, modifier: Modifier = Modifier, divider: Boolean = true,
     status: String? = null, showChevron: Boolean = true) {
-    Column(modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+    // Narrow rows stack the badge under the subtitle so neither the title nor the status is squeezed.
+    val stackStatus = maxWidth < MasroofReference.inlineStatusMinWidth
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(top = MasroofReference.rowVertical,
             bottom = if (divider) MasroofReference.rowVertical else MasroofReference.lastRowBottom),
             verticalAlignment = Alignment.CenterVertically,
@@ -64,12 +67,14 @@ fun MasroofReferenceNavigationRow(title: String, subtitle: String, icon: ImageVe
                 MasroofText(title, style = MasroofReference.pair.copy(fontWeight = MasroofFontWeights.semiBold))
                 MasroofText(subtitle, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (stackStatus) status?.let { MasroofBadge(it, MasroofCardAccent.Liability) }
             }
-            status?.let { MasroofBadge(it, MasroofCardAccent.Liability) }
+            if (!stackStatus) status?.let { MasroofBadge(it, MasroofCardAccent.Liability, Modifier.widthIn(max = MasroofReference.statusBadgeMaxWidth)) }
             if (showChevron) Icon(if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl)
                 MasroofIcons.periodPrevious else MasroofIcons.periodNext,
                 null, Modifier.size(MasroofReference.icon), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (divider) HorizontalDivider(color = MasroofThemeExtras.extendedColors.cardBorder)
+    }
     }
 }

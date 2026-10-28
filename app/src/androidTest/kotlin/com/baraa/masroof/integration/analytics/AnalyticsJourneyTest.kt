@@ -321,7 +321,7 @@ class AnalyticsJourneyTest {
             compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, "en")).assertIsSelected()
             awaitAnalysis(workflow) { it.alerts.first { row -> row.id == alert.id }.read }
             compose.runOnUiThread { center = true }
-            compose.onNode(hasText(text(R.string.lab_analysis_actions, "en")) and hasAnyAncestor(hasTestTag("lab-alert-container-${alert.id}"))).performClick()
+            compose.onNode(hasContentDescription(text(R.string.lab_analysis_actions, "en")) and hasAnyAncestor(hasTestTag("lab-alert-container-${alert.id}"))).performClick()
             compose.onNodeWithText(text(R.string.lab_analysis_snooze, "en")).performClick()
             awaitAnalysis(workflow) { it.alerts.first { row -> row.id == alert.id }.snoozedUntil > 0 }
             compose.onNodeWithTag("lab-alert-${alert.id}").assertDoesNotExist()

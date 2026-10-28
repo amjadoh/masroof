@@ -21,12 +21,27 @@ import com.baraa.masroof.ui.theme.*
 data class MasroofShortcutItem(val label: String, val icon: ImageVector,
     val accent: MasroofCardAccent, val onClick: () -> Unit)
 
-/** A single shared row; narrow windows scroll instead of breaking translated labels. */
+/** One shared row; when the cells cannot fit side by side, small phones get rows of two instead of a hidden scroll. */
 @Composable
 fun MasroofShortcutStrip(items: List<MasroofShortcutItem>, modifier: Modifier = Modifier, displayText: (String) -> String = { it }, enabled: Boolean = true) {
     if (items.isEmpty()) return
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val available = maxWidth - MasroofReference.shortcutHorizontal * 2 - MasroofSpacing.borderWidth * (items.size - 1)
+        val minimum = MasroofReference.shortcutMinWidth * androidx.compose.ui.platform.LocalDensity.current.fontScale
+        if (items.size > 2 && minimum * items.size > available) {
+            Column(verticalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {
+                items.chunked(2).forEachIndexed { row, chunk -> ShortcutRow(chunk, row * 2, displayText, enabled) }
+            }
+        } else {
+            ShortcutRow(items, 0, displayText, enabled)
+        }
+    }
+}
+
+@Composable
+private fun ShortcutRow(items: List<MasroofShortcutItem>, firstIndex: Int, displayText: (String) -> String, enabled: Boolean) {
     val colors = MasroofThemeExtras.extendedColors
-    Surface(modifier.fillMaxWidth(), shape = MasroofCardShape, color = colors.cardSurface,
+    Surface(Modifier.fillMaxWidth(), shape = MasroofCardShape, color = colors.cardSurface,
         border = BorderStroke(MasroofSpacing.borderWidth, colors.cardBorder)) {
         BoxWithConstraints {
             val available = maxWidth - MasroofReference.shortcutHorizontal * 2 - MasroofSpacing.borderWidth * (items.size - 1)
@@ -45,7 +60,7 @@ fun MasroofShortcutStrip(items: List<MasroofShortcutItem>, modifier: Modifier = 
                         MasroofCardAccent.Credit -> colors.cardSoft
                         else -> colors.liabilitySoft
                     }
-                    Column(Modifier.width(cellWidth).testTag("dashboard-shortcut-$index")
+                    Column(Modifier.width(cellWidth).testTag("dashboard-shortcut-${firstIndex + index}")
                         .clickable(enabled = enabled, role = Role.Button, onClick = item.onClick)
                         .padding(vertical = MasroofReference.shortcutVertical + MasroofSpacing.borderWidth),
                         horizontalAlignment = Alignment.CenterHorizontally,

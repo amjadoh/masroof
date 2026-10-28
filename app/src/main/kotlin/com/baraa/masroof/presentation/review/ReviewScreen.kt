@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.review
 
 import androidx.compose.runtime.setValue
@@ -122,11 +124,12 @@ internal fun ReviewListScreen(
         backContentDescription = stringResource(R.string.review_back),
     ) { contentModifier ->
         Column(modifier = contentModifier.fillMaxSize()) {
-            Row(
+            androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = MasroofSpacing.sectionGap),
                 horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
+                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap),
             ) {
                 MasroofChoice(
                     selected = state.listMode == ReviewListMode.PENDING,

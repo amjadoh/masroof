@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.baraa.masroof.presentation.onboarding
 
 import androidx.compose.runtime.setValue
@@ -654,7 +656,7 @@ private fun CandidateCard(
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             candidate.cardType?.let { type -> Text(stringResource(if (type == com.baraa.masroof.domain.model.CardType.CREDIT)
                 R.string.settings_card_type_credit else R.string.settings_card_type_debit), style = MaterialTheme.typography.bodySmall) }
-            Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
                 IconTextButton(onClick = onOwned, icon = MasroofIcons.success, text = ownedLabel, enabled = !busy)
                 IconTextButton(onClick = onExternal, icon = MasroofIcons.warning, text = externalLabel, enabled = !busy)
             }
