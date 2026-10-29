@@ -38,7 +38,7 @@ class ExistingBankParseSnapshotTest {
                 is JsonObject -> {
                     (element["body"] as? JsonPrimitive)?.takeIf { it.isString }?.let { body ->
                         out += Triple("$file$path#${(element["id"] as? JsonPrimitive)?.content.orEmpty()}",
-                            (element["sender"] as? JsonPrimitive)?.content ?: "AlJazira", body.content)
+                            (element["sender"] as? JsonPrimitive)?.content ?: if (file.startsWith("patterns/stc-")) "STC Bank" else "AlJazira", body.content)
                     }
                     element.forEach { (key, value) -> walk(file, value, "$path.$key") }
                 }
