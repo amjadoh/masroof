@@ -190,6 +190,7 @@ fun CardsSummaryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { onOpenDebit(debit) },
                     trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
+                    ownedCards = state.ownedCards,
                 )
             }
         }
