@@ -168,7 +168,8 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC").flatMap { bankId ->
+    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC", "BANK_SNB", "BANK_BARQ",
+        "BANK_EMIRATES_NBD", "BANK_SAB", "BANK_ALINMA").flatMap { bankId ->
         com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
             appContext.assets.open("bank-patterns/$bankId.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
     }

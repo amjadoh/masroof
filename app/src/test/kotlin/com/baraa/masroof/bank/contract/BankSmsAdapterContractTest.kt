@@ -76,7 +76,7 @@ class BankSmsAdapterContractTest(
             BankSmsAdapterContractCase(engineFixtureAdapter(), alJaziraContractSamples),
             BankSmsAdapterContractCase(StubBankSmsAdapter(), StubBankSmsAdapter.contractSamples),
             stcPatternContractCase(),
-        )
+        ) + FiveBankSmsTest.cases()
 
         private fun stcPatternContractCase(): BankSmsAdapterContractCase {
             val configuration = MessagePatternConfigurationCodec.decode(File("src/main/assets/bank-patterns/BANK_STC.patterns.json").readText())
