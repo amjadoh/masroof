@@ -24,8 +24,8 @@ internal class TransferNetworkResolver(
 
     fun resolve(family: MessageFamily, local: BankId, familyPhrases: List<String>, explicitRecipient: Boolean = false): TransferNetwork {
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
-        val reader = RoleLineReader(source, mapOf("sourceBank" to rules.sourceBankLabels,
-            "destinationBank" to rules.destinationBankLabels, "bankNetwork" to rules.networkLabels), evidence)
+        val reader = RoleLineReader(source, mapOf("sourceBank" to (rules.sourceBankLabels + observations["network.sourceBankRole"].orEmpty()),
+            "destinationBank" to (rules.destinationBankLabels + observations["network.destinationBankRole"].orEmpty()), "bankNetwork" to rules.networkLabels), evidence)
         var unidentifiedExternal=false
         fun bank(rows: List<RoleLine>,externalRole: Boolean): BankId? {
             val unknownNames=mutableSetOf<String>()
