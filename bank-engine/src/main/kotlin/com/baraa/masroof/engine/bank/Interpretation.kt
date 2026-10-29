@@ -58,6 +58,8 @@ data class Facts(
     val salaryIncomeWording: Boolean? = null,
     val executionState: String? = null,
     val network: String? = null,
+    /** Magnitude of an explicitly negative available balance; never a transaction amount. */
+    val negativeAvailableBalance: Money? = null,
 )
 
 /** Half-open offsets into the ORIGINAL input body, never folded comparison text. */

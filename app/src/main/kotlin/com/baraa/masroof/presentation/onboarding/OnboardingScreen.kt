@@ -119,6 +119,15 @@ fun OnboardingRoute(
         onSelectThroughDate = viewModel::selectImportThroughDate,
         onAddManual = { manualChoiceBank = state.selectedBankIds.singleOrNull(); manualCard = false; choosingManual = true }, registryBusy = registry.updating || registry.loading,
         registryError = registry.error != null, onRetryRegistry = settingsViewModel::refresh,
+        bankMessageSetup = {
+            if (workflow != null && catalog != null && workflow.canApprove) Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+                catalog.banks.filter { it.bankId in state.selectedBankIds }.forEach { bank ->
+                    com.baraa.masroof.presentation.patterns.BankMessageAccountSetupCard(workflow, bank.bankId,
+                        bank.displayName ?: bank.bankId, catalog.generation,
+                        { viewModel.reloadFromCurrentState(); viewModel.refreshOwnership() })
+                }
+            }
+        },
         onConfigureCard = { candidate ->
             val card = (registry.followedCards + registry.unregisteredCards + registry.stoppedCards)
                 .firstOrNull { it.bank == candidate.bank && it.last4 == candidate.suffix }
@@ -170,6 +179,7 @@ internal fun OnboardingScreen(
     onSelectThroughDate: (LocalDate) -> Unit = {}, onAddManual: () -> Unit = {},
     onConfigureCard: (OwnershipCandidateUi) -> Unit = {}, registryBusy: Boolean = false,
     registryError: Boolean = false, onRetryRegistry: () -> Unit = {},
+    bankMessageSetup: @Composable () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     com.baraa.masroof.presentation.common.MasroofSecondaryScaffold(stringResource(R.string.reference_initial_setup),
@@ -223,6 +233,7 @@ internal fun OnboardingScreen(
                 onFinalize = onFinalize,
                 onAddManual = onAddManual, onConfigureCard = onConfigureCard, registryBusy = registryBusy,
                 registryError = registryError, onRetryRegistry = onRetryRegistry,
+                bankMessageSetup = bankMessageSetup,
             )
             OnboardingStep.FINALIZE -> CompletionStep(Modifier.fillMaxSize().padding(MasroofSpacing.screenPaddingLarge), state, onEnterApp)
             OnboardingStep.HOME -> HomePlaceholder(Modifier.fillMaxSize(), state)
@@ -499,6 +510,7 @@ private fun OwnershipStep(
     onFinalize: () -> Unit,
     onAddManual: () -> Unit, onConfigureCard: (OwnershipCandidateUi) -> Unit, registryBusy: Boolean,
     registryError: Boolean, onRetryRegistry: () -> Unit,
+    bankMessageSetup: @Composable () -> Unit,
 ) {
     val busy = state.updatingOwnership || state.finalizing || registryBusy
     LazyColumn(modifier = modifier.fillMaxSize().padding(MasroofSpacing.screenHorizontal), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
@@ -606,6 +618,7 @@ private fun OwnershipStep(
                 Text(stringResource(R.string.onboarding_add_manual))
             }
         }
+        item { bankMessageSetup() }
         item {
             IconTextButton(
                 onClick = onFinalize,

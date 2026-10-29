@@ -46,7 +46,8 @@ class InterpretationDraftMapper(private val extraValidator: ParsedEventValidator
             biller = facts.biller,billerCode = facts.billerCode,occurredAtLocal = facts.occurredAtLocal,
             cardSmsChannel = facts.cardChannel?.let { CardSmsChannel.valueOf(it.name) }, paymentDueDate = facts.paymentDueDate,
             exchangeRate = facts.exchangeRate,internationalFee = facts.internationalFee?.money(),labeledForeignAmount = facts.labeledForeignAmount?.money(),
-            loanType = facts.loanType?.let { LoanType.valueOf(it.name) },debitSourceAccountLast4 = facts.debitSourceAccountLast4,salaryIncomeWording = facts.salaryIncomeWording)
+            loanType = facts.loanType?.let { LoanType.valueOf(it.name) },debitSourceAccountLast4 = facts.debitSourceAccountLast4,salaryIncomeWording = facts.salaryIncomeWording,
+            negativeAvailableBalance = facts.negativeAvailableBalance?.money())
         val draft = ParsedEventDraft(rawSmsId = input.evidenceId, bank = routedBank, messageFamily = family,
             direction = facts.direction?.let { MoneyDirection.valueOf(it.name) },amount = amount,
             purchaseChannel = facts.purchaseChannel?.let { PurchaseChannel.valueOf(it.name) },

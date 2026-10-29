@@ -69,6 +69,7 @@ object CreditCardOverviewBuilder {
             if (
                 isStatement ||
                 details.availableBalance != null ||
+                details.negativeAvailableBalance != null ||
                 details.outstandingBalance != null
             ) {
                 snapshotCandidates += SnapshotCandidate(
@@ -106,7 +107,7 @@ object CreditCardOverviewBuilder {
         val latestAvailableByCard = snapshotCandidates
             .filter {
                 !it.isStatement &&
-                    it.details.availableBalance != null &&
+                    (it.details.availableBalance != null || it.details.negativeAvailableBalance != null) &&
                     it.updatedAt.isBefore(periodEndExclusive)
             }
             .groupBy { it.cardId }
@@ -225,6 +226,7 @@ object CreditCardOverviewBuilder {
             }
             when (tx.type) {
                 FinancialTransactionType.EXPENSE,
+                FinancialTransactionType.BILL_PAYMENT,
                 FinancialTransactionType.FEE,
                 -> {
                     if (tx.sourceContainerId != cardId) continue
@@ -255,6 +257,7 @@ object CreditCardOverviewBuilder {
 
         return CreditCardBalanceSnapshot(
             availableBalance = latestAvailable?.details?.availableBalance,
+            negativeAvailableBalance = latestAvailable?.details?.negativeAvailableBalance,
             // Statement SMS only — purchase/refund "إجمالي المبلغ المستحق" is account-level
             // and repeats across linked cards on the same credit facility.
             dueAmount = latestStatement?.details?.outstandingBalance,

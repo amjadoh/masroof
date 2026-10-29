@@ -21,6 +21,7 @@ internal class DetailExtractor(
     private val problem: (String, Blocker) -> Unit,
     knownLabels: List<String> = emptyList(),
     private val implicitSarFeeLabels: List<String> = emptyList(),
+    private val fallbackCurrency: String? = null,
 ) {
     private val reserved = mutableListOf<IntRange>()
     private val reader = RoleLineReader(source, configured + mapOf("internationalFee" to FEE_LABELS, "exchangeRate" to RATE_LABELS), evidence, knownLabels)
@@ -38,13 +39,15 @@ internal class DetailExtractor(
     private fun money(field: String): Money? {
         val sarRanges=if(field=="internationalFee") RoleLineReader(source,mapOf(field to implicitSarFeeLabels),mutableListOf()).read(field).map {it.range}.toSet() else emptySet()
         return one(field, entries(field, reserve = true).map { row ->
-            MoneyGrammar.parse(row.normalized) ?: if(row.range in sarRanges) MoneyGrammar.parse("sar "+row.normalized) else null
+            MoneyGrammar.parse(row.normalized) ?: if (field == "dueAmount" && fallbackCurrency != null)
+                MoneyGrammar.withCurrency(row.normalized, fallbackCurrency)
+            else if(row.range in sarRanges) MoneyGrammar.parse("sar "+row.normalized) else null
         })
     }
 
     private fun text(field: String, identifier: Boolean = false): String? =
         one(field, entries(field).filter { entry ->
-            val accountRole = field == "counterparty" && entry.normalized.matches(Regex("[*x]*[0-9]{4}"))
+            val accountRole = field == "counterparty" && entry.normalized.matches(Regex("(?:[a-z]{2})?[*x0-9]{4,34}[*x]*"))
             if (accountRole) { val span = source.evidence("scope", field, entry.range); evidence.removeAll { it.field == field && it.start == span.start && it.end == span.end } }
             !accountRole
         }.map { entry ->

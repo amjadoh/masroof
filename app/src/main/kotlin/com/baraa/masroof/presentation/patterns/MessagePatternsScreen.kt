@@ -241,6 +241,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.titleMedium)
                         Text(bank.senders.joinToString(), style = MaterialTheme.typography.bodySmall)
                     }
+                    if (workflow.canApprove) BankMessageAccountSetupCard(workflow, bank.bankId, bank.displayName ?: bank.bankId,
+                        configuration.generation, { work { snapshot = workflow.catalog() } })
                     if (source != null && source.sender !in bank.senders) Text(stringResource(R.string.pattern_sender_mismatch), color = MaterialTheme.colorScheme.error)
                     MasroofButton(onClick = { teaching = true; editingPattern = null; editingBody = ""; savedTeaching = false; savedBody = "" },
                         enabled = !busy && (source == null || source.sender in bank.senders), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_teach)) }
