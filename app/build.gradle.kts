@@ -22,8 +22,8 @@ val appVersionName =
 val appVersionCode =
     (project.findProperty("appVersionCode") as? String)?.toIntOrNull()
         ?: 71
-val githubOwner = "amjadoh"
-val githubRepo = "masroof"
+val githubOwner = "bakhshb"
+val githubRepo = "Masroof"
 
 android {
     namespace = "com.baraa.masroof"
