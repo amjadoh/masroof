@@ -66,9 +66,10 @@ class BankMessageAccountSetupJourneyTest {
             compose.onNodeWithTag("bank-message-account-${account.id}").assertIsOff()
             compose.onNodeWithTag("bank-message-account-${account.id}").performScrollTo().performClick()
             compose.waitForIdle()
-            ScreenshotArtifactWriter.publish(compose.onRoot().captureToImage().asAndroidBitmap(), "bank-account", "arabic-light")
+            ScreenshotArtifactWriter.publish(compose.onNodeWithTag("sheet-overlay").captureToImage().asAndroidBitmap(), "bank-account", "arabic-light")
             compose.runOnIdle { dark.value = true }
-            ScreenshotArtifactWriter.publish(compose.onRoot().captureToImage().asAndroidBitmap(), "bank-account", "arabic-dark")
+            compose.waitForIdle()
+            ScreenshotArtifactWriter.publish(compose.onNodeWithTag("sheet-overlay").captureToImage().asAndroidBitmap(), "bank-account", "arabic-dark")
             compose.onNodeWithText(ar(R.string.bank_message_account_save)).performClick()
             compose.waitUntil(20_000) { runBlocking { c.financialTransactionRepository.listAll().size == 2 } }
             c.processRawSmsUseCase.ingest(sms("future", "40"))
