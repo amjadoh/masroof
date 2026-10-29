@@ -219,11 +219,15 @@ object TransactionMatcher {
 
         if (hasIntraBankAccountBridge(outgoing, incoming)) return true
 
-        // UNKNOWN-side suffix bridge: outgoing UNKNOWN dest masked ↔ incoming known dest masked
+        // Destination suffix bridge; known endpoints must describe different banks.
         val outDest = outgoing.event.destinationAccountRef ?: return false
         val inDest = incoming.event.destinationAccountRef ?: return false
         if (inDest.bank == Bank.UNKNOWN) return false
-        if (outDest.bank != Bank.UNKNOWN && outDest.bank != inDest.bank) return false
+        if (outDest.bank != Bank.UNKNOWN) {
+            if (outDest.bank != inDest.bank) return false
+            val sourceBank = outgoing.event.sourceAccountRef?.bank ?: return false
+            if (sourceBank == Bank.UNKNOWN || sourceBank == outDest.bank) return false
+        }
         val outSuffix = outDest.maskedNumber?.trim().orEmpty()
         val inSuffix = inDest.maskedNumber?.trim().orEmpty()
         if (outSuffix.isEmpty() || inSuffix.isEmpty()) return false

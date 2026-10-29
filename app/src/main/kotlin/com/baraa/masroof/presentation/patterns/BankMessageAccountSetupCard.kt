@@ -36,8 +36,8 @@ fun BankMessageAccountSetupCard(workflow: MessagePatternsWorkflow, bankId: Strin
         catch (_: Exception) { failed = true }
     }
     MasroofCard {
-        Text(stringResource(R.string.bank_message_account_title, bankName), style = MaterialTheme.typography.titleMedium)
-        Text(stringResource(R.string.bank_message_account_hint), style = MaterialTheme.typography.bodySmall)
+        MasroofGuidanceLabel(stringResource(R.string.bank_message_account_title, bankName),
+            stringResource(R.string.bank_message_account_hint), style = MaterialTheme.typography.titleMedium)
         setup?.let { current ->
             current.accounts.singleOrNull { it.id == current.selectedAccountId }?.let {
                 Text(stringResource(R.string.bank_message_account_selected, it.last4))

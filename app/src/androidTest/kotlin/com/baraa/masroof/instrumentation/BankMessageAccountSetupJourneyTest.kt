@@ -59,7 +59,7 @@ class BankMessageAccountSetupJourneyTest {
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("bank-message-setup-BANK_BARQ").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("bank-message-setup-BANK_BARQ").performClick()
             compose.onNodeWithTag("bank-message-account-${account.id}").performScrollTo().performClick()
-            compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            pressDeviceBack(compose)
             assertEquals(before, w.load().generation)
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             compose.onNodeWithTag("bank-message-setup-BANK_BARQ").performClick()
@@ -102,7 +102,11 @@ class BankMessageAccountSetupJourneyTest {
         } finally { c.close(); context.getDatabasePath("masroof.db").parentFile?.deleteRecursively() }
     }
 
-    @Test fun crossBankTransferDebitsSourceAndCreditsDestinationExactlyOnceAfterRetryAndReopen() = runBlocking {
+    @Test fun crossBankTransferDebitsSourceAndCreditsDestinationExactlyOnceAfterRetryAndReopen() = crossBankTransfer(false)
+
+    @Test fun incomingFirstCrossBankTransferHasTheSameAccountEffects() = crossBankTransfer(true)
+
+    private fun crossBankTransfer(incomingFirst: Boolean) = runBlocking {
         val context = TestStorageContext(compose.activity, "self-transfer-${java.util.UUID.randomUUID()}")
         var c = AppContainer(context)
         try {
@@ -134,8 +138,9 @@ class BankMessageAccountSetupJourneyTest {
                 assertEquals("0.00", target.externalIn.amount.toPlainString())
                 assertEquals(0, source.cashPosition.amount.add(target.cashPosition.amount).signum())
             }
-            c.processRawSmsUseCase.ingest(outgoing)
-            c.processRawSmsUseCase.ingest(incoming)
+            for (sms in if (incomingFirst) listOf(incoming, outgoing) else listOf(outgoing, incoming)) {
+                c.processRawSmsUseCase.ingest(sms)
+            }
             assertAccountEffects()
             c.processRawSmsUseCase.ingest(incoming)
             c.processStoredSmsUseCase.process("owned-out")
