@@ -45,6 +45,35 @@ class IndependentRuleInterpreterTest {
         result.evidence.forEach { assertFalse(it.slice(input(body)).contains("😀")) }
     }
 
+    @Test fun commonSaudiOneTimeCodeWordingIsClassifiedAsOtp() {
+        listOf("الرقم السري لمرة واحدة", "الرقم السري لمره واحده", "الرمز السري", "رمز التأكيد", "رمز الدخول", "رمز المرور",
+            "كلمة السر", "كود التحقق", "كود التفعيل", "Activation code", "Do not share this code", "لا تشارك الرمز").forEach { term ->
+            val r = parse("$term: 567890\n$purchase")
+            assertEquals(term, MessageFamily.OTP, r.facts.family)
+            assertEquals(term, ParseStatus.NON_FINANCIAL, r.status)
+            assertNull(term, r.facts.amount)
+        }
+        assertEquals(MessageFamily.OTP, parse("OTP1234 is your code\n$purchase").facts.family)
+        // An approval code on a real purchase is not a one-time password.
+        assertEquals(ParseStatus.SUCCESS, parse("$purchase\nApproval code: 123456").status)
+    }
+
+    @Test fun currencyMayTouchTheAmountInEitherOrder() {
+        mapOf("SAR42.35" to "SAR", "42.35SAR" to "SAR", "SAR 42.35" to "SAR", "SR42.35" to "SAR", "42.35 SR" to "SAR",
+            "ر.س42.35" to "SAR", "42.35ريال" to "SAR", "USD42.35" to "USD").forEach { (value, code) ->
+            val r = parse("Purchase\nAmount: $value\nCard: **1234\nMerchant: Synthetic Shop\n2026-10-17 13:00")
+            assertEquals(value, ParseStatus.SUCCESS, r.status)
+            assertEquals(value, "42.35", r.facts.amount!!.amount.toPlainString())
+            assertEquals(value, code, r.facts.amount!!.currency.name)
+        }
+        assertEquals(1000, parse("Purchase\nAmount: 1,000.00SAR\nCard: **1234\nMerchant: Shop\n2026-10-17 13:00").facts.amount!!.amount.toInt())
+        listOf("42.35SARX", "42.355SAR").forEach { value ->
+            val r = parse("Purchase\nAmount: $value\nCard: **1234\nMerchant: Synthetic Shop\n2026-10-17 13:00")
+            assertEquals(value, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertNull(value, r.facts.amount)
+        }
+    }
+
     @Test fun securityAndUnexecutedWordingCannotBecomeSuccessfulMoney() {
         listOf("OTP", "verification code", "one-time password", "PIN", "رمز التحقق", "رمز التوثيق", "رمز تأكيد").forEach { term ->
             val r = parse("$term: 567890\n$purchase")
