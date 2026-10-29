@@ -84,7 +84,14 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             val profile = profiles.first()
             if (profiles.any { it.network != profile.network || it.schema != profile.schema })
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
-            RuleInterpreter(profile.copy(rules = profiles.flatMap { it.rules }), familyAssist).interpretRouted(input, bank)
+            val defaults = roles.mapNotNull { pattern -> pattern.factContract?.takeIf { it.version >= 2 &&
+                it.accountBindings.isNotEmpty() && it.accountBindings.all { binding -> binding.field == null && binding.bank == bank } }?.let { contract ->
+                pattern.id to RuleFactDefaults(
+                    contract.accountBindings.singleOrNull { it.role == PatternAccountRole.SOURCE }?.let { AccountReference(it.bank, it.last4) },
+                    contract.accountBindings.singleOrNull { it.role == PatternAccountRole.DESTINATION }?.let { AccountReference(it.bank, it.last4) },
+                    contract.currency)
+            } }.toMap()
+            RuleInterpreter(profile.copy(rules = profiles.flatMap { it.rules }), familyAssist, defaults).interpretRouted(input, bank)
         }
         val roleMatches = roles.filter { pattern -> roleResult?.evidence?.any { it.field == "family" && it.ruleId == pattern.id } == true }
         val activeRoles = roleMatches.filter { it.enabled }

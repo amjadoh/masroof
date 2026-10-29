@@ -12,6 +12,7 @@ data class CreditCardBalanceSnapshot(
     val dueDate: LocalDate?,
     val statementIssuedAt: Instant?,
     val updatedAt: Instant,
+    val negativeAvailableBalance: Money? = null,
 )
 
 data class CreditCardDashboardRow(

@@ -12,6 +12,7 @@ internal class TransferNetworkResolver(
     private val observations: Map<String, List<String>>,
     private val evidence: MutableList<Evidence>,
     private val problem: (String, Blocker) -> Unit,
+    private val allowUnknownNetwork: Boolean = false,
 ) {
     private var invalid = false
     private fun fail(code: String) { invalid = true; problem(code, Blocker.CONFLICTING_FACTS) }
@@ -24,8 +25,8 @@ internal class TransferNetworkResolver(
 
     fun resolve(family: MessageFamily, local: BankId, familyPhrases: List<String>, explicitRecipient: Boolean = false): TransferNetwork {
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
-        val reader = RoleLineReader(source, mapOf("sourceBank" to rules.sourceBankLabels,
-            "destinationBank" to rules.destinationBankLabels, "bankNetwork" to rules.networkLabels), evidence)
+        val reader = RoleLineReader(source, mapOf("sourceBank" to (rules.sourceBankLabels + observations["network.sourceBankRole"].orEmpty()),
+            "destinationBank" to (rules.destinationBankLabels + observations["network.destinationBankRole"].orEmpty()), "bankNetwork" to rules.networkLabels), evidence)
         var unidentifiedExternal=false
         fun bank(rows: List<RoleLine>,externalRole: Boolean): BankId? {
             val unknownNames=mutableSetOf<String>()
@@ -98,7 +99,7 @@ internal class TransferNetworkResolver(
             if (destinationBank != null && destinationBank != local) fail("INCOMING_DESTINATION_BANK_NOT_LOCAL")
             sourceBank?.let { networks += if (it == local) BankNetwork.INTRA_BANK else BankNetwork.INTER_BANK }
         }
-        if (networks.size != 1) fail("NETWORK_MISSING_OR_CONFLICTING")
-        return TransferNetwork(if (invalid) null else networks.singleOrNull(), sourceBank, destinationBank)
+        if (networks.size > 1 || networks.isEmpty() && !allowUnknownNetwork) fail("NETWORK_MISSING_OR_CONFLICTING")
+        return TransferNetwork(if (invalid) null else networks.singleOrNull() ?: BankNetwork.UNKNOWN, sourceBank, destinationBank)
     }
 }
