@@ -158,7 +158,11 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 180
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: python3 scripts/ci_device.py run --shard ${{ matrix.shard }}
+          script: |
+            # API 36 Google services still initialize after sys.boot_completed.
+            # Let the fresh image settle before testing normal application startup.
+            sleep 45
+            python3 scripts/ci_device.py run --shard ${{ matrix.shard }}
       - name: Preserve per-case evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -213,7 +217,9 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 180
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
+          script: |
+            sleep 45
+            bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
       - name: Preserve recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
