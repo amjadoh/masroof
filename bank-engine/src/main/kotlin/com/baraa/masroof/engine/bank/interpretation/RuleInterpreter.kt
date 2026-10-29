@@ -4,7 +4,8 @@ import com.baraa.masroof.engine.bank.*
 import java.security.MessageDigest
 
 /** Independent rules interpreter. Receipt fallback is explicit durable SMS metadata, never a device clock read. */
-class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAssist? = null) : BankInterpreter {
+class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAssist? = null,
+    private val confirmedDefaults: Map<String, RuleFactDefaults> = emptyMap()) : BankInterpreter {
     private val snapshot = schema.copy(rules = schema.rules.map { it.copy(
         phrases = it.phrases.toList(), excludes = it.excludes.toList(),
         labels = it.labels.mapValues { entry -> entry.value.toList() },
@@ -121,6 +122,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             matching = snapshot.rules // Review-only extraction of labelled facts; never automatic authority.
         }
         val familyPhrases = matching.flatMap {it.phrases} + listOfNotNull(title.takeIf {inference!=null})
+        val defaults = matching.takeIf { family != MessageFamily.UNKNOWN }.orEmpty().mapNotNull { confirmedDefaults[it.id] }.distinct().let {
+            if (it.size > 1) problem("CONFIRMED_DEFAULT_CONFLICT", Blocker.CONFLICTING_FACTS)
+            it.singleOrNull()
+        }
         val matchingTitleSpans = matching.flatMap { spansByRule.getValue(it) }
         // A second bare movement cue still conflicts; moving it into a party field does not.
         snapshot.rules.filter { it.family != family && it.excludes.none(::contains) }.forEach { rule ->
@@ -146,7 +151,12 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
         if ((family == MessageFamily.TRANSFER_IN && OUTGOING.any(::contains)) ||
             (family == MessageFamily.TRANSFER_OUT && INCOMING.any(::contains)) ||
-            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT) && TRANSFER_CONTEXT.any(::contains)))
+            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT) && TRANSFER_CONTEXT.any { term ->
+                source.phrase(term).findAll(source.text).any { cue ->
+                    family != MessageFamily.REFUND || matchingTitleSpans.none { span ->
+                        cue.range.first >= lineStart + leading + span.first && cue.range.last <= lineStart + leading + span.last }
+                }
+            }))
             problem("TRANSFER_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
@@ -166,20 +176,32 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val currency = currencies.map { it.normalized }.distinct().singleOrNull()
         if (currencies.isNotEmpty() && (currency == null || MoneyGrammar.withCurrency("1", currency) == null))
             problem("INVALID_OR_CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
+        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct(), defaults?.currency?.name).read()
         val secondaryRanges = details.reserved.toMutableList()
         // Reserve all known secondary roles even when the selected rule does not expose them.
         SECONDARY.forEach { label ->
             Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
         }
-        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem)
-        val balance = primary.money(ExtractionField.AVAILABLE_BALANCE)
-        val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT)
+        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem, defaults?.currency?.name,
+            matching.any { it.observations["balance.signed"].orEmpty().isNotEmpty() })
+        val negativeBalance = primary.negativeBalance()
+        val balance = primary.money(ExtractionField.AVAILABLE_BALANCE) ?: negativeBalance?.takeIf { it.amount.signum() == 0 }
+        if (balance != null && negativeBalance != null && negativeBalance.amount.signum() > 0)
+            problem("CONFLICTING_AVAILABLE_BALANCE", Blocker.CONFLICTING_FACTS)
+        val standaloneAmount = matching.flatMap { it.observations["amount.standalone"].orEmpty() }
+            .any { source.phrase(it).containsMatchIn(title) }
+        val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT, standaloneAmount,
+            matching.flatMap { it.observations["amount.title"].orEmpty() })
         val card = primary.card()
-        val account = primary.identifier(ExtractionField.SOURCE_ACCOUNT)
-        val destination = primary.identifier(ExtractionField.DESTINATION_ACCOUNT)
+        val account = primary.account(ExtractionField.SOURCE_ACCOUNT, defaults?.source?.maskedNumber?.takeIf {
+            family !in INFORMATIONAL && family != MessageFamily.CARD_PAYMENT &&
+                (!primary.hasCardReferenceRole() || family == MessageFamily.WITHDRAWAL)
+        })
+        val destination = primary.account(ExtractionField.DESTINATION_ACCOUNT, defaults?.destination?.maskedNumber?.takeIf {
+            family !in INFORMATIONAL && !primary.hasCardReferenceRole()
+        })
         val merchant = primary.merchant()
-        val times = primary.transactionTimes()
+        val times = primary.transactionTimes(ignoreUnbound = family in INFORMATIONAL)
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {
             it.code in setOf("INVALID_TIME", "UNBOUND_TIME_ROLE", "CONFLICTING_TIME") }
         if(receiptTime && family !in INFORMATIONAL) diagnostics += InterpretationDiagnostic(
@@ -188,7 +210,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             if (amount == null || amount.amount.signum() <= 0) problem("MISSING_POSITIVE_PRINCIPAL")
             if (times.size != 1 && !receiptTime) problem("MISSING_TRANSACTION_TIME")
             if (family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) && card == null && account == null && destination == null) problem("MISSING_CARD_ROLE")
-            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) && account == null) problem("MISSING_SOURCE_ROLE")
+            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) &&
+                account == null && !(family == MessageFamily.BILL_PAYMENT && card != null)) problem("MISSING_SOURCE_ROLE")
         }
         if (family == MessageFamily.CARD_PAYMENT && card == null) problem("MISSING_CARD_ROLE")
         if (family == MessageFamily.BILL_PAYMENT && details.biller == null) problem("MISSING_BILLER_ROLE")
@@ -196,14 +219,14 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         if (details.foreign != null && amount != null && details.foreign.currency == amount.currency && details.foreign != amount)
             problem("CONFLICTING_FOREIGN_PRINCIPAL", Blocker.CONFLICTING_FACTS)
         val observations = matching.flatMap { it.observations.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }
-        val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem)
+        val network = TransferNetworkResolver(source, snapshot.network, observations, evidence, ::problem, defaults != null)
             .resolve(family, banks.single(), familyPhrases, details.counterparty != null && (if (family == MessageFamily.TRANSFER_IN) destination != null else account != null))
         val observed = ObservationExtractor(source, observations, family, familyPhrases, evidence, ::problem).read()
         if (observed.card == CardChannel.STATEMENT && family !in INFORMATIONAL) problem("STATEMENT_CHANNEL_IN_MOVEMENT", Blocker.CONFLICTING_FACTS)
-        if (observed.balanceMarker && balance == null) problem("MISSING_OBSERVED_BALANCE")
+        if (observed.balanceMarker && balance == null && negativeBalance == null) problem("MISSING_OBSERVED_BALANCE")
         val transfer = family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
-        if (transfer && account == null && (family == MessageFamily.TRANSFER_OUT || details.counterparty == null)) problem("MISSING_TRANSFER_SOURCE")
-        if (transfer && destination == null && (family == MessageFamily.TRANSFER_IN || details.counterparty == null)) problem("MISSING_TRANSFER_DESTINATION")
+        if (transfer && account == null && (family == MessageFamily.TRANSFER_OUT || details.counterparty == null && defaults?.destination == null)) problem("MISSING_TRANSFER_SOURCE")
+        if (transfer && destination == null && (family == MessageFamily.TRANSFER_IN || details.counterparty == null && defaults?.source == null)) problem("MISSING_TRANSFER_DESTINATION")
         val sourceBank = if (family == MessageFamily.TRANSFER_IN) {
             if (network.kind == BankNetwork.INTRA_BANK) banks.single() else network.source
         } else network.source ?: banks.single()
@@ -226,7 +249,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             cardChannel = observed.card, purchaseChannel = observed.purchase, loanType = observed.loan,
             salaryIncomeWording = observed.salary,
             debitSourceAccountLast4 = account?.takeIf { observed.card == CardChannel.DEBIT && family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) },
-            executionState = if (family in INFORMATIONAL || blockers.isNotEmpty()) null else "EXECUTED")
+            executionState = if (family in INFORMATIONAL || blockers.isNotEmpty()) null else "EXECUTED",
+            negativeAvailableBalance = negativeBalance?.takeIf { it.amount.signum() > 0 })
         return result(facts, when {
             blockers.isNotEmpty() -> ParseStatus.REVIEW_REQUIRED
             family in INFORMATIONAL -> ParseStatus.NON_FINANCIAL
@@ -235,7 +259,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v14"
+        const val VERSION = "bank-rules-independent-v16"
         private const val MAX_BODY = 16000
         private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")

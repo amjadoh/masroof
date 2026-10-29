@@ -38,4 +38,11 @@ data class ParsedEventDetails(
     val debitSourceAccountLast4: String? = null,
     /** Transfer-in SMS mentions salary-like wording at parse time. */
     val salaryIncomeWording: Boolean? = null,
-)
+    /** Absolute magnitude when the bank explicitly reports a negative available balance. */
+    val negativeAvailableBalance: Money? = null,
+) {
+    init {
+        require(availableBalance == null || negativeAvailableBalance == null)
+        require(negativeAvailableBalance == null || negativeAvailableBalance.amount.signum() > 0)
+    }
+}

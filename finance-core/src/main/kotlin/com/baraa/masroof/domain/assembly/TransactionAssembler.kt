@@ -445,6 +445,9 @@ object TransactionAssembler {
             MessageFamily.CARD_PAYMENT ->
                 durableSourceAccountId to durableCardId
 
+            MessageFamily.BILL_PAYMENT ->
+                (durableSourceAccountId ?: durableCardId) to null
+
             MessageFamily.FINANCING_INSTALLMENT ->
                 durableSourceAccountId to loanType?.let {
                     FinancialContainerIdFactory.loanId(event.bank, it)

@@ -73,6 +73,7 @@ class AlJaziraParseParityTest {
             "details.paymentDueDate" to draft.copy(details = draft.details.copy(paymentDueDate = LocalDate.of(2026, 9, 1))),
             "event.parseStatus" to draft.copy(confidence = Confidence(0.0, emptyList())),
             "event.amount" to draft.copy(amount = null),
+            "details.negativeAvailableBalance" to draft.copy(details = draft.details.copy(negativeAvailableBalance = Money.of("2", Currency.SAR))),
         )
         for ((field, changed) in changes) {
             assertTrue("Missed change to $field", field in ParseParity.differences(original, snapshot(changed)))

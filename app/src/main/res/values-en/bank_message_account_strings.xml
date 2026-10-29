@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bank_message_account_title">Link short %1$s messages</string>
+    <string name="bank_message_account_hint">Choose your account once for messages that omit its number.</string>
+    <string name="bank_message_account_selected">Selected account: ****%1$s</string>
+    <string name="bank_message_account_choose">Choose account and currency</string>
+    <string name="bank_message_account_save">Save and process pending messages</string>
+    <string name="bank_message_account_explanation">Choose the account for abbreviated messages. It is used only when an account is missing, and never replaces an explicit credit card on a purchase. Check your choice if you have multiple accounts.</string>
+    <string name="bank_message_account_empty">Confirm an account first, or manually add the last four digits of your account or wallet IBAN.</string>
+    <string name="bank_message_account_currency">Account currency for amounts that omit a currency</string>
+    <string name="bank_message_account_loan">Are personal-finance installments yours and paid from this account?</string>
+    <string name="bank_message_account_loan_yes">Yes, this is my loan paid from the selected account</string>
+    <string name="bank_message_account_loan_no">Do not use this link for loan installments</string>
+    <string name="bank_message_account_failed">Saving or processing could not finish. Reopen the setup and retry; saved choices do not erase existing transactions.</string>
+</resources>

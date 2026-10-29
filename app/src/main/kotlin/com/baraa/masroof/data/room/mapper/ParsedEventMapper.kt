@@ -21,7 +21,8 @@ import java.time.LocalDateTime
 object ParsedEventMapper {
     fun toEntity(event: ParsedEvent, details: ParsedEventDetails): ParsedEventEntity {
         val (amountDecimal, amountCurrency) = MoneyPersistence.toColumns(event.amount)
-        val (availableDecimal, availableCurrency) = MoneyPersistence.toColumns(details.availableBalance)
+        val (availableMagnitude, availableCurrency) = MoneyPersistence.toColumns(details.availableBalance ?: details.negativeAvailableBalance)
+        val availableDecimal = if (details.negativeAvailableBalance != null) availableMagnitude?.toBigDecimal()?.negate()?.toPlainString() else availableMagnitude
         val (outstandingDecimal, outstandingCurrency) =
             MoneyPersistence.toColumns(details.outstandingBalance)
         val (internationalFeeDecimal, internationalFeeCurrency) =
@@ -113,8 +114,12 @@ object ParsedEventMapper {
         ParsedEventDetails(
             transactionReference = entity.transactionReference,
             availableBalance = MoneyPersistence.fromColumns(
-                entity.availableBalanceDecimal,
-                entity.availableBalanceCurrency,
+                entity.availableBalanceDecimal?.takeUnless { it.toBigDecimal().signum() < 0 },
+                entity.availableBalanceCurrency?.takeUnless { entity.availableBalanceDecimal?.toBigDecimal()?.signum() == -1 },
+            ),
+            negativeAvailableBalance = MoneyPersistence.fromColumns(
+                entity.availableBalanceDecimal?.takeIf { it.toBigDecimal().signum() < 0 }?.toBigDecimal()?.abs()?.toPlainString(),
+                entity.availableBalanceCurrency?.takeIf { entity.availableBalanceDecimal?.toBigDecimal()?.signum() == -1 },
             ),
             outstandingBalance = MoneyPersistence.fromColumns(
                 entity.outstandingBalanceDecimal,

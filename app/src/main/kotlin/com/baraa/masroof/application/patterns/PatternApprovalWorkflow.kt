@@ -22,6 +22,8 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 
 data class PatternAccountOption(val id: String, val name: String?, val last4: String)
+data class BankMessageAccountSetup(val accounts: List<PatternAccountOption>, val selectedAccountId: String?,
+    val currency: String = "SAR", val personalLoan: Boolean = false)
 class PatternFinancialPreview internal constructor(internal val generation: Long, internal val priorFingerprint: String,
     internal val pattern: SavedMessagePattern, internal val accountId: String?,
     val amount: Money, val occurredAt: String, val reference: String?, internal val cardId: String? = null)
@@ -30,6 +32,49 @@ class PatternFinancialPreview internal constructor(internal val generation: Long
 class PatternApprovalWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
     private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService,
     private val cards: CardRegistryRepository? = null) {
+
+    suspend fun bankAccountSetup(bankId: String): BankMessageAccountSetup = withContext(Dispatchers.IO) {
+        gate.withAccess {
+            val choices = ownedAccounts(bankId)
+            val contracts = store.load().banks.single { it.bankId == bankId }.currentPatterns
+                .filter { it.roleProfile != null }.mapNotNull { it.factContract }
+            val binding = contracts.flatMap { it.accountBindings }.firstOrNull { it.field == null }
+            BankMessageAccountSetup(choices.map { PatternAccountOption(it.id, it.displayName, it.maskedNumber) },
+                choices.singleOrNull { it.maskedNumber == binding?.last4 }?.id,
+                contracts.firstOrNull { it.accountBindings.isNotEmpty() }?.currency?.name ?: "SAR",
+                contracts.any { it.family == MessageFamily.FINANCING_INSTALLMENT && it.accountBindings.isNotEmpty() })
+        }
+    }
+
+    /** One explicit choice supplies missing local roles only; observed accounts always win. */
+    suspend fun configureBankAccount(generation: Long, bankId: String, accountId: String, currency: Currency,
+        personalLoan: Boolean) = withContext(Dispatchers.IO) {
+        gate.withExclusiveAccess {
+            val current = store.load()
+            check(current.generation == generation) { "Configuration changed" }
+            val account = ownedAccounts(bankId).single { it.id == accountId }
+            val bank = current.banks.single { it.bankId == bankId }
+            val revisions = bank.currentPatterns.filter { it.roleProfile != null }.mapNotNull { pattern ->
+                val prior = pattern.factContract ?: return@mapNotNull null
+                if (prior.family in setOf(MessageFamily.OTP, MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE, MessageFamily.UNKNOWN)) return@mapNotNull null
+                // Preserve any narrower, explicitly mapped reference contract.
+                if (prior.accountBindings.any { it.field != null }) return@mapNotNull null
+                val incoming = prior.family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.REFUND)
+                val allowed = prior.family in setOf(MessageFamily.PURCHASE, MessageFamily.TRANSFER_IN,
+                    MessageFamily.TRANSFER_OUT, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE) ||
+                    prior.family == MessageFamily.FINANCING_INSTALLMENT && personalLoan
+                if (!allowed && prior.accountBindings.isEmpty()) return@mapNotNull null
+                val next = prior.copy(version = 2, currency = currency.takeIf { allowed },
+                    accountBindings = if (allowed) listOf(PatternAccountBinding(
+                        if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE,
+                        BankId(bankId), account.maskedNumber)) else emptyList())
+                if (next == prior) null else pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = next)
+            }
+            if (revisions.isNotEmpty()) store.saveBank(current.generation, bank.copy(patterns = revisions))
+            if (personalLoan) ownership.confirmLoanOwned(com.baraa.masroof.domain.model.LoanReference(
+                Bank(bankId), com.baraa.masroof.domain.model.LoanType.PERSONAL))
+        }
+    }
 
     suspend fun accounts(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {
         gate.withAccess { ownedAccounts(bankId).map { PatternAccountOption(it.id, it.displayName, it.maskedNumber) } }
