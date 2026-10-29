@@ -179,7 +179,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val account = primary.identifier(ExtractionField.SOURCE_ACCOUNT)
         val destination = primary.identifier(ExtractionField.DESTINATION_ACCOUNT)
         val merchant = primary.merchant()
-        val times = primary.transactionTimes()
+        val times = primary.transactionTimes(ignoreUnbound = family in INFORMATIONAL)
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {
             it.code in setOf("INVALID_TIME", "UNBOUND_TIME_ROLE", "CONFLICTING_TIME") }
         if(receiptTime && family !in INFORMATIONAL) diagnostics += InterpretationDiagnostic(

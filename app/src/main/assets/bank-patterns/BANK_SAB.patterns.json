@@ -104,6 +104,7 @@
                   ],
                   "card.credit": [
                     "ائتمانية",
+                    "الائتمانية",
                     "credit card"
                   ],
                   "card.debit": [
@@ -589,6 +590,7 @@
                 "observations": {
                   "card.credit": [
                     "ائتمانية",
+                    "الائتمانية",
                     "credit card"
                   ]
                 }
@@ -1037,6 +1039,7 @@
                 "observations": {
                   "card.credit": [
                     "ائتمانية",
+                    "الائتمانية",
                     "credit card"
                   ],
                   "card.debit": [
