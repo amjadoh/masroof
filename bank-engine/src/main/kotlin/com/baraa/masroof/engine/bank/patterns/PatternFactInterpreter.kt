@@ -125,7 +125,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         fun boundAccount(role: PatternAccountRole): AccountReference? {
             val binding = contract.accountBindings.singleOrNull { it.role == role } ?: return null
             if (binding.field != null) {
-                if (normalized(binding.field) != binding.observedValue) { block("PATTERN_ACCOUNT_BINDING_MISMATCH"); return null }
+                if (normalized(binding.field)?.let(::unmaskedReference) != binding.observedValue) { block("PATTERN_ACCOUNT_BINDING_MISMATCH"); return null }
                 boundFields += binding.field
             }
             definitionFacts += "${role.name}_ACCOUNT_IDENTITY"
@@ -153,7 +153,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         fun account(field: String, referenceBank: BankId?): AccountReference? {
             if (field in contract.contextReferences || field in boundFields) return null
-            val raw = normalized(field) ?: return null
+            val raw = normalized(field)?.let(::unmaskedReference) ?: return null
             if (!SUFFIX.matches(raw) || referenceBank == null) { block("PATTERN_ACCOUNT_REFERENCE_UNRESOLVED"); return null }
             definitionFacts += "${field.uppercase(Locale.ROOT)}_BANK"
             return AccountReference(referenceBank, raw)
@@ -166,7 +166,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if (parsed == null) block("PATTERN_TIME_INCOMPLETE")
             parsed
         }
-        val card = normalized("card")?.let {
+        val card = normalized("card")?.let(::unmaskedReference)?.let {
             if (!SUFFIX.matches(it) || contract.cardBank == null) { block("PATTERN_CARD_REFERENCE_UNRESOLVED"); null }
             else { definitionFacts += "CARD_BANK"; CardReference(contract.cardBank, it) }
         }
@@ -255,3 +255,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
     }
 }
+
+/** `*1234`, `xx1234`, `1234**` and `(1234)` name the same reference as `1234`; approval and interpretation share this. */
+fun unmaskedReference(normalized: String): String =
+    normalized.trim().replace(Regex("^[(*x•.]+|[)*x•.]+$"), "")
