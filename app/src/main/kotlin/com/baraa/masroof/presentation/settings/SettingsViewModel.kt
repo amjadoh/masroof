@@ -103,7 +103,10 @@ class SettingsViewModel(
                     smsPermissionGranted = permissionStateProvider(),
                 )
             }
-            restorePendingUpdateState()
+            // An update-state failure must not leave `loading` stuck (it disables onboarding actions).
+            try { restorePendingUpdateState() } catch (_: Exception) {
+                appLogService.error(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Pending update state restore failed")
+            }
             try {
                 val catalog = messagePatternsWorkflow?.catalog()
                 _uiState.update { it.copy(bankCatalog = catalog) }
