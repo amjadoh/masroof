@@ -44,6 +44,19 @@ fun CreditCardDashboardRow.displayLabel(ownedCards: List<OwnedCardUi>): String {
     return stringResource(R.string.dashboard_credit_card_last4, formatCardLast4(last4))
 }
 
+/** Localized like credit cards: the user's name, else "بطاقة ···1234" (never the English registry default). */
+@Composable
+fun com.baraa.masroof.application.dashboard.DebitCardOverview.displayLabel(ownedCards: List<OwnedCardUi>): String =
+    cardDisplayLabel(ownedCards, bank, last4)
+
+/** Mada cards read "مدى"; other networks read "خصم مباشر · فيزا"; unknown network reads "خصم مباشر". */
+@Composable
+fun debitCardTypeLabel(network: com.baraa.masroof.domain.model.CardNetwork?): String = when (network) {
+    com.baraa.masroof.domain.model.CardNetwork.MADA -> stringResource(R.string.card_network_mada)
+    null, com.baraa.masroof.domain.model.CardNetwork.UNKNOWN -> stringResource(R.string.settings_card_type_debit)
+    else -> stringResource(R.string.settings_card_type_debit) + " · " + com.baraa.masroof.presentation.settings.cardNetworkLabel(network)
+}
+
 @Composable
 fun accountDisplayLabel(
     accounts: List<OwnedAccountUi>,

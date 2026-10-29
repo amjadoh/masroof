@@ -22,14 +22,14 @@ import java.time.ZoneId
 
 @Composable
 fun DebitCardDetailSummaryCard(debit: DebitCardOverview, network: CardNetwork?, modifier: Modifier = Modifier,
-    trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null) {
+    trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null, ownedCards: List<OwnedCardUi> = emptyList()) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        com.baraa.masroof.presentation.common.MasroofHeroCard(debit.displayLabel,
+        com.baraa.masroof.presentation.common.MasroofHeroCard(debit.displayLabel(ownedCards),
             formatLocalizedMoney(debit.salaryPeriodSpendingNet), com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank),
             role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account)
         MasroofCard {
             Text(stringResource(R.string.reference_card_data), style = MaterialTheme.typography.titleMedium)
-            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_card_type), stringResource(R.string.card_network_mada))
+            com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_card_type), debitCardTypeLabel(network))
             com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_debit_card_linked_account),
                 debit.linkedAccountLabel ?: debit.linkedAccountMaskedNumber?.let { formatCardLast4(it) }
                     ?: stringResource(R.string.dashboard_value_unavailable))
@@ -46,8 +46,9 @@ fun DebitCardDetailSummaryCard(debit: DebitCardOverview, network: CardNetwork?, 
 fun DebitCardSummaryTile(debit: DebitCardOverview, network: CardNetwork?, modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     trend: com.baraa.masroof.application.dashboard.DailySpendingTrend? = null,
+    ownedCards: List<OwnedCardUi> = emptyList(),
 ) {
-    EntitySummaryCard(debit.displayLabel, stringResource(R.string.card_network_mada), MasroofIcons.cardPayment,
+    EntitySummaryCard(debit.displayLabel(ownedCards), debitCardTypeLabel(network), MasroofIcons.cardPayment,
         MasroofThemeExtras.extendedColors.account, modifier, onClick, actionLabel = stringResource(R.string.reference_card_details),
         bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank)) {
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_debit_card_linked_account),

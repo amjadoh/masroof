@@ -21,7 +21,7 @@ fun DebitCardDetailScreen(
         last4 = debit.last4,
         debitSpendInvolvementByTransactionId = state.transactionDebitSpendInvolvement,
     )
-    val title = debit.displayLabel
+    val title = debit.displayLabel(state.ownedCards)
 
     DashboardSummaryScaffold(
         title = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_card_detail_title),
@@ -34,6 +34,7 @@ fun DebitCardDetailScreen(
             network = cardNetwork,
             modifier = Modifier.fillMaxWidth(),
             trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
+            ownedCards = state.ownedCards,
         )
 
         onManageCard?.let { manage ->
@@ -46,7 +47,7 @@ fun DebitCardDetailScreen(
         SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),
             role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
             explanation = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.dashboard_mada_trend_basis),
-            chartKey = "card:${CardOwnershipKey.of(debit)}", scopeLabel = debit.displayLabel)
+            chartKey = "card:${CardOwnershipKey.of(debit)}", scopeLabel = title)
         DashboardSummaryTransactionsSection(
             transactions = cardTransactions,
             onOpenTransaction = onOpenTransaction,
