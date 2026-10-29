@@ -82,12 +82,13 @@ internal class PrimaryFieldExtractor(
         return merchants.singleOrNull()
     }
 
-    fun transactionTimes(): List<LocalDateTime> {
+    fun transactionTimes(ignoreUnbound: Boolean = false): List<LocalDateTime> {
         val times = DateGrammar.timestamp.findAll(source.text).mapNotNull { match ->
             val lineStart = source.text.lastIndexOf('\n', match.range.first).let { if (it < 0) 0 else it + 1 }
             val prefix = source.text.substring(lineStart, match.range.first).trim().removeSuffix(":").trim()
             if (prefix !in TIME_LABELS) {
-                problem("UNBOUND_TIME_ROLE", Blocker.VALIDATION_ERROR); return@mapNotNull null
+                if (!ignoreUnbound) problem("UNBOUND_TIME_ROLE", Blocker.VALIDATION_ERROR)
+                return@mapNotNull null
             }
             evidence += source.evidence("extract.time", "occurredAtLocal", match.range)
             DateGrammar.time(match.value).also { if (it == null) problem("INVALID_TIME", Blocker.VALIDATION_ERROR) }
