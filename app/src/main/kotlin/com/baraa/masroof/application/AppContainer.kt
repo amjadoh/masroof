@@ -168,7 +168,8 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC").flatMap { bankId ->
+    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC", "BANK_SNB", "BANK_BARQ",
+        "BANK_EMIRATES_NBD", "BANK_SAB", "BANK_ALINMA").flatMap { bankId ->
         com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
             appContext.assets.open("bank-patterns/$bankId.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
     }
@@ -181,6 +182,7 @@ class AppContainer(
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
             messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
             requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
+            appLogService = appLogService,
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
                 accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
             importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },

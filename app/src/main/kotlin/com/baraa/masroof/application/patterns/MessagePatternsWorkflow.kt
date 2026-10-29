@@ -20,7 +20,12 @@ class MessagePatternsWorkflow(
     private val activation: PatternApprovalWorkflow? = null,
     private val importBank: (suspend (String) -> com.baraa.masroof.application.sms.SmsScanResult)? = null,
     private val requiredBundledBankIds: Set<String> = emptySet(),
+    private val appLogService: com.baraa.masroof.application.logging.AppLogService? = null,
 ) {
+    /** Pattern screens report caught failures here so they reach the app log. */
+    fun reportFailure(action: String, error: Throwable) {
+        appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.PARSE, action, error)
+    }
     val canPreviewPending: Boolean get() = pendingPreview != null
     val canApplyPending: Boolean get() = pendingPreview?.canApply == true
     val canApprove: Boolean get() = activation != null

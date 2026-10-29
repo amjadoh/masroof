@@ -97,7 +97,7 @@ internal fun PatternApprovalReferences(pattern: PatternDefinitionView, operation
     MasroofCard {
         Text(stringResource(R.string.pattern_approval_reference_question), style = MaterialTheme.typography.titleMedium)
         fields.filterKeys { it in pattern.referenceFields }.forEach { (key, value) ->
-            MasroofDetailRow(patternFieldName(key), value.text)
+            MasroofDetailRow(patternFieldName(key), value.text, guidance = patternFieldHelp(key))
         }
         PatternApprovalRadio(stringResource(R.string.pattern_approval_other_reference),
             stringResource(R.string.pattern_approval_other_reference_help), chosen && reference == null, enabled,

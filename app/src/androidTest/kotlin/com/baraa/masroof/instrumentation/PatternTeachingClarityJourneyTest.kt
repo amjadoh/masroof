@@ -69,6 +69,8 @@ class PatternTeachingClarityJourneyTest {
             select("100.00 SAR")
             compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed().performClick()
             compose.onNodeWithTag("pattern-question").assertTextContains("مبلغ العملية", substring = true)
+            // Every field question carries a plain explanation with an SMS example.
+            compose.onNodeWithTag("pattern-field-help").assertIsDisplayed().assertTextContains("مثال", substring = true)
             compose.onNodeWithTag("pattern-bind").performClick()
             repeat(5) { click(R.string.teaching_skip_field) }
             compose.onNodeWithTag("pattern-question").assertIsDisplayed().assertTextContains("بنك الطرف الآخر", substring = true)
