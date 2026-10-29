@@ -41,19 +41,15 @@ class BackupArchiveValidatorTest {
         cases.forEach { (archive, limits) ->
             withStaging { staging ->
                 val target = File(staging, BackupPackageFormat.DATABASE_ENTRY)
-                val old = System.getSecurityManager()
                 var checked = false
-                System.setSecurityManager(object : SecurityManager() {
-                    override fun checkPermission(permission: java.security.Permission) = Unit
-                    override fun checkDelete(file: String) {
-                        if (file == target.path && target.exists()) {
-                            val bytes = target.readBytes()
-                            assertTrue("the rejection wrote a sensitive prefix", bytes.isNotEmpty())
-                            assertTrue("every byte must be zero before unlink", bytes.all { it.toInt() == 0 })
-                            checked = true
-                        }
+                SensitiveFileCleanup.beforeUnlink = { file ->
+                    if (file.path == target.path) {
+                        val bytes = file.readBytes()
+                        assertTrue("the rejection wrote a sensitive prefix", bytes.isNotEmpty())
+                        assertTrue("every byte must be zero before unlink", bytes.all { it.toInt() == 0 })
+                        checked = true
                     }
-                })
+                }
                 try {
                     assertThrows(BackupArchiveException::class.java) {
                         BackupArchiveValidator(limits).extractInto(archive.inputStream(), staging)
@@ -61,7 +57,7 @@ class BackupArchiveValidatorTest {
                     assertTrue(checked)
                     assertFalse(target.exists())
                 } finally {
-                    System.setSecurityManager(old)
+                    SensitiveFileCleanup.beforeUnlink = null
                 }
             }
         }
