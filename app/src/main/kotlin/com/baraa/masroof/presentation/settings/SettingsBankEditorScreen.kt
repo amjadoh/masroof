@@ -59,7 +59,7 @@ fun SettingsBankEditorScreen(catalog: PatternCatalog, bankId: String?, workflow:
                             val id = bank?.bankId ?: updated.banks.single { added -> catalog.banks.none { it.bankId == added.bankId } }.bankId
                             onSaved(id)
                         } catch (error: CancellationException) { throw error }
-                        catch (_: Exception) { failed = true }
+                        catch (caught: Exception) { workflow.reportFailure("SettingsBankEditorScreen", caught); failed = true }
                         finally { busy = false }
                     }
                 }

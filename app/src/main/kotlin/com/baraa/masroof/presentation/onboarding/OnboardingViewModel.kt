@@ -41,6 +41,7 @@ class OnboardingViewModel(
     private val loadBankCatalog: suspend () -> com.baraa.masroof.application.patterns.PatternCatalog = {
         messagePatternsWorkflow?.catalog() ?: com.baraa.masroof.application.patterns.PatternCatalog(0, emptyList())
     },
+    private val appLogService: com.baraa.masroof.application.logging.AppLogService? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -69,7 +70,7 @@ class OnboardingViewModel(
                 return@launch
             }
             val catalog = try { loadBankCatalog() } catch (error: CancellationException) { throw error }
-            catch (_: Exception) {
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Onboarding reloadFromCurrentState", caught);
                 val completed = onboardingPrefs.isOnboardingCompleted()
                 _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED,
                     step = if (completed) OnboardingStep.HOME else it.step, onboardingCompleted = completed) }
@@ -121,7 +122,7 @@ class OnboardingViewModel(
             if (step == OnboardingStep.OWNERSHIP || step == OnboardingStep.HOME) {
                 try { loadCandidatesAndCounts() }
                 catch (error: CancellationException) { throw error }
-                catch (_: Exception) { _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
+                catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Onboarding reloadFromCurrentState", caught); _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
             }
         }
     }
@@ -162,7 +163,7 @@ class OnboardingViewModel(
                 _uiState.update { it.copy(bankCatalog = catalog, loadingBanks = false, error = null) }
                 if (bankId !in _uiState.value.selectedBankIds) toggleBank(bankId)
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) { _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED) } }
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Onboarding onBankAdded", caught); _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED) } }
         }
     }
 
@@ -235,7 +236,7 @@ class OnboardingViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Onboarding restoreBackup", caught);
                 _uiState.update { it.copy(error = OnboardingError.BACKUP_RESTORE_FAILED) }
             }
         }
@@ -302,7 +303,7 @@ class OnboardingViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Onboarding importRestore", caught);
                 _uiState.update {
                     it.copy(
                         restoringBackup = false,
@@ -418,7 +419,7 @@ class OnboardingViewModel(
                             _uiState.update { it.copy(step = OnboardingStep.OWNERSHIP) }
                         } catch (ce: CancellationException) {
                             throw ce
-                        } catch (_: Exception) {
+                        } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SCAN, "Onboarding startImport", caught);
                             onboardingPrefs.setHistoricalImportCompleted(false)
                             _uiState.update {
                                 it.copy(
@@ -453,7 +454,7 @@ class OnboardingViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SCAN, "Onboarding startImport", caught);
                 _uiState.update {
                     it.copy(
                                 importState = ImportState.ProviderError(
@@ -480,7 +481,7 @@ class OnboardingViewModel(
                 reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
                 loadCandidatesAndCounts()
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) {
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding setAccountOwnership", caught);
                 reloadAfterOwnershipFailure()
                 _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
             } finally { _uiState.update { it.copy(updatingOwnership = false) } }
@@ -501,7 +502,7 @@ class OnboardingViewModel(
                 reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
                 loadCandidatesAndCounts()
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) {
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding setCardOwnership", caught);
                 reloadAfterOwnershipFailure()
                 _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
             } finally { _uiState.update { it.copy(updatingOwnership = false) } }
@@ -529,7 +530,7 @@ class OnboardingViewModel(
                     )
                 }
             } catch (error: CancellationException) { throw error }
-            catch (_: Exception) {
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding finalizeOnboarding", caught);
                 _uiState.update { it.copy(finalizing = false, error = OnboardingError.FINALIZATION_FAILED) }
             } finally { _uiState.update { it.copy(finalizing = false) } }
         }
@@ -555,7 +556,7 @@ class OnboardingViewModel(
     private suspend fun reloadAfterOwnershipFailure() {
         try { loadCandidatesAndCounts() }
         catch (error: CancellationException) { throw error }
-        catch (_: Exception) { /* Preserve the durable decision and show the write/retry failure. */ }
+        catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding reloadAfterOwnershipFailure", caught); /* Preserve the durable decision and show the write/retry failure. */ }
     }
 
     fun refreshOwnership() {
@@ -563,7 +564,7 @@ class OnboardingViewModel(
         viewModelScope.launch {
             try { loadCandidatesAndCounts() }
             catch (error: CancellationException) { throw error }
-            catch (_: Exception) { _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
+            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding refreshOwnership", caught); _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
         }
     }
 
