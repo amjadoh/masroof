@@ -120,7 +120,8 @@ internal fun PatternTeachingScreen(
         Box(modifier, contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = MasroofTeachingTokens.maxWidth).fillMaxSize().imePadding(),
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount")
+                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount",
+                    help = if (step == 1) patternFieldHelp(field) else null)
                 if (busy || loadingExample) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) MasroofOutlinedButton({ preview = null; failed = false; onReload() }, enabled = !busy) {
                     Text(stringResource(R.string.dashboard_retry))
@@ -205,6 +206,13 @@ internal fun PatternTeachingScreen(
 internal fun patternFieldName(key: String): String {
     val keys = stringArrayResource(R.array.pattern_field_keys)
     return stringArrayResource(R.array.pattern_field_names).getOrNull(keys.indexOf(key)) ?: key
+}
+
+/** Plain explanation and an SMS example for a field such as Ref / Acc; null for unknown keys. */
+@Composable
+internal fun patternFieldHelp(key: String): String? {
+    val keys = stringArrayResource(R.array.pattern_field_keys)
+    return stringArrayResource(R.array.pattern_field_help).getOrNull(keys.indexOf(key))
 }
 
 @Composable
