@@ -35,6 +35,7 @@ fun reviewViewModelFactory(
             },
             appLocaleRepository = container.appLocaleRepository,
             maintenanceCompletions = container.maintenanceCompletionSignal.completions,
+            appLogService = container.appLogService,
         )
     }
 }

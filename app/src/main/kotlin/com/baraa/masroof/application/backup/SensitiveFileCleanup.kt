@@ -5,6 +5,9 @@ import java.io.RandomAccessFile
 
 /** Overwrite sensitive temporary bytes and sync before unlinking their files. */
 internal object SensitiveFileCleanup {
+    /** Test-only observer of a file just before unlink (replaces a JDK SecurityManager, removed in Java 24). */
+    @Volatile internal var beforeUnlink: ((File) -> Unit)? = null
+
     fun wipe(file: File) {
         if (!file.isFile) return
         // Opening FileOutputStream first would truncate the file before length is read.
@@ -27,6 +30,7 @@ internal object SensitiveFileCleanup {
         } else {
             wipe(file)
         }
+        beforeUnlink?.invoke(file)
         check(file.delete()) { "Cannot delete sensitive temporary file" }
     }
 

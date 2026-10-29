@@ -93,7 +93,6 @@ class ReviewDetailLoader(
         val detail = toDetail(review) ?: return null
         val title = detail.merchant?.takeIf { it.isNotBlank() }
             ?: detail.counterparty?.takeIf { it.isNotBlank() }
-            ?: detail.messageFamily?.name
         return ReviewSummary(
             review = review,
             title = title,

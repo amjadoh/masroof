@@ -72,7 +72,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             val cardField = fields["card"]
             if (cardField != null) {
                 if (card == null) throw PatternApprovalException(PatternApprovalProblem.CARD_MISMATCH)
-                val suffix = com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(cardField.raw).comparisonBody.trim()
+                val suffix = com.baraa.masroof.engine.bank.patterns.unmaskedReference(
+                    com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(cardField.raw).comparisonBody)
                 if (suffix != card.last4) throw PatternApprovalException(PatternApprovalProblem.CARD_MISMATCH)
             } else require(card == null) { "No explicit card reference" }
             require(referenceField == null || account != null)
@@ -81,7 +82,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             val observed = referenceField?.let { field -> fields[field]?.raw
                 ?: throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH) }
             // A three-digit key must be mapped explicitly; a full suffix must already identify the chosen account.
-            val key = observed?.let { value -> com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim() }
+            val key = observed?.let { value -> com.baraa.masroof.engine.bank.patterns.unmaskedReference(
+                com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody) }
             if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))
                 throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH)
             val contract = PatternFactContract(MessageFamily.valueOf(operation.name),

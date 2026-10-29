@@ -261,7 +261,7 @@ internal fun ReviewListCard(item: ReviewListItemUi, onClick: () -> Unit) {
     MasroofCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text(item.titleRes?.let { stringResource(it) } ?: item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             com.baraa.masroof.presentation.common.MasroofBadge(stringResource(item.kindLabelRes),
                 if (item.ignored) com.baraa.masroof.presentation.common.MasroofCardAccent.Inflow
                 else com.baraa.masroof.presentation.common.MasroofCardAccent.Liability)

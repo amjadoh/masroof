@@ -17,6 +17,8 @@ data class ReviewListItemUi(
     val reasonLabel: String,
     val dismissibleAsNonFinancial: Boolean = false,
     val ignored: Boolean = false,
+    /** Localized title used when the SMS named no merchant or counterparty. */
+    val titleRes: Int? = null,
 )
 
 data class ReviewBankChoiceUi(

@@ -33,10 +33,13 @@ internal class SourceText(private val original: String) {
     }
         private set
 
-    /** Segment explicit English purchase clauses without changing any original evidence offset. */
+    /** Segment explicit English and Arabic purchase clauses without changing any original evidence offset. */
     fun segmentInlinePurchase(): SourceText {
-        if (!Regex("^ *(?:online|internet) purchase(?: apple pay)? +(?:credit card|debit card|card) *:?").containsMatchIn(text)) return this
-        val terms = listOf("available balance is", "available balance", "credit card", "debit card", "due amount", "of", "at", "on")
+        val english = Regex("^ *(?:online|internet) purchase(?: apple pay)? +(?:credit card|debit card|card) *:?").containsMatchIn(text)
+        val arabic = Regex("^ *شراء عبر (?:نقاط البيع|الانترنت) *\\n+ *باستخدام بطاقة[^\\n]+(?:لدي|بمبلغ)").containsMatchIn(text)
+        if (!english && !arabic) return this
+        val terms = if (arabic) listOf("لدى", "بمبلغ", "في") else
+            listOf("available balance is", "available balance", "credit card", "debit card", "due amount", "of", "at", "on")
         val pattern = Regex(terms.joinToString("|") { phrase(it).pattern })
         val boundaries = pattern.findAll(text).map { it.range.first }.filter { it > 0 && text[it - 1] != '\n' }.toSet()
         val oldText = text; val oldStarts = starts.toList(); val oldEnds = ends.toList()
@@ -50,6 +53,9 @@ internal class SourceText(private val original: String) {
 
     fun phrase(value: String): Regex = Regex("(?<![\\p{L}\\p{N}_])" +
         SourceText(value).text.split(Regex("[ \\t]+" )).joinToString("[ \\t]+") { Regex.escape(it) } + "(?![\\p{L}\\p{N}_])")
+
+    /** A role label may touch the digits of its value (`بمبلغ120`), but never a longer word. */
+    fun role(value: String): Regex = Regex(phrase(value).pattern.removeSuffix("(?![\\p{L}\\p{N}_])") + "(?![\\p{L}_])")
 
     fun evidence(rule: String, field: String, range: IntRange): Evidence =
         Evidence(rule, field, starts[range.first], ends[range.last])

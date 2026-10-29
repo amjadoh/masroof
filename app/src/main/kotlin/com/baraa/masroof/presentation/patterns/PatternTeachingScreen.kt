@@ -72,7 +72,7 @@ internal fun PatternTeachingScreen(
         scope.launch {
             try { action() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { failed = true }
+            catch (caught: Exception) { workflow.reportFailure("PatternTeachingScreen", caught); failed = true }
             finally { busy = false }
         }
     }
@@ -96,7 +96,7 @@ internal fun PatternTeachingScreen(
             if (existingPattern != null && step == 0 && operation.name == existingPattern.label)
                 bindings = workflow.editBindings(generation, bank.bankId, existingPattern.id, body.text)
         } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
+        catch (caught: Exception) { workflow.reportFailure("PatternTeachingScreen", caught); failed = true }
         finally { loadingExample = false }
     }
     LaunchedEffect(step, fieldIndex) {
@@ -120,7 +120,8 @@ internal fun PatternTeachingScreen(
         Box(modifier, contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = MasroofTeachingTokens.maxWidth).fillMaxSize().imePadding(),
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount")
+                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount",
+                    help = if (step == 1) patternFieldHelp(field) else null)
                 if (busy || loadingExample) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) MasroofOutlinedButton({ preview = null; failed = false; onReload() }, enabled = !busy) {
                     Text(stringResource(R.string.dashboard_retry))
@@ -205,6 +206,13 @@ internal fun PatternTeachingScreen(
 internal fun patternFieldName(key: String): String {
     val keys = stringArrayResource(R.array.pattern_field_keys)
     return stringArrayResource(R.array.pattern_field_names).getOrNull(keys.indexOf(key)) ?: key
+}
+
+/** Plain explanation and an SMS example for a field such as Ref / Acc; null for unknown keys. */
+@Composable
+internal fun patternFieldHelp(key: String): String? {
+    val keys = stringArrayResource(R.array.pattern_field_keys)
+    return stringArrayResource(R.array.pattern_field_help).getOrNull(keys.indexOf(key))
 }
 
 @Composable

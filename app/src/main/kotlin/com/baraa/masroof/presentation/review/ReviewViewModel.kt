@@ -43,6 +43,7 @@ class ReviewViewModel(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     maintenanceCompletions: Flow<Unit> = emptyFlow(),
     val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
+    private val appLogService: com.baraa.masroof.application.logging.AppLogService? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReviewUiState())
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
@@ -75,7 +76,7 @@ class ReviewViewModel(
                 applySummaries(summaries)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review refresh", caught);
                 _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) }
             }
         }
@@ -124,7 +125,7 @@ class ReviewViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review dismissAllInformational", caught);
                 _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) }
             }
         }
@@ -155,7 +156,7 @@ class ReviewViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review openDetail", caught);
                 _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) }
             }
         }
@@ -180,7 +181,7 @@ class ReviewViewModel(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review refreshAfterPatternTeaching", caught);
                 _uiState.update { it.copy(error = ReviewError.LOAD_FAILED) }
             }
         }
@@ -230,7 +231,7 @@ class ReviewViewModel(
                 applySummaries(detailLoader.loadSummaries())
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review selectBank", caught);
                 _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) }
             }
         }
@@ -274,7 +275,7 @@ class ReviewViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review restoreIgnoredMessage", caught);
                 _uiState.update {
                     it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
                 }
@@ -334,7 +335,7 @@ class ReviewViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review runOwnershipAction", caught);
                 _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) }
             }
         }
@@ -385,7 +386,7 @@ class ReviewViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review runAction", caught);
                 _uiState.update {
                     it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
                 }
@@ -458,6 +459,9 @@ class ReviewViewModel(
                 review.kind.toUiLabelRes()
             },
             title = summary.title ?: "—",
+            titleRes = if (summary.title != null) null
+                else if (summary.messageFamily in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) com.baraa.masroof.R.string.transaction_unknown_merchant
+                else summary.messageFamily.toUiLabelRes(),
             smsBody = summary.body?.trim().orEmpty().ifEmpty { "—" },
             amountLabel = summary.amount?.let { MoneyUiFormatter.format(it, languageTag) },
             dateLabel = dateLabel,

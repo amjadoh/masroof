@@ -119,6 +119,26 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun manualStcCardLearnsAPurchasePatternWithAMaskedCardNumber() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val ref = c.settingsRegistryWorkflow.addCard("BANK_STC", "8219", null,
+                CardConfiguration(CardNetwork.VISA, CardType.DEBIT))
+            val card = requireNotNull(c.cardRegistryRepository.get(ref))
+            val body = "Purchase\nCard: *8219\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            val bindings = listOf("card" to "*8219", "amount" to "10SAR", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, "BANK_STC", "STC Bank", PatternOperation.PURCHASE, body, bindings))
+            c.processRawSmsUseCase.ingest(sms("stc-card-pending", body))
+            val bundled = setOf("stc-internal-in", "stc-internal-out", "stc-local-in", "stc-qattah", "stc-sarie-in", "stc-top-up")
+            val patternId = w.catalog().banks.single { it.bankId == "BANK_STC" }.currentPatterns.single { it.id !in bundled }.id
+            val approved = w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_STC", patternId, PatternOperation.PURCHASE,
+                null, body, null, emptySet(), cardId = card.id))
+            assertEquals(1, w.applyPending("BANK_STC", approved.generation).posted)
+            assertEquals(ref, c.parsedEventRepository.findByRawSmsId("stc-card-pending")?.event?.cardRef)
+        }
+    }
+
     private suspend fun fixture(source: com.baraa.masroof.sms.datasource.SmsDataSource? = null, block: suspend (AppContainer) -> Unit) {
         val context = TestStorageContext(ApplicationProvider.getApplicationContext<Context>(), "pattern-${java.util.UUID.randomUUID()}")
         val container = AppContainer(context, smsDataSourceOverride = source)

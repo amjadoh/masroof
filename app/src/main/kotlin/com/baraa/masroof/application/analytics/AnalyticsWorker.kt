@@ -145,8 +145,32 @@ object AnalyticsBackup {
         if (!context.getDatabasePath(AnalyticsDatabase.NAME).exists()) return null
         return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
             val db = AnalyticsDatabase.open(context)
-            try { AnalyticsArchiveStore.export(db).also(::validate) } finally { db.close() }
+            try { exportable(AnalyticsArchiveStore.export(db)) } finally { db.close() }
         }
+    }
+
+    /**
+     * Advisory analysis must never block a financial backup. Rows that fail the restore checks
+     * (for example a pay period longer than the forecast window) are left out; the rest is kept
+     * and the result still passes [validate].
+     */
+    internal fun exportable(raw: String): String {
+        if (runCatching { validate(raw) }.isSuccess) return raw
+        val json = AnalyticsJson.format
+        val archive = json.decodeFromString(AnalyticsArchive.serializer(), raw)
+        val empty = AnalyticsArchive(version = archive.version)
+        fun valid(candidate: AnalyticsArchive) = runCatching { validate(json.encodeToString(AnalyticsArchive.serializer(), candidate)) }.isSuccess
+        val pruned = empty.copy(
+            snapshots = archive.snapshots.distinctBy { it.id }.filter { valid(empty.copy(snapshots = listOf(it))) },
+            models = archive.models.distinctBy { it.id }.filter { valid(empty.copy(models = listOf(it))) },
+            candidates = archive.candidates.distinctBy { it.id }.filter { valid(empty.copy(candidates = listOf(it))) },
+            alerts = archive.alerts.distinctBy { it.id }.filter { valid(empty.copy(alerts = listOf(it))) },
+            preferences = archive.preferences?.takeIf { valid(empty.copy(preferences = it)) },
+            coverage = archive.coverage.distinctBy { it.id }.filter { valid(empty.copy(coverage = listOf(it))) },
+            comparisons = archive.comparisons.distinctBy { it.id }.filter { valid(empty.copy(comparisons = listOf(it))) },
+            feedback = archive.feedback.distinctBy { it.seriesKey }.filter { valid(empty.copy(feedback = listOf(it))) },
+        )
+        return json.encodeToString(AnalyticsArchive.serializer(), pruned).also(::validate)
     }
     fun restore(context: Context, raw: String?) {
         validate(raw)

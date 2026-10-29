@@ -295,6 +295,10 @@ private fun MasroofContent(
             }
         }
 
+        // Bank display names come from the pattern catalog, so home screens never show raw ids (BANK_STC).
+        LaunchedEffect(Unit) { settingsViewModel.loadBankCatalog() }
+        androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.settings.LocalSettingsBankNames provides
+            settingsState.bankCatalog?.banks.orEmpty().mapNotNull { bank -> bank.displayName?.let { bank.bankId to it } }.toMap()) {
         key(navigationGeneration) {
         destinationStateHolder.SaveableStateProvider(homeDestination) {
         when (homeDestination) {
@@ -378,6 +382,10 @@ private fun MasroofContent(
                 },
                 onBack = { homeDestination = HomeDestination.Dashboard },
                 onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onManageCard = { bank ->
+                    openSettings(returnTo = HomeDestination.CardsSummary,
+                        launch = SettingsLaunchRequest(com.baraa.masroof.presentation.navigation.SettingsDestination.BankCards(bank.id)))
+                },
             )
             HomeDestination.LoansSummary -> LoansSummaryRoute(
                 viewModel = dashboardViewModel,
@@ -492,6 +500,7 @@ private fun MasroofContent(
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
+        }
         }
         }
         }

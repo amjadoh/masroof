@@ -23,7 +23,8 @@ class FinancialPolicyCompatibilityTest {
             val impact = FinancialImpactCalculator.forType(type)
             "$type|${impact.countsAsExpense}|${impact.countsAsIncome}|${impact.netWorthEffect}"
         }
-        val expected = javaClass.getResource("/finance-compatibility/financial-effects.txt")!!.readText().trim()
+        val expected = javaClass.getResource("/finance-compatibility/financial-effects.txt")!!.readText()
+            .lineSequence().joinToString("\n").trim()
         assertEquals(expected, actual)
     }
 

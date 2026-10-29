@@ -283,7 +283,11 @@ class ReplicaSetupJourneyTest {
         val label = compose.onNodeWithText(entityLabel).fetchSemanticsNode().boundsInRoot
         val button = compose.onAllNodesWithText(text(action)).fetchSemanticsNodes()
             .filter { it.boundsInRoot.center.y >= label.bottom }.minBy { it.boundsInRoot.top - label.bottom }
-        compose.onNode(SemanticsMatcher("ownership action for $entityLabel") { it.id == button.id }).performScrollTo().performClick()
+        val target = SemanticsMatcher("ownership action for $entityLabel") { it.id == button.id }
+        compose.onNode(target).performScrollTo()
+        // Registry refresh disables ownership writes; wait for the same readiness a user sees.
+        compose.waitUntil(20_000) { runCatching { compose.onNode(target).assertIsEnabled() }.isSuccess }
+        compose.onNode(target).performClick()
     }
     private fun back() {
         compose.waitForIdle()
