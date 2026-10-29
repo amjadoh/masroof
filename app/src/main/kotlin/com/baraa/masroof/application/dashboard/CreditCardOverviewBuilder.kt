@@ -226,6 +226,7 @@ object CreditCardOverviewBuilder {
             }
             when (tx.type) {
                 FinancialTransactionType.EXPENSE,
+                FinancialTransactionType.BILL_PAYMENT,
                 FinancialTransactionType.FEE,
                 -> {
                     if (tx.sourceContainerId != cardId) continue

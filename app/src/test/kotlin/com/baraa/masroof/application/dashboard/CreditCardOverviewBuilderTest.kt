@@ -39,6 +39,25 @@ class CreditCardOverviewBuilderTest {
     private val cardId8332 = FinancialContainerIdFactory.cardId(card8332)!!
 
     @Test
+    fun creditCardFundedBillsCountInCardSpendingWhileCashFundedBillsDoNot() {
+        val at = Instant.parse("2026-08-11T09:00:00Z")
+        val raw = rawSms("card-bill", "Synthetic bill", at)
+        val cardBill = cardExpense("card-bill", cardId7271, "25", at)
+            .copy(type = FinancialTransactionType.BILL_PAYMENT)
+        val cashBill = cardBill.copy(id = "cash-bill", sourceContainerId =
+            FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3001"))
+        val overview = CreditCardOverviewBuilder.build(
+            salaryPeriod = salaryPeriod,
+            cardTransactions = listOf(cardBill, cashBill),
+            parsedRecords = listOf(ParsedEventRecord(
+                parsedEvent("bill-event", raw, card7271, at, MessageFamily.BILL_PAYMENT),
+                creditPurchaseDetails())),
+            rawSmsById = mapOf(raw.id to raw),
+            zoneId = zone,
+        )
+        assertEquals("25.00", overview.cards.single().salaryPeriodSpendingNet.amount.toPlainString())
+    }
+    @Test
     fun cardDueFromStatementOnly_notPurchaseOutstanding() {
         val purchaseAt = Instant.parse("2026-08-11T17:05:00Z")
         val statementAt = Instant.parse("2026-08-10T09:00:00Z")
