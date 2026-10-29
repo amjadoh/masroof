@@ -59,5 +59,7 @@ internal object PresentationWorkflowTestSupport {
                 loanRegistry = loans,
             ),
             reviewRepository = reviewRepository,
+            // Inline, so ViewModel tests stay deterministic on their test Main dispatcher.
+            ioDispatcher = kotlinx.coroutines.Dispatchers.Unconfined,
         )
 }

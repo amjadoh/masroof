@@ -9,6 +9,9 @@ import com.baraa.masroof.application.transaction.ReconciliationIncompleteExcepti
 import com.baraa.masroof.application.transaction.ReconciliationReport
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
@@ -72,6 +75,7 @@ class ReviewWorkflowService(
     private val newCorrectionId: () -> String = {
         UserCorrectionIdFactory.create(UUID.randomUUID().toString())
     },
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /**
      * Full-history reconciliation and review-queue refresh.
@@ -81,7 +85,8 @@ class ReviewWorkflowService(
      * restore, ownership changes, and other resolved review actions reconcile
      * at most the affected RawSms ids, then reload that queue without a second sweep.
      */
-    suspend fun refreshReviewQueue() {
+    // Full-history reconcile; never on the caller's (often main) thread.
+    suspend fun refreshReviewQueue(): Unit = withContext(ioDispatcher) {
         val report = try {
             reconciliationService.reconcileStoredEventsDetailed()
         } catch (e: CancellationException) {
@@ -121,7 +126,7 @@ class ReviewWorkflowService(
      * Account and card matches are exact bank-scoped references. Loan matches
      * are the bank plus loan type. Unrelated history is not loaded.
      */
-    suspend fun reconcileOwnershipChange(change: OwnershipChange) {
+    suspend fun reconcileOwnershipChange(change: OwnershipChange): Unit = withContext(ioDispatcher) {
         val rawSmsIds = when (change) {
             is OwnershipChange.Account ->
                 parsedEventRepository.listRawSmsIdsReferencingAccount(change.account)
