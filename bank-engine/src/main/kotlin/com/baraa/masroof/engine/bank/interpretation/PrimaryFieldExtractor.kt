@@ -15,18 +15,22 @@ internal class PrimaryFieldExtractor(
 ) {
     private data class Hit<T>(val value: T, val range: IntRange)
     private fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
+    // Compact bank roles can touch digits (بـ25 / مبلغ25), but never consume a longer word.
+    private fun role(label: String) = source.phrase(label).pattern
+        .removeSuffix("(?![\\p{L}\\p{N}_])") + "(?![\\p{L}_])"
 
     fun money(field: ExtractionField): Money? {
         val hits = labels(field).flatMap { label ->
-            val pattern = Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
-            val matches = pattern.findAll(source.text).toList()
+            val pattern = Regex("(?m)^ *" + role(label) + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
+            val reverse = Regex("(?m)^ *" + MoneyGrammar.VALUE + "[ \\t]*:[ \\t]*" + source.phrase(label).pattern + " *$")
+            val matches = pattern.findAll(source.text).toList() + reverse.findAll(source.text).toList()
             val separate = if (field == ExtractionField.AMOUNT && currency != null) {
                 Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*([^\\n\\r]+)$")
                     .findAll(source.text).mapNotNull { row ->
                         MoneyGrammar.withCurrency(row.groupValues[1].trim(), currency)?.let { Hit(it, row.range) }
                     }.filterNot { overlaps(it.range) }.toList()
             } else emptyList()
-            Regex("(?m)^ *" + source.phrase(label).pattern).findAll(source.text).forEach { mention ->
+            Regex("(?m)^ *" + role(label)).findAll(source.text).forEach { mention ->
                 val longerRole = labels(field).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
                     Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
                 if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first } && separate.none { it.range.first == mention.range.first })
@@ -48,7 +52,7 @@ internal class PrimaryFieldExtractor(
 
     fun identifier(field: ExtractionField): String? {
         val hits = labels(field).flatMap { label ->
-            Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
+            Regex("(?m)^ *" + role(label) + "[ \\t]*:?[ \\t]*\\(?([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
                 .findAll(source.text).map { Hit(it.groupValues[1].takeLast(4), it.groups[1]!!.range) }.toList()
         }
         hits.forEach { evidence += source.evidence("extract.identifier", field.name, it.range) }
@@ -93,6 +97,6 @@ internal class PrimaryFieldExtractor(
     }
 
     private companion object {
-        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية", "التاريخ")
+        private val TIME_LABELS = setOf("", "في", "on", "date", "time", "transaction time", "تاريخ العملية", "تاريخ", "التاريخ")
     }
 }

@@ -9,7 +9,8 @@ internal fun otpEvidence(source: SourceText): List<Evidence> = OTP_TERMS.flatMap
 
 private val OTP_TERMS = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin",
     "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق",
-    "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري")
+    "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري",
+    "الرقم السري لمره واحده", "الرقم السري لمرة واحدة")
 
 internal fun hasUnprovenExecution(source: SourceText) = NON_EXECUTION_TERMS.any { source.phrase(it).containsMatchIn(source.text) }
 

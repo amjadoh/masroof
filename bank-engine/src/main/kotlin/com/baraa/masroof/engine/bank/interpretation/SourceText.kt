@@ -35,8 +35,11 @@ internal class SourceText(private val original: String) {
 
     /** Segment explicit English purchase clauses without changing any original evidence offset. */
     fun segmentInlinePurchase(): SourceText {
-        if (!Regex("^ *(?:online|internet) purchase(?: apple pay)? +(?:credit card|debit card|card) *:?").containsMatchIn(text)) return this
-        val terms = listOf("available balance is", "available balance", "credit card", "debit card", "due amount", "of", "at", "on")
+        val english = Regex("^ *(?:online|internet) purchase(?: apple pay)? +(?:credit card|debit card|card) *:?").containsMatchIn(text)
+        val arabic = Regex("^ *شراء عبر (?:نقاط البيع|الانترنت) *\\n+ *باستخدام بطاقة[^\\n]+(?:لدي|بمبلغ)").containsMatchIn(text)
+        if (!english && !arabic) return this
+        val terms = if (arabic) listOf("لدى", "بمبلغ") else
+            listOf("available balance is", "available balance", "credit card", "debit card", "due amount", "of", "at", "on")
         val pattern = Regex(terms.joinToString("|") { phrase(it).pattern })
         val boundaries = pattern.findAll(text).map { it.range.first }.filter { it > 0 && text[it - 1] != '\n' }.toSet()
         val oldText = text; val oldStarts = starts.toList(); val oldEnds = ends.toList()
