@@ -21,9 +21,10 @@ internal class DetailExtractor(
     private val problem: (String, Blocker) -> Unit,
     knownLabels: List<String> = emptyList(),
     private val implicitSarFeeLabels: List<String> = emptyList(),
+    suffixLabels: Boolean = false,
 ) {
     private val reserved = mutableListOf<IntRange>()
-    private val reader = RoleLineReader(source, configured + mapOf("internationalFee" to FEE_LABELS, "exchangeRate" to RATE_LABELS), evidence, knownLabels)
+    private val reader = RoleLineReader(source, configured + mapOf("internationalFee" to FEE_LABELS, "exchangeRate" to RATE_LABELS), evidence, knownLabels, suffixLabels)
     private fun entries(field: String, reserve: Boolean = false): List<RoleLine> = reader.read(field).also { rows ->
         if (reserve) reserved += rows.map { it.range }
     }

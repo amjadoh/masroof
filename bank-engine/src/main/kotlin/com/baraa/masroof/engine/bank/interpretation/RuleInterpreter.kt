@@ -161,25 +161,29 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
                 sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
             else sets.flatten().distinct()
         }
-        val currencies = RoleLineReader(source, mapOf("principalCurrency" to listOf("العملة", "currency")), evidence, roleLabels)
+        // Opt-in rule capabilities apply only when the message title carries one of the rule's listed phrases.
+        fun titleOptIn(key: String) = matching.flatMap { it.observations[key].orEmpty() }.filter { source.phrase(it).containsMatchIn(title) }
+        val suffixLabels = titleOptIn("label.suffix").isNotEmpty()
+        val currencies = RoleLineReader(source, mapOf("principalCurrency" to listOf("العملة", "currency")), evidence, roleLabels, suffixLabels)
             .read("principalCurrency")
         val currency = currencies.map { it.normalized }.distinct().singleOrNull()
         if (currencies.isNotEmpty() && (currency == null || MoneyGrammar.withCurrency("1", currency) == null))
             problem("INVALID_OR_CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct()).read()
+        val details = DetailExtractor(source, matching.flatMap { it.detailLabels.entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.flatten().distinct() }, evidence, ::problem, roleLabels, matching.flatMap {it.observations["fee.sar_unlabeled"].orEmpty()}.distinct(), suffixLabels).read()
         val secondaryRanges = details.reserved.toMutableList()
         // Reserve all known secondary roles even when the selected rule does not expose them.
         SECONDARY.forEach { label ->
-            Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
+            Regex("(?m)^ *" + source.role(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
         }
-        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem)
+        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem, suffixLabels)
         val balance = primary.money(ExtractionField.AVAILABLE_BALANCE)
-        val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT)
+        val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT,
+            standalone = titleOptIn("amount.standalone").isNotEmpty(), titlePrefixes = titleOptIn("amount.title"))
         val card = primary.card()
         val account = primary.identifier(ExtractionField.SOURCE_ACCOUNT)
         val destination = primary.identifier(ExtractionField.DESTINATION_ACCOUNT)
         val merchant = primary.merchant()
-        val times = primary.transactionTimes()
+        val times = primary.transactionTimes(ignoreUnbound = family in INFORMATIONAL)
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {
             it.code in setOf("INVALID_TIME", "UNBOUND_TIME_ROLE", "CONFLICTING_TIME") }
         if(receiptTime && family !in INFORMATIONAL) diagnostics += InterpretationDiagnostic(
@@ -235,7 +239,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v14"
+        const val VERSION = "bank-rules-independent-v15"
         private const val MAX_BODY = 16000
         private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
