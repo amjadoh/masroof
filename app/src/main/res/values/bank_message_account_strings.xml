@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bank_message_account_title">ربط رسائل %1$s المختصرة</string>
+    <string name="bank_message_account_hint">اختر مرة واحدة حسابك للرسائل التي لا تذكر رقمه.</string>
+    <string name="bank_message_account_selected">الحساب المختار: ****%1$s</string>
+    <string name="bank_message_account_choose">اختيار الحساب والعملة</string>
+    <string name="bank_message_account_save">حفظ ومعالجة الرسائل المعلقة</string>
+    <string name="bank_message_account_explanation">اختر الحساب الذي تخصه الرسائل المختصرة. سيستخدم فقط عندما لا تذكر الرسالة حسابًا واضحًا؛ ولن يحل محل بطاقة ائتمانية مذكورة في عملية شراء. راجع اختيارك إذا كان لديك أكثر من حساب.</string>
+    <string name="bank_message_account_empty">أكد ملكية حسابك أولًا، أو أضف آخر أربعة أرقام من حسابك أو آيبان محفظتك من خيار إضافة حساب يدويًا.</string>
+    <string name="bank_message_account_currency">عملة الحساب للمبالغ التي لا تذكر عملة</string>
+    <string name="bank_message_account_loan">هل تخصك أقساط التمويل الشخصي وتسدد من هذا الحساب؟</string>
+    <string name="bank_message_account_loan_yes">نعم، هذا تمويلي ويسدد من الحساب المختار</string>
+    <string name="bank_message_account_loan_no">لا تستخدم هذا الربط لأقساط التمويل</string>
+    <string name="bank_message_account_failed">تعذر إكمال الحفظ أو المعالجة. أعد فتح الربط والمحاولة؛ التغييرات المحفوظة لا تمسح الحركات السابقة.</string>
+</resources>

@@ -78,7 +78,9 @@ fun CreditFacilityCard(facility: CreditFacilityOverview, cardNetworksByLast4: Ma
                 val unavailable = stringResource(R.string.dashboard_value_unavailable)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_salary_spending), formatLocalizedMoney(row.salaryPeriodSpendingNet), dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_statement_spending), formatLocalizedMoney(row.statementSpendingNet), dense = true)
-                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_available_balance), row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
+                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_available_balance),
+                    row.snapshot?.negativeAvailableBalance?.let { "−${formatLocalizedMoney(it)}" }
+                        ?: row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount), facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable,
                     guidance = if (row.last4 != facility.primaryLast4) stringResource(R.string.approved_shared_due) else null, valueColor = MasroofThemeExtras.extendedColors.liability, dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_date), facility.facilityDue?.dueDate?.let(date::format) ?: unavailable, dense = true)

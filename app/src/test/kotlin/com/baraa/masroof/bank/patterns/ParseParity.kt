@@ -38,7 +38,10 @@ internal object ParseParity {
             .sortedBy { it.name }.flatMap { field ->
                 field.isAccessible = true
                 val item = field.get(value)
-                if (item is Confidence) fields("$prefix.${field.name}", item).toList()
+                // An absent optional sign adds no fact to the frozen positive-only fixtures.
+                // A non-null value is reflected and still fails parity against that baseline.
+                if (value is com.baraa.masroof.parsing.model.ParsedEventDetails && field.name == "negativeAvailableBalance" && item == null) emptyList()
+                else if (item is Confidence) fields("$prefix.${field.name}", item).toList()
                 else {
                     val fact = if (value is Confidence && field.name == "reasons") value.reasons.filterNot {
                         it.startsWith("engine:") || it.startsWith("rules:")
@@ -52,6 +55,10 @@ internal object ParseParity {
         (expected.keys + actual.keys).filter { expected[it] != actual[it] }.sorted()
 
     fun digest(value: Any?): String = MessageDigest.getInstance("SHA-256")
-        .digest((value?.let { "${it.javaClass.name}:$it" } ?: "null").toByteArray(Charsets.UTF_8))
+        .digest((value?.let {
+            val text = if (it is com.baraa.masroof.parsing.model.ParsedEventDetails && it.negativeAvailableBalance == null)
+                it.toString().replace(", negativeAvailableBalance=null)", ")") else it.toString()
+            "${it.javaClass.name}:$text"
+        } ?: "null").toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
 }

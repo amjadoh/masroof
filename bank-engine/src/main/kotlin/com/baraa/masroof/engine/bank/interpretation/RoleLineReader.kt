@@ -17,7 +17,7 @@ internal class RoleLineReader(
 
     fun read(field: String): List<RoleLine> = bindings[field].orEmpty().distinct().flatMap { label ->
         val pattern = Regex("(?m)^ *" + source.phrase(label).pattern + "(?<tail>[^\\n\\r]*)$")
-        pattern.findAll(source.text).mapNotNull { match ->
+        val prefix = pattern.findAll(source.text).mapNotNull { match ->
             val longest = prefixes.filter { it.second.containsMatchIn(match.value) }.maxOfOrNull { it.first } ?: 0
             if (longest > SourceText(label).text.length) return@mapNotNull null
             evidence += source.evidence("extract.role", field, match.range)
@@ -35,5 +35,12 @@ internal class RoleLineReader(
                 }
             }
         }.toList()
+        val suffix = Regex("(?m)^ *(?<value>[^\\n\\r:]+?) *: *" + source.phrase(label).pattern + " *$")
+            .findAll(source.text).map { match ->
+                val value = match.groups["value"]!!
+                evidence += source.evidence("extract.role", field, match.range)
+                RoleLine(value.value.trim(), source.original(value.range).trim(), match.range)
+            }.toList()
+        prefix + suffix
     }
 }

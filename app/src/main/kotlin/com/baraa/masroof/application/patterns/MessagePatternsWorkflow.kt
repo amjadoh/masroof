@@ -29,6 +29,22 @@ class MessagePatternsWorkflow(
     suspend fun patternCards(bankId: String) = requireNotNull(activation).cards(bankId)
     suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
     suspend fun confirmPatternAccount(bankId: String, last4: String) = requireNotNull(activation).confirmAccount(bankId, last4)
+    suspend fun bankAccountSetup(bankId: String) = requireNotNull(activation).bankAccountSetup(bankId)
+    suspend fun configureBankAccount(generation: Long, bankId: String, accountId: String, currency: String, personalLoan: Boolean): PatternCatalog {
+        requireNotNull(activation).configureBankAccount(generation, bankId, accountId,
+            com.baraa.masroof.finance.value.Currency.valueOf(currency), personalLoan)
+        val current = load()
+        val processor = pendingPreview?.takeIf { it.canApply }
+        if (processor != null) {
+            do {
+                val report = processor.apply(bankId, current.generation)
+                check(!report.incomplete) { "Account saved; pending processing is incomplete and retryable" }
+                val remaining = processor.preview(bankId, current.generation)
+                if (!remaining.limited || report.processed == 0) break
+            } while (true)
+        }
+        return current.toCatalog()
+    }
     suspend fun previewFinancial(generation: Long, bankId: String, patternId: String, operation: PatternOperation, accountId: String?,
         body: String, referenceField: String?, contextReferences: Set<String>, currency: com.baraa.masroof.core.money.Currency? = null, cardId: String? = null) =
         requireNotNull(activation).preview(generation, bankId, patternId, operation, accountId, body, referenceField, contextReferences, currency?.let { com.baraa.masroof.finance.value.Currency.valueOf(it.name) }, cardId)

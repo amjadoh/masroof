@@ -46,7 +46,25 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
         if (this.roleProfile != null) {
             this.roleProfile.validate()
             val rule = this.roleProfile.rules.single()
-            require(this.parts.isEmpty() && rule.id == id && this.factContract == PatternFactContract(rule.family, rule.direction))
+            val contract = requireNotNull(this.factContract)
+            require(this.parts.isEmpty() && rule.id == id && contract.family == rule.family && contract.direction == rule.direction)
+            require(contract.sourceAccountBank == null && contract.destinationAccountBank == null && contract.cardBank == null && contract.contextReferences.isEmpty())
+            if (contract.version == 1) require(contract == PatternFactContract(rule.family, rule.direction))
+            else {
+                require(contract.version == 2)
+                val binding = contract.accountBindings.singleOrNull()
+                if (binding == null) require(contract.accountBindings.isEmpty() && contract.currency == null)
+                else {
+                    require(contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
+                        com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
+                        com.baraa.masroof.engine.bank.MessageFamily.REFUND, com.baraa.masroof.engine.bank.MessageFamily.WITHDRAWAL,
+                        com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT))
+                    val incoming = contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN,
+                        com.baraa.masroof.engine.bank.MessageFamily.REFUND)
+                    require(binding.bank.value == bankId && binding.field == null && contract.currency != null &&
+                        binding.role == if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE)
+                }
+            }
         } else require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
         require(this.parts.withIndex().all { (index, part) -> if (index % 2 == 0) part is StaticText else part is FieldSlot })
         require(this.parts.filterIsInstance<StaticText>().sumOf { it.value.length } <= 4096)

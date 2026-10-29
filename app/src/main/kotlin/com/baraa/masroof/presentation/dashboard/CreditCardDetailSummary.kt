@@ -40,7 +40,8 @@ fun CreditCardDetailSummaryCard(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         MasroofHeroCard(
             title = row.displayLabel(ownedCards) + " · " + stringResource(R.string.approved_available_balance),
-            value = row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable,
+            value = row.snapshot?.negativeAvailableBalance?.let { "−${formatLocalizedMoney(it)}" }
+                ?: row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable,
             subtitle = com.baraa.masroof.presentation.settings.settingsBankLabel(row.bank) +
                 (if (facility != null && facility.primaryLast4 != row.last4) " · " + stringResource(R.string.reference_linked_primary_caption, facility.primaryLast4) else ""),
             role = MasroofHeroRole.Card,

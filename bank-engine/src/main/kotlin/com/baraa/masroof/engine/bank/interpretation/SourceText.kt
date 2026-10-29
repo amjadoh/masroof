@@ -38,7 +38,7 @@ internal class SourceText(private val original: String) {
         val english = Regex("^ *(?:online|internet) purchase(?: apple pay)? +(?:credit card|debit card|card) *:?").containsMatchIn(text)
         val arabic = Regex("^ *شراء عبر (?:نقاط البيع|الانترنت) *\\n+ *باستخدام بطاقة[^\\n]+(?:لدي|بمبلغ)").containsMatchIn(text)
         if (!english && !arabic) return this
-        val terms = if (arabic) listOf("لدى", "بمبلغ") else
+        val terms = if (arabic) listOf("لدى", "بمبلغ", "في") else
             listOf("available balance is", "available balance", "credit card", "debit card", "due amount", "of", "at", "on")
         val pattern = Regex(terms.joinToString("|") { phrase(it).pattern })
         val boundaries = pattern.findAll(text).map { it.range.first }.filter { it > 0 && text[it - 1] != '\n' }.toSet()

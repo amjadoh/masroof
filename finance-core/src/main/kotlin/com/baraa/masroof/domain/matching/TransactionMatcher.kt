@@ -175,6 +175,9 @@ object TransactionMatcher {
 
         if (outgoing.sourceOwnership != OwnershipStatus.OWNED) return false
         if (incoming.destinationOwnership != OwnershipStatus.OWNED) return false
+        val source = outgoing.event.sourceAccountRef
+        val destination = incoming.event.destinationAccountRef
+        if (source != null && source.bank != Bank.UNKNOWN && source == destination) return false
         if (referencesConflict(outgoing, incoming)) return false
 
         if (!withinWindow(outgoing, incoming)) return false
@@ -219,8 +222,8 @@ object TransactionMatcher {
         // UNKNOWN-side suffix bridge: outgoing UNKNOWN dest masked ↔ incoming known dest masked
         val outDest = outgoing.event.destinationAccountRef ?: return false
         val inDest = incoming.event.destinationAccountRef ?: return false
-        if (outDest.bank != Bank.UNKNOWN) return false
         if (inDest.bank == Bank.UNKNOWN) return false
+        if (outDest.bank != Bank.UNKNOWN && outDest.bank != inDest.bank) return false
         val outSuffix = outDest.maskedNumber?.trim().orEmpty()
         val inSuffix = inDest.maskedNumber?.trim().orEmpty()
         if (outSuffix.isEmpty() || inSuffix.isEmpty()) return false

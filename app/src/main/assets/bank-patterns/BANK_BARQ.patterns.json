@@ -51,7 +51,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "CARD": [
                     "بطاقة ائتمانية",
@@ -104,7 +106,7 @@
                     "مدى",
                     "مدى-أثير",
                     "مدى-باي",
-                    "mada",
+                    "Mada card",
                     "debit card"
                   ],
                   "card.debit_source": [
@@ -133,8 +135,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -151,12 +153,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -164,6 +169,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -236,7 +242,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
@@ -252,6 +260,7 @@
                 },
                 "detailLabels": {
                   "counterparty": [
+                    "مرسل",
                     "من",
                     "from"
                   ]
@@ -276,6 +285,25 @@
                     "إيداع راتب",
                     "راتب",
                     "salary"
+                  ],
+                  "network.sourceBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة"
+                  ],
+                  "amount.standalone": [
+                    "حوالة واردة",
+                    "حوالة داخلية واردة",
+                    "إيداع حوالة واردة",
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "Credit transfer",
+                    "incoming transfer"
                   ]
                 }
               }
@@ -299,8 +327,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -317,12 +345,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -330,6 +361,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -399,7 +431,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
@@ -412,14 +446,17 @@
                     "لحساب",
                     "الى حساب",
                     "إلى حساب",
-                    "حساب المستفيد"
+                    "حساب المستفيد",
+                    "إلى",
+                    "الى",
+                    "آيبان"
                   ]
                 },
                 "detailLabels": {
                   "counterparty": [
+                    "مستفيد",
                     "إلى",
                     "الى",
-                    "لـ",
                     "to"
                   ]
                 },
@@ -443,6 +480,16 @@
                     "إيداع راتب",
                     "راتب",
                     "salary"
+                  ],
+                  "network.destinationBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة"
                   ]
                 }
               }
@@ -466,8 +513,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -484,12 +531,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -497,6 +547,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -565,7 +616,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
@@ -608,8 +661,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -626,12 +679,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -639,6 +695,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -707,11 +764,14 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
-                    "حساب"
+                    "حساب",
+                    "من"
                   ],
                   "CARD": [
                     "بطاقة ائتمانية",
@@ -731,10 +791,28 @@
                   "biller": [
                     "مفوتر",
                     "المفوتر",
+                    "الجهة",
                     "biller"
                   ]
                 },
-                "observations": {}
+                "observations": {
+                  "card.credit": [
+                    "ائتمانية",
+                    "الائتمانية",
+                    "credit card"
+                  ],
+                  "card.debit": [
+                    "مدى",
+                    "مدى-أثير",
+                    "مدى-باي",
+                    "Mada card",
+                    "debit card"
+                  ],
+                  "card.debit_source": [
+                    "حساب",
+                    "من حساب"
+                  ]
+                }
               }
             ],
             "network": {
@@ -756,8 +834,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -774,12 +852,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -787,6 +868,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -849,13 +931,9 @@
                 "excludes": [],
                 "labels": {
                   "AMOUNT": [
-                    "مبلغ العملية",
-                    "بمبلغ",
                     "مبلغ",
                     "المبلغ",
-                    "ب",
-                    "amount",
-                    "المبلغ، العملة"
+                    "amount"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
@@ -899,8 +977,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -917,12 +995,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -930,6 +1011,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -988,6 +1070,7 @@
                   "استرداد",
                   "إعادة مبلغ",
                   "عكس عملية شراء",
+                  "حوالة عكسية",
                   "purchase refund",
                   "refund"
                 ],
@@ -1000,7 +1083,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "DESTINATION_ACCOUNT": [
                     "الى حساب",
@@ -1033,7 +1118,7 @@
                     "مدى",
                     "مدى-أثير",
                     "مدى-باي",
-                    "mada",
+                    "Mada card",
                     "debit card"
                   ]
                 }
@@ -1058,8 +1143,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -1076,12 +1161,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -1089,6 +1177,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -1157,7 +1246,9 @@
                     "المبلغ",
                     "ب",
                     "amount",
-                    "المبلغ، العملة"
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
@@ -1187,8 +1278,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -1205,12 +1296,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -1218,6 +1312,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -1280,25 +1375,26 @@
                 "excludes": [],
                 "labels": {
                   "AMOUNT": [
-                    "مبلغ العملية",
-                    "بمبلغ",
-                    "مبلغ",
-                    "المبلغ",
-                    "ب",
-                    "amount",
-                    "المبلغ، العملة",
+                    "القسط",
                     "القسط المستحق",
-                    "القسط الشهري"
+                    "القسط الشهري",
+                    "amount"
                   ],
                   "SOURCE_ACCOUNT": [
                     "من حساب",
                     "حساب",
-                    "رقم الحساب"
+                    "رقم الحساب",
+                    "من"
                   ]
                 },
                 "detailLabels": {
                   "counterparty": [
-                    "نوع التمويل"
+                    "نوع التمويل",
+                    "لـ"
+                  ],
+                  "dueAmount": [
+                    "اجمالي المبلغ المتبقي",
+                    "المبلغ المتبقي"
                   ]
                 },
                 "observations": {
@@ -1334,8 +1430,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -1352,12 +1448,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -1365,6 +1464,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
@@ -1454,8 +1554,8 @@
                   "Riyad Bank"
                 ],
                 "BANK_ANB": [
-                  "البنك العربي الوطني",
-                  "Arab National Bank"
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
                 ],
                 "BANK_SNB": [
                   "SNB",
@@ -1472,12 +1572,15 @@
                 "BANK_SAB": [
                   "SAB",
                   "ساب",
-                  "البنك الأول"
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
                 ],
                 "BANK_ALINMA": [
                   "alinma",
                   "الإنماء",
-                  "مصرف الإنماء"
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
                 ],
                 "BANK_EMIRATES_NBD": [
                   "EmiratesNBD",
@@ -1485,6 +1588,7 @@
                 ],
                 "BANK_ALRAJHI": [
                   "RAJHI BANK",
+                  "AL RAJHI BANK",
                   "الراجحي",
                   "مصرف الراجحي"
                 ]
