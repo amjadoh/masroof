@@ -48,6 +48,9 @@ class AppLogService(
 
     fun error(category: String, message: String) = log(AppLogLevel.ERROR, category, message)
 
+    /** A caught failure: the step, exception type and a masked message, so a report can be traced without SMS data. */
+    fun failure(category: String, action: String, error: Throwable) = error(category, "$action failed (${describe(error)})")
+
     fun readAll(): List<AppLogEntry> =
         synchronized(lock) { entries.toList() }
 
@@ -80,8 +83,10 @@ class AppLogService(
 
     private fun pruneLocked(nowEpochMs: Long = clock()) {
         pruneExpiredLocked(nowEpochMs)
+        // Routine info/warn lines must not push failures out of a full log.
         while (entries.size > maxEntries) {
-            entries.removeFirst()
+            val oldestRoutine = entries.indexOfFirst { it.level != AppLogLevel.ERROR }
+            if (oldestRoutine >= 0) entries.removeAt(oldestRoutine) else entries.removeFirst()
         }
     }
 
@@ -192,5 +197,12 @@ class AppLogService(
         const val LOG_FILE_NAME: String = "masroof-app.log"
         const val DEFAULT_MAX_ENTRIES: Int = 500
         const val DEFAULT_RETENTION_DAYS: Long = 14L
+
+        /** `IllegalStateException: Snapshot failed integrity_check ← SQLiteException`; digit runs are masked. */
+        fun describe(error: Throwable): String = buildString {
+            append(error.javaClass.simpleName)
+            error.message?.trim()?.takeIf { it.isNotEmpty() }?.let { append(": ").append(it.replace(Regex("[0-9]{4,}"), "####").take(160)) }
+            error.cause?.takeIf { it !== error }?.let { append(" ← ").append(it.javaClass.simpleName) }
+        }
     }
 }

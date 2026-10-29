@@ -111,6 +111,7 @@ class DatabaseBackupService(
             }.onFailure { error ->
                 logExportFailure(
                     (error as? BackupFailureException)?.category ?: BackupFailureCategory.EXPORT_FAILED,
+                    AppLogService.describe(error),
                 )
             }
         } finally {
@@ -166,7 +167,8 @@ class DatabaseBackupService(
         } catch (failure: BackupFailureException) {
             if (failure.category == BackupFailureCategory.AUTHENTICATION_FAILED) BackupVerificationOutcome.AUTHENTICATION_FAILED
             else BackupVerificationOutcome.INVALID_PACKAGE
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            appLogService?.failure(AppLogCategories.BACKUP, "Backup verification", error)
             BackupVerificationOutcome.FAILED
         } finally {
             passphrase.fill('\u0000')
@@ -355,7 +357,7 @@ class DatabaseBackupService(
             importOutcome(error.category)
         } catch (error: Exception) {
             handledFailure = true
-            logImportFailure(BackupFailureCategory.IMPORT_FAILED)
+            logImportFailure(BackupFailureCategory.IMPORT_FAILED, AppLogService.describe(error))
             BackupImportOutcome.Failed
         } finally {
             secret.fill('\u0000')
@@ -758,17 +760,17 @@ class DatabaseBackupService(
         -> BackupImportOutcome.Failed
     }
 
-    private fun logExportFailure(category: BackupFailureCategory) {
+    private fun logExportFailure(category: BackupFailureCategory, detail: String? = null) {
         appLogService?.error(
             AppLogCategories.BACKUP,
-            "Database export failed: ${category.logToken}",
+            "Database export failed: ${category.logToken}" + (detail?.let { " ($it)" } ?: ""),
         )
     }
 
-    private fun logImportFailure(category: BackupFailureCategory) {
+    private fun logImportFailure(category: BackupFailureCategory, detail: String? = null) {
         appLogService?.error(
             AppLogCategories.BACKUP,
-            "Database import failed: ${category.logToken}",
+            "Database import failed: ${category.logToken}" + (detail?.let { " ($it)" } ?: ""),
         )
     }
 

@@ -26,6 +26,7 @@ fun onboardingViewModelFactory(
             },
             databaseBackupService = container.databaseBackupService,
             permissionStateProvider = permissionStateProvider,
+            appLogService = container.appLogService,
         )
     }
 }
