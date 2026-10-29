@@ -32,9 +32,18 @@ class ArabicAmountRoleFormsTest {
         } }
     }
 
-    @Test fun anAmountInsideASentenceIsNotGuessed() {
+    @Test fun anInlineAmountRoleIsReadGluedOrSpaced() {
+        banks.keys.forEach { bank -> listOf("بقيمة100ريال", "بقيمة 100 ريال", "ب100SAR", "ب١٠٠ريال", "بمبلغ100 SAR").forEach { form ->
+            val result = parse(bank, "شراء عبر نقاط البيع $form\nبطاقة مدى: 4321\nلدى: TEST SHOP\nفي: 2026-10-15 12:30")
+            assertTrue("$bank $form: $result", result is ParseResult.Success)
+            assertEquals("$bank $form", 0, (result as ParseResult.Success).event.amount!!.amount.compareTo("100".toBigDecimal()))
+        } }
+    }
+
+    @Test fun anInlineRoleWithoutCurrencyOrWithTwoAmountsIsNotGuessed() {
         banks.keys.forEach { bank ->
-            assertFalse(bank, parse(bank, "تم شراء بقيمة 100 ريال من TEST SHOP ببطاقة 4321 في 2026-10-15 12:30") is ParseResult.Success)
+            assertFalse(bank, parse(bank, "شراء عبر نقاط البيع ب100\nبطاقة مدى: 4321\nلدى: TEST SHOP\nفي: 2026-10-15 12:30") is ParseResult.Success)
+            assertFalse(bank, parse(bank, "شراء عبر نقاط البيع بقيمة100ريال وبقيمة200ريال\nبطاقة مدى: 4321\nلدى: TEST SHOP\nفي: 2026-10-15 12:30") is ParseResult.Success)
         }
     }
 }
