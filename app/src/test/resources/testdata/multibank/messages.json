@@ -1,0 +1,332 @@
+[
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-pos",
+    "body": "شراء-POS\nبـ25.50 SAR\nمن TEST SHOP\nإئتمانية **4321 (أثير)\nفي 2026-09-15 12:30\nالصرف المتبقي 900 SAR",
+    "family": "PURCHASE",
+    "amount": "25.50",
+    "cardChannel": "CREDIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-debit",
+    "body": "شراء-POS\nبـ25 SAR\nمن TEST SHOP\nمدى-أثير*4321\nفي 2026-09-15 12:30",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": "DEBIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-online",
+    "body": "شراء إنترنت\nمبلغ 35 SAR\nبطاقة ائتمانية ***4321\nمن TEST SHOP\nالتاريخ 2026-09-15 12:30\nالصرف المتبقي 900 SAR",
+    "family": "PURCHASE",
+    "amount": "35",
+    "cardChannel": "CREDIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-payment",
+    "body": "سداد بطاقة ائتمانية\nمن حساب *1234\nالى بطاقة **4321\nمبلغ SAR 75\nفي 2026-09-15 12:30\nالصرف المتبقي SAR 900",
+    "family": "CARD_PAYMENT",
+    "amount": "75",
+    "cardChannel": "CREDIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-transfer",
+    "body": "حوالة صادرة داخلية\nمن حساب *1234\nالى حساب *5678\nمبلغ 100 SAR\nإلى: TEST PERSON\nفي 2026-09-15 12:30",
+    "family": "TRANSFER_OUT",
+    "amount": "100",
+    "cardChannel": null,
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "barq-pos",
+    "body": "POS Purchase\nMada card: **4321\namount:25 SAR\nBalance: 900\natTEST\n2026-09-15 12:30",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": "DEBIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "barq-no-local-account",
+    "body": "حوالة صادرة داخلية\nالمبلغ: 100 SAR\nإلى : TEST PERSON\n2026-09-15 12:30",
+    "family": "TRANSFER_OUT",
+    "amount": "100",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "enbd-fee",
+    "body": "خصم رسوم\n25 SAR : المبلغ، العملة\nLATEFEES : السبب\nXX1234 : رقم الحساب\n2026-09-15 : التاريخ\n12:30 : الوقت",
+    "family": "FEE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "enbd-transfer-unresolved",
+    "body": "حوالة صادرة\nمن: XX1234\nمبلغ: 100 SAR\nفي: 2026-09-15 12:30:00",
+    "family": "TRANSFER_OUT",
+    "amount": "100",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "enbd-installment-masked",
+    "body": "خصم قسط تمويل\nPersonal Finance : نوع التمويل\n125 : القسط المستحق\n1500 : اجمالي المبلغ المتبقي\nXX12 : رقم الحساب\n2026-09-15 : التاريخ\n12:30 : الوقت",
+    "family": "FINANCING_INSTALLMENT",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "enbd-reminder",
+    "body": "عزيزنا العميل، نود تذكيركم بإستحقاق قسط تمويلكم، يرجى تجاهل هذه الرسالة إذا كنت قد سددت بالفعل.",
+    "family": "NON_FINANCIAL",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "sab-pos",
+    "body": "شراء عبر نقاط البيع\nباستخدام بطاقة الأول Visa Noon الائتمانية (4321) لدى TEST SHOP بمبلغ SAR 25 من خلال Google Pay\nتاريخ: 2026-09-15 12:30\nالرصيد: SAR 900",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": "CREDIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "sab-online",
+    "body": "شراء عبر الإنترنت\nباستخدام بطاقة الأول Visa Noon الائتمانية (4321) بمبلغ 35 SAR لدى TEST SHOP\nتاريخ: 2026-09-15 12:30\nالرصيد: SAR 900",
+    "family": "PURCHASE",
+    "amount": "35",
+    "cardChannel": "CREDIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "sab-confirmation",
+    "body": "بطاقة ائتمانية: تأكيد السداد\nعزيزي العميل،\nتم سداد بطاقتك Visa Noon الائتمانية (***4321) بمبلغ SAR 75 في: 2026-09-15 12:30\nالرصيد: SAR 900",
+    "family": "NON_FINANCIAL",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "alinma-google",
+    "body": "شراء عبر Google Pay\nمبلغ: ريال سعودى 25\nبطاقة مدى: 4321*\nحساب: *1234\nمن: TEST SHOP\nفي: 2026-09-15 12:30",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": "DEBIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "alinma-pos",
+    "body": "شراء عبر نقاط بيع\nمبلغ 25 SAR\nبطاقة4321* مدى-أثير\nمن TEST SHOP\nفي 2026-09-15 12:30",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": "DEBIT",
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "alinma-transfer",
+    "body": "حوالة واردة محلية\nمبلغ 100 SAR\nمن TEST PERSON\nحساب *1234\nفي 2026-09-15 12:30",
+    "family": "TRANSFER_IN",
+    "amount": "100",
+    "cardChannel": null,
+    "status": "SUCCESS"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "bank_snb-otp",
+    "body": "رمز التفعيل: 000000\nشراء مبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "bank_snb-unknown",
+    "body": "رسالة غير معروفة بدون تأكيد تنفيذ",
+    "family": "UNKNOWN",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "bank_snb-declined",
+    "body": "شراء مرفوضة\nمبلغ 25 SAR\nبطاقة 4321",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "bank_barq-otp",
+    "body": "رمز التفعيل: 000000\nشراء مبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "bank_barq-unknown",
+    "body": "رسالة غير معروفة بدون تأكيد تنفيذ",
+    "family": "UNKNOWN",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "bank_barq-declined",
+    "body": "شراء مرفوضة\nمبلغ 25 SAR\nبطاقة 4321",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "bank_emirates_nbd-otp",
+    "body": "رمز التفعيل: 000000\nشراء مبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "bank_emirates_nbd-unknown",
+    "body": "رسالة غير معروفة بدون تأكيد تنفيذ",
+    "family": "UNKNOWN",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_EMIRATES_NBD",
+    "sender": "EmiratesNBD",
+    "id": "bank_emirates_nbd-declined",
+    "body": "شراء مرفوضة\nمبلغ 25 SAR\nبطاقة 4321",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "bank_sab-otp",
+    "body": "رمز التفعيل: 000000\nشراء مبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "bank_sab-unknown",
+    "body": "رسالة غير معروفة بدون تأكيد تنفيذ",
+    "family": "UNKNOWN",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_SAB",
+    "sender": "SAB",
+    "id": "bank_sab-declined",
+    "body": "شراء مرفوضة\nمبلغ 25 SAR\nبطاقة 4321",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "bank_alinma-otp",
+    "body": "رمز التفعيل: 000000\nشراء مبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "bank_alinma-unknown",
+    "body": "رسالة غير معروفة بدون تأكيد تنفيذ",
+    "family": "UNKNOWN",
+    "amount": null,
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_ALINMA",
+    "sender": "alinma",
+    "id": "bank_alinma-declined",
+    "body": "شراء مرفوضة\nمبلغ 25 SAR\nبطاقة 4321",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_SNB",
+    "sender": "SNB-AlAhli",
+    "id": "snb-old-otp",
+    "body": "الرقم السري لمره واحده\n000000\nشراء إنترنت\nمبلغ 25 SAR",
+    "family": "OTP",
+    "amount": null,
+    "cardChannel": null,
+    "status": "NON_FINANCIAL"
+  }
+]
