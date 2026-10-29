@@ -59,7 +59,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         scope.launch {
             try { action() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { failed = true }
+            catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
             finally { busy = false }
         }
     }
@@ -81,7 +81,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     LaunchedEffect(workflow) {
         try { snapshot = workflow.catalog() }
         catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
+        catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
     }
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
@@ -98,7 +98,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             pending = null
             try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { failed = true }
+            catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
         }
     }
     if (bank != null && teaching && (source == null || source.sender in bank.senders)) {
