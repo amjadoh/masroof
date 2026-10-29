@@ -14,6 +14,8 @@ internal class PrimaryFieldExtractor(
     private val problem: (String, Blocker) -> Unit,
     /** Rules declaring `label.suffix` also read `value : label` lines. */
     private val suffixLabels: Boolean = false,
+    /** Amount roles also read inside a line (`تم شراء بقيمة100ريال`); a currency is always required. */
+    private val inlineAmountRoles: List<String> = emptyList(),
 ) {
     private data class Hit<T>(val value: T, val range: IntRange)
     private fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
@@ -53,11 +55,16 @@ internal class PrimaryFieldExtractor(
                 Regex("^ *" + source.phrase(prefix).pattern + " +(?:ب *|بمبلغ *)?" + MoneyGrammar.VALUE)
                     .findAll(source.text).mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
             }
-        hits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
-        if (field == ExtractionField.AMOUNT && currency != null && hits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
+        val inline = if (field != ExtractionField.AMOUNT || inlineAmountRoles.isEmpty()) emptyList() else
+            Regex("(?<![\\p{L}\\p{N}_])و?(?:" + inlineAmountRoles.joinToString("|") { Regex.escape(SourceText(it).text) } + ")[ \\t]*" + MoneyGrammar.VALUE)
+                .findAll(source.text).filterNot { match -> overlaps(match.range) || hits.any { it.range.last >= match.range.first && match.range.last >= it.range.first } }
+                .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
+        val allHits = hits + inline
+        allHits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
+        if (field == ExtractionField.AMOUNT && currency != null && allHits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
             problem("CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-        if (hits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
-        return hits.firstOrNull()?.value
+        if (allHits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
+        return allHits.firstOrNull()?.value
     }
 
     fun identifier(field: ExtractionField): String? {

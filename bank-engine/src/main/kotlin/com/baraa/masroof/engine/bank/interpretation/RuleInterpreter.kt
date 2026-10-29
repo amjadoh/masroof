@@ -177,7 +177,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         SECONDARY.forEach { label ->
             Regex("(?m)^ *" + source.role(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
         }
-        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem, suffixLabels)
+        val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem, suffixLabels, AMOUNT_ROLES)
         val balance = primary.money(ExtractionField.AVAILABLE_BALANCE)
         val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT,
             standalone = titleOptIn("amount.standalone").isNotEmpty(), titlePrefixes = titleOptIn("amount.title"))
