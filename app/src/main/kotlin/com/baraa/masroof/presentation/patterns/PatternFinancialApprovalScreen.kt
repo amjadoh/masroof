@@ -52,7 +52,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
         scope.launch {
             try { action() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { failed = true }
+            catch (caught: Exception) { workflow.reportFailure("PatternFinancialApprovalScreen", caught); failed = true }
             finally { busy = false }
         }
     }
@@ -72,7 +72,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     LaunchedEffect(workflow, pattern.bankId) {
         try { loadOptions(initialLoad = true) }
         catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
+        catch (caught: Exception) { workflow.reportFailure("PatternFinancialApprovalScreen", caught); failed = true }
         finally { loading = false }
     }
     // Validation is read-only. Every edit invalidates the preview before Save can be used.
@@ -84,7 +84,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 body, reference, contextFields, currency, cardId) }
             catch (e: CancellationException) { throw e }
             catch (e: PatternApprovalException) { problem = e.problem }
-            catch (_: Exception) { problem = PatternApprovalProblem.VALIDATION }
+            catch (caught: Exception) { workflow.reportFailure("PatternFinancialApprovalScreen", caught); problem = PatternApprovalProblem.VALIDATION }
             finally { validating = false }
         }
     }
