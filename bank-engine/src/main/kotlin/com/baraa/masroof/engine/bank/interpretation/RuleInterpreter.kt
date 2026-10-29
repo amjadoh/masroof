@@ -159,7 +159,9 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             // role must not become a merchant merely because a refund profile also uses it.
             return if (family==MessageFamily.UNKNOWN && field==ExtractionField.MERCHANT)
                 sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
-            else sets.flatten().distinct()
+            // Built in like TIME_LABELS: stored bank definitions are never rewritten, so common Arabic
+            // amount roles (ب١٠٠ريال, بقيمة 100 ريال) must reach existing installs through the engine.
+            else (sets.flatten() + if (field == ExtractionField.AMOUNT) AMOUNT_ROLES else emptyList()).distinct()
         }
         // Opt-in rule capabilities apply only when the message title carries one of the rule's listed phrases.
         fun titleOptIn(key: String) = matching.flatMap { it.observations[key].orEmpty() }.filter { source.phrase(it).containsMatchIn(title) }
@@ -245,6 +247,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
         private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
+        private val AMOUNT_ROLES = listOf("ب", "بقيمة", "بمبلغ")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
         private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }
