@@ -12,6 +12,8 @@ fun DebitCardDetailScreen(
     cardNetwork: com.baraa.masroof.domain.model.CardNetwork?,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
+    /** Opens this bank's card settings (network, type, account, role). */
+    onManageCard: (() -> Unit)? = null,
 ) {
     val cardTransactions = DashboardSummaryTransactionFilter.forDebitCard(
         transactions = state.allTransactions,
@@ -34,6 +36,11 @@ fun DebitCardDetailScreen(
             trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
         )
 
+        onManageCard?.let { manage ->
+            com.baraa.masroof.presentation.common.MasroofOutlinedButton(manage, Modifier.fillMaxWidth()) {
+                com.baraa.masroof.presentation.common.MasroofText(androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.settings_card_setup))
+            }
+        }
         val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit))
         trend?.let { CardReferenceAverage(it) }
         SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),

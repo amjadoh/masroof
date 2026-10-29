@@ -88,6 +88,17 @@ class SettingsViewModel(
         _logEntries.value = appLogService.readAll()
     }
 
+    /** Bank display names for home screens; only the pattern catalog, not the full settings refresh. */
+    fun loadBankCatalog() {
+        if (_uiState.value.bankCatalog != null) return
+        viewModelScope.launch {
+            try {
+                val catalog = messagePatternsWorkflow?.catalog() ?: return@launch
+                _uiState.update { if (it.bankCatalog == null) it.copy(bankCatalog = catalog) else it }
+            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { }
+        }
+    }
+
     fun refresh() {
         refreshLogs()
         viewModelScope.launch {

@@ -37,6 +37,7 @@ fun CardsSummaryRoute(
     onInitialSelectionConsumed: () -> Unit = {},
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
+    onManageCard: (com.baraa.masroof.domain.model.Bank) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedCardKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -90,6 +91,7 @@ fun CardsSummaryRoute(
                 cardNetwork = cardNetworks[CardOwnershipKey.of(selectedDebit)] ?: selectedDebit.network,
                 onBack = { clearDetailSelection() },
                 onOpenTransaction = onOpenTransaction,
+                onManageCard = { onManageCard(selectedDebit.bank) },
             )
         }
 
@@ -99,6 +101,7 @@ fun CardsSummaryRoute(
                 state = state,
                 onBack = { clearDetailSelection() },
                 onOpenTransaction = onOpenTransaction,
+                onManageCard = { onManageCard(selectedCard.bank) },
             )
         }
 
