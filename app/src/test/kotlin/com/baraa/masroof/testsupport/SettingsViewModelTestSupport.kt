@@ -38,6 +38,7 @@ internal object SettingsViewModelTestSupport {
                 loanRegistry = loans,
             ),
             transactions = transactions,
+            ioDispatcher = kotlinx.coroutines.Dispatchers.Unconfined,
         )
 
     fun noOpRestoreService(): TransactionRestoreService =

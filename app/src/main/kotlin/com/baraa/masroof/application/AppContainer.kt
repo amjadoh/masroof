@@ -407,7 +407,7 @@ class AppContainer(
             inTransaction = { block -> withDatabaseTransaction(block) },
             transactions = financialTransactionRepository,
             patternBoundAccounts = {
-                messagePatternStore.load().banks.flatMap { bank -> bank.currentPatterns }
+                databaseAccessGate.withAccess { messagePatternStore.load() }.banks.flatMap { bank -> bank.currentPatterns }
                     .flatMap { it.factContract?.accountBindings.orEmpty() }
                     .map { com.baraa.masroof.domain.model.AccountReference(Bank(it.bank.value), it.last4) }.toSet()
             },
