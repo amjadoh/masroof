@@ -2101,6 +2101,220 @@
               ]
             }
           }
+        },
+        {
+          "id": "alinma.greeting-card-payment",
+          "sender": "alinma",
+          "label": "CARD_PAYMENT",
+          "revision": 1,
+          "enabled": true,
+          "parts": [
+            {
+              "literal": "هلا "
+            },
+            {
+              "field": "customer",
+              "kind": "TEXT",
+              "width": 0,
+              "ignored": true
+            },
+            {
+              "literal": "\nتم سداد البطاقة الائتمانية: **"
+            },
+            {
+              "field": "card",
+              "kind": "DIGITS",
+              "width": 4,
+              "ignored": false
+            },
+            {
+              "literal": "\nبمبلغ: "
+            },
+            {
+              "field": "amount",
+              "kind": "DECIMAL",
+              "width": 0,
+              "ignored": false
+            },
+            {
+              "literal": " ريال\nمن: **"
+            },
+            {
+              "field": "source_account",
+              "kind": "DIGITS",
+              "width": 4,
+              "ignored": false
+            },
+            {
+              "literal": "\nفي: "
+            },
+            {
+              "field": "occurred_at",
+              "kind": "DATE_YMD",
+              "width": 0,
+              "ignored": false
+            },
+            {
+              "literal": "\n"
+            }
+          ],
+          "factContract": {
+            "version": 1,
+            "family": "CARD_PAYMENT",
+            "direction": "OUTGOING",
+            "currency": "SAR",
+            "sourceAccountBank": "BANK_ALINMA",
+            "destinationAccountBank": null,
+            "cardBank": "BANK_ALINMA"
+          },
+          "roleProfile": null
+        },
+        {
+          "id": "alinma.withdrawal",
+          "sender": "alinma",
+          "label": "WITHDRAWAL",
+          "revision": 2,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "WITHDRAWAL",
+            "direction": "OUTGOING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "alinma.withdrawal",
+                "family": "WITHDRAWAL",
+                "direction": "OUTGOING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "سحب صراف آلي",
+                  "سحب نقدي",
+                  "cash withdrawal"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ",
+                    "المبلغ",
+                    "amount"
+                  ],
+                  "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "حساب",
+                    "من"
+                  ],
+                  "CARD": [
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة",
+                    "ائتمانية",
+                    "مدى-أثير",
+                    "مدى-باي",
+                    "لك",
+                    "مدى",
+                    "Mada card",
+                    "credit card",
+                    "card"
+                  ]
+                },
+                "detailLabels": {},
+                "observations": {
+                  "amount.title": [
+                    "سحب نقدي"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
         }
       ]
     }

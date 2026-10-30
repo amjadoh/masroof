@@ -59,6 +59,17 @@ class TransactionAssemblerTest {
             knownCardType = com.baraa.masroof.domain.model.CardType.PREPAID) is TransactionAssembler.Outcome.NeedsReview)
     }
 
+    @Test fun bankCardPaymentWordingStillFundsAConfirmedPrepaidCard() {
+        val outcome = TransactionAssembler.assembleSingle(
+            event(family = MessageFamily.CARD_PAYMENT, amount = money("125.00"),
+                source = AccountReference(Bank.BANK_ALJAZIRA, "3001"), card = CardReference(Bank.BANK_ALJAZIRA, "7271")),
+            receivedAt, OwnershipStatus.OWNED, OwnershipStatus.UNKNOWN, OwnershipStatus.OWNED,
+            knownCardType = com.baraa.masroof.domain.model.CardType.PREPAID,
+        ) as TransactionAssembler.Outcome.Assembled
+        assertEquals(FinancialTransactionType.SELF_TRANSFER, outcome.transaction.type)
+        assertEquals("card:BANK_ALJAZIRA:7271", outcome.transaction.destinationContainerId)
+    }
+
     @Test
     fun singleEventConstructionPreservesExplicitResolutionAndEvidence() {
         val evidence = event(

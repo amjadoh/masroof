@@ -85,7 +85,8 @@ fun SettingsCardSetupSheet(
                         else registryLabel(availableAccounts.single { it.maskedNumber == masked })
                     }, { account = it.ifEmpty { null } }, { "card-account-$it" })
                 }
-                if (type == CardType.PREPAID) MasroofText(stringResource(R.string.prepaid_card_setup_hint))
+                if (type == CardType.PREPAID) com.baraa.masroof.presentation.common.MasroofGuidanceLabel(
+                    stringResource(R.string.settings_card_type_prepaid), stringResource(R.string.prepaid_card_setup_hint))
                 if (blocksDependents) MasroofText(stringResource(R.string.settings_card_dependents_block), color = MaterialTheme.colorScheme.error)
                 if (failed) MasroofText(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
             }

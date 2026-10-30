@@ -30,8 +30,11 @@ data class PatternFactContract(
     val version: Int = 1,
     val accountBindings: List<PatternAccountBinding> = emptyList(),
     val contextReferences: Set<String> = emptySet(),
+    val confirmedLoanType: LoanType? = null,
 ) {
     init {
+        require(confirmedLoanType == null || version == 3 && family == MessageFamily.FINANCING_INSTALLMENT)
+        require(version != 3 || confirmedLoanType != null)
         require(accountBindings.size <= 2 && accountBindings.map { it.role }.distinct().size == accountBindings.size)
         require(contextReferences.all { it in PATTERN_REFERENCE_FIELDS })
         require(accountBindings.mapNotNull { it.field }.distinct().size == accountBindings.mapNotNull { it.field }.size)
@@ -114,12 +117,14 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                 patternProvenance = PatternProvenance(fingerprint, stamp.id, stamp.revision, emptySet(), false, roleProfile = true))
         }
         if (roleResult?.blockers?.contains(Blocker.CONFLICTING_FACTS) == true)
-            return unresolved("PATTERN_PROFILE_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
+            return unresolved("PATTERN_PROFILE_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS).let {
+                it.copy(diagnostics = it.diagnostics + roleResult.diagnostics)
+            }
         if (matches.isEmpty()) return unresolved("PATTERN_NOT_MATCHED")
         if (matches.size != 1) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
         val (pattern, preview) = matches.single()
         val contract = pattern.factContract ?: return unresolved("PATTERN_CONTRACT_MISSING")
-        if (contract.version !in 1..2 || (contract.version == 1 && (contract.accountBindings.isNotEmpty() || contract.contextReferences.isNotEmpty())))
+        if (contract.version !in 1..3 || (contract.version == 1 && (contract.accountBindings.isNotEmpty() || contract.contextReferences.isNotEmpty())))
             return unresolved("PATTERN_CONTRACT_UNSUPPORTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
 
         val evidence = preview.fields.map { (field, span) -> Evidence(pattern.id, field.uppercase(Locale.ROOT), span.start, span.end) }.toMutableList()
@@ -191,7 +196,9 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         val destinationObserved = account("destination_account", contract.destinationAccountBank)
         if (sourceBinding != null && sourceObserved != null && sourceBinding != sourceObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
         if (destinationBinding != null && destinationObserved != null && destinationBinding != destinationObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
+        if (contract.confirmedLoanType != null) definitionFacts += "LOAN_TYPE"
         val facts = Facts(contract.family, amount = money("amount"), direction = contract.direction,
+            loanType = contract.confirmedLoanType,
             sourceAccount = sourceBinding ?: sourceObserved,
             destinationAccount = destinationBinding ?: destinationObserved, card = card,
             merchant = value("merchant"), counterparty = value("counterparty"), biller = value("biller"),
@@ -251,6 +258,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                                 }
                                 out.writeInt(it.contextReferences.size); it.contextReferences.sorted().forEach(out::writeUTF)
                             }
+                            if (it.version >= 3) out.writeUTF(it.confirmedLoanType?.name.orEmpty())
                         }
                         // Keep the v1/v2 stamp byte-for-byte compatible when no role matcher exists.
                         pattern.roleProfile?.let { out.writeUTF("role-profile-v1"); out.writeUTF(it.toString()) }

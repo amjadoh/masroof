@@ -187,6 +187,7 @@ object TransactionClassifier {
     }
 
     private fun classifyCardPayment(evidence: ClassificationEvidence): ClassificationResult {
+        if (evidence.destination?.knownCardType == CardType.PREPAID) return classifyPrepaidTopUp(evidence)
         val source = evidence.source
         val destination = evidence.destination
 

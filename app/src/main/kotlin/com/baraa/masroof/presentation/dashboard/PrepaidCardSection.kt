@@ -24,7 +24,8 @@ internal fun PrepaidCardSection(card: PrepaidCardOverview) {
     MasroofCard {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofText(card.displayLabel, style = MaterialTheme.typography.titleMedium)
-            MasroofText(stringResource(R.string.prepaid_card_currency_hint), style = MaterialTheme.typography.bodySmall)
+            com.baraa.masroof.presentation.common.MasroofGuidanceLabel(
+                stringResource(R.string.prepaid_card_movement), stringResource(R.string.prepaid_card_currency_hint))
             if (card.unconvertedFundingCount > 0) MasroofText(
                 stringResource(R.string.prepaid_card_unconverted_funding, card.unconvertedFundingCount),
                 style = MaterialTheme.typography.bodySmall,

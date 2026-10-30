@@ -1617,6 +1617,554 @@
               ]
             }
           }
+        },
+        {
+          "id": "barq.refund",
+          "sender": "barq app",
+          "label": "REFUND",
+          "revision": 2,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "REFUND",
+            "direction": "INCOMING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "barq.refund",
+                "family": "REFUND",
+                "direction": "INCOMING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "استرداد",
+                  "إعادة مبلغ",
+                  "عكس عملية شراء",
+                  "حوالة عكسية",
+                  "purchase refund",
+                  "refund",
+                  "عملية عكسية"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "المبلغ",
+                    "ب",
+                    "amount",
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
+                  ],
+                  "DESTINATION_ACCOUNT": [
+                    "الى حساب",
+                    "إلى حساب",
+                    "حساب",
+                    "لحساب",
+                    "رقم الحساب"
+                  ],
+                  "CARD": [
+                    "بطاقة ائتمانية",
+                    "بطاقة مدى",
+                    "بطاقة",
+                    "ائتمانية",
+                    "مدى-أثير",
+                    "مدى-باي",
+                    "لك",
+                    "مدى",
+                    "Mada card",
+                    "credit card",
+                    "card"
+                  ]
+                },
+                "detailLabels": {},
+                "observations": {
+                  "card.credit": [
+                    "ائتمانية",
+                    "الائتمانية",
+                    "credit card"
+                  ],
+                  "card.debit": [
+                    "مدى",
+                    "مدى-أثير",
+                    "مدى-باي",
+                    "Mada card",
+                    "debit card"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
+        },
+        {
+          "id": "barq.transfer-in",
+          "sender": "barq app",
+          "label": "TRANSFER_IN",
+          "revision": 2,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "TRANSFER_IN",
+            "direction": "INCOMING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "barq.transfer-in",
+                "family": "TRANSFER_IN",
+                "direction": "INCOMING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "حوالة واردة",
+                  "حوالة داخلية واردة",
+                  "إيداع حوالة واردة",
+                  "ايداع رواتب",
+                  "إيداع راتب",
+                  "Credit transfer",
+                  "incoming transfer"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "المبلغ",
+                    "ب",
+                    "amount",
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
+                  ],
+                  "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "حساب المرسل",
+                    "from a/c"
+                  ],
+                  "DESTINATION_ACCOUNT": [
+                    "لحساب",
+                    "حساب",
+                    "إلى",
+                    "الى",
+                    "to account"
+                  ]
+                },
+                "detailLabels": {
+                  "counterparty": [
+                    "مرسل",
+                    "من",
+                    "from"
+                  ]
+                },
+                "observations": {
+                  "network.intra": [
+                    "داخلية",
+                    "داخلي",
+                    "داخل البنك",
+                    "بين حساباتك",
+                    "Internal"
+                  ],
+                  "network.inter": [
+                    "محلية",
+                    "محلي",
+                    "سريع",
+                    "Local",
+                    "SARIE"
+                  ],
+                  "income.salary": [
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "راتب",
+                    "salary"
+                  ],
+                  "network.sourceBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة"
+                  ],
+                  "amount.standalone": [
+                    "حوالة واردة",
+                    "حوالة داخلية واردة",
+                    "إيداع حوالة واردة",
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "Credit transfer",
+                    "incoming transfer"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
+        },
+        {
+          "id": "barq.transfer-out",
+          "sender": "barq app",
+          "label": "TRANSFER_OUT",
+          "revision": 2,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "TRANSFER_OUT",
+            "direction": "OUTGOING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "barq.transfer-out",
+                "family": "TRANSFER_OUT",
+                "direction": "OUTGOING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "حوالة صادرة",
+                  "حوالة بين حساباتك",
+                  "Debit Transfer",
+                  "outgoing transfer"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "المبلغ",
+                    "ب",
+                    "amount",
+                    "المبلغ، العملة",
+                    "مدى",
+                    "فيزا"
+                  ],
+                  "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "حساب المرسل",
+                    "من",
+                    "حساب",
+                    "from account"
+                  ],
+                  "DESTINATION_ACCOUNT": [
+                    "لحساب",
+                    "الى حساب",
+                    "إلى حساب",
+                    "حساب المستفيد",
+                    "إلى",
+                    "الى",
+                    "آيبان",
+                    "to a/c"
+                  ]
+                },
+                "detailLabels": {
+                  "counterparty": [
+                    "مستفيد",
+                    "إلى",
+                    "الى",
+                    "to"
+                  ]
+                },
+                "observations": {
+                  "network.intra": [
+                    "داخلية",
+                    "داخلي",
+                    "داخل البنك",
+                    "بين حساباتك",
+                    "Internal"
+                  ],
+                  "network.inter": [
+                    "محلية",
+                    "محلي",
+                    "سريع",
+                    "Local",
+                    "SARIE"
+                  ],
+                  "income.salary": [
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "راتب",
+                    "salary"
+                  ],
+                  "network.destinationBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
         }
       ]
     }
