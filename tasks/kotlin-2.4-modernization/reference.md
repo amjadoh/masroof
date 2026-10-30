@@ -15,7 +15,10 @@ No private source or financial data was sent to Context7.
 
 Context7 returned official repository excerpts, including historical 2.3 backing
 field examples still labeled experimental. The 2.4 release notes supersede that
-historical status. The official rendered release pages, API references, Android
+historical status. The official feature-status summary sometimes lists availability
+at the stable/major release rather than the first preview (for example, guards
+show 2.2 there, while 2.1 release notes document the preview). Introduction
+versions here follow the focused release notes. The official rendered release pages, API references, Android
 Room guidance and toolchain compatibility table were cross-checked directly.
 
 ## Language and compiler
@@ -56,10 +59,16 @@ opt-ins. The first two remain pre-stable in the researched release history;
 collection equality/uniqueness helpers and coroutine stack recovery APIs
 experimental. These are not stable opportunities simply because 2.4.21 is installed.
 
-Sources: [2.3 experimental checker](https://kotlinlang.org/docs/whatsnew23.html#unused-return-value-checker),
+Sources: [current language status](https://kotlinlang.org/docs/kotlin-language-features-and-proposals.html),
+[current unused-result checker](https://kotlinlang.org/docs/unused-return-value-checker.html),
 [2.4 language/stdlib](https://kotlinlang.org/docs/whatsnew24.html),
 [2.4.20 exclusions](https://kotlinlang.org/docs/whatsnew2420.html#new-experimental-features).
 Native/Swift/Wasm/JS changes do not apply to Masroof's Android/JVM targets.
+
+Common atomic types were introduced experimentally in 2.1.20 and still carry
+`ExperimentalAtomicApi` in the 2.4 API. Keep existing JVM atomics.
+[Introduction](https://kotlinlang.org/docs/whatsnew2120.html#common-atomic-types),
+[current atomic API](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent.atomics/).
 
 ## Android, Compose, Coroutines, Flow and Room
 
@@ -67,6 +76,10 @@ Native/Swift/Wasm/JS changes do not apply to Masroof's Android/JVM targets.
   catalog pin. Kotlin's Compose compiler ships with the matching Kotlin release;
   no Compose compiler flags, stability annotations, remember/effect keys or UI
   composition structure need changing. [Migration guide](https://kotlinlang.org/docs/compose-compiler-migration-guide.html).
+- Compose 2.1.20 fixed default parameters on open composables and restartability
+  of final overrides. Masroof has no relevant open-composable workaround to
+  remove. Source information is already default on Android.
+  [2.1.20 Compose changes](https://kotlinlang.org/docs/whatsnew2120.html#compose-compiler).
 - Coroutines/Flow are independently versioned libraries, not APIs upgraded by
   selecting Kotlin 2.4. Preserve dispatchers, cancellation, atomic `update`,
   replay/buffering and lifecycle collection. Keep the existing read-only wrappers.
