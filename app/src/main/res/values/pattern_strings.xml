@@ -13,10 +13,7 @@
     <string name="pattern_disable">تعطيل النمط</string>
     <string name="pattern_enable">تفعيل النمط للمعاينة</string>
     <string name="pattern_restore_revision">استعادة الإصدار %1$d كإصدار جديد</string>
-    <string name="pattern_selection_hint">حدد نوع العملية أولًا. استخرج القيم ثم اضغط قيمة أو حددها من النص، واختر حقلها واضغط ربط. لا يلزم وجود جميع الحقول.</string>
     <string name="pattern_message">الرسالة</string>
-    <string name="pattern_extract">استخراج القيم</string>
-    <string name="pattern_bind">ربط النص المحدد بالحقل</string>
     <string name="pattern_remove_binding">إزالة الربط</string>
     <string name="pattern_preview">معاينة</string>
     <string name="pattern_other_message">رسالة أخرى للتجربة</string>
@@ -29,10 +26,8 @@
     <!-- Same order as pattern_field_keys: what each field means, with an example from a real-looking SMS. -->
     <string-array name="pattern_field_help"><item>المبلغ الذي خُصم أو أُضيف في هذه العملية، وليس الرصيد. مثال: «Amount: 120.00 SAR»</item><item>اسم المتجر أو الجهة التي دفعت لها. مثال: «At: TEST SHOP» أو «لدى: متجر»</item><item>آخر أربعة أرقام من بطاقتك كما تظهر في الرسالة، ولو كانت مع نجوم. مثال: «Card: *1234»</item><item>تاريخ ووقت تنفيذ العملية. مثال: «At: 15/10/26 12:30»</item><item>الرصيد المتبقي بعد العملية؛ لا يُحسب كمبلغ. مثال: «Balance: 900 SAR»</item><item>الشخص أو الجهة على الطرف الآخر من الحوالة. مثال: «To: محمد»</item><item>الحساب الذي خرج منه المال، غالبًا آخر أرقامه. مثال: «From: *3001»</item><item>الحساب الذي وصل إليه المال. مثال: «To account: *5678»</item><item>بنك الطرف الآخر في الحوالة. مثال: «From Al Rajhi Bank»</item><item>‏Ref أو Ref. No.: رقم يميّز العملية عند البنك، ولا يدل على حساب. مثال: «Ref. No. 123456»</item><item>الجهة التي سددت فاتورتها. مثال: «Biller: STC»</item><item>‏Acc أو Ac Ref: آخر أرقام حسابك كما يكتبها البنك، وقد تكون ثلاثة أرقام. مثال: «Acc: *345»</item><item>وسيلة الشحن التي أضفت منها المال، مثل بطاقة أو حساب آخر. مثال: «Via: *6789»</item><item>رقم الجهة المفوترة في سداد. مثال: «Biller code: 001»</item><item>المبلغ المستحق على البطاقة أو التمويل؛ لا يُحسب كمبلغ العملية. مثال: «Due amount: 1,000 SAR»</item><item>رسوم إضافية على العمليات خارج المملكة. مثال: «Intl fee: 2.50 SAR»</item><item>مبلغ العملية بعملة غير الريال قبل التحويل. مثال: «USD 20.00»</item></string-array>
     <string name="pattern_ignore">قيمة متغيرة لا نحتاجها</string>
-    <string name="pattern_teach_from_review">تعليم نمط من هذه الرسالة</string>
     <string name="pattern_sender_mismatch">مرسل هذه الرسالة ليس ضمن مرسلي البنك المحدد. اختر البنك الصحيح؛ لن يتغير توجيه الرسالة.</string>
     <string name="pattern_pending_title">معاينة الرسائل المعلقة</string>
-    <string name="pattern_pending_scope">المعاينة لا تغيّر الرسائل. التطبيق إجراء منفصل للأنماط المعتمدة فقط؛ العمليات المسجلة والتصحيحات والقرارات اليدوية مستثناة.</string>
     <string name="pattern_pending_refresh">تحديث المعاينة</string>
     <string name="pattern_pending_limited">تُفحص أول 1000 رسالة في قائمة المراجعة، ويُعرض هنا أول 50 نتيجة للبنك. هذه ليست تغطية كاملة للرسائل.</string>
     <string name="pattern_pending_row">الرسالة %1$d — %2$s</string>

@@ -19,10 +19,8 @@
     <string name="lab_analysis_updated">آخر نتيجة: %1$s</string>
     <string name="lab_analysis_back">رجوع</string>
     <string name="lab_analysis_settings">حد المشتريات والتنبيهات</string>
-    <string name="lab_analysis_purchases">المشتريات</string>
     <string name="lab_analysis_commitments">الالتزامات</string>
     <string name="lab_analysis_alerts">التنبيهات</string>
-    <string name="lab_analysis_alert_count">تنبيهات التحليل غير المقروءة: %1$d</string>
     <string name="lab_analysis_commitments_hint">المستحقات المسجلة مؤكدة. الدفعات المكتشفة تقديرات منفصلة؛ لا تُضاف إلى توقع المشتريات ولا تُنشئ التزامًا قبل حفظك.</string>
     <string name="lab_analysis_confirmed">مستحق مؤكد</string>
     <string name="lab_analysis_estimated">تقدير</string>
@@ -30,20 +28,14 @@
     <string name="lab_analysis_no_candidates">لا توجد اقتراحات تكرار كافية حاليًا.</string>
     <string name="lab_analysis_weekly">أسبوعي</string>
     <string name="lab_analysis_monthly">شهري</string>
-    <string name="lab_analysis_evidence_count">يستند إلى %1$d دفعات سابقة.</string>
     <string name="lab_analysis_payment_number">فتح الحركة %1$d</string>
     <string name="lab_analysis_review_candidate">مراجعة وإضافة الالتزام</string>
-    <string name="lab_analysis_reject">رفض الاقتراح</string>
-    <string name="lab_analysis_alerts_hint">التنبيهات داخل التطبيق افتراضيًا. يمكنك تفعيل إشعارات الهاتف من الإعدادات.</string>
-    <string name="lab_analysis_no_alerts">لا توجد تنبيهات حالية.</string>
     <string name="lab_analysis_due_alert">استحقاق قريب</string>
     <string name="lab_analysis_payment_alert">تغير مبلغ دفعة متكررة</string>
     <string name="lab_analysis_actual_alert">تجاوز المشتريات الفعلي للحد</string>
     <string name="lab_analysis_budget_alert">تجاوز متوقع لحد المشتريات</string>
-    <string name="lab_analysis_snoozed">مؤجل لمدة يوم</string>
     <string name="lab_analysis_read">تم الاطلاع</string>
     <string name="lab_analysis_snooze">تأجيل يوم</string>
-    <string name="lab_analysis_range">نطاق التوقع: %1$s — %2$s</string>
     <string name="lab_analysis_no_range">لا توجد اختبارات كافية لعرض نطاق موثوق بعد.</string>
     <string name="lab_analysis_range_unavailable">نطاق التوقع غير متاح بعد</string>
     <string name="lab_analysis_budget">حد المشتريات لفترة الراتب (ر.س، اختياري)</string>
@@ -57,7 +49,6 @@
     <string name="lab_analysis_history">سجل التوقعات المنشورة</string>
     <string name="lab_analysis_final_actual">الفعلي بعد اكتمال الفترة</string>
     <string name="lab_analysis_history_hint">يبدأ من تفعيل الميزة. الاختبارات التاريخية ليست توقعات سابقة منشورة.</string>
-    <string name="lab_analysis_quality">جودة البيانات</string>
     <string name="lab_analysis_quality_hint">نستخدم الحركات المعتمدة ونستبعد التكرار والبيانات الناقصة. المبالغ الكبيرة الصحيحة تبقى ضمن الإجماليات. التحليل محلي على جهازك دون إرسال الحركات أو نصوص الرسائل.</string>
     <string name="lab_analysis_show_data">عرض تفاصيل البيانات</string>
     <string name="lab_analysis_hide_data">إخفاء تفاصيل البيانات</string>
@@ -73,7 +64,6 @@
     <string name="lab_analysis_phone">إظهار تنبيهات التحليل على الهاتف</string>
     <string name="lab_analysis_shadow">إشعارات التجاوز المتوقع تبدأ بعد مراقبة صامتة سبعة أيام، ونتيجتين حديثتين يفصل بينهما ست ساعات. النتائج داخل التطبيق متاحة الآن.</string>
     <string name="lab_analysis_permission_denied">لم يُمنح إذن الهاتف. تظل التنبيهات داخل التطبيق متاحة.</string>
-    <string name="lab_analysis_invalid">أدخل مبلغًا موجبًا صحيحًا وأيام تذكير بين 1 و30، أو اترك الحد فارغًا.</string>
     <string name="lab_analysis_save">حفظ</string>
     <string name="lab_analysis_cancel">إلغاء</string>
     <string name="lab_analysis_close">إغلاق</string>
@@ -114,18 +104,12 @@
     <string name="lab_analysis_component_transfers">حوالات خارجية</string>
     <string name="lab_analysis_component_refunds">استردادات مخصومة</string>
     <string name="lab_analysis_comparison_dates">مقارنة الأيام المكتملة: %1$s — %2$s، مقابل %3$s — %4$s</string>
-    <string name="lab_analysis_comparison_delta">الفرق عن الفترة السابقة: %1$s</string>
     <string name="lab_analysis_comparison_percent">نسبة التغير: %1$s٪</string>
     <string name="lab_analysis_comparison_current">الصرف حتى أمس</string>
     <string name="lab_analysis_comparison_previous">نفس عدد الأيام من الفترة السابقة</string>
     <string name="lab_analysis_comparison_missing">المقارنة غير متاحة حتى تتوفر أيام مكتملة ومغطاة في الفترتين.</string>
-    <string name="lab_analysis_changes">أبرز المساهمات في الفرق</string>
     <string name="lab_analysis_changes_hint">توضح هذه المقارنات الفرق حسابيًا؛ قد تكون الجهة جزءًا من أحد المكونات، لذلك لا تُجمع الصفوف.</string>
-    <string name="lab_analysis_change_value">%1$s: الفرق %2$s</string>
-    <string name="lab_analysis_top_merchants">أعلى الجهات في المشتريات الصافية</string>
     <string name="lab_analysis_no_merchants">لا توجد مشتريات مسماة كافية لعرض الجهات.</string>
-    <string name="lab_analysis_evidence">عرض الحركات</string>
-    <string name="lab_analysis_quality_title">هل البيانات كافية؟</string>
     <string name="lab_analysis_quality_initial">كافية لتقدير أولي</string>
     <string name="lab_analysis_quality_insufficient">التاريخ غير كافٍ للتقدير بعد</string>
     <string name="lab_analysis_quality_personal">يُستخدم النموذج الشخصي</string>
@@ -156,7 +140,6 @@
     <string name="lab_analysis_history_expand">عرض أوقات النتائج</string>
     <string name="lab_analysis_history_collapse">إخفاء أوقات النتائج</string>
     <string name="lab_analysis_scope_short">يشمل المشتريات والسحب والحوالات الخارجية؛ الاستردادات مخصومة.</string>
-    <string name="lab_analysis_chart_legend">فعلي حتى أمس · اليوم والأيام القادمة تقديرية بخط متقطع</string>
     <string name="lab_analysis_quality_periods_reason">النموذج الشخصي يحتاج أربع فترات راتب مكتملة قبل التقييم.</string>
     <string name="lab_analysis_quality_purchase_days_reason">النموذج الشخصي يحتاج 20 يومًا فيها مشتريات ضمن السجل المتصل.</string>
 </resources>

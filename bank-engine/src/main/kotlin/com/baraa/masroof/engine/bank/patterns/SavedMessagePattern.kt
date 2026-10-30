@@ -105,7 +105,7 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
                     choice.field in numericMoneyFields && raw.matches(Regex(FieldKind.DECIMAL.pattern(raw))) -> FieldKind.DECIMAL
                     raw.matches(Regex("[0-9]+")) -> FieldKind.DIGITS
                     raw.matches(Regex(FieldKind.MONEY.pattern(raw))) && FieldKind.MONEY.accepts(raw) -> FieldKind.MONEY
-                    else -> FieldKind.values().firstOrNull { it.dateFormat != null && raw.matches(Regex(it.pattern(raw))) && it.accepts(raw) }
+                    else -> FieldKind.entries.firstOrNull { it.dateFormat != null && raw.matches(Regex(it.pattern(raw))) && it.accepts(raw) }
                         ?: FieldKind.TEXT
                 }
                 // Explicit user ranges also cover values discovery could not offer.
