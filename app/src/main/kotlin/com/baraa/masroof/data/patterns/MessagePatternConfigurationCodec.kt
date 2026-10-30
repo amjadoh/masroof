@@ -69,6 +69,7 @@ object MessagePatternConfigurationCodec {
     fun decode(raw: String): MessagePatternConfiguration {
         require(raw.length <= MAX_BYTES && raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Pattern configuration too large" }
         val root = json.parseToJsonElement(raw).jsonObject
+        require("schema" in root) { "Unsupported pattern configuration" }
         val schema = root.number("schema")
         root.only(*(listOf("schema", "normalization", "generation", "banks") +
             if (schema >= 5L) listOf("confirmedLoanPayments") else emptyList()).toTypedArray())
