@@ -104,19 +104,21 @@ class FoldModalWindowJourneyTest {
     private data class ModalGeometry(val activity: ActivityGeometry, val overlay: Rect, val scrim: Rect,
         val sheet: Rect, val controls: Map<String, Rect>)
 
-    private fun activityGeometry() = compose.runOnIdle {
+    private fun currentGeometry(): ActivityGeometry {
         val activity = compose.activity
-        ActivityGeometry(activity, IntSize(activity.window.decorView.width, activity.window.decorView.height),
+        return ActivityGeometry(activity, IntSize(activity.window.decorView.width, activity.window.decorView.height),
             activity.findViewById<android.view.View>(android.R.id.content).height,
             activity.resources.displayMetrics.widthPixels, activity.resources.displayMetrics.density)
     }
+    private fun activityGeometry() = compose.runOnIdle { currentGeometry() }
     private fun resize(size: String, overlayOpen: Boolean = true) {
         val dimensions = size.split('x').map(String::toInt)
         requestedWindow = IntSize(dimensions[0], dimensions[1])
         val pfd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("wm size $size")
         android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes() }
+        // Poll without runOnIdle: Espresso idle has no timeout and may not settle mid-resize.
         compose.waitUntil(30_000) {
-            activityGeometry().size == requestedWindow && (!overlayOpen || exists("sheet-overlay"))
+            compose.runOnUiThread { currentGeometry() }.size == requestedWindow && (!overlayOpen || exists("sheet-overlay"))
         }
         compose.waitForIdle()
     }
