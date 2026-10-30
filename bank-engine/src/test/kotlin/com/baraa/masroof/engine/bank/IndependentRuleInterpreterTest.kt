@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class IndependentRuleInterpreterTest {
@@ -49,9 +49,9 @@ class IndependentRuleInterpreterTest {
         listOf("الرقم السري لمرة واحدة", "الرقم السري لمره واحده", "الرمز السري", "رمز التأكيد", "رمز الدخول", "رمز المرور",
             "كلمة السر", "كود التحقق", "كود التفعيل", "Activation code", "Do not share this code", "لا تشارك الرمز").forEach { term ->
             val r = parse("$term: 567890\n$purchase")
-            assertEquals(term, MessageFamily.OTP, r.facts.family)
-            assertEquals(term, ParseStatus.NON_FINANCIAL, r.status)
-            assertNull(term, r.facts.amount)
+            assertEquals(MessageFamily.OTP, r.facts.family, term)
+            assertEquals(ParseStatus.NON_FINANCIAL, r.status, term)
+            assertNull(r.facts.amount, term)
         }
         assertEquals(MessageFamily.OTP, parse("OTP1234 is your code\n$purchase").facts.family)
         // An approval code on a real purchase is not a one-time password.
@@ -62,32 +62,32 @@ class IndependentRuleInterpreterTest {
         mapOf("SAR42.35" to "SAR", "42.35SAR" to "SAR", "SAR 42.35" to "SAR", "SR42.35" to "SAR", "42.35 SR" to "SAR",
             "ر.س42.35" to "SAR", "42.35ريال" to "SAR", "USD42.35" to "USD").forEach { (value, code) ->
             val r = parse("Purchase\nAmount: $value\nCard: **1234\nMerchant: Synthetic Shop\n2026-10-17 13:00")
-            assertEquals(value, ParseStatus.SUCCESS, r.status)
-            assertEquals(value, "42.35", r.facts.amount!!.amount.toPlainString())
-            assertEquals(value, code, r.facts.amount!!.currency.name)
+            assertEquals(ParseStatus.SUCCESS, r.status, value)
+            assertEquals("42.35", r.facts.amount!!.amount.toPlainString(), value)
+            assertEquals(code, r.facts.amount!!.currency.name, value)
         }
         assertEquals(1000, parse("Purchase\nAmount: 1,000.00SAR\nCard: **1234\nMerchant: Shop\n2026-10-17 13:00").facts.amount!!.amount.toInt())
         listOf("42.35SARX", "42.355SAR").forEach { value ->
             val r = parse("Purchase\nAmount: $value\nCard: **1234\nMerchant: Synthetic Shop\n2026-10-17 13:00")
-            assertEquals(value, ParseStatus.REVIEW_REQUIRED, r.status)
-            assertNull(value, r.facts.amount)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, value)
+            assertNull(r.facts.amount, value)
         }
     }
 
     @Test fun securityAndUnexecutedWordingCannotBecomeSuccessfulMoney() {
         listOf("OTP", "verification code", "one-time password", "PIN", "رمز التحقق", "رمز التوثيق", "رمز تأكيد").forEach { term ->
             val r = parse("$term: 567890\n$purchase")
-            assertEquals(term, ParseStatus.NON_FINANCIAL, r.status)
+            assertEquals(ParseStatus.NON_FINANCIAL, r.status, term)
             assertEquals(MessageFamily.OTP, r.facts.family)
             assertNull(r.facts.amount); assertNull(r.facts.card)
         }
         listOf("declined", "rejected", "pending", "request", "cancelled", "not completed", "not executed", "not yet debited", "never executed", "لم تتم", "مرفوضة", "قيد التنفيذ", "غير منفذة", "لم يخصم").forEach { term ->
             val r = parse("$term\n$purchase")
-            assertEquals(term, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, term)
             assertNull(r.facts.executionState)
         }
         listOf("offer", "advertisement", "statement", "payment due date").forEach { term ->
-            assertEquals(term, ParseStatus.REVIEW_REQUIRED, parse("$term\n$purchase").status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$term\n$purchase").status, term)
         }
     }
 
@@ -105,7 +105,7 @@ class IndependentRuleInterpreterTest {
             purchase + "\nAmount: JPY 100", purchase + "\nAmount: SAR -50", purchase + "\nIncoming transfer")
         cases.forEach { body ->
             val r = parse(body)
-            assertEquals(body, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, body)
             assertTrue(r.blockers.isNotEmpty()); assertNull(r.facts.executionState)
         }
         assertEquals(MessageFamily.UNKNOWN, parse("repurchase amount SAR 42.35").facts.family)

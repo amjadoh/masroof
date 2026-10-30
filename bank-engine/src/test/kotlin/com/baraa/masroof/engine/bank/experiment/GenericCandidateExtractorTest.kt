@@ -2,8 +2,8 @@ package com.baraa.masroof.engine.bank.experiment
 
 import com.baraa.masroof.engine.bank.patterns.*
 import kotlinx.serialization.json.*
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.io.File
 
 class GenericCandidateExtractorTest {
@@ -180,6 +180,6 @@ class GenericCandidateExtractorTest {
             require(inputPath != null)
             File(path).writeText(Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), report))
         }
-        assertEquals("Expected raw values missing; inspect private report without logging message data", 0, missing)
+        assertEquals(0, missing, "Expected raw values missing; inspect private report without logging message data")
     }
 }

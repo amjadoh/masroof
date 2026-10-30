@@ -14,10 +14,10 @@ import com.baraa.masroof.domain.model.ParsedEvent
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class TransactionMatcherTest {
 

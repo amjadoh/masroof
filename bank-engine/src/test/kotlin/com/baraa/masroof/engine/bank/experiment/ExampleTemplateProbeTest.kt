@@ -2,8 +2,8 @@ package com.baraa.masroof.engine.bank.experiment
 
 import com.baraa.masroof.engine.bank.patterns.*
 import kotlinx.serialization.json.*
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.io.File
 
 /** Private inputs and reports stay outside Git. Without them the same probe runs on synthetic fixtures. */
@@ -17,16 +17,16 @@ class ExampleTemplateProbeTest {
         val rows = examples.mapIndexed { index, example ->
             val template = example.learn()
             val original = template.preview("STC Bank", example.body)
-            assertTrue("example ${index + 1} did not reproduce its human selections", original != null &&
+            assertTrue(original != null &&
                 original.fields.mapValues { it.value.raw } == example.selections.associate {
                     it.field to example.body.substring(it.start, it.end)
-                })
+                }, "example ${index + 1} did not reproduce its human selections")
             assertFalse(requireNotNull(original).financialPostingAllowed)
             for (variant in 1..2) {
                 val (body, expected) = example.variant(variant)
                 val result = template.preview("STC Bank", body)
-                assertTrue("example ${index + 1}, synthetic probe $variant failed", result != null &&
-                    result.fields.mapValues { it.value.raw } == expected && !result.financialPostingAllowed)
+                assertTrue(result != null &&
+                    result.fields.mapValues { it.value.raw } == expected && !result.financialPostingAllowed, "example ${index + 1}, synthetic probe $variant failed")
                 changedValueChecks++
             }
             val amount = example.selections.single { it.field == "amount" }
@@ -40,7 +40,7 @@ class ExampleTemplateProbeTest {
                 "STC Bank" to example.replace("amount", "1.234 SAR"),
             )
             negatives.forEachIndexed { number, (sender, body) ->
-                assertTrue("example ${index + 1}, synthetic negative $number was accepted", template.preview(sender, body) == null)
+                assertTrue(template.preview(sender, body) == null, "example ${index + 1}, synthetic negative $number was accepted")
                 negativeChecks++
             }
             buildJsonObject {
@@ -126,7 +126,7 @@ class ExampleTemplateProbeTest {
             require(privateHoldouts != null && System.getenv("MASROOF_PATTERN_INPUT") != null)
             File(path).writeText(Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), report))
         }
-        assertEquals("Held-out mismatch count; inspect private report without logging SMS data", 0, mismatches)
+        assertEquals(0, mismatches, "Held-out mismatch count; inspect private report without logging SMS data")
     }
 
     @Test fun oneAdditionalExampleHandlesAnUnseenLayoutWithoutLearningTheHoldout() {
@@ -145,14 +145,14 @@ class ExampleTemplateProbeTest {
         assertTrue(cases.none { sample -> (originalTeachers + teacher).any { it.body == sample.body } })
         val extendedTemplates = originalTemplates + teacher.learn()
         val reproduced = requireNotNull(ExampleTemplate.previewUnique(extendedTemplates, "STC Bank", teacher.body))
-        assertTrue("Additional teacher fields do not reproduce", reproduced.fields.mapValues { it.value.raw } ==
-            teacher.selections.associate { it.field to teacher.body.substring(it.start, it.end) })
+        assertTrue(reproduced.fields.mapValues { it.value.raw } ==
+            teacher.selections.associate { it.field to teacher.body.substring(it.start, it.end) }, "Additional teacher fields do not reproduce")
         val rows = cases.map { sample ->
             assertNull(ExampleTemplate.previewUnique(originalTemplates, sample.sender, sample.body))
             val result = ExampleTemplate.previewUnique(extendedTemplates, sample.sender, sample.body)
-            assertTrue("Additional layout held-out fields differ; no SMS values logged", result != null &&
+            assertTrue(result != null &&
                 result.label == sample.expectedLabel && result.fields.mapValues { it.value.raw } == sample.expectedFields &&
-                result.fields.values.all { it.raw == sample.body.substring(it.start, it.end) })
+                result.fields.values.all { it.raw == sample.body.substring(it.start, it.end) }, "Additional layout held-out fields differ; no SMS values logged")
             assertFalse(requireNotNull(result).financialPostingAllowed)
             buildJsonObject {
                 put("example", sample.id)

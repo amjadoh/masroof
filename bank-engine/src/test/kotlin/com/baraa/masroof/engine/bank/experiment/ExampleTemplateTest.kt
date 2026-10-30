@@ -1,8 +1,8 @@
 package com.baraa.masroof.engine.bank.experiment
 
 import com.baraa.masroof.engine.bank.patterns.*
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class ExampleTemplateTest {
     @Test fun inlineBindingsAreLearnedAutomaticallyIncludingPrefixMoneyAndSeconds() {
@@ -92,7 +92,7 @@ class ExampleTemplateTest {
             example.body.lineSequence().filterNot { it.startsWith("Amount:") }.joinToString("\n"),
             example.body.lineSequence().filterNot { it.startsWith("From:") }.joinToString("\n"),
         )
-        negatives.forEachIndexed { index, body -> assertNull("synthetic negative $index", template.preview("STC Bank", body)) }
+        negatives.forEachIndexed { index, body -> assertNull(template.preview("STC Bank", body), "synthetic negative $index") }
         assertNull(template.preview("Another sender", example.body))
     }
 
