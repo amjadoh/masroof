@@ -29,7 +29,7 @@ class StoredSmsReprocessor(
         var failedCount = 0
         for (rawSmsId in rawSmsRepository.listIdsByReceivedAt()) {
             val raw = rawSmsRepository.getById(rawSmsId) ?: continue
-            when (processRawSms.reparseAndStore(raw)) {
+            when (processRawSms.reparseAndStore(raw, refreshSuccessfulUnposted = true)) {
                 is SmsIngestionResult.Duplicate,
                 is SmsIngestionResult.NotRelevant,
                 -> Unit
