@@ -125,4 +125,21 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertIn('fail-fast: false', section)
 
 
+    def test_settle_waits_for_boot_load_and_never_blocks_forever(self):
+        from types import SimpleNamespace
+        readings = iter(['3.60 2.00 1.00 2/900 77', '1.20 2.00 1.00 1/900 77'])
+        def adb(*args, **_):
+            out = {'/proc/loadavg': lambda: next(readings), 'nproc': lambda: '4'}.get(args[-1], lambda: '')
+            return SimpleNamespace(stdout=out())
+        with patch.object(device, 'adb', side_effect=adb) as calls, patch.object(device.time, 'sleep') as sleep:
+            device.settle()
+        self.assertEqual(('shell', 'am', 'wait-for-broadcast-idle'), calls.call_args_list[0].args)
+        self.assertEqual(1, sleep.call_count)
+        busy = lambda *args, **_: SimpleNamespace(stdout='4' if args[-1] == 'nproc' else '9.00 9.00 9.00 4/900 77')
+        clock = iter(range(0, 1000, 100))
+        with patch.object(device, 'adb', side_effect=busy), patch.object(device.time, 'sleep'), \
+                patch.object(device.time, 'monotonic', side_effect=lambda: next(clock)):
+            device.settle(limit=250)  # returns at the deadline instead of failing the job
+
+
 if __name__ == '__main__': unittest.main()
