@@ -9,6 +9,29 @@ import java.io.IOException
 import java.nio.file.Files
 
 class MessagePatternStoreTest {
+    @Test fun repeatedRoutingSeesSameGenerationReplacementsCorruptionAndRestoreImmediately() = withFile { file ->
+        val store = MessagePatternStore(file)
+        store.saveBank(0, bank(pattern("STC", "STC Bank")))
+        val original = file.readText()
+        val adapters = com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(store)
+        val before = adapters.snapshot()
+        assertSame(before, adapters.snapshot())
+        val timestamp = file.lastModified()
+        val replaced = store.load().let { config -> config.copy(banks = config.banks.map { it.copy(senders = listOf("New Bank")) }) }
+        file.writeText(MessagePatternConfigurationCodec.encode(replaced))
+        file.setLastModified(timestamp)
+        val after = adapters.snapshot()
+        assertNotSame(before, after)
+        assertTrue(after.single().detect("New Bank", BODY) is com.baraa.masroof.parsing.model.BankDetectionResult.Detected)
+        assertTrue(after.single().detect("STC Bank", BODY) is com.baraa.masroof.parsing.model.BankDetectionResult.Unknown)
+        file.writeText("{}")
+        assertThrows(Exception::class.java) { adapters.snapshot() }
+        store.restoreRaw(original)
+        assertTrue(adapters.snapshot().single().detect("STC Bank", BODY) is com.baraa.masroof.parsing.model.BankDetectionResult.Detected)
+        store.restoreRaw(null)
+        assertTrue(adapters.snapshot().isEmpty())
+    }
+
     @Test fun deletionRemovesEveryRevisionOnlyFromItsBankAndSurvivesReloadAndFailedWrites() = withFile { file ->
         val first = pattern("STC", "STC Bank")
         val other = pattern("OTHER", "Other Bank")

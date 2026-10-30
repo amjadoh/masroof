@@ -24,6 +24,25 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PatternProcessingMilestoneTest {
+    @Test fun explicitReparseRefreshesSuccessfulUnpostedEvidenceButBackgroundRetryPreservesIt() = runBlocking {
+        fixture { c ->
+            val raw = sms("pending-success", "شراء-POS\nبـ10.00 SAR\nمن SHOP\nمدى **4321\nفي 15/10/26 12:30", "SNB-AlAhli")
+            val batch = c.historicalSmsBatchProcessor.startBatch()
+            batch.ingest(raw)
+            val before = requireNotNull(c.parsedEventRepository.findByRawSmsId(raw.id))
+            assertEquals(ParseStatus.SUCCESS, before.event.parseStatus)
+            assertFalse(c.financialTransactionRepository.isRawSmsLinked(raw.id))
+            val w = c.messagePatternsWorkflow
+            w.setEnabled(w.load().generation, "BANK_SNB", "snb.purchase", false)
+            c.processStoredSmsUseCase.reparseAndStore(raw)
+            assertEquals(before, c.parsedEventRepository.findByRawSmsId(raw.id))
+            c.processStoredSmsUseCase.reparseAndStore(raw, refreshSuccessfulUnposted = true)
+            assertNotEquals(ParseStatus.SUCCESS, c.parsedEventRepository.findByRawSmsId(raw.id)!!.event.parseStatus)
+            assertFalse(c.financialTransactionRepository.isRawSmsLinked(raw.id))
+            assertEquals(raw, c.rawSmsRepository.getById(raw.id))
+        }
+    }
+
     @Test fun confirmedMaskedSourceKeepsLoanRepaymentSeparateFromBillSpendingAndReplay() = runBlocking {
         fixture { c ->
             val bankId = "BANK_SNB"
@@ -501,9 +520,11 @@ class PatternProcessingMilestoneTest {
             val postedEvent = c.parsedEventRepository.findByRawSmsId("purchase-pending")
             w.setEnabled(w.load().generation, "NEW_BANK", p.id, false)
             c.processStoredSmsUseCase.process("purchase-pending")
+            c.processStoredSmsUseCase.reparseAndStore(c.rawSmsRepository.getById("purchase-pending")!!, refreshSuccessfulUnposted = true)
             assertEquals(postedEvent, c.parsedEventRepository.findByRawSmsId("purchase-pending"))
             assertEquals(1, c.financialTransactionRepository.listAll().size)
             c.processStoredSmsUseCase.process("manual-ignore")
+            c.processStoredSmsUseCase.reparseAndStore(c.rawSmsRepository.getById("manual-ignore")!!, refreshSuccessfulUnposted = true)
             assertEquals(beforeIgnored, c.parsedEventRepository.findByRawSmsId("manual-ignore"))
         }
     }
