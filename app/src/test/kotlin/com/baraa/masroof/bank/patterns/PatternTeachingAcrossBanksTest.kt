@@ -68,7 +68,7 @@ class PatternTeachingAcrossBanksTest {
     }
 
     @Test fun aTaughtFamilyNeverOverridesADifferentRecognizedFamily() {
-        bundled.forEach { base -> samples.drop(1).forEach { sample ->
+        bundled.forEach { base -> samples.forEach { sample ->
             val bank = base.banks.single().bankId
             val input = input(base, sample)
             val recognized = PatternFactInterpreter(base).interpretRouted(input, BankId(bank)).facts.family
@@ -79,11 +79,16 @@ class PatternTeachingAcrossBanksTest {
         } }
     }
 
-    @Test fun barqKeepsTheseMessagesReviewableUntilTaught() {
+    @Test fun barqRecognizesTheseFamiliesButNeedsATaughtLocalAccount() {
         val barq = bundled.single { it.banks.single().bankId == "BANK_BARQ" }
         samples.forEach { sample ->
             val result = PatternFactInterpreter(barq).interpretRouted(input(barq, sample), BankId("BANK_BARQ"))
+            assertEquals(sample.body, sample.family, result.facts.family)
             assertEquals(sample.body, ParseStatus.REVIEW_REQUIRED, result.status)
+            assertTrue(sample.body, result.diagnostics.any { it.code.startsWith("MISSING_TRANSFER_") })
         }
+        val topUp = PatternFactInterpreter(barq).interpretRouted(input(barq, samples.first()), BankId("BANK_BARQ"))
+        assertEquals(0, topUp.facts.amount!!.amount.compareTo("400".toBigDecimal()))
+        assertEquals(com.baraa.masroof.engine.bank.BankNetwork.INTER_BANK, topUp.facts.bankNetwork)
     }
 }
