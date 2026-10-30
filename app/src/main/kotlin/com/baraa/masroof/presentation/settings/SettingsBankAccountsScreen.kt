@@ -46,6 +46,7 @@ fun SettingsBankAccountsScreen(
     onPickAccountType: (ManagedAccountUi) -> Unit,
     onDismissAccountType: () -> Unit,
     onSelectAccountType: (com.baraa.masroof.domain.model.AccountType) -> Unit,
+    deleteActions: RegistryDeleteActions,
     onOpenBank: (() -> Unit)? = null,
     onAddManual: (() -> Unit)? = null,
 ) {
@@ -65,6 +66,7 @@ fun SettingsBankAccountsScreen(
             onConfirm = onConfirmStopTracking,
         )
     }
+    SettingsDeleteDialogHost(state, deleteActions) { (it as? StopTrackingTarget.Account)?.account?.let { account -> registryLabel(account) } }
     SettingsRenameAccountDialog(
         target = state.renameAccountTarget,
         updating = state.updating,
@@ -128,6 +130,8 @@ fun SettingsBankAccountsScreen(
                                 onConfirmOwned = { onConfirmOwned(account) },
                                 onMarkExternal = { onMarkExternal(account) },
                             )
+                            SettingsDeleteAction({ deleteActions.onRequest(StopTrackingTarget.Account(account)) }, !state.updating,
+                                Modifier.padding(top = MasroofSpacing.cardInnerGap))
                         },
                     )
                 }
@@ -144,6 +148,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
                     bankTree.savingsAccounts.forEach { account ->
@@ -153,6 +158,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
                     bankTree.walletAccounts.forEach { account ->
@@ -162,6 +168,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
                 } else {
@@ -172,6 +179,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
                 }
@@ -186,10 +194,8 @@ fun SettingsBankAccountsScreen(
                         title = registryLabel(account),
                         showBankLabel = false,
                         endAction = {
-                            SettingsResumeTrackingButton(
-                                onClick = { onResumeTracking(account) },
-                                enabled = !state.updating,
-                            )
+                            SettingsStoppedItemActions({ onResumeTracking(account) },
+                                { deleteActions.onRequest(StopTrackingTarget.Account(account)) }, !state.updating)
                         },
                     )
                 }
@@ -214,6 +220,7 @@ internal fun SettingsRegistryAccountRow(
     onRequestStopTracking: (ManagedAccountUi) -> Unit,
     onRenameAccount: (ManagedAccountUi) -> Unit,
     onPickAccountType: (ManagedAccountUi) -> Unit,
+    onRequestDelete: (ManagedAccountUi) -> Unit,
 ) {
     SettingsRegistryItemCard(MasroofIcons.moneyMovement, account.bank, registryLabel(account), showBankLabel = false,
         footer = {
@@ -225,6 +232,7 @@ internal fun SettingsRegistryAccountRow(
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), { onRenameAccount(account) }, enabled = !updating)
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_account_type_title), { onPickAccountType(account) }, enabled = !updating)
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), { onRequestStopTracking(account) }, enabled = !updating, warning = true)
+                SettingsDeleteAction({ onRequestDelete(account) }, !updating)
             }
         })
 }

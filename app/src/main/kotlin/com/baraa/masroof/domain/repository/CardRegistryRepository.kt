@@ -39,4 +39,8 @@ interface CardRegistryRepository {
     suspend fun setSupplementaryCard(reference: CardReference, primaryLast4: String)
 
     suspend fun clearCardRole(reference: CardReference)
+
+    /** Removes the registry row only; callers verify nothing still references the card. */
+    suspend fun delete(reference: CardReference): Unit =
+        throw UnsupportedOperationException("Card registry delete is not supported")
 }

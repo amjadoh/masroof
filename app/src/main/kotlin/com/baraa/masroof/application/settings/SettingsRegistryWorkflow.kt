@@ -8,10 +8,12 @@ import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.CardRegistryEntry
 import com.baraa.masroof.domain.model.LoanReference
 import com.baraa.masroof.domain.model.LoanRegistryEntry
+import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.repository.AccountRegistryRepository
 import com.baraa.masroof.domain.repository.CardRegistryRepository
 import com.baraa.masroof.domain.repository.LoanRegistryRepository
+import kotlinx.coroutines.withContext
 
 /**
  * Settings-screen registry reads, metadata edits, and ownership confirmation.
@@ -23,6 +25,10 @@ class SettingsRegistryWorkflow(
     private val ownershipConfirmationService: OwnershipConfirmationService,
     private val parsedEvents: com.baraa.masroof.parsing.repository.ParsedEventRepository? = null,
     private val inTransaction: suspend (suspend () -> Unit) -> Unit = { it() },
+    private val transactions: com.baraa.masroof.domain.repository.FinancialTransactionRepository? = null,
+    /** Accounts a taught message pattern posts to; deleting one would keep receiving transactions. */
+    private val patternBoundAccounts: suspend () -> Set<AccountReference> = { emptySet() },
+    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO,
 ) {
     suspend fun addAccount(bankId: String, last4: String, name: String?): AccountReference {
         val ref = AccountReference(Bank(bankId), canonicalSuffix(last4))
@@ -128,4 +134,77 @@ class SettingsRegistryWorkflow(
     suspend fun markLoanExternal(loan: LoanReference) {
         ownershipConfirmationService.markLoanExternal(loan)
     }
+
+    // Scans the ledger and reads the pattern file, so it stays off the caller's (main) thread.
+    suspend fun deletionPreview(target: RegistryDeleteTarget): DeletionPreview = withContext(ioDispatcher) {
+        val linked = linkedTransactions(target)
+        DeletionPreview(linked.take(DeletionPreview.SHOWN), linked.size, blocker(target, linked))
+    }
+
+    /** Re-checks inside the write so a transaction posted after the preview still blocks deletion. */
+    suspend fun delete(target: RegistryDeleteTarget): Unit = withContext(ioDispatcher) {
+        inTransaction {
+            val blocker = blocker(target, linkedTransactions(target))
+            check(blocker == null) { "Delete blocked: $blocker" }
+            when (target) {
+                is RegistryDeleteTarget.Account -> accountRegistryRepository.delete(target.account)
+                is RegistryDeleteTarget.Card -> cardRegistryRepository.delete(target.card)
+                is RegistryDeleteTarget.Loan -> loanRegistryRepository.delete(target.loan)
+            }
+        }
+    }
+
+    private suspend fun linkedTransactions(target: RegistryDeleteTarget): List<com.baraa.masroof.domain.model.FinancialTransaction> {
+        val ledger = transactions ?: return emptyList()
+        val containerIds = when (target) {
+            // Legacy rows may still hold the bank-less account id; treat them as linked rather than guess.
+            is RegistryDeleteTarget.Account -> setOfNotNull(FinancialContainerIdFactory.accountId(target.account),
+                target.account.maskedNumber?.let { "account:$it" })
+            is RegistryDeleteTarget.Card -> setOfNotNull(FinancialContainerIdFactory.cardId(target.card))
+            is RegistryDeleteTarget.Loan -> setOfNotNull(FinancialContainerIdFactory.loanId(target.loan))
+        }
+        val all = ledger.listAll()
+        val rawSmsIds = parsedEvents?.let { events -> when (target) {
+            is RegistryDeleteTarget.Account -> events.listRawSmsIdsReferencingAccount(target.account)
+            is RegistryDeleteTarget.Card -> events.listRawSmsIdsReferencingCard(target.card)
+            is RegistryDeleteTarget.Loan -> events.listRawSmsIdsReferencingLoan(target.loan)
+        } }.orEmpty()
+        val evidenceLinked = ledger.listTransactionIdsForRawSmsIds(rawSmsIds)
+        return all.filter { it.sourceContainerId in containerIds || it.destinationContainerId in containerIds || it.id in evidenceLinked }
+            .sortedByDescending { it.occurredAt }
+    }
+
+    private suspend fun blocker(target: RegistryDeleteTarget, linked: List<com.baraa.masroof.domain.model.FinancialTransaction>): DeleteBlocker? {
+        if (linked.isNotEmpty()) return DeleteBlocker.LINKED_TRANSACTIONS
+        return when (target) {
+            is RegistryDeleteTarget.Card -> DeleteBlocker.SUPPLEMENTARY_CARDS.takeIf {
+                cardRegistryRepository.listAll().any { it.bank == target.card.bank && it.parentCardLast4 == target.card.last4 }
+            }
+            is RegistryDeleteTarget.Account -> when {
+                cardRegistryRepository.listAll().any {
+                    it.linkedAccountBankId == target.account.bank.id && it.linkedAccountMaskedNumber == target.account.maskedNumber
+                } -> DeleteBlocker.LINKED_CARD
+                target.account in patternBoundAccounts() -> DeleteBlocker.MESSAGE_PATTERN
+                else -> null
+            }
+            is RegistryDeleteTarget.Loan -> null
+        }
+    }
+}
+
+sealed interface RegistryDeleteTarget {
+    data class Account(val account: AccountReference) : RegistryDeleteTarget
+    data class Card(val card: CardReference) : RegistryDeleteTarget
+    data class Loan(val loan: LoanReference) : RegistryDeleteTarget
+}
+
+enum class DeleteBlocker { LINKED_TRANSACTIONS, SUPPLEMENTARY_CARDS, LINKED_CARD, MESSAGE_PATTERN }
+
+/** [linked] holds the newest [SHOWN] linked transactions; [linkedCount] counts them all. */
+data class DeletionPreview(
+    val linked: List<com.baraa.masroof.domain.model.FinancialTransaction>,
+    val linkedCount: Int,
+    val blocker: DeleteBlocker?,
+) {
+    companion object { const val SHOWN = 5 }
 }
