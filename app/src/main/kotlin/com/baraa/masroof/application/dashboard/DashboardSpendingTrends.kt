@@ -37,6 +37,7 @@ object DashboardSpendingTrendsBuilder {
         val cardRows = linkedMapOf<String, List<FinancialTransaction>>()
         val creditKeys = mutableSetOf<String>()
         val debitKeys = mutableSetOf<String>()
+        val prepaidKeys = cards.creditFacilities.prepaidCards.mapTo(mutableSetOf()) { it.key }
         cards.creditFacilities.facilities.flatMap { it.allCards }.forEach { card ->
             val key = CardTransactionInvolvementResolver.cardKey(card.bank.id, card.last4)
             val container = FinancialContainerIdFactory.cardId(card.bank, card.last4)
@@ -52,6 +53,9 @@ object DashboardSpendingTrendsBuilder {
             cardRows[key] = transactions.filter { transaction ->
                 key in cards.transactionDebitSpendInvolvement[transaction.id].orEmpty()
             }
+        }
+        cards.creditFacilities.prepaidCards.forEach { card ->
+            cardRows[card.key] = transactions.filter { it.id in card.transactionIds }
         }
         val cardTransactionIds = cardRows.values.flatten().map { it.id }.toSet()
         val creditIds = creditKeys.flatMap { cardRows[it].orEmpty() }.map { it.id }.toSet()
@@ -71,7 +75,11 @@ object DashboardSpendingTrendsBuilder {
             creditCards = configurable(creditKeys.flatMap { cardRows[it].orEmpty() }, ChartCategoryTrendsBuilder.credit),
             byAccount = accountTrends.byAccount,
             byCard = cardRows.mapValues { (key, rows) -> configurable(rows,
-                if (key in debitKeys) ChartCategoryTrendsBuilder.debit else ChartCategoryTrendsBuilder.credit,
+                when (key) {
+                    in debitKeys -> ChartCategoryTrendsBuilder.debit
+                    in prepaidKeys -> ChartCategoryTrendsBuilder.prepaid
+                    else -> ChartCategoryTrendsBuilder.credit
+                },
                 outflows = key in debitKeys) },
             debitCards = configurable(debitKeys.flatMap { cardRows[it].orEmpty() }, ChartCategoryTrendsBuilder.debit, outflows = true),
             purchases = configurable(purchaseRows, ChartCategoryTrendsBuilder.purchases, outflows = true),

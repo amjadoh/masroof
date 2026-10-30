@@ -118,6 +118,7 @@ fun MessageFamily?.toUiLabelRes(): Int? =
         MessageFamily.TRANSFER_OUT -> com.baraa.masroof.R.string.review_family_transfer_out
         MessageFamily.BILL_PAYMENT -> com.baraa.masroof.R.string.review_family_bill_payment
         MessageFamily.CARD_PAYMENT -> com.baraa.masroof.R.string.review_family_card_payment
+        MessageFamily.CARD_TOP_UP -> com.baraa.masroof.R.string.prepaid_card_top_up
         MessageFamily.REFUND -> com.baraa.masroof.R.string.review_family_refund
         MessageFamily.WITHDRAWAL -> com.baraa.masroof.R.string.review_family_withdrawal
         MessageFamily.FEE -> com.baraa.masroof.R.string.review_family_fee

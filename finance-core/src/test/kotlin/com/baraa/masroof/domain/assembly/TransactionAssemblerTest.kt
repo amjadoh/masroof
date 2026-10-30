@@ -30,6 +30,35 @@ class TransactionAssemblerTest {
 
     private val receivedAt = Instant.parse("2026-08-01T12:00:00Z")
 
+    @Test fun prepaidTopUpMovesOwnedFundsWithoutNewSpending() {
+        val outcome = TransactionAssembler.assembleSingle(
+            event = event(family = MessageFamily.CARD_TOP_UP, amount = money("125.00"),
+                source = AccountReference(Bank.BANK_ALJAZIRA, "3001"), card = CardReference(Bank.BANK_ALJAZIRA, "7271")),
+            receivedAt = receivedAt, sourceOwnership = OwnershipStatus.OWNED,
+            destinationOwnership = OwnershipStatus.UNKNOWN, cardOwnership = OwnershipStatus.OWNED,
+            knownCardType = com.baraa.masroof.domain.model.CardType.PREPAID,
+        ) as TransactionAssembler.Outcome.Assembled
+        assertEquals(FinancialTransactionType.SELF_TRANSFER, outcome.transaction.type)
+        assertEquals("account:BANK_ALJAZIRA:3001", outcome.transaction.sourceContainerId)
+        assertEquals("card:BANK_ALJAZIRA:7271", outcome.transaction.destinationContainerId)
+        assertEquals(money("125.00"), outcome.transaction.amount)
+    }
+
+    @Test fun prepaidTopUpRequiresConfirmedTypeOwnershipAndSuccessfulParse() {
+        val row = event(family = MessageFamily.CARD_TOP_UP, amount = money("125.00"),
+            source = AccountReference(Bank.BANK_ALJAZIRA, "3001"), card = CardReference(Bank.BANK_ALJAZIRA, "7271"))
+        for (type in listOf(null, com.baraa.masroof.domain.model.CardType.DEBIT, com.baraa.masroof.domain.model.CardType.CREDIT)) {
+            assertTrue(TransactionAssembler.assembleSingle(row, receivedAt, OwnershipStatus.OWNED,
+                OwnershipStatus.UNKNOWN, OwnershipStatus.OWNED, knownCardType = type) is TransactionAssembler.Outcome.NeedsReview)
+        }
+        assertTrue(TransactionAssembler.assembleSingle(row, receivedAt, OwnershipStatus.OWNED,
+            OwnershipStatus.UNKNOWN, OwnershipStatus.EXTERNAL, knownCardType = com.baraa.masroof.domain.model.CardType.PREPAID)
+            is TransactionAssembler.Outcome.NeedsReview)
+        assertTrue(TransactionAssembler.assembleSingle(row.copy(parseStatus = ParseStatus.REVIEW_REQUIRED), receivedAt,
+            OwnershipStatus.OWNED, OwnershipStatus.UNKNOWN, OwnershipStatus.OWNED,
+            knownCardType = com.baraa.masroof.domain.model.CardType.PREPAID) is TransactionAssembler.Outcome.NeedsReview)
+    }
+
     @Test
     fun singleEventConstructionPreservesExplicitResolutionAndEvidence() {
         val evidence = event(
@@ -73,7 +102,6 @@ class TransactionAssemblerTest {
             .filter { it.startsWith("import ") }
             .toSet()
         assertFalse(imports.contains("import com.baraa.masroof.domain.model.AccountType"))
-        assertFalse(imports.contains("import com.baraa.masroof.domain.model.CardType"))
         assertFalse(imports.contains("import com.baraa.masroof.domain.model.Account"))
         assertFalse(imports.contains("import com.baraa.masroof.domain.model.Card"))
         assertFalse(source.contains("AccountType."))

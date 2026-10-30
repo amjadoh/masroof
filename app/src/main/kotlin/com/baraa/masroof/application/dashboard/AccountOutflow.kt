@@ -19,6 +19,7 @@ data class AccountOutflow(
     val fees: Money,
     val loanRepayments: Money,
     val selfTransfersOut: Money,
+    val prepaidCardTopUps: Money = Money.zero(currency),
 ) {
     val coreTotal: Money
         get() = externalTransfersOut +
@@ -27,7 +28,7 @@ data class AccountOutflow(
             billPayments +
             posPurchases +
             fees +
-            loanRepayments
+            loanRepayments + prepaidCardTopUps
 
     val total: Money
         get() = coreTotal + selfTransfersOut
@@ -41,6 +42,7 @@ data class AccountOutflow(
         require(fees.currency == currency)
         require(loanRepayments.currency == currency)
         require(selfTransfersOut.currency == currency)
+        require(prepaidCardTopUps.currency == currency)
     }
 
     companion object {
@@ -75,6 +77,7 @@ data class AccountOutflow(
             fees = fees + other.fees,
             loanRepayments = loanRepayments + other.loanRepayments,
             selfTransfersOut = selfTransfersOut + other.selfTransfersOut,
+            prepaidCardTopUps = prepaidCardTopUps + other.prepaidCardTopUps,
         )
     }
 }

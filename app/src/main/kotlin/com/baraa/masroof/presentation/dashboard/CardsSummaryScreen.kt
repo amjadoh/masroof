@@ -123,7 +123,19 @@ fun CardsSummaryScreen(
     cardNetworksByLast4: Map<String, com.baraa.masroof.domain.model.CardNetwork?>,
 ) {
     val followedFacilities = state.followedCreditFacilities()
-    var creditSelected by rememberSaveable(followedFacilities?.facilities?.isEmpty()) { mutableStateOf(followedFacilities?.facilities?.isNotEmpty() == true) }
+    var selectedTab by rememberSaveable { mutableStateOf(when {
+        followedFacilities?.facilities?.isNotEmpty() == true -> "credit"
+        followedFacilities?.debitCards?.isNotEmpty() == true -> "debit"
+        else -> "prepaid"
+    }) }
+    androidx.compose.runtime.LaunchedEffect(followedFacilities) {
+        val available = buildList {
+            if (followedFacilities?.facilities?.isNotEmpty() == true) add("credit")
+            if (followedFacilities?.debitCards?.isNotEmpty() == true) add("debit")
+            if (followedFacilities?.prepaidCards?.isNotEmpty() == true) add("prepaid")
+        }
+        if (available.isNotEmpty() && selectedTab !in available) selectedTab = available.first()
+    }
     val locale = LocalConfiguration.current.locales[0]
 
     DashboardSummaryScaffold(
@@ -140,10 +152,12 @@ fun CardsSummaryScreen(
             )
         } else {
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
-                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), creditSelected, { creditSelected = true })
-                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), !creditSelected, { creditSelected = false })
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_credit_tab), selectedTab == "credit", { selectedTab = "credit" })
+                com.baraa.masroof.presentation.common.MasroofChoice(stringResource(R.string.reference_mada_tab), selectedTab == "debit", { selectedTab = "debit" })
+                if (followedFacilities.prepaidCards.isNotEmpty()) com.baraa.masroof.presentation.common.MasroofChoice(
+                    stringResource(R.string.prepaid_cards_title), selectedTab == "prepaid", { selectedTab = "prepaid" })
             }
-            if (creditSelected && followedFacilities.facilities.isNotEmpty()) {
+            if (selectedTab == "credit" && followedFacilities.facilities.isNotEmpty()) {
                 DashboardSummaryHeroCard(spec = creditFacilitiesSummaryHeroSpec(followedFacilities, locale))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.metricGap)) {
                     com.baraa.masroof.presentation.common.MasroofMetric(stringResource(R.string.reference_salary_spending),
@@ -153,7 +167,7 @@ fun CardsSummaryScreen(
                 }
                 SpendingTrendSection(state.spendingTrends?.creditCards, stringResource(R.string.approved_credit_daily), role = com.baraa.masroof.ui.theme.MasroofHeroRole.Card,
                     showAverage = true, chartKey = "credit")
-            } else {
+            } else if (selectedTab == "debit") {
                 com.baraa.masroof.presentation.common.MasroofHeroCard(
                     stringResource(R.string.approved_total_expenses),
                     formatLocalizedMoney(followedFacilities.aggregateDebitSalaryPeriodSpending()),
@@ -169,7 +183,7 @@ fun CardsSummaryScreen(
                 }
             }
             MasroofSectionHeader(title = stringResource(R.string.reference_followed_cards))
-            if (creditSelected) followedFacilities.facilities.forEach { facility ->
+            if (selectedTab == "credit") followedFacilities.facilities.forEach { facility ->
                 CreditFacilityCard(
                     facility = facility,
                     cardNetworksByLast4 = cardNetworksByLast4,
@@ -180,7 +194,7 @@ fun CardsSummaryScreen(
                     trends = state.spendingTrends?.byCard.orEmpty(),
                 )
             }
-            if (!creditSelected) followedFacilities.debitCards.forEach { debit ->
+            if (selectedTab == "debit") followedFacilities.debitCards.forEach { debit ->
                 DebitCardSummaryTile(
                     debit = debit,
                     network = cardNetworksByLast4[CardOwnershipKey.of(debit)] ?: debit.network,
@@ -189,6 +203,7 @@ fun CardsSummaryScreen(
                     trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(debit)),
                 )
             }
+            if (selectedTab == "prepaid") followedFacilities.prepaidCards.forEach { PrepaidCardSection(it) }
         }
     }
 }

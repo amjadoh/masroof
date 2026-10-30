@@ -11,6 +11,20 @@ import java.time.Instant
 
 /** Entirely fictional values; production layouts, never private SMS fixtures. */
 class AuditedSmsReadingTest {
+    @Test fun travelerTopUpRequiresExplicitSourceAndCard() {
+        val body = "خصم مبلغ 75 USD\nمن حساب *4321\nإلى بطاقة المسافر *8765\nفي 2026-10-20 12:30"
+        val result = parse("BANK_ALINMA", "alinma", body)
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals(MessageFamily.CARD_TOP_UP, result.facts.family)
+        assertEquals("4321", result.facts.sourceAccount?.maskedNumber)
+        assertEquals("8765", result.facts.card?.last4)
+        for (missing in listOf(body.replace("من حساب *4321\n", ""), body.replace("إلى بطاقة المسافر *8765\n", ""))) {
+            assertNotEquals(ParseStatus.SUCCESS, parse("BANK_ALINMA", "alinma", missing).status)
+        }
+        val otp = parse("BANK_ALINMA", "alinma", "رمز التحقق 654321\n$body")
+        assertEquals(MessageFamily.OTP, otp.facts.family)
+    }
+
     private fun parse(bank: String, sender: String, body: String, defaultAccount: String? = null,
         reference: String? = null, family: String = "PURCHASE"): Interpretation {
         val bundled = MessagePatternConfigurationCodec.decode(File("src/main/assets/bank-patterns/$bank.patterns.json").readText())

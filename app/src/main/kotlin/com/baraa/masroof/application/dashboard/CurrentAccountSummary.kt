@@ -44,6 +44,7 @@ data class CurrentAccountSummary(
             loanRepayments: Money = Money.zero(currency),
             selfTransfersOut: Money,
             accountRefunds: Money = Money.zero(currency),
+            prepaidCardTopUps: Money = Money.zero(currency),
         ): CurrentAccountSummary =
             CurrentAccountSummary(
                 inflow = AccountInflow(
@@ -64,6 +65,7 @@ data class CurrentAccountSummary(
                     fees = fees,
                     loanRepayments = loanRepayments,
                     selfTransfersOut = selfTransfersOut,
+                    prepaidCardTopUps = prepaidCardTopUps,
                 ),
             )
 

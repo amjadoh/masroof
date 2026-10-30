@@ -29,6 +29,7 @@ data class AccountFlow(
     val fees: Money,
     val internalTransfersOut: Money,
     val loan: Money,
+    val prepaidCardTopUps: Money = Money.zero(currency),
 ) {
     /** Salary, other income, external transfers in, and refunds credited to this account. */
     val externalIn: Money
@@ -42,7 +43,7 @@ data class AccountFlow(
             billPayments +
             posPurchases +
             fees +
-            loan
+            loan + prepaidCardTopUps
 
     /** All money in, including transfers from other owned accounts. */
     val totalIn: Money
@@ -90,6 +91,7 @@ data class AccountFlow(
             fees,
             internalTransfersOut,
             loan,
+            prepaidCardTopUps,
         ).forEach { require(it.currency == currency) }
     }
 
@@ -128,6 +130,7 @@ data class AccountFlow(
                 fees = summary.outflow.fees,
                 internalTransfersOut = summary.outflow.selfTransfersOut,
                 loan = summary.outflow.loanRepayments,
+                prepaidCardTopUps = summary.outflow.prepaidCardTopUps,
             )
 
         fun sum(flows: Collection<AccountFlow>): AccountFlow {
@@ -153,6 +156,7 @@ data class AccountFlow(
             fees = fees + other.fees,
             internalTransfersOut = internalTransfersOut + other.internalTransfersOut,
             loan = loan + other.loan,
+            prepaidCardTopUps = prepaidCardTopUps + other.prepaidCardTopUps,
         )
     }
 }

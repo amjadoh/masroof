@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="prepaid_card_unconverted_funding">%1$d عملية شحن بعملة أجنبية لم يُثبت مقابلها بالريال؛ لم تُضف قيمتها إلى إجمالي الخارج من الحساب بالريال.</string>
+    <string name="settings_card_type_prepaid">بطاقة مسبقة الدفع</string>
+    <string name="prepaid_card_setup_hint">للبطاقة رصيد مستقل. الشحن تحويل إلى البطاقة، والمشتريات مصروف يُحسب مرة واحدة.</string>
+    <string name="prepaid_cards_title">البطاقات مسبقة الدفع</string>
+    <string name="prepaid_card_top_up">شحن بطاقة مسبقة الدفع</string>
+    <string name="prepaid_card_top_ups">الشحن خلال الفترة</string>
+    <string name="prepaid_card_spending">المصروفات خلال الفترة</string>
+    <string name="prepaid_card_refunds">الاستردادات خلال الفترة</string>
+    <string name="prepaid_card_movement">صافي حركة رصيد البطاقة</string>
+    <string name="prepaid_card_observed_balance">آخر رصيد ورد في رسالة</string>
+    <string name="prepaid_card_balance_unknown">الرصيد الفعلي غير متاح من الرسائل</string>
+    <string name="prepaid_card_currency_hint">تُعرض كل عملة مستقلة. صافي الحركة ليس الرصيد الفعلي، ولا يُفترض سعر صرف غير مذكور.</string>
+</resources>

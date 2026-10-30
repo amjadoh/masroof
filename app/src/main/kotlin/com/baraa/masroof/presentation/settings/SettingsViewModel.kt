@@ -1359,7 +1359,7 @@ class SettingsViewModel(
     private fun ManagedCardUi.isDebitRegistryCard(): Boolean =
         when (cardType) {
             CardType.DEBIT -> true
-            CardType.CREDIT -> false
+            CardType.CREDIT, CardType.PREPAID -> false
             null -> cardNetwork == CardNetwork.MADA || linkedAccountMaskedNumber != null
         }
 

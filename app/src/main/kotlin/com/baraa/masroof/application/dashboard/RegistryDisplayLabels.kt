@@ -23,6 +23,7 @@ object RegistryDisplayLabels {
             CardRole.STANDALONE, null -> when (entry.cardType) {
                 CardType.DEBIT -> "Debit ••${entry.last4}"
                 CardType.CREDIT -> "Credit ••${entry.last4}"
+                CardType.PREPAID -> "Prepaid ••${entry.last4}"
                 null -> "Card ••${entry.last4}"
             }
         }

@@ -62,6 +62,7 @@ class TransactionReconciliationService(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val automaticWrite: (suspend (List<ParsedEventRecord>, suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult)? = null,
     private val confirmedLoanPayments: ConfirmedLoanPaymentsWorkflow? = null,
+    private val cardRegistry: com.baraa.masroof.domain.repository.CardRegistryRepository? = null,
 ) {
     suspend fun reconcileStoredEvents(): ReconciliationSummary =
         reconcileStoredEventsDetailed().summary
@@ -493,6 +494,7 @@ class TransactionReconciliationService(
                             transactionOccurredAt = transactionOccurredAt,
                             userConfirmed = userConfirmed,
                             occurredAtZone = zone,
+                            knownCardType = event.cardRef?.let { cardRegistry?.get(it)?.cardType },
                         )
                     ) {
                         is TransactionAssembler.Outcome.Assembled -> {

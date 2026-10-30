@@ -9,6 +9,7 @@ import com.baraa.masroof.parsing.repository.ParsedEventRecord
 data class DebitCardScopeFacts(
     val ownedDebitCardContainerIds: Set<String>,
     val debitCardLinkedAccountIds: Map<String, String>,
+    val ownedPrepaidCardContainerIds: Set<String> = emptySet(),
 )
 
 object DebitCardScopeFactory {
@@ -36,6 +37,10 @@ object DebitCardScopeFactory {
         return DebitCardScopeFacts(
             ownedDebitCardContainerIds = ownedDebitCardContainerIds,
             debitCardLinkedAccountIds = debitCardLinkedAccountIds,
+            ownedPrepaidCardContainerIds = cards.filter {
+                it.ownership == OwnershipStatus.OWNED &&
+                    it.cardType == com.baraa.masroof.domain.model.CardType.PREPAID
+            }.mapNotNull { FinancialContainerIdFactory.cardId(it.bank, it.last4) }.toSet(),
         )
     }
 

@@ -72,6 +72,7 @@ object TransactionClassifier {
 
             MessageFamily.CARD_PAYMENT ->
                 classifyCardPayment(evidence)
+            MessageFamily.CARD_TOP_UP -> classifyPrepaidTopUp(evidence)
 
             MessageFamily.TRANSFER_IN,
             MessageFamily.TRANSFER_OUT,
@@ -297,6 +298,18 @@ object TransactionClassifier {
                     reasons = listOf("transfer_ownership_unknown_no_guess"),
                 )
         }
+    }
+
+    private fun classifyPrepaidTopUp(evidence: ClassificationEvidence): ClassificationResult {
+        val source = evidence.source
+        val destination = evidence.destination
+        if (source?.kind == ContainerKind.ACCOUNT && source.ownership == OwnershipStatus.OWNED &&
+            destination?.kind == ContainerKind.CARD && destination.ownership == OwnershipStatus.OWNED &&
+            destination.knownCardType == CardType.PREPAID) {
+            return classified(FinancialTransactionType.SELF_TRANSFER, TransferOwnershipType.SELF_TRANSFER,
+                listOf("owned_account_to_owned_prepaid_card", "not_a_new_expense"))
+        }
+        return needsReview(null, null, listOf("prepaid_top_up_requires_owned_account_and_confirmed_prepaid_card"))
     }
 
     /**

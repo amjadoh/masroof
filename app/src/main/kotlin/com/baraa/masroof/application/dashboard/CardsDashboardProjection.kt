@@ -76,7 +76,7 @@ class CardsDashboardProjection(
                 debitSpendingByCardKey = debitSpend.spendingByCardKey,
                 debitSalaryPeriodLabel = debitSpend.salaryPeriodLabel ?: creditCardsFlat.salaryPeriodLabel,
                 parsedRecords = parsedRecords,
-            ),
+            ).copy(prepaidCards = PrepaidCardOverviewBuilder.build(context)),
             transactionCardInvolvement = CardTransactionInvolvementResolver.buildIndex(
                 transactions = transactions,
                 parsedRecords = parsedRecords,

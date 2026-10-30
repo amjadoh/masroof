@@ -138,7 +138,7 @@ private data class FlowSummaryRow(
 )
 
 private fun coreExpenseSummaryRows(summary: CurrentAccountSummary): List<FlowSummaryRow> =
-    listOf(FlowExpenseCategory.POS_PURCHASE, FlowExpenseCategory.CREDIT_CARD_PAYMENT,
+    listOf(FlowExpenseCategory.POS_PURCHASE, FlowExpenseCategory.CREDIT_CARD_PAYMENT, FlowExpenseCategory.PREPAID_CARD_TOP_UP,
         FlowExpenseCategory.LOAN_REPAYMENT, FlowExpenseCategory.BILL_PAYMENT,
         FlowExpenseCategory.EXTERNAL_TRANSFER_OUT, FlowExpenseCategory.CASH_WITHDRAWAL,
         FlowExpenseCategory.FEE).map { category ->
@@ -160,6 +160,7 @@ private fun expenseAmount(summary: CurrentAccountSummary, category: FlowExpenseC
     when (category) {
         FlowExpenseCategory.EXTERNAL_TRANSFER_OUT -> summary.outflow.externalTransfersOut
         FlowExpenseCategory.CREDIT_CARD_PAYMENT -> summary.outflow.creditCardPayments
+        FlowExpenseCategory.PREPAID_CARD_TOP_UP -> summary.outflow.prepaidCardTopUps
         FlowExpenseCategory.CASH_WITHDRAWAL -> summary.outflow.cashWithdrawals
         FlowExpenseCategory.BILL_PAYMENT -> summary.outflow.billPayments
         FlowExpenseCategory.POS_PURCHASE -> summary.outflow.posPurchases
@@ -179,6 +180,7 @@ private fun expenseCategoryLabelRes(category: FlowExpenseCategory): Int =
     when (category) {
         FlowExpenseCategory.EXTERNAL_TRANSFER_OUT -> R.string.dashboard_external_out_short
         FlowExpenseCategory.CREDIT_CARD_PAYMENT -> R.string.dashboard_credit_card_payment
+        FlowExpenseCategory.PREPAID_CARD_TOP_UP -> R.string.prepaid_card_top_up
         FlowExpenseCategory.CASH_WITHDRAWAL -> R.string.dashboard_cash_withdrawals
         FlowExpenseCategory.BILL_PAYMENT -> R.string.dashboard_bill_payments
         FlowExpenseCategory.POS_PURCHASE -> R.string.dashboard_pos_purchases_short

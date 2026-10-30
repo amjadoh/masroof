@@ -24,6 +24,17 @@ import java.time.Instant
 
 class CardRegistryDebitClassifierTest {
     @Test
+    fun explicitPrepaidIsNeitherDebitNorCreditAndHasNoAccountLink() {
+        val entry = card(cardType = CardType.PREPAID)
+        assertFalse(CardRegistryDebitClassifier.isDebitRegistryEntry(entry))
+        assertFalse(CardRegistryDebitClassifier.isCreditRegistryEntry(entry))
+        val scope = DebitCardScopeFactory.fromRegistry(listOf(entry))
+        assertTrue(scope.ownedDebitCardContainerIds.isEmpty())
+        assertTrue(scope.debitCardLinkedAccountIds.isEmpty())
+        assertTrue(scope.ownedPrepaidCardContainerIds.size == 1)
+    }
+
+    @Test
     fun explicitDebit_isDebit() {
         val entry = card(cardType = CardType.DEBIT)
         assertTrue(CardRegistryDebitClassifier.isDebitRegistryEntry(entry))
