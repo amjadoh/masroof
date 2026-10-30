@@ -104,3 +104,8 @@ On JDK 27 with JDK 21 Android test/compilation launchers:
 - CI protocol/image tests and release-version/command validation passed. Full app/unit
   and API 37 device coverage still require the draft PR's CI; local focused checks do
   not substitute for those gates.
+
+Family feature export, six activation-policy checks, five recurring trainer checks and
+both family/recurring seed reproducibility checks passed with the unchanged model assets.
+The family check reports 55 source rows / 39 unique templates and no enabled statistical
+families, preserving the existing qualification gate.
