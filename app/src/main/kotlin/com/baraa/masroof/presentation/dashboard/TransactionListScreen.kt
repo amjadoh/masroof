@@ -39,16 +39,15 @@ import com.baraa.masroof.presentation.common.ShareActionIcon
 fun TransactionListScreen(
     periodLabel: String,
     transactions: List<TransactionPreviewUi>,
+    projection: TransactionListProjectionUi,
+    onFilterChanged: (TransactionListFilterState) -> Unit,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
     seedFilter: TransactionListFilterState? = null,
     onSeedFilterApplied: () -> Unit = {},
     openGeneration: Int = 0,
-    ownedCardKeys: Set<String> = emptySet(),
-    ownedAccountContainerIds: Set<String> = emptySet(),
     ownedCards: List<OwnedCardUi> = emptyList(),
     ownedAccounts: List<OwnedAccountUi> = emptyList(),
-    transactionAccountInvolvement: Map<String, Set<String>> = emptyMap(),
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedTypeNames by rememberSaveable { mutableStateOf(listOf<String>()) }
@@ -92,29 +91,11 @@ fun TransactionListScreen(
         )
     }
 
-    val filterResult = remember(transactions, filterState, transactionAccountInvolvement) {
-        TransactionListFilterEngine.apply(
-            transactions = transactions,
-            filter = filterState,
-            accountInvolvementByTransactionId = transactionAccountInvolvement,
-        )
-    }
-    val availableTypes = remember(transactions) {
-        TransactionListFilterEngine.availableTypes(transactions)
-    }
-    val availableCards = remember(transactions, ownedCardKeys) {
-        TransactionListFilterEngine.availableCardLast4s(
-            transactions = transactions,
-            ownedCardKeys = ownedCardKeys,
-        )
-    }
-    val availableAccounts = remember(transactions, ownedAccountContainerIds, transactionAccountInvolvement) {
-        TransactionListFilterEngine.availableAccountContainerIds(
-            transactions = transactions,
-            ownedAccountContainerIds = ownedAccountContainerIds,
-            involvementByTransactionId = transactionAccountInvolvement,
-        )
-    }
+    LaunchedEffect(filterState) { onFilterChanged(filterState) }
+    val filterResult = projection.result
+    val availableTypes = projection.availableTypes
+    val availableCards = projection.availableCards
+    val availableAccounts = projection.availableAccounts
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.transaction_share)
     val shareSubject = stringResource(R.string.transaction_list_title)

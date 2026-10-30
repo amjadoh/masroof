@@ -62,6 +62,19 @@ class DashboardViewModel(
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    private val transactionListWorkflow = com.baraa.masroof.application.dashboard.TransactionListWorkflow()
+
+    fun setTransactionListQuery(query: TransactionListFilterState) {
+        _uiState.update { it.copy(transactionListQuery = query).withTransactionListProjection() }
+    }
+
+    private fun DashboardUiState.withTransactionListProjection(): DashboardUiState = copy(
+        transactionListProjection = TransactionListPresentationMapper.project(
+            allTransactions, transactionListQuery, CardOwnershipKey.ownedKeys(ownedCards),
+            ownedAccountContainerIds, transactionAccountInvolvement, workflow = transactionListWorkflow,
+        ),
+    )
+
     private var activePeriod: DashboardSalaryPeriod = dashboardPeriodWorkflow.currentPeriod()
     private var followCurrentPeriod = true
 
@@ -480,7 +493,7 @@ class DashboardViewModel(
                         ownedAccounts = ownedAccounts,
                         ownedAccountContainerIds = overview.ownedAccountContainerIds,
                         committedSourceTransactionIds = committedIds,
-                    )
+                    ).withTransactionListProjection()
                 }
                 _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
