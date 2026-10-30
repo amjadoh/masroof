@@ -262,8 +262,6 @@ object TransactionAssembler {
                     ?: return Outcome.NeedsReview(listOf("destination_not_durable"))
                 FinancialTransactionType.EXTERNAL_TRANSFER_IN
             }
-
-            else -> return Outcome.PendingMatch
         }
         return buildTransaction(
             type = type,

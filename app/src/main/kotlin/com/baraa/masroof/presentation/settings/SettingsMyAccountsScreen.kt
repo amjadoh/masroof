@@ -4,15 +4,12 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.AccountType
-import com.baraa.masroof.presentation.common.MasroofIcons
 
 @Composable
 fun SettingsAccountTypeDialog(
@@ -41,45 +38,6 @@ fun SettingsAccountTypeDialog(
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !updating) {
                 Text(stringResource(R.string.settings_action_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-fun SettingsAccountStopConfirmDialog(
-    target: ManagedAccountUi?,
-    updating: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    target ?: return
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = MasroofIcons.warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-        },
-        title = { Text(stringResource(R.string.settings_stop_account_confirm_title)) },
-        text = {
-            Text(
-                stringResource(
-                    R.string.settings_stop_account_confirm_body,
-                    target.maskedNumber,
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !updating) {
-                Text(stringResource(R.string.settings_stop_confirm_action))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
             }
         },
     )

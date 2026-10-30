@@ -18,7 +18,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     // Content identity prevents changing literals under an unchanged declared revision.
     val version = InterpretationVersion(1, VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}-" +
         MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) })
+            .toHexString())
 
     // The snapshot is immutable. Validate its shape and normalized literals once.
     private val supportedSchema = run {

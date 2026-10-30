@@ -1,4 +1,3 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.baraa.masroof.presentation.settings
 
@@ -24,6 +23,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.presentation.common.CardOwnershipInlinePrompt
 import com.baraa.masroof.presentation.common.MasroofIcons
+import com.baraa.masroof.presentation.common.formatCardLast4
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,12 +54,15 @@ fun SettingsBankCardsScreen(
     val stoppedCards = state.stoppedCards.filter { it.bank == bank }
     val bankTree = state.bankTree(bank.id)
 
-    SettingsStopConfirmDialog(
-        target = state.stopConfirmCardTarget,
-        updating = state.updating,
-        onDismiss = onDismissStopConfirm,
-        onConfirm = onConfirmStopTracking,
-    )
+    state.stopConfirmCardTarget?.let { target ->
+        SettingsStopConfirmDialog(
+            title = stringResource(R.string.settings_stop_confirm_title),
+            body = stringResource(R.string.settings_stop_confirm_body, formatCardLast4(target.last4)),
+            updating = state.updating,
+            onDismiss = onDismissStopConfirm,
+            onConfirm = onConfirmStopTracking,
+        )
+    }
     SettingsRenameCardDialog(
         target = state.renameCardTarget,
         updating = state.updating,

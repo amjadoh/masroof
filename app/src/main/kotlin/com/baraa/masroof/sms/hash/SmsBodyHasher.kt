@@ -11,8 +11,6 @@ object SmsBodyHasher {
     fun sha256Hex(rawBody: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(rawBody.toByteArray(Charsets.UTF_8))
-        return digest.joinToString(separator = "") { byte ->
-            "%02x".format(byte)
-        }
+        return digest.toHexString()
     }
 }
