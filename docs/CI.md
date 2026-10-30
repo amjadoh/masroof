@@ -6,6 +6,13 @@ Every PR to main and every main push runs the full required suite. The stable me
 
 Gradle runs on Temurin 27; JVM compilation and Android/Robolectric tests use the installed JDK 21 toolchain. Pure JVM modules (`finance-core`, `bank-engine`, `ml-assist`) run JUnit Jupiter 6.1.3 through JUnit Platform. App and instrumentation tests keep JUnit 4 and their Android runners. Python scripts run on 3.15.2. SDK Command-line Tools 23.0 (build 16111833) are pinned explicitly. Emulator jobs align the `latest` tools path with that selected version because the emulator action prepends that path; prelaunch checks require the AVD target to match the pinned SDK package. Actions are pinned by commit with the release version beside each pin. Gradle cache ownership belongs to setup-gradle.
 
+Dependency versions are pinned in `gradle/libs.versions.toml`; the wrapper pins
+Gradle. Pure JVM dependency boundaries are enforced by
+`build-logic/pure-jvm-boundaries.gradle.kts`. The existing Detekt 2 alpha is a
+tooling-only exception for the Kotlin frontend; production dependencies remain
+stable. See the [source modernization reference](KOTLIN_MODERNIZATION.md#release-reference)
+for Kotlin feature stability and the published toolchain compatibility limits.
+
 ## Execution and coverage
 
 Unit tests (including pure modules), lint/detekt and the shared APK build run independently. The feature export is a declared unit-test output, so model reproducibility consumes the export from that same test execution/cache without a second Gradle test invocation.

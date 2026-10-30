@@ -163,14 +163,13 @@ class HistoricalSmsScanner(
                                 inserted++
                                 failed++
                             }
-                            is SmsIngestionResult.Failed -> {
-                                // rawSmsId == null → RawSms never persisted
-                                // rawSmsId != null → RawSms already stored; later step failed
-                                if (outcome.rawSmsId != null) {
-                                    inserted++
-                                }
+                            // rawSmsId != null → RawSms already stored; later step failed
+                            is SmsIngestionResult.Failed if outcome.rawSmsId != null -> {
+                                inserted++
                                 failed++
                             }
+                            // rawSmsId == null → RawSms never persisted
+                            is SmsIngestionResult.Failed -> failed++
                             is SmsIngestionResult.DerivedIncomplete -> {
                                 // Historical ingest does not run derived work; a leak is still stored evidence.
                                 inserted++
