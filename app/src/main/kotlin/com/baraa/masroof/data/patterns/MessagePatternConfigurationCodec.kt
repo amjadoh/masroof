@@ -14,12 +14,19 @@ object MessagePatternConfigurationCodec {
 
     fun encode(configuration: MessagePatternConfiguration): String = buildJsonObject {
         val schema = when {
+            configuration.confirmedLoanPayments.isNotEmpty() -> 5
             configuration.banks.any { it.deletedPatternIds.isNotEmpty() } -> 4
             configuration.banks.any { bank -> bank.patterns.any { it.roleProfile != null } } -> 3
             configuration.banks.any { bank -> bank.patterns.any { it.factContract != null } } -> 2
             else -> 1
         }
         put("schema", schema); put("normalization", 1); put("generation", configuration.generation)
+        if (schema >= 5) putJsonArray("confirmedLoanPayments") {
+            configuration.confirmedLoanPayments.sortedBy { it.billerCode }.forEach { rule -> add(buildJsonObject {
+                put("billerCode", rule.billerCode); put("loanBankId", rule.loanBankId); put("loanType", rule.loanType)
+                put("confirmedTransactionIds", JsonArray(rule.confirmedTransactionIds.sorted().map(::JsonPrimitive)))
+            }) }
+        }
         putJsonArray("banks") { configuration.banks.sortedBy { it.bankId }.forEach { bank -> add(buildJsonObject {
             put("bankId", bank.bankId); put("displayName", bank.displayName?.let(::JsonPrimitive) ?: JsonNull)
             put("senders", JsonArray(bank.senders.map { JsonPrimitive(it) }))
@@ -62,9 +69,10 @@ object MessagePatternConfigurationCodec {
     fun decode(raw: String): MessagePatternConfiguration {
         require(raw.length <= MAX_BYTES && raw.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Pattern configuration too large" }
         val root = json.parseToJsonElement(raw).jsonObject
-        root.only("schema", "normalization", "generation", "banks")
         val schema = root.number("schema")
-        require(schema in 1L..4L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
+        root.only(*(listOf("schema", "normalization", "generation", "banks") +
+            if (schema >= 5L) listOf("confirmedLoanPayments") else emptyList()).toTypedArray())
+        require(schema in 1L..5L && root.number("normalization") == 1L) { "Unsupported pattern configuration" }
         val generation = root.number("generation").also { require(it >= 0) }
         val rows = root.getValue("banks").jsonArray
         require(rows.size <= 64)
@@ -72,7 +80,7 @@ object MessagePatternConfigurationCodec {
         val banks = rows.map { value ->
             val row = value.jsonObject
             row.only(*(listOf("bankId", "displayName", "senders", "patterns") +
-                if (schema >= 4L) listOf("deletedPatternIds") else emptyList()).toTypedArray())
+                (if (schema >= 4L) listOf("deletedPatternIds") else emptyList())).toTypedArray())
             val deletedIds = if (schema >= 4L) row.getValue("deletedPatternIds").jsonArray.also { require(it.size <= 512) }
                 .map { it.jsonPrimitive.also { p -> require(p.isString) }.content }
                 .also { require(it.distinct().size == it.size) }.toSet() else emptySet()
@@ -127,7 +135,15 @@ object MessagePatternConfigurationCodec {
             BankMessagePatterns(bankId, senders, name, definitions, deletedIds)
         }
         require(banks.map { it.bankId }.distinct().size == banks.size) { "Duplicate bank" }
-        return MessagePatternConfiguration(generation, banks)
+        val payments = if (schema >= 5L) root.getValue("confirmedLoanPayments").jsonArray.also { require(it.size <= 64) }.map {
+            val rule = it.jsonObject
+            rule.only("billerCode", "loanBankId", "loanType", "confirmedTransactionIds")
+            val ids = rule.getValue("confirmedTransactionIds").jsonArray.also { require(it.size <= 512) }
+                .map { id -> id.jsonPrimitive.also { p -> require(p.isString) }.content }
+            require(ids.distinct().size == ids.size)
+            ConfirmedLoanPayment(rule.text("billerCode"), rule.text("loanBankId"), rule.text("loanType"), ids.toSet())
+        } else emptyList()
+        return MessagePatternConfiguration(generation, banks, payments)
     }
 
     private fun validLabel(value: String) = value.isNotBlank() && value.length <= 128 && value.none(Char::isISOControl)

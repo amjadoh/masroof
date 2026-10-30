@@ -647,4 +647,16 @@
     <string name="settings_external_cards">Cards belonging to others</string>
     <string name="settings_external_account_is_mine">Confirm this is my account</string>
     <string name="settings_external_card_is_mine">Confirm this is my card</string>
+    <string name="review_reason_loan_payment_link">Biller linked to a confirmed loan; review its funding account, card or loan ownership</string>
+    <string name="settings_loan_payment_link">Link a biller to this loan</string>
+    <string name="settings_loan_payment_hint">Confirm only if every payment to this biller repays this loan. Funding comes from the message and your confirmed accounts/cards, never the amount. A preceding transfer to your own account remains a self-transfer.</string>
+    <string name="settings_loan_payment_biller">Exact biller number, including leading zeros</string>
+    <string name="settings_loan_payment_preview">Review link</string>
+    <string name="settings_loan_payment_confirm">Save link and correct repayments</string>
+    <string name="settings_loan_payment_edit">Edit number</string>
+    <string name="settings_loan_payment_count">%1$d posted transactions will become loan repayments without changing their amounts or SMS evidence. Future messages will use this link.</string>
+    <string name="settings_loan_payment_total">Amounts excluded from new spending</string>
+    <string name="settings_loan_payment_unconfirmed">%1$d transactions excluded because of a manual decision, uncertain interpretation or unconfirmed funding.</string>
+    <string name="settings_loan_payment_failed">Link could not be completed. Check loan and funding ownership, then create a fresh preview.</string>
+    <string name="settings_manual_account_external">This account belongs to someone else; track spending separately</string>
 </resources>

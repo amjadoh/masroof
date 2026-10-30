@@ -339,6 +339,15 @@ class AppContainer(
                 messagePatternStore, accountRegistryRepository, cardRegistryRepository)::isCurrent)
     }
 
+    val confirmedLoanPaymentsWorkflow by lazy {
+        com.baraa.masroof.application.transaction.ConfirmedLoanPaymentsWorkflow(
+            messagePatternStore, databaseAccessGate, financialTransactionRepository, effectiveParsedEventProvider,
+            cardRegistryRepository, accountRegistryRepository, loanRegistryRepository, reviewRepository,
+            inTransaction = { work -> withDatabaseTransaction(work) },
+            onChanged = { maintenanceCompletionSignal.notifyCompleted() },
+        )
+    }
+
     val transactionReconciliationService: TransactionReconciliationService =
         TransactionReconciliationService(
             parsedEventRepository = parsedEventRepository,
@@ -349,6 +358,7 @@ class AppContainer(
             effectiveParsedEventProvider = effectiveParsedEventProvider,
             reviewRepository = reviewRepository,
             automaticWrite = { expected, write -> automaticInterpretationWriteGuard.write(expected,write) },
+            confirmedLoanPayments = confirmedLoanPaymentsWorkflow,
         )
 
     val reviewQueueUpdater: ReviewQueueUpdater =
@@ -912,7 +922,9 @@ class AppContainer(
 
     private suspend fun runStartupMaintenanceAttempt(): StartupMaintenanceOutcome =
         try {
-            startupMaintenance.runBlockingPhase()
+            startupMaintenance.runBlockingPhase().also { outcome ->
+                if (outcome == StartupMaintenanceOutcome.READY) confirmedLoanPaymentsWorkflow.recoverConfirmedHistory()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

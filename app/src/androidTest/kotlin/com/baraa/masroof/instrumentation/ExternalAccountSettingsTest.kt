@@ -52,7 +52,7 @@ class ExternalAccountSettingsTest {
         compose.onNodeWithText(label(R.string.settings_action_rename)).performScrollTo().performClick()
         compose.onNode(hasSetTextAction()).performTextReplacement("اسم اختياري")
         compose.onNodeWithText(label(R.string.settings_save)).performClick()
-        compose.onNodeWithText("اسم اختياري").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("اسم اختياري", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(label(R.string.settings_external_spending)).performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals("اسم اختياري", opened?.displayName)

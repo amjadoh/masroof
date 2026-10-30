@@ -63,6 +63,8 @@ fun SettingsRoute(
     }
     val state by viewModel.uiState.collectAsState()
     SettingsExternalSpendingSheet(state, viewModel::closeExternalSpending)
+    SettingsLoanPaymentSheet(state, viewModel::closeLoanPayment, viewModel::previewLoanPayment,
+        viewModel::confirmLoanPayment, viewModel::resetLoanPaymentPreview)
     var manualBankId by rememberSaveable { mutableStateOf<String?>(null) }
     var manualCard by rememberSaveable { mutableStateOf(false) }
     var destinationStack by rememberSaveable {
@@ -308,6 +310,7 @@ fun SettingsRoute(
             bank = Bank(current.bankId),
             state = state,
             onBack = { popOrExit() },
+            onDefineLoanPayment = viewModel::openLoanPayment,
             onOpenBank = { navigateTo(SettingsDestination.BankHub(current.bankId)) },
             onConfirmOwned = viewModel::confirmLoanOwned,
             onMarkExternal = viewModel::markLoanExternal,
@@ -419,6 +422,7 @@ fun SettingsRoute(
     manualBankId?.let { bankId -> SettingsManualRegistrySheet(bankId, manualCard, state,
         onDismiss = { if (!state.updating) manualBankId = null },
         onSaveAccount = { last4, name -> viewModel.addManualAccount(bankId, last4, name) { manualBankId = null } },
+        onSaveExternalAccount = { last4, name -> viewModel.addManualAccount(bankId, last4, name, owned = false) { manualBankId = null } },
         onSaveCard = { last4, name, configuration -> viewModel.addManualCard(bankId, last4, name, configuration) { manualBankId = null } }) }
     }
 }

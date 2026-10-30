@@ -40,6 +40,7 @@ fun SettingsBankLoansScreen(
     onDismissStopConfirm: () -> Unit,
     onConfirmStopTracking: () -> Unit,
     onOpenBank: (() -> Unit)? = null,
+    onDefineLoanPayment: (ManagedLoanUi) -> Unit = {},
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
 
@@ -117,6 +118,11 @@ fun SettingsBankLoansScreen(
                         bank = loan.bank,
                         title = loanDisplayLabel(loan),
                         showBankLabel = true,
+                        footer = {
+                            com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                stringResource(R.string.settings_loan_payment_link), { onDefineLoanPayment(loan) }, enabled = !state.updating,
+                            )
+                        },
                         endAction = {
                             SettingsStopTrackingButton(
                                 onClick = { onRequestStopTracking(loan) },
@@ -198,7 +204,7 @@ private fun SettingsLoanStopConfirmDialog(
 }
 
 @Composable
-private fun loanDisplayLabel(loan: ManagedLoanUi): String {
+internal fun loanDisplayLabel(loan: ManagedLoanUi): String {
     val custom = loan.displayName?.trim()?.takeIf { it.isNotEmpty() }
     return custom ?: loanTypeLabel(loan.loanType)
 }
