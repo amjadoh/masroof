@@ -159,27 +159,22 @@ object TransactionAssembler {
         )
 
         val type = when (classification) {
-            is ClassificationResult.Classified -> {
-                if (deferIntraBankPairing &&
-                    shouldDeferIntraBankUntilPairing(event, classification.transactionType)
-                ) {
-                    return Outcome.PendingMatch
-                }
-                classification.transactionType
-            }
+            is ClassificationResult.Classified if deferIntraBankPairing &&
+                shouldDeferIntraBankUntilPairing(event, classification.transactionType) ->
+                return Outcome.PendingMatch
 
-            is ClassificationResult.NeedsReview -> when {
-                // Conservative purchase: family alone is enough for EXPENSE when amount exists.
-                event.messageFamily == MessageFamily.PURCHASE &&
-                    classification.tentativeType == FinancialTransactionType.EXPENSE ->
-                    FinancialTransactionType.EXPENSE
+            is ClassificationResult.Classified -> classification.transactionType
 
-                event.messageFamily == MessageFamily.TRANSFER_IN ||
-                    event.messageFamily == MessageFamily.TRANSFER_OUT ->
-                    return Outcome.PendingMatch
+            // Conservative purchase: family alone is enough for EXPENSE when amount exists.
+            is ClassificationResult.NeedsReview if event.messageFamily == MessageFamily.PURCHASE &&
+                classification.tentativeType == FinancialTransactionType.EXPENSE ->
+                FinancialTransactionType.EXPENSE
 
-                else -> return Outcome.NeedsReview(classification.reasons)
-            }
+            is ClassificationResult.NeedsReview if event.messageFamily == MessageFamily.TRANSFER_IN ||
+                event.messageFamily == MessageFamily.TRANSFER_OUT ->
+                return Outcome.PendingMatch
+
+            is ClassificationResult.NeedsReview -> return Outcome.NeedsReview(classification.reasons)
         }
         return buildTransaction(
             type = type,
