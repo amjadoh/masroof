@@ -483,6 +483,8 @@ class AppContainer(
             marketRateProvider = FrankfurterForeignSarRateProvider(updateHttpClient),
         )
 
+    private val exchangeRateEnrichmentScheduler = WorkManagerExchangeRateEnrichmentScheduler { WorkManager.getInstance(appContext) }
+
     /** Writer of missing applied exchange rates; dashboard loads stay read-only. */
     val exchangeRateEnrichmentWorkflow: ExchangeRateEnrichmentWorkflow =
         ExchangeRateEnrichmentWorkflow(
@@ -594,9 +596,7 @@ class AppContainer(
             reviewQueueUpdater = reviewQueueUpdater,
             ingestionReviewService = ingestionReviewService,
             appLogService = appLogService,
-            exchangeRateEnrichmentScheduler = WorkManagerExchangeRateEnrichmentScheduler {
-                WorkManager.getInstance(appContext)
-            },
+            exchangeRateEnrichmentScheduler = exchangeRateEnrichmentScheduler,
             processingRecovery = processingRecovery,
             reviewRepository = reviewRepository,
             debugProcessHalt = debugProcessHaltProbe,
@@ -676,7 +676,7 @@ class AppContainer(
         ownershipDiscovery = ownershipDiscoveryService,
         reconciliation = transactionReconciliationService,
         reviewQueueUpdater = reviewQueueUpdater,
-        exchangeRateEnrichment = exchangeRateEnrichmentWorkflow,
+        exchangeRateEnrichmentScheduler = exchangeRateEnrichmentScheduler,
         processingRecovery = processingRecovery,
         batchRecoveryScheduler = {
             HistoricalDerivedRecoveryWorker.enqueue(WorkManager.getInstance(appContext))
