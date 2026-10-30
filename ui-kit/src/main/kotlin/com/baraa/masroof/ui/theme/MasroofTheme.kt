@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import java.util.Locale
 
@@ -107,7 +108,8 @@ fun MasroofTheme(
     CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,
         LocalMasroofExtendedColors provides extendedColors,
-        androidx.compose.material3.LocalMinimumInteractiveComponentEnforcement provides false,
+        // Material3 1.4 ignores the old enforcement flag; size 0 keeps touch targets at their drawn size.
+        androidx.compose.material3.LocalMinimumInteractiveComponentSize provides 0.dp,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

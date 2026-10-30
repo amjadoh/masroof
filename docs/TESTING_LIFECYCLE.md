@@ -15,7 +15,6 @@ This is a map of existing production paths and executable coverage, not a claim 
 | UI draft/apply/discard and language/theme geometry | Four independent fidelity variants and four chart interaction variants, existing sheet/geometry tests; assertions and pages/scopes retained |
 | First SQLite open -> application close | `StartupQueryShutdownTest` uses a real connection callback barrier; storage corruption recovery tests remain unchanged; startup unit teardown now closes the container normally |
 | Whole worker/database lease -> restore/close | Model refresh workflow/worker tests, database access/restore recovery tests and native backup/recovery cases |
-| Real installed APK update | `AppUpgradePreservationTest` seeds real SMS/ledger, account/card/loan ownership, active/paused commitments and a correction; identical persisted fingerprint required after baseline-to-current update |
 | CI output -> merge/release authority | `test_ci_device.py`, routing/script tests and `test_verify_ci_status.py`; incomplete/skipped/duplicate/missing case output and partial CI are rejected |
 
 ## Root causes corrected

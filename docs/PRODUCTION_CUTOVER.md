@@ -180,7 +180,7 @@
 - اختبارات الميزات المنقولة: `app/src/test/kotlin/com/baraa/masroof/integration/` و`app/src/androidTest/kotlin/com/baraa/masroof/integration/`. أُزيلت أسماء Lab/Beta من مسارات المصدر والحزم؛ كلها تستهدف التطبيق الفعلي. مفاتيح النسخ الاحتياطي وهويات العمل القديمة بقيت للتوافق.
 - أدوات العزل الاصطناعي في `app/src/androidTest/kotlin/com/baraa/masroof/testsupport/` لا تُشحن في APK التطبيق.
 - اختبار حفظ الحركات والقرارات: `app/src/test/kotlin/com/baraa/masroof/application/interpretation/ProductionEnginePreservationTest.kt`.
-- اختبار تحديث APK الفعلي: `app/src/androidTest/kotlin/com/baraa/masroof/instrumentation/upgrade/AppUpgradePreservationTest.kt` و`scripts/app-apk-upgrade.sh`.
+- أُزيل اختبار تحديث APK من إصدار سابق (`AppUpgradePreservationTest` و`scripts/app-apk-upgrade.sh`) مع الانتقال إلى Java 21، لأنه كان يبني الإصدار القديم بـ JDK 17.
 - حُذفت `.github/workflows/lab.yml` وأدوات تحديث/تشغيل المختبر. تعمل اختبارات الميزات داخل CI الفعلي. بقي `release.yml` دون إضافة اختبارات الوحدة إليه.
 
 ## التوثيق

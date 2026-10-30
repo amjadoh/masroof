@@ -101,17 +101,11 @@ class MessagePatternsJourneyTest {
             }
         }
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_add_bank)).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("STC Bank").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-            it(androidx.compose.ui.text.AnnotatedString("changed sender"))
-        }
-        compose.onNodeWithText("STC Bank").assertExists()
+        compose.onNodeWithText("STC Bank").assertRejectsTextEdits("STC Bank")
         compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
         click(R.string.pattern_add_bank)
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("pattern-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-            it(androidx.compose.ui.text.AnnotatedString("changed body"))
-        }
-        compose.onNodeWithTag("pattern-body").assertTextContains(source.body)
+        compose.onNodeWithTag("pattern-body").assertRejectsTextEdits(source.body)
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("73SAR").performScrollTo().performClick()
@@ -219,5 +213,15 @@ class MessagePatternsJourneyTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         android.os.SystemClock.sleep(250)
         ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-journey", name)
+    }
+
+    /** Read-only text either has no SetText action (Compose 1.8+) or ignores it; the text must stay. */
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertRejectsTextEdits(original: String) {
+        if (androidx.compose.ui.semantics.SemanticsActions.SetText in fetchSemanticsNode().config) {
+            performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
+                it(androidx.compose.ui.text.AnnotatedString("changed"))
+            }
+        }
+        assertTextContains(original)
     }
 }

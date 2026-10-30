@@ -66,7 +66,6 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertEqual(cases, {c for group in suites.values() for c in group})
         self.assertEqual(len(cases), sum(map(len, suites.values())))
         self.assertEqual(20, len(suites['processDeath']))
-        self.assertEqual(2, len(suites['upgrade']))
         self.assertEqual(2, len(suites['excluded']))
         self.assertTrue(all(len(pair) == 2 for pair in config['processDeath']))
         with self.assertRaises(ValueError):
@@ -93,9 +92,9 @@ class DeviceProtocolTest(unittest.TestCase):
             bundle = Path(directory)
             apk = bundle / 'app.apk'
             apk.write_bytes(b'verified-apk')
-            config = dict(processDeath=[], upgrade=[], excluded={})
+            config = dict(processDeath=[], excluded={})
             manifest = dict(testedSha='a'*40, config=config, suites=dict(primary=['example.Test#case'],
-                processDeath=[], upgrade=[], excluded=[]), shards=[['example.Test#case']],
+                processDeath=[], excluded=[]), shards=[['example.Test#case']],
                 apks=dict(app=dict(file='app.apk', sha256=device.digest(apk))))
             def save(): (bundle / 'manifest.json').write_text(json.dumps(manifest))
             save()
@@ -124,6 +123,23 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertNotIn('gradlew', section)
         self.assertIn('scripts/ci_device.py run', section)
         self.assertIn('fail-fast: false', section)
+
+
+    def test_settle_waits_for_boot_load_and_never_blocks_forever(self):
+        from types import SimpleNamespace
+        readings = iter(['3.60 2.00 1.00 2/900 77', '1.20 2.00 1.00 1/900 77'])
+        def adb(*args, **_):
+            out = {'/proc/loadavg': lambda: next(readings), 'nproc': lambda: '4'}.get(args[-1], lambda: '')
+            return SimpleNamespace(stdout=out())
+        with patch.object(device, 'adb', side_effect=adb) as calls, patch.object(device.time, 'sleep') as sleep:
+            device.settle()
+        self.assertEqual(('shell', 'am', 'wait-for-broadcast-idle'), calls.call_args_list[0].args)
+        self.assertEqual(1, sleep.call_count)
+        busy = lambda *args, **_: SimpleNamespace(stdout='4' if args[-1] == 'nproc' else '9.00 9.00 9.00 4/900 77')
+        clock = iter(range(0, 1000, 100))
+        with patch.object(device, 'adb', side_effect=busy), patch.object(device.time, 'sleep'), \
+                patch.object(device.time, 'monotonic', side_effect=lambda: next(clock)):
+            device.settle(limit=250)  # returns at the deadline instead of failing the job
 
 
 if __name__ == '__main__': unittest.main()
