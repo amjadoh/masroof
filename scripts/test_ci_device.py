@@ -1,6 +1,10 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import os
+import subprocess
+import sys
+import textwrap
 import json
 from unittest.mock import patch
 import unittest
@@ -12,6 +16,20 @@ spec.loader.exec_module(device)
 
 
 class DeviceProtocolTest(unittest.TestCase):
+    def test_workflow_publishes_package_version_separately_from_runtime_api(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        resolve = workflow.split('      - name: Resolve validated Android image', 1)[1]
+        code = textwrap.dedent(resolve.split("python3 - <<'PY'", 1)[1].split('\n          PY', 1)[0])
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'output'
+            subprocess.run([sys.executable, '-c', code], cwd=device.ROOT,
+                           env=dict(os.environ, GITHUB_OUTPUT=str(output)), check=True, capture_output=True)
+            config = json.loads(device.CONFIG.read_text())
+            self.assertEqual([f"api-level={config['api']}", f"image-version={config['imageVersion']}"],
+                             output.read_text().splitlines())
+        self.assertEqual(int(config['imageVersion'].split('.')[0]), config['api'])
+        self.assertIn('api-level: ${{ needs.android-version.outputs.image-version }}', workflow)
+
     def stream(self, status=0, final=True):
         p = device.Instrumentation()
         for line in ['INSTRUMENTATION_STATUS: class=example.CaseTest', 'INSTRUMENTATION_STATUS: test=case',
