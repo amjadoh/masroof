@@ -8,7 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
@@ -142,7 +142,7 @@ class ReportedMessagesJourneyTest {
         runBlocking {TestRuntime.reset(host)}
         val c=AppContainer(TestStorageContext(host))
         val store=ViewModelStore()
-        val configuration=Configuration(host.resources.configuration).apply {setLocale(Locale("ar"))}
+        val configuration=Configuration(host.resources.configuration).apply {setLocale(Locale.forLanguageTag("ar"))}
         val arabic=host.createConfigurationContext(configuration)
         var dark by mutableStateOf(true)
         try {
