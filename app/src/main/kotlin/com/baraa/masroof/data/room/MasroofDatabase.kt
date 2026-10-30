@@ -5,7 +5,6 @@ import androidx.room.RoomDatabase
 import com.baraa.masroof.data.room.dao.AccountRegistryDao
 import com.baraa.masroof.data.room.dao.BankRegistryDao
 import com.baraa.masroof.data.room.dao.CardRegistryDao
-import com.baraa.masroof.data.room.dao.CreditFacilityDao
 import com.baraa.masroof.data.room.dao.CommitmentDao
 import com.baraa.masroof.data.room.dao.FinancialTransactionDao
 import com.baraa.masroof.data.room.dao.LoanRegistryDao
@@ -65,7 +64,6 @@ abstract class MasroofDatabase : RoomDatabase() {
 
     abstract fun cardRegistryDao(): CardRegistryDao
 
-    abstract fun creditFacilityDao(): CreditFacilityDao
 
     abstract fun loanRegistryDao(): LoanRegistryDao
 

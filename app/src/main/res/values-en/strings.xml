@@ -8,12 +8,9 @@
     <string name="onboarding_allow">Allow</string>
     <string name="onboarding_open_settings">Open app settings</string>
     <string name="onboarding_permission_denied_short">SMS permission was denied.</string>
-    <string name="onboarding_import_date_title">From which date should transactions be imported?</string>
     <string name="onboarding_date_current_month">Start of current month</string>
     <string name="onboarding_date_last_30">Last 30 days</string>
     <string name="onboarding_date_last_27">From last day 27</string>
-    <string name="onboarding_date_custom">Custom date</string>
-    <string name="onboarding_selected_date">Selected date: %1$s</string>
     <string name="onboarding_start_import">Start import</string>
     <string name="onboarding_import_scanning">Scanning messages…</string>
     <string name="onboarding_import_done">Import complete</string>
@@ -26,8 +23,6 @@
     <string name="onboarding_retry">Retry</string>
     <string name="onboarding_ownership_title">Confirm account and card ownership</string>
     <string name="onboarding_ownership_must_resolve">Set ownership for discovered accounts and cards to continue.</string>
-    <string name="onboarding_accounts_section">Discovered accounts</string>
-    <string name="onboarding_cards_section">Discovered cards</string>
     <string name="onboarding_account_suffix">Account ending in %1$s</string>
     <string name="onboarding_card_suffix">Card ending in %1$s</string>
     <string name="onboarding_is_mine_account">My account</string>
@@ -107,7 +102,6 @@
     <string name="settings_about_tagline">Track spending from bank SMS — without linking your bank account.</string>
     <string name="settings_about_privacy_title">Privacy</string>
     <string name="settings_about_privacy_body">Messages are parsed locally on your device. Financial SMS content is not uploaded. App updates may contact GitHub using your personal token.</string>
-    <string name="settings_about_banks_title">Supported banks</string>
     <string name="settings_hub_review_title">Review transactions</string>
     <string name="settings_hub_review_subtitle_count">%1$d transaction(s) need review</string>
     <string name="settings_hub_cards_subtitle">%1$d card(s) • %2$d unregistered</string>
@@ -158,9 +152,6 @@
     <string name="settings_registry_accounts_hint">Choose a bank to manage its accounts.</string>
     <string name="settings_registry_cards_hint">Choose a bank to manage its cards.</string>
     <string name="settings_registry_loans_hint">Choose a bank to manage its loans.</string>
-    <string name="settings_hub_loans_subtitle">%1$d loan(s)</string>
-    <string name="settings_hub_loans_subtitle_only">%1$d loan(s)</string>
-    <string name="settings_hub_loans_subtitle_none">No loans yet</string>
     <string name="settings_bank_accounts_title">Accounts</string>
     <string name="settings_bank_cards_title">Cards</string>
     <string name="settings_bank_loans_title">Loans</string>
@@ -481,7 +472,6 @@
     <string name="dashboard_load_error">Could not load financial summary</string>
     <string name="dashboard_retry">Retry</string>
     <string name="dashboard_rescan_sms">Re-import messages</string>
-    <string name="dashboard_rescanning">Importing messages…</string>
     <string name="dashboard_rescan_ok">Messages imported successfully</string>
     <string name="dashboard_rescan_already_up_to_date">Messages are already imported — no new messages in this period</string>
     <string name="dashboard_rescan_needs_review">New messages found — review them in Review transactions</string>
@@ -490,7 +480,6 @@
     <string name="dashboard_rescan_no_transactions">New messages were found but not converted to transactions. You may need to confirm account/card ownership or review them later.</string>
     <string name="dashboard_rescan_failed">Could not import messages</string>
     <string name="dashboard_rescan_permission_denied">Cannot import messages without SMS permission</string>
-    <string name="dashboard_rescan_dismiss">Dismiss</string>
     <string name="dashboard_sms_permission_title">SMS permission is off</string>
     <string name="dashboard_sms_permission_body">To import bank transactions from your inbox, allow Masroof to read SMS. Pull-to-refresh only reloads saved data without this permission.</string>
     <string name="dashboard_sms_permission_grant">Allow SMS access</string>

@@ -20,7 +20,6 @@
     <string name="reference_backup_title">Backup</string>
     <string name="reference_export_title">Create encrypted backup</string>
     <string name="reference_restore_title">Restore backup</string>
-    <string name="reference_data_tools_title">Messages and data</string>
     <string name="reference_waiting_payment">%1$s awaiting payment</string>
     <string name="reference_no_commitments">No commitments for this period</string>
     <string name="reference_account_movements">Account transactions</string>
@@ -35,7 +34,6 @@
     <string name="reference_day_transactions">Transactions included in daily expenses</string>
     <string name="reference_period_view">Period view</string>
     <string name="reference_day_view">Choose a day</string>
-    <string name="reference_purchases">Purchases</string>
     <string name="reference_refunds">Refunds</string>
     <string name="reference_followed">Tracked</string>
     <string name="reference_unconfirmed">Unconfirmed</string>
@@ -54,7 +52,6 @@
     <string name="reference_all_types">All transaction types</string>
     <string name="reference_all_sources">All accounts and cards</string>
     <string name="reference_confirm_password">Confirm password</string>
-    <string name="reference_welcome_body">Turn supported bank messages into clear accounts, cards and financial transactions.</string>
     <string name="reference_start_setup">Start setup</string>
     <string name="reference_axis_day">Day</string>
     <string name="reference_restore_steps">Select backup · Verify · Confirm</string>
@@ -67,7 +64,6 @@
     <string name="reference_update_idle">Ready to check</string>
     <string name="reference_update_checking">Checking for updates</string>
     <string name="reference_update_downloading">Downloading · %1$d%%</string>
-    <string name="reference_update_notes">Release notes</string>
     <string name="reference_event_details">Event details</string>
     <string name="reference_event_id">Event ID</string>
     <string name="reference_event_time">Event time</string>
@@ -77,7 +73,6 @@
     <string name="reference_delete">Delete</string>
     <string name="reference_colour_meanings">Consistent meaning in both themes</string>
     <string name="reference_choose_save_location">Choose save location</string>
-    <string name="reference_bank_registered">Registered bank</string>
     <string name="reference_followed_accounts">Tracked accounts</string>
     <string name="reference_followed_cards">Tracked cards</string>
     <string name="reference_primary_credit_type">Primary credit card</string>

@@ -1,10 +1,7 @@
 <resources>
     <string name="teaching_title">Teach Masroof</string>
-    <string name="teaching_settings_subtitle">Your messages and taught patterns</string>
     <string name="teaching_catalog">What you taught me</string>
     <string name="teaching_pattern_disabled">Disabled</string>
-    <string name="teaching_pattern_ready">Ready to use</string>
-    <string name="teaching_pattern_preview">Preview only</string>
     <string name="teaching_kind_title">What type of transaction?</string>
     <string name="teaching_step_kind">Message</string>
     <string name="teaching_step_fields">Fields</string>
@@ -19,7 +16,6 @@
     <string name="teaching_values">Message values</string>
     <string name="teaching_ignore_value">Ignore value</string>
     <string name="teaching_sample_title">Does another message match?</string>
-    <string name="teaching_field_help">Tap a value from the message, or select text yourself and confirm. Skip fields that are absent. The amount is required. Mark other variable values as ignored so they do not become fixed text in the pattern.</string>
     <string name="teaching_confirm_field">Confirm and continue</string>
     <string name="teaching_skip_field">Not present</string>
     <string name="teaching_previous">Previous</string>
@@ -29,7 +25,6 @@
     <string name="teaching_saved_scope">Saving the pattern alone did not post this message. Approve its financial interpretation, then apply it to eligible messages. Conflicts and missing facts remain in review.</string>
     <string name="teaching_return_review">Return to message review</string>
     <string name="teaching_saved_patterns">Patterns</string>
-    <string name="teaching_other_values">Other variable values</string>
     <string name="teaching_review_title">Help me understand this message</string>
     <string name="teaching_review_pending">Unknown format; not posted as a transaction.</string>
     <string name="teaching_review_action">Teach Masroof this message</string>
