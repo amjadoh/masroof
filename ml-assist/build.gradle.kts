@@ -1,6 +1,6 @@
 plugins { kotlin("jvm") }
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
 dependencies { testImplementation(libs.junit) }
 
 tasks.register<JavaExec>("trainRecurringSeed") {
