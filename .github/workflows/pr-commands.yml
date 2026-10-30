@@ -17,7 +17,7 @@ jobs:
         startsWith(github.event.comment.body, '/release') ||
         startsWith(github.event.comment.body, '/nightly')
       )
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:

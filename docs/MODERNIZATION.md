@@ -41,7 +41,8 @@ preserve the previous unused-member check, and checks do not rewrite sources.
 CI actions are pinned to the release commit, with the version beside each pin.
 The Gradle daemon uses JDK 27, compilation targets remain 21, and Android unit
 tests explicitly launch JDK 21 for Robolectric compatibility. CI installs Python
-3.15.2 and uses Ubuntu 26.04. Build Tools 37.0.0 and SDK image 37.0/runtime API 37
+3.15.2. Ubuntu runner labels remain unchanged at the user's request: CI uses
+Ubuntu 24.04, and release/command workflows retain their existing labels. Build Tools 37.0.0 and SDK image 37.0/runtime API 37
 replace the previous validated CI image after the required device jobs pass.
 
 Baseline visual evidence: four production fidelity cases passed on API 36,
