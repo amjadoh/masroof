@@ -46,7 +46,7 @@ android {
         // invocations. clearPackageData=true would wipe that database, so the
         // orchestrated suite never runs them. scripts/m13-process-death.sh does.
         testInstrumentationRunnerArguments["notPackage"] =
-            "com.baraa.masroof.instrumentation.processdeath,com.baraa.masroof.instrumentation.upgrade"
+            "com.baraa.masroof.instrumentation.processdeath"
     }
 
     signingConfigs {

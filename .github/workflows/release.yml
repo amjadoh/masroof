@@ -108,7 +108,7 @@ jobs:
           chmod +x scripts/resolve-next-version.sh
           ./scripts/resolve-next-version.sh --type "${{ inputs.type || 'release' }}" --bump "${{ inputs.bump || 'patch' }}"
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin

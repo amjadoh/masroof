@@ -16,9 +16,9 @@ are omitted from confidence; scores, blockers, statuses and other reasons remain
 Newly allocated account/card registry UUIDs differ across fresh databases, so only
 those UUIDs are normalized across worlds. Each world's exact registry IDs must
 remain unchanged after repeat import. Transaction identities and evidence links
-are compared exactly. This does not replace an APK upgrade test on existing IDs.
+are compared exactly. It does not install one APK over another.
 
-Run `:app:testDebugUnitTest --tests '*AlJazira*ParityTest'` with JDK 17.
+Run `:app:testDebugUnitTest --tests '*AlJazira*ParityTest'` with JDK 21.
 Reports go to `app/build/reports/pattern-parity/`; tests never update these files.
 A changed corpus or baseline requires explicit review, not automatic regeneration
 to make a changed implementation pass. No production financial data is read.
