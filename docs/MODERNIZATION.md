@@ -109,3 +109,10 @@ Family feature export, six activation-policy checks, five recurring trainer chec
 both family/recurring seed reproducibility checks passed with the unchanged model assets.
 The family check reports 55 source rows / 39 unique templates and no enabled statistical
 families, preserving the existing qualification gate.
+
+The pre-existing main-push run `41058879198` failed one optional-message-review UI case:
+the button tag existed only in the unmerged semantics tree at the click. The focused
+case passed locally before and after the finder correction; it now targets the actual
+tagged button in the unmerged tree and asserts its click action/enabled state. Cancel,
+financial/review parity and open-example assertions remain intact. PR CI must verify it
+under the full device schedule.
