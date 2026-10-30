@@ -280,7 +280,8 @@ worth its migration/lifecycle cost. None blocks reviewing this proposed design.
   was available to visually inspect the HTML prototype; this does not establish
   browser rendering/accessibility or production UI acceptance.
 - The preceding bullets record design review before implementation. Implementation
-  progress and fresh validation are recorded in `tasks/todo.md` and the follow-up PR.
+  remaining qualification work is tracked in [WORK_REMAINING.md](WORK_REMAINING.md);
+  completed validation is recorded in the relevant pull request.
 
 ## Delivered increment
 
