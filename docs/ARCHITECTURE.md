@@ -131,10 +131,10 @@ v18 is unchanged; deleted patterns cannot be recovered through revision restore.
 Keep integration fixtures on the bundled production definitions. Kotlin rule
 profiles live only in `bank-engine/src/testFixtures/`, shared through Gradle's built-in test-fixtures support. The offline CLI is an explicit test tool. Neither
 is another production definition source. Preserve the frozen AlJazira baselines.
-The current handoff is [Production migration plan](PRODUCTION_MIGRATION_PLAN.md);
-[Pattern facts](PATTERN_FACT_CONTRACT.md) describes the write contract, and
-[AlJazira cutover](ALJAZIRA_SHARED_PATTERNS.md) records compatibility. Historical
-experiment notes live in [history](history/MESSAGE_PATTERN_EXPERIMENT.md).
+[Pattern facts](PATTERN_FACT_CONTRACT.md) describes the current write contract;
+[AlJazira compatibility](ALJAZIRA_SHARED_PATTERNS.md) records the frozen-reference
+checks and remaining signed-upgrade/restore release gates. The production ownership
+table above supersedes the completed migration plans and prototype execution logs.
 
 ## Financial policy ownership
 

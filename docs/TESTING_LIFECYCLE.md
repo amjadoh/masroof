@@ -40,4 +40,21 @@ Pure-module Jupiter migration preserves all 267 original test methods (95 financ
 121 bank-engine, 51 ml-assist). Android/Robolectric tests remain JUnit 4. Added regressions cover
 cancellation propagation, SDK package/runtime separation, transaction-list query refresh,
 duplicate display IDs, foreign-currency totals and explicit money-span scaling. The complete
-baseline contains 2,027 named test methods; the modernization record tracks preservation checks.
+baseline contains 2,027 named test methods; [modernization report](KOTLIN_MODERNIZATION.md) records current verification.
+
+## Retained lifecycle regression requirements
+
+- Historical parsed facts and the durable batch retry intent commit atomically;
+  failed derived work remains incomplete even if other rows posted.
+- Manual non-financial decisions, exclusive ledger deletion and retry cleanup
+  share a transaction. Interrupted writes roll back together.
+- Every restored preference commit must succeed before COMMITTED. Retain rollback
+  evidence until the database and preferences agree; wipe sensitive staging data
+  at discard boundaries, never files still required for recovery.
+- Tokens and backup phrases stay out of saved UI state. A picker result arriving
+  after process death without its in-memory phrase must show a retry outcome.
+- Saved UI state cannot authorize startup financial access. Active imports survive
+  activity resume, while provider iteration and parsing stay off the main thread.
+- Process-death capture tests join the actual startup job before arming a halt;
+  waiting only for blocking maintenance leaves pending-processing scheduling racing
+  with capture. Use completion barriers rather than timing sleeps.

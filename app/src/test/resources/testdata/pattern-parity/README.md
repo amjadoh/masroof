@@ -27,7 +27,8 @@ to make a changed implementation pass. No production financial data is read.
 These checks establish the current reference and comparison harness. Passing them
 before enabling a replacement is not proof that learned patterns have reached
 production parity. Device upgrade, backup/restore and learned-pattern cutover
-remain separate acceptance gates in `PRODUCTION_MIGRATION_PLAN.md`.
+remain separate acceptance gates in
+[`docs/ALJAZIRA_SHARED_PATTERNS.md`](../../../../../../docs/ALJAZIRA_SHARED_PATTERNS.md).
 
 The candidate now reads `src/main/assets/bank-patterns/BANK_ALJAZIRA.rules.json`;
 the reference retains the original compiled profile. Both match the frozen files.
