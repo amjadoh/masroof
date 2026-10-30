@@ -110,7 +110,10 @@ class PatternProcessingMilestoneTest {
             assertTrue(runCatching { w.saveFinancial(preview) }.isFailure)
             c.settingsRegistryWorkflow.confirmCardOwned(ref)
             val approved = w.saveFinancial(preview)
-            assertEquals(1, w.applyPending(bankId, approved.generation).posted)
+            // A taught pattern starts off: approval alone posts nothing until it is switched on.
+            assertEquals(0, w.applyPending(bankId, approved.generation).posted)
+            val active = w.setEnabled(approved.generation, bankId, patternId, true)
+            assertEquals(1, w.applyPending(bankId, active.generation).posted)
             assertTrue(c.accountRegistryRepository.listAll().none { it.bank.id == bankId })
             assertEquals(ref, c.parsedEventRepository.findByRawSmsId("card-pending")?.event?.cardRef)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
@@ -134,7 +137,8 @@ class PatternProcessingMilestoneTest {
             val patternId = w.catalog().banks.single { it.bankId == "BANK_STC" }.currentPatterns.single { it.id !in bundled }.id
             val approved = w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_STC", patternId, PatternOperation.PURCHASE,
                 null, body, null, emptySet(), cardId = card.id))
-            assertEquals(1, w.applyPending("BANK_STC", approved.generation).posted)
+            val active = w.setEnabled(approved.generation, "BANK_STC", patternId, true)
+            assertEquals(1, w.applyPending("BANK_STC", active.generation).posted)
             assertEquals(ref, c.parsedEventRepository.findByRawSmsId("stc-card-pending")?.event?.cardRef)
         }
     }
@@ -151,10 +155,11 @@ class PatternProcessingMilestoneTest {
             val account = w.confirmPatternAccount("BANK_BARQ", "4321")
             val approved = w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", taught.pattern.id,
                 PatternOperation.TRANSFER_OUT, account.id, body, null, setOf("account_reference")))
-            val row = w.previewPending("BANK_BARQ", approved.generation).rows.single()
+            val active = w.setEnabled(approved.generation, "BANK_BARQ", taught.pattern.id, true)
+            val row = w.previewPending("BANK_BARQ", active.generation).rows.single()
             assertEquals(PendingPatternStatus.MATCHED, row.status)
             assertEquals(taught.pattern.id, row.matches.single().patternId)
-            assertEquals(1, w.applyPending("BANK_BARQ", approved.generation).posted)
+            assertEquals(1, w.applyPending("BANK_BARQ", active.generation).posted)
         }
     }
 
@@ -180,6 +185,44 @@ class PatternProcessingMilestoneTest {
             val row = w.previewPending("BANK_EMIRATES_NBD", w.catalog().generation).rows.single()
             assertEquals(PendingPatternStatus.MATCHED, row.status)
             assertEquals("emirates_nbd.fee", row.matches.single().patternId)
+        }
+    }
+
+    @Test fun overlappingActivePatternsAreBothMarkedConflicting() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val body = "حوالة صادرة داخلية\nالمبلغ: 250.00 SAR\nإلى : **0312\n2026-09-26 16:29"
+            c.processRawSmsUseCase.ingest(sms("barq-dup", body, sender = "barq app"))
+            val bindings = listOf("amount" to "250.00 SAR", "account_reference" to "**0312", "occurred_at" to "2026-09-26 16:29")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            val account = w.confirmPatternAccount("BANK_BARQ", "4321")
+            val ids = List(2) {
+                val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, body, bindings)
+                w.saveTeaching(taught)
+                w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", taught.pattern.id,
+                    PatternOperation.TRANSFER_OUT, account.id, body, null, setOf("account_reference")))
+                taught.pattern.id
+            }
+            // Approval rejects an overlap with an active pattern, but two approved while off can both be switched on.
+            ids.forEach { w.setEnabled(w.catalog().generation, "BANK_BARQ", it, true) }
+            val report = w.previewPending("BANK_BARQ", w.catalog().generation)
+            assertEquals(PendingPatternStatus.PATTERN_CONFLICT, report.rows.single().status)
+            assertTrue(report.conflictingPatternIds.containsAll(ids))
+        }
+    }
+
+    @Test fun aPatternThatIsOffStillFindsApprovalExamples() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            w.addBank(w.catalog().generation, "Shop bank", "ShopBank", "SHOP_BANK")
+            val body = "Purchase\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            val bindings = listOf("amount" to "10SAR", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            val taught = w.teach(w.catalog().generation, "SHOP_BANK", "ShopBank", PatternOperation.PURCHASE, body, bindings)
+            w.saveTeaching(taught)
+            c.processRawSmsUseCase.ingest(sms("shop-pending", body, "ShopBank"))
+            assertEquals(0, w.previewPending("SHOP_BANK", w.catalog().generation).matchingCount(taught.pattern.id))
+            assertEquals(listOf(body), w.approvalExamples("SHOP_BANK", w.catalog().generation, taught.pattern.id).map { it.body })
         }
     }
 

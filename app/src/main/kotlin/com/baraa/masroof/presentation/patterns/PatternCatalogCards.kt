@@ -29,6 +29,19 @@ internal fun patternStatusName(pattern: PatternDefinitionView): String = stringR
     else -> R.string.pattern_approval_ready
 })
 
+/** Approval, on/off and conflict stay separate so each reads at a glance. */
+@Composable
+internal fun patternBadges(pattern: PatternDefinitionView, conflicting: Boolean): List<Pair<String, MasroofCardAccent>> = listOfNotNull(
+    when (pattern.status) {
+        PatternApprovalStatus.BUNDLED -> stringResource(R.string.pattern_badge_builtin) to MasroofCardAccent.None
+        PatternApprovalStatus.PREVIEW_ONLY -> stringResource(R.string.pattern_badge_awaiting) to MasroofCardAccent.Liability
+        PatternApprovalStatus.APPROVED -> stringResource(R.string.pattern_badge_approved) to MasroofCardAccent.Account
+    },
+    if (pattern.enabled) stringResource(R.string.pattern_badge_active) to MasroofCardAccent.Inflow
+        else stringResource(R.string.teaching_pattern_disabled) to MasroofCardAccent.None,
+    if (conflicting) stringResource(R.string.pattern_badge_conflict) to MasroofCardAccent.Outflow else null,
+)
+
 @Composable
 internal fun PatternDetailCard(
     bank: PatternBankView, pattern: PatternDefinitionView, busy: Boolean,
@@ -65,8 +78,8 @@ internal fun PatternDetailCard(
         if (pattern.status == PatternApprovalStatus.APPROVED) SettingsNavRow(
             icon = MasroofIcons.success, title = stringResource(R.string.pattern_financial_settings),
             subtitle = stringResource(R.string.pattern_financial_settings_help), onClick = onApprove,
-            enabled = !busy && pattern.enabled,
-        ) else MasroofButton(onClick = onApprove, enabled = !busy && pattern.enabled, modifier = Modifier.fillMaxWidth()) {
+            enabled = !busy,
+        ) else MasroofButton(onClick = onApprove, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.pattern_financial_approve))
         }
     }

@@ -49,7 +49,7 @@ fun MasroofAverageBand(value: String, periodHint: String, guidance: String?,
 @Composable
 fun MasroofReferenceNavigationRow(title: String, subtitle: String, icon: ImageVector,
     onClick: () -> Unit, modifier: Modifier = Modifier, divider: Boolean = true,
-    status: String? = null, showChevron: Boolean = true) {
+    status: String? = null, showChevron: Boolean = true, badges: List<Pair<String, MasroofCardAccent>> = emptyList()) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
     // Narrow rows (card width, not screen width) stack the badge under the subtitle so neither text is squeezed.
     val stackStatus = maxWidth < MasroofReference.inlineStatusMinWidth
@@ -68,6 +68,11 @@ fun MasroofReferenceNavigationRow(title: String, subtitle: String, icon: ImageVe
                 MasroofText(subtitle, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (stackStatus) status?.let { MasroofBadge(it, MasroofCardAccent.Liability) }
+                // Several states wrap under the subtitle; side by side they would squeeze the title.
+                if (badges.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                    verticalArrangement = Arrangement.spacedBy(MasroofSpacing.hairlineGap)) {
+                    badges.forEach { (text, accent) -> MasroofBadge(text, accent) }
+                }
             }
             if (!stackStatus) status?.let { MasroofBadge(it, MasroofCardAccent.Liability, Modifier.widthIn(max = MasroofReference.statusBadgeMaxWidth)) }
             if (showChevron) Icon(if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl)
