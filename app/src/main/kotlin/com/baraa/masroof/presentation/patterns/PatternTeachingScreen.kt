@@ -28,7 +28,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Question and navigation stay visible; only message content scrolls. Drafts are saved explicitly. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PatternTeachingScreen(
     workflow: MessagePatternsWorkflow, generation: Long, bank: PatternBankView,

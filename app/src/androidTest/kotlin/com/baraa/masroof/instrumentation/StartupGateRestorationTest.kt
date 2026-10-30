@@ -3,7 +3,7 @@ package com.baraa.masroof.instrumentation
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.baraa.masroof.application.maintenance.StartupMaintenanceOutcome
 import com.baraa.masroof.presentation.startup.rememberStartupMaintenanceOutcome

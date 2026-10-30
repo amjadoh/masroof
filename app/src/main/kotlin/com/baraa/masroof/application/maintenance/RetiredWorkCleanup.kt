@@ -3,6 +3,7 @@ package com.baraa.masroof.application.maintenance
 import android.content.Context
 import android.app.NotificationManager
 import androidx.work.WorkManager
+import androidx.work.await
 import com.baraa.masroof.application.logging.AppLogService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -18,10 +19,10 @@ object RetiredWorkCleanup {
                 val work = WorkManager.getInstance(context)
                 listOf("lab-replica:live-sms-processing", "lab-replica:model-refresh",
                     "lab-replica:exchange-rate-enrichment", "lab-replica:analytics")
-                    .forEach { work.cancelAllWorkByTag(it).result.get() }
+                    .forEach { work.cancelAllWorkByTag(it).await() }
                 listOf("lab-replica:startup-recovery", "lab-replica:historical-derived-recovery",
                     "lab-replica:parsed-event-facts-backfill", "lab-replica:masroof_update_check")
-                    .forEach { work.cancelUniqueWork(it).result.get() }
+                    .forEach { work.cancelUniqueWork(it).await() }
                 val notifications = context.getSystemService(NotificationManager::class.java)
                 notifications.activeNotifications.filter { it.tag == "lab-analysis" }
                     .forEach { notifications.cancel(it.tag, it.id) }

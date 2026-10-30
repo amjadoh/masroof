@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.patterns
 
+import android.content.ClipData
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,12 +15,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofText as Text
@@ -28,11 +29,13 @@ import com.baraa.masroof.presentation.common.MasroofButton
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.ui.theme.MasroofIconSizes
 import com.baraa.masroof.ui.theme.MasroofSpacing
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun PatternDeleteDialog(name: String, identity: String, onDismiss: () -> Unit, onDelete: () -> Unit) {
     var confirmation by remember(identity) { mutableStateOf("") }
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     // Dialog windows may expose a different Android context; resolve copy in the app locale before opening one.
     val title = stringResource(R.string.pattern_delete_title)
     val help = stringResource(R.string.pattern_delete_help)
@@ -56,7 +59,7 @@ internal fun PatternDeleteDialog(name: String, identity: String, onDismiss: () -
                 Text(help)
                 OutlinedTextField(name, {}, readOnly = true, singleLine = true,
                     label = { Text(nameLabel) }, trailingIcon = {
-                        IconButton({ clipboard.setText(AnnotatedString(name)) }, modifier = Modifier.testTag("pattern-delete-copy")) {
+                        IconButton({ scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(name, name))) } }, modifier = Modifier.testTag("pattern-delete-copy")) {
                             Icon(MasroofIcons.copy, copy, Modifier.size(MasroofIconSizes.md))
                         }
                     }, modifier = Modifier.fillMaxWidth().testTag("pattern-delete-name"))

@@ -47,7 +47,7 @@ object AnalysisPresentationBuilder {
         val forecast = rows.mapNotNull { it.forecast }.maxOrNull()
         val expected = forecast != null && (actual == null || forecast > actual)
         val gap = snapshot.quality.coverageDays.firstOrNull { it.day == day }?.covered == false
-        AnalysisDailyBar(day, if (gap && !expected) null else if (expected) forecast!! else actual ?: 0, expected)
+        AnalysisDailyBar(day, if (gap && !expected) null else if (expected) forecast else actual ?: 0, expected)
     }
 
     fun coverage(data: CleanData, today: Long): List<AnalysisCoverageDay> {

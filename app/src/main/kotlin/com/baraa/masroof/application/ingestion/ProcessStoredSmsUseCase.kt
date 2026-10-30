@@ -27,6 +27,7 @@ import com.baraa.masroof.parsing.model.ParseResult
 import com.baraa.masroof.parsing.model.ParsedEventDetails
 import com.baraa.masroof.parsing.model.SmsParseInput
 import com.baraa.masroof.parsing.repository.ParsedEventRepository
+import com.baraa.masroof.parsing.validator.ValidationFinding
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -338,6 +339,17 @@ class ProcessStoredSmsUseCase(
         suspend fun save(event: ParsedEvent, details: ParsedEventDetails, outcome: String) =
             saveEvent(rawSms, event, details, outcome, logOutcome, deriveImmediately, historicalBatch, deferCompletion)
 
+        suspend fun invalid(findings: List<ValidationFinding>): SmsIngestionResult {
+            if (logOutcome) {
+                appLogService?.warn(
+                    AppLogCategories.INGEST,
+                    "Invalid parse from ${AppLogFormatting.maskSender(rawSms.sender)}",
+                )
+            }
+            return reviewOrRetry(rawSms.id, IngestionReviewService.REASON_INVALID_PARSED_EVENT)
+                ?: SmsIngestionResult.Invalid(rawSmsId = rawSms.id, findings = findings)
+        }
+
         return when (parseResult) {
             is ParseResult.Success -> {
                 save(parseResult.event, parseResult.details, "parsed")
@@ -348,28 +360,15 @@ class ProcessStoredSmsUseCase(
                     )
             }
 
-            is ParseResult.Partial -> {
-                if (parseResult.event != null) {
-                    save(parseResult.event, parseResult.details, "parsed_partial")
-                        ?: SmsIngestionResult.Parsed(
-                            rawSmsId = rawSms.id,
-                            event = parseResult.event,
-                            details = parseResult.details,
-                        )
-                } else {
-                    if (logOutcome) {
-                        appLogService?.warn(
-                            AppLogCategories.INGEST,
-                            "Invalid parse from ${AppLogFormatting.maskSender(rawSms.sender)}",
-                        )
-                    }
-                    reviewOrRetry(rawSms.id, IngestionReviewService.REASON_INVALID_PARSED_EVENT)?.let { return it }
-                    SmsIngestionResult.Invalid(
+            is ParseResult.Partial if parseResult.event != null ->
+                save(parseResult.event, parseResult.details, "parsed_partial")
+                    ?: SmsIngestionResult.Parsed(
                         rawSmsId = rawSms.id,
-                        findings = parseResult.findings,
+                        event = parseResult.event,
+                        details = parseResult.details,
                     )
-                }
-            }
+
+            is ParseResult.Partial -> invalid(parseResult.findings)
 
             is ParseResult.ReviewRequired -> {
                 if (parseResult.event != null) {
@@ -422,19 +421,7 @@ class ProcessStoredSmsUseCase(
                 )
             }
 
-            is ParseResult.Invalid -> {
-                if (logOutcome) {
-                    appLogService?.warn(
-                        AppLogCategories.INGEST,
-                        "Invalid parse from ${AppLogFormatting.maskSender(rawSms.sender)}",
-                    )
-                }
-                reviewOrRetry(rawSms.id, IngestionReviewService.REASON_INVALID_PARSED_EVENT)?.let { return it }
-                SmsIngestionResult.Invalid(
-                    rawSmsId = rawSms.id,
-                    findings = parseResult.findings,
-                )
-            }
+            is ParseResult.Invalid -> invalid(parseResult.findings)
         }
     }
 
