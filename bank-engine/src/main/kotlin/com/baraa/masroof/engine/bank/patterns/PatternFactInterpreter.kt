@@ -61,6 +61,9 @@ private val PATTERN_REFERENCE_FIELDS = setOf("source_account", "destination_acco
 data class PatternProvenance(val configurationFingerprint: String, val patternId: String, val revision: Int,
     val definitionFacts: Set<String>, val usesReceiptTime: Boolean, val roleProfile: Boolean = false)
 
+/** A message's interpretation and the enabled patterns it matched on the way. */
+data class RoutedPreview(val interpretation: Interpretation, val matches: List<Pair<SavedMessagePattern, Preview>>)
+
 /** Immutable configuration snapshot. Routing has already selected the bank; sender detection is not repeated. */
 class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     private val snapshot = configuration.copy(banks = configuration.banks.map {
@@ -68,7 +71,18 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     })
     val fingerprint: String = fingerprint(snapshot)
 
-    fun interpretRouted(input: MessageInput, bank: BankId, familyAssist: FamilyAssist? = null): Interpretation {
+    fun interpretRouted(input: MessageInput, bank: BankId, familyAssist: FamilyAssist? = null): Interpretation =
+        interpret(input, bank, familyAssist, null)
+
+    /** One pass for previews: the interpretation plus every enabled pattern, taught or role, the message matches. */
+    fun previewRouted(input: MessageInput, bank: BankId): RoutedPreview {
+        var matched = emptyList<Pair<SavedMessagePattern, Preview>>()
+        val interpretation = interpret(input, bank, null) { matched = it }
+        return RoutedPreview(interpretation, matched)
+    }
+
+    private fun interpret(input: MessageInput, bank: BankId, familyAssist: FamilyAssist?,
+        observe: ((List<Pair<SavedMessagePattern, Preview>>) -> Unit)?): Interpretation {
         val version = InterpretationVersion(1, "message-pattern-facts-v1", fingerprint)
         fun unresolved(code: String, blocker: Blocker = Blocker.UNKNOWN_FAMILY) = Interpretation(input.evidenceId,
             version, bank, Facts(MessageFamily.UNKNOWN), ParseStatus.REVIEW_REQUIRED, null, emptyList(),
@@ -78,19 +92,26 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         val security = otpEvidence(SourceText(input.body))
         if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
             ParseStatus.NON_FINANCIAL, null, security, emptySet())
+        val matches = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
+            // Use the pattern's declared sender only to invoke its body compiler, after routing.
+            pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
+        }
         val roles = definition.currentPatterns.filter { it.roleProfile != null && it.sender in definition.senders }
         val roleResult = if (roles.isEmpty()) null else {
             val profiles = roles.map { requireNotNull(it.roleProfile) }
             val profile = profiles.first()
-            if (profiles.any { it.network != profile.network || it.schema != profile.schema })
+            if (profiles.any { it.network != profile.network || it.schema != profile.schema }) {
+                observe?.invoke(matches)
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
+            }
             RuleInterpreter(profile.copy(rules = profiles.flatMap { it.rules }), familyAssist).interpretRouted(input, bank)
         }
         val roleMatches = roles.filter { pattern -> roleResult?.evidence?.any { it.field == "family" && it.ruleId == pattern.id } == true }
         val activeRoles = roleMatches.filter { it.enabled }
-        val matches = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
-            // Use the pattern's declared sender only to invoke its body compiler, after routing.
-            pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
+        if (observe != null) {
+            val roleFields = roleResult?.evidence.orEmpty().filter { it.field != "family" }
+                .associate { span -> span.field to TextSpan(span.slice(input), span.start, span.end) }
+            observe(matches + activeRoles.map { it to Preview(it.label, roleFields) })
         }
         // A taught pattern may complete an incomplete recognized role of the same family, never contradict it.
         val completesRole = roleResult != null && roleResult.status != ParseStatus.SUCCESS && matches.size == 1 &&

@@ -358,6 +358,12 @@ class HistoricalSmsBatchProcessorTest {
     private fun processor(): HistoricalSmsBatchProcessor {
         val accounts = RoomAccountRegistryRepository.from(db)
         val realCards = RoomCardRegistryRepository.from(db)
+        val enrichment = ExchangeRateEnrichmentWorkflow(
+            financialTransactionRepository = transactions,
+            parsedEventRepository = parsedRepo,
+            rawSmsRepository = rawRepo,
+            sarEquivalentResolver = TransactionSarEquivalentResolver(marketRateProvider = { _, _ -> null }),
+        )
         return HistoricalSmsBatchProcessor(
             capture = CaptureBankSmsUseCase(rawRepo, registry),
             processStored = ProcessStoredSmsUseCase(
@@ -373,13 +379,8 @@ class HistoricalSmsBatchProcessorTest {
                 ownershipResolver = OwnershipResolver(accounts, realCards, NoOpLoanRegistryRepository),
             ),
             reviewQueueUpdater = ReviewQueueUpdater(reviews, transactions, clock),
-            exchangeRateEnrichment = ExchangeRateEnrichmentWorkflow(
-                financialTransactionRepository = transactions,
-                parsedEventRepository = parsedRepo,
-                rawSmsRepository = rawRepo,
-                sarEquivalentResolver = TransactionSarEquivalentResolver(
-                    marketRateProvider = { _, _ -> null },
-                ),
+            exchangeRateEnrichmentScheduler = ImmediateExchangeRateEnrichmentScheduler(
+                PendingExchangeRateEnricher { enrichment.enrichPending() },
             ),
             processingRecovery = ProcessingRecovery(
                 processingRetryRepository = retries,
