@@ -1,5 +1,20 @@
 # Personal spending and forecasting tasks
 
+## Repository modernization (approved)
+
+Execution record and compatibility baseline: [modernization](../docs/MODERNIZATION.md).
+
+- [ ] Update build/analysis tooling, HTTP dependency and pinned CI actions.
+- [ ] Validate SDK package/runtime API separation and required CI contracts.
+- [ ] Migrate pure JVM tests to Jupiter without losing existing scenarios.
+- [ ] Simplify settings state, dashboard projections and repeated write/cleanup paths.
+- [ ] Prove cancellation propagation and preserve financial/recovery invariants.
+- [ ] Delete proven unused code/resources; preserve schema and compatibility hooks.
+- [ ] Redesign both product READMEs and reconcile technical documentation.
+- [ ] Complete focused checks, APK/static checks and visual parity evidence.
+
+## Existing personal spending work
+
 Approved for implementation. Local production changes are in progress on
 `feat/personal-spending-insights`; the #329 branch is unchanged.
 Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGHTS_DESIGN.md).

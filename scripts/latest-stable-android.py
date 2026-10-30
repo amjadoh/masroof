@@ -3,14 +3,20 @@
 
 import os
 import re
+from typing import NamedTuple
 import urllib.request
 import xml.etree.ElementTree as ET
 
 REPOSITORY = "https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml"
-IMAGE_PATH = re.compile(r"system-images;android-(\d+);google_apis;x86_64")
+IMAGE_PATH = re.compile(r"system-images;android-(\d+(?:\.\d+)?);google_apis;x86_64")
 
 
-def latest_stable_api(xml):
+class AndroidImage(NamedTuple):
+    api: int
+    sdk: str
+
+
+def latest_stable_image(xml):
     root = ET.fromstring(xml)
     for element in root.iter():
         element.tag = element.tag.rsplit("}", 1)[-1]
@@ -25,37 +31,41 @@ def latest_stable_api(xml):
         if package.find("revision/preview") is not None:
             continue
         details = package.find("type-details")
-        if details is None or details.findtext("codename", "REL") != "REL":
+        if details is None or details.findtext("codename", "REL") not in ("", "REL"):
             continue
         if details.findtext("base-extension", "true") != "true":
             continue
-        api = int(match.group(1))
-        if details.findtext("api-level") != str(api):
+        sdk = match.group(1)
+        if details.findtext("api-level") != sdk:
             continue
-        candidates.append(api)
+        candidates.append(AndroidImage(int(sdk.split('.')[0]), sdk))
     if not candidates:
         raise ValueError("No stable base Google APIs x86_64 system image published")
-    return max(candidates)
+    return max(candidates, key=lambda image: tuple(map(int, image.sdk.split('.'))))
+
+
+def latest_stable_api(xml):
+    return latest_stable_image(xml).api
 
 
 def main():
     for attempt in range(3):
         try:
             with urllib.request.urlopen(REPOSITORY, timeout=60) as response:
-                api = latest_stable_api(response.read())
+                image = latest_stable_image(response.read())
             break
         except OSError:
             if attempt == 2:
                 raise
-    print(f"Selected stable emulator: system-images;android-{api};google_apis;x86_64")
+    print(f"Selected stable emulator: system-images;android-{image.sdk};google_apis;x86_64")
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
         with open(output, "a", encoding="utf-8") as stream:
-            stream.write(f"api-level={api}\n")
+            stream.write(f"api-level={image.api}\nimage-version={image.sdk}\n")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as stream:
-            stream.write(f"Emulator tests use **API {api}**, the latest stable base Google APIs x86_64 image.\n")
+            stream.write(f"Emulator tests use **API {image.api}**, SDK package **{image.sdk}**, the latest stable base Google APIs x86_64 image.\n")
 
 
 if __name__ == "__main__":
