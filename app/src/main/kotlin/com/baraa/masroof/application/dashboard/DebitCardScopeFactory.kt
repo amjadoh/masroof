@@ -24,11 +24,11 @@ object DebitCardScopeFactory {
                     parsedRecords = parsedRecords,
                 )
         }
-        val ownedDebitCardContainerIds = ownedDebit.mapNotNull { entry ->
+        val ownedDebitCardContainerIds = ownedDebit.map { entry ->
             FinancialContainerIdFactory.cardId(entry.bank, entry.last4)
         }.toSet()
         val debitCardLinkedAccountIds = ownedDebit.mapNotNull { entry ->
-            val cardId = FinancialContainerIdFactory.cardId(entry.bank, entry.last4) ?: return@mapNotNull null
+            val cardId = FinancialContainerIdFactory.cardId(entry.bank, entry.last4)
             val accountId = resolveLinkedAccountId(entry, parsedRecords, registryAccounts)
                 ?: return@mapNotNull null
             cardId to accountId

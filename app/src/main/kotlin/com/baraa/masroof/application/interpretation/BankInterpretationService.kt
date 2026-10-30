@@ -56,7 +56,7 @@ class BankInterpretationService(
         trace?.prediction = features?.let { trace.classifier?.model?.predict(it) }
         val result = FamilyAssistBridge.suggest(trace?.classifier,BANK,input.body,title)
         trace?.outcome = when {
-            trace?.classifier == null -> "FEEDBACK_PENDING"
+            trace.classifier == null -> "FEEDBACK_PENDING"
             features == null -> "CLEANING_REJECTED"
             result == null -> "ABSTAINED"
             else -> "SUGGESTED"

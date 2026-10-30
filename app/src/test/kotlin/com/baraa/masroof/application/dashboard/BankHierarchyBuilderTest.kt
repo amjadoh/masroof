@@ -26,7 +26,7 @@ class BankHierarchyBuilderTest {
                     bank = bank,
                     maskedNumber = "****3001",
                     summary = CurrentAccountSummary.zero(Currency.SAR),
-                )!!,
+                ),
             ),
         )
         val creditFacilities = CreditFacilitiesOverview(

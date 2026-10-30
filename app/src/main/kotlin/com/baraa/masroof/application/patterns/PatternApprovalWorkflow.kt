@@ -39,10 +39,10 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
     }
 
     suspend fun cards(bankId: String): List<PatternAccountOption> = withContext(Dispatchers.IO) {
-        gate.withAccess { ownedCards(bankId).map { PatternAccountOption(it.id, it.displayName, requireNotNull(it.last4)) } }
+        gate.withAccess { ownedCards(bankId).map { PatternAccountOption(it.id, it.displayName, it.last4) } }
     }
     private suspend fun ownedCards(bankId: String) = cards?.listAll().orEmpty().filter {
-        it.bank.id == bankId && it.ownership == OwnershipStatus.OWNED && it.cardType != null && it.last4?.matches(Regex("[0-9]{4}")) == true
+        it.bank.id == bankId && it.ownership == OwnershipStatus.OWNED && it.cardType != null && it.last4.matches(Regex("[0-9]{4}"))
     }
 
     suspend fun confirmAccount(bankId: String, last4: String): PatternAccountOption = withContext(Dispatchers.IO) {

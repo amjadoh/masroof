@@ -14,7 +14,7 @@ object ApkIntegrityVerifier {
                 digest.update(buffer, 0, read)
             }
         }
-        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        return digest.digest().toHexString()
     }
 
     fun matches(file: File, expectedSha256: String): Boolean =

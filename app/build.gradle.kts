@@ -139,15 +139,14 @@ dependencies {
     implementation(project(":finance-core"))
     implementation(project(":ml-assist"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime)
+    implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
     val composeBom = platform(libs.androidx.compose.bom)
@@ -163,7 +162,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation(libs.okhttp)
-    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.work.runtime)
 
     testImplementation(testFixtures(project(":bank-engine")))
     androidTestImplementation(testFixtures(project(":bank-engine")))

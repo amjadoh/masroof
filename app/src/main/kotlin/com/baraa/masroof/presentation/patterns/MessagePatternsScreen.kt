@@ -283,7 +283,6 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 internal fun PatternChoice(options: List<String>, selected: String, enabled: Boolean, onChoose: (Int) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {

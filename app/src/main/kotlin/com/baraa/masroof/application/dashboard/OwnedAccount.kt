@@ -60,16 +60,14 @@ data class OwnedAccount(
             bank: Bank,
             maskedNumber: String,
             summary: CurrentAccountSummary,
-        ): OwnedAccount? {
-            val containerId = FinancialContainerIdFactory.accountId(bank, maskedNumber) ?: return null
-            return OwnedAccount(
+        ): OwnedAccount =
+            OwnedAccount(
                 id = accountIdFromMasked(maskedNumber),
                 bank = bank,
                 maskedNumber = maskedNumber,
-                containerId = containerId,
+                containerId = FinancialContainerIdFactory.accountId(bank, maskedNumber),
                 summary = summary,
             )
-        }
 
         private fun accountIdFromMasked(maskedNumber: String): String {
             val trimmed = maskedNumber.trim()
