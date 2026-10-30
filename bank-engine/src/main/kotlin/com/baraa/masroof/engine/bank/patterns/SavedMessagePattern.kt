@@ -59,8 +59,8 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
                         com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
                         com.baraa.masroof.engine.bank.MessageFamily.REFUND, com.baraa.masroof.engine.bank.MessageFamily.WITHDRAWAL,
                         com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT,
-                        com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT))
-                    if (contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT,
+                        com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP, com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT))
+                    if (contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP,
                             com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT)) require(binding.field != null)
                     val incoming = contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN,
                         com.baraa.masroof.engine.bank.MessageFamily.REFUND)

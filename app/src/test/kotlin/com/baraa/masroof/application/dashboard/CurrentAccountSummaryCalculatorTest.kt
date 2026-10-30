@@ -24,6 +24,26 @@ import java.time.ZoneId
 
 class CurrentAccountSummaryCalculatorTest {
     @Test
+    fun prepaidFundingLeavesAccountWithoutCreatingCreditPurchases() {
+        val account = "account:bank_aljazira:3001"
+        val card = "card:bank_aljazira:7271"
+        val rows = listOf(
+            tx("fund", FinancialTransactionType.SELF_TRANSFER, "100", source = account, dest = card),
+            tx("purchase", FinancialTransactionType.EXPENSE, "30", source = card),
+            tx("refund", FinancialTransactionType.REFUND, "5", dest = card),
+        )
+        val summary = summarizeOwned(rows, account)
+        assertEquals(Money.of("100", Currency.SAR), summary.outflow.prepaidCardTopUps)
+        assertEquals(Money.of("100", Currency.SAR), summary.outflow.coreTotal)
+        assertEquals(Money.zero(Currency.SAR), summary.outflow.creditCardPayments)
+        val split = CurrentAccountSummaryCalculator.spendingSplit(
+            rows, summary,
+            debitCardScope = DebitCardScopeFacts(emptySet(), emptyMap(), setOf(card)),
+        )
+        assertEquals(SignedMoneyAmount.of(Money.zero(Currency.SAR)), split.creditCardPurchases)
+    }
+
+    @Test
     fun splitsAccountFlowsAndExcludesCreditCardPurchases() {
         val accountId = "account:bank_aljazira:3001"
         val cardId = "card:bank_aljazira:7271"

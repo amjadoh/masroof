@@ -113,6 +113,16 @@ class DashboardEvidenceScope(
             addAll(parsedEventRepository.listFinancingInstallmentFacts())
             addAll(parsedEventRepository.listExchangeRateFacts())
             addAll(parsedEventRepository.listFirstDebitCardFacts(registryCards.map { it.last4 }.distinct()))
+            // Prepaid balances are independent per currency. The credit-only latest-row
+            // query cannot supply those observations; scope history to confirmed prepaid cards.
+            val prepaidRawIds = registryCards.filter {
+                it.cardType == com.baraa.masroof.domain.model.CardType.PREPAID
+            }.flatMap { card ->
+                parsedEventRepository.listRawSmsIdsReferencingCard(
+                    com.baraa.masroof.domain.model.CardReference(card.bank, card.last4),
+                )
+            }.toSet()
+            if (prepaidRawIds.isNotEmpty()) addAll(parsedEventRepository.listByRawSmsIds(prepaidRawIds))
         }
         return extend(withRawSms(facts, known = emptyMap()), transactions)
     }

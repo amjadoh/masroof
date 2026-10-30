@@ -59,7 +59,7 @@ class OwnershipDiscoveryService(
                 loanType?.let { loans += LoanReference(event.bank, it) }
             }
 
-            MessageFamily.CARD_PAYMENT -> {
+            MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP -> {
                 event.sourceAccountRef?.let(accounts::add)
                 event.cardRef?.let(cards::add)
             }

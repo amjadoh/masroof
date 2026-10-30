@@ -49,6 +49,7 @@ object CurrentAccountSummaryCalculator {
             selfTransfersIn = total(grouping.selfTransfersIn),
             accountRefunds = total(grouping.income.getValue(FlowIncomeCategory.ACCOUNT_REFUND)),
             creditCardPayments = total(grouping.expense.getValue(FlowExpenseCategory.CREDIT_CARD_PAYMENT)),
+            prepaidCardTopUps = total(grouping.expense.getValue(FlowExpenseCategory.PREPAID_CARD_TOP_UP)),
             billPayments = total(grouping.expense.getValue(FlowExpenseCategory.BILL_PAYMENT)),
             externalTransfersOut = total(grouping.expense.getValue(FlowExpenseCategory.EXTERNAL_TRANSFER_OUT)),
             cashWithdrawals = total(grouping.expense.getValue(FlowExpenseCategory.CASH_WITHDRAWAL)),
@@ -79,7 +80,8 @@ object CurrentAccountSummaryCalculator {
                 -> {
                     val sourceId = tx.sourceContainerId
                     if (sourceId != null &&
-                        sourceId in debitCardScope.ownedDebitCardContainerIds
+                        (sourceId in debitCardScope.ownedDebitCardContainerIds ||
+                            sourceId in debitCardScope.ownedPrepaidCardContainerIds)
                     ) {
                         continue
                     }
@@ -91,7 +93,8 @@ object CurrentAccountSummaryCalculator {
                 FinancialTransactionType.REFUND -> {
                     val destinationId = tx.destinationContainerId
                     if (destinationId != null &&
-                        destinationId in debitCardScope.ownedDebitCardContainerIds
+                        (destinationId in debitCardScope.ownedDebitCardContainerIds ||
+                            destinationId in debitCardScope.ownedPrepaidCardContainerIds)
                     ) {
                         continue
                     }

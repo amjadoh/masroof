@@ -8,7 +8,10 @@ import java.math.BigDecimal
 /** Uses persisted facts and existing contribution policies, never SMS text. */
 internal object ChartCategoryTrendsBuilder {
     val purchases = setOf(ChartDataCategory.CREDIT_PURCHASES, ChartDataCategory.MADA_PURCHASES,
-        ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.EXTERNAL_TRANSFERS, ChartDataCategory.UNATTRIBUTED_REFUNDS)
+        ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.EXTERNAL_TRANSFERS, ChartDataCategory.UNATTRIBUTED_REFUNDS,
+        ChartDataCategory.OTHER_EXPENSES)
+    val prepaid = setOf(ChartDataCategory.OTHER_EXPENSES, ChartDataCategory.BILLS,
+        ChartDataCategory.FEES, ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.UNATTRIBUTED_REFUNDS)
     val credit = setOf(ChartDataCategory.CREDIT_PURCHASES, ChartDataCategory.BILLS,
         ChartDataCategory.FEES, ChartDataCategory.CASH_WITHDRAWALS, ChartDataCategory.UNATTRIBUTED_REFUNDS)
     val debit = setOf(ChartDataCategory.MADA_PURCHASES, ChartDataCategory.CASH_WITHDRAWALS,
