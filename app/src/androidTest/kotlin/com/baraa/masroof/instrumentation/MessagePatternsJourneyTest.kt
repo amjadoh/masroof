@@ -62,12 +62,15 @@ class MessagePatternsJourneyTest {
         click(R.string.pattern_save)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 1 }
         val patternId = store.load().banks.single().currentPatterns.single().id
-        compose.onNodeWithTag("pattern-toggle-STC-$patternId").performScrollTo().performClick()
-        compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
+        // A taught pattern starts off until the user switches it on.
         assertFalse(store.load().banks.single().currentPatterns.single().enabled)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-toggle-STC-$patternId").fetchSemanticsNodes().isNotEmpty() }
         capture("pattern-disabled")
         compose.runOnIdle { dark.value = true }
         capture("pattern-disabled-dark")
+        compose.onNodeWithTag("pattern-toggle-STC-$patternId").performScrollTo().performClick()
+        compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
+        assertTrue(store.load().banks.single().currentPatterns.single().enabled)
         compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:30SAR")
