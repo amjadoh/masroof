@@ -125,14 +125,16 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             val role = if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE
             val observed = referenceField?.let { field -> fields[field]?.raw
                 ?: throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH) }
-            // A three-digit key must be mapped explicitly; a full suffix must already identify the chosen account.
+            // Partial references require explicit approval; complete visible suffixes cannot be remapped.
             val key = observed?.let { value -> com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody.trim() }
-            if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))
-                throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH)
+            val binding = account?.let {
+                runCatching { PatternAccountBinding(role, BankId(bankId), it.maskedNumber, referenceField, key) }
+                    .getOrElse { throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH) }
+            }
             val contract = PatternFactContract(MessageFamily.valueOf(operation.name),
                 if (incoming) MoneyDirection.INCOMING else MoneyDirection.OUTGOING, currency,
                 version = 2, cardBank = card?.let { BankId(bankId) },
-                accountBindings = account?.let { listOf(PatternAccountBinding(role, BankId(bankId), it.maskedNumber, referenceField, key)) }.orEmpty(),
+                accountBindings = listOfNotNull(binding),
                 contextReferences = contextReferences)
             val next = pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = contract)
             val proposed = current.copy(generation = Math.addExact(generation, 1), banks = current.banks.map {

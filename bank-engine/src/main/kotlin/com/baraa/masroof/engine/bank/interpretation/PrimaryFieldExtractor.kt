@@ -109,13 +109,19 @@ internal class PrimaryFieldExtractor(
         }
     }
 
-    fun account(field: ExtractionField, fallback: String?): String? {
+    fun account(field: ExtractionField, fallback: String?, observedValue: String? = null): String? {
         identifier(field)?.let { return it }
         if (fallback == null) return null
-        val suffixes = labels(field).flatMap { label -> referencePattern(label).findAll(source.text).map { match ->
-            match.groupValues[1].trimEnd('*', 'x').takeLastWhile(Char::isDigit)
-        }.filter { it.isNotEmpty() }.toList() }
-        if (suffixes.any { !fallback.endsWith(it) }) {
+        val references = labels(field).flatMap { label -> referencePattern(label).findAll(source.text)
+            .map { it.groupValues[1] }.toList() }
+        // An explicit partial reference is exact; preserve every visible prefix digit.
+        val observed = references.map { if (observedValue?.all(Char::isDigit) == true) it.trim('*', 'x') else it }.distinct()
+        if (observedValue != null && observed != listOf(observedValue)) {
+            problem("CONFIRMED_ACCOUNT_REFERENCE_MISMATCH", Blocker.CONFLICTING_FACTS)
+            return null
+        }
+        val suffixes = references.map { it.trimEnd('*', 'x').takeLastWhile(Char::isDigit) }.filter { it.isNotEmpty() }
+        if (observedValue == null && suffixes.any { !fallback.endsWith(it) }) {
             problem("CONFIRMED_ACCOUNT_SUFFIX_CONFLICT", Blocker.CONFLICTING_FACTS)
             return null
         }
