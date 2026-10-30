@@ -283,7 +283,7 @@ class SettingsViewModel(
             try {
                 val preview = settingsRegistryWorkflow.deletionPreview(target.registryDeleteTarget())
                 _uiState.update { it.copy(deleteRequest = RegistryDeleteUi(target,
-                    preview.linked.map { tx -> LinkedTransactionUi(tx.id, tx.merchant ?: tx.counterparty, tx.amount,
+                    preview.linked.map { tx -> LinkedTransactionUi(tx.id, tx.merchant ?: tx.counterparty, tx.type, tx.amount,
                         tx.occurredAt.atZone(tx.occurredAtZone?.let(java.time.ZoneId::of) ?: java.time.ZoneId.systemDefault()).toLocalDate()) },
                     preview.linkedCount, preview.blocker)) }
             } catch (ce: CancellationException) {

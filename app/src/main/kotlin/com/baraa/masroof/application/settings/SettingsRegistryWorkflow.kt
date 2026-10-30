@@ -163,14 +163,15 @@ class SettingsRegistryWorkflow(
             is RegistryDeleteTarget.Card -> setOfNotNull(FinancialContainerIdFactory.cardId(target.card))
             is RegistryDeleteTarget.Loan -> setOfNotNull(FinancialContainerIdFactory.loanId(target.loan))
         }
-        val byContainer = ledger.listAll().filter { it.sourceContainerId in containerIds || it.destinationContainerId in containerIds }
+        val all = ledger.listAll()
         val rawSmsIds = parsedEvents?.let { events -> when (target) {
             is RegistryDeleteTarget.Account -> events.listRawSmsIdsReferencingAccount(target.account)
             is RegistryDeleteTarget.Card -> events.listRawSmsIdsReferencingCard(target.card)
             is RegistryDeleteTarget.Loan -> events.listRawSmsIdsReferencingLoan(target.loan)
         } }.orEmpty()
-        val byEvidence = rawSmsIds.mapNotNull { ledger.findByRawSmsId(it) }
-        return (byContainer + byEvidence).distinctBy { it.id }.sortedByDescending { it.occurredAt }
+        val evidenceLinked = ledger.listTransactionIdsForRawSmsIds(rawSmsIds)
+        return all.filter { it.sourceContainerId in containerIds || it.destinationContainerId in containerIds || it.id in evidenceLinked }
+            .sortedByDescending { it.occurredAt }
     }
 
     private suspend fun blocker(target: RegistryDeleteTarget, linked: List<com.baraa.masroof.domain.model.FinancialTransaction>): DeleteBlocker? {
