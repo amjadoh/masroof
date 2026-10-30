@@ -644,4 +644,7 @@
     <string name="settings_external_empty">No confirmed spending in the saved messages for this account.</string>
     <string name="settings_external_loading">Loading linked account messages…</string>
     <string name="settings_external_close">Close</string>
+    <string name="settings_external_cards">Cards belonging to others</string>
+    <string name="settings_external_account_is_mine">Confirm this is my account</string>
+    <string name="settings_external_card_is_mine">Confirm this is my card</string>
 </resources>

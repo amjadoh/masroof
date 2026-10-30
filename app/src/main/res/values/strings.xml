@@ -652,4 +652,7 @@
     <string name="settings_external_empty">لا توجد مصروفات مؤكدة في الرسائل المحفوظة لهذا الحساب.</string>
     <string name="settings_external_loading">جارٍ تحميل الرسائل المرتبطة بالحساب…</string>
     <string name="settings_external_close">إغلاق</string>
+    <string name="settings_external_cards">بطاقات غير مملوكة لي</string>
+    <string name="settings_external_account_is_mine">تأكيد أن الحساب ملكي</string>
+    <string name="settings_external_card_is_mine">تأكيد أن البطاقة ملكي</string>
 </resources>
