@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class RuleSchemaTest {
     private val rule = BankRule("purchase", MessageFamily.PURCHASE, listOf("purchase"))

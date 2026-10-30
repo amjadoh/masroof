@@ -6,8 +6,8 @@ import com.baraa.masroof.finance.value.Money
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class InterpretationContractTest {
     private val a = BankId("BANK_ALJAZIRA")

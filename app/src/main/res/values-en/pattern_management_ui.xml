@@ -1,5 +1,4 @@
 <resources>
-    <string name="pattern_edit">Edit</string>
     <string name="pattern_edit_title">Edit pattern</string>
     <string name="pattern_delete">Delete</string>
     <string name="pattern_delete_disable_first">Disable to delete.</string>

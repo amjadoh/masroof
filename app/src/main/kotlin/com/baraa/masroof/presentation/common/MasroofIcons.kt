@@ -5,7 +5,6 @@ import com.baraa.masroof.ui.components.MasroofOutlineIcons
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
-import com.baraa.masroof.domain.model.ReviewKind
 
 /**
  * Central icon mapping so dashboard, review, and onboarding stay visually consistent.
@@ -83,12 +82,6 @@ object MasroofIcons {
             FinancialTransactionType.FEE -> MasroofOutlineIcons.Receipt
             FinancialTransactionType.ADJUSTMENT -> MasroofOutlineIcons.ArrowRightLeft
             FinancialTransactionType.UNKNOWN -> MasroofOutlineIcons.Info
-        }
-
-    fun reviewKind(kind: ReviewKind): ImageVector =
-        when (kind) {
-            ReviewKind.NEEDS_REVIEW -> MasroofOutlineIcons.ShieldCheck
-            ReviewKind.PENDING_MATCH -> MasroofOutlineIcons.Link
         }
 
     fun messageFamily(family: MessageFamily?): ImageVector =

@@ -2,8 +2,8 @@ package com.baraa.masroof.domain.rules
 
 import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.domain.model.TransferOwnershipType
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class TransferOwnershipResolverTest {
 

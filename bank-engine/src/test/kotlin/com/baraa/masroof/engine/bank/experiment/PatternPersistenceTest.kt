@@ -1,8 +1,8 @@
 package com.baraa.masroof.engine.bank.experiment
 
 import com.baraa.masroof.engine.bank.patterns.*
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.io.IOException
 

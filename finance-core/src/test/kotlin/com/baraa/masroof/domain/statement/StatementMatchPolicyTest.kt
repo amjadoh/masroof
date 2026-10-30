@@ -3,11 +3,11 @@ package com.baraa.masroof.domain.statement
 import com.baraa.masroof.domain.model.Bank
 import java.time.LocalDateTime
 import java.time.ZoneId
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class StatementMatchPolicyTest {
     @Test
@@ -45,7 +45,7 @@ class StatementMatchPolicyTest {
             StatementMatchPolicy.qualifiedAccount("account:D360:3001"),
         )
         listOf("account:3001", "card:D360:3001", "account:UNKNOWN:3001", "account:D360: 3001").forEach {
-            assertNull(it, StatementMatchPolicy.qualifiedAccount(it))
+            assertNull(StatementMatchPolicy.qualifiedAccount(it), it)
         }
     }
 }

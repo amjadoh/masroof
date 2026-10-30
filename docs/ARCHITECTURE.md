@@ -240,3 +240,16 @@ Forecast replay uses the existing forecaster on a strict historical prefix with
 an empty origin day; later actuals are evaluation targets only. Replay results
 never become published forecast history. Existing readiness and live performance
 rollback gates are unchanged.
+
+## Transaction list projection and confirmation state
+
+`TransactionListWorkflow` accepts immutable dashboard row facts and a `TransactionListQuery`.
+Its application calculator owns filtering, bank-qualified ownership lookup and currency-scoped
+totals; it never reads or writes storage. The presentation mapper maps selected row indices back
+to existing UI rows, preserving ordering and duplicate display IDs. `DashboardViewModel` reapplies
+the query after refresh and clears the projection when a new period starts loading. Compose
+renders the prepared projection and sends filter changes to the workflow through the ViewModel.
+
+Settings uses one `StopTrackingTarget` (`Card`, `Account` or `Loan`) rather than three independently
+nullable confirmation targets. Existing card/account/loan displays derive from that one target;
+write actions, draft/discard behavior and financial decisions are unchanged.

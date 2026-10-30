@@ -1,7 +1,7 @@
 package com.baraa.masroof.ml.family
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class FamilyInputCleanerTest {
     private fun clean(title: String, fields: List<String> = emptyList()) =

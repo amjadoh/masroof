@@ -10,7 +10,10 @@ import com.baraa.masroof.domain.repository.CommitmentRepository
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
 import com.baraa.masroof.domain.repository.FinancialTransactionSaveResult
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.fail
 import org.junit.Test
 import java.time.Clock
 import java.time.Instant
@@ -19,6 +22,22 @@ import java.time.ZoneId
 class CommitmentFromTransactionServiceTest {
     private val zone = ZoneId.of("Asia/Riyadh")
     private val clock = Clock.fixed(Instant.parse("2026-08-01T00:00:00Z"), zone)
+
+    @Test
+    fun createFromTransaction_cancellationPropagatesWithoutReportingARejectedWrite() = runBlocking {
+        val cancelled = CancellationException("stopped")
+        val repository = object : CommitmentRepository by ThrowOnDuplicateCommitmentRepository() {
+            override suspend fun create(commitment: Commitment): Unit = throw cancelled
+        }
+        val tx = transaction("cancelled")
+        val service = CommitmentFromTransactionService(repository, FakeFinancialTransactionRepository(listOf(tx)), zone, clock)
+        try {
+            service.createFromTransaction(tx.id)
+            fail("Cancellation must not become a create_failed result")
+        } catch (caught: CancellationException) {
+            assertSame(cancelled, caught)
+        }
+    }
 
     @Test
     fun createFromTransaction_duplicateInsert_returnsAlreadyExists() = runBlocking {

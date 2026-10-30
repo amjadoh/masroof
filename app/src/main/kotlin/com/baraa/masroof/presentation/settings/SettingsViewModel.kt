@@ -144,33 +144,15 @@ class SettingsViewModel(
     }
 
     fun requestStopTracking(card: ManagedCardUi) {
-        _uiState.update {
-            it.copy(
-                stopConfirmCardTarget = card,
-                stopConfirmAccountTarget = null,
-                stopConfirmLoanTarget = null,
-            )
-        }
+        _uiState.update { it.copy(stopTrackingTarget = StopTrackingTarget.Card(card)) }
     }
 
     fun requestStopAccountTracking(account: ManagedAccountUi) {
-        _uiState.update {
-            it.copy(
-                stopConfirmAccountTarget = account,
-                stopConfirmCardTarget = null,
-                stopConfirmLoanTarget = null,
-            )
-        }
+        _uiState.update { it.copy(stopTrackingTarget = StopTrackingTarget.Account(account)) }
     }
 
     fun dismissStopConfirm() {
-        _uiState.update {
-            it.copy(
-                stopConfirmCardTarget = null,
-                stopConfirmAccountTarget = null,
-                stopConfirmLoanTarget = null,
-            )
-        }
+        _uiState.update { it.copy(stopTrackingTarget = null) }
     }
 
     fun openRenameCard(card: ManagedCardUi) {
@@ -285,13 +267,7 @@ class SettingsViewModel(
     }
 
     fun requestStopLoanTracking(loan: ManagedLoanUi) {
-        _uiState.update {
-            it.copy(
-                stopConfirmLoanTarget = loan,
-                stopConfirmCardTarget = null,
-                stopConfirmAccountTarget = null,
-            )
-        }
+        _uiState.update { it.copy(stopTrackingTarget = StopTrackingTarget.Loan(loan)) }
     }
 
     fun confirmStopLoanTracking() {

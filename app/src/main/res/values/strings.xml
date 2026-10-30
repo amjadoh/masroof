@@ -10,12 +10,9 @@
     <string name="onboarding_open_settings">فتح إعدادات التطبيق</string>
     <string name="onboarding_permission_denied_short">تم رفض صلاحية الرسائل.</string>
 
-    <string name="onboarding_import_date_title">من أي تاريخ تريد استيراد الحركات؟</string>
     <string name="onboarding_date_current_month">بداية الشهر الحالي</string>
     <string name="onboarding_date_last_30">آخر 30 يوم</string>
     <string name="onboarding_date_last_27">من آخر يوم 27</string>
-    <string name="onboarding_date_custom">تاريخ مخصص</string>
-    <string name="onboarding_selected_date">التاريخ المحدد: %1$s</string>
     <string name="onboarding_start_import">بدء الاستيراد</string>
     <string name="onboarding_import_scanning">جاري فحص الرسائل…</string>
     <string name="onboarding_import_done">اكتمل الاستيراد</string>
@@ -29,8 +26,6 @@
 
     <string name="onboarding_ownership_title">تأكيد ملكية الحسابات والبطاقات</string>
     <string name="onboarding_ownership_must_resolve">حدد ملكية الحسابات والبطاقات المكتشفة للمتابعة.</string>
-    <string name="onboarding_accounts_section">الحسابات المكتشفة</string>
-    <string name="onboarding_cards_section">البطاقات المكتشفة</string>
     <string name="onboarding_account_suffix">حساب ينتهي بـ %1$s</string>
     <string name="onboarding_card_suffix">بطاقة تنتهي بـ %1$s</string>
     <string name="onboarding_is_mine_account">حسابي</string>
@@ -112,7 +107,6 @@
     <string name="settings_about_tagline">تطبيق لتتبع المصاريف من رسائل البنك — بدون ربط بحسابك البنكي.</string>
     <string name="settings_about_privacy_title">الخصوصية</string>
     <string name="settings_about_privacy_body">تُحلَّل الرسائل محلياً على جهازك. محتوى رسائل البنك المالية لا يُرفع. قد يتصل التطبيق بـ GitHub للتحديثات باستخدام رمزك الشخصي.</string>
-    <string name="settings_about_banks_title">البنوك المدعومة</string>
     <string name="settings_hub_review_title">مراجعة الحركات</string>
     <string name="settings_hub_review_subtitle_count">%1$d حركة تحتاج مراجعة</string>
     <string name="settings_hub_cards_subtitle">%1$d بطاقة • %2$d غير مسجّلة</string>
@@ -163,9 +157,6 @@
     <string name="settings_registry_accounts_hint">اختر بنكًا لإدارة حساباته.</string>
     <string name="settings_registry_cards_hint">اختر بنكًا لإدارة بطاقاته.</string>
     <string name="settings_registry_loans_hint">اختر بنكًا لإدارة قروضه.</string>
-    <string name="settings_hub_loans_subtitle">%1$d قرض</string>
-    <string name="settings_hub_loans_subtitle_only">%1$d قرض</string>
-    <string name="settings_hub_loans_subtitle_none">لا توجد قروض بعد</string>
     <string name="settings_bank_accounts_title">الحسابات</string>
     <string name="settings_bank_cards_title">البطاقات</string>
     <string name="settings_bank_loans_title">القروض</string>
@@ -487,7 +478,6 @@
     <string name="dashboard_load_error">تعذر تحميل الملخص المالي</string>
     <string name="dashboard_retry">إعادة المحاولة</string>
     <string name="dashboard_rescan_sms">إعادة استيراد الرسائل</string>
-    <string name="dashboard_rescanning">جاري استيراد الرسائل…</string>
     <string name="dashboard_rescan_ok">تم استيراد الرسائل بنجاح</string>
     <string name="dashboard_rescan_already_up_to_date">الرسائل مُستوردة مسبقاً — لا توجد رسائل جديدة في الفترة</string>
     <string name="dashboard_rescan_needs_review">وُجدت رسائل جديدة — راجعها من «مراجعة الحركات»</string>
@@ -496,7 +486,6 @@
     <string name="dashboard_rescan_no_transactions">وُجدت رسائل جديدة لكن لم تُحوَّل إلى حركات. قد تحتاج تأكيد ملكية الحساب/البطاقة أو مراجعة لاحقة.</string>
     <string name="dashboard_rescan_failed">تعذر استيراد الرسائل</string>
     <string name="dashboard_rescan_permission_denied">لا يمكن استيراد الرسائل بدون صلاحية الوصول للرسائل</string>
-    <string name="dashboard_rescan_dismiss">إخفاء</string>
     <string name="dashboard_sms_permission_title">صلاحية الرسائل غير مفعّلة</string>
     <string name="dashboard_sms_permission_body">لاستيراد الحركات البنكية من صندوق الرسائل، اسمح لمصروف بقراءة الرسائل. السحب للتحديث يعيد تحميل البيانات فقط بدون هذه الصلاحية.</string>
     <string name="dashboard_sms_permission_grant">السماح بقراءة الرسائل</string>

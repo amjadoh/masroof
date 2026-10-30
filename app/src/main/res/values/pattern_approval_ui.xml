@@ -3,7 +3,6 @@
     <string name="pattern_approval_imported_message">رسالة من المستورد</string>
     <string name="pattern_approval_example">رسالة %1$d · %2$s</string>
     <string name="pattern_approval_choose_imported">اختر رسالة مستوردة</string>
-    <string name="pattern_approval_original_message">عرض نص الرسالة الأصلي</string>
     <string name="pattern_approval_manual_message">استخدام رسالة مثال أخرى</string>
     <string name="pattern_approval_account_question">إلى أي حساب تُسجّل الحركة؟</string>
     <string name="pattern_approval_confirmed_account">حسابك المؤكد</string>
@@ -33,7 +32,6 @@
     <string name="pattern_approval_ready">معتمد ماليًا</string>
     <string name="pattern_approval_saved">اعتمد النمط للرسائل الجديدة</string>
     <string name="pattern_approval_saved_help">لم تُعالج الرسائل المستوردة بالحفظ وحده. عالج المعلّق المطابق من الزر أدناه.</string>
-    <string name="pattern_approval_edit">تعديل الاعتماد</string>
     <string name="pattern_approval_process_matching">معالجة المعلّق المطابق (%1$d)</string>
     <string name="pattern_approval_matching_count">رسائل معلّقة تطابق هذا النمط: %1$d</string>
     <string name="pattern_approval_no_pending">لا توجد رسائل معلّقة مؤهلة لهذا النمط في النطاق المفحوص.</string>
@@ -41,7 +39,6 @@
     <string name="pattern_approval_dashboard_scope">تظهر الحركات المسجلة ضمن فترة الداشبورد المناسبة. صافي الحركة لا يمثل رصيد البنك الفعلي.</string>
     <string name="pattern_approval_view_accounts">عرض أرقام الحسابات</string>
     <string name="pattern_approval_advanced">الإصدارات</string>
-    <string name="pattern_approval_revision_help">الإصدار نسخة محفوظة من إعدادات النمط. التفعيل والتعطيل والاستعادة تنشئ إصدارًا جديدًا؛ رقم الإصدار لا يعني نجاح الاعتماد المالي.</string>
     <string name="pattern_approval_import_hint">بعض أنماط هذا البنك تحتاج اعتمادك قبل تسجيل الحركات. يمكن إكمال الاستيراد وستبقى الرسائل غير المعتمدة في المراجعة.</string>
     <string name="pattern_approval_open_patterns">اعتماد الأنماط ومعالجة المعلّق</string>
 </resources>

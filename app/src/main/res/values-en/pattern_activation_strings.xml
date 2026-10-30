@@ -7,13 +7,10 @@
     <string name="pattern_financial_confirm_account">Confirm account</string>
     <string name="pattern_financial_currency_from_message">Currency from the message</string>
     <string name="pattern_financial_blocked">These facts cannot be approved. Check movement, currency, reference roles and the example match. Uncertain messages stay in review.</string>
-    <string name="pattern_financial_preview_status">Preview only</string>
     <string name="pattern_financial_approved_status">Financial interpretation approved; posting still requires validation and ownership</string>
     <string name="pattern_apply_pending">Apply approved patterns to pending messages</string>
     <string name="pattern_apply_result">Processed: %1$d — Posted: %2$d — Failed: %3$s</string>
     <string name="pattern_failure_count_unknown">Count unavailable</string>
     <string name="pattern_financial_incomplete">Required processing is incomplete. Errors remain retryable; saving alone has not closed the review.</string>
     <string name="pattern_import_bank">Import messages for this bank</string>
-    <string name="pattern_import_result">Imported: %1$d — Needs review: %2$d — Failed: %3$d</string>
-    <string name="pattern_import_incomplete">Import is incomplete. Check SMS read permission, then retry.</string>
 </resources>
