@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -135,6 +136,21 @@ class HardeningJourneySmokeTest {
             .assertIsDisplayed().assertIsSelected()
         composeRule.onNodeWithContentDescription(text(R.string.dashboard_open_settings))
             .assertIsDisplayed()
+        assertClearOfSystemBars()
+    }
+
+    /** targetSdk 35+ draws edge-to-edge; the header and bottom navigation must stay off the system bars. */
+    private fun assertClearOfSystemBars() {
+        val decor = composeRule.activity.window.decorView
+        val bars = androidx.core.view.ViewCompat.getRootWindowInsets(decor)!!
+            .getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        val header = composeRule.onNode(hasText(text(R.string.app_name)), useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInWindow
+        val home = composeRule.onNodeWithContentDescription(text(R.string.approved_nav_home))
+            .fetchSemanticsNode().boundsInWindow
+        assertTrue("Header top ${header.top} is under the status bar (${bars.top})", header.top >= bars.top)
+        assertTrue("Navigation bottom ${home.bottom} is under the navigation bar (${decor.height - bars.bottom})",
+            home.bottom <= decor.height - bars.bottom)
     }
 
     private fun openReviewQueue() {

@@ -3,7 +3,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -27,12 +26,12 @@ val githubRepo = "Masroof"
 
 android {
     namespace = "com.baraa.masroof"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.baraa.masroof"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
 
@@ -79,12 +78,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildFeatures {
@@ -105,6 +100,8 @@ android {
         unitTests.all {
             it.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
             it.forkEvery = 50
+            // Robolectric SDK 36 sets FileDescriptor internals through SharedSecrets on JDK 21.
+            it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
             // The feature-export test enrolls only explicitly reviewed corpus ids.
             it.inputs.file(rootProject.file("ml-assist/tools/corpus-splits.json"))
                 .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -127,8 +124,8 @@ android {
 
     // Canonical Room schema exports used by device verification.
     sourceSets {
-        getByName("androidTest").assets.srcDir("$projectDir/schemas")
-        getByName("androidTest").assets.srcDir("src/test/resources/testdata")
+        getByName("androidTest").assets.directories += "$projectDir/schemas"
+        getByName("androidTest").assets.directories += "src/test/resources/testdata"
     }
 }
 
@@ -161,6 +158,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.core)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
