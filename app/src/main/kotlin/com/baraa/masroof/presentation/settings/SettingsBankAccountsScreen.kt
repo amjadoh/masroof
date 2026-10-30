@@ -1,4 +1,3 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.baraa.masroof.presentation.settings
 
@@ -57,12 +56,15 @@ fun SettingsBankAccountsScreen(
     val stoppedAccounts = state.stoppedAccounts.filter { it.bank == bank }
     val bankTree = state.bankTree(bank.id)
 
-    SettingsAccountStopConfirmDialog(
-        target = state.stopConfirmAccountTarget,
-        updating = state.updating,
-        onDismiss = onDismissStopConfirm,
-        onConfirm = onConfirmStopTracking,
-    )
+    state.stopConfirmAccountTarget?.let { target ->
+        SettingsStopConfirmDialog(
+            title = stringResource(R.string.settings_stop_account_confirm_title),
+            body = stringResource(R.string.settings_stop_account_confirm_body, target.maskedNumber),
+            updating = state.updating,
+            onDismiss = onDismissStopConfirm,
+            onConfirm = onConfirmStopTracking,
+        )
+    }
     SettingsRenameAccountDialog(
         target = state.renameAccountTarget,
         updating = state.updating,

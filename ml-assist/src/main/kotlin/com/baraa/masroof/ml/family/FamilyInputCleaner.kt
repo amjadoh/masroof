@@ -84,5 +84,5 @@ object FamilyInputCleaner {
 
     private fun rejected(reason: CleaningRejection) = FamilyCleaningResult(null, reason)
     fun sha256(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it) }
+        .toHexString()
 }

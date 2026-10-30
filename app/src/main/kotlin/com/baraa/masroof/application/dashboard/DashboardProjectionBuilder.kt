@@ -135,7 +135,7 @@ class DashboardProjectionBuilder(
             reviewRequiredCount = reviewRepository.listRequired().size,
             ownedAccounts = ownedAccounts,
             ownedAccountContainerIds = ownedAccounts
-                .mapNotNull { FinancialContainerIdFactory.accountId(it.bank, it.maskedNumber) }
+                .map { FinancialContainerIdFactory.accountId(it.bank, it.maskedNumber) }
                 .toSet(),
             ownedAccountLast4s = CurrentAccountTransactionScope.ownedAccountLast4sFromMaskedNumbers(
                 ownedAccounts.map { it.maskedNumber },

@@ -72,10 +72,8 @@ import com.baraa.masroof.data.preferences.SharedPrefsNotificationPreferencesRepo
 import com.baraa.masroof.data.preferences.SharedPrefsOnboardingPreferencesRepository
 import com.baraa.masroof.data.preferences.SharedPrefsThemePreferencesRepository
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
-import com.baraa.masroof.data.repository.RoomBankRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.repository.RoomCommitmentRepository
-import com.baraa.masroof.data.repository.RoomCreditFacilityRepository
 import com.baraa.masroof.data.repository.RoomLoanRegistryRepository
 import com.baraa.masroof.data.repository.RoomFinancialTransactionRepository
 import com.baraa.masroof.data.repository.RoomManualReviewResolutionRepository
@@ -95,9 +93,7 @@ import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.ownership.OwnershipDiscoveryService
 import com.baraa.masroof.domain.ownership.OwnershipResolver
 import com.baraa.masroof.domain.repository.AccountRegistryRepository
-import com.baraa.masroof.domain.repository.BankRegistryRepository
 import com.baraa.masroof.domain.repository.CommitmentRepository
-import com.baraa.masroof.domain.repository.CreditFacilityRepository
 import com.baraa.masroof.domain.repository.LoanRegistryRepository
 import com.baraa.masroof.domain.repository.CardRegistryRepository
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
@@ -217,12 +213,6 @@ class AppContainer(
 
     val cardRegistryRepository: CardRegistryRepository =
         RoomCardRegistryRepository.from(database, databaseAccessGate)
-
-    val bankRegistryRepository: BankRegistryRepository =
-        RoomBankRegistryRepository(database.bankRegistryDao(), accessGate = databaseAccessGate)
-
-    val creditFacilityRepository: CreditFacilityRepository =
-        RoomCreditFacilityRepository(database.creditFacilityDao(), accessGate = databaseAccessGate)
 
     val loanRegistryRepository: LoanRegistryRepository =
         RoomLoanRegistryRepository.from(database, databaseAccessGate)

@@ -53,7 +53,6 @@ internal fun TeachingMessage(body: TextFieldValue, readOnly: Boolean, enabled: B
         label = { Text(stringResource(R.string.pattern_message)) }, modifier = Modifier.fillMaxWidth().testTag("pattern-body"))
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PatternTeachingValues(body: TextFieldValue, candidates: List<PatternText>, enabled: Boolean,
     onBody: (TextFieldValue) -> Unit, onCandidate: (PatternText) -> Unit, canIgnore: Boolean, onIgnore: () -> Unit) {

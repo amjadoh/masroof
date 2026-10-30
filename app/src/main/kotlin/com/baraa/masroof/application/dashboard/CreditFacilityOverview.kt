@@ -2,9 +2,12 @@ package com.baraa.masroof.application.dashboard
 
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
+import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardRegistryEntry
 import com.baraa.masroof.domain.model.CardRole
+import com.baraa.masroof.domain.model.FinancialTransaction
+import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.parsing.repository.ParsedEventRecord
 
 data class CreditFacilityOverview(
@@ -22,6 +25,16 @@ data class CreditFacilityOverview(
         get() = listOf(primary) + supplementaries
 
     val primaryLast4: String get() = primary.last4
+
+    private val cardContainerIds: Set<String> by lazy {
+        allCards.map { FinancialContainerIdFactory.cardId(it.bank, it.last4) }.toSet()
+    }
+
+    /** A card payment counts toward [due] when it reaches one of this facility's cards on or after the due update. */
+    fun isPaymentToward(due: StatementDueSnapshot, transaction: FinancialTransaction): Boolean =
+        transaction.type == FinancialTransactionType.CREDIT_CARD_PAYMENT &&
+            transaction.destinationContainerId in cardContainerIds &&
+            !transaction.occurredAt.isBefore(due.updatedAt)
 }
 
 data class CreditFacilitiesOverview(

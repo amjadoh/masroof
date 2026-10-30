@@ -57,7 +57,7 @@ data class AccountsSummary(
             return AccountsSummary(
                 accounts = accounts.zip(summaries) { (bank, masked), summary ->
                     OwnedAccount.from(bank, masked, summary)
-                }.filterNotNull(),
+                },
             )
         }
     }

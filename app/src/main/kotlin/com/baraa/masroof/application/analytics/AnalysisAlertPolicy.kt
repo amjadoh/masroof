@@ -17,7 +17,7 @@ internal object AnalysisAlertPolicy {
             val continuous = old != null && !old.resolved && now - old.observedAt in 0..(12 * 3600_000L)
             current += (old ?: AnalysisAlertRow(id, kind, title, amount, now, now)).copy(title = title, amount = amount,
                 firstSeen = if (kind == "BUDGET" && !continuous) now else minOf(old?.firstSeen ?: now, now),
-                observedAt = now, confirmed = confirmed || (kind == "BUDGET" && continuous && now - old!!.firstSeen >= 6 * 3600_000L),
+                observedAt = now, confirmed = confirmed || (kind == "BUDGET" && continuous && now - old.firstSeen >= 6 * 3600_000L),
                 resolved = false, sourceHash = snapshot.sourceHash, evidenceId = evidence)
         }
         if (!snapshot.quality.blocked) {

@@ -210,11 +210,11 @@ class ReplicaMachineLearningTest {
             assertEquals(ParseStatus.SUCCESS,parsed.event.parseStatus)
             assertEquals("22.00",parsed.event.amount!!.amount.toPlainString())
             assertTrue(parsed.event.confidence.reasons.toString(),parsed.event.confidence.reasons.any {it=="family_origin:HUMAN_TEMPLATE"})
-            assertEquals(InterpretationOrigin.HUMAN_TEMPLATE,c.interpretationProvenanceWorkflow.load("ml-loan-next")!!.origin)
+            assertEquals(InterpretationOrigin.HUMAN_TEMPLATE,c.interpretationProvenanceWorkflow.load("ml-loan-next").origin)
             assertEquals(InterpretationOrigin.MANUAL,c.interpretationProvenanceWorkflow.load("ml-loan-one").origin)
             val dashboard=c.dashboardService.loadCurrentOverview()
             assertEquals("298.00",dashboard.loansOverview!!.loans.single().remainingBalance!!.amount.toPlainString())
-            File(host.getExternalFilesDir(null),"ml-feedback.txt").writeText("First two messages: UNKNOWN and review required.\nOne real production manual loan decision.\nPending message automatically reparsed and posted.\nModel: $version\nCold reopen preserved learning.\nNext amount extracted fresh: ${parsed.event.amount}\nLatest remaining balance: ${dashboard.loansOverview!!.loans.single().remainingBalance}\nNo repeated review.\n")
+            File(host.getExternalFilesDir(null),"ml-feedback.txt").writeText("First two messages: UNKNOWN and review required.\nOne real production manual loan decision.\nPending message automatically reparsed and posted.\nModel: $version\nCold reopen preserved learning.\nNext amount extracted fresh: ${parsed.event.amount}\nLatest remaining balance: ${dashboard.loansOverview.loans.single().remainingBalance}\nNo repeated review.\n")
         } finally {TestRuntime.reset(host)}
     }
     @Test fun corruptLearningCacheDoesNotBlockKnownRulesOrChangeFinancialHistory() = runBlocking {

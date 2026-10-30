@@ -97,7 +97,10 @@ fun MasroofTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = view.context.findActivity()?.window ?: return@SideEffect
+            // Android 15+ ignores these (always edge-to-edge); Android 8-14 still paints the bars with them.
+            @Suppress("DEPRECATION")
             window.statusBarColor = colorScheme.surface.toArgb()
+            @Suppress("DEPRECATION")
             window.navigationBarColor = colorScheme.surface.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme

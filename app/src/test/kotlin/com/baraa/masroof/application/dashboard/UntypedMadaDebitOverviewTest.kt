@@ -29,7 +29,7 @@ class UntypedMadaDebitOverviewTest {
                     bank = bank,
                     maskedNumber = "****3001",
                     summary = CurrentAccountSummary.zero(Currency.SAR),
-                )!!,
+                ),
             ),
         )
         val madaCard = CardRegistryEntry.forTest(

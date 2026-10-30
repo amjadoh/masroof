@@ -251,7 +251,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                     }
                 }
             }
-            return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(it) }
+            return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).toHexString()
         }
     }
 }

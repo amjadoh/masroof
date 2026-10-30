@@ -66,7 +66,7 @@ object TransactionIdFactory {
         require(canonical.isNotEmpty()) { "rawSmsIds must contain at least one non-blank id" }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))
-        val hex = digest.joinToString("") { "%02x".format(it) }
+        val hex = digest.toHexString()
         return "transaction:$hex"
     }
 }

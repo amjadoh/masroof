@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -100,6 +100,7 @@ class PatternManagementJourneyTest {
             compose.onNodeWithTag("pattern-delete-confirm").assertIsNotEnabled()
             compose.onNodeWithTag("pattern-delete-confirmation").performTextClearance()
             compose.onNodeWithTag("pattern-delete-copy").performScrollTo().performClick()
+            compose.waitForIdle()
             val clipboard = compose.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val copied = clipboard.primaryClip!!.getItemAt(0).coerceToText(compose.activity).toString()
             assertEquals(AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_operations)[1], copied)

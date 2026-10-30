@@ -110,7 +110,7 @@ fun LongPullToRefreshBox(
                     scrollOffsetState.value == 0 &&
                     consumed.y == 0f &&
                     available.y > 0f &&
-                    source == NestedScrollSource.Drag
+                    source == NestedScrollSource.UserInput
                 ) {
                     pullDistance = min(pullDistance + available.y, maxPullPx)
                     return Offset(0f, available.y)

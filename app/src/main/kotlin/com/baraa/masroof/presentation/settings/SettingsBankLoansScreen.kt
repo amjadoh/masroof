@@ -1,4 +1,3 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.baraa.masroof.presentation.settings
 
@@ -7,12 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.baraa.masroof.presentation.common.MasroofText as Text
-import com.baraa.masroof.presentation.common.MasroofTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -48,12 +44,15 @@ fun SettingsBankLoansScreen(
     val followedLoans = bankLoans.filter { it.ownership == OwnershipStatus.OWNED }
     val stoppedLoans = bankLoans.filter { it.ownership == OwnershipStatus.EXTERNAL }
 
-    SettingsLoanStopConfirmDialog(
-        target = state.stopConfirmLoanTarget,
-        updating = state.updating,
-        onDismiss = onDismissStopConfirm,
-        onConfirm = onConfirmStopTracking,
-    )
+    state.stopConfirmLoanTarget?.let { target ->
+        SettingsStopConfirmDialog(
+            title = stringResource(R.string.settings_stop_loan_confirm_title),
+            body = stringResource(R.string.settings_stop_loan_confirm_body, loanDisplayLabel(target)),
+            updating = state.updating,
+            onDismiss = onDismissStopConfirm,
+            onConfirm = onConfirmStopTracking,
+        )
+    }
 
     MasroofSecondaryScaffold(
         title = stringResource(R.string.reference_manage_loans),
@@ -156,45 +155,6 @@ fun SettingsBankLoansScreen(
             }
         }
     }
-}
-
-@Composable
-private fun SettingsLoanStopConfirmDialog(
-    target: ManagedLoanUi?,
-    updating: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    target ?: return
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = MasroofIcons.warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-            )
-        },
-        title = { Text(stringResource(R.string.settings_stop_loan_confirm_title)) },
-        text = {
-            Text(
-                stringResource(
-                    R.string.settings_stop_loan_confirm_body,
-                    loanDisplayLabel(target),
-                ),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !updating) {
-                Text(stringResource(R.string.settings_stop_confirm_action))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
-            }
-        },
-    )
 }
 
 @Composable
