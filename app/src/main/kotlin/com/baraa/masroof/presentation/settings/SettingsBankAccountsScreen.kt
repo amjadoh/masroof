@@ -198,7 +198,8 @@ fun SettingsBankAccountsScreen(
                             }
                         },
                         endAction = {
-                            SettingsResumeTrackingButton(
+                            com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                label = stringResource(R.string.settings_external_account_is_mine),
                                 onClick = { onResumeTracking(account) },
                                 enabled = !state.updating,
                             )

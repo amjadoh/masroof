@@ -48,6 +48,7 @@ class ExternalAccountSettingsTest {
         }
         fun label(id: Int) = AppLocaleContext.wrap(compose.activity, "en").getString(id)
         compose.onNodeWithText(label(R.string.settings_external_accounts)).performScrollTo().performClick()
+        compose.onNodeWithText(label(R.string.settings_external_account_is_mine)).assertExists()
         compose.onNodeWithText(label(R.string.settings_action_rename)).performScrollTo().performClick()
         compose.onNode(hasSetTextAction()).performTextReplacement("اسم اختياري")
         compose.onNodeWithText(label(R.string.settings_save)).performClick()
