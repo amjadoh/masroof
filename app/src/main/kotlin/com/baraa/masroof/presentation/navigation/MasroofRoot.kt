@@ -450,23 +450,19 @@ private fun MasroofContent(
                 onBack = ::returnFromReview,
             )
             HomeDestination.AllTransactions -> {
-                val ownedCardKeys = remember(dashboardState.ownedCards) {
-                    CardOwnershipKey.ownedKeys(dashboardState.ownedCards)
-                }
                 Box(modifier = Modifier.fillMaxSize()) {
                     TransactionListScreen(
                         periodLabel = dashboardState.periodLabel,
                         transactions = dashboardState.allTransactions,
+                        projection = dashboardState.transactionListProjection,
+                        onFilterChanged = dashboardViewModel::setTransactionListQuery,
                         onBack = { homeDestination = transactionListReturnDestination },
                         onOpenTransaction = dashboardViewModel::openTransactionDetail,
                         seedFilter = transactionListSeedFilter,
                         onSeedFilterApplied = { transactionListSeedFilter = null },
                         openGeneration = transactionListOpenGeneration,
-                        ownedCardKeys = ownedCardKeys,
-                        ownedAccountContainerIds = dashboardState.ownedAccountContainerIds,
                         ownedCards = dashboardState.ownedCards,
                         ownedAccounts = dashboardState.ownedAccounts,
-                        transactionAccountInvolvement = dashboardState.transactionAccountInvolvement,
                     )
                     showTransactionDetail(
                         dashboardState = dashboardState,
