@@ -38,6 +38,37 @@ class DeviceProtocolTest(unittest.TestCase):
         for line in options:
             self.assertIn('-partition-size 8192', line)
 
+    def test_emulator_creation_uses_current_tools_instead_of_runner_preinstall(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        name = '      - name: Use current tools for emulator creation'
+        steps = workflow.split(name)[1:]
+        self.assertEqual(2, len(steps))
+        for step in steps:
+            code = textwrap.dedent(step.split('        run: |\n', 1)[1].split('      - ', 1)[0])
+            for preinstalled_current in (False, True):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory) / 'cmdline-tools'
+                    selected = root / ('latest' if preinstalled_current else '23.0')
+                    current = selected / 'bin'
+                    current.mkdir(parents=True)
+                    (selected / 'source.properties').write_text('Pkg.Revision=23.0\n')
+                    manager = current / 'avdmanager'
+                    manager.write_text('#!/bin/sh\nexit 0\n')
+                    manager.chmod(0o755)
+                    if not preinstalled_current:
+                        (root / 'latest').mkdir()
+                        (root / 'latest/source.properties').write_text('Pkg.Revision=12.0')
+                    subprocess.run(['bash', '-ec', code],
+                                   env=dict(os.environ, ANDROID_HOME=directory, PATH=str(current) + os.pathsep + os.environ['PATH']),
+                                   check=True, capture_output=True)
+                    self.assertEqual(selected.resolve(), (root / 'latest').resolve())
+                    self.assertEqual('Pkg.Revision=23.0\n', (root / 'latest/source.properties').read_text())
+        self.assertEqual(2, workflow.count("pre-emulator-launch-script: grep -Fx 'target=android-${{ needs.android-version.outputs.image-version }}'"))
+        for path in ['.github/workflows/ci.yml', '.github/workflows/release.yml']:
+            source = (device.ROOT / path).read_text()
+            count = source.count('uses: android-actions/setup-android@')
+            self.assertEqual(count, source.count("cmdline-tools-version: '16111833'"))
+
     def test_adb_failure_preserves_the_install_error(self):
         failure = subprocess.CalledProcessError(1, ['adb', 'install', 'app.apk'],
                                                output='INSTALL_FAILED_INSUFFICIENT_STORAGE',
