@@ -147,6 +147,7 @@ data class RegistryDeleteUi(
 data class LinkedTransactionUi(
     val id: String,
     val title: String?,
+    val type: com.baraa.masroof.domain.model.FinancialTransactionType,
     val amount: com.baraa.masroof.core.money.Money,
     val occurredOn: LocalDate,
 )

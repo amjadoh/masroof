@@ -50,6 +50,10 @@ class SettingsRegistryDeleteTest {
             assertThrows(IllegalStateException::class.java) { runBlocking { workflow.delete(target) } }
         }
         assertTrue("the corpus includes a loan repayment", targets.any { it is RegistryDeleteTarget.Loan })
+        // Debit card 2210's purchase posts to its account; only the SMS evidence links it to the card.
+        val evidenceOnly = workflow.deletionPreview(RegistryDeleteTarget.Card(CardReference(bank, "2210")))
+        assertEquals(DeleteBlocker.LINKED_TRANSACTIONS, evidenceOnly.blocker)
+        assertEquals(1, evidenceOnly.linkedCount)
         assertNotNull(world.accounts.get(AccountReference(bank, "3001")))
         assertNotNull(world.cards.get(CardReference(bank, "7271")))
     }

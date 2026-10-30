@@ -26,6 +26,7 @@ import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.common.MasroofOutlinedButton
 import com.baraa.masroof.presentation.common.MasroofText as Text
 import com.baraa.masroof.presentation.common.MasroofTypeToConfirmDeleteDialog
+import com.baraa.masroof.presentation.common.toUiLabelRes
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
 import com.baraa.masroof.ui.theme.MasroofIconSizes
@@ -44,7 +45,7 @@ fun SettingsDeleteDialog(
     onDelete: () -> Unit,
     onStopTracking: () -> Unit,
 ) {
-    // Dialog windows may expose a different Android context; resolve copy in the app locale before opening one.
+    // Dialog windows may expose a different Android context; resolve all copy, dates and amounts before opening one.
     val title = stringResource(when (request.target) {
         is StopTrackingTarget.Account -> R.string.registry_delete_account_title
         is StopTrackingTarget.Card -> R.string.registry_delete_card_title
@@ -90,6 +91,10 @@ fun SettingsDeleteDialog(
     val close = stringResource(R.string.registry_delete_close)
     val stop = stringResource(R.string.reference_stop_tracking)
     val blockedTitle = stringResource(R.string.registry_delete_blocked_title)
+    val rows = request.linked.map { tx ->
+        Triple(formatLocalizedTransactionDate(tx.occurredOn, "d MMM yyyy"),
+            tx.title ?: stringResource(tx.type.toUiLabelRes()), formatLocalizedMoney(tx.amount))
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("registry-delete-blocked"),
@@ -99,14 +104,13 @@ fun SettingsDeleteDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                 Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("registry-delete-blocked-name"))
                 Text(reason, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                request.linked.forEach { tx ->
+                rows.forEach { (date, title, amount) ->
                     Row(Modifier.fillMaxWidth().testTag("registry-delete-linked"), verticalAlignment = Alignment.CenterVertically) {
-                        Text(formatLocalizedTransactionDate(tx.occurredOn, "d MMM yyyy"), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(MasroofSpacing.inlineGap))
-                        Text(tx.title.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(formatLocalizedMoney(tx.amount), style = MaterialTheme.typography.bodyMedium)
+                        Text(amount, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 more?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

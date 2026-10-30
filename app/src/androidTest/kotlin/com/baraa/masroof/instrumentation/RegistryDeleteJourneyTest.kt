@@ -18,6 +18,7 @@ import com.baraa.masroof.application.settings.DeleteBlocker
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.model.Bank
+import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import com.baraa.masroof.presentation.settings.LinkedTransactionUi
@@ -80,13 +81,17 @@ class RegistryDeleteJourneyTest {
     @Test fun linkedAccountIsRefusedWithItsTransactionsAndOffersStopTracking() {
         var stopped = false
         val linked = listOf(
-            LinkedTransactionUi("tx-1", "TEST SHOP", Money.of("25.00", Currency.SAR), LocalDate.of(2026, 9, 10)),
-            LinkedTransactionUi("tx-2", "TEST PERSON", Money.of("400.00", Currency.SAR), LocalDate.of(2026, 9, 2)),
+            LinkedTransactionUi("tx-1", "TEST SHOP", FinancialTransactionType.EXPENSE, Money.of("25.00", Currency.SAR), LocalDate.of(2026, 9, 10)),
+            LinkedTransactionUi("tx-2", null, FinancialTransactionType.FEE, Money.of("40.00", Currency.SAR), LocalDate.of(2026, 9, 2)),
         )
         show(RegistryDeleteUi(StopTrackingTarget.Account(account()), linked, 5, DeleteBlocker.LINKED_TRANSACTIONS), onStop = { stopped = true })
         compose.onNodeWithTag("registry-delete-blocked-name").assertTextEquals(name)
         compose.onAllNodesWithTag("registry-delete-linked").assertCountEquals(2)
         compose.onNodeWithText("TEST SHOP").assertIsDisplayed()
+        compose.onNodeWithText(ar(R.string.txn_type_fee)).assertIsDisplayed()
+        // Resolved in the app language, not the dialog window's default locale.
+        compose.onNodeWithText(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",
+            com.baraa.masroof.application.locale.AppLocale.displayLocale("ar")).format(LocalDate.of(2026, 9, 2))).assertIsDisplayed()
         compose.onNodeWithTag("registry-delete-confirm").assertDoesNotExist()
         compose.onNodeWithTag("registry-delete-confirmation").assertDoesNotExist()
         capture("account-delete-blocked")

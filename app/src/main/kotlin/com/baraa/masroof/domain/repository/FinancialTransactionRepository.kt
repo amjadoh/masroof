@@ -106,6 +106,10 @@ interface FinancialTransactionRepository {
 
     suspend fun listRawSmsIds(transactionId: String): List<String>
 
+    /** Ids of the transactions linked to any of [rawSmsIds], in one batch lookup. */
+    suspend fun listTransactionIdsForRawSmsIds(rawSmsIds: Collection<String>): Set<String> =
+        rawSmsIds.mapNotNull { findByRawSmsId(it)?.id }.toSortedSet()
+
     /** RawSms evidence ids linked to any of [transactionIds], in one batch lookup. */
     suspend fun listRawSmsIdsForTransactions(transactionIds: Collection<String>): Set<String> =
         transactionIds.distinct().flatMapTo(linkedSetOf()) { listRawSmsIds(it) }

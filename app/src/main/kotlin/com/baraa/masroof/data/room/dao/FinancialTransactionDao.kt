@@ -163,6 +163,16 @@ interface FinancialTransactionDao {
     )
     suspend fun listRawSmsIdsForTransactions(transactionIds: List<String>): List<String>
 
+    /** Callers keep [rawSmsIds] under [RoomBatch.MAX_BIND_ARGS]. */
+    @Query(
+        """
+        SELECT DISTINCT transactionId FROM financial_transaction_raw_sms_link
+        WHERE rawSmsId IN (:rawSmsIds)
+        ORDER BY transactionId
+        """,
+    )
+    suspend fun listTransactionIdsForRawSmsIds(rawSmsIds: List<String>): List<String>
+
     /** Callers keep [transactionIds] under [RoomBatch.MAX_BIND_ARGS]. */
     @Query(
         """
