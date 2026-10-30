@@ -12,12 +12,18 @@ import java.time.Instant
 /** Entirely fictional values; production layouts, never private SMS fixtures. */
 class AuditedSmsReadingTest {
     @Test fun travelerTopUpRequiresExplicitSourceAndCard() {
-        val body = "خصم مبلغ 75 USD\nمن حساب *4321\nإلى بطاقة المسافر *8765\nفي 2026-10-20 12:30"
+        val body = "خصم مبلغ: 75.25 USD\nمن حساب *4321\nإلى بطاقة المسافر *8765\nفي 2026-10-20 12:30\nالرصيد المتبقي: 90.50 USD"
         val result = parse("BANK_ALINMA", "alinma", body)
         assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
         assertEquals(MessageFamily.CARD_TOP_UP, result.facts.family)
         assertEquals("4321", result.facts.sourceAccount?.maskedNumber)
         assertEquals("8765", result.facts.card?.last4)
+        assertEquals("75.25", result.facts.amount?.amount?.toPlainString())
+        for (variant in listOf(body.replace("مبلغ: ", "مبلغ "), body.replace("مبلغ: ", "مبلغ:"), body.replace("\n", "\r\n\r\n"))) {
+            val parsed = parse("BANK_ALINMA", "alinma", variant)
+            assertEquals(parsed.diagnostics.toString(), ParseStatus.SUCCESS, parsed.status)
+            assertEquals(result.facts.amount, parsed.facts.amount)
+        }
         for (missing in listOf(body.replace("من حساب *4321\n", ""), body.replace("إلى بطاقة المسافر *8765\n", ""))) {
             assertNotEquals(ParseStatus.SUCCESS, parse("BANK_ALINMA", "alinma", missing).status)
         }

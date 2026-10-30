@@ -73,7 +73,7 @@ internal class PrimaryFieldExtractor(
         } + (if (allowStandalone && field == ExtractionField.AMOUNT) Regex("(?m)^ *" + MoneyGrammar.VALUE + " *$")
             .findAll(source.text).mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList() else emptyList()) +
             titlePrefixes.flatMap { prefix ->
-                Regex("(?m)^ *" + source.phrase(prefix).pattern + " +(?:ب *|بمبلغ *)?" + MoneyGrammar.VALUE)
+                Regex("(?m)^ *" + source.phrase(prefix).pattern + "(?::[ \\t]*|[ \\t]+)(?:ب *|بمبلغ *)?" + MoneyGrammar.VALUE)
                     .findAll(source.text).filter { source.text.substring(0, it.range.first).isBlank() }
                     .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
             }
