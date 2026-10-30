@@ -176,7 +176,11 @@ class DashboardLedgerWorld(
             reconciliation = reconciliation,
             reviewQueueUpdater = reviewQueueUpdater,
             processingRecovery = processingRecovery,
-            exchangeRateEnrichment = exchangeRateEnrichment,
+            exchangeRateEnrichmentScheduler = exchangeRateEnrichment?.let { workflow ->
+                com.baraa.masroof.application.sms.ImmediateExchangeRateEnrichmentScheduler(
+                    com.baraa.masroof.application.sms.PendingExchangeRateEnricher { workflow.enrichPending() },
+                )
+            },
         ).startBatch()
         rows.forEach { batch.ingest(AndroidSmsMapper.toRawSms(it)) }
         batch.finish()

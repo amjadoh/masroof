@@ -31,6 +31,6 @@
     <string name="pattern_pending_refresh">تحديث المعاينة</string>
     <string name="pattern_pending_limited">تُفحص أول 1000 رسالة في قائمة المراجعة، ويُعرض هنا أول 50 نتيجة للبنك. هذه ليست تغطية كاملة للرسائل.</string>
     <string name="pattern_pending_row">الرسالة %1$d — %2$s</string>
-    <string-array name="pattern_pending_statuses"><item>مطابقة واحدة</item><item>غير مطابق</item><item>تعارض الأنماط</item><item>تعارض البنك</item></string-array>
+    <string-array name="pattern_pending_statuses"><item>مطابقة واحدة</item><item>غير مطابق</item><item>تعارض الأنماط</item><item>تعارض البنك</item><item>يحتاج تعليم نمط</item></string-array>
     <string name="pattern_pending_open">فتح رسالة المراجعة</string>
 </resources>

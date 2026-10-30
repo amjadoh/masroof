@@ -10,7 +10,6 @@ import com.baraa.masroof.application.logging.AppLogCategories
 import com.baraa.masroof.application.logging.AppLogFormatting
 import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.review.ReviewQueueUpdater
-import com.baraa.masroof.application.transaction.ExchangeRateEnrichmentWorkflow
 import com.baraa.masroof.application.transaction.ReconciliationCompletionPolicy
 import com.baraa.masroof.application.transaction.ReconciliationSummary
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
@@ -42,15 +41,15 @@ sealed interface HistoricalBatchDerivedResult {
  *
  * Each row is captured, parsed, and persisted on its own ([Batch.ingest]); derived work runs
  * once per batch ([Batch.finish]): ownership discovery for the events the batch stored, one
- * reconciliation of those RawSms ids, one review refresh, and one exchange-rate enrichment
- * pass. Transfer counterparts already in storage are loaded only inside the matcher window.
+ * reconciliation of those RawSms ids, one review refresh, and one scheduled exchange-rate
+ * enrichment pass (network-bound, so it never runs inline). Transfer counterparts already in storage are loaded only inside the matcher window.
  * Live processing stays per message.
  *
  * A correctness-blocking derived failure keeps the captured evidence and marks the affected
  * financial rows in one transaction, then schedules one batch recovery. A reconciliation
  * report with a nonzero failed count is that failure even when nothing was thrown: finish
  * does not return success and does not clear the retry set. Exchange-rate enrichment
- * stays best-effort.
+ * scheduling stays best-effort.
  */
 class HistoricalSmsBatchProcessor(
     private val capture: CaptureBankSmsUseCase,
@@ -58,7 +57,7 @@ class HistoricalSmsBatchProcessor(
     private val ownershipDiscovery: OwnershipDiscoveryService? = null,
     private val reconciliation: TransactionReconciliationService? = null,
     private val reviewQueueUpdater: ReviewQueueUpdater? = null,
-    private val exchangeRateEnrichment: ExchangeRateEnrichmentWorkflow? = null,
+    private val exchangeRateEnrichmentScheduler: ExchangeRateEnrichmentScheduler? = null,
     private val processingRecovery: ProcessingRecovery? = null,
     private val batchRecoveryScheduler: HistoricalBatchRecoveryScheduler? = null,
     private val appLogService: AppLogService? = null,
@@ -114,7 +113,7 @@ class HistoricalSmsBatchProcessor(
             check(!finished) { "Batch already finished" }
             val derived = runDerivedPass()
             finished = true
-            enrichExchangeRates()
+            scheduleExchangeRates()
             return derived
         }
 
@@ -229,13 +228,13 @@ class HistoricalSmsBatchProcessor(
             }
         }
 
-        private suspend fun enrichExchangeRates() {
+        private fun scheduleExchangeRates() {
             try {
-                exchangeRateEnrichment?.enrichPending()
+                exchangeRateEnrichmentScheduler?.schedule()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Enrichment is best-effort; pending rows are retried by the next run.
+                // Scheduling is best-effort; pending rows are retried by the next run.
             }
         }
 

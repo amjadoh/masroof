@@ -139,6 +139,50 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun taughtPatternCompletingABundledRoleIsOneMatchNotAConflict() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val body = "حوالة صادرة داخلية\nالمبلغ: 250.00 SAR\nإلى : **0312\n2026-09-26 16:29"
+            c.processRawSmsUseCase.ingest(sms("barq-out", body, sender = "barq app"))
+            val bindings = listOf("amount" to "250.00 SAR", "account_reference" to "**0312", "occurred_at" to "2026-09-26 16:29")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, body, bindings)
+            w.saveTeaching(taught)
+            val account = w.confirmPatternAccount("BANK_BARQ", "4321")
+            val approved = w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", taught.pattern.id,
+                PatternOperation.TRANSFER_OUT, account.id, body, null, setOf("account_reference")))
+            val row = w.previewPending("BANK_BARQ", approved.generation).rows.single()
+            assertEquals(PendingPatternStatus.MATCHED, row.status)
+            assertEquals(taught.pattern.id, row.matches.single().patternId)
+            assertEquals(1, w.applyPending("BANK_BARQ", approved.generation).posted)
+        }
+    }
+
+    @Test fun bundledRoleThatCannotCompleteAMessageAsksForTeachingInsteadOfOfferingProcessing() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            c.processRawSmsUseCase.ingest(sms("barq-in", "حوالة واردة داخلية\n100.00 SAR\nحساب المرسل: **1482\n2026-10-02 22:01",
+                sender = "barq app"))
+            val report = w.previewPending("BANK_BARQ", w.catalog().generation)
+            assertEquals(PendingPatternStatus.INCOMPLETE, report.rows.single().status)
+            assertEquals(0, report.matchingCount("barq.transfer-in"))
+        }
+    }
+
+    @Test fun pendingMessageTimedByItsStoredReceiptIsOneMatch() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            // Date and time on separate lines: the stored receipt time supplies the transaction time.
+            val body = "خصم رسوم\n25 SAR : المبلغ، العملة\nLATEFEES : السبب\nXX1234 : رقم الحساب\n2026-09-15 : التاريخ\n12:30 : الوقت"
+            w.setEnabled(w.catalog().generation, "BANK_EMIRATES_NBD", "emirates_nbd.fee", false)
+            c.processRawSmsUseCase.ingest(sms("enbd-fee", body, sender = "EmiratesNBD"))
+            w.setEnabled(w.catalog().generation, "BANK_EMIRATES_NBD", "emirates_nbd.fee", true)
+            val row = w.previewPending("BANK_EMIRATES_NBD", w.catalog().generation).rows.single()
+            assertEquals(PendingPatternStatus.MATCHED, row.status)
+            assertEquals("emirates_nbd.fee", row.matches.single().patternId)
+        }
+    }
+
     private suspend fun fixture(source: com.baraa.masroof.sms.datasource.SmsDataSource? = null, block: suspend (AppContainer) -> Unit) {
         val context = TestStorageContext(ApplicationProvider.getApplicationContext<Context>(), "pattern-${java.util.UUID.randomUUID()}")
         val container = AppContainer(context, smsDataSourceOverride = source)
