@@ -9,12 +9,21 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
-/** Durable user definitions, never a rebuildable learning cache. No retained decoded state. */
+/** Durable user definitions. Reuse decoding only while the complete persisted text is unchanged. */
 class MessagePatternStore(private val file: File, private val beforeReplace: () -> Unit = {}) {
     constructor(context: Context) : this(File(context.filesDir, "message-patterns/definitions.json"))
 
+    private var decodedRaw: String? = null
+    private var decoded: MessagePatternConfiguration? = null
+
     fun load(): MessagePatternConfiguration = synchronized(lock) {
-        captureRaw()?.let(MessagePatternConfigurationCodec::decode) ?: MessagePatternConfiguration()
+        val raw = captureRaw()
+        // Generation and file timestamps alone cannot distinguish restores or external replacements.
+        if (raw == decodedRaw) decoded?.let { return@synchronized it }
+        val configuration = raw?.let(MessagePatternConfigurationCodec::decode) ?: MessagePatternConfiguration()
+        decodedRaw = raw
+        decoded = configuration
+        configuration
     }
 
     /** Startup-only before this container admits work; interactive installation uses the exclusive access gate. */
