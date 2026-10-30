@@ -182,7 +182,12 @@ class Instrumentation:
 
 
 def adb(*args, check=True, timeout=30):
-    return subprocess.run(['adb', *args], check=check, capture_output=True, text=True, timeout=timeout)
+    try:
+        return subprocess.run(['adb', *args], check=check, capture_output=True, text=True, timeout=timeout)
+    except subprocess.CalledProcessError as failure:
+        print(failure.stdout or '', file=sys.stderr)
+        print(failure.stderr or '', file=sys.stderr)
+        raise
 
 
 def settle(limit=180, busy=0.5):
@@ -200,7 +205,8 @@ def settle(limit=180, busy=0.5):
 def collect(directory):
     directory.mkdir(parents=True, exist_ok=True)
     for name, args in [('device.log', ['logcat', '-d']), ('jobs.txt', ['shell', 'dumpsys', 'jobscheduler']),
-                       ('activity.txt', ['shell', 'dumpsys', 'activity', 'processes'])]:
+                       ('activity.txt', ['shell', 'dumpsys', 'activity', 'processes']),
+                       ('storage.txt', ['shell', 'df', '-h', '/data'])]:
         try: (directory / name).write_text(adb(*args, check=False, timeout=10).stdout)
         except subprocess.TimeoutExpired: (directory / name).write_text('Diagnostic command timed out')
     for remote, local in [('/sdcard/m19-statement-screenshots/.', 'statement'),

@@ -189,7 +189,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 180
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -partition-size 8192
           script: python3 scripts/ci_device.py run --shard ${{ matrix.shard }}
       - name: Preserve per-case evidence even on failure
         if: always()
@@ -252,7 +252,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 180
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -partition-size 8192
           script: bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
       - name: Preserve recovery evidence
         if: always()

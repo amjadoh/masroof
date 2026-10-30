@@ -116,3 +116,12 @@ case passed locally before and after the finder correction; it now targets the a
 tagged button in the unmerged tree and asserts its click action/enabled state. Cancel,
 financial/review parity and open-example assertions remain intact. PR CI must verify it
 under the full device schedule.
+
+PR run `41072969466` passed the full unit suite, model reproducibility, static analysis,
+image/routing contracts and shared APK build on JDK 27. API 37 emulator boot succeeded,
+but device jobs failed before instrumentation: PackageInstaller reported insufficient
+internal storage for the APK. Both emulator paths now reserve an 8 GiB data partition.
+Two new CI regressions reproduced missing storage configuration and lost adb error output;
+all 14 protocol tests and six lifecycle routing tests pass after the correction. Recovery
+now retains its install log even when installation fails; ordinary diagnostics include
+`/data` usage. Full device qualification remains required on the resulting commit.

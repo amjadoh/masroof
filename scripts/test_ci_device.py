@@ -1,3 +1,4 @@
+import io
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -29,6 +30,25 @@ class DeviceProtocolTest(unittest.TestCase):
                              output.read_text().splitlines())
         self.assertEqual(int(config['imageVersion'].split('.')[0]), config['api'])
         self.assertIn('api-level: ${{ needs.android-version.outputs.image-version }}', workflow)
+
+    def test_device_jobs_reserve_enough_internal_storage_for_api37(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        options = [line for line in workflow.splitlines() if 'emulator-options:' in line]
+        self.assertEqual(2, len(options))  # ordinary shards and stateful recovery
+        for line in options:
+            self.assertIn('-partition-size 8192', line)
+
+    def test_adb_failure_preserves_the_install_error(self):
+        failure = subprocess.CalledProcessError(1, ['adb', 'install', 'app.apk'],
+                                               output='INSTALL_FAILED_INSUFFICIENT_STORAGE',
+                                               stderr='Requested internal only, but not enough space')
+        output = io.StringIO()
+        with patch.object(device.subprocess, 'run', side_effect=failure), patch.object(device.sys, 'stderr', output):
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                device.adb('install', 'app.apk')
+        self.assertIs(failure, raised.exception)
+        self.assertIn('INSTALL_FAILED_INSUFFICIENT_STORAGE', output.getvalue())
+        self.assertIn('not enough space', output.getvalue())
 
     def stream(self, status=0, final=True):
         p = device.Instrumentation()
