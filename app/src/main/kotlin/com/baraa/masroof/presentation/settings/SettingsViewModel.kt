@@ -65,6 +65,7 @@ class SettingsViewModel(
     val messagePatternsWorkflow: com.baraa.masroof.application.patterns.MessagePatternsWorkflow? = null,
     private val historicalMerchantRateCorrectionWorkflow: HistoricalMerchantRateCorrectionWorkflow? = null,
     private val bankSmsImportWorkflow: com.baraa.masroof.application.sms.BankSmsImportWorkflow? = null,
+    private val confirmedLoanPaymentsWorkflow: com.baraa.masroof.application.transaction.ConfirmedLoanPaymentsWorkflow? = null,
 ) : ViewModel() {
     private var updatableCorrectionIds: List<String> = emptyList()
     private val _uiState = MutableStateFlow(
@@ -83,6 +84,74 @@ class SettingsViewModel(
     private var verificationJob: kotlinx.coroutines.Job? = null
     private var pendingLegacyImport: Boolean = false
     private var pendingExportPassphrase: CharArray? = null
+    private var externalSpendingJob: kotlinx.coroutines.Job? = null
+
+    fun openLoanPayment(loan: ManagedLoanUi) {
+        if (loan.ownership != OwnershipStatus.OWNED) return
+        _uiState.update { it.copy(loanPaymentTarget = loan, loanPaymentPreview = null, loanPaymentFailed = false) }
+    }
+
+    fun closeLoanPayment() {
+        if (_uiState.value.loanPaymentBusy) return
+        _uiState.update { it.copy(loanPaymentTarget = null, loanPaymentPreview = null, loanPaymentFailed = false) }
+    }
+
+    fun resetLoanPaymentPreview() {
+        if (!_uiState.value.loanPaymentBusy) _uiState.update { it.copy(loanPaymentPreview = null, loanPaymentFailed = false) }
+    }
+
+    fun previewLoanPayment(biller: String) {
+        val target = _uiState.value.loanPaymentTarget ?: return
+        if (_uiState.value.loanPaymentBusy) return
+        _uiState.update { it.copy(loanPaymentBusy = true, loanPaymentFailed = false) }
+        viewModelScope.launch {
+            try {
+                val preview = withContext(Dispatchers.IO) {
+                    requireNotNull(confirmedLoanPaymentsWorkflow).preview(LoanReference(target.bank, target.loanType), biller)
+                }
+                _uiState.update { it.copy(loanPaymentPreview = preview, loanPaymentBusy = false) }
+            } catch (ce: CancellationException) { throw ce }
+            catch (_: Exception) { _uiState.update { it.copy(loanPaymentBusy = false, loanPaymentFailed = true) } }
+        }
+    }
+
+    fun confirmLoanPayment() {
+        val preview = _uiState.value.loanPaymentPreview ?: return
+        if (_uiState.value.loanPaymentBusy) return
+        _uiState.update { it.copy(loanPaymentBusy = true, loanPaymentFailed = false) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { requireNotNull(confirmedLoanPaymentsWorkflow).confirm(preview) }
+                _uiState.update { it.copy(loanPaymentBusy = false, loanPaymentTarget = null, loanPaymentPreview = null) }
+            } catch (ce: CancellationException) { throw ce }
+            catch (_: Exception) { _uiState.update { it.copy(loanPaymentBusy = false, loanPaymentFailed = true) } }
+        }
+    }
+
+    fun openExternalSpending(account: ManagedAccountUi) {
+        if (account.ownership != OwnershipStatus.EXTERNAL) return
+        externalSpendingJob?.cancel()
+        _uiState.update { it.copy(externalSpendingTarget = account, externalSpending = null,
+            externalSpendingLoading = true, externalSpendingFailed = false) }
+        externalSpendingJob = viewModelScope.launch {
+            try {
+                val spending = withContext(Dispatchers.IO) {
+                    settingsRegistryWorkflow.externalAccountSpending(AccountReference(account.bank, account.maskedNumber))
+                }
+                _uiState.update { it.copy(externalSpending = spending, externalSpendingLoading = false) }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Exception) {
+                _uiState.update { it.copy(externalSpendingLoading = false, externalSpendingFailed = true) }
+            }
+        }
+    }
+
+    fun closeExternalSpending() {
+        externalSpendingJob?.cancel()
+        _uiState.update { it.copy(externalSpendingTarget = null, externalSpending = null,
+            externalSpendingLoading = false, externalSpendingFailed = false) }
+    }
 
     fun refreshLogs() {
         _logEntries.value = appLogService.readAll()
@@ -952,12 +1021,13 @@ class SettingsViewModel(
         }
     }
 
-    fun addManualAccount(bankId: String, last4: String, name: String?, onSaved: () -> Unit) {
+    fun addManualAccount(bankId: String, last4: String, name: String?, owned: Boolean = true, onSaved: () -> Unit) {
         if (_uiState.value.bankCatalog != null && _uiState.value.bankSummaries.none { it.bank.id == bankId }) {
             _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }; return
         }
         updateRegistry(onSaved) {
-            val ref = settingsRegistryWorkflow.addAccount(bankId, last4, name)
+            val ref = if (owned) settingsRegistryWorkflow.addAccount(bankId, last4, name)
+                else settingsRegistryWorkflow.addExternalAccount(bankId, last4, name)
             reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
         }
     }

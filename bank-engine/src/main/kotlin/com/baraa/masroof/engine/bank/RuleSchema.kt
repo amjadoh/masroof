@@ -6,7 +6,8 @@ enum class ExtractionField { AMOUNT, CARD, SOURCE_ACCOUNT, DESTINATION_ACCOUNT, 
 
 /** Explicit user configuration, never inferred from how many accounts happen to exist. */
 data class RuleFactDefaults(val source: AccountReference? = null, val destination: AccountReference? = null,
-    val currency: com.baraa.masroof.finance.value.Currency? = null)
+    val currency: com.baraa.masroof.finance.value.Currency? = null,
+    val sourceObservedValue: String? = null, val destinationObservedValue: String? = null)
 
 data class BankRule(
     val id: String,

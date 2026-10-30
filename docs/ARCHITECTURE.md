@@ -18,6 +18,18 @@ work identifiers keep their original spelling for upgrade compatibility.
 
 ## Message-pattern ownership
 
+Explicit biller-to-loan confirmations are application treatment, not interpreter inference.
+`ConfirmedLoanPaymentsWorkflow` requires an owned loan and an evidenced owned funding
+account or configured card; it never matches money or dates. Other billers and transfers
+retain their original financial treatment. The financial core remains unchanged.
+The local pattern document stores these user confirmations in configuration schema 5
+(the financial database remains schema 18), so existing encrypted backup, restore and
+rollback include them. A preview lists eligible automatic bill postings; saving corrects
+only those approved rows without reparsing their SMS, preserving manual decisions and
+recording the user's correction. Exact approved transaction ids remain with the rule so
+startup can finish an interrupted correction before exposing financial screens. No
+automatic whole-history reclassification or guessed funding-account backfill is used.
+
 Keep the existing five modules. Organize by responsibility; a filename containing
 `Pattern` does not mean its approval, storage or UI belongs in the engine.
 

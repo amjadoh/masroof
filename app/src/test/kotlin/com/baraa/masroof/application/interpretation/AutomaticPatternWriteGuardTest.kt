@@ -32,6 +32,41 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class AutomaticPatternWriteGuardTest {
+    @Test fun explicitCardPurchaseDoesNotRequireAnUnusedAccountFallback() = runBlocking {
+        val directory = Files.createTempDirectory("unused-account-fallback-").toFile()
+        try {
+            val store = MessagePatternStore(directory.resolve("patterns.json"))
+            val definition = com.baraa.masroof.engine.bank.rules.AlJaziraRuleProfile.current()
+                .asMessagePatterns("BANK_ALJAZIRA", listOf("AlJazira"))
+            val configured = definition.copy(patterns = definition.patterns.map { pattern ->
+                if (pattern.label != "PURCHASE") pattern else pattern.copy(factContract = pattern.factContract!!.copy(
+                    version = 2, currency = Currency.SAR, accountBindings = listOf(
+                        PatternAccountBinding(PatternAccountRole.SOURCE, BankId(definition.bankId), "5678"))))
+            })
+            val snapshot = store.saveBank(0, configured)
+            val message = MessageInput("explicit-card", "AlJazira", "Purchase\nAmount:10 SAR\nCard:1234",
+                Instant.parse("2026-10-15T10:00:00Z"), true)
+            val result = InterpretationDraftMapper().map(message,
+                PatternFactInterpreter(snapshot).interpretRouted(message, BankId(definition.bankId)), Bank.BANK_ALJAZIRA) as ParseResult.Success
+            val record = ParsedEventRecord(result.event, result.details)
+            assertNull(record.event.sourceAccountRef)
+            val accounts = com.baraa.masroof.testsupport.StubAccountRegistryRepository(
+                com.baraa.masroof.domain.model.AccountRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "5678"))
+            val ownedCard = com.baraa.masroof.domain.model.CardRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "1234")
+            val cards = com.baraa.masroof.testsupport.MutableCardRegistryRepository(ownedCard)
+            val policy = PatternInterpretationWritePolicy(store, accounts, cards)
+            assertTrue(policy.isCurrent(record))
+            assertFalse(PatternInterpretationWritePolicy(store, accounts).isCurrent(record))
+            cards.entries[0] = ownedCard.copy(ownership = com.baraa.masroof.domain.model.OwnershipStatus.EXTERNAL)
+            assertFalse(policy.isCurrent(record))
+            cards.entries[0] = ownedCard
+            assertFalse(policy.isCurrent(record.copy(event = record.event.copy(
+                sourceAccountRef = com.baraa.masroof.domain.model.AccountReference(Bank.BANK_ALJAZIRA, "9999")))))
+            assertFalse(policy.isCurrent(record.copy(event = record.event.copy(
+                cardRef = com.baraa.masroof.domain.model.CardReference(Bank("BANK_SNB"), "1234")))))
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun rolePatternStampIsCheckedAndInvalidatedByDisableOrSameGenerationRestore() = runBlocking {
         val directory = Files.createTempDirectory("role-pattern-guard-").toFile()
         try {

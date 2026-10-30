@@ -29,6 +29,19 @@ class DashboardEvidenceScopeTest {
     private val periodEnd = Instant.parse("2026-08-27T00:00:00Z")
 
     @Test
+    fun externalAccountEvidenceIsScopedAndBatchesRawSmsWithoutWholeHistory() = runBlocking {
+        val repos = Repos(facts = listOf(record("evt-a", "sms-a")), linked = emptyMap())
+        val account = com.baraa.masroof.domain.model.AccountReference(Bank.BANK_ALJAZIRA, "2345")
+        val linkedCard = card("7654").copy(linkedAccountBankId = account.bank.id, linkedAccountMaskedNumber = account.maskedNumber)
+        val evidence = repos.scope().loadAccount(account, listOf(linkedCard, card("4321")))
+        assertEquals(listOf("sms-a"), evidence.parsedRecords.map { it.event.rawSmsId })
+        assertEquals(listOf(account), repos.accountLookups)
+        assertEquals(listOf(com.baraa.masroof.domain.model.CardReference(account.bank, "7654")), repos.cardLookups)
+        assertEquals(listOf(listOf("sms-a")), repos.rawSmsBatches)
+        assertTrue(repos.linkLookups.isEmpty())
+    }
+
+    @Test
     fun load_mergesFactsAndLinkedEvidence_sortedByEventId_withOneRawSmsBatchPerStage() = runBlocking {
         val repos = Repos(
             facts = listOf(record("evt-c", "sms-c"), record("evt-a", "sms-a")),
@@ -78,6 +91,8 @@ class DashboardEvidenceScopeTest {
     ) {
         val rawSmsBatches = mutableListOf<List<String>>()
         val linkLookups = mutableListOf<List<String>>()
+        val accountLookups = mutableListOf<com.baraa.masroof.domain.model.AccountReference>()
+        val cardLookups = mutableListOf<com.baraa.masroof.domain.model.CardReference>()
         val debitFactLast4s = mutableListOf<List<String>>()
         val availableBalanceBounds = mutableListOf<Instant>()
         private val byRawSmsId = (facts + linked.values.flatten()).associateBy { it.event.rawSmsId }
@@ -92,6 +107,14 @@ class DashboardEvidenceScopeTest {
         }
 
         private fun parsedRepo(): ParsedEventRepository = object : ParsedEventRepository by unused() {
+            override suspend fun listRawSmsIdsReferencingAccount(account: com.baraa.masroof.domain.model.AccountReference): List<String> {
+                accountLookups += account
+                return facts.map { it.event.rawSmsId }
+            }
+            override suspend fun listRawSmsIdsReferencingCard(card: com.baraa.masroof.domain.model.CardReference): List<String> {
+                cardLookups += card
+                return facts.map { it.event.rawSmsId }
+            }
             override suspend fun listAll(): List<ParsedEventRecord> = error("whole-history scan")
             override suspend fun listByRawSmsIds(rawSmsIds: Collection<String>) = rawSmsIds.mapNotNull(byRawSmsId::get)
             override suspend fun listCardStatementFacts() = facts

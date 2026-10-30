@@ -23,7 +23,40 @@ class SettingsRegistryWorkflow(
     private val ownershipConfirmationService: OwnershipConfirmationService,
     private val parsedEvents: com.baraa.masroof.parsing.repository.ParsedEventRepository? = null,
     private val inTransaction: suspend (suspend () -> Unit) -> Unit = { it() },
+    private val accountEvidenceScope: com.baraa.masroof.application.dashboard.DashboardEvidenceScope? = null,
+    private val effectiveEvents: com.baraa.masroof.application.review.EffectiveParsedEventProvider? = null,
+    private val reviewRepository: com.baraa.masroof.domain.repository.ReviewRepository? = null,
 ) {
+    suspend fun addExternalAccount(bankId: String, last4: String, name: String?): AccountReference {
+        val ref = AccountReference(Bank(bankId), canonicalSuffix(last4))
+        require(ref.bank != Bank.UNKNOWN)
+        inTransaction {
+            require(accountRegistryRepository.get(ref) == null) { "Account already exists" }
+            ownershipConfirmationService.markAccountExternal(ref)
+            accountRegistryRepository.updateDisplayName(ref, name?.trim()?.ifEmpty { null })
+        }
+        return ref
+    }
+
+    suspend fun externalAccountSpending(account: AccountReference): com.baraa.masroof.application.dashboard.ExternalAccountSpending {
+        val entry = requireNotNull(accountRegistryRepository.get(account))
+        require(entry.ownership == com.baraa.masroof.domain.model.OwnershipStatus.EXTERNAL)
+        val cards = cardRegistryRepository.listAll()
+        val evidence = requireNotNull(accountEvidenceScope).loadAccount(account, cards)
+        val records = requireNotNull(effectiveEvents).listEffectiveByRawSmsIds(evidence.parsedRecords.map { it.event.rawSmsId })
+        val ids = records.map { it.event.rawSmsId }.toSet()
+        val decisions = requireNotNull(reviewRepository).listAll().filter { it.rawSmsId in ids &&
+            it.status == com.baraa.masroof.domain.model.ReviewStatus.RESOLVED }
+        val excluded = decisions.filter { it.resolutionKind == com.baraa.masroof.domain.model.ReviewResolutionKind.USER_NON_FINANCIAL }
+            .map { it.rawSmsId }.toSet()
+        val manual = decisions.filter { it.resolutionKind in setOf(
+            com.baraa.masroof.domain.model.ReviewResolutionKind.USER_FINANCIAL_TYPE,
+            com.baraa.masroof.domain.model.ReviewResolutionKind.USER_EXTERNAL_TRANSFER,
+            com.baraa.masroof.domain.model.ReviewResolutionKind.USER_SELF_TRANSFER_PAIR,
+        ) }.map { it.rawSmsId }.toSet()
+        return com.baraa.masroof.application.dashboard.ExternalAccountSpendingCalculator.calculate(entry, cards, records, excluded, manual)
+    }
+
     suspend fun addAccount(bankId: String, last4: String, name: String?): AccountReference {
         val ref = AccountReference(Bank(bankId), canonicalSuffix(last4))
         require(ref.bank != Bank.UNKNOWN)

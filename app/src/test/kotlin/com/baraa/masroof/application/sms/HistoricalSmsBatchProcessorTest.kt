@@ -91,6 +91,10 @@ class HistoricalSmsBatchProcessorTest {
             RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()),
         )
         cards = CountingCards(RoomCardRegistryRepository.from(db))
+        runBlocking {
+            RoomCardRegistryRepository.from(db).setOwnership(CardReference(Bank.BANK_ALJAZIRA, "7271"),
+                com.baraa.masroof.domain.model.OwnershipStatus.OWNED)
+        }
         reviews = CountingReviews(RoomReviewRepository(db.reviewItemDao()))
         retries = CountingRetries(RoomProcessingRetryRepository(db.processingRetryDao()))
         recoverySchedules = 0

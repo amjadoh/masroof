@@ -15,6 +15,8 @@ internal class PrimaryFieldExtractor(
     private val fallbackCurrency: String? = null,
     private val allowNegativeBalance: Boolean = false,
 ) {
+    var usedAccountCurrencyForAmount: Boolean = false
+        private set
     private data class Hit<T>(val value: T, val range: IntRange)
     private fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
     // Compact bank roles can touch digits (بـ25 / مبلغ25), but never consume a longer word.
@@ -41,11 +43,17 @@ internal class PrimaryFieldExtractor(
             val separate = if (field == ExtractionField.AMOUNT && bareCurrency != null) {
                 val prefix = Regex("(?m)^ *" + role(label) + "[ \\t]*:?[ \\t]*([^\\n\\r]+)$")
                     .findAll(source.text).mapNotNull { row ->
-                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let { Hit(it, row.range) }
+                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let {
+                            if (currency == null) usedAccountCurrencyForAmount = true
+                            Hit(it, row.range)
+                        }
                     }.filterNot { overlaps(it.range) }.toList()
                 val suffix = Regex("(?m)^ *([^\\n\\r:]+?) *: *" + source.phrase(label).pattern + " *$")
                     .findAll(source.text).mapNotNull { row ->
-                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let { Hit(it, row.range) }
+                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let {
+                            if (currency == null) usedAccountCurrencyForAmount = true
+                            Hit(it, row.range)
+                        }
                     }.filterNot { overlaps(it.range) }.toList()
                 prefix + suffix
             } else emptyList()
@@ -96,20 +104,32 @@ internal class PrimaryFieldExtractor(
     private fun referencePattern(label: String) = Regex("(?m)^ *" + role(label) +
         "[ \\t]*:?[ \\t]*\\(?((?:[a-z]{2})?[*x0-9]{1,34})(?![\\p{L}\\p{N}_])")
 
-    fun hasCardReferenceRole(): Boolean = labels(ExtractionField.CARD).any { label ->
+    private fun madaCardMatches(): List<MatchResult> =
+        if (labels(ExtractionField.CARD).any { SourceText(it).text == "مدي" }) {
+            Regex("(?m)^ *(?:مدي-ابل|شراء +pos-مدي) *[*x]*([0-9]{4})[*x]*(?![\\p{L}\\p{N}_])")
+                .findAll(source.text).toList()
+        } else emptyList()
+
+    fun hasCardReferenceRole(): Boolean = madaCardMatches().isNotEmpty() || labels(ExtractionField.CARD).any { label ->
         referencePattern(label).findAll(source.text).any { match ->
             val span = source.evidence("extract.identifier", "CARD", match.groups[1]!!.range)
             evidence.none { it.field == "AMOUNT" && span.start < it.end && it.start < span.end }
         }
     }
 
-    fun account(field: ExtractionField, fallback: String?): String? {
+    fun account(field: ExtractionField, fallback: String?, observedValue: String? = null): String? {
         identifier(field)?.let { return it }
         if (fallback == null) return null
-        val suffixes = labels(field).flatMap { label -> referencePattern(label).findAll(source.text).map { match ->
-            match.groupValues[1].trimEnd('*', 'x').takeLastWhile(Char::isDigit)
-        }.filter { it.isNotEmpty() }.toList() }
-        if (suffixes.any { !fallback.endsWith(it) }) {
+        val references = labels(field).flatMap { label -> referencePattern(label).findAll(source.text)
+            .map { it.groupValues[1] }.toList() }
+        // An explicit partial reference is exact; preserve every visible prefix digit.
+        val observed = references.map { if (observedValue?.all(Char::isDigit) == true) it.trim('*', 'x') else it }.distinct()
+        if (observedValue != null && observed != listOf(observedValue)) {
+            problem("CONFIRMED_ACCOUNT_REFERENCE_MISMATCH", Blocker.CONFLICTING_FACTS)
+            return null
+        }
+        val suffixes = references.map { it.trimEnd('*', 'x').takeLastWhile(Char::isDigit) }.filter { it.isNotEmpty() }
+        if (observedValue == null && suffixes.any { !fallback.endsWith(it) }) {
             problem("CONFIRMED_ACCOUNT_SUFFIX_CONFLICT", Blocker.CONFLICTING_FACTS)
             return null
         }
@@ -118,11 +138,15 @@ internal class PrimaryFieldExtractor(
 
     fun card(): String? {
         val labeledCard = identifier(ExtractionField.CARD)
+        // Explicit Mada roles may be part of the purchase title or name a wallet token.
+        // Retain the observed reference; this never aliases it to a physical card.
+        val mada = madaCardMatches()
         val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
         val hits = pattern.findAll(source.text).toList()
-        val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) }).distinct()
+        val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) } + mada.map { it.groupValues[1] }).distinct()
         if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
         hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
+        mada.forEach { evidence += source.evidence("extract.card.mada-role", "CARD", it.groups[1]!!.range) }
         return values.singleOrNull()
     }
 

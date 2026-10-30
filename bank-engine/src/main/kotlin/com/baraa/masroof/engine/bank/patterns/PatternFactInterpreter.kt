@@ -50,8 +50,9 @@ data class PatternAccountBinding(val role: PatternAccountRole, val bank: BankId,
         require(field == null || field in setOf("source_account", "destination_account", "account_reference"))
         require(field != "source_account" || role == PatternAccountRole.SOURCE)
         require(field != "destination_account" || role == PatternAccountRole.DESTINATION)
-        require(observedValue == null || observedValue.matches(Regex("[0-9]{1,4}")))
-        require(observedValue == null || observedValue.length < 4 || observedValue == last4)
+        require(observedValue == null || observedValue.matches(Regex("[0-9]{1,4}|(?=[*x0-9]{1,34}$)(?=.*[*x])(?=.*[0-9])[*x0-9]+")))
+        val visibleSuffix = observedValue?.trimEnd('*', 'x')?.takeLastWhile(Char::isDigit)
+        require(visibleSuffix == null || visibleSuffix.length < 4 || visibleSuffix.takeLast(4) == last4)
     }
 }
 
@@ -85,11 +86,13 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if (profiles.any { it.network != profile.network || it.schema != profile.schema })
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
             val defaults = roles.mapNotNull { pattern -> pattern.factContract?.takeIf { it.version >= 2 &&
-                it.accountBindings.isNotEmpty() && it.accountBindings.all { binding -> binding.field == null && binding.bank == bank } }?.let { contract ->
+                it.accountBindings.isNotEmpty() && it.accountBindings.all { binding -> binding.bank == bank } }?.let { contract ->
                 pattern.id to RuleFactDefaults(
                     contract.accountBindings.singleOrNull { it.role == PatternAccountRole.SOURCE }?.let { AccountReference(it.bank, it.last4) },
                     contract.accountBindings.singleOrNull { it.role == PatternAccountRole.DESTINATION }?.let { AccountReference(it.bank, it.last4) },
-                    contract.currency)
+                    contract.currency,
+                    contract.accountBindings.singleOrNull { it.role == PatternAccountRole.SOURCE }?.observedValue,
+                    contract.accountBindings.singleOrNull { it.role == PatternAccountRole.DESTINATION }?.observedValue)
             } }.toMap()
             RuleInterpreter(profile.copy(rules = profiles.flatMap { it.rules }), familyAssist, defaults).interpretRouted(input, bank)
         }
@@ -255,6 +258,13 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                     if (bank.deletedPatternIds.isNotEmpty()) {
                         out.writeUTF("deleted-patterns-v1"); out.writeInt(bank.deletedPatternIds.size)
                         bank.deletedPatternIds.sorted().forEach(out::writeUTF)
+                    }
+                }
+                if (configuration.confirmedLoanPayments.isNotEmpty()) {
+                    out.writeUTF("confirmed-loan-payments-v1")
+                    out.writeInt(configuration.confirmedLoanPayments.size)
+                    configuration.confirmedLoanPayments.sortedBy { it.billerCode }.forEach {
+                        out.writeUTF(it.billerCode); out.writeUTF(it.loanBankId); out.writeUTF(it.loanType)
                     }
                 }
             }

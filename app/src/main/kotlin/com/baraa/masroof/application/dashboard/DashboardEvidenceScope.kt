@@ -85,6 +85,22 @@ class DashboardEvidenceScope(
     private val parsedEventRepository: ParsedEventRepository,
     private val rawSmsRepository: RawSmsRepository,
 ) : DashboardEvidenceSource {
+    /** Account detail history, including unposted messages on explicitly linked debit cards. */
+    suspend fun loadAccount(
+        account: com.baraa.masroof.domain.model.AccountReference,
+        cards: List<CardRegistryEntry>,
+    ): DashboardEvidence {
+        val rawSmsIds = buildSet {
+            addAll(parsedEventRepository.listRawSmsIdsReferencingAccount(account))
+            cards.filter { it.linkedAccount == account }.forEach { card ->
+                addAll(parsedEventRepository.listRawSmsIdsReferencingCard(
+                    com.baraa.masroof.domain.model.CardReference(card.bank, card.last4),
+                ))
+            }
+        }
+        return withRawSms(parsedEventRepository.listByRawSmsIds(rawSmsIds), known = emptyMap())
+    }
+
     override suspend fun load(
         transactions: Collection<FinancialTransaction>,
         registryCards: List<CardRegistryEntry>,
