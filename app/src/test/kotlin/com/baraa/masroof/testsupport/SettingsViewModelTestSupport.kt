@@ -26,6 +26,7 @@ internal object SettingsViewModelTestSupport {
         cards: CardRegistryRepository = emptyCardRegistry(),
         accounts: AccountRegistryRepository = emptyAccountRegistry(),
         loans: com.baraa.masroof.domain.repository.LoanRegistryRepository = NoOpLoanRegistryRepository,
+        transactions: FinancialTransactionRepository? = null,
     ): SettingsRegistryWorkflow =
         SettingsRegistryWorkflow(
             cardRegistryRepository = cards,
@@ -36,6 +37,7 @@ internal object SettingsViewModelTestSupport {
                 cardRegistry = cards,
                 loanRegistry = loans,
             ),
+            transactions = transactions,
         )
 
     fun noOpRestoreService(): TransactionRestoreService =

@@ -405,6 +405,12 @@ class AppContainer(
             ownershipConfirmationService = ownershipConfirmationService,
             parsedEvents = parsedEventRepository,
             inTransaction = { block -> withDatabaseTransaction(block) },
+            transactions = financialTransactionRepository,
+            patternBoundAccounts = {
+                messagePatternStore.load().banks.flatMap { bank -> bank.currentPatterns }
+                    .flatMap { it.factContract?.accountBindings.orEmpty() }
+                    .map { com.baraa.masroof.domain.model.AccountReference(Bank(it.bank.value), it.last4) }.toSet()
+            },
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =

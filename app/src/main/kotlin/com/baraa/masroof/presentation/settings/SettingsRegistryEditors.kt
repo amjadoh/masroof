@@ -91,6 +91,7 @@ fun SettingsCardMetadataActions(
     onPickNetwork: () -> Unit,
     includeRename: Boolean = true,
     onStop: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = MasroofSpacing.sectionGap),
         horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
@@ -98,6 +99,7 @@ fun SettingsCardMetadataActions(
         if (includeRename) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), onRename, enabled = enabled)
         com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_card_setup), onPickNetwork, enabled = enabled)
         onStop?.let { com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), it, enabled = enabled, warning = true) }
+        onDelete?.let { SettingsDeleteAction(it, enabled) }
     }
 }
 

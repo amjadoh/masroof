@@ -24,6 +24,7 @@ import com.baraa.masroof.application.settings.CommitmentHistoryBuilder
 import com.baraa.masroof.application.settings.CommitmentRecordBuilder
 import com.baraa.masroof.application.settings.SettingsCommitmentsWorkflow
 import com.baraa.masroof.application.review.ReviewWorkflowService
+import com.baraa.masroof.application.settings.RegistryDeleteTarget
 import com.baraa.masroof.application.settings.SettingsRegistryWorkflow
 import com.baraa.masroof.application.transaction.HistoricalMerchantRateCorrectionReport
 import com.baraa.masroof.application.transaction.HistoricalMerchantRateCorrectionWorkflow
@@ -274,6 +275,46 @@ class SettingsViewModel(
         val target = _uiState.value.stopConfirmLoanTarget ?: return
         dismissStopConfirm()
         markLoanExternal(target)
+    }
+
+    fun requestDelete(target: StopTrackingTarget) {
+        if (_uiState.value.updating) return
+        viewModelScope.launch {
+            try {
+                val preview = settingsRegistryWorkflow.deletionPreview(target.registryDeleteTarget())
+                _uiState.update { it.copy(deleteRequest = RegistryDeleteUi(target,
+                    preview.linked.map { tx -> LinkedTransactionUi(tx.id, tx.merchant ?: tx.counterparty, tx.amount,
+                        tx.occurredAt.atZone(tx.occurredAtZone?.let(java.time.ZoneId::of) ?: java.time.ZoneId.systemDefault()).toLocalDate()) },
+                    preview.linkedCount, preview.blocker)) }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (caught: Exception) {
+                appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings deletionPreview", caught)
+                _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }
+            }
+        }
+    }
+
+    fun dismissDelete() {
+        _uiState.update { it.copy(deleteRequest = null) }
+    }
+
+    /** A blocked delete offers stop tracking instead, through the usual stop confirmation. */
+    fun stopTrackingInsteadOfDelete() {
+        val request = _uiState.value.deleteRequest ?: return
+        _uiState.update { it.copy(deleteRequest = null, stopTrackingTarget = request.target) }
+    }
+
+    fun confirmDelete() {
+        val request = _uiState.value.deleteRequest?.takeIf { it.blocker == null } ?: return
+        dismissDelete()
+        updateRegistry { settingsRegistryWorkflow.delete(request.target.registryDeleteTarget()) }
+    }
+
+    private fun StopTrackingTarget.registryDeleteTarget(): RegistryDeleteTarget = when (this) {
+        is StopTrackingTarget.Account -> RegistryDeleteTarget.Account(AccountReference(account.bank, account.maskedNumber))
+        is StopTrackingTarget.Card -> RegistryDeleteTarget.Card(CardReference(card.bank, card.last4))
+        is StopTrackingTarget.Loan -> RegistryDeleteTarget.Loan(LoanReference(loan.bank, loan.loanType))
     }
 
     fun reparseStoredMessages() {

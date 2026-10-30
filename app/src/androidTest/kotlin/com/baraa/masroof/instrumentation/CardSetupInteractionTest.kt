@@ -39,7 +39,7 @@ class CardSetupInteractionTest {
         var stopped = false
         compose.setContent { TestTheme {
             var target by remember { mutableStateOf<ManagedCardUi?>(null) }
-            SettingsRegistryCardRow(card, false, { stopped = true }, {}, { target = it })
+            SettingsRegistryCardRow(card, false, { stopped = true }, {}, { target = it }, {})
             SettingsCardSetupSheet(target, null, listOf(card), emptyList(), false, false, { target = null }, {})
         } }
         compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.settings_action_role)).assertDoesNotExist()
