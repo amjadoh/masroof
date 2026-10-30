@@ -687,17 +687,18 @@ class AnalyticsJourneyTest {
                 }
                 compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
                 compose.waitUntil(30_000) {
-                    compose.onAllNodesWithTag("learning-example-${examples.first().reviewId}").fetchSemanticsNodes().size == 1
+                    compose.onAllNodesWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).fetchSemanticsNodes().size == 1
                 }
             }
             openReviewSession()
-            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").assertIsDisplayed()
+            // The modal can merge button semantics while its body reloads; target the actual tagged action.
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithTag("sheet-cancel").performClick()
             assertNull(opened)
             assertEquals(before, runBlocking { c.reviewWorkflowService.listRequiredReviews() })
             assertEquals(financial, runBlocking { c.financialTransactionRepository.listAll() })
             openReviewSession()
-            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).assertHasClickAction().assertIsEnabled().performClick()
             assertEquals(examples.first().reviewId, opened)
             compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
             screen("optional-distinct-message-review")
