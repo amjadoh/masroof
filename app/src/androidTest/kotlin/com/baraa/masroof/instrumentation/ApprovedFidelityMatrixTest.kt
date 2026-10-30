@@ -426,6 +426,7 @@ class ApprovedFidelityMatrixTest {
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
                 onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
                 onRenameAccount = {},
                 onDismissRenameAccount = {},
                 onSaveAccountName = {},
@@ -443,6 +444,7 @@ class ApprovedFidelityMatrixTest {
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
                 onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
                 onRenameCard = {},
                 onDismissRenameCard = {},
                 onSaveCardName = {},
@@ -458,7 +460,8 @@ class ApprovedFidelityMatrixTest {
                 onRequestStopTracking = {},
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
-                onConfirmStopTracking = {}
+                onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
             )
             "myCommitments" -> SettingsCommitmentsScreen(
                 state = settingsState,

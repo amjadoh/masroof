@@ -107,4 +107,7 @@ interface AccountRegistryDao {
         maskedNumber: String,
         accountType: String,
     ): Int
+
+    @Query("DELETE FROM account_registry WHERE bankId = :bankId AND maskedNumber = :maskedNumber")
+    suspend fun delete(bankId: String, maskedNumber: String): Int
 }

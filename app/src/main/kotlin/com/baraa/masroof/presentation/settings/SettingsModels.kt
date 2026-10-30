@@ -136,6 +136,21 @@ sealed interface StopTrackingTarget {
     data class Loan(val loan: ManagedLoanUi) : StopTrackingTarget
 }
 
+/** A delete request for one registry item, with what blocks it; never persisted. */
+data class RegistryDeleteUi(
+    val target: StopTrackingTarget,
+    val linked: List<LinkedTransactionUi>,
+    val linkedCount: Int,
+    val blocker: com.baraa.masroof.application.settings.DeleteBlocker?,
+)
+
+data class LinkedTransactionUi(
+    val id: String,
+    val title: String?,
+    val amount: com.baraa.masroof.core.money.Money,
+    val occurredOn: LocalDate,
+)
+
 data class SettingsUiState(
     val loading: Boolean = true,
     val followedCards: List<ManagedCardUi> = emptyList(),
@@ -161,6 +176,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.DEFAULT,
     val updating: Boolean = false,
     val stopTrackingTarget: StopTrackingTarget? = null,
+    val deleteRequest: RegistryDeleteUi? = null,
     val renameCardTarget: ManagedCardUi? = null,
     val renameAccountTarget: ManagedAccountUi? = null,
     val accountTypeTarget: ManagedAccountUi? = null,

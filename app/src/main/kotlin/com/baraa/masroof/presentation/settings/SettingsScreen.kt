@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +63,9 @@ fun SettingsRoute(
         viewModel.refresh()
     }
     val state by viewModel.uiState.collectAsState()
+    val deleteActions = remember(viewModel) {
+        RegistryDeleteActions(viewModel::requestDelete, viewModel::dismissDelete, viewModel::confirmDelete, viewModel::stopTrackingInsteadOfDelete)
+    }
     var manualBankId by rememberSaveable { mutableStateOf<String?>(null) }
     var manualCard by rememberSaveable { mutableStateOf(false) }
     var destinationStack by rememberSaveable {
@@ -274,6 +278,7 @@ fun SettingsRoute(
             onResumeTracking = viewModel::resumeAccountTracking,
             onDismissStopConfirm = viewModel::dismissStopConfirm,
             onConfirmStopTracking = viewModel::confirmStopAccountTracking,
+            deleteActions = deleteActions,
             onRenameAccount = viewModel::openRenameAccount,
             onDismissRenameAccount = viewModel::dismissRenameAccount,
             onSaveAccountName = viewModel::saveAccountDisplayName,
@@ -294,6 +299,7 @@ fun SettingsRoute(
             onResumeTracking = viewModel::resumeTracking,
             onDismissStopConfirm = viewModel::dismissStopConfirm,
             onConfirmStopTracking = viewModel::confirmStopTracking,
+            deleteActions = deleteActions,
             onRenameCard = viewModel::openRenameCard,
             onDismissRenameCard = viewModel::dismissRenameCard,
             onSaveCardName = viewModel::saveCardDisplayName,
@@ -313,6 +319,7 @@ fun SettingsRoute(
             onResumeTracking = viewModel::resumeLoanTracking,
             onDismissStopConfirm = viewModel::dismissStopConfirm,
             onConfirmStopTracking = viewModel::confirmStopLoanTracking,
+            deleteActions = deleteActions,
         )
 
         SettingsDestination.App -> SettingsAppScreen(
