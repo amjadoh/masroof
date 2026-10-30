@@ -336,7 +336,16 @@ class AppContainer(
             inferenceCurrent = { interpretationService?.isInferenceCurrent(it) != false },
             inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
             patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
-                messagePatternStore, accountRegistryRepository)::isCurrent)
+                messagePatternStore, accountRegistryRepository, cardRegistryRepository)::isCurrent)
+    }
+
+    val confirmedLoanPaymentsWorkflow by lazy {
+        com.baraa.masroof.application.transaction.ConfirmedLoanPaymentsWorkflow(
+            messagePatternStore, databaseAccessGate, financialTransactionRepository, effectiveParsedEventProvider,
+            cardRegistryRepository, accountRegistryRepository, loanRegistryRepository, reviewRepository,
+            inTransaction = { work -> withDatabaseTransaction(work) },
+            onChanged = { maintenanceCompletionSignal.notifyCompleted() },
+        )
     }
 
     val transactionReconciliationService: TransactionReconciliationService =
@@ -349,6 +358,7 @@ class AppContainer(
             effectiveParsedEventProvider = effectiveParsedEventProvider,
             reviewRepository = reviewRepository,
             automaticWrite = { expected, write -> automaticInterpretationWriteGuard.write(expected,write) },
+            confirmedLoanPayments = confirmedLoanPaymentsWorkflow,
         )
 
     val reviewQueueUpdater: ReviewQueueUpdater =
@@ -414,6 +424,11 @@ class AppContainer(
             ownershipConfirmationService = ownershipConfirmationService,
             parsedEvents = parsedEventRepository,
             inTransaction = { block -> withDatabaseTransaction(block) },
+            accountEvidenceScope = com.baraa.masroof.application.dashboard.DashboardEvidenceScope(
+                financialTransactionRepository, parsedEventRepository, rawSmsRepository,
+            ),
+            effectiveEvents = effectiveParsedEventProvider,
+            reviewRepository = reviewRepository,
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =
@@ -907,7 +922,9 @@ class AppContainer(
 
     private suspend fun runStartupMaintenanceAttempt(): StartupMaintenanceOutcome =
         try {
-            startupMaintenance.runBlockingPhase()
+            startupMaintenance.runBlockingPhase().also { outcome ->
+                if (outcome == StartupMaintenanceOutcome.READY) confirmedLoanPaymentsWorkflow.recoverConfirmedHistory()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

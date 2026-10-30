@@ -193,13 +193,16 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val amount = if (family in INFORMATIONAL) null else primary.money(ExtractionField.AMOUNT, standaloneAmount,
             matching.flatMap { it.observations["amount.title"].orEmpty() })
         val card = primary.card()
+        val sourceObservedValue = defaults?.sourceObservedValue
         val account = primary.account(ExtractionField.SOURCE_ACCOUNT, defaults?.source?.maskedNumber?.takeIf {
-            family !in INFORMATIONAL && family != MessageFamily.CARD_PAYMENT &&
-                (!primary.hasCardReferenceRole() || family == MessageFamily.WITHDRAWAL)
-        })
+            family !in INFORMATIONAL && (family != MessageFamily.CARD_PAYMENT || sourceObservedValue != null) &&
+                (!primary.hasCardReferenceRole() || family == MessageFamily.WITHDRAWAL || sourceObservedValue != null)
+        }, sourceObservedValue)
         val destination = primary.account(ExtractionField.DESTINATION_ACCOUNT, defaults?.destination?.maskedNumber?.takeIf {
             family !in INFORMATIONAL && !primary.hasCardReferenceRole()
-        })
+        }, defaults?.destinationObservedValue)
+        if (card != null && account == null && destination == null && primary.usedAccountCurrencyForAmount &&
+            family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.BILL_PAYMENT)) problem("CARD_PRINCIPAL_CURRENCY_UNCONFIRMED")
         val merchant = primary.merchant()
         val times = primary.transactionTimes(ignoreUnbound = family in INFORMATIONAL)
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {

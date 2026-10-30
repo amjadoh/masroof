@@ -20,14 +20,16 @@ import com.baraa.masroof.domain.model.OwnershipStatus
 import com.baraa.masroof.presentation.common.*
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
-/** Both steps are drafts. Only the final Save may create an owned registry entry. */
+/** Both steps are drafts. Only the final Save may create a registry entry with explicit ownership. */
 @Composable
 internal fun SettingsManualRegistrySheet(bankId: String, card: Boolean, state: SettingsUiState,
     onDismiss: () -> Unit, onSaveAccount: (String, String?) -> Unit,
-    onSaveCard: (String, String?, CardConfiguration) -> Unit) {
+    onSaveCard: (String, String?, CardConfiguration) -> Unit,
+    onSaveExternalAccount: ((String, String?) -> Unit)? = null) {
     var last4 by rememberSaveable(bankId, card) { mutableStateOf("") }
     var name by rememberSaveable(bankId, card) { mutableStateOf("") }
     var owned by rememberSaveable(bankId, card) { mutableStateOf(false) }
+    var external by rememberSaveable(bankId, card) { mutableStateOf(false) }
     var configuringCard by rememberSaveable(bankId, card) { mutableStateOf(false) }
     if (configuringCard) {
         SettingsCardSetupSheet(ManagedCardUi("", Bank(bankId), last4, OwnershipStatus.OWNED, name), null,
@@ -36,9 +38,9 @@ internal fun SettingsManualRegistrySheet(bankId: String, card: Boolean, state: S
         return
     }
     MasroofBottomSheet(stringResource(if (card) R.string.settings_add_card_manual else R.string.settings_add_account_manual),
-        onDismiss, { if (card) configuringCard = true else onSaveAccount(last4, name) },
+        onDismiss, { if (card) configuringCard = true else if (external) onSaveExternalAccount?.invoke(last4, name) else onSaveAccount(last4, name) },
         stringResource(if (card) R.string.teaching_next else R.string.settings_save),
-        subtitle = settingsBankLabel(Bank(bankId)), canApply = owned && last4.length == 4, busy = state.updating) {
+        subtitle = settingsBankLabel(Bank(bankId)), canApply = (owned || external) && last4.length == 4, busy = state.updating) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofFormField(last4, { value -> last4 = value.filter(Char::isDigit).take(4) },
                 label = { MasroofText(stringResource(R.string.settings_manual_last4)) }, enabled = !state.updating,
@@ -47,9 +49,15 @@ internal fun SettingsManualRegistrySheet(bankId: String, card: Boolean, state: S
                 singleLine = true, modifier = Modifier.fillMaxWidth().testTag("manual-last4"), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
             MasroofFormField(name, { name = it }, label = { MasroofText(stringResource(R.string.settings_manual_name)) },
                 enabled = !state.updating, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("manual-name"))
-            Row(Modifier.fillMaxWidth().toggleable(owned, enabled = !state.updating, role = Role.Checkbox) { owned = it }) {
+            Row(Modifier.fillMaxWidth().toggleable(owned, enabled = !state.updating, role = Role.Checkbox) { owned = it; if (it) external = false }) {
                 Checkbox(owned, null, enabled = !state.updating)
                 MasroofText(stringResource(if (card) R.string.settings_manual_card_owned else R.string.pattern_financial_account_owned))
+            }
+            if (!card && onSaveExternalAccount != null) {
+                Row(Modifier.fillMaxWidth().toggleable(external, enabled = !state.updating, role = Role.Checkbox) { external = it; if (it) owned = false }) {
+                    Checkbox(external, null, enabled = !state.updating)
+                    MasroofText(stringResource(R.string.settings_manual_account_external))
+                }
             }
             if (state.error != null) MasroofText(stringResource(R.string.settings_manual_registry_failed), color = MaterialTheme.colorScheme.error)
         }

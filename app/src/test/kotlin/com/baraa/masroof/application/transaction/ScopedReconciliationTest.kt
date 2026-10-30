@@ -708,6 +708,8 @@ class ScopedReconciliationTest {
         amount: String? = "51.99",
         status: ParseStatus = ParseStatus.SUCCESS,
     ) {
+        val funding = AccountReference(Bank.BANK_ALJAZIRA, "3001")
+        confirmation.confirmAccountOwned(funding)
         persist(
             smsId = smsId,
             at = at,
@@ -715,6 +717,7 @@ class ScopedReconciliationTest {
                 id = eventId,
                 rawSmsId = smsId,
                 family = MessageFamily.PURCHASE,
+                source = funding,
                 amount = amount?.let { Money.of(it, Currency.SAR) },
                 status = status,
                 merchant = "Keeta",

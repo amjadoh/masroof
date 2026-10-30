@@ -1,0 +1,99 @@
+package com.baraa.masroof.application.patterns
+
+import com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec
+import com.baraa.masroof.engine.bank.*
+import com.baraa.masroof.engine.bank.patterns.*
+import com.baraa.masroof.finance.value.BankId
+import org.junit.Assert.*
+import org.junit.Test
+import java.io.File
+import java.time.Instant
+
+/** Entirely fictional values; production layouts, never private SMS fixtures. */
+class AuditedSmsReadingTest {
+    private fun parse(bank: String, sender: String, body: String, defaultAccount: String? = null,
+        reference: String? = null, family: String = "PURCHASE"): Interpretation {
+        val bundled = MessagePatternConfigurationCodec.decode(File("src/main/assets/bank-patterns/$bank.patterns.json").readText())
+        val config = if (defaultAccount == null) bundled else bundled.copy(banks = bundled.banks.map { definition ->
+            definition.copy(patterns = definition.patterns.map { pattern ->
+                if (pattern.label != family) pattern else pattern.copy(factContract = pattern.factContract!!.copy(
+                    version = 2, currency = com.baraa.masroof.finance.value.Currency.SAR,
+                    accountBindings = listOf(PatternAccountBinding(PatternAccountRole.SOURCE, BankId(bank), defaultAccount,
+                        reference?.let { "source_account" }, reference))))
+            })
+        })
+        val persisted = MessagePatternConfigurationCodec.decode(MessagePatternConfigurationCodec.encode(config))
+        return PatternFactInterpreter(persisted).interpretRouted(
+            MessageInput("synthetic", sender, body, Instant.parse("2026-10-20T12:00:00Z"), true), BankId(bank))
+    }
+
+    @Test fun confirmedShortReferenceLinksOnlyTheObservedSourceAndRetainsLoanFacts() {
+        val body = "خصم قسط تمويل\nمن 900*567\nالقسط 123.45 SAR\nالمبلغ المتبقي 54321.00 SAR\nلـ تمويل شخصي\nفي 2026-10-20 12:30"
+        val linked = parse("BANK_SNB", "SNB-AlAhli", body, "8765", "900*567", "FINANCING_INSTALLMENT")
+        assertEquals(linked.diagnostics.toString(), ParseStatus.SUCCESS, linked.status)
+        assertEquals("8765", linked.facts.sourceAccount?.maskedNumber)
+        assertEquals(LoanType.PERSONAL, linked.facts.loanType)
+        for (other in listOf(body.replace("900*567", "900*568"), body.replace("900*567", "901*567"),
+                body.replace("من 900*567\n", ""), body + "\nمن 900*568")) {
+            val rejected = parse("BANK_SNB", "SNB-AlAhli", other, "8765", "900*567", "FINANCING_INSTALLMENT")
+            assertNull(rejected.facts.sourceAccount)
+            assertNotEquals(ParseStatus.SUCCESS, rejected.status)
+        }
+        val unconfirmed = parse("BANK_SNB", "SNB-AlAhli", body, "8765", family = "FINANCING_INSTALLMENT")
+        assertNotEquals(ParseStatus.SUCCESS, unconfirmed.status)
+        assertTrue(runCatching { parse("BANK_SNB", "SNB-AlAhli", body, "8765", "900*4321", "FINANCING_INSTALLMENT") }.isFailure)
+    }
+
+    @Test fun cardPaymentRequiresAnExplicitReferenceBindingNotABankWideDefault() {
+        val body = "بطاقة إئتمانية: تسديد\nبطاقة: ***6543;VISA\nمبلغ: 123.45 SAR\nمن: ***321\nفي: 2026-10-20 12:30:00"
+        val linked = parse("BANK_SAB", "SAB", body, "4321", "321", "CARD_PAYMENT")
+        assertEquals(linked.diagnostics.toString(), ParseStatus.SUCCESS, linked.status)
+        assertEquals("4321", linked.facts.sourceAccount?.maskedNumber)
+        assertEquals("6543", linked.facts.card?.last4)
+        assertTrue(runCatching { parse("BANK_SAB", "SAB", body, "4321", family = "CARD_PAYMENT") }.isFailure)
+        val changed = parse("BANK_SAB", "SAB", body.replace("***321", "***322"), "4321", "321", "CARD_PAYMENT")
+        assertNotEquals(ParseStatus.SUCCESS, changed.status)
+    }
+
+    @Test fun explicitCardDoesNotAcquireTheDefaultAccountOrAnotherCardsIdentity() {
+        val result = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nبـ37 SAR\nمدى-ابل*4321\nفي 2026-10-20 12:30", "9876")
+        assertEquals("4321", result.facts.card?.last4)
+        assertNull(result.facts.sourceAccount)
+        assertNull(result.facts.destinationAccount)
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        val missingCurrency = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nمبلغ 37\nمدى-ابل*4321\nفي 2026-10-20 12:30", "9876")
+        assertNotEquals(ParseStatus.SUCCESS, missingCurrency.status)
+    }
+
+    @Test fun debitCardReferencesAreReadFromTheirExplicitPurchaseRoles() {
+        for (number in listOf("4321", "8765")) {
+            val snb = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nبـ37 SAR\nمن TEST SHOP\nمدى-ابل*$number\nفي 26/10/20 12:30")
+            assertEquals(snb.diagnostics.toString(), number, snb.facts.card?.last4)
+            assertEquals(CardChannel.DEBIT, snb.facts.cardChannel)
+            val alinma = parse("BANK_ALINMA", "alinma", "شراء POS-مدى $number*-أثير\nبـ 37 SAR\nمن TEST SHOP\n26-10-20 12:30")
+            assertEquals(alinma.diagnostics.toString(), number, alinma.facts.card?.last4)
+        }
+    }
+
+    @Test fun financingTitleIsRecognizedWithoutInventingCurrencyOrAccountOwnership() {
+        val result = parse("BANK_EMIRATES_NBD", "EmiratesNBD", "خصم قسط تمويل\nPersonal Finance : نوع التمويل\n1234.50 : القسط المستحق\n45678.90 : اجمالي المبلغ المتبقي\nXX4321 : رقم الحساب\n20-10-2026 : التاريخ\n12:30:00 : الوقت")
+        assertEquals(result.diagnostics.toString(), MessageFamily.FINANCING_INSTALLMENT, result.facts.family)
+        assertNotEquals(ParseStatus.SUCCESS, result.status)
+    }
+
+    @Test fun cardTokensCannotComeFromMerchantTextOrPartialNumbersAndConflictsStayInReview() {
+        for (line in listOf("من مدى-ابل*4321", "مدى-ابل*43210")) {
+            val result = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nبـ37 SAR\n$line")
+            assertNull(result.facts.card)
+            assertNotEquals(ParseStatus.SUCCESS, result.status)
+        }
+        val conflict = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nبـ37 SAR\nمدى-ابل*4321\nبطاقة:8765")
+        assertNull(conflict.facts.card)
+        assertNotEquals(ParseStatus.SUCCESS, conflict.status)
+    }
+
+    @Test fun declinedPurchaseNeverBecomesAnExecutedPurchase() {
+        val result = parse("BANK_SAB", "SAB", "رصيد غير كافِ\nرصيدك غير كافِ على بطاقة Visa Noon (***4321) لإتمام POS Purchase بمبلغ 37 SAR\nفي 2026-10-20 12:30:00")
+        assertNotEquals(ParseStatus.SUCCESS, result.status)
+    }
+}

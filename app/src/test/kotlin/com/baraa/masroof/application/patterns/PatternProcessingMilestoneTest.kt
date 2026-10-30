@@ -24,6 +24,104 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PatternProcessingMilestoneTest {
+    @Test fun confirmedMaskedSourceKeepsLoanRepaymentSeparateFromBillSpendingAndReplay() = runBlocking {
+        fixture { c ->
+            val bankId = "BANK_SNB"
+            val bank = Bank(bankId)
+            val w = c.messagePatternsWorkflow
+            w.confirmPatternAccount(bankId, "6789")
+            c.ownershipConfirmationService.confirmLoanOwned(LoanReference(bank, LoanType.PERSONAL))
+            val current = w.load()
+            val definition = current.banks.single { it.bankId == bankId }
+            val revisions = definition.currentPatterns.filter { it.label in setOf("FINANCING_INSTALLMENT", "BILL_PAYMENT") }.map { pattern ->
+                pattern.copy(revision = pattern.revision + 1, factContract = pattern.factContract!!.copy(version = 2,
+                    currency = com.baraa.masroof.finance.value.Currency.SAR,
+                    accountBindings = listOf(PatternAccountBinding(PatternAccountRole.SOURCE,
+                        com.baraa.masroof.finance.value.BankId(bankId), "6789", "source_account", "900*567"))))
+            }
+            w.saveBank(current.generation, definition.copy(patterns = revisions))
+            val loan = "خصم قسط تمويل\nمن 900*567\nالقسط 123.45 SAR\nالمبلغ المتبقي 54321.00 SAR\nلـ تمويل شخصي\nفي 2026-10-13 12:30"
+            c.processRawSmsUseCase.ingest(sms("confirmed-loan", loan, "SNB-AlAhli"))
+            val repayment = c.financialTransactionRepository.listAll().single()
+            assertEquals(FinancialTransactionType.LOAN_REPAYMENT, repayment.type)
+            assertEquals("account:BANK_SNB:6789", repayment.sourceContainerId)
+            assertEquals("123.45", repayment.amount.amount.toPlainString())
+            c.processStoredSmsUseCase.process("confirmed-loan")
+            assertEquals(listOf(repayment), c.financialTransactionRepository.listAll())
+            val bill = "مدفوعات وزارة الداخلية\nمن 900*567\nمبلغ 37.50 SAR\nالجهة TEST SERVICE\nفي 2026-10-13 12:35"
+            c.processRawSmsUseCase.ingest(sms("confirmed-bill", bill, "SNB-AlAhli"))
+            val transactions = c.financialTransactionRepository.listAll()
+            assertEquals(2, transactions.size)
+            assertEquals(1, transactions.count { it.type == FinancialTransactionType.LOAN_REPAYMENT })
+            assertEquals(1, transactions.count { it.type == FinancialTransactionType.BILL_PAYMENT })
+            assertEquals("account:BANK_SNB:6789", transactions.single { it.type == FinancialTransactionType.BILL_PAYMENT }.sourceContainerId)
+        }
+    }
+
+    @Test fun anotherOwnersCardOnTheSamePhoneNeverUsesTheDefaultOwnedAccount() = runBlocking {
+        fixture { c ->
+            val bank = Bank("BANK_SNB")
+            val parent = AccountReference(bank, "6789")
+            val other = AccountReference(bank, "2345")
+            val parentCard = CardReference(bank, "4321")
+            val otherCard = CardReference(bank, "7654")
+            val w = c.messagePatternsWorkflow
+            val account = w.confirmPatternAccount(bank.id, "6789")
+            w.configureBankAccount(w.load().generation, bank.id, account.id, "SAR", false)
+            c.ownershipConfirmationService.markAccountExternal(other)
+            c.ownershipConfirmationService.markCardExternal(otherCard)
+            c.ownershipConfirmationService.confirmCardOwned(parentCard)
+            c.cardRegistryRepository.markAsDebit(parentCard)
+            c.cardRegistryRepository.linkDebitToAccount(parentCard, parent)
+            val purchase = "شراء-POS\nبـ37.50 SAR\nمن TEST SHOP\nمدى-ابل*7654\nفي 2026-10-13 12:30"
+            c.processRawSmsUseCase.ingest(sms("other-owner", purchase, "SNB-AlAhli"))
+            val parsed = requireNotNull(c.parsedEventRepository.findByRawSmsId("other-owner")).event
+            assertEquals("7654", parsed.cardRef?.last4)
+            assertNull(parsed.sourceAccountRef)
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertTrue(c.reviewRepository.findByRawSmsId("other-owner")?.status != ReviewStatus.REQUIRED)
+            c.processRawSmsUseCase.ingest(sms("unknown-owner", purchase.replace("7654", "9999"), "SNB-AlAhli"))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("unknown-owner")!!.status)
+            assertTrue(c.processingRetryRepository.listRetryableRawSmsIds().isEmpty())
+            c.processRawSmsUseCase.ingest(sms("external-account-unknown-card",
+                purchase.replace("7654", "9999") + "\nمن حساب 2345", "SNB-AlAhli"))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            c.processRawSmsUseCase.ingest(sms("owned-control", purchase.replace("7654", "4321"), "SNB-AlAhli"))
+            assertEquals(listOf(FinancialTransactionType.EXPENSE), c.financialTransactionRepository.listAll().map { it.type })
+            val transfer = "حوالة صادرة داخلية\nمبلغ 12 SAR\nمن حساب 6789\nالى حساب 2345\nلـ TEST PERSON\nفي 2026-10-13 12:35"
+            c.processRawSmsUseCase.ingest(sms("to-other-owner", transfer, "SNB-AlAhli"))
+            val receipt = "حوالة داخلية واردة\nمبلغ 12 SAR\nمن حساب 6789\nالى حساب 2345\nمن TEST PERSON\nفي 2026-10-13 12:35"
+            c.processRawSmsUseCase.ingest(sms("other-owner-receipt", receipt, "SNB-AlAhli"))
+            val transactions = c.financialTransactionRepository.listAll()
+            assertEquals(1, transactions.count { it.type == FinancialTransactionType.EXPENSE })
+            assertFalse(transactions.any { it.type == FinancialTransactionType.SELF_TRANSFER })
+            assertEquals(OwnershipStatus.EXTERNAL, c.accountRegistryRepository.resolve(other))
+            assertEquals(OwnershipStatus.EXTERNAL, c.cardRegistryRepository.resolve(otherCard))
+            c.settingsRegistryWorkflow.updateAccountDisplayName(other, "Family member")
+            c.settingsRegistryWorkflow.configureCard(otherCard, com.baraa.masroof.domain.model.CardConfiguration(
+                com.baraa.masroof.domain.model.CardNetwork.MADA, com.baraa.masroof.domain.model.CardType.DEBIT,
+                linkedAccount = other,
+            ))
+            assertTrue(runCatching { c.settingsRegistryWorkflow.configureCard(otherCard,
+                com.baraa.masroof.domain.model.CardConfiguration(com.baraa.masroof.domain.model.CardNetwork.MADA,
+                    com.baraa.masroof.domain.model.CardType.DEBIT, linkedAccount = parent)) }.isFailure)
+            assertTrue(runCatching { c.settingsRegistryWorkflow.configureCard(otherCard,
+                com.baraa.masroof.domain.model.CardConfiguration(null, com.baraa.masroof.domain.model.CardType.CREDIT)) }.isFailure)
+            val spending = c.settingsRegistryWorkflow.externalAccountSpending(other)
+            // The unknown card's explicit account conflicts with the approved default; it stays unconfirmed.
+            assertTrue(c.parsedEventRepository.findByRawSmsId("external-account-unknown-card")!!.event.parseStatus != ParseStatus.SUCCESS)
+            assertEquals(listOf("other-owner"), spending.rows.map { it.rawSmsId })
+            assertEquals("37.50", spending.totals.single().purchasesAndFees.amount.toPlainString())
+            c.settingsRegistryWorkflow.updateAccountDisplayName(other, "اسم اختياري")
+            assertEquals("اسم اختياري", c.accountRegistryRepository.get(other)?.displayName)
+            assertEquals(spending, c.settingsRegistryWorkflow.externalAccountSpending(other))
+            assertEquals(transactions, c.financialTransactionRepository.listAll())
+            assertEquals(OwnershipStatus.EXTERNAL, c.accountRegistryRepository.resolve(other))
+            assertTrue(c.processingRetryRepository.listRetryableRawSmsIds().isEmpty())
+        }
+    }
+
     @Test fun deletingAnApprovedPatternPreservesPostedEvidenceAndRejectsAStaleApproval() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
@@ -174,22 +272,24 @@ class PatternProcessingMilestoneTest {
         }
     }
 
-    @Test fun allSixStcLayoutsCanBeExplicitlyApprovedWithoutInventingFundingCardsOrIncome() = runBlocking {
+    @Test fun allEightStcLayoutsCanBeExplicitlyApprovedWithoutInventingFundingCardsOrIncome() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
             val account = w.confirmPatternAccount("BANK_STC", "4321")
             val rows = Json.parseToJsonElement(java.io.File("src/test/resources/testdata/patterns/stc-seed-v1.json").readText())
                 .jsonObject.getValue("rows").let { it as kotlinx.serialization.json.JsonArray }.map { it.jsonObject }
                 .filter { it.getValue("teach").jsonPrimitive.content == "true" }
-            assertEquals(6, rows.size)
+            assertEquals(8, rows.size)
             for (row in rows) {
                 val id = row.getValue("id").jsonPrimitive.content
                 val body = row.getValue("body").jsonPrimitive.content
                 val fields = row.getValue("fields").jsonObject
-                val reference = fields["account_reference"]?.jsonPrimitive?.content?.takeIf { it.matches(Regex("[0-9]{1,3}")) }?.let { "account_reference" }
+                val reference = fields["account_reference"]?.jsonPrimitive?.content
+                    ?.takeIf { id != "stc-internal-out-ar" && it.matches(Regex("[0-9]{1,3}")) }?.let { "account_reference" }
                 val context = fields.keys.filter { it in setOf("source_account", "destination_account", "account_reference", "funding_reference", "counterparty_bank") && it != reference }.toSet()
                 val operation = PatternOperation.valueOf(row.getValue("operation").jsonPrimitive.content)
-                w.saveFinancial(w.previewFinancial(w.load().generation, "BANK_STC", id, operation, account.id, body, reference, context))
+                w.saveFinancial(w.previewFinancial(w.load().generation, "BANK_STC", id, operation, account.id, body, reference, context,
+                    currency = com.baraa.masroof.core.money.Currency.SAR))
                 assertTrue(c.processRawSmsUseCase.ingest(sms("approved-$id", body)) is SmsIngestionResult.Parsed)
                 val event = c.parsedEventRepository.findByRawSmsId("approved-$id")!!.event
                 assertEquals(ParseStatus.SUCCESS, event.parseStatus)

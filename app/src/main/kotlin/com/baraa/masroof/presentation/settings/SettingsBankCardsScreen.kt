@@ -70,7 +70,7 @@ fun SettingsBankCardsScreen(
         target = state.cardNetworkTarget,
         suggestion = state.cardTypeSuggestion,
         cards = state.followedCards + state.unregisteredCards + state.stoppedCards,
-        accounts = state.followedAccounts,
+        accounts = state.followedAccounts + state.stoppedAccounts,
         busy = state.updating,
         failed = state.error != null,
         onDismiss = onDismissCardNetwork,
@@ -98,7 +98,7 @@ fun SettingsBankCardsScreen(
             )
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
-                    "stopped" to R.string.reference_stopped).forEach { (key, label) ->
+                    "stopped" to R.string.settings_external_cards).forEach { (key, label) ->
                     com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
                 }
             }
@@ -166,15 +166,29 @@ fun SettingsBankCardsScreen(
             }
 
             if (referenceTab == "stopped" && stoppedCards.isNotEmpty()) {
-                SettingsGroupTitle(stringResource(R.string.settings_cards_stopped))
+                SettingsGroupTitle(stringResource(R.string.settings_external_cards))
                 stoppedCards.forEach { card ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.cardPayment,
                         bank = card.bank,
                         title = registryLabel(card),
                         showBankLabel = false,
+                        footer = {
+                            androidx.compose.foundation.layout.FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                            ) {
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_action_rename), { onRenameCard(card) }, enabled = !state.updating,
+                                )
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_card_setup), { onPickCardNetwork(card) }, enabled = !state.updating,
+                                )
+                            }
+                        },
                         endAction = {
-                            SettingsResumeTrackingButton(
+                            com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                label = stringResource(R.string.settings_external_card_is_mine),
                                 onClick = { onResumeTracking(card) },
                                 enabled = !state.updating,
                             )

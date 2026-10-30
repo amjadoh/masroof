@@ -1,5 +1,5 @@
 {
-  "note": "User-provided structures; personal names and account/card/reference values anonymized. Six teachers and nine held-out messages. Local-transfer has no independent real holdout. Labels grant no financial authority.",
+  "note": "User-provided structures; personal names and account/card/reference values anonymized. Six teachers and nine held-out messages. Local-transfer has no independent real holdout. Labels grant no financial authority. Added Arabic layouts use entirely fictional values; eight teachers and eleven holdouts in total.",
   "rows": [
     {
       "id": "stc-internal-in",
@@ -177,6 +177,52 @@
         "account_reference": "*345",
         "occurred_at": "02-07-2026 07:28",
         "reference": "*DE2F"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-qattah-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "دفع قطة\nمبلغ:37.50 ر.س\nإلى:TEST PERSON A\nفي:13/10/26 12:30",
+      "fields": {
+        "amount": "37.50",
+        "counterparty": "TEST PERSON A",
+        "occurred_at": "13/10/26 12:30"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-internal-out-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "حوالة داخلية صادرة\nبـ:37.50ر.س\nإلى:TEST PERSON A\nالى:321\nفي:13/10/26 12:30",
+      "fields": {
+        "amount": "37.50",
+        "counterparty": "TEST PERSON A",
+        "account_reference": "321",
+        "occurred_at": "13/10/26 12:30"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-qattah-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "دفع قطة\nمبلغ:82.75 ر.س\nإلى:TEST PERSON B\nفي:14/10/26 09:15",
+      "fields": {
+        "amount": "82.75",
+        "counterparty": "TEST PERSON B",
+        "occurred_at": "14/10/26 09:15"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-internal-out-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "حوالة داخلية صادرة\nبـ:82.75ر.س\nإلى:TEST PERSON B\nالى:654\nفي:14/10/26 09:15",
+      "fields": {
+        "amount": "82.75",
+        "counterparty": "TEST PERSON B",
+        "account_reference": "654",
+        "occurred_at": "14/10/26 09:15"
       },
       "teach": false
     }

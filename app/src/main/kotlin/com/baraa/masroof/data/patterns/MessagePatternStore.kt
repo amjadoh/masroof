@@ -55,7 +55,7 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
         }
         val updated = bank.copy(patterns = versions.values.toList(), deletedPatternIds = deletedIds)
         val next = MessagePatternConfiguration(Math.addExact(current.generation, 1),
-            current.banks.filterNot { it.bankId == bank.bankId } + updated)
+            current.banks.filterNot { it.bankId == bank.bankId } + updated, current.confirmedLoanPayments)
         val raw = MessagePatternConfigurationCodec.encode(next)
         replace(raw)
         MessagePatternConfigurationCodec.decode(raw)
@@ -71,6 +71,16 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
             deletedPatternIds = bank.deletedPatternIds + patternId)
         val next = current.copy(generation = Math.addExact(current.generation, 1),
             banks = current.banks.map { if (it.bankId == bankId) updated else it })
+        val raw = MessagePatternConfigurationCodec.encode(next)
+        replace(raw)
+        MessagePatternConfigurationCodec.decode(raw)
+    }
+
+    fun saveConfirmedLoanPayments(expectedGeneration: Long,
+        rules: List<com.baraa.masroof.engine.bank.patterns.ConfirmedLoanPayment>): MessagePatternConfiguration = synchronized(lock) {
+        val current = load()
+        check(current.generation == expectedGeneration) { "Configuration changed" }
+        val next = current.copy(generation = Math.addExact(current.generation, 1), confirmedLoanPayments = rules)
         val raw = MessagePatternConfigurationCodec.encode(next)
         replace(raw)
         MessagePatternConfigurationCodec.decode(raw)
