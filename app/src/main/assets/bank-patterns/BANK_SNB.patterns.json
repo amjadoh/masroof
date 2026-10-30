@@ -1605,6 +1605,372 @@
               ]
             }
           }
+        },
+        {
+          "id": "snb.transfer-in",
+          "sender": "SNB-AlAhli",
+          "label": "TRANSFER_IN",
+          "revision": 2,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "TRANSFER_IN",
+            "direction": "INCOMING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "snb.transfer-in",
+                "family": "TRANSFER_IN",
+                "direction": "INCOMING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "حوالة واردة",
+                  "حوالة داخلية واردة",
+                  "إيداع حوالة واردة",
+                  "ايداع رواتب",
+                  "إيداع راتب",
+                  "Credit transfer",
+                  "incoming transfer"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "المبلغ",
+                    "ب",
+                    "amount",
+                    "المبلغ، العملة"
+                  ],
+                  "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "حساب المرسل"
+                  ],
+                  "DESTINATION_ACCOUNT": [
+                    "لحساب",
+                    "حساب",
+                    "إلى",
+                    "الى",
+                    "to account"
+                  ]
+                },
+                "detailLabels": {
+                  "counterparty": [
+                    "مرسل",
+                    "من",
+                    "from"
+                  ]
+                },
+                "observations": {
+                  "network.intra": [
+                    "داخلية",
+                    "داخلي",
+                    "داخل البنك",
+                    "بين حساباتك",
+                    "Internal"
+                  ],
+                  "network.inter": [
+                    "محلية",
+                    "محلي",
+                    "سريع",
+                    "Local",
+                    "SARIE"
+                  ],
+                  "income.salary": [
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "راتب",
+                    "salary"
+                  ],
+                  "network.sourceBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة",
+                    "حوالة واردة محلية",
+                    "حوالة واردة داخلية"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
+        },
+        {
+          "id": "snb.transfer-in",
+          "sender": "SNB-AlAhli",
+          "label": "TRANSFER_IN",
+          "revision": 3,
+          "enabled": true,
+          "parts": [],
+          "factContract": {
+            "version": 1,
+            "family": "TRANSFER_IN",
+            "direction": "INCOMING",
+            "currency": null,
+            "sourceAccountBank": null,
+            "destinationAccountBank": null,
+            "cardBank": null
+          },
+          "roleProfile": {
+            "schema": 1,
+            "revision": 1,
+            "rules": [
+              {
+                "id": "snb.transfer-in",
+                "family": "TRANSFER_IN",
+                "direction": "INCOMING",
+                "operator": "CONTAINS_TOKEN_PHRASE",
+                "phrases": [
+                  "حوالة واردة",
+                  "حوالة داخلية واردة",
+                  "إيداع حوالة واردة",
+                  "ايداع رواتب",
+                  "إيداع راتب",
+                  "Credit transfer",
+                  "incoming transfer"
+                ],
+                "excludes": [],
+                "labels": {
+                  "AMOUNT": [
+                    "مبلغ العملية",
+                    "بمبلغ",
+                    "مبلغ",
+                    "المبلغ",
+                    "ب",
+                    "amount",
+                    "المبلغ، العملة"
+                  ],
+                  "SOURCE_ACCOUNT": [
+                    "من حساب",
+                    "حساب المرسل",
+                    "من"
+                  ],
+                  "DESTINATION_ACCOUNT": [
+                    "لحساب",
+                    "حساب",
+                    "إلى",
+                    "الى",
+                    "to account"
+                  ]
+                },
+                "detailLabels": {
+                  "counterparty": [
+                    "from",
+                    "مرسل من"
+                  ]
+                },
+                "observations": {
+                  "network.intra": [
+                    "داخلية",
+                    "داخلي",
+                    "داخل البنك",
+                    "بين حساباتك",
+                    "Internal"
+                  ],
+                  "network.inter": [
+                    "محلية",
+                    "محلي",
+                    "سريع",
+                    "Local",
+                    "SARIE"
+                  ],
+                  "income.salary": [
+                    "ايداع رواتب",
+                    "إيداع راتب",
+                    "راتب",
+                    "salary"
+                  ],
+                  "network.sourceBankRole": [
+                    "عبر",
+                    "بنك",
+                    "bank"
+                  ],
+                  "amount.title": [
+                    "حوالة صادرة داخلية",
+                    "حوالة صادرة محلية",
+                    "حوالة واردة",
+                    "حوالة واردة محلية",
+                    "حوالة واردة داخلية"
+                  ]
+                }
+              }
+            ],
+            "network": {
+              "bankAliases": {
+                "BANK_ALJAZIRA": [
+                  "AlJazira",
+                  "Bank AlJazira",
+                  "AlJazira Bank",
+                  "بنك الجزيرة",
+                  "بنك الجزيره"
+                ],
+                "BANK_D360": [
+                  "بنك دال ثلاثمائة وستون",
+                  "D360 Bank",
+                  "D360 بنك"
+                ],
+                "BANK_RIYAD": [
+                  "بنك الرياض",
+                  "Riyad Bank"
+                ],
+                "BANK_ANB": [
+                  "ARAB NATIONAL BANK",
+                  "البنك العربي الوطني"
+                ],
+                "BANK_SNB": [
+                  "SNB",
+                  "SNB-AlAhli",
+                  "NCBKSARI",
+                  "ALAHLI BANK",
+                  "البنك الأهلي السعودي",
+                  "البنك الاهلي"
+                ],
+                "BANK_BARQ": [
+                  "barq",
+                  "برق"
+                ],
+                "BANK_SAB": [
+                  "SAB",
+                  "ساب",
+                  "البنك الأول",
+                  "البنك السعودي البريطاني ساب"
+                ],
+                "BANK_ALINMA": [
+                  "alinma",
+                  "الإنماء",
+                  "مصرف الإنماء",
+                  "AL INMA BANK",
+                  "INMA BANK"
+                ],
+                "BANK_EMIRATES_NBD": [
+                  "EmiratesNBD",
+                  "بنك الإمارات دبي الوطني"
+                ],
+                "BANK_ALRAJHI": [
+                  "RAJHI BANK",
+                  "AL RAJHI BANK",
+                  "الراجحي",
+                  "مصرف الراجحي"
+                ]
+              },
+              "sourceBankLabels": [
+                "من بنك",
+                "البنك المرسل",
+                "source bank"
+              ],
+              "destinationBankLabels": [
+                "الى بنك",
+                "إلى بنك",
+                "البنك المستفيد",
+                "destination bank"
+              ],
+              "standaloneDestinationBrackets": true,
+              "networkLabels": [
+                "bank network",
+                "network",
+                "شبكة الحوالة"
+              ],
+              "standaloneSourceBrackets": true,
+              "unidentifiedExternalBankMarkers": [
+                "بنك",
+                "bank"
+              ]
+            }
+          }
         }
       ]
     }

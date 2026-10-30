@@ -161,7 +161,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
-        if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
+        // An unrecognized title has no claimed direction to contradict. It remains
+        // review-only here, while an exact learned template may supply that proof.
+        if (family != MessageFamily.UNKNOWN && family !in INFORMATIONAL && direction != expected)
+            problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
         fun labels(field: ExtractionField): List<String> {
             val sets=matching.map {it.labels[field].orEmpty()}
@@ -262,7 +265,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v17"
+        const val VERSION = "bank-rules-independent-v18"
         private const val MAX_BODY = 16000
         private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
