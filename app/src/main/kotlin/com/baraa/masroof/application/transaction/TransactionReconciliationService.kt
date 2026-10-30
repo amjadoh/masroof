@@ -385,6 +385,14 @@ class TransactionReconciliationService(
                 ?: OwnershipStatus.UNKNOWN
             val cardOwn = event.cardRef?.let { ownershipResolver.resolveCard(it) }
                 ?: OwnershipStatus.UNKNOWN
+            val ownershipReview = if (userConfirmed) null else MessageOwnershipPolicy.reviewReason(
+                event.messageFamily, sourceOwn, destOwn, cardOwn, event.cardRef != null)
+            if (ownershipReview != null) {
+                needsReview++
+                reviewCandidates += ReconciliationReviewCandidate(event.rawSmsId, ReviewKind.NEEDS_REVIEW,
+                    listOf(ownershipReview))
+                continue
+            }
             maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType)
             val loanType = record.details.loanType
             val loanOwn = loanType?.let {

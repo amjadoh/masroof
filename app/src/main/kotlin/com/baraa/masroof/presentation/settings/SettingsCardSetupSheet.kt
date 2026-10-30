@@ -21,7 +21,8 @@ fun SettingsCardSetupSheet(
     target ?: return
     key(target.bank.id, target.last4) {
         var networkName by rememberSaveable { mutableStateOf(target.cardNetwork?.name ?: CardNetwork.UNKNOWN.name) }
-        var typeName by rememberSaveable { mutableStateOf(target.cardType?.name ?: suggestion?.name) }
+        var typeName by rememberSaveable { mutableStateOf(if (target.ownership == OwnershipStatus.EXTERNAL)
+            CardType.DEBIT.name else target.cardType?.name ?: suggestion?.name) }
         var roleName by rememberSaveable { mutableStateOf(target.cardRole?.name ?: CardRole.STANDALONE.name) }
         var primary by rememberSaveable { mutableStateOf(target.parentCardLast4) }
         var account by rememberSaveable { mutableStateOf(target.linkedAccountMaskedNumber) }
@@ -30,7 +31,8 @@ fun SettingsCardSetupSheet(
         val role = CardRole.valueOf(roleName)
         val sameBankCards = cards.filter { it.bank == target.bank }
         val parents = sameBankCards.filter { it.last4 != target.last4 && it.cardType == CardType.CREDIT && it.cardRole == CardRole.PRIMARY && it.ownership == OwnershipStatus.OWNED }
-        val availableAccounts = accounts.filter { it.bank == target.bank && it.ownership == OwnershipStatus.OWNED }
+        val accountOwnership = if (target.ownership == OwnershipStatus.EXTERNAL) OwnershipStatus.EXTERNAL else OwnershipStatus.OWNED
+        val availableAccounts = accounts.filter { it.bank == target.bank && it.ownership == accountOwnership }
         val hasDependents = sameBankCards.any { it.parentCardLast4 == target.last4 }
         val blocksDependents = hasDependents && (type != CardType.CREDIT || role != CardRole.PRIMARY)
         val valid = type != null && !blocksDependents && (network != CardNetwork.MADA || type == CardType.DEBIT) &&
@@ -56,7 +58,8 @@ fun SettingsCardSetupSheet(
                 }, { "card-network-${it.name}" })
                 MasroofText(stringResource(R.string.settings_card_type_title), style = MaterialTheme.typography.titleSmall)
                 suggestion?.let { MasroofText(stringResource(if (it == CardType.CREDIT) R.string.settings_card_credit_evidence else R.string.settings_card_debit_evidence)) }
-                val types = if (network == CardNetwork.MADA) listOf(CardType.DEBIT) else CardType.entries
+                val types = if (network == CardNetwork.MADA || target.ownership == OwnershipStatus.EXTERNAL)
+                    listOf(CardType.DEBIT) else CardType.entries
                 MasroofSheetChoices(types, setOfNotNull(type), {
                     stringResource(if (it == CardType.CREDIT) R.string.settings_card_type_credit else R.string.settings_card_type_debit)
                 }, { typeName = it.name }, { "card-type-${it.name}" })

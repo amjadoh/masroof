@@ -70,7 +70,7 @@ fun SettingsBankCardsScreen(
         target = state.cardNetworkTarget,
         suggestion = state.cardTypeSuggestion,
         cards = state.followedCards + state.unregisteredCards + state.stoppedCards,
-        accounts = state.followedAccounts,
+        accounts = state.followedAccounts + state.stoppedAccounts,
         busy = state.updating,
         failed = state.error != null,
         onDismiss = onDismissCardNetwork,
@@ -173,6 +173,19 @@ fun SettingsBankCardsScreen(
                         bank = card.bank,
                         title = registryLabel(card),
                         showBankLabel = false,
+                        footer = {
+                            androidx.compose.foundation.layout.FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                            ) {
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_action_rename), { onRenameCard(card) }, enabled = !state.updating,
+                                )
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_card_setup), { onPickCardNetwork(card) }, enabled = !state.updating,
+                                )
+                            }
+                        },
                         endAction = {
                             SettingsResumeTrackingButton(
                                 onClick = { onResumeTracking(card) },

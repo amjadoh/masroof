@@ -79,15 +79,43 @@ class PatternProcessingMilestoneTest {
             assertEquals("7654", parsed.cardRef?.last4)
             assertNull(parsed.sourceAccountRef)
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            c.processRawSmsUseCase.ingest(sms("unknown-owner", purchase.replace("7654", "9999"), "SNB-AlAhli"))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("unknown-owner")!!.status)
+            assertTrue(c.processingRetryRepository.listRetryableRawSmsIds().isEmpty())
+            c.processRawSmsUseCase.ingest(sms("external-account-unknown-card",
+                purchase.replace("7654", "9999") + "\nمن حساب 2345", "SNB-AlAhli"))
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             c.processRawSmsUseCase.ingest(sms("owned-control", purchase.replace("7654", "4321"), "SNB-AlAhli"))
             assertEquals(listOf(FinancialTransactionType.EXPENSE), c.financialTransactionRepository.listAll().map { it.type })
             val transfer = "حوالة صادرة داخلية\nمبلغ 12 SAR\nمن حساب 6789\nالى حساب 2345\nلـ TEST PERSON\nفي 2026-10-13 12:35"
             c.processRawSmsUseCase.ingest(sms("to-other-owner", transfer, "SNB-AlAhli"))
+            val receipt = "حوالة داخلية واردة\nمبلغ 12 SAR\nمن حساب 6789\nالى حساب 2345\nمن TEST PERSON\nفي 2026-10-13 12:35"
+            c.processRawSmsUseCase.ingest(sms("other-owner-receipt", receipt, "SNB-AlAhli"))
             val transactions = c.financialTransactionRepository.listAll()
             assertEquals(1, transactions.count { it.type == FinancialTransactionType.EXPENSE })
             assertFalse(transactions.any { it.type == FinancialTransactionType.SELF_TRANSFER })
             assertEquals(OwnershipStatus.EXTERNAL, c.accountRegistryRepository.resolve(other))
             assertEquals(OwnershipStatus.EXTERNAL, c.cardRegistryRepository.resolve(otherCard))
+            c.settingsRegistryWorkflow.updateAccountDisplayName(other, "Family member")
+            c.settingsRegistryWorkflow.configureCard(otherCard, com.baraa.masroof.domain.model.CardConfiguration(
+                com.baraa.masroof.domain.model.CardNetwork.MADA, com.baraa.masroof.domain.model.CardType.DEBIT,
+                linkedAccount = other,
+            ))
+            assertTrue(runCatching { c.settingsRegistryWorkflow.configureCard(otherCard,
+                com.baraa.masroof.domain.model.CardConfiguration(com.baraa.masroof.domain.model.CardNetwork.MADA,
+                    com.baraa.masroof.domain.model.CardType.DEBIT, linkedAccount = parent)) }.isFailure)
+            assertTrue(runCatching { c.settingsRegistryWorkflow.configureCard(otherCard,
+                com.baraa.masroof.domain.model.CardConfiguration(null, com.baraa.masroof.domain.model.CardType.CREDIT)) }.isFailure)
+            val spending = c.settingsRegistryWorkflow.externalAccountSpending(other)
+            assertEquals(setOf("other-owner", "external-account-unknown-card"), spending.rows.map { it.rawSmsId }.toSet())
+            assertEquals("75.00", spending.totals.single().purchasesAndFees.amount.toPlainString())
+            c.settingsRegistryWorkflow.updateAccountDisplayName(other, "اسم اختياري")
+            assertEquals("اسم اختياري", c.accountRegistryRepository.get(other)?.displayName)
+            assertEquals(spending, c.settingsRegistryWorkflow.externalAccountSpending(other))
+            assertEquals(transactions, c.financialTransactionRepository.listAll())
+            assertEquals(OwnershipStatus.EXTERNAL, c.accountRegistryRepository.resolve(other))
+            assertTrue(c.processingRetryRepository.listRetryableRawSmsIds().isEmpty())
         }
     }
 

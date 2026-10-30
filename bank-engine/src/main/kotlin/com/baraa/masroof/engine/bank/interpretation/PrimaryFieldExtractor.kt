@@ -15,6 +15,8 @@ internal class PrimaryFieldExtractor(
     private val fallbackCurrency: String? = null,
     private val allowNegativeBalance: Boolean = false,
 ) {
+    var usedAccountCurrencyForAmount: Boolean = false
+        private set
     private data class Hit<T>(val value: T, val range: IntRange)
     private fun overlaps(range: IntRange) = secondaryRanges.any { range.first <= it.last && it.first <= range.last }
     // Compact bank roles can touch digits (بـ25 / مبلغ25), but never consume a longer word.
@@ -41,11 +43,17 @@ internal class PrimaryFieldExtractor(
             val separate = if (field == ExtractionField.AMOUNT && bareCurrency != null) {
                 val prefix = Regex("(?m)^ *" + role(label) + "[ \\t]*:?[ \\t]*([^\\n\\r]+)$")
                     .findAll(source.text).mapNotNull { row ->
-                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let { Hit(it, row.range) }
+                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let {
+                            if (currency == null) usedAccountCurrencyForAmount = true
+                            Hit(it, row.range)
+                        }
                     }.filterNot { overlaps(it.range) }.toList()
                 val suffix = Regex("(?m)^ *([^\\n\\r:]+?) *: *" + source.phrase(label).pattern + " *$")
                     .findAll(source.text).mapNotNull { row ->
-                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let { Hit(it, row.range) }
+                        MoneyGrammar.withCurrency(row.groupValues[1].trim(), bareCurrency)?.let {
+                            if (currency == null) usedAccountCurrencyForAmount = true
+                            Hit(it, row.range)
+                        }
                     }.filterNot { overlaps(it.range) }.toList()
                 prefix + suffix
             } else emptyList()

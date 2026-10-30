@@ -579,6 +579,8 @@
     <string name="review_bank_choice_title">اختر البنك لتحليل الرسالة</string>
     <string name="review_parse_with_bank">تحليل كـ %1$s</string>
     <string name="review_reason_purchase_ownership_unknown">شراء — ملكية البطاقة غير محددة</string>
+    <string name="review_reason_instrument_ownership_unknown">تحتاج العملية تأكيد ملكية الحساب أو البطاقة</string>
+    <string name="review_reason_external_container">العملية تخص حسابًا أو بطاقة غير مملوكة لك</string>
     <string name="review_reason_purchase_unresolved">شراء — لم يُحدد حساب الدفع</string>
     <string name="review_reason_card_payment_missing">سداد البطاقة الائتمانية — بيانات ناقصة</string>
     <string name="review_reason_card_payment_ownership">سداد البطاقة الائتمانية — ملكية غير محددة</string>
@@ -640,4 +642,14 @@
     <string name="commitment_payment_ambiguous">تطابق هذه الدفعة أكثر من التزام. راجع الالتزامات.</string>
     <string name="commitment_payment_missing_source">الحركة الأصلية غير متاحة. راجع هذا الالتزام.</string>
     <string name="commitment_open_payment">عرض حركة الدفع</string>
+    <string name="settings_external_accounts">حسابات غير مملوكة لي</string>
+    <string name="settings_external_spending">متابعة المصروفات بشكل مستقل</string>
+    <string name="settings_external_spending_hint">من الرسائل المحفوظة في التطبيق فقط، وليست كشفًا بنكيًا كاملًا. مشتريات وفواتير ورسوم هذا الحساب وبطاقات مدى المرتبطة به لا تدخل في إجمالي مصروفاتك. التحويلات وسداد البطاقات والقروض والسحب النقدي ليست مصروفات جديدة.</string>
+    <string name="settings_external_gross">المشتريات والفواتير والرسوم</string>
+    <string name="settings_external_refunds">المبالغ المستردة</string>
+    <string name="settings_external_net">صافي المصروفات</string>
+    <string name="settings_external_pending">%1$d رسالة غير مؤكدة مستبعدة من الإجمالي، وتحتاج مراجعة القراءة أو الربط أو القرار اليدوي.</string>
+    <string name="settings_external_empty">لا توجد مصروفات مؤكدة في الرسائل المحفوظة لهذا الحساب.</string>
+    <string name="settings_external_loading">جارٍ تحميل الرسائل المرتبطة بالحساب…</string>
+    <string name="settings_external_close">إغلاق</string>
 </resources>

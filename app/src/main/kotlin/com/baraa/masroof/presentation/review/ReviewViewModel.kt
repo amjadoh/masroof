@@ -547,6 +547,8 @@ class ReviewViewModel(
     private companion object {
         val OWNERSHIP_CARD_REASONS = setOf(
             "purchase_instrument_ownership_unknown",
+            "instrument_ownership_unknown",
+            "message_on_external_container",
             "card_payment_ownership_unresolved",
         )
     }
