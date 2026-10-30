@@ -100,20 +100,27 @@ class MessagePatternsWorkflowTest {
             assertNull(workflow.tryPreview(preview, "OTHER", body))
             val saved = workflow.saveTeaching(preview)
             val id = saved.banks.single().currentPatterns.single().id
+            // A taught pattern starts off: it matches nothing until the user switches it on.
             val stored = saved.banks.single().currentPatterns.single()
-            assertNotNull(stored.preview("STC", "STC Bank", body))
-            assertNull(stored.preview("OTHER", "STC Bank", body))
-            workflow.setEnabled(2, "STC", id, false)
+            assertFalse(stored.enabled)
+            assertNull(stored.preview("STC", "STC Bank", body))
+            workflow.setEnabled(2, "STC", id, true)
+            val active = workflow.load().banks.single().currentPatterns.single()
+            assertNotNull(active.preview("STC", "STC Bank", body))
+            assertNull(active.preview("OTHER", "STC Bank", body))
+            workflow.setEnabled(3, "STC", id, false)
             assertNull(workflow.load().banks.single().currentPatterns.single().preview("STC", "STC Bank", body))
             assertTrue(runCatching { workflow.saveTeaching(preview) }.isFailure)
-            workflow.restoreRevision(3, "STC", id, 1)
+            workflow.restoreRevision(4, "STC", id, 2)
             val restored = workflow.load().banks.single()
             val versions = restored.patterns
-            assertEquals(listOf(1, 2, 3), versions.map { it.revision })
+            assertEquals(listOf(1, 2, 3, 4), versions.map { it.revision })
             assertNotNull(restored.currentPatterns.single().preview("STC", "STC Bank", body))
-            assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,
+            // Editing keeps the pattern's current on/off state.
+            assertTrue(workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body, bindings, patternId = id).pattern.enabled)
+            assertTrue(runCatching { workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body,
                 listOf(PatternBinding("merchant", body.indexOf("SHOP"), body.length))) }.isFailure)
-            assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,
+            assertTrue(runCatching { workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body,
                 bindings + PatternBinding("source_account", 0, 7)) }.isFailure)
         } finally { directory.deleteRecursively() }
     }

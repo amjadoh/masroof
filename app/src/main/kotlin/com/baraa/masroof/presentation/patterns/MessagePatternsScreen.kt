@@ -93,9 +93,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         applied = result
         pending = result.pendingAfter
     }
-    LaunchedEffect(bank?.bankId, snapshot?.generation, showPending, selectedPattern, teaching) {
+    LaunchedEffect(bank?.bankId, snapshot?.generation, selectedPattern, teaching) {
         if (bank != null && workflow.canPreviewPending && !teaching &&
-            (showPending && selectedPattern == null || pattern?.canApply == true)) {
+            (selectedPattern == null || pattern?.canApply == true)) {
             pending = null
             try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
             catch (e: CancellationException) { throw e }
@@ -246,6 +246,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     MasroofButton(onClick = { teaching = true; editingPattern = null; editingBody = ""; savedTeaching = false; savedBody = "" },
                         enabled = !busy && (source == null || source.sender in bank.senders), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_teach)) }
                     Text(stringResource(R.string.teaching_catalog), style = MaterialTheme.typography.titleLarge)
+                    val conflicting = pending?.conflictingPatternIds.orEmpty()
                     bank.currentPatterns.groupBy { it.label }.forEach { (label, patterns) ->
                         MasroofCard {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -257,7 +258,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                     MasroofReferenceNavigationRow(
                                         title = item.example.lineSequence().firstOrNull { it.isNotBlank() }?.take(80) ?: patternOperationName(item.label),
                                         subtitle = patternOperationName(item.label),
-                                        status = patternStatusName(item), icon = MasroofIcons.sms,
+                                        badges = patternBadges(item, item.id in conflicting), icon = MasroofIcons.sms,
                                         onClick = { if (!busy) { selectedPattern = item.id; savedBody = ""; applied = null; savedApproval = false } },
                                         divider = index != patterns.lastIndex,
                                         modifier = Modifier.weight(1f).testTag("pattern-open-${bank.bankId}-${item.id}"),

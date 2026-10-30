@@ -73,6 +73,12 @@ class PatternCurrentMessageJourneyTest {
             click(R.string.pattern_financial_approve)
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
+            // A taught pattern starts off; approval alone does not let it post until it is switched on.
+            compose.waitUntil(10_000) { runBlocking { w.load().banks.single { it.bankId == "UI_BANK" }.currentPatterns.single().factContract != null } }
+            compose.onNodeWithTag("pattern-apply-current").assertDoesNotExist()
+            val taughtId = w.load().banks.single { it.bankId == "UI_BANK" }.currentPatterns.single().id
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-toggle-UI_BANK-$taughtId").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("pattern-toggle-UI_BANK-$taughtId").performScrollTo().performClick()
             try {
                 compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-current").fetchSemanticsNodes().isNotEmpty() }
             } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {

@@ -29,6 +29,9 @@ data class PendingPatternRow(val reviewId: String, val status: PendingPatternSta
 data class PendingPatternReport(val generation: Long, val bankId: String, val rows: List<PendingPatternRow>, val limited: Boolean,
     val requiredReviewCount: Int = rows.size) {
     fun matchingCount(patternId: String) = rows.count { it.status == PendingPatternStatus.MATCHED && it.matches.single().patternId == patternId }
+    /** Patterns that overlap another pattern on at least one pending message. */
+    val conflictingPatternIds: Set<String> get() =
+        rows.filter { it.status == PendingPatternStatus.PATTERN_CONFLICT }.flatMapTo(hashSetOf()) { row -> row.matches.map { it.patternId } }
 }
 data class PendingPatternApplyReport(val processed: Int, val posted: Int, val failed: Int?, val incomplete: Boolean, val limited: Boolean,
     val reviewsBefore: Int? = null, val reviewsAfter: Int? = null, val pendingAfter: PendingPatternReport? = null)
@@ -53,7 +56,8 @@ class PendingPatternsWorkflow(
 
     suspend fun approvalExamples(bankId: String, generation: Long, patternId: String): List<PatternApprovalExample> = withContext(Dispatchers.IO) {
         accessGate.withAccess {
-            val eligible = preview(bankId, generation).rows.filter {
+            // Patterns may be approved while off; read this one as on so its examples can be found.
+            val eligible = preview(bankId, generation, forceEnabledPatternId = patternId).rows.filter {
                 it.status == PendingPatternStatus.MATCHED && it.matches.single().patternId == patternId
             }.take(10)
             val reviewRows = eligible.mapNotNull { row -> reviews.getById(row.reviewId)?.let { row to it } }
@@ -109,10 +113,15 @@ class PendingPatternsWorkflow(
                 before.requiredReviewCount, after.requiredReviewCount, after)
         }
     }
-    suspend fun preview(bankId: String, generation: Long, reviewId: String? = null): PendingPatternReport = withContext(Dispatchers.IO) {
+    suspend fun preview(bankId: String, generation: Long, reviewId: String? = null,
+        forceEnabledPatternId: String? = null): PendingPatternReport = withContext(Dispatchers.IO) {
         accessGate.withAccess {
-            val configuration = store.load()
-            check(configuration.generation == generation) { "Pattern configuration changed" }
+            val stored = store.load()
+            check(stored.generation == generation) { "Pattern configuration changed" }
+            val configuration = if (forceEnabledPatternId == null) stored else stored.copy(banks = stored.banks.map { bank ->
+                val current = bank.currentPatterns.singleOrNull { it.id == forceEnabledPatternId && bank.bankId == bankId }
+                if (current == null) bank else bank.copy(patterns = bank.patterns.map { if (it === current) it.copy(enabled = true) else it })
+            })
             require(configuration.banks.any { it.bankId == bankId }) { "Unknown bank" }
             val interpreter = PatternFactInterpreter(configuration)
             val required = if (reviewId == null) reviews.listRequired()

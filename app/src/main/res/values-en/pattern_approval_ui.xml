@@ -31,7 +31,7 @@
     <string name="pattern_approval_waiting">Awaiting approval · no financial posting yet</string>
     <string name="pattern_approval_ready">Financially approved</string>
     <string name="pattern_approval_saved">Pattern approved for new messages</string>
-    <string name="pattern_approval_saved_help">Saving alone did not process imported messages. Process matching pending messages below.</string>
+    <string name="pattern_approval_saved_help">Saving alone did not process messages. If the pattern is off, turn it on, then process matching pending messages below.</string>
     <string name="pattern_approval_process_matching">Process matching pending messages (%1$d)</string>
     <string name="pattern_approval_matching_count">Pending messages matching this pattern: %1$d</string>
     <string name="pattern_approval_no_pending">No eligible pending messages for this pattern in the checked scope.</string>
@@ -41,4 +41,9 @@
     <string name="pattern_approval_advanced">History</string>
     <string name="pattern_approval_import_hint">Some patterns at this bank need approval before posting movements. You can import now; unapproved messages remain in Review.</string>
     <string name="pattern_approval_open_patterns">Approve patterns and process pending messages</string>
+    <string name="pattern_badge_builtin">Built-in</string>
+    <string name="pattern_badge_awaiting">Awaiting approval</string>
+    <string name="pattern_badge_approved">Approved</string>
+    <string name="pattern_badge_active">Active</string>
+    <string name="pattern_badge_conflict">Conflict</string>
 </resources>
