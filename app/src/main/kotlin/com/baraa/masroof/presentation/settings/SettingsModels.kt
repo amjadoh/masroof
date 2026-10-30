@@ -129,6 +129,13 @@ data class SettingsBankSummaryUi(
         get() = unregisteredAccountCount + unregisteredCardCount
 }
 
+/** One confirmation can be active at a time; this draft is never persisted. */
+sealed interface StopTrackingTarget {
+    data class Card(val card: ManagedCardUi) : StopTrackingTarget
+    data class Account(val account: ManagedAccountUi) : StopTrackingTarget
+    data class Loan(val loan: ManagedLoanUi) : StopTrackingTarget
+}
+
 data class SettingsUiState(
     val loading: Boolean = true,
     val followedCards: List<ManagedCardUi> = emptyList(),
@@ -153,9 +160,7 @@ data class SettingsUiState(
     val languageTag: String = "",
     val themeMode: ThemeMode = ThemeMode.DEFAULT,
     val updating: Boolean = false,
-    val stopConfirmCardTarget: ManagedCardUi? = null,
-    val stopConfirmAccountTarget: ManagedAccountUi? = null,
-    val stopConfirmLoanTarget: ManagedLoanUi? = null,
+    val stopTrackingTarget: StopTrackingTarget? = null,
     val renameCardTarget: ManagedCardUi? = null,
     val renameAccountTarget: ManagedAccountUi? = null,
     val accountTypeTarget: ManagedAccountUi? = null,
@@ -185,7 +190,12 @@ data class SettingsUiState(
     val fxRateCorrectionManualFollowUp: Int = 0,
     val fxRateCorrectionRunning: Boolean = false,
     val fxRateCorrectionAwaitingConfirm: Boolean = false,
-)
+) {
+    val stopConfirmCardTarget: ManagedCardUi? get() = (stopTrackingTarget as? StopTrackingTarget.Card)?.card
+    val stopConfirmAccountTarget: ManagedAccountUi? get() = (stopTrackingTarget as? StopTrackingTarget.Account)?.account
+    val stopConfirmLoanTarget: ManagedLoanUi? get() = (stopTrackingTarget as? StopTrackingTarget.Loan)?.loan
+
+}
 
 enum class LogMessage {
     EXPORT_SUCCESS,
