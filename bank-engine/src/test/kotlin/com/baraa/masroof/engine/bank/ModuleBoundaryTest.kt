@@ -1,8 +1,8 @@
 package com.baraa.masroof.engine.bank
 
 import java.io.File
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 /** Checks the actual source/build graph, including new modules added after this test. */
 class ModuleBoundaryTest {
@@ -11,8 +11,8 @@ class ModuleBoundaryTest {
 
     @Test fun removedMlImplementationCannotReturnToTheBankEngine() {
         val old = File(root, "bank-engine/src/main/kotlin/com/baraa/masroof/engine/bank/learning")
-        assertFalse("Duplicate ML implementation in bank-engine", old.walkTopDown().any { it.extension == "kt" })
-        assertFalse("Duplicate training command", File(root, "bank-engine/tools/train_family_model.py").exists())
+        assertFalse(old.walkTopDown().any { it.extension == "kt" }, "Duplicate ML implementation in bank-engine")
+        assertFalse(File(root, "bank-engine/tools/train_family_model.py").exists(), "Duplicate training command")
     }
 
     @Test fun pureCoresImportOnlyJdkKotlinAndTheirOwnedContracts() {
@@ -33,25 +33,20 @@ class ModuleBoundaryTest {
             "bank-engine" to common + listOf("com.baraa.masroof.engine.bank.", "com.baraa.masroof.finance.value."),
         ).forEach { (module, allowed) ->
             val sources = File(root, "$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
-            assertTrue("Missing $module source tree", sources.isNotEmpty())
+            assertTrue(sources.isNotEmpty(), "Missing $module source tree")
             sources.forEach { file ->
                 Regex("(?m)^import ([^\\s]+)").findAll(file.readText()).forEach { match ->
-                    assertTrue("${file.name} imports ${match.groupValues[1]}",
-                        allowed.any { match.groupValues[1].startsWith(it) })
+                    assertTrue(allowed.any { match.groupValues[1].startsWith(it) }, "${file.name} imports ${match.groupValues[1]}")
                 }
                 // Fully qualified calls must not bypass the import boundary. In particular,
                 // bank-engine can use finance values, but never financial posting policies.
                 Regex("\\bcom\\.baraa\\.masroof(?:\\.[A-Za-z_][A-Za-z_0-9]*|\\.\\*)+")
                     .findAll(file.readText()).forEach { match ->
-                        assertTrue("${file.name} references ${match.value}",
-                            allowed.any { match.value == it.removeSuffix(".") || match.value.startsWith(it) })
+                        assertTrue(allowed.any { match.value == it.removeSuffix(".") || match.value.startsWith(it) }, "${file.name} references ${match.value}")
                     }
-                assertFalse("Fully qualified Android API in ${file.name}",
-                    Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()))
-                if (module == "bank-engine") assertFalse("ML implementation leaked into engine: ${file.name}",
-                    Regex("com\\.baraa\\.masroof\\.lab\\.(ml|bank\\.learning)\\.").containsMatchIn(file.readText()))
-                assertFalse("Legacy interpreter reference in ${file.name}",
-                    Regex("com\\.baraa\\.masroof\\.lab\\.(engine|copy)\\.").containsMatchIn(file.readText()))
+                assertFalse(Regex("\\b(android|androidx)\\.").containsMatchIn(file.readText()), "Fully qualified Android API in ${file.name}")
+                if (module == "bank-engine") assertFalse(Regex("com\\.baraa\\.masroof\\.lab\\.(ml|bank\\.learning)\\.").containsMatchIn(file.readText()), "ML implementation leaked into engine: ${file.name}")
+                assertFalse(Regex("com\\.baraa\\.masroof\\.lab\\.(engine|copy)\\.").containsMatchIn(file.readText()), "Legacy interpreter reference in ${file.name}")
             }
         }
     }
@@ -64,15 +59,15 @@ class ModuleBoundaryTest {
             module to projectDependency.findAll(file.readText()).map { it.groupValues[1] }.toSet()
         }
         graph.filterKeys { it != ":app" }.forEach { (module, deps) ->
-            assertFalse("$module depends on production", ":app" in deps)
+            assertFalse(":app" in deps, "$module depends on production")
         }
-        assertFalse("Removed legacy modules must not return", graph.keys.any { it in setOf(":lab:engine", ":lab:android") })
+        assertFalse(graph.keys.any { it in setOf(":lab:engine", ":lab:android") }, "Removed legacy modules must not return")
         assertEquals(emptySet<String>(), graph[":ml-assist"])
         assertEquals(emptySet<String>(), graph[":finance-core"])
         assertEquals(setOf(":finance-core"), graph[":bank-engine"])
         assertEquals(setOf(":ui-kit", ":finance-core", ":bank-engine", ":ml-assist"), graph[":app"])
         fun visit(module: String, ancestors: Set<String>) {
-            assertFalse("Dependency cycle: $ancestors -> $module", module in ancestors)
+            assertFalse(module in ancestors, "Dependency cycle: $ancestors -> $module")
             graph[module].orEmpty().forEach { visit(it, ancestors + module) }
         }
         graph.keys.forEach { visit(it, emptySet()) }
@@ -89,12 +84,12 @@ class ModuleBoundaryTest {
         val production = listOf("bank-engine", "app").flatMap { module ->
             File(root, "$module/src/main/kotlin").walkTopDown().filter { it.extension == "kt" }.toList()
         }
-        assertFalse("Reference vocabulary or adapter returned to production", production.any {
+        assertFalse(production.any {
             it.name in setOf("RuleLibrary.kt", "AlJaziraRuleProfile.kt", "NewEngineSmsAdapter.kt", "InterpretationTestAdapter.kt")
-        })
+        }, "Reference vocabulary or adapter returned to production")
         for (name in listOf("RuleLibrary.kt", "AlJaziraRuleProfile.kt")) {
-            assertTrue("Independent reference missing: $name", File(root,
-                "bank-engine/src/testFixtures/kotlin/com/baraa/masroof/engine/bank/rules/$name").isFile)
+            assertTrue(File(root,
+                "bank-engine/src/testFixtures/kotlin/com/baraa/masroof/engine/bank/rules/$name").isFile, "Independent reference missing: $name")
         }
     }
 }

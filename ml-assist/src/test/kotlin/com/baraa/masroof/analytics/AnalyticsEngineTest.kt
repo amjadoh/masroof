@@ -1,8 +1,8 @@
 package com.baraa.masroof.analytics
 
 import java.time.LocalDate
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class AnalyticsEngineTest {
     private val start = LocalDate.of(2026, 1, 1).toEpochDay()

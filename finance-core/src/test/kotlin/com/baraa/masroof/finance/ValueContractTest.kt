@@ -1,8 +1,8 @@
 package com.baraa.masroof.finance
 
 import com.baraa.masroof.finance.value.*
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class ValueContractTest {
     @Test fun amountsAreNonNegativeRoundedMagnitudesAndNumericEqualityHasConsistentHash() {
