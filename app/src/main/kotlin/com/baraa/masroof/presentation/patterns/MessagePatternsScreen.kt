@@ -89,8 +89,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
         val bankId = requireNotNull(bank).bankId
         pending = null
-        applied = workflow.applyPending(bankId, generation, reviewId, patternId)
-        pending = workflow.previewPending(bankId, generation)
+        val result = workflow.applyPending(bankId, generation, reviewId, patternId)
+        applied = result
+        pending = result.pendingAfter
     }
     LaunchedEffect(bank?.bankId, snapshot?.generation, showPending, selectedPattern, teaching) {
         if (bank != null && workflow.canPreviewPending && !teaching &&
