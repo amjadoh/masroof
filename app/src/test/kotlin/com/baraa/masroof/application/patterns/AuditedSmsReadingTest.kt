@@ -61,6 +61,8 @@ class AuditedSmsReadingTest {
         assertNull(result.facts.sourceAccount)
         assertNull(result.facts.destinationAccount)
         assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        val missingCurrency = parse("BANK_SNB", "SNB-AlAhli", "شراء-POS\nمبلغ 37\nمدى-ابل*4321\nفي 2026-10-20 12:30", "9876")
+        assertNotEquals(ParseStatus.SUCCESS, missingCurrency.status)
     }
 
     @Test fun debitCardReferencesAreReadFromTheirExplicitPurchaseRoles() {

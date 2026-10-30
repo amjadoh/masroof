@@ -62,6 +62,7 @@ fun SettingsRoute(
         viewModel.refresh()
     }
     val state by viewModel.uiState.collectAsState()
+    SettingsExternalSpendingSheet(state, viewModel::closeExternalSpending)
     var manualBankId by rememberSaveable { mutableStateOf<String?>(null) }
     var manualCard by rememberSaveable { mutableStateOf(false) }
     var destinationStack by rememberSaveable {
@@ -280,6 +281,7 @@ fun SettingsRoute(
             onPickAccountType = viewModel::openAccountTypePicker,
             onDismissAccountType = viewModel::dismissAccountTypePicker,
             onSelectAccountType = viewModel::setAccountTypeFromPicker,
+            onViewExternalSpending = viewModel::openExternalSpending,
         )
 
         is SettingsDestination.BankCards -> SettingsBankCardsScreen(

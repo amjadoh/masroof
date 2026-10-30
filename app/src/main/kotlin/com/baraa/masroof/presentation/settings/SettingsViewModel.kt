@@ -83,6 +83,32 @@ class SettingsViewModel(
     private var verificationJob: kotlinx.coroutines.Job? = null
     private var pendingLegacyImport: Boolean = false
     private var pendingExportPassphrase: CharArray? = null
+    private var externalSpendingJob: kotlinx.coroutines.Job? = null
+
+    fun openExternalSpending(account: ManagedAccountUi) {
+        if (account.ownership != OwnershipStatus.EXTERNAL) return
+        externalSpendingJob?.cancel()
+        _uiState.update { it.copy(externalSpendingTarget = account, externalSpending = null,
+            externalSpendingLoading = true, externalSpendingFailed = false) }
+        externalSpendingJob = viewModelScope.launch {
+            try {
+                val spending = withContext(Dispatchers.IO) {
+                    settingsRegistryWorkflow.externalAccountSpending(AccountReference(account.bank, account.maskedNumber))
+                }
+                _uiState.update { it.copy(externalSpending = spending, externalSpendingLoading = false) }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Exception) {
+                _uiState.update { it.copy(externalSpendingLoading = false, externalSpendingFailed = true) }
+            }
+        }
+    }
+
+    fun closeExternalSpending() {
+        externalSpendingJob?.cancel()
+        _uiState.update { it.copy(externalSpendingTarget = null, externalSpending = null,
+            externalSpendingLoading = false, externalSpendingFailed = false) }
+    }
 
     fun refreshLogs() {
         _logEntries.value = appLogService.readAll()

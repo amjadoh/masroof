@@ -336,7 +336,7 @@ class AppContainer(
             inferenceCurrent = { interpretationService?.isInferenceCurrent(it) != false },
             inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
             patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
-                messagePatternStore, accountRegistryRepository)::isCurrent)
+                messagePatternStore, accountRegistryRepository, cardRegistryRepository)::isCurrent)
     }
 
     val transactionReconciliationService: TransactionReconciliationService =
@@ -414,6 +414,11 @@ class AppContainer(
             ownershipConfirmationService = ownershipConfirmationService,
             parsedEvents = parsedEventRepository,
             inTransaction = { block -> withDatabaseTransaction(block) },
+            accountEvidenceScope = com.baraa.masroof.application.dashboard.DashboardEvidenceScope(
+                financialTransactionRepository, parsedEventRepository, rawSmsRepository,
+            ),
+            effectiveEvents = effectiveParsedEventProvider,
+            reviewRepository = reviewRepository,
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =

@@ -49,6 +49,7 @@ fun SettingsBankAccountsScreen(
     onSelectAccountType: (com.baraa.masroof.domain.model.AccountType) -> Unit,
     onOpenBank: (() -> Unit)? = null,
     onAddManual: (() -> Unit)? = null,
+    onViewExternalSpending: (ManagedAccountUi) -> Unit = {},
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
 
@@ -98,7 +99,7 @@ fun SettingsBankAccountsScreen(
             )
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(com.baraa.masroof.ui.theme.MasroofReference.shortcutGap)) {
                 listOf("followed" to R.string.reference_followed, "unconfirmed" to R.string.reference_unconfirmed,
-                    "stopped" to R.string.reference_stopped).forEach { (key, label) ->
+                    "stopped" to R.string.settings_external_accounts).forEach { (key, label) ->
                     com.baraa.masroof.presentation.common.MasroofChoice(stringResource(label), referenceTab == key, { referenceTab = key })
                 }
             }
@@ -176,13 +177,26 @@ fun SettingsBankAccountsScreen(
             }
 
             if (referenceTab == "stopped" && stoppedAccounts.isNotEmpty()) {
-                SettingsGroupTitle(stringResource(R.string.settings_accounts_stopped))
+                SettingsGroupTitle(stringResource(R.string.settings_external_accounts))
                 stoppedAccounts.forEach { account ->
                     SettingsRegistryItemCard(
                         icon = MasroofIcons.externalIn,
                         bank = account.bank,
                         title = registryLabel(account),
                         showBankLabel = false,
+                        footer = {
+                            androidx.compose.foundation.layout.FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                                verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
+                            ) {
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_action_rename), { onRenameAccount(account) }, enabled = !state.updating,
+                                )
+                                com.baraa.masroof.presentation.common.MasroofManagementAction(
+                                    stringResource(R.string.settings_external_spending), { onViewExternalSpending(account) }, enabled = !state.updating,
+                                )
+                            }
+                        },
                         endAction = {
                             SettingsResumeTrackingButton(
                                 onClick = { onResumeTracking(account) },

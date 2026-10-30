@@ -25,6 +25,8 @@ object ReviewReasonLabels {
             "suspected_bank_sender" -> R.string.review_reason_suspected_bank_sender
             "purchase_instrument_ownership_unknown" ->
                 R.string.review_reason_purchase_ownership_unknown
+            "instrument_ownership_unknown" -> R.string.review_reason_instrument_ownership_unknown
+            "message_on_external_container" -> R.string.review_reason_external_container
             "purchase_without_resolved_owned_instrument" ->
                 R.string.review_reason_purchase_unresolved
             "card_payment_missing_containers" -> R.string.review_reason_card_payment_missing

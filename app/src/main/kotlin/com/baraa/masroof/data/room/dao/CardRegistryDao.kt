@@ -18,11 +18,12 @@ interface CardRegistryDao {
     suspend fun configureAtomic(bankId: String, last4: String, configuration: com.baraa.masroof.domain.model.CardConfiguration) {
         val existing = requireNotNull(get(bankId, last4)) { "card_not_found" }
         configuration.validate(com.baraa.masroof.domain.model.Bank(bankId), last4)
-        require(existing.ownershipStatus == "OWNED") { "card_not_owned" }
+        require(existing.ownershipStatus == "OWNED" ||
+            existing.ownershipStatus == "EXTERNAL" && configuration.type.name == "DEBIT") { "card_ownership_unconfirmed" }
         require(dependentCount(bankId, last4) == 0 ||
             (configuration.type.name == "CREDIT" && configuration.role?.name == "PRIMARY")) { "card_has_dependents" }
         configuration.linkedAccount?.let { account ->
-            require(ownedAccountExists(bankId, requireNotNull(account.maskedNumber))) { "account_not_owned" }
+            require(accountOwnership(bankId, requireNotNull(account.maskedNumber)) == existing.ownershipStatus) { "account_ownership_mismatch" }
         }
         val facilityId = if (configuration.type.name == "CREDIT") {
             val primary = configuration.primaryLast4 ?: last4
@@ -46,8 +47,8 @@ interface CardRegistryDao {
         updateCreditFacilityId(bankId, last4, facilityId)
     }
 
-    @Query("SELECT EXISTS(SELECT 1 FROM account_registry WHERE bankId = :bankId AND maskedNumber = :masked AND ownershipStatus = 'OWNED')")
-    suspend fun ownedAccountExists(bankId: String, masked: String): Boolean
+    @Query("SELECT ownershipStatus FROM account_registry WHERE bankId = :bankId AND maskedNumber = :masked")
+    suspend fun accountOwnership(bankId: String, masked: String): String?
 
     /** Atomic create-if-absent. Returns -1 when the composite key already exists. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)

@@ -571,6 +571,8 @@
     <string name="review_bank_choice_title">Choose the bank to parse this message</string>
     <string name="review_parse_with_bank">Parse as %1$s</string>
     <string name="review_reason_purchase_ownership_unknown">Purchase — card ownership unset</string>
+    <string name="review_reason_instrument_ownership_unknown">Confirm ownership of the account or card</string>
+    <string name="review_reason_external_container">This activity belongs to an account or card you do not own</string>
     <string name="review_reason_purchase_unresolved">Purchase — payment account unresolved</string>
     <string name="review_reason_card_payment_missing">Card payment — missing data</string>
     <string name="review_reason_card_payment_ownership">Card payment — ownership unset</string>
@@ -632,4 +634,14 @@
     <string name="commitment_payment_ambiguous">More than one commitment matches this payment. Review the commitments.</string>
     <string name="commitment_payment_missing_source">The original transaction is unavailable. Review this commitment.</string>
     <string name="commitment_open_payment">View payment</string>
+    <string name="settings_external_accounts">Accounts belonging to others</string>
+    <string name="settings_external_spending">Track spending separately</string>
+    <string name="settings_external_spending_hint">Saved SMS evidence only, not a complete bank statement. Purchases, bills and fees on this account and its linked debit cards stay outside your personal spending total. Transfers, card and loan repayments, and cash withdrawals are not new spending.</string>
+    <string name="settings_external_gross">Purchases, bills and fees</string>
+    <string name="settings_external_refunds">Refunds</string>
+    <string name="settings_external_net">Net spending</string>
+    <string name="settings_external_pending">%1$d unconfirmed messages excluded from totals. Review their interpretation, linking or manual decision.</string>
+    <string name="settings_external_empty">No confirmed spending in the saved messages for this account.</string>
+    <string name="settings_external_loading">Loading linked account messages…</string>
+    <string name="settings_external_close">Close</string>
 </resources>
