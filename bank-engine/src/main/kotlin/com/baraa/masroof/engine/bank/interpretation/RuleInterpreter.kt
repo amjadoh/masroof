@@ -151,7 +151,8 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
-        if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
+        // UNKNOWN is already blocked; reporting it as a conflict would also veto user-taught patterns.
+        if (family !in INFORMATIONAL && family != MessageFamily.UNKNOWN && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
         fun labels(field: ExtractionField): List<String> {
             val sets=matching.map {it.labels[field].orEmpty()}
