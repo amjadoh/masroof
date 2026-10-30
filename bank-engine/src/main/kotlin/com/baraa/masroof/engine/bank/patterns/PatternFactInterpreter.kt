@@ -260,6 +260,13 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                         bank.deletedPatternIds.sorted().forEach(out::writeUTF)
                     }
                 }
+                if (configuration.confirmedLoanPayments.isNotEmpty()) {
+                    out.writeUTF("confirmed-loan-payments-v1")
+                    out.writeInt(configuration.confirmedLoanPayments.size)
+                    configuration.confirmedLoanPayments.sortedBy { it.billerCode }.forEach {
+                        out.writeUTF(it.billerCode); out.writeUTF(it.loanBankId); out.writeUTF(it.loanType)
+                    }
+                }
             }
             return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(it) }
         }

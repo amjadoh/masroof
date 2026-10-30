@@ -297,6 +297,8 @@ class TransactionReconciliationServiceTest {
 
     @Test
     fun refund_notIncome_usesDestinationContainerId() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
+        confirmation.confirmCardOwned(CardReference(Bank.BANK_ALJAZIRA, "7271"))
         persistEvent(
             smsId = "sms-rf",
             event = event(
@@ -318,6 +320,7 @@ class TransactionReconciliationServiceTest {
 
     @Test
     fun cardOnlyRefund_usesCardDestinationContainerId() = runBlocking {
+        confirmation.confirmCardOwned(CardReference(Bank.BANK_ALJAZIRA, "7271"))
         persistEvent(
             smsId = "sms-rf-card",
             event = event(

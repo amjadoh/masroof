@@ -27,6 +27,17 @@ class SettingsRegistryWorkflow(
     private val effectiveEvents: com.baraa.masroof.application.review.EffectiveParsedEventProvider? = null,
     private val reviewRepository: com.baraa.masroof.domain.repository.ReviewRepository? = null,
 ) {
+    suspend fun addExternalAccount(bankId: String, last4: String, name: String?): AccountReference {
+        val ref = AccountReference(Bank(bankId), canonicalSuffix(last4))
+        require(ref.bank != Bank.UNKNOWN)
+        inTransaction {
+            require(accountRegistryRepository.get(ref) == null) { "Account already exists" }
+            ownershipConfirmationService.markAccountExternal(ref)
+            accountRegistryRepository.updateDisplayName(ref, name?.trim()?.ifEmpty { null })
+        }
+        return ref
+    }
+
     suspend fun externalAccountSpending(account: AccountReference): com.baraa.masroof.application.dashboard.ExternalAccountSpending {
         val entry = requireNotNull(accountRegistryRepository.get(account))
         require(entry.ownership == com.baraa.masroof.domain.model.OwnershipStatus.EXTERNAL)

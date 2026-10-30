@@ -202,7 +202,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             family !in INFORMATIONAL && !primary.hasCardReferenceRole()
         }, defaults?.destinationObservedValue)
         if (card != null && account == null && destination == null && primary.usedAccountCurrencyForAmount &&
-            family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) problem("CARD_PRINCIPAL_CURRENCY_UNCONFIRMED")
+            family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.BILL_PAYMENT)) problem("CARD_PRINCIPAL_CURRENCY_UNCONFIRMED")
         val merchant = primary.merchant()
         val times = primary.transactionTimes(ignoreUnbound = family in INFORMATIONAL)
         val receiptTime = times.isEmpty() && input.durableSmsReceipt && diagnostics.none {

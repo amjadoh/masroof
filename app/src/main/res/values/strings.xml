@@ -655,4 +655,16 @@
     <string name="settings_external_cards">بطاقات غير مملوكة لي</string>
     <string name="settings_external_account_is_mine">تأكيد أن الحساب ملكي</string>
     <string name="settings_external_card_is_mine">تأكيد أن البطاقة ملكي</string>
+    <string name="review_reason_loan_payment_link">مفوتر مرتبط بقرض مؤكد، لكن حساب السداد أو البطاقة أو ملكية القرض تحتاج مراجعة</string>
+    <string name="settings_loan_payment_link">ربط مفوتر بسداد هذا القرض</string>
+    <string name="settings_loan_payment_hint">أكّد هذا الربط فقط إذا كانت جميع مدفوعات رقم المفوتر تخص هذا القرض. يُقرأ مصدر السداد من الرسالة وحساباتك وبطاقاتك المؤكدة؛ لا يعتمد الربط على المبلغ. التحويل إلى حسابك قبل السداد يبقى تحويلًا بين حساباتك.</string>
+    <string name="settings_loan_payment_biller">رقم المفوتر كما يظهر في الرسالة، مع الأصفار</string>
+    <string name="settings_loan_payment_preview">مراجعة الربط</string>
+    <string name="settings_loan_payment_confirm">حفظ الربط وتصحيح السداد</string>
+    <string name="settings_loan_payment_edit">تعديل الرقم</string>
+    <string name="settings_loan_payment_count">سيُصحح تصنيف %1$d حركة مسجلة إلى سداد قرض، دون تغيير مبلغها أو رسائلها. ويُستخدم الربط للرسائل المقبلة.</string>
+    <string name="settings_loan_payment_total">المبالغ المستبعدة من المصروفات الجديدة</string>
+    <string name="settings_loan_payment_unconfirmed">%1$d حركة مستبعدة من التصحيح لوجود قرار يدوي أو قراءة أو مصدر سداد غير مؤكد.</string>
+    <string name="settings_loan_payment_failed">تعذر إكمال الربط. راجع ملكية القرض ومصدر السداد، ثم أنشئ معاينة جديدة.</string>
+    <string name="settings_manual_account_external">الحساب لشخص آخر، ومصروفاته مستقلة عن مصروفاتي</string>
 </resources>

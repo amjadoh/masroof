@@ -439,6 +439,10 @@ class ProcessRawSmsUseCaseTest {
 
     @Test
     fun p8DerivedSaveException_keepsEvidenceAndReportsReconciliationIncomplete() = runBlocking {
+        RoomCardRegistryRepository.from(db).setOwnership(
+            com.baraa.masroof.domain.model.CardReference(Bank.BANK_ALJAZIRA, "7271"),
+            com.baraa.masroof.domain.model.OwnershipStatus.OWNED,
+        )
         val throwingFtRepo = object : FinancialTransactionRepository {
             override suspend fun save(
                 transaction: FinancialTransaction,
@@ -636,6 +640,10 @@ class ProcessRawSmsUseCaseTest {
 
     @Test
     fun p8DerivedCancellation_propagatesOutOfIngestion() = runBlocking {
+        RoomCardRegistryRepository.from(db).setOwnership(
+            com.baraa.masroof.domain.model.CardReference(Bank.BANK_ALJAZIRA, "7271"),
+            com.baraa.masroof.domain.model.OwnershipStatus.OWNED,
+        )
         val cancellingFtRepo = object : FinancialTransactionRepository {
             override suspend fun save(
                 transaction: FinancialTransaction,

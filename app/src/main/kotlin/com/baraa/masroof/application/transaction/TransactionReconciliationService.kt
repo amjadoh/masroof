@@ -61,6 +61,7 @@ class TransactionReconciliationService(
     private val reviewRepository: ReviewRepository? = null,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val automaticWrite: (suspend (List<ParsedEventRecord>, suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult)? = null,
+    private val confirmedLoanPayments: ConfirmedLoanPaymentsWorkflow? = null,
 ) {
     suspend fun reconcileStoredEvents(): ReconciliationSummary =
         reconcileStoredEventsDetailed().summary
@@ -385,6 +386,12 @@ class TransactionReconciliationService(
                 ?: OwnershipStatus.UNKNOWN
             val cardOwn = event.cardRef?.let { ownershipResolver.resolveCard(it) }
                 ?: OwnershipStatus.UNKNOWN
+            val loanPaymentReview = confirmedLoanPayments?.reviewReason(record)
+            if (loanPaymentReview != null) {
+                needsReview++
+                reviewCandidates += ReconciliationReviewCandidate(event.rawSmsId, ReviewKind.NEEDS_REVIEW, listOf(loanPaymentReview))
+                continue
+            }
             val ownershipReview = if (userConfirmed) null else MessageOwnershipPolicy.reviewReason(
                 event.messageFamily, sourceOwn, destOwn, cardOwn, event.cardRef != null)
             if (ownershipReview != null) {
@@ -1052,7 +1059,10 @@ class TransactionReconciliationService(
         rawSmsIds: List<String>,
         evidence: Map<String,ParsedEventRecord>,
     ): PersistOutcome =
-        when (guardedWrite(rawSmsIds, evidence) { financialTransactionRepository.save(transaction, rawSmsIds) }) {
+        when (guardedWrite(rawSmsIds, evidence) {
+            val attributed = confirmedLoanPayments?.attribute(transaction, rawSmsIds.map { evidence.getValue(it) }) ?: transaction
+            financialTransactionRepository.save(attributed, rawSmsIds)
+        }) {
             FinancialTransactionSaveResult.Saved -> PersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> PersistOutcome.Already
             is FinancialTransactionSaveResult.Conflict -> PersistOutcome.Failed

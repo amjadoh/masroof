@@ -28,7 +28,8 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
                 // Card ownership remains enforced by financial classification.
                 if (observed == null && stamp.roleProfile && binding.field == null &&
                     record.event.messageFamily in setOf(com.baraa.masroof.domain.model.MessageFamily.PURCHASE,
-                        com.baraa.masroof.domain.model.MessageFamily.REFUND) &&
+                        com.baraa.masroof.domain.model.MessageFamily.REFUND,
+                        com.baraa.masroof.domain.model.MessageFamily.BILL_PAYMENT) &&
                     cardReference?.bank?.id == binding.bank.value) {
                     val reference = requireNotNull(cardReference)
                     val card = cards?.get(reference) ?: return false
