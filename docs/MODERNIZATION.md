@@ -53,3 +53,54 @@ Tooling checkpoint: Detekt app/core checks pass after the v2 rule migration;
 all CI protocol/routing, release gate, version resolution and PR command contract
 checks pass. Debug APK and instrumentation Kotlin compile with OkHttp 5.5.1;
 focused HTTP/update unit tests pass. All seven exported schemas are byte-identical.
+
+## Simplification and retained contracts
+
+- Settings confirmation is one sealed target; review DAO transitions share one write while
+  preserving manual-ignore precedence and existing transaction-link rules.
+- Transaction filtering, identity parsing and totals moved into an application workflow;
+  Compose renders the prepared result. Query refresh and duplicate IDs have regressions.
+- Release/nightly semantic calculation and version-code consumption share their validation.
+- The reconciliation suite is organized into four scenario groups, preserving all 60 bodies.
+- Removed unused `CreditFacilityDao` and its accessor, two unused registry models, unused
+  random credit-facility/loan ID generators, unused ownership-clear methods and display helpers.
+  The credit-facility entity/table, deterministic historical IDs and exported schemas remain.
+- Removed 51 unused resource keys (102 Arabic/English definitions) after checking tracked
+  Kotlin, Java, XML, scripts and raw resource names. No dynamic resource lookup exists.
+- Retained text fitting: explicit span scaling and common tab scales need the existing helper.
+  The debug PDU bridge retains its established decoding semantics; replacing it with a stricter
+  generic hex parser would change accepted input.
+- Coroutine cancellation now propagates through commitment creation and advisory loads/saves;
+  ordinary failures retain existing error handling. Financial posting/retry policies are intact.
+
+## Sources
+
+Context7 tools are not connected in this environment. Version/API checks use official sources:
+[Kotlin releases](https://kotlinlang.org/docs/releases.html),
+[Kotlin 2.4 changes](https://kotlinlang.org/docs/whatsnew24.html),
+[Gradle compatibility](https://docs.gradle.org/current/userguide/compatibility.html),
+[OkHttp releases](https://square.github.io/okhttp/changelogs/changelog/),
+[Detekt migration](https://detekt.dev/docs/next/introduction/migrating),
+[JUnit guide](https://docs.junit.org/current/user-guide/) and upstream artifact/release metadata.
+Kotlin 2.4.21 was already pinned: this work uses stable stdlib APIs without introducing
+experimental language features or replacing explicit financial policy with new abstractions.
+
+## Local verification
+
+On JDK 27 with JDK 21 Android test/compilation launchers:
+
+- Focused HTTP/update, commitment cancellation, analytics, settings, review DAO,
+  ignore/restore, transaction filtering, ViewModel, dashboard fixture equality,
+  architecture, schema, identity, baseline and text-fitting checks passed.
+- All 267 pure JVM scenarios passed after Jupiter migration; bank-engine passed
+  again after replacing the remaining enum `values()` call with `entries`.
+- All 60 reorganized reconciliation scenarios passed. Every original named scenario
+  in the 2,027-method baseline still exists; all seven exported schema files are byte-identical.
+- Debug app and instrumentation APK builds, `lintDebug` and root `detekt` passed.
+  Existing lint warnings remain, including the deliberately unchanged target SDK 36.
+- Four production fidelity cases passed on the same API 36 emulator before and after.
+  All 40 PNG captures (five screens, both scroll positions, two languages, two themes)
+  match exactly with no differing pixels. README images use those synthetic fixtures.
+- CI protocol/image tests and release-version/command validation passed. Full app/unit
+  and API 37 device coverage still require the draft PR's CI; local focused checks do
+  not substitute for those gates.

@@ -26,3 +26,18 @@ Commitment display names are editable labels. Payment matching now uses the sour
 No financial database, schema version, application identity, preference namespace or production worker identity is added or changed by this work. The financial schema remains v18. Existing auxiliary learning/analytics databases retain their own migration tests.
 
 Restore also retires queued readers immediately. A reader waiting behind exclusive restore has not started Room work; it must receive `DatabaseRestartRequiredException` when that instance is retired. Waiting until the restore block exits deadlocks when restore first joins an analytics refresh that is itself waiting for that block. `DatabaseAccessGateTest.retirementReleasesQueuedReadersBeforeTheRestoreBlockCanFinish` controls that order, and the native shutdown/backup restore cases cover it through production wiring. Admitted leases still drain normally.
+
+## Modernization scenario map
+
+The original 60 `TransactionReconciliationServiceTest` methods retain their bodies and names:
+29 posting/matching/idempotence scenarios remain there, 16 automation/informational-authority
+scenarios live in `ReconciliationAuthorityTest`, 11 pairing/healing scenarios in
+`ReconciliationTransferHealingTest`, and four persisted-timezone scenarios in
+`ReconciliationTimingTest`. An inherited fixture opens a fresh in-memory Room database before
+each test and closes it afterward; no ledger or database is shared between scenarios.
+
+Pure-module Jupiter migration preserves all 267 original test methods (95 finance-core,
+121 bank-engine, 51 ml-assist). Android/Robolectric tests remain JUnit 4. Added regressions cover
+cancellation propagation, SDK package/runtime separation, transaction-list query refresh,
+duplicate display IDs, foreign-currency totals and explicit money-span scaling. The complete
+baseline contains 2,027 named test methods; the modernization record tracks preservation checks.

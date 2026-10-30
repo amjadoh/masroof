@@ -4,14 +4,15 @@
 
 Execution record and compatibility baseline: [modernization](../docs/MODERNIZATION.md).
 
-- [ ] Update build/analysis tooling, HTTP dependency and pinned CI actions.
-- [ ] Validate SDK package/runtime API separation and required CI contracts.
-- [ ] Migrate pure JVM tests to Jupiter without losing existing scenarios.
-- [ ] Simplify settings state, dashboard projections and repeated write/cleanup paths.
-- [ ] Prove cancellation propagation and preserve financial/recovery invariants.
-- [ ] Delete proven unused code/resources; preserve schema and compatibility hooks.
-- [ ] Redesign both product READMEs and reconcile technical documentation.
-- [ ] Complete focused checks, APK/static checks and visual parity evidence.
+- [x] Update build/analysis tooling, HTTP dependency and pinned CI actions.
+- [x] Validate SDK package/runtime API separation and required CI contracts.
+- [x] Migrate pure JVM tests to Jupiter without losing existing scenarios.
+- [x] Simplify settings state, dashboard projections and repeated write/cleanup paths.
+- [x] Prove cancellation propagation and preserve financial/recovery invariants.
+- [x] Delete proven unused code/resources; preserve schema and compatibility hooks.
+- [x] Redesign both product READMEs and reconcile technical documentation.
+- [x] Complete focused checks, APK/static checks and visual parity evidence.
+- [ ] Receive the complete required PR CI result on the final commit.
 
 ## Existing personal spending work
 

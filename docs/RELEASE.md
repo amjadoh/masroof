@@ -10,7 +10,7 @@ The app checks for updates using your personal GitHub token and installs APKs di
 PR → CI checks pass → Review & Approve → Merge to main → /nightly or /release
 ```
 
-`/release` and `/nightly` wait if main CI is still running. Publishing still requires `unit-test` and `static-analysis` to succeed.
+`/release` and `/nightly` wait if main CI is still running. Publishing requires the complete successful main-push CI for the exact checked-out SHA, including `unit-test`, `static-analysis`, `emulator-smoke` and `emulator-lifecycle`. Missing, skipped, cancelled and failed checks are rejected.
 
 After your PR is merged, publish by commenting on the merged PR:
 
@@ -55,10 +55,9 @@ You can also trigger builds directly from the GitHub Actions UI:
 2. Select **Release type**: `release` or `nightly`.
 3. Select **Version bump**: `patch`, `minor`, or `major`.
 4. (Optional) Provide a target commit ref or branch (defaults to `main`).
-5. (Optional) Set **Skip green CI gate** only for emergencies.
-6. Click **Run workflow**.
+5. Click **Run workflow**. There is no CI-gate bypass.
 
-Release verifies the target commit has a successful **CI** check, then builds the signed APK. It does **not** re-run the full test suite.
+Release verifies the target commit has a complete successful **main push CI**, then builds the signed APK. It does **not** re-run the full test suite.
 
 ---
 
@@ -137,3 +136,7 @@ cp keystore.properties.example keystore.properties
 ```
 
 Output: `app/build/outputs/apk/release/app-release.apk`
+
+## Tooling and version calculation
+
+Release retains its existing Ubuntu runner label. Gradle runs on Temurin 27 with the JDK 21 compilation toolchain installed first; setup-gradle owns its cache. Actions are pinned to reviewed release commits. `resolve-next-version.sh` shares semantic version calculation and validates consumed version codes for both release channels, including conflict retries. Full tests stay in PR/main CI; release only verifies that evidence and builds the APK.
