@@ -108,8 +108,10 @@ class PatternProcessingMilestoneTest {
             assertTrue(runCatching { c.settingsRegistryWorkflow.configureCard(otherCard,
                 com.baraa.masroof.domain.model.CardConfiguration(null, com.baraa.masroof.domain.model.CardType.CREDIT)) }.isFailure)
             val spending = c.settingsRegistryWorkflow.externalAccountSpending(other)
-            assertEquals(setOf("other-owner", "external-account-unknown-card"), spending.rows.map { it.rawSmsId }.toSet())
-            assertEquals("75.00", spending.totals.single().purchasesAndFees.amount.toPlainString())
+            // The unknown card's explicit account conflicts with the approved default; it stays unconfirmed.
+            assertTrue(c.parsedEventRepository.findByRawSmsId("external-account-unknown-card")!!.event.parseStatus != ParseStatus.SUCCESS)
+            assertEquals(listOf("other-owner"), spending.rows.map { it.rawSmsId })
+            assertEquals("37.50", spending.totals.single().purchasesAndFees.amount.toPlainString())
             c.settingsRegistryWorkflow.updateAccountDisplayName(other, "اسم اختياري")
             assertEquals("اسم اختياري", c.accountRegistryRepository.get(other)?.displayName)
             assertEquals(spending, c.settingsRegistryWorkflow.externalAccountSpending(other))
