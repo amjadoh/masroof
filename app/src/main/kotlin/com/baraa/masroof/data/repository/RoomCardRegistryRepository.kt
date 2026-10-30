@@ -189,4 +189,10 @@ class RoomCardRegistryRepository(
                 accessGate = accessGate,
             )
     }
+
+    override suspend fun delete(reference: CardReference): Unit = accessGate.withAccess<Unit> {
+        val last4 = requireLast4(reference)
+        requireExisting(reference.bank.id, last4)
+        requireUpdated(dao.deleteAtomic(reference.bank.id, last4))
+    }
 }

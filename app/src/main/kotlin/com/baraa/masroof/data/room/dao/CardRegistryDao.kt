@@ -339,4 +339,24 @@ interface CardRegistryDao {
         """,
     )
     suspend fun updateCreditFacilityId(bankId: String, last4: String, facilityId: String?)
+
+    @Query("DELETE FROM card_registry WHERE bankId = :bankId AND last4 = :last4")
+    suspend fun deleteRow(bankId: String, last4: String): Int
+
+    @Query(
+        """
+        DELETE FROM credit_facility
+        WHERE id = :facilityId AND NOT EXISTS (SELECT 1 FROM card_registry WHERE creditFacilityId = :facilityId)
+        """,
+    )
+    suspend fun deleteFacilityIfUnused(facilityId: String)
+
+    /** Removes the card and its credit facility once no other card shares it. */
+    @Transaction
+    suspend fun deleteAtomic(bankId: String, last4: String): Int {
+        val facility = get(bankId, last4)?.creditFacilityId
+        val deleted = deleteRow(bankId, last4)
+        facility?.let { deleteFacilityIfUnused(it) }
+        return deleted
+    }
 }

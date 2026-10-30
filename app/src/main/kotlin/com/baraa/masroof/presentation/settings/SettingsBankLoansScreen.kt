@@ -3,7 +3,12 @@ package com.baraa.masroof.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +40,7 @@ fun SettingsBankLoansScreen(
     onResumeTracking: (ManagedLoanUi) -> Unit,
     onDismissStopConfirm: () -> Unit,
     onConfirmStopTracking: () -> Unit,
+    deleteActions: RegistryDeleteActions,
     onOpenBank: (() -> Unit)? = null,
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
@@ -44,6 +50,7 @@ fun SettingsBankLoansScreen(
     val followedLoans = bankLoans.filter { it.ownership == OwnershipStatus.OWNED }
     val stoppedLoans = bankLoans.filter { it.ownership == OwnershipStatus.EXTERNAL }
 
+    SettingsDeleteDialogHost(state, deleteActions) { (it as? StopTrackingTarget.Loan)?.loan?.let { loan -> loanDisplayLabel(loan) } }
     state.stopConfirmLoanTarget?.let { target ->
         SettingsStopConfirmDialog(
             title = stringResource(R.string.settings_stop_loan_confirm_title),
@@ -102,6 +109,8 @@ fun SettingsBankLoansScreen(
                                 onConfirmOwned = { onConfirmOwned(loan) },
                                 onMarkExternal = { onMarkExternal(loan) },
                             )
+                            SettingsDeleteAction({ deleteActions.onRequest(StopTrackingTarget.Loan(loan)) }, !state.updating,
+                                Modifier.padding(top = MasroofSpacing.cardInnerGap))
                         },
                     )
                 }
@@ -122,6 +131,8 @@ fun SettingsBankLoansScreen(
                                 enabled = !state.updating,
                                 contentDescription = stringResource(R.string.settings_stop_loan_tracking),
                             )
+                            Spacer(Modifier.width(MasroofSpacing.smallGap))
+                            SettingsDeleteAction({ deleteActions.onRequest(StopTrackingTarget.Loan(loan)) }, !state.updating)
                         },
                     )
                 }
@@ -137,10 +148,8 @@ fun SettingsBankLoansScreen(
                         title = loanDisplayLabel(loan),
                         showBankLabel = true,
                         endAction = {
-                            SettingsResumeTrackingButton(
-                                onClick = { onResumeTracking(loan) },
-                                enabled = !state.updating,
-                            )
+                            SettingsStoppedItemActions({ onResumeTracking(loan) },
+                                { deleteActions.onRequest(StopTrackingTarget.Loan(loan)) }, !state.updating)
                         },
                     )
                 }
