@@ -6,6 +6,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.LayoutDirection
@@ -70,7 +73,8 @@ class PatternTeachingClarityJourneyTest {
             compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed().performClick()
             compose.onNodeWithTag("pattern-question").assertTextContains("مبلغ العملية", substring = true)
             // Every field question carries a plain explanation with an SMS example.
-            compose.onNodeWithTag("pattern-field-help").assertIsDisplayed().assertTextContains("مثال", substring = true)
+            compose.onNodeWithTag("pattern-field-help").assertIsDisplayed()
+            compose.onNode(hasAnyAncestor(hasTestTag("pattern-field-help")) and hasText("مثال", substring = true)).assertIsDisplayed()
             compose.onNodeWithTag("pattern-bind").performClick()
             repeat(5) { click(R.string.teaching_skip_field) }
             compose.onNodeWithTag("pattern-question").assertIsDisplayed().assertTextContains("بنك الطرف الآخر", substring = true)

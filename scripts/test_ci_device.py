@@ -66,7 +66,6 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertEqual(cases, {c for group in suites.values() for c in group})
         self.assertEqual(len(cases), sum(map(len, suites.values())))
         self.assertEqual(20, len(suites['processDeath']))
-        self.assertEqual(2, len(suites['upgrade']))
         self.assertEqual(2, len(suites['excluded']))
         self.assertTrue(all(len(pair) == 2 for pair in config['processDeath']))
         with self.assertRaises(ValueError):
@@ -93,9 +92,9 @@ class DeviceProtocolTest(unittest.TestCase):
             bundle = Path(directory)
             apk = bundle / 'app.apk'
             apk.write_bytes(b'verified-apk')
-            config = dict(processDeath=[], upgrade=[], excluded={})
+            config = dict(processDeath=[], excluded={})
             manifest = dict(testedSha='a'*40, config=config, suites=dict(primary=['example.Test#case'],
-                processDeath=[], upgrade=[], excluded=[]), shards=[['example.Test#case']],
+                processDeath=[], excluded=[]), shards=[['example.Test#case']],
                 apks=dict(app=dict(file='app.apk', sha256=device.digest(apk))))
             def save(): (bundle / 'manifest.json').write_text(json.dumps(manifest))
             save()

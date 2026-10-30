@@ -42,16 +42,15 @@ def source_cases(root=ROOT):
 
 def classify(cases, config):
     stateful = {case for pair in config['processDeath'] for case in pair}
-    upgrade = set(config['upgrade'])
     excluded = set(config['excluded'])
-    if stateful & upgrade or (stateful | upgrade) & excluded:
+    if stateful & excluded:
         raise ValueError('Suites overlap')
-    if not (stateful | upgrade | excluded) <= cases:
+    if not (stateful | excluded) <= cases:
         raise ValueError('A registered lifecycle case no longer exists')
-    unknown = {c for c in cases - stateful - upgrade if '.processdeath.' in c or '.upgrade.' in c}
+    unknown = {c for c in cases - stateful if '.processdeath.' in c}
     if unknown: raise ValueError(f'Unpaired lifecycle phases: {sorted(unknown)}')
-    return {'primary': sorted(cases - stateful - upgrade - excluded),
-            'processDeath': sorted(stateful), 'upgrade': sorted(upgrade), 'excluded': sorted(excluded)}
+    return {'primary': sorted(cases - stateful - excluded),
+            'processDeath': sorted(stateful), 'excluded': sorted(excluded)}
 
 
 def partition(cases, count, weights):
@@ -95,8 +94,7 @@ def bundle():
     weights = json.loads((ROOT / 'ci/device-durations.json').read_text())
     BUNDLE.mkdir(parents=True, exist_ok=True)
     artifacts = {'app': ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
-                 'tests': ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
-                 'baseline': ROOT / 'app/build/upgrade-baseline/app/build/outputs/apk/debug/app-debug.apk'}
+                 'tests': ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'}
     versions = tomllib.loads((ROOT / 'gradle/libs.versions.toml').read_text())['versions']
     for key, group, name, ref in [('orchestrator', 'androidx/test', 'orchestrator', 'androidxTestOrchestrator'),
                                   ('services', 'androidx/test/services', 'test-services', 'androidxTestServices')]:
@@ -110,12 +108,12 @@ def bundle():
         target = BUNDLE / f'{key}.apk'
         if source != target: shutil.copyfile(source, target)
         paths[key] = dict(file=target.name, sha256=digest(target), **apk_identity(target, config['buildTools']))
-    expected_packages = dict(app=config['appId'], baseline=config['appId'], tests=config['appId']+'.test',
+    expected_packages = dict(app=config['appId'], tests=config['appId']+'.test',
                              orchestrator='androidx.test.orchestrator', services='androidx.test.services')
     for key, package in expected_packages.items():
         if paths[key]['package'] != package: raise ValueError(f'Wrong APK identity: {key}')
-    if len({paths[key]['certificate'] for key in ['app', 'tests', 'baseline']}) != 1:
-        raise ValueError('Baseline, application and tests must share the same test signing certificate')
+    if len({paths[key]['certificate'] for key in ['app', 'tests']}) != 1:
+        raise ValueError('Application and tests must share the same test signing certificate')
     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     manifest = dict(version=1, testedSha=sha, sourceSha=os.environ.get('PR_HEAD_SHA', sha), config=config,
                     suites=suites, shards=partition(suites['primary'], config['shards'], weights), apks=paths)
@@ -262,8 +260,7 @@ def verify_bundle():
 def restore():
     manifest = verify_bundle()
     for key, target in [('app', ROOT / 'app/build/outputs/apk/debug/app-debug.apk'),
-                        ('tests', ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'),
-                        ('baseline', ROOT / 'app/build/upgrade-baseline/app/build/outputs/apk/debug/app-debug.apk')]:
+                        ('tests', ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk')]:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(BUNDLE / manifest['apks'][key]['file'], target)
 
@@ -271,7 +268,7 @@ def restore():
 def phase(case, resume):
     manifest = verify_bundle()
     config = manifest['config']
-    if case not in manifest['suites']['processDeath'] + manifest['suites']['upgrade']:
+    if case not in manifest['suites']['processDeath']:
         raise ValueError('Unregistered lifecycle phase')
     directory = ROOT / 'app/build/reports/device-ci/phases' / case.replace('#', '-')
     directory.mkdir(parents=True, exist_ok=True)

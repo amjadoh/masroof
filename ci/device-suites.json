@@ -45,15 +45,10 @@
       "com.baraa.masroof.instrumentation.processdeath.LearningProcessDeathJourneyTest#resumeFinancialCorrectionAndBlockNextTemplate"
     ]
   ],
-  "upgrade": [
-    "com.baraa.masroof.instrumentation.upgrade.AppUpgradePreservationTest#seedBeforeUpdate",
-    "com.baraa.masroof.instrumentation.upgrade.AppUpgradePreservationTest#verifyAfterUpdate"
-  ],
   "excluded": {
     "com.baraa.masroof.integration.analytics.PrivateBackupAnalysisTest#approvedPrivateBackupRunsThroughProductionAnalysisWithoutChangingTheLedger": "Opt-in local probe requires the user's private encrypted backup and passphrase; these inputs must never be uploaded to CI",
     "com.baraa.masroof.instrumentation.PreVacuumBackupSnapshotTest#concurrentExport_onPre327Sqlite_importsAndReopensRoom": "API 26\u201328 compatibility is outside the agreed CI device scope"
   },
   "timeouts": {},
-  "baseline": "b76c1afc",
   "buildTools": "36.0.0"
 }
