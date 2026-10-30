@@ -151,6 +151,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 saving = true; failure = false
                 scope.launch {
                     try { if (workflow.acceptCandidate(candidate.key, draft)) editing = null else failure = true }
+                    catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                     catch (_: Exception) { failure = true }
                     finally { saving = false }
                 }
