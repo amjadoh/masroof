@@ -58,10 +58,13 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
                     require(contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
                         com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
                         com.baraa.masroof.engine.bank.MessageFamily.REFUND, com.baraa.masroof.engine.bank.MessageFamily.WITHDRAWAL,
-                        com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT))
+                        com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT,
+                        com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT))
+                    if (contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT,
+                            com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT)) require(binding.field != null)
                     val incoming = contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN,
                         com.baraa.masroof.engine.bank.MessageFamily.REFUND)
-                    require(binding.bank.value == bankId && binding.field == null && contract.currency != null &&
+                    require(binding.bank.value == bankId && binding.field in setOf(null, "source_account", "destination_account") && contract.currency != null &&
                         binding.role == if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE)
                 }
             }
