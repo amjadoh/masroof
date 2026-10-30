@@ -2730,7 +2730,7 @@
         "draft.bank": "cd930f004d5f5c7cfc5a7c07863dfefa7c51d22e1c1b540ade128a8cd99fa515",
         "draft.bankNetworkType": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
         "draft.cardRef": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
-        "draft.confidence.reasons": "d9b7ffd5657af3d56bc1960d8239b4aee63f00048b1629afc3e717874db48fb7",
+        "draft.confidence.reasons": "63066d2e318e1065a64c417e8ffe742728ddc0978cdc65e310260b7fd041282b",
         "draft.confidence.score": "2a6542ebf321a6deee56317d5d96fc82bfce006921df88d5dfc9476b17fc72c8",
         "draft.counterparty": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
         "draft.destinationAccountRef": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
@@ -2748,7 +2748,7 @@
         "event.bank": "cd930f004d5f5c7cfc5a7c07863dfefa7c51d22e1c1b540ade128a8cd99fa515",
         "event.bankNetworkType": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
         "event.cardRef": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
-        "event.confidence.reasons": "d9b7ffd5657af3d56bc1960d8239b4aee63f00048b1629afc3e717874db48fb7",
+        "event.confidence.reasons": "63066d2e318e1065a64c417e8ffe742728ddc0978cdc65e310260b7fd041282b",
         "event.confidence.score": "2a6542ebf321a6deee56317d5d96fc82bfce006921df88d5dfc9476b17fc72c8",
         "event.counterparty": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
         "event.destinationAccountRef": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
@@ -2761,9 +2761,9 @@
         "event.purchaseChannel": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
         "event.rawSmsId": "9974ad5578dd3aaf11bc0c9741855971f73a24c14564fa45e2c696c32ff48fd4",
         "event.sourceAccountRef": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
-        "findings": "dd91f3693ee58aa8c0b743e99bcbd4f682ed73ef1ae9e26ad2d8e357ed88df94",
+        "findings": "a388da4c259d5ed04750a8d3b9884f152ee6fd535a209fc3680feddb9b611dc6",
         "outcome": "ReviewRequired",
-        "reasons": "e22ed81a818913da3ded226b6cca817322d678f70ea2d8e402eb61f6620b9fc6"
+        "reasons": "023feb648643ed818081b30a25348e740a9270fafa79a40f6ab7bb503926295e"
     },
     "withdrawal_ar_001": {
         "input": "aa5088a6b10a244b55dc932cb93f0f127e55625dead4e72ad9b9ac17edeb5bd6",

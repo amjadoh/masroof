@@ -92,7 +92,10 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             // Use the pattern's declared sender only to invoke its body compiler, after routing.
             pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
         }
-        if (roleResult != null && (matches.isEmpty() || activeRoles.isNotEmpty())) {
+        // A taught pattern may complete an incomplete recognized role of the same family, never contradict it.
+        val completesRole = roleResult != null && roleResult.status != ParseStatus.SUCCESS && matches.size == 1 &&
+            roleResult.facts.family != MessageFamily.UNKNOWN && matches.single().first.factContract?.family == roleResult.facts.family
+        if (roleResult != null && !completesRole && (matches.isEmpty() || activeRoles.isNotEmpty())) {
             if (matches.isNotEmpty()) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
             val selected = activeRoles.firstOrNull() ?: roles.firstOrNull {
                 it.enabled && roleResult.familyInference != null && it.factContract?.family == roleResult.facts.family
