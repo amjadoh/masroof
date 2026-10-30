@@ -31,8 +31,10 @@ Experimental features and speculative abstractions are excluded.
 - [x] Read current AGENTS.md, architecture and previous modernization record.
 - [x] Query Context7 and cross-check official Kotlin 2.1–2.4 release notes.
 - [x] Baseline units: 2,154 tests, zero failures/errors/skips.
-- [ ] Baseline static analysis and APKs.
-- [ ] Complete production screening inventory and candidate audit.
-- [ ] Apply and verify justified source changes incrementally.
-- [ ] Final units/static/APKs/device checks and compatibility review.
+- [x] Baseline static analysis and APKs.
+- [x] Complete production screening inventory and candidate audit.
+- [x] Apply and verify justified source changes incrementally (two source commits).
+- [x] Final units/static/APKs/device checks and compatibility review.
+  2,154 units and 156 device cases/phases verified; initial UI selector failure
+  and successful paired probes/full affected-shard rerun are recorded in report.md.
 - [ ] Final report and pull request targeting main.
