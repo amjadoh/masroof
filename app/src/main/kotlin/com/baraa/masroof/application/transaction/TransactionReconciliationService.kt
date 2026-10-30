@@ -395,6 +395,13 @@ class TransactionReconciliationService(
             val ownershipReview = if (userConfirmed) null else MessageOwnershipPolicy.reviewReason(
                 event.messageFamily, sourceOwn, destOwn, cardOwn, event.cardRef != null)
             if (ownershipReview != null) {
+                if (event.parseStatus == com.baraa.masroof.domain.model.ParseStatus.SUCCESS && event.amount != null &&
+                    MessageOwnershipPolicy.isConfirmedExternal(event.messageFamily, sourceOwn, destOwn, cardOwn, event.cardRef != null)) {
+                    // Known other-holder activity is complete outside the personal ledger, not a recurring ownership question.
+                    ignored++
+                    settledRawSmsIds += event.rawSmsId
+                    continue
+                }
                 needsReview++
                 reviewCandidates += ReconciliationReviewCandidate(event.rawSmsId, ReviewKind.NEEDS_REVIEW,
                     listOf(ownershipReview))

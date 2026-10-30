@@ -5,6 +5,15 @@ import com.baraa.masroof.domain.model.OwnershipStatus
 
 /** Receiving an SMS does not establish ownership of its local account or card. */
 internal object MessageOwnershipPolicy {
+    fun isConfirmedExternal(family: MessageFamily, source: OwnershipStatus, destination: OwnershipStatus,
+        card: OwnershipStatus, hasCard: Boolean): Boolean {
+        if (reviewReason(family, source, destination, card, hasCard) != "message_on_external_container") return false
+        val localAccount = if (family in setOf(MessageFamily.TRANSFER_IN, MessageFamily.REFUND)) destination else source
+        val cardIsLocal = family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND,
+            MessageFamily.WITHDRAWAL, MessageFamily.BILL_PAYMENT, MessageFamily.FEE)
+        return localAccount != OwnershipStatus.OWNED && (!cardIsLocal || card != OwnershipStatus.OWNED)
+    }
+
     fun reviewReason(family: MessageFamily, source: OwnershipStatus, destination: OwnershipStatus,
         card: OwnershipStatus, hasCard: Boolean): String? {
         val localAccount = when (family) {
