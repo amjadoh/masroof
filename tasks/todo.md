@@ -12,7 +12,9 @@ Execution record and compatibility baseline: [modernization](../docs/MODERNIZATI
 - [x] Delete proven unused code/resources; preserve schema and compatibility hooks.
 - [x] Redesign both product READMEs and reconcile technical documentation.
 - [x] Complete focused checks, APK/static checks and visual parity evidence.
-- [ ] Receive the complete required PR CI result on the final commit.
+
+Required full CI is tracked on [PR #346](https://github.com/bakhshb/masroof/pull/346);
+the check results on the final commit are the completion evidence.
 
 ## Existing personal spending work
 
