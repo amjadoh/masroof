@@ -96,7 +96,13 @@ internal class PrimaryFieldExtractor(
     private fun referencePattern(label: String) = Regex("(?m)^ *" + role(label) +
         "[ \\t]*:?[ \\t]*\\(?((?:[a-z]{2})?[*x0-9]{1,34})(?![\\p{L}\\p{N}_])")
 
-    fun hasCardReferenceRole(): Boolean = labels(ExtractionField.CARD).any { label ->
+    private fun madaCardMatches(): List<MatchResult> =
+        if (labels(ExtractionField.CARD).any { SourceText(it).text == "مدي" }) {
+            Regex("(?m)^ *(?:مدي-ابل|شراء +pos-مدي) *[*x]*([0-9]{4})[*x]*(?![\\p{L}\\p{N}_])")
+                .findAll(source.text).toList()
+        } else emptyList()
+
+    fun hasCardReferenceRole(): Boolean = madaCardMatches().isNotEmpty() || labels(ExtractionField.CARD).any { label ->
         referencePattern(label).findAll(source.text).any { match ->
             val span = source.evidence("extract.identifier", "CARD", match.groups[1]!!.range)
             evidence.none { it.field == "AMOUNT" && span.start < it.end && it.start < span.end }
@@ -118,11 +124,15 @@ internal class PrimaryFieldExtractor(
 
     fun card(): String? {
         val labeledCard = identifier(ExtractionField.CARD)
+        // Explicit Mada roles may be part of the purchase title or name a wallet token.
+        // Retain the observed reference; this never aliases it to a physical card.
+        val mada = madaCardMatches()
         val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
         val hits = pattern.findAll(source.text).toList()
-        val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) }).distinct()
+        val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) } + mada.map { it.groupValues[1] }).distinct()
         if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)
         hits.forEach { evidence += source.evidence("extract.card.number-role", "CARD", it.groups[1]!!.range) }
+        mada.forEach { evidence += source.evidence("extract.card.mada-role", "CARD", it.groups[1]!!.range) }
         return values.singleOrNull()
     }
 
