@@ -63,11 +63,11 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             if (current.generation != generation) throw PatternApprovalException(PatternApprovalProblem.CONFIGURATION_CHANGED)
             val bank = current.banks.single { it.bankId == bankId }
             val pattern = bank.currentPatterns.single { it.id == patternId }
-            require(pattern.enabled)
             val account = accountId?.let { id -> ownedAccounts(bankId).single { it.id == id } }
             val card = cardId?.let { id -> ownedCards(bankId).single { it.id == id } }
             if (account == null && card == null) throw PatternApprovalException(PatternApprovalProblem.ACCOUNT_REQUIRED)
-            val fields = pattern.preview(bankId, pattern.sender, body)?.fields
+            // A pattern may be approved while off; it is read as switched on only for this check.
+            val fields = pattern.copy(enabled = true).preview(bankId, pattern.sender, body)?.fields
                 ?: throw PatternApprovalException(PatternApprovalProblem.MESSAGE_MISMATCH)
             val cardField = fields["card"]
             if (cardField != null) {
@@ -93,7 +93,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 contextReferences = contextReferences)
             val next = pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = contract)
             val proposed = current.copy(generation = Math.addExact(generation, 1), banks = current.banks.map {
-                if (it.bankId == bankId) it.copy(patterns = it.patterns + next) else it
+                if (it.bankId == bankId) it.copy(patterns = it.patterns + next.copy(enabled = true)) else it
             })
             val input = MessageInput("financial-pattern-preview", pattern.sender, body, Instant.now())
             val interpretation = PatternFactInterpreter(proposed).interpretRouted(input, BankId(bankId))

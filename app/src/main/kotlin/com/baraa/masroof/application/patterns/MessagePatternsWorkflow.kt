@@ -127,7 +127,7 @@ class MessagePatternsWorkflow(
             require(bindings.all { it.ignored || it.field in operation.fields }) { "Field does not belong to operation" }
             val pattern = SavedMessagePattern.fromChoices(prior?.id ?: java.util.UUID.randomUUID().toString(), bankId, sender,
                 operation.name, body, bindings.choices()).copy(revision = prior?.let { Math.addExact(it.revision, 1) } ?: 1,
-                    enabled = prior?.enabled ?: true)
+                    enabled = prior?.enabled ?: false)
             PatternTeachingPreview(configuration.generation, pattern,
                 requireNotNull(pattern.copy(enabled = true).preview(bankId, sender, body)).fields.displayFields())
         }
