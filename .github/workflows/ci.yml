@@ -12,12 +12,16 @@ concurrency:
 
 jobs:
   android-version:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       api-level: ${{ steps.android.outputs.api-level }}
+      image-version: ${{ steps.android.outputs.image-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
       - name: Verify CI routing, protocol and publication contracts
         run: |
           python3 scripts/test-latest-stable-android.py
@@ -32,30 +36,39 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
-          api = json.load(open('ci/device-suites.json'))['api']
+          config = json.load(open('ci/device-suites.json'))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f'api-level={api}\n')
-          print(f'Validated Google APIs x86_64 image: API {api}')
+              print(f"api-level={config['api']}", file=out)
+              print(f"image-version={config['imageVersion']}", file=out)
+          print(f"Validated Google APIs x86_64 image: API {config['api']}, package {config['imageVersion']}")
           PY
 
   unit-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Install Java 21 toolchain
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v6
-      - uses: android-actions/setup-android@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
       - run: sudo install -d -m 0777 /opt/cursor/artifacts
       - name: Unit tests
         run: ./gradlew testDebugUnitTest :bank-engine:test :finance-core:test :ml-assist:test --stacktrace
       - name: Preserve complete unit-test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-unit-test-reports
           path: |
@@ -73,32 +86,45 @@ jobs:
           ./gradlew :ml-assist:trainRecurringSeed -PrecurringCheck=true --console=plain
 
   static-analysis:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Java 21 toolchain
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v6
-      - uses: android-actions/setup-android@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
       - name: Lint and detekt
         run: ./gradlew lintDebug detekt --stacktrace
 
   build-test-apks:
     needs: android-version
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Install Java 21 toolchain
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v6
-      - uses: android-actions/setup-android@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
       - name: Build shared test APKs
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
@@ -106,7 +132,7 @@ jobs:
         env:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python3 scripts/ci_device.py bundle
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: shared-test-apks
           path: app/build/ci-device/
@@ -120,16 +146,24 @@ jobs:
       fail-fast: false
       matrix:
         shard: [0, 1, 2, 3]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Install Java 21 toolchain
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: shared-test-apks
           path: app/build/ci-device/
@@ -137,19 +171,19 @@ jobs:
         id: sdk
         run: echo "root=${ANDROID_SDK_ROOT}" >> "$GITHUB_OUTPUT"
       - name: Cache Android system image
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.api-level }}/google_apis/x86_64
-          key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.api-level }}-google_apis-x86_64
+          path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.image-version }}/google_apis/x86_64
+          key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.image-version }}-google_apis-x86_64
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.users.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Instrumentation smoke
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: ${{ needs.android-version.outputs.api-level }}
+          api-level: ${{ needs.android-version.outputs.image-version }}
           target: google_apis
           arch: x86_64
           profile: pixel_2
@@ -159,7 +193,7 @@ jobs:
           script: python3 scripts/ci_device.py run --shard ${{ matrix.shard }}
       - name: Preserve per-case evidence even on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: instrumentation-reports-${{ matrix.shard }}
           path: app/build/reports/device-ci/
@@ -171,16 +205,24 @@ jobs:
       fail-fast: false
       matrix:
         suite: [production]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Install Java 21 toolchain
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: shared-test-apks
           path: app/build/ci-device/
@@ -190,21 +232,21 @@ jobs:
         id: sdk
         run: echo "root=${ANDROID_SDK_ROOT}" >> "$GITHUB_OUTPUT"
       - name: Cache Android system image
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.api-level }}/google_apis/x86_64
-          key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.api-level }}-google_apis-x86_64
+          path: ${{ steps.sdk.outputs.root }}/system-images/android-${{ needs.android-version.outputs.image-version }}/google_apis/x86_64
+          key: android-image-v1-${{ runner.os }}-${{ runner.arch }}-${{ needs.android-version.outputs.image-version }}-google_apis-x86_64
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.users.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Process-death instrumentation
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
           CI_DEVICE_BUNDLE: app/build/ci-device
         with:
-          api-level: ${{ needs.android-version.outputs.api-level }}
+          api-level: ${{ needs.android-version.outputs.image-version }}
           target: google_apis
           arch: x86_64
           profile: pixel_2
@@ -214,7 +256,7 @@ jobs:
           script: bash .github/scripts/run-lifecycle-suite.sh ${{ matrix.suite }} test
       - name: Preserve recovery evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lifecycle-reports-${{ matrix.suite }}
           path: app/build/reports/device-ci/
@@ -223,7 +265,7 @@ jobs:
   emulator-lifecycle:
     needs: emulator-recovery
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Require every recovery suite
@@ -234,7 +276,7 @@ jobs:
   emulator-smoke:
     needs: [android-version, build-test-apks, unit-test, static-analysis, emulator-app, emulator-lifecycle]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Require complete CI
@@ -247,7 +289,7 @@ jobs:
           failed = {name: job['result'] for name, job in results.items() if job['result'] != 'success'}
           if failed: raise SystemExit(f'Incomplete CI: {failed}')
           PY
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: instrumentation-reports-*
           path: device-results

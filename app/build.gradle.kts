@@ -98,6 +98,7 @@ android {
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
+            it.javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
             it.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
             it.forkEvery = 50
             // Robolectric SDK 36 sets FileDescriptor internals through SharedSecrets on JDK 21.
