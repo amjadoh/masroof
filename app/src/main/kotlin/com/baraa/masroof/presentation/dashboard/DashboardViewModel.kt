@@ -441,7 +441,7 @@ class DashboardViewModel(
                         transactionCardInvolvement = emptyMap(),
                         transactionLoanInvolvement = emptyMap(),
                         transactionDebitSpendInvolvement = emptyMap(),
-                    )
+                    ).withTransactionListProjection()
                 }
             }
 
