@@ -18,7 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.runtime.*
@@ -201,7 +201,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 val tabScale = remember(tabLabels, tabStyle, labelWidth) {
                     tabLabels.minOf { tabMeasurer.fitScale(androidx.compose.ui.text.AnnotatedString(it), tabStyle, labelWidth) ?: MASROOF_FIT_MIN_SCALE }
                 }
-                PrimaryTabRow(selectedTabIndex = displayedTab) {
+                SecondaryTabRow(selectedTabIndex = displayedTab) {
                     tabLabels.forEachIndexed { index, label ->
                         Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; displayedTab = index },
                             modifier = Modifier.testTag("analysis-tab-$index").heightIn(min = MasroofSpacing.minimumTouchTarget)) {

@@ -202,6 +202,8 @@ class AnalyticsJourneyTest {
             compose.onNodeWithText(text(R.string.lab_analysis_review_candidate, "en")).performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.settings_commitment_save, "en")).performScrollTo().performClick()
             compose.waitUntil(30_000) { runBlocking { container.commitmentRepository.listAll().size == originalCommitments.size + 1 } }
+            // The Save click's coroutine runs on the v2 test dispatcher; let it finish and release the workflow lock.
+            compose.waitForIdle()
             runBlocking {
                 // Repeating a Save after a crash cannot insert a second financial commitment.
                 workflow.acceptCandidate(candidate.key, workflow.editorDraft(candidate))
@@ -730,8 +732,11 @@ class AnalyticsJourneyTest {
         c.analytics.request()
     }
     // Workflow completion is external to Compose; waiting must not pump its virtual frame clock.
-    private fun awaitAnalysis(workflow: AnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState = runBlocking {
-        withTimeout(90_000) { workflow.state.first { !it.updating && condition(it) } }
+    // compose.waitUntil keeps the v2 test dispatcher running, so work launched from a click can finish.
+    private fun awaitAnalysis(workflow: AnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState {
+        var matched: AnalysisUiState? = null
+        compose.waitUntil(90_000) { workflow.state.value.takeIf { !it.updating && condition(it) }?.also { matched = it } != null }
+        return matched!!
     }
 
     private fun text(id: Int, language: String): String = host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) }).getString(id)
