@@ -37,4 +37,4 @@ Experimental features and speculative abstractions are excluded.
 - [x] Final units/static/APKs/device checks and compatibility review.
   2,154 units and 156 device cases/phases verified; initial UI selector failure
   and successful paired probes/full affected-shard rerun are recorded in report.md.
-- [ ] Final report and pull request targeting main.
+- [x] Final report and pull request targeting main: [#347](https://github.com/bakhshb/masroof/pull/347). No automatic merge.

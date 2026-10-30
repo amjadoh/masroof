@@ -3,6 +3,7 @@
 Base: `05b7e045f894b6a5283022e822da99083a9e4375` (latest main at start).
 Source revision: `a24494d80b86733fe4fbbaaca32d1eeb92d45a69`.
 Branch: `refactor/kotlin-2.4-modernization`.
+Pull request: [#347](https://github.com/bakhshb/masroof/pull/347), targeting `main`; not merged.
 
 ## Outcome
 
@@ -11,6 +12,8 @@ files: transaction assembly, statement ownership rejection, zero-match routing
 and historical persisted-failure accounting. Branch precedence, predicates,
 short-circuiting, result construction and side effects are preserved. Production
 Kotlin diff: **25 lines added, 37 removed (net −12)**. No new public interfaces.
+
+Overall diff including the five documentation/audit artifacts: **1001 lines added, 37 removed across nine files**.
 
 The change is deliberately small because the baseline already adopted stable
 hex conversion, enum entries, a partial-ingestion guard and data-flow-based
