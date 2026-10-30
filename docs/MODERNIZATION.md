@@ -125,3 +125,17 @@ Two new CI regressions reproduced missing storage configuration and lost adb err
 all 14 protocol tests and six lifecycle routing tests pass after the correction. Recovery
 now retains its install log even when installation fails; ordinary diagnostics include
 `/data` usage. Full device qualification remains required on the resulting commit.
+
+The follow-up run `41074814556` again passed units/static/build and successfully installed
+the app/test APKs with the larger data partition. Its device jobs then exposed a separate
+host-tools problem: SurfaceFlinger aborted in `RegionSampling` with
+`hasReadColorBufferDma`, taking package services down before tests started. The
+[emulator action's SDK installer](https://github.com/ReactiveCircus/android-emulator-runner/blob/v2.38.0/src/sdk-installer.ts)
+prepends `cmdline-tools/latest`, which still pointed at the runner's preinstalled tools 12
+while setup-android had selected 22 elsewhere. SDK repository stable metadata now supplies
+23.0 (build 16111833). Every Android setup pins that build; emulator jobs align the legacy
+`latest` path and validate `target=android-37.0` before boot. A synthetic workflow regression
+covers both stale and already-current installations; all 15 protocol checks pass.
+Local AVD creation with tools 23 produced the correct target; both APK installs and the
+filter/folding and optional-review journeys passed on that API 37 device. Ubuntu labels,
+application behavior and all schema files remain unchanged.
