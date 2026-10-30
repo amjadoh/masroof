@@ -185,6 +185,18 @@ def adb(*args, check=True, timeout=30):
     return subprocess.run(['adb', *args], check=check, capture_output=True, text=True, timeout=timeout)
 
 
+def settle(limit=180, busy=0.5):
+    # A fresh image keeps running boot work after sys.boot_completed; an app started under that CPU
+    # load can miss Android's startup deadline ("failed to complete startup" ANR) before any test runs.
+    deadline = time.monotonic() + limit
+    adb('shell', 'am', 'wait-for-broadcast-idle', check=False, timeout=limit)
+    cpus = int(adb('shell', 'nproc', check=False).stdout.strip() or 1)
+    while time.monotonic() < deadline:
+        load = adb('shell', 'cat', '/proc/loadavg', check=False).stdout.split()
+        if not load or float(load[0]) / cpus < busy: return
+        time.sleep(5)
+
+
 def collect(directory):
     directory.mkdir(parents=True, exist_ok=True)
     for name, args in [('device.log', ['logcat', '-d']), ('jobs.txt', ['shell', 'dumpsys', 'jobscheduler']),
@@ -277,6 +289,7 @@ def phase(case, resume):
     if resume: args += ['-e', 'm13Resume', 'true']
     args.append(config['runner'])
     try:
+        settle()
         execute(shlex.join(args), [case], config, directory)
         print(f'PASS: {case}', flush=True)
         (directory / 'device.log').write_text(adb('logcat', '-d', check=False).stdout)
@@ -299,6 +312,7 @@ def run(index):
         for key in ['app', 'tests', 'orchestrator', 'services']:
             adb('install', '--force-queryable', '-r', '-t', str(BUNDLE / manifest['apks'][key]['file']), timeout=90)
         all_cases = sorted(c for group in manifest['suites'].values() for c in group)
+        settle()
         discovery = shlex.join(['am', 'instrument', '-w', '-r', '-e', 'log', 'true', config['runner']])
         execute(discovery, all_cases, config, directory, discovery=True)
         service = adb('shell', 'pm', 'path', 'androidx.test.services').stdout.strip().removeprefix('package:')
