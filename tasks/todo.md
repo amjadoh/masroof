@@ -1,5 +1,23 @@
 # Personal spending and forecasting tasks
 
+## Repository modernization (approved)
+
+Execution record and compatibility baseline: [modernization](../docs/MODERNIZATION.md).
+
+- [x] Update build/analysis tooling, HTTP dependency and pinned CI actions.
+- [x] Validate SDK package/runtime API separation and required CI contracts.
+- [x] Migrate pure JVM tests to Jupiter without losing existing scenarios.
+- [x] Simplify settings state, dashboard projections and repeated write/cleanup paths.
+- [x] Prove cancellation propagation and preserve financial/recovery invariants.
+- [x] Delete proven unused code/resources; preserve schema and compatibility hooks.
+- [x] Redesign both product READMEs and reconcile technical documentation.
+- [x] Complete focused checks, APK/static checks and visual parity evidence.
+
+Required full CI is tracked on [PR #346](https://github.com/bakhshb/masroof/pull/346);
+the check results on the final commit are the completion evidence.
+
+## Existing personal spending work
+
 Approved for implementation. Local production changes are in progress on
 `feat/personal-spending-insights`; the #329 branch is unchanged.
 Design and capability map: [PERSONAL_INSIGHTS_DESIGN.md](../docs/PERSONAL_INSIGHTS_DESIGN.md).

@@ -1,4 +1,4 @@
-package com.baraa.masroof.presentation.dashboard
+package com.baraa.masroof.application.dashboard
 
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
@@ -7,7 +7,42 @@ import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import java.util.Locale
 
-data class TransactionListFilterState(
+/** Immutable input facts supplied by the dashboard; filtering never reads or writes storage. */
+data class TransactionListRow(
+    val id: String,
+    val title: String?,
+    val amount: Money,
+    val typeLabelResHint: FinancialTransactionType,
+    val cardLast4: String?,
+    val sourceContainerId: String?,
+    val destinationContainerId: String?,
+    val searchText: String,
+)
+
+data class TransactionListProjection(
+    val selection: TransactionListFilterResult,
+    val availableTypes: List<FinancialTransactionType>,
+    val availableCards: List<String>,
+    val availableAccounts: List<String>,
+)
+
+class TransactionListWorkflow {
+    fun project(
+        rows: List<TransactionListRow>,
+        query: TransactionListQuery,
+        ownedCardKeys: Set<String> = emptySet(),
+        ownedAccountContainerIds: Set<String> = emptySet(),
+        accountInvolvement: Map<String, Set<String>> = emptyMap(),
+        primaryCurrency: Currency = Currency.SAR,
+    ): TransactionListProjection = TransactionListProjection(
+        TransactionListProjectionCalculator.apply(rows, query, primaryCurrency, accountInvolvement),
+        TransactionListProjectionCalculator.availableTypes(rows),
+        TransactionListProjectionCalculator.availableCardLast4s(rows, ownedCardKeys),
+        TransactionListProjectionCalculator.availableAccountContainerIds(rows, ownedAccountContainerIds, accountInvolvement),
+    )
+}
+
+data class TransactionListQuery(
     val searchQuery: String = "",
     val types: Set<FinancialTransactionType> = emptySet(),
     val cardLast4s: Set<String> = emptySet(),
@@ -23,11 +58,11 @@ data class TransactionListFilterState(
 }
 
 data class TransactionListFilterResult(
-    val transactions: List<TransactionPreviewUi>,
+    val indices: List<Int>,
     val totalAmount: Money?,
 )
 
-object TransactionListFilterEngine {
+internal object TransactionListProjectionCalculator {
     private val TYPE_DISPLAY_ORDER = listOf(
         FinancialTransactionType.EXPENSE,
         FinancialTransactionType.INCOME,
@@ -45,12 +80,12 @@ object TransactionListFilterEngine {
     )
 
     fun apply(
-        transactions: List<TransactionPreviewUi>,
-        filter: TransactionListFilterState,
+        transactions: List<TransactionListRow>,
+        filter: TransactionListQuery,
         primaryCurrency: Currency = Currency.SAR,
         accountInvolvementByTransactionId: Map<String, Set<String>> = emptyMap(),
     ): TransactionListFilterResult {
-        val filtered = transactions.filter { tx ->
+        val selected = transactions.withIndex().filter { (_, tx) ->
             matchesTransactionIds(tx, filter.transactionIds) &&
                 matchesTypes(tx, filter.types) &&
                 matchesCards(tx, filter.cardLast4s) &&
@@ -58,18 +93,18 @@ object TransactionListFilterEngine {
                 matchesSearch(tx, filter.searchQuery)
         }
         return TransactionListFilterResult(
-            transactions = filtered,
-            totalAmount = sumAmount(filtered, primaryCurrency),
+            indices = selected.map { it.index },
+            totalAmount = sumAmount(selected.map { it.value }, primaryCurrency),
         )
     }
 
-    fun availableTypes(transactions: List<TransactionPreviewUi>): List<FinancialTransactionType> {
+    fun availableTypes(transactions: List<TransactionListRow>): List<FinancialTransactionType> {
         val present = transactions.map { it.typeLabelResHint }.toSet()
         return TYPE_DISPLAY_ORDER.filter { it in present }
     }
 
     fun availableCardLast4s(
-        transactions: List<TransactionPreviewUi>,
+        transactions: List<TransactionListRow>,
         ownedCardKeys: Set<String> = emptySet(),
     ): List<String> {
         if (ownedCardKeys.isEmpty()) return emptyList()
@@ -91,7 +126,7 @@ object TransactionListFilterEngine {
     }
 
     fun availableAccountContainerIds(
-        transactions: List<TransactionPreviewUi>,
+        transactions: List<TransactionListRow>,
         ownedAccountContainerIds: Set<String> = emptySet(),
         involvementByTransactionId: Map<String, Set<String>> = emptyMap(),
     ): List<String> {
@@ -107,20 +142,20 @@ object TransactionListFilterEngine {
     }
 
     private fun matchesTransactionIds(
-        tx: TransactionPreviewUi,
+        tx: TransactionListRow,
         transactionIds: Set<String>,
     ): Boolean = transactionIds.isEmpty() || tx.id in transactionIds
 
     private fun matchesTypes(
-        tx: TransactionPreviewUi,
+        tx: TransactionListRow,
         types: Set<FinancialTransactionType>,
     ): Boolean = types.isEmpty() || tx.typeLabelResHint in types
 
-    private fun matchesCards(tx: TransactionPreviewUi, cardLast4s: Set<String>): Boolean =
+    private fun matchesCards(tx: TransactionListRow, cardLast4s: Set<String>): Boolean =
         cardLast4s.isEmpty() || tx.cardLast4 in cardLast4s
 
     private fun matchesAccounts(
-        tx: TransactionPreviewUi,
+        tx: TransactionListRow,
         accountContainerIds: Set<String>,
         involvementByTransactionId: Map<String, Set<String>> = emptyMap(),
     ): Boolean {
@@ -131,7 +166,7 @@ object TransactionListFilterEngine {
         return involvementByTransactionId[tx.id].orEmpty().any { it in accountContainerIds }
     }
 
-    private fun matchesSearch(tx: TransactionPreviewUi, rawQuery: String): Boolean {
+    private fun matchesSearch(tx: TransactionListRow, rawQuery: String): Boolean {
         val query = rawQuery.trim()
         if (query.isEmpty()) return true
 
@@ -142,7 +177,7 @@ object TransactionListFilterEngine {
         return tx.title?.contains(query, ignoreCase = true) == true
     }
 
-    private fun matchesAmount(tx: TransactionPreviewUi, query: String): Boolean {
+    private fun matchesAmount(tx: TransactionListRow, query: String): Boolean {
         val normalized = query.replace(",", "").trim()
         if (normalized.isEmpty() || normalized.none { it.isDigit() }) return false
 
@@ -160,7 +195,7 @@ object TransactionListFilterEngine {
     }
 
     private fun sumAmount(
-        transactions: List<TransactionPreviewUi>,
+        transactions: List<TransactionListRow>,
         currency: Currency,
     ): Money? {
         val matching = transactions.filter { it.amount.currency == currency }
@@ -169,9 +204,9 @@ object TransactionListFilterEngine {
     }
 }
 
-private fun TransactionPreviewUi.cardOwnershipKeys(): List<String> =
+private fun TransactionListRow.cardOwnershipKeys(): List<String> =
     listOfNotNull(sourceContainerId, destinationContainerId).mapNotNull { containerId ->
         val last4 = FinancialContainerIdParser.cardLast4(containerId) ?: return@mapNotNull null
         val bankId = FinancialContainerIdParser.cardBankId(containerId) ?: return@mapNotNull null
-        CardOwnershipKey.of(Bank(bankId), last4)
+        "${Bank(bankId).id}:$last4"
     }

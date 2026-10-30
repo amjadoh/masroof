@@ -13,7 +13,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", merchant = "Keeta", card = "7271"),
             preview(type = FinancialTransactionType.INCOME, amount = "5000"),
         )
-        val result = TransactionListFilterEngine.apply(txs, TransactionListFilterState())
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).result
         assertEquals(2, result.transactions.size)
         assertEquals(Money.of("5100.00", Currency.SAR), result.totalAmount)
     }
@@ -25,10 +25,7 @@ class TransactionListFilterEngineTest {
             preview(id = "drop", type = FinancialTransactionType.EXPENSE, amount = "50", card = "7271"),
         )
 
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(transactionIds = setOf("keep")),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(transactionIds = setOf("keep"))).result
 
         assertEquals(listOf("keep"), result.transactions.map { it.id })
     }
@@ -39,10 +36,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", card = "7271"),
             preview(type = FinancialTransactionType.INCOME, amount = "5000"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(types = setOf(FinancialTransactionType.EXPENSE)),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(types = setOf(FinancialTransactionType.EXPENSE))).result
         assertEquals(1, result.transactions.size)
         assertEquals(FinancialTransactionType.EXPENSE, result.transactions.single().type)
         assertEquals(Money.of("100.00", Currency.SAR), result.totalAmount)
@@ -55,15 +49,12 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.REFUND, amount = "20"),
             preview(type = FinancialTransactionType.INCOME, amount = "5000"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(
                 types = setOf(
                     FinancialTransactionType.EXPENSE,
                     FinancialTransactionType.REFUND,
                 ),
-            ),
-        )
+            )).result
         assertEquals(2, result.transactions.size)
         assertEquals(Money.of("120.00", Currency.SAR), result.totalAmount)
     }
@@ -74,10 +65,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", card = "7271"),
             preview(type = FinancialTransactionType.EXPENSE, amount = "50", card = "3478"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(cardLast4s = setOf("7271")),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(cardLast4s = setOf("7271"))).result
         assertEquals(1, result.transactions.size)
         assertEquals("7271", result.transactions.single().cardLast4)
     }
@@ -89,10 +77,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "50", card = "3478"),
             preview(type = FinancialTransactionType.EXPENSE, amount = "30", card = "8332"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(cardLast4s = setOf("7271", "3478")),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(cardLast4s = setOf("7271", "3478"))).result
         assertEquals(2, result.transactions.size)
         assertEquals(Money.of("150.00", Currency.SAR), result.totalAmount)
     }
@@ -104,13 +89,10 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.REFUND, amount = "20", card = "7271"),
             preview(type = FinancialTransactionType.EXPENSE, amount = "50", card = "3478"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(
                 types = setOf(FinancialTransactionType.EXPENSE),
                 cardLast4s = setOf("7271"),
-            ),
-        )
+            )).result
         assertEquals(1, result.transactions.size)
         assertEquals(Money.of("100.00", Currency.SAR), result.totalAmount)
     }
@@ -123,14 +105,11 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.REFUND, amount = "20", merchant = "Tamara", card = "7271"),
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", merchant = "Tamara", card = "3478"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(
                 searchQuery = "tamara",
                 types = setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.REFUND),
                 cardLast4s = setOf("7271"),
-            ),
-        )
+            )).result
         assertEquals(2, result.transactions.size)
         assertEquals(Money.of("120.00", Currency.SAR), result.totalAmount)
     }
@@ -141,10 +120,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", merchant = "Keeta"),
             preview(type = FinancialTransactionType.EXTERNAL_TRANSFER_IN, amount = "500", counterparty = "نجاه"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(searchQuery = "keeta"),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(searchQuery = "keeta")).result
         assertEquals(1, result.transactions.size)
         assertEquals("Keeta", result.transactions.single().title)
     }
@@ -154,22 +130,13 @@ class TransactionListFilterEngineTest {
         val txs = listOf(
             preview(type = FinancialTransactionType.EXPENSE, amount = "438.50", merchant = "SEC"),
         )
-        val partial = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(searchQuery = "438"),
-        )
+        val partial = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(searchQuery = "438")).result
         assertEquals(1, partial.transactions.size)
 
-        val exact = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(searchQuery = "438.5"),
-        )
+        val exact = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(searchQuery = "438.5")).result
         assertEquals(1, exact.transactions.size)
 
-        val miss = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(searchQuery = "439"),
-        )
+        val miss = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(searchQuery = "439")).result
         assertEquals(0, miss.transactions.size)
     }
 
@@ -186,7 +153,7 @@ class TransactionListFilterEngineTest {
                 FinancialTransactionType.INCOME,
                 FinancialTransactionType.FEE,
             ),
-            TransactionListFilterEngine.availableTypes(txs),
+            TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).availableTypes,
         )
     }
 
@@ -200,10 +167,7 @@ class TransactionListFilterEngineTest {
             ),
             preview(type = FinancialTransactionType.FEE, amount = "2"),
         )
-        val filtered = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(types = setOf(FinancialTransactionType.LOAN_REPAYMENT)),
-        )
+        val filtered = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(types = setOf(FinancialTransactionType.LOAN_REPAYMENT))).result
         assertEquals(1, filtered.transactions.size)
         assertEquals("3036.11", filtered.transactions.single().amount.amount.toPlainString())
     }
@@ -216,7 +180,7 @@ class TransactionListFilterEngineTest {
         )
         assertEquals(
             Money.of("100.00", Currency.SAR),
-            TransactionListFilterEngine.apply(txs, TransactionListFilterState()).totalAmount,
+            TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).result.totalAmount,
         )
     }
 
@@ -230,10 +194,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", sourceAccountId = accountId),
             preview(type = FinancialTransactionType.EXPENSE, amount = "50"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(accountContainerIds = setOf(accountId)),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(accountContainerIds = setOf(accountId))).result
         assertEquals(1, result.transactions.size)
         assertEquals(Money.of("100.00", Currency.SAR), result.totalAmount)
     }
@@ -249,10 +210,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "20", card = "9999"),
         )
 
-        val available = TransactionListFilterEngine.availableCardLast4s(
-            transactions = txs,
-            ownedCardKeys = setOf(CardOwnershipKey.of(com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA, "8219")),
-        )
+        val available = TransactionListPresentationMapper.project(transactions = txs, ownedCardKeys = setOf(CardOwnershipKey.of(com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA, "8219")), filter = TransactionListFilterState()).availableCards
 
         assertEquals(listOf("8219"), available)
     }
@@ -265,7 +223,7 @@ class TransactionListFilterEngineTest {
 
         assertEquals(
             emptyList<String>(),
-            TransactionListFilterEngine.availableCardLast4s(transactions = txs),
+            TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).availableCards,
         )
     }
 
@@ -284,11 +242,7 @@ class TransactionListFilterEngineTest {
             preview(type = FinancialTransactionType.EXPENSE, amount = "50", sourceAccountId = otherId),
         )
 
-        val available = TransactionListFilterEngine.availableAccountContainerIds(
-            transactions = txs,
-            ownedAccountContainerIds = setOf(ownedId!!),
-            involvementByTransactionId = mapOf("cash" to setOf(ownedId)),
-        )
+        val available = TransactionListPresentationMapper.project(transactions = txs, ownedAccountContainerIds = setOf(ownedId!!), accountInvolvementByTransactionId = mapOf("cash" to setOf(ownedId)), filter = TransactionListFilterState()).availableAccounts
 
         assertEquals(listOf(ownedId), available)
     }
@@ -302,11 +256,7 @@ class TransactionListFilterEngineTest {
         val txs = listOf(
             preview(id = "cash", type = FinancialTransactionType.CASH_WITHDRAWAL, amount = "100"),
         )
-        val result = TransactionListFilterEngine.apply(
-            txs,
-            TransactionListFilterState(accountContainerIds = setOf(accountId)),
-            accountInvolvementByTransactionId = mapOf("cash" to setOf(accountId!!)),
-        )
+        val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState(accountContainerIds = setOf(accountId)), accountInvolvementByTransactionId = mapOf("cash" to setOf(accountId!!))).result
 
         assertEquals(listOf("cash"), result.transactions.map { it.id })
     }
@@ -323,10 +273,7 @@ class TransactionListFilterEngineTest {
         )
         assertEquals(
             listOf(accountId),
-            TransactionListFilterEngine.availableAccountContainerIds(
-                transactions = txs,
-                ownedAccountContainerIds = setOf(accountId!!),
-            ),
+            TransactionListPresentationMapper.project(transactions = txs, ownedAccountContainerIds = setOf(accountId!!), filter = TransactionListFilterState()).availableAccounts,
         )
     }
 
@@ -341,7 +288,7 @@ class TransactionListFilterEngineTest {
         )
         assertEquals(
             emptyList<String>(),
-            TransactionListFilterEngine.availableAccountContainerIds(transactions = txs),
+            TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).availableAccounts,
         )
     }
 

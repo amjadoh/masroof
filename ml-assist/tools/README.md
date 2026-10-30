@@ -1,5 +1,10 @@
 # Local learning tools
 
+CI uses Python 3.15.2 and Gradle on JDK 27 with the JDK 21 toolchain. The pure
+`ml-assist` test suite uses JUnit Jupiter; Android feature-export tests retain
+their Android runner. Run focused tool checks locally; full suites and model
+reproducibility run in PR/main CI.
+
 The Android runtime and offline recurrence trainer share the same Kotlin
 features, fitter and inference. There is no Python/TensorFlow dependency in the
 application. The backup inspector optionally needs Python `cryptography`.

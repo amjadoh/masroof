@@ -29,6 +29,10 @@ run_step() {
   printf '%s: %ss (exit %s)\n' "$label" "$((SECONDS - started))" "$status"
   return "$status"
 }
+# Keep install failures as artifacts too, before the journey script creates its reports.
+mkdir -p app/build/reports/device-ci
+exec > >(tee app/build/reports/device-ci/lifecycle.log) 2>&1
+
 case "$suite" in
   production)
     # Use the APKs already built before boot rather than invoking Gradle again.

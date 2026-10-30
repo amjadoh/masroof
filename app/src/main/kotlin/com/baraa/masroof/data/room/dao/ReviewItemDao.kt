@@ -146,74 +146,36 @@ interface ReviewItemDao {
     ): ReviewItemEntity? {
         val existing = getById(id) ?: return null
         if (existing.status == "RESOLVED") {
-            // Explicit ignore overrides any prior settlement metadata.
-            if (resolutionKind == "USER_NON_FINANCIAL" &&
-                (existing.resolutionKind != resolutionKind ||
-                    existing.resolvedTransactionId != resolvedTransactionId)
-            ) {
-                updateRow(
-                    id = id,
-                    kind = existing.kind,
-                    status = status,
-                    reasons = existing.reasons,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId,
-                )
-                return existing.copy(
-                    status = status,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId,
-                )
-            }
-            // Allow upgrading auto-settlement metadata to an explicit USER_* kind.
-            if (existing.resolutionKind == "AUTO_NO_LONGER_REQUIRED" &&
+            val overridesIgnore = resolutionKind == "USER_NON_FINANCIAL" &&
+                (existing.resolutionKind != resolutionKind || existing.resolvedTransactionId != resolvedTransactionId)
+            val upgradesAutomatic = existing.resolutionKind == "AUTO_NO_LONGER_REQUIRED" &&
                 resolutionKind != "AUTO_NO_LONGER_REQUIRED"
-            ) {
-                updateRow(
-                    id = id,
-                    kind = existing.kind,
-                    status = status,
-                    reasons = existing.reasons,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId ?: existing.resolvedTransactionId,
-                )
-                return existing.copy(
-                    status = status,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId ?: existing.resolvedTransactionId,
-                )
-            }
-            // Restoring a user-ignored message clears the durable ignore marker.
-            if (existing.resolutionKind == "USER_NON_FINANCIAL" &&
+            val restoresIgnored = existing.resolutionKind == "USER_NON_FINANCIAL" &&
                 resolutionKind != "USER_NON_FINANCIAL"
-            ) {
-                updateRow(
-                    id = id,
-                    kind = existing.kind,
-                    status = status,
-                    reasons = existing.reasons,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId,
-                )
-                return existing.copy(
-                    status = status,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                    resolvedAtEpochMillis = resolvedAtEpochMillis,
-                    resolutionKind = resolutionKind,
-                    resolvedTransactionId = resolvedTransactionId,
-                )
-            }
-            return existing
+            if (!overridesIgnore && !upgradesAutomatic && !restoresIgnored) return existing
+
+            // Explicit ignore wins first and clears old linkage; only an auto-settlement
+            // upgrade retains its transaction id when the new command supplies none.
+            val transactionId = if (!overridesIgnore && upgradesAutomatic) {
+                resolvedTransactionId ?: existing.resolvedTransactionId
+            } else resolvedTransactionId
+            updateRow(
+                id = id,
+                kind = existing.kind,
+                status = status,
+                reasons = existing.reasons,
+                updatedAtEpochMillis = updatedAtEpochMillis,
+                resolvedAtEpochMillis = resolvedAtEpochMillis,
+                resolutionKind = resolutionKind,
+                resolvedTransactionId = transactionId,
+            )
+            return existing.copy(
+                status = status,
+                updatedAtEpochMillis = updatedAtEpochMillis,
+                resolvedAtEpochMillis = resolvedAtEpochMillis,
+                resolutionKind = resolutionKind,
+                resolvedTransactionId = transactionId,
+            )
         }
         val updated = resolveIfRequired(
             id = id,

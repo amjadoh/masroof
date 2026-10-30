@@ -20,9 +20,6 @@ object LocaleDisplayFormatters {
 
     fun transactionDate(date: LocalDate, languageTag: String, pattern: String = "d MMM"): String =
         DateTimeFormatter.ofPattern(pattern, AppLocale.displayLocale(languageTag)).format(date)
-
-    fun currentLanguageTag(context: Context): String =
-        AppLocaleContext.readStoredLanguageTag(context)
 }
 
 @Composable

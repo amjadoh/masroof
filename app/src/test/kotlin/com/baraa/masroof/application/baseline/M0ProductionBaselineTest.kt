@@ -109,12 +109,12 @@ class M0ProductionBaselineTest {
     fun userPaths_selectBanksThenDiscoverAndReview() {
         assertEquals(
             listOf("WELCOME", "BANKS", "PERMISSION", "IMPORT_DATE", "IMPORTING", "OWNERSHIP", "FINALIZE", "HOME"),
-            OnboardingStep.values().map { it.name },
+            OnboardingStep.entries.map { it.name },
         )
         assertEquals("my_accounts", SettingsDestination.MyAccounts.encode())
         assertEquals("my_cards", SettingsDestination.MyCards.encode())
         assertEquals("about", SettingsDestination.About.encode())
-        assertTrue(HomeDestination.values().any { it.name == "Review" })
+        assertTrue(HomeDestination.entries.any { it.name == "Review" })
         assertFalse(File(sourceRoot, "presentation/navigation/SettingsDestination.kt").readText().contains("add_card"))
         assertFalse(File(sourceRoot, "presentation/navigation/AppNavigation.kt").readText().contains("Beta"))
     }

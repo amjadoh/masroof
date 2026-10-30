@@ -209,8 +209,8 @@ class GitHubReleaseClient(
         val response = httpClient.newCall(request).execute()
         val body = response.body
         if (!response.isSuccessful) {
-            val errorSnippet = body?.string()?.take(200).orEmpty()
-            body?.close()
+            val errorSnippet = body.string().take(200)
+            body.close()
             val code = response.code
             response.close()
             return Result.failure(
@@ -226,10 +226,6 @@ class GitHubReleaseClient(
                     },
                 ),
             )
-        }
-        if (body == null) {
-            response.close()
-            return Result.failure(IllegalStateException("Empty response body"))
         }
         return Result.success(body)
     }

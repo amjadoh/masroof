@@ -1,7 +1,7 @@
 package com.baraa.masroof.analytics
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class SpendingObservationTest {
     private fun fact(id: String, day: Long, amount: Long = 4000, scope: String? = "BANK_A:card:1234|SAR|EXPENSE") =

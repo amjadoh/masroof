@@ -69,6 +69,9 @@ sys.exit(int(os.environ.get('FAIL_STATUS', '0')))
             result = self.run_suite('production', phase, FAIL_STATUS='17')
             self.assertEqual(17, result.returncode)
         self.assertEqual(2, len(self.calls()))
+        log = self.work / "app/build/reports/device-ci/lifecycle.log"
+        self.assertIn("Install production APK", log.read_text())
+        self.assertIn("(exit 17)", log.read_text())
 
     def test_invalid_input_cannot_start_tools(self):
         for args in [('other', 'build'), ('beta', 'other'), ('beta',), ('beta', 'test', 'extra')]:

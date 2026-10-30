@@ -3,7 +3,9 @@
 
 style:
   active: true
-  UnusedPrivateMember:
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateFunction:
     active: true
     allowedNames: '(_|ignored|expected|serialVersionUID)'
     ignoreAnnotated:
@@ -12,8 +14,8 @@ style:
     active: true
     allowedNames: '(_|ignored|expected|serialVersionUID)'
 
-formatting:
+ktlint:
   active: true
   UnusedImports:
     active: true
-    autoCorrect: true
+    autoCorrect: false

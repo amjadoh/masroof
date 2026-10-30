@@ -18,7 +18,8 @@ those UUIDs are normalized across worlds. Each world's exact registry IDs must
 remain unchanged after repeat import. Transaction identities and evidence links
 are compared exactly. It does not install one APK over another.
 
-Run `:app:testDebugUnitTest --tests '*AlJazira*ParityTest'` with JDK 21.
+Run `:app:testDebugUnitTest --tests '*AlJazira*ParityTest'` on the documented
+JDK 27 Gradle runtime; the Android test task launches the installed JDK 21 toolchain.
 Reports go to `app/build/reports/pattern-parity/`; tests never update these files.
 A changed corpus or baseline requires explicit review, not automatic regeneration
 to make a changed implementation pass. No production financial data is read.

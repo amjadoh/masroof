@@ -164,11 +164,12 @@ class ApprovedFidelityMatrixTest {
             "transactions" -> TransactionListScreen(
                 periodLabel = periodLabel,
                 transactions = financial.allTransactions,
+                projection = TransactionListPresentationMapper.project(financial.allTransactions, TransactionListFilterState()),
+                onFilterChanged = {},
                 onBack = {},
                 onOpenTransaction = {},
                 ownedCards = financial.ownedCards,
-                ownedAccounts = financial.ownedAccounts,
-                transactionAccountInvolvement = financial.transactionAccountInvolvement
+                ownedAccounts = financial.ownedAccounts
             )
             "accounts" -> AccountsSummaryScreen(
                 state = financial,

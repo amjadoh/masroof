@@ -71,7 +71,10 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             }
             if (closed) return@launch
             container.database.invalidationTracker.addObserver(observer)
-            runCatching { loadCached() }
+            try { loadCached() } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                container.appLogService.failure("LAB_ANALYTICS", "Load cached analysis", failure)
+            }
             request()
             for (ignored in changes) {
                 if (closed) break

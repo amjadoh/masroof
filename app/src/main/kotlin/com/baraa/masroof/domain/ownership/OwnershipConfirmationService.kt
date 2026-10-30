@@ -37,10 +37,6 @@ class OwnershipConfirmationService(
         cardRegistry.setOwnership(reference, OwnershipStatus.EXTERNAL)
     }
 
-    suspend fun clearCardOwnership(reference: CardReference) {
-        cardRegistry.setOwnership(reference, OwnershipStatus.UNKNOWN)
-    }
-
     suspend fun confirmLoanOwned(reference: LoanReference) {
         loanRegistry.setOwnership(reference, OwnershipStatus.OWNED)
     }
@@ -49,7 +45,4 @@ class OwnershipConfirmationService(
         loanRegistry.setOwnership(reference, OwnershipStatus.EXTERNAL)
     }
 
-    suspend fun clearLoanOwnership(reference: LoanReference) {
-        loanRegistry.setOwnership(reference, OwnershipStatus.UNKNOWN)
-    }
 }

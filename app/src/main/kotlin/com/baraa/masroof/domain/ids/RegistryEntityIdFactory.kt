@@ -15,10 +15,6 @@ object RegistryEntityIdFactory {
 
     fun newCardId(): String = "creg_${randomToken()}"
 
-    fun newCreditFacilityId(): String = "freg_${randomToken()}"
-
-    fun newLoanId(): String = "lreg_${randomToken()}"
-
     fun newCommitmentId(): String = "cmt_${randomToken()}"
 
     fun stableAccountId(bankId: String, maskedNumber: String): String =
