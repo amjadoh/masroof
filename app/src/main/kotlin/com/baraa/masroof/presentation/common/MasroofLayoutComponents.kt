@@ -2,6 +2,11 @@ package com.baraa.masroof.presentation.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +27,9 @@ fun MasroofScreenBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // targetSdk 35+ is always edge-to-edge: keep content clear of the bars, painted like the old bar colour.
+            .background(MaterialTheme.colorScheme.surface)
+            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             .background(background),
     ) {
         androidx.compose.runtime.CompositionLocalProvider(
