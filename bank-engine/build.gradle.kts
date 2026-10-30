@@ -3,7 +3,7 @@ plugins {
     `java-test-fixtures`
 }
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
 dependencies {
     implementation(project(":finance-core"))
     testImplementation(libs.junit)

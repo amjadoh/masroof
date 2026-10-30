@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.detekt)
 }
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
 dependencies {
     testImplementation(libs.junit)
     detektPlugins(libs.detekt.formatting)

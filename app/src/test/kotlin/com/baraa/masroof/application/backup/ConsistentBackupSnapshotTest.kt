@@ -333,12 +333,12 @@ class ConsistentBackupSnapshotTest {
         try {
             connection.execSQL(
                 "INSERT INTO snapshot_batch (batch_id, row_count) VALUES (?, ?)",
-                arrayOf(id, ROWS_PER_BATCH),
+                arrayOf<Any>(id, ROWS_PER_BATCH),
             )
             for (seq in 0 until ROWS_PER_BATCH) {
                 connection.execSQL(
                     "INSERT INTO snapshot_probe (batch_id, seq, payload) VALUES (?, ?, ?)",
-                    arrayOf(id, seq, payload(id, seq)),
+                    arrayOf<Any>(id, seq, payload(id, seq)),
                 )
             }
             connection.setTransactionSuccessful()
