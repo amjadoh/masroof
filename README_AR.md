@@ -28,7 +28,7 @@
 
 ## البناء والتحقق
 
-استخدم JDK 17 واضبط مسار Android SDK في `local.properties`.
+استخدم JDK 21 واضبط مسار Android SDK في `local.properties`.
 
 ```bash
 ./gradlew :app:assembleDebug

@@ -28,7 +28,7 @@ The tested engine and analytics are integrated directly into the app. There is n
 
 ## Build and verify
 
-Use JDK 17 and an Android SDK configured in `local.properties` (`sdk.dir=...`).
+Use JDK 21 and an Android SDK configured in `local.properties` (`sdk.dir=...`).
 
 ```bash
 ./gradlew :app:assembleDebug
