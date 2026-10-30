@@ -6,6 +6,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MessageOwnershipPolicyTest {
+    @Test fun knownOtherHolderCompletesWithoutHidingContradictoryOwnership() {
+        assertTrue(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.PURCHASE, UNKNOWN, UNKNOWN, EXTERNAL, true))
+        assertFalse(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.PURCHASE, OWNED, UNKNOWN, EXTERNAL, true))
+        assertFalse(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.PURCHASE, EXTERNAL, UNKNOWN, OWNED, true))
+        assertFalse(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.PURCHASE, UNKNOWN, UNKNOWN, UNKNOWN, true))
+        assertTrue(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.TRANSFER_IN, OWNED, EXTERNAL, UNKNOWN, false))
+        assertTrue(MessageOwnershipPolicy.isConfirmedExternal(MessageFamily.TRANSFER_OUT, EXTERNAL, OWNED, UNKNOWN, false))
+    }
+
     @Test fun anotherHoldersLocalAccountOrCardCannotCreateUserActivity() {
         for (family in listOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.FEE,
                 MessageFamily.BILL_PAYMENT, MessageFamily.WITHDRAWAL)) {

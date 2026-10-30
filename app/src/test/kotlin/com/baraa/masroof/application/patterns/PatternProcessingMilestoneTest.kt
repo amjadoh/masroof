@@ -79,6 +79,7 @@ class PatternProcessingMilestoneTest {
             assertEquals("7654", parsed.cardRef?.last4)
             assertNull(parsed.sourceAccountRef)
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+            assertTrue(c.reviewRepository.findByRawSmsId("other-owner")?.status != ReviewStatus.REQUIRED)
             c.processRawSmsUseCase.ingest(sms("unknown-owner", purchase.replace("7654", "9999"), "SNB-AlAhli"))
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             assertEquals(ReviewStatus.REQUIRED, c.reviewRepository.findByRawSmsId("unknown-owner")!!.status)
