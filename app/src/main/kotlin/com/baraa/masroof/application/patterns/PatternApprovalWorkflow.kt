@@ -102,7 +102,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 val codes = interpretation.diagnostics.map { it.code }.toSet()
                 val problem = when {
                     interpretation.facts.family == MessageFamily.OTP -> PatternApprovalProblem.NON_FINANCIAL
-                    "PATTERN_CONFLICT" in codes -> PatternApprovalProblem.PATTERN_CONFLICT
+                    "PATTERN_CONFLICT" in codes || "PATTERN_PROFILE_CONTEXT_CONFLICT" in codes -> PatternApprovalProblem.PATTERN_CONFLICT
                     "PATTERN_REFERENCE_ROLE_UNRESOLVED" in codes || "PATTERN_ACCOUNT_REFERENCE_UNRESOLVED" in codes -> PatternApprovalProblem.REFERENCE_ROLE
                     "PATTERN_ACCOUNT_BINDING_MISMATCH" in codes -> PatternApprovalProblem.REFERENCE_MISMATCH
                     "PATTERN_CURRENCY_CONFLICT" in codes -> PatternApprovalProblem.CURRENCY_CONFLICT
@@ -110,7 +110,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                     "PATTERN_TIME_INCOMPLETE" in codes -> PatternApprovalProblem.INVALID_TIME
                     else -> when {
                         (result as? ParseResult.ReviewRequired)?.findings?.any { it.code == "V-015" } == true -> PatternApprovalProblem.INVALID_TIME
-                        interpretation.facts.amount?.amount?.signum() != 1 -> PatternApprovalProblem.INVALID_AMOUNT
+                        // An early pattern rejection has no amount; only blame the amount when the pattern itself ran.
+                        interpretation.patternProvenance != null && interpretation.facts.amount?.amount?.signum() != 1 -> PatternApprovalProblem.INVALID_AMOUNT
                         else -> PatternApprovalProblem.VALIDATION
                     }
                 }
