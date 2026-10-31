@@ -86,6 +86,19 @@ class HistoricalSmsScannerTest {
             bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
     }
 
+    @Test fun aCarrierTimeAfterTheRangeDoesNotEndTheScanEarly() = runBlocking {
+        val from = Instant.parse("2026-08-01T00:00:00Z")
+        val until = from.plusSeconds(86_400)
+        // The inbox is ordered by arrival; a row whose carrier time is past the range can come before in-range rows.
+        val rows = listOf(
+            ProviderSmsRecord("spam-ahead", "Promo", "offer", until.plusSeconds(5)),
+            ProviderSmsRecord("in-range", "AlJazira", purchaseBody(), until.minusSeconds(60)),
+        ).map(InboxRow::Valid)
+        val result = HistoricalSmsScanner(FakeSmsDataSource(rows), batchProcessor)
+            .scan(receivedAfter = from, receivedBefore = until, bankScopes = setOf(Bank.BANK_ALJAZIRA))
+        assertEquals(1, result.parsed)
+    }
+
     @Test fun scanReportsProgressEveryTwentyFiveRowsAndRequiredReviewsAreCountedWithoutLoadingThem() = runBlocking {
         val at = Instant.parse("2026-08-01T10:00:00Z")
         val rows = (1..60).map { InboxRow.Valid(ProviderSmsRecord("p-$it", "OtherBank", purchaseBody(), at)) }

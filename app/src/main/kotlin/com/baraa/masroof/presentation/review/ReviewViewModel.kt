@@ -241,7 +241,7 @@ class ReviewViewModel(
         }) {
             _uiState.update { it.copy(resolving = true, error = null, message = null, actionErrorDetail = null) }
             when (val result = transactionRestoreService.restore(rawSmsId, newType)) {
-                is RestoreResult.Success -> {
+                is RestoreResult.Success, RestoreResult.AwaitingReview -> {
                     val summaries = loadCurrentSummaries()
                     applySummaries(summaries)
                     _uiState.update {
