@@ -48,7 +48,11 @@ internal object FinancialAnalysisReader {
                 override suspend fun listByTypesOccurredBetween(types: Collection<FinancialTransactionType>, startInclusive: Instant, endExclusive: Instant) = rows.filter { it.type in types && it.occurredAt >= startInclusive && it.occurredAt < endExclusive }
             }
             val service = DashboardService(financial,
-                object : ReviewRepository by c.reviewRepository { override suspend fun listRequired() = reviews },
+                object : ReviewRepository by c.reviewRepository {
+                    // Detached reads must never reach the live database, which a restore may already have retired.
+                    override suspend fun listRequired() = reviews
+                    override suspend fun countRequired() = reviews.size
+                },
                 c.parsedEventRepository, c.rawSmsRepository, c.appLocaleRepository,
                 object : AccountRegistryRepository by c.accountRegistryRepository { override suspend fun listAll() = accounts },
                 object : CardRegistryRepository by c.cardRegistryRepository { override suspend fun listAll() = cards },

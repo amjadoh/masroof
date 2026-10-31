@@ -25,6 +25,8 @@ import org.junit.Test
 import java.time.Instant
 
 class PatternCurrentMessageJourneyTest {
+    // The prefilled selection repeats the value as text, so a chip is found by its span.
+    private fun candidateTag(body: String, value: String) = body.indexOf(value).let { "pattern-candidate-$it-${it + value.length}" }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
     private fun click(id: Int) {
@@ -59,11 +61,11 @@ class PatternCurrentMessageJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
             click(R.string.teaching_next)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("10SAR").performScrollTo().performClick()
+            compose.onNodeWithTag(candidateTag(body, "10SAR")).performScrollTo().performClick()
             compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.teaching_skip_field)
             click(R.string.teaching_skip_field)
-            compose.onNodeWithText("2026-10-15 12:30").performScrollTo().performClick()
+            compose.onNodeWithTag(candidateTag(body, "2026-10-15 12:30")).performScrollTo().performClick()
             compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.pattern_preview)
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
