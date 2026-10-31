@@ -3,6 +3,7 @@ package com.baraa.masroof.data.patterns
 import android.content.Context
 import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
 import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
+import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -20,18 +21,7 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
     /** Startup-only before this container admits work; interactive installation uses the exclusive access gate. */
     fun installMissingBanks(bundled: List<BankMessagePatterns>, mergeBankIds: Set<String> = emptySet()): MessagePatternConfiguration = synchronized(lock) {
         var current = load()
-        for (bank in bundled) {
-            val prior = current.banks.singleOrNull { it.bankId == bank.bankId }
-            if (bank.bankId in mergeBankIds) {
-                val missing = bank.patterns.filter { seed -> seed.id !in prior?.deletedPatternIds.orEmpty() &&
-                    prior?.patterns.orEmpty().none { it.id == seed.id } }
-                val senders = (prior?.senders.orEmpty() + bank.senders).distinct()
-                if (prior == null || missing.isNotEmpty() || senders != prior.senders)
-                    current = saveBank(current.generation, (prior ?: bank).copy(senders = senders, patterns = missing))
-            } else if (current.banks.none { it.bankId == bank.bankId || it.senders.any(bank.senders::contains) }) {
-                current = saveBank(current.generation, bank)
-            }
-        }
+        for (bank in bundled) installation(current, bank, mergeBankIds)?.let { current = write(current, it) }
         current
     }
 
@@ -67,13 +57,17 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
         val bank = current.banks.single { it.bankId == bankId }
         val pattern = bank.currentPatterns.single { it.id == patternId }
         require(!pattern.enabled) { "Disable the pattern before deleting it" }
-        val updated = bank.copy(patterns = bank.patterns.filterNot { it.id == patternId },
-            deletedPatternIds = bank.deletedPatternIds + patternId)
+        write(current, bank.copy(patterns = bank.patterns.filterNot { it.id == patternId },
+            deletedPatternIds = bank.deletedPatternIds + patternId))
+    }
+
+    /** Replaces one bank's stored history as given; callers own its revision rules. */
+    private fun write(current: MessagePatternConfiguration, updated: BankMessagePatterns): MessagePatternConfiguration {
         val next = current.copy(generation = Math.addExact(current.generation, 1),
-            banks = current.banks.map { if (it.bankId == bankId) updated else it })
+            banks = current.banks.filterNot { it.bankId == updated.bankId } + updated)
         val raw = MessagePatternConfigurationCodec.encode(next)
         replace(raw)
-        MessagePatternConfigurationCodec.decode(raw)
+        return MessagePatternConfigurationCodec.decode(raw)
     }
 
     /** Bounded raw capture lets restore recovery preserve even a corrupt original without executing it. */
@@ -109,6 +103,33 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
     }
 
     companion object {
+        /**
+         * The bank to store for one bundled definition, or null when nothing changes. A missing bank installs unless
+         * another bank owns its sender; an installed bank gains missing patterns and newer bundled role rules the user
+         * left untouched (deleted, disabled and edited patterns stay the user's decision). [mergeBankIds] also merge senders.
+         */
+        fun installation(configuration: MessagePatternConfiguration, seed: BankMessagePatterns,
+            mergeBankIds: Set<String>): BankMessagePatterns? {
+            val prior = configuration.banks.singleOrNull { it.bankId == seed.bankId }
+                ?: return seed.takeIf { seed.bankId in mergeBankIds || configuration.banks.none { it.senders.any(seed.senders::contains) } }
+            val installed = prior.currentPatterns.associateBy { it.id }
+            val updates = seed.patterns.mapNotNull { bundled ->
+                val mine = installed[bundled.id]
+                when {
+                    bundled.id in prior.deletedPatternIds -> null
+                    mine == null -> bundled
+                    mine.roleProfile != null && bundled.roleProfile != null && mine.enabled &&
+                        mine.copy(revision = bundled.revision) != bundled -> bundled.copy(revision = Math.addExact(mine.revision, 1))
+                    else -> null
+                }
+            }
+            val senders = if (seed.bankId in mergeBankIds) (prior.senders + seed.senders).distinct() else prior.senders
+            if (updates.isEmpty() && senders == prior.senders) return null
+            // An upgraded role keeps only its new revision, so repeated updates never grow the bounded history.
+            val upgraded = updates.map { it.id }.toSet()
+            return prior.copy(senders = senders, patterns = prior.patterns.filterNot { it.id in upgraded && it.roleProfile != null } + updates)
+        }
+
         // ponytail: serialize local file operations process-wide; split by path only if multiple profiles need concurrent writes.
         private val lock = Any()
     }

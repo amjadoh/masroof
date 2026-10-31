@@ -180,7 +180,6 @@ class AppContainer(
             appLogService = appLogService,
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
                 accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
-            importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 messagePatternStore, databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
