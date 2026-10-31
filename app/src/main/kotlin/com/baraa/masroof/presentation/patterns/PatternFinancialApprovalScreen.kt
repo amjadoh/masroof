@@ -31,6 +31,11 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     var cardId by remember { mutableStateOf<String?>(null) }
     var accountId by remember { mutableStateOf<String?>(null) }
     var operation by remember { mutableStateOf((pattern.approval?.operation ?: PatternOperation.entries.firstOrNull { it.name == pattern.label })?.takeIf { it in pattern.operations }) }
+    // A built-in rule keeps its movement and reads its own values: only the account or card it may link is chosen.
+    val builtIn = pattern.recognitionPhrases.isNotEmpty()
+    val cardOperation = operation in setOf(PatternOperation.PURCHASE, PatternOperation.REFUND, PatternOperation.CARD_PAYMENT)
+    val showCards = "card" in pattern.fields || cardOperation
+    val showAccounts = !builtIn || operation !in setOf(PatternOperation.PURCHASE, PatternOperation.REFUND)
     var body by remember { mutableStateOf(initialBody) }
     var reference by remember { mutableStateOf(pattern.approval?.referenceField) }
     var referenceChosen by remember { mutableStateOf(pattern.referenceFields.isEmpty() || pattern.approval != null) }
@@ -45,7 +50,8 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     val operationNames = stringArrayResource(R.array.pattern_operations)
     val contextFields = if (referenceChosen) pattern.referenceFields.toSet() - setOfNotNull(reference) else emptySet()
     val ready = !loading && operation != null && (accountId != null || cardId != null) &&
-        ("card" !in pattern.fields || cardId != null) && referenceChosen && body.isNotBlank()
+        ("card" !in pattern.fields || cardId != null) && referenceChosen && body.isNotBlank() &&
+        (!builtIn || operation != PatternOperation.CARD_PAYMENT || (accountId != null && cardId != null))
     fun work(action: suspend () -> Unit) {
         if (busy) return
         busy = true; failed = false
@@ -60,9 +66,11 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
         accounts = workflow.patternAccounts(pattern.bankId)
         cards = workflow.patternCards(pattern.bankId)
         if (initialLoad) {
+            // A built-in link is always the user's explicit choice: only a previously approved one is shown again.
             accountId = accounts.singleOrNull { it.last4 == pattern.approval?.accountLast4 }?.id
-                ?: accounts.singleOrNull()?.takeIf { "card" !in pattern.fields }?.id
-            if ("card" in pattern.fields) cardId = cards.singleOrNull()?.id
+                ?: accounts.singleOrNull()?.takeIf { !builtIn && "card" !in pattern.fields }?.id
+            cardId = cards.singleOrNull { it.last4 == pattern.approval?.cardLast4 }?.id
+                ?: cards.singleOrNull()?.takeIf { !builtIn && "card" in pattern.fields }?.id
         }
         if (!initialLoad || !readOnlyBody) {
             examples = workflow.approvalExamples(pattern.bankId, generation, pattern.id)
@@ -103,17 +111,20 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             MasroofCard {
                 val select = stringResource(R.string.pattern_financial_select_operation)
                 val operations = pattern.operations
-                PatternChoice(listOf(select) + operations.map { operationNames[it.ordinal] },
+                if (builtIn) {
+                    operation?.let { Text(operationNames[it.ordinal], style = MaterialTheme.typography.titleMedium) }
+                    MasroofHintBox(stringResource(R.string.pattern_approval_link_help))
+                } else PatternChoice(listOf(select) + operations.map { operationNames[it.ordinal] },
                     operation?.let { operationNames[it.ordinal] } ?: select, !busy && !loading) {
                     operation = operations.getOrNull(it - 1); reference = null
                     referenceChosen = pattern.referenceFields.isEmpty(); preview = null
                 }
-                PatternApprovalAccounts(accounts, accountId, !busy && !loading,
+                if (showAccounts) PatternApprovalAccounts(accounts, accountId, !busy && !loading,
                     onChoose = { accountId = it; preview = null }, onConfirm = { last4 -> work {
                         val account = workflow.confirmPatternAccount(pattern.bankId, last4)
                         accounts = workflow.patternAccounts(pattern.bankId); accountId = account.id; preview = null
                     } })
-                if ("card" in pattern.fields) {
+                if (showCards) {
                     val choose = stringResource(R.string.settings_pattern_select_card)
                     val names = cards.map { "${it.name.orEmpty()} • ${it.last4}" }
                     PatternChoice(listOf(choose) + names, cards.indexOfFirst { it.id == cardId }.takeIf { it >= 0 }?.let { names[it] } ?: choose, !busy) {
@@ -129,7 +140,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
             }
             MasroofCard {
                 val fromMessage = stringResource(R.string.pattern_financial_currency_from_message)
-                PatternChoice(listOf(fromMessage) + Currency.entries.map { it.name }, currency?.name ?: fromMessage, !busy && !loading) {
+                if (!builtIn) PatternChoice(listOf(fromMessage) + Currency.entries.map { it.name }, currency?.name ?: fromMessage, !busy && !loading) {
                     currency = Currency.entries.getOrNull(it - 1); preview = null
                 }
                 if (validating) CircularProgressIndicator()
@@ -139,6 +150,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                     MasroofAmountText("${validated.amount.amount.toPlainString()} ${validated.amount.currency}", MasroofAmountRole.Card)
                     Text(validated.occurredAt)
                     accounts.singleOrNull { it.id == accountId }?.let { Text(stringResource(R.string.pattern_approval_account_summary, it.last4)) }
+                    cards.singleOrNull { it.id == cardId }?.let { Text(stringResource(R.string.pattern_approval_card_summary, it.last4)) }
                     Text(stringResource(R.string.pattern_approval_save_scope), style = MaterialTheme.typography.bodySmall)
                 }
                 val reason = when {

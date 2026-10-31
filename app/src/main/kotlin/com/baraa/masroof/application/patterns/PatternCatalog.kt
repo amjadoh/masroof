@@ -16,7 +16,9 @@ data class PatternApprovalSettings(val operation: PatternOperation?, val account
 data class PatternDefinitionView(val id: String, val bankId: String, val label: String, val revision: Int,
     val enabled: Boolean, val status: PatternApprovalStatus, val example: String, val fields: List<String>,
     val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null, val sender: String = "",
-    val messageTemplate: String = example) {
+    val messageTemplate: String = example,
+    /** Built-in rules only: the phrases that recognize a message and, per field, the words its value follows. */
+    val recognitionPhrases: List<String> = emptyList(), val fieldLabels: Map<String, List<String>> = emptyMap()) {
     val canApprove: Boolean get() = PatternOperation.entries.any { it.name == label }
     // Editing teaches a new template under the same id, which would silently replace a bundled role rule.
     val canEdit: Boolean get() = status != PatternApprovalStatus.BUNDLED && PatternOperation.entries.any { it.name == label }
@@ -56,6 +58,9 @@ internal fun MessagePatternConfiguration.toCatalog() = PatternCatalog(generation
             messageTemplate = if (pattern.roleProfile != null) example else pattern.parts.joinToString("") { part -> when (part) {
                 is StaticText -> part.value
                 is FieldSlot -> if (part.ignored) "…" else "{${part.field}}"
-            } })
+            } },
+            recognitionPhrases = pattern.roleProfile?.rules?.single()?.phrases.orEmpty(),
+            fieldLabels = pattern.roleProfile?.rules?.single()?.labels.orEmpty()
+                .filterValues { it.isNotEmpty() }.mapKeys { (field, _) -> field.name.lowercase(java.util.Locale.ROOT) })
     })
 })

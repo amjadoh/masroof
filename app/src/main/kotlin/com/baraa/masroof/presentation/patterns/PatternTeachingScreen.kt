@@ -32,10 +32,10 @@ import kotlinx.coroutines.launch
 internal fun PatternTeachingScreen(
     workflow: MessagePatternsWorkflow, generation: Long, bank: PatternBankView,
     source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
-    existingPattern: PatternDefinitionView? = null, initialBody: String = "",
+    existingPattern: PatternDefinitionView? = null, initialBody: String = "", initialOperation: PatternOperation? = null,
 ) {
     var step by remember { mutableIntStateOf(0) }
-    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: PatternOperation.PURCHASE) }
+    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
     var sender by remember { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
     var body by remember { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
     var fieldIndex by remember { mutableIntStateOf(0) }

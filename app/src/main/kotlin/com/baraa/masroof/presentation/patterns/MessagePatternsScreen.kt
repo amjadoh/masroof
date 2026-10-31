@@ -49,6 +49,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var savedApproval by remember { mutableStateOf(false) }
     var editingPattern by remember { mutableStateOf<PatternDefinitionView?>(null) }
     var editingBody by remember { mutableStateOf("") }
+    // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
+    var teachingOperation by remember { mutableStateOf<PatternOperation?>(null) }
+    var replacingPattern by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var history by remember { mutableStateOf(false) }
     var quickPreview by remember { mutableStateOf<PatternDefinitionView?>(null) }
@@ -62,6 +65,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
             finally { busy = false }
         }
+    }
+    suspend fun exampleBody(pattern: PatternDefinitionView) = source?.body ?: savedBody.ifBlank {
+        workflow.approvalExamples(pattern.bankId, requireNotNull(snapshot).generation, pattern.id).firstOrNull()?.body.orEmpty()
     }
     fun back() {
         if (busy) return
@@ -106,17 +112,21 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
                 teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
+                val replaced = replacingPattern
+                teachingOperation = null; replacingPattern = null
                 work {
+                    replaced?.let { workflow.setEnabled(workflow.catalog().generation, bank.bankId, it, false) }
                     val catalog = workflow.catalog()
                     snapshot = catalog
                     val saved = catalog.banks.flatMap { it.currentPatterns }.singleOrNull { it.id == preview.patternId }
                     // An edit that passed its prior approval again stays approved; a fresh pattern from Review goes straight to approval.
                     if (saved?.status == PatternApprovalStatus.APPROVED) { savedTeaching = false; savedApproval = true }
-                    else if (source != null && workflow.canApprove && saved?.canApprove == true) approving = true
+                    else if ((source != null || replaced != null) && workflow.canApprove && saved?.canApprove == true) approving = true
                 }
             }, onReload = { work { snapshot = workflow.catalog() } },
-            onBack = { if (source != null && editingPattern == null) onBack() else { teaching = false; editingPattern = null } },
-            existingPattern = editingPattern, initialBody = editingBody)
+            onBack = { if (source != null && editingPattern == null && teachingOperation == null) onBack()
+                else { teaching = false; editingPattern = null; teachingOperation = null; replacingPattern = null } },
+            existingPattern = editingPattern, initialBody = editingBody, initialOperation = teachingOperation)
         return
     }
     if (pattern != null && approving) {
@@ -214,11 +224,16 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             snapshot = workflow.catalog(); savedApproval = false; applied = null
                         } },
                         onEdit = if (pattern.canEdit) ({ work {
-                            editingBody = source?.body ?: savedBody.ifBlank {
-                                workflow.approvalExamples(bank.bankId, configuration.generation, pattern.id).firstOrNull()?.body.orEmpty()
-                            }
+                            editingBody = exampleBody(pattern)
                             editingPattern = pattern; teaching = true
+                        } }) else if (pattern.recognitionPhrases.isNotEmpty() && operationOf(pattern) != null) ({ work {
+                            editingBody = exampleBody(pattern); editingPattern = null
+                            teachingOperation = operationOf(pattern); replacingPattern = pattern.id; teaching = true
                         } }) else null,
+                        onCopy = operationOf(pattern)?.let { operation -> { work {
+                            editingBody = exampleBody(pattern); editingPattern = null
+                            teachingOperation = operation; replacingPattern = null; teaching = true
+                        } } },
                         onDelete = { confirmingDelete = true },
                         onHistory = { history = true })
                     if (!pattern.canApply && workflow.canApprove) pending?.let { report ->
@@ -304,3 +319,5 @@ internal fun PatternChoice(options: List<String>, selected: String, enabled: Boo
         }
     }
 }
+
+private fun operationOf(pattern: PatternDefinitionView) = PatternOperation.entries.firstOrNull { it.name == pattern.label }
