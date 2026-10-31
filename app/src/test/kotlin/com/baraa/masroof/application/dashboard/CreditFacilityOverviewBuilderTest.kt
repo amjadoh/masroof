@@ -24,13 +24,7 @@ class CreditFacilityOverviewBuilderTest {
                 row("2222", "150.00"),
                 row("3333", "75.00"),
             ),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount(BigDecimal("625.00"), Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount(BigDecimal("625.00"), Currency.SAR),
             aggregateStatementPeriodLabel = "Jul-Aug",
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -62,13 +56,7 @@ class CreditFacilityOverviewBuilderTest {
                 row("7271", "100.00", bank = Bank.BANK_ALJAZIRA, due = "80.00"),
                 row("7271", "250.00", bank = otherBank, due = "20.00"),
             ),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount(BigDecimal("350.00"), Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount(BigDecimal("350.00"), Currency.SAR),
             aggregateStatementPeriodLabel = "Jul-Aug",
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -93,13 +81,7 @@ class CreditFacilityOverviewBuilderTest {
     fun noOwnedCredit_doesNotFallbackToAllTransactionCards() {
         val overview = CreditCardsOverview(
             cards = listOf(row("1111", "100.00")),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount(BigDecimal("100.00"), Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount(BigDecimal("100.00"), Currency.SAR),
             aggregateStatementPeriodLabel = "Jul-Aug",
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -117,13 +99,7 @@ class CreditFacilityOverviewBuilderTest {
                 row("2222", "50.00"),
                 row("3333", "25.00"),
             ),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount(BigDecimal("175.00"), Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount(BigDecimal("175.00"), Currency.SAR),
             aggregateStatementPeriodLabel = "Jul-Aug",
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -150,13 +126,7 @@ class CreditFacilityOverviewBuilderTest {
     fun debitLinkedAccount_usesAccountDisplayNameFromRegistry() {
         val overview = CreditCardsOverview(
             cards = emptyList(),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             aggregateStatementPeriodLabel = null,
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -184,13 +154,7 @@ class CreditFacilityOverviewBuilderTest {
     fun debitWithoutRegistryLink_infersLinkedAccountFromSms() {
         val overview = CreditCardsOverview(
             cards = emptyList(),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             aggregateStatementPeriodLabel = null,
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -261,7 +225,6 @@ class CreditFacilityOverviewBuilderTest {
         CreditCardDashboardRow(
             bank = bank,
             last4 = last4,
-            calendarMonthSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             statementSpendingNet = SignedMoneyAmount(BigDecimal(amount), Currency.SAR),
             salaryPeriodSpendingNet = SignedMoneyAmount(BigDecimal(amount), Currency.SAR),
             statementPeriodLabel = "Jul-Aug",
