@@ -579,14 +579,14 @@ class SettingsViewModel(
     }
 
     fun toggleCommitmentActive(commitmentId: String) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Settings toggleCommitmentActive", onError = { _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) } }) {
             settingsCommitmentsWorkflow.toggleActive(commitmentId)
             applyCommitments(settingsCommitmentsWorkflow.listAll())
         }
     }
 
     fun deleteCommitment(commitmentId: String, onDeleted: () -> Unit = {}) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Settings deleteCommitment", onError = { _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) } }) {
             settingsCommitmentsWorkflow.delete(commitmentId)
             applyCommitments(settingsCommitmentsWorkflow.listAll())
             onDeleted()

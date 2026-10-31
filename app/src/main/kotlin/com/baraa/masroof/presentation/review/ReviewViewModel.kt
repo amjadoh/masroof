@@ -23,6 +23,7 @@ import com.baraa.masroof.domain.model.ReviewResolutionKind
 import com.baraa.masroof.domain.model.ReviewStatus
 import com.baraa.masroof.presentation.dashboard.MoneyUiFormatter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,7 @@ class ReviewViewModel(
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
 
     private var refreshRequested = false
+    private var refreshJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -71,7 +73,9 @@ class ReviewViewModel(
 
     fun refresh() {
         refreshRequested = true
-        launchLogged(appLogService, AppLogCategories.REVIEW, "Review refresh", onError = { _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) } }) {
+        // A slower load for the previous tab must not overwrite the current one.
+        refreshJob?.cancel()
+        refreshJob = launchLogged(appLogService, AppLogCategories.REVIEW, "Review refresh", onError = { _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) } }) {
             _uiState.update { it.copy(loading = true, error = null) }
             val summaries = loadCurrentSummaries()
             applySummaries(summaries)
@@ -323,12 +327,12 @@ class ReviewViewModel(
 
     fun resolveSelfTransferPair(partnerReviewId: String) {
         val currentId = _uiState.value.selectedDetail?.id ?: return
-        viewModelScope.launch {
-            val detail = detailLoader.loadDetail(currentId) ?: return@launch
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review resolveSelfTransferPair", onError = { _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) } }) {
+            val detail = detailLoader.loadDetail(currentId) ?: return@launchLogged
             val (outgoingId, incomingId) = when (detail.messageFamily) {
                 MessageFamily.TRANSFER_OUT -> currentId to partnerReviewId
                 MessageFamily.TRANSFER_IN -> partnerReviewId to currentId
-                else -> return@launch
+                else -> return@launchLogged
             }
             runAction {
                 reviewWorkflowService.resolveSelfTransferPair(outgoingId, incomingId)

@@ -34,7 +34,7 @@ class ModelRefreshWorker(context: Context, params: WorkerParameters) : Coroutine
                 retries = container.processingRetryRepository,
                 processor = container.processStoredSmsUseCase,
                 mayRefresh = service::mayRefresh,
-                needsRefresh = service::needsRefresh,
+                needsRefresh = service.refreshFilter(readHistory = false),
                 inTransaction = { container.withDatabaseTransaction(it) },
                 recoverDerived = { container.historicalDerivedRecovery.recoverPending() },
                 clock = container.clock,
