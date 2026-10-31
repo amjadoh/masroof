@@ -73,8 +73,9 @@ class BundledPatternApprovalTest {
             val named = "شراء\nمبلغ 25 SAR\nبطاقة مدى: **4321\nلدى TEST\n2026-09-15 12:30"
             assertTrue(runCatching { w.previewFinancial(w.catalog().generation, BARQ, "barq.purchase", PatternOperation.PURCHASE,
                 null, named, null, emptySet(), cardId = other.id) }.isFailure)
+            // An example that names the chosen card still saves it as the link for messages that name none.
             w.saveFinancial(w.previewFinancial(w.catalog().generation, BARQ, "barq.purchase", PatternOperation.PURCHASE,
-                null, purchase, null, emptySet(), cardId = card.id))
+                null, named, null, emptySet(), cardId = card.id))
             val links = w.load().banks.single { it.bankId == BARQ }.currentPatterns.single { it.id == "barq.purchase" }.factContract!!.accountBindings
             assertEquals(listOf(PatternAccountRole.CARD to "4321"), links.map { it.role to it.last4 })
             assertEquals("4321", w.catalog().banks.single { it.bankId == BARQ }.currentPatterns.single { it.id == "barq.purchase" }.approval?.cardLast4)
@@ -120,6 +121,12 @@ class BundledPatternApprovalTest {
             val policy = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
                 com.baraa.masroof.data.patterns.MessagePatternStore(context), c.accountRegistryRepository, c.cardRegistryRepository)
             assertTrue("a leg posted before the link still pairs", policy.isCurrent(posted, posted = true))
+            // The approval summary shows where an example really posts, not only the chosen link.
+            val preview = w.previewFinancial(w.catalog().generation, BARQ, "barq.transfer-in", PatternOperation.TRANSFER_IN,
+                account.id, named, null, emptySet())
+            assertEquals("1111", preview.accountLast4)
+            assertEquals("1234", w.previewFinancial(w.catalog().generation, BARQ, "barq.transfer-in", PatternOperation.TRANSFER_IN,
+                account.id, incoming, null, emptySet()).accountLast4)
             c.processRawSmsUseCase.ingest(sms("after-link", named.replace("100.00", "70.00")))
             assertEquals(AccountReference(Bank(BARQ), "1111"),
                 c.parsedEventRepository.findByRawSmsId("after-link")!!.event.destinationAccountRef)

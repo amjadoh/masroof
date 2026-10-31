@@ -243,7 +243,9 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             val satisfied = mutableSetOf<String>()
             fun link(role: PatternAccountRole) = links.singleOrNull { it.role == role }
             val family = facts.family
-            if (facts.sourceAccount == null && family in SOURCE_LINKED) link(PatternAccountRole.SOURCE)?.let {
+            // A movement that names a card was paid by it; only a card payment names the card it settles.
+            if (facts.sourceAccount == null && family in SOURCE_LINKED && (facts.card == null || family == MessageFamily.CARD_PAYMENT))
+                link(PatternAccountRole.SOURCE)?.let {
                 facts = facts.copy(sourceAccount = AccountReference(it.bank, it.last4)); satisfied += setOf("MISSING_TRANSFER_SOURCE", "MISSING_SOURCE_ROLE")
             }
             if (facts.destinationAccount == null && family == MessageFamily.TRANSFER_IN) link(PatternAccountRole.DESTINATION)?.let {

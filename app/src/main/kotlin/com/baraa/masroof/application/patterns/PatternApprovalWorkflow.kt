@@ -24,7 +24,9 @@ import java.time.Instant
 data class PatternAccountOption(val id: String, val name: String?, val last4: String)
 class PatternFinancialPreview internal constructor(internal val generation: Long, internal val priorFingerprint: String,
     internal val pattern: SavedMessagePattern, internal val accountId: String?,
-    val amount: Money, val occurredAt: String, val reference: String?, internal val cardId: String? = null)
+    val amount: Money, val occurredAt: String, val reference: String?, internal val cardId: String? = null,
+    /** Where this example actually posts, which may differ from the link when the message names its own. */
+    val accountLast4: String? = null, val cardLast4: String? = null)
 
 /** Explicit approval writes configuration only. Account identity and ownership stay in the existing registry. */
 class PatternApprovalWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
@@ -95,8 +97,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody) }
             if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))
                 throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH)
-            // A card the message names is read from it; a card it never names is the approved link.
-            val cardLink = card?.takeIf { cardField == null }?.let { PatternAccountBinding(PatternAccountRole.CARD, BankId(it.bank.id), it.last4) }
+            // A taught template reads a card it names; otherwise, and always for a built-in rule, the chosen card is the link.
+            val cardLink = card?.takeIf { cardField == null || builtIn }?.let { PatternAccountBinding(PatternAccountRole.CARD, BankId(it.bank.id), it.last4) }
             val contract = PatternFactContract(family,
                 if (incoming) MoneyDirection.INCOMING else MoneyDirection.OUTGOING, currency,
                 version = 2, cardBank = card?.takeIf { cardField != null && !builtIn }?.let { BankId(bankId) },
@@ -133,7 +135,9 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             PatternFinancialPreview(generation, PatternFactInterpreter(current).fingerprint, next, accountId,
                 requireNotNull(result.event.amount), result.details.occurredAtLocal?.format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(
                     java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed,
-                cardId.takeIf { contract.cardBank != null || cardLink != null })
+                cardId.takeIf { contract.cardBank != null || cardLink != null },
+                (if (incoming) result.event.destinationAccountRef else result.event.sourceAccountRef)?.maskedNumber,
+                result.event.cardRef?.last4)
         }
     }
 
