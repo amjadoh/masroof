@@ -519,6 +519,8 @@ class ReviewViewModel(
             pairCandidates = pairCandidates,
             showExternalTransferAction = !ignored && (isTransferOut || isTransferIn) &&
                 (pendingMatch || review.kind == ReviewKind.NEEDS_REVIEW),
+            transferBetweenOwnAccounts = !ignored && (isTransferOut || isTransferIn) &&
+                reviewWorkflowService.transferResolvesBetweenOwnAccounts(review.rawSmsId),
             showIncomingIncomeAction = !ignored && pendingMatch && isTransferIn,
             showFinancialTypeActions = !ignored && review.kind == ReviewKind.NEEDS_REVIEW &&
                 !dismissNonFinancial &&
