@@ -10,6 +10,24 @@ import org.junit.Test
 import java.nio.file.Files
 
 class MessagePatternsWorkflowTest {
+    @Test fun approvedLinksSurviveRestartsAndTravelWithNewerBundledRules() {
+        val text = java.io.File("src/main/assets/bank-patterns/BANK_BARQ.patterns.json").readText()
+        fun bank(json: String) = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(json).banks.single()
+        val seed = bank(text)
+        val links = listOf(com.baraa.masroof.engine.bank.patterns.PatternAccountBinding(
+            com.baraa.masroof.engine.bank.patterns.PatternAccountRole.DESTINATION, com.baraa.masroof.finance.value.BankId("BANK_BARQ"), "1234"))
+        val approved = seed.copy(patterns = seed.patterns.map {
+            if (it.id != "barq.transfer-in") it else it.copy(revision = 2, factContract = it.factContract!!.copy(version = 2, accountBindings = links))
+        })
+        val configuration = com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration(banks = listOf(approved))
+        assertNull("Links alone are not a newer bundled rule", MessagePatternStore.installation(configuration, seed, emptySet()))
+        val newer = bank(text.replace("\"incoming transfer\"", "\"incoming transfer v2\""))
+        val upgraded = MessagePatternStore.installation(configuration, newer, emptySet())!!.currentPatterns.single { it.id == "barq.transfer-in" }
+        assertEquals(3, upgraded.revision)
+        assertEquals(newer.patterns.single { it.id == "barq.transfer-in" }.roleProfile, upgraded.roleProfile)
+        assertEquals(links, upgraded.factContract!!.accountBindings)
+    }
+
     @Test fun newerBundledRolesReachInstalledBanksUnlessTheUserDisabledThem() = runBlocking {
         val directory = Files.createTempDirectory("masroof-bundled-update-").toFile()
         try {

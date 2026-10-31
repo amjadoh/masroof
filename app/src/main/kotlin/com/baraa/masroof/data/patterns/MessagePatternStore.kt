@@ -119,7 +119,13 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
                     bundled.id in prior.deletedPatternIds -> null
                     mine == null -> bundled
                     mine.roleProfile != null && bundled.roleProfile != null && mine.enabled &&
-                        mine.copy(revision = bundled.revision) != bundled -> bundled.copy(revision = Math.addExact(mine.revision, 1))
+                        mine.copy(revision = bundled.revision, factContract = mine.factContract?.unlinked()) != bundled -> {
+                        // Approved account/card links travel with a newer rule of the same family; a changed family needs a fresh approval.
+                        val links = mine.factContract?.accountBindings.orEmpty()
+                        if (links.isNotEmpty() && mine.factContract?.family != bundled.factContract?.family) null
+                        else bundled.copy(revision = Math.addExact(mine.revision, 1), factContract = bundled.factContract?.let {
+                            if (links.isEmpty()) it else it.copy(version = 2, accountBindings = links) })
+                    }
                     else -> null
                 }
             }
@@ -130,6 +136,8 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
             return prior.copy(senders = senders,
                 patterns = keepRecent(prior.patterns.filterNot { it.id in upgraded && it.roleProfile != null } + updates))
         }
+
+        private fun com.baraa.masroof.engine.bank.patterns.PatternFactContract.unlinked() = copy(version = 1, accountBindings = emptyList())
 
         /** Every save adds a revision; keep the newest few per pattern so a bank never reaches the codec's 128 cap. */
         internal fun keepRecent(patterns: Collection<SavedMessagePattern>): List<SavedMessagePattern> =

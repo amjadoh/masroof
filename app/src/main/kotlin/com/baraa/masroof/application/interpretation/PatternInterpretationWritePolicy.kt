@@ -8,7 +8,8 @@ import kotlinx.coroutines.CancellationException
 
 /** Called under the financial transaction's access lease, which excludes configuration edits / restores. */
 class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
-    private val accounts: com.baraa.masroof.domain.repository.AccountRegistryRepository? = null) {
+    private val accounts: com.baraa.masroof.domain.repository.AccountRegistryRepository? = null,
+    private val cards: com.baraa.masroof.domain.repository.CardRegistryRepository? = null) {
     /**
      * [posted] evidence is never re-read, so only its pattern's enabled state and owned accounts are checked:
      * a later save (new generation or revision) must not stop a posted leg from pairing.
@@ -26,6 +27,12 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
             if (!posted && (pattern.revision != stamp.revision ||
                 PatternFactInterpreter(configuration).fingerprint != stamp.fingerprint)) return false
             for (binding in contract.accountBindings) {
+                if (binding.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.CARD) {
+                    val card = com.baraa.masroof.domain.model.CardReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
+                    // A card link fills only a message without one; when it was used, the card must still be owned.
+                    if (record.event.cardRef == card && cards?.get(card)?.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
+                    continue
+                }
                 val reference = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
                 val account = accounts?.get(reference) ?: return false
                 if (account.bank != reference.bank || account.maskedNumber != binding.last4 || account.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false

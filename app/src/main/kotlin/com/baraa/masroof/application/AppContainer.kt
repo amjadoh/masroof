@@ -326,7 +326,7 @@ class AppContainer(
             inferenceCurrent = { interpretationService?.isInferenceCurrent(it) != false },
             inTransaction = { mutation -> databaseAccessGate.withAccess { database.withTransaction { mutation() } } },
             patternsCurrent = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
-                messagePatternStore, accountRegistryRepository)::isCurrent)
+                messagePatternStore, accountRegistryRepository, cardRegistryRepository)::isCurrent)
     }
 
     val transactionReconciliationService: TransactionReconciliationService =
@@ -408,7 +408,14 @@ class AppContainer(
             patternBoundAccounts = {
                 databaseAccessGate.withAccess { messagePatternStore.load() }.banks.flatMap { bank -> bank.currentPatterns }
                     .flatMap { it.factContract?.accountBindings.orEmpty() }
+                    .filter { it.role != com.baraa.masroof.engine.bank.patterns.PatternAccountRole.CARD }
                     .map { com.baraa.masroof.domain.model.AccountReference(Bank(it.bank.value), it.last4) }.toSet()
+            },
+            patternBoundCards = {
+                databaseAccessGate.withAccess { messagePatternStore.load() }.banks.flatMap { bank -> bank.currentPatterns }
+                    .flatMap { it.factContract?.accountBindings.orEmpty() }
+                    .filter { it.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.CARD }
+                    .map { com.baraa.masroof.domain.model.CardReference(Bank(it.bank.value), it.last4) }.toSet()
             },
         )
 
