@@ -24,7 +24,7 @@
     <string name="teaching_saved_title">حُفظ النمط للمعاينة</string>
     <string name="teaching_saved_scope">الحفظ وحده لا يسجّل أي عملية. اعتمد النمط ماليًا ليبدأ العمل، ثم طبّقه على الرسائل المطابقة.</string>
     <string name="teaching_fixed_values">هذه القيم ستبقى ثابتة في النمط: %1$s. اضغط «تجاهل قيمة» عليها إذا كانت تتغير بين الرسائل.</string>
-    <string name="teaching_edit_resets_approval">تعديل الحقول يلغي الاعتماد المالي؛ ستحتاج إلى اعتماد النمط من جديد بعد الحفظ.</string>
+    <string name="teaching_edit_resets_approval">بعد الحفظ نفحص النمط بإعدادات اعتماده السابقة. إن نجح الفحص يبقى معتمدًا، وإلا ستحتاج إلى اعتماده من جديد.</string>
     <string name="teaching_return_review">العودة إلى مراجعة الرسالة</string>
     <string name="teaching_saved_patterns">الأنماط</string>
     <string name="teaching_review_title">ساعدني أفهم الرسالة</string>

@@ -30,6 +30,8 @@ class PatternTeachingPreview internal constructor(
     val fields: Map<String, PatternText>,
     /** Variable-looking values the template could not ignore automatically; they stay literal text. */
     val fixedValues: List<PatternText> = emptyList(),
+    /** The teaching message, kept in memory so an edit can re-run the prior approval on it. */
+    internal val body: String = "",
 ) {
     val bankId get() = pattern.bankId
     val operation get() = pattern.label

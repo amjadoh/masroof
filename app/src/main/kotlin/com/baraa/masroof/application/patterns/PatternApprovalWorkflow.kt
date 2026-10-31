@@ -123,7 +123,30 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
         }
     }
 
-    suspend fun save(preview: PatternFinancialPreview) = withContext(Dispatchers.IO) {
+    /** Re-runs approval with a prior contract's settings on an edited pattern; null when any check fails. */
+    internal suspend fun reapprove(generation: Long, pattern: SavedMessagePattern, prior: PatternFactContract,
+        body: String): MessagePatternConfiguration? {
+        val operation = PatternOperation.entries.firstOrNull { it.name == prior.family.name }
+        if (operation?.name != pattern.label || prior.accountBindings.size > 1) return null
+        val bankId = pattern.bankId
+        val binding = prior.accountBindings.singleOrNull()
+        val (accountId, cardIds) = withContext(Dispatchers.IO) { gate.withAccess {
+            binding?.let { b -> ownedAccounts(bankId).singleOrNull { it.maskedNumber == b.last4 }?.id } to
+                if (prior.cardBank == null) listOf(null) else ownedCards(bankId).map { it.id }
+        } }
+        if (binding != null && accountId == null) return null
+        for (cardId in cardIds) {
+            val preview = try {
+                preview(generation, bankId, pattern.id, operation, accountId, body, binding?.field,
+                    prior.contextReferences, prior.currency, cardId)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { continue }
+            return try { save(preview, enable = pattern.enabled) }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+        }
+        return null
+    }
+
+    suspend fun save(preview: PatternFinancialPreview, enable: Boolean = true) = withContext(Dispatchers.IO) {
         gate.withExclusiveAccess {
             val current = store.load()
             check(current.generation == preview.generation && PatternFactInterpreter(current).fingerprint == preview.priorFingerprint) { "Preview expired" }
@@ -137,7 +160,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             }
             val bank = current.banks.single { it.bankId == preview.pattern.bankId }
             // Approval is the last human gate; an approved pattern that still had to be switched on was a third gate without extra safety.
-            store.saveBank(current.generation, bank.copy(patterns = listOf(preview.pattern.copy(enabled = true))))
+            store.saveBank(current.generation, bank.copy(patterns = listOf(preview.pattern.copy(enabled = enable || preview.pattern.enabled))))
         }
     }
 }
