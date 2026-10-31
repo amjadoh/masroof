@@ -60,7 +60,8 @@ Contract v2 persists account bindings and context-reference choices in this same
 document. The encrypted export test now includes an exact partial-reference link.
 Configuration schema 3 adds immutable role-profile definitions and retains schema
 1/2 readers. It reuses the strict literal-role codec and generic extraction grammar;
-the role rule must agree with the pattern's explicit fact contract.
+the role rule must agree with the pattern's explicit fact contract, apart from approved
+account/card links (`PatternAccountRole.CARD` names a card link; links never carry a reference field).
 
 The deterministic SHA-256 covers generation, bank identities/senders, definitions,
 enable states, revisions, contracts and history with length-prefixed encoding.
