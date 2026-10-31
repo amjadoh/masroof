@@ -470,6 +470,32 @@ class ReviewWorkflowServiceTest {
     }
 
     @Test
+    fun resolveTransferAsExternal_toOwnedAccount_leavesOneAccountAndEntersTheOther() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3002"))
+        persistEvent(
+            smsId = "sms-own",
+            event = event(
+                id = "pe-own",
+                rawSmsId = "sms-own",
+                family = MessageFamily.TRANSFER_OUT,
+                amount = money("500.00"),
+                source = AccountReference(Bank.BANK_ALJAZIRA, "3001"),
+                destination = AccountReference(Bank.BANK_ALJAZIRA, "3002"),
+                network = BankNetworkType.INTRA_BANK,
+            ),
+        )
+        reviewRepo.upsertRequired(rawSmsId = "sms-own", kind = ReviewKind.PENDING_MATCH,
+            reasons = listOf("transfer_pending_match"), now = clock.now())
+        assertTrue(workflow.transferResolvesBetweenOwnAccounts("sms-own"))
+        val tx = (workflow.resolveTransferAsExternal(ReviewIdFactory.fromRawSmsId("sms-own"),
+            ExternalTransferDirection.OUTGOING) as ReviewWorkflowResult.Success).transaction!!
+        assertEquals(FinancialTransactionType.SELF_TRANSFER, tx.type)
+        assertEquals(FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3001"), tx.sourceContainerId)
+        assertEquals(FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3002"), tx.destinationContainerId)
+    }
+
+    @Test
     fun resolveTransferAsExternal_in_notIncome() = runBlocking {
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
         persistEvent(
