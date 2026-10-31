@@ -14,7 +14,8 @@ class AutomaticInterpretationWriteGuard(
     private val transactions: FinancialTransactionRepository,
     private val inferenceCurrent: suspend (ParsedEventRecord) -> Boolean,
     private val inTransaction: suspend (suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult,
-    private val patternsCurrent: suspend (ParsedEventRecord) -> Boolean = { !PatternInterpretationWritePolicy.isPatternDerived(it) },
+    private val patternsCurrent: suspend (ParsedEventRecord, Boolean) -> Boolean =
+        { record, _ -> !PatternInterpretationWritePolicy.isPatternDerived(record) },
 ) {
     suspend fun write(expected: List<ParsedEventRecord>, mutation: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult = inTransaction {
         var reason = "stale_family_inference"
@@ -22,13 +23,13 @@ class AutomaticInterpretationWriteGuard(
             val id=prior.event.rawSmsId
             val review=reviews.findByRawSmsId(id)
             val current=events.findEffectiveByRawSmsId(id)
-            val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && transactions.isRawSmsLinked(id)
+            val linked=transactions.isRawSmsLinked(id)
+            val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && linked
             if (protected || current != prior) true
             else if (current.automationConfirmed || review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE) false
-            // Posted evidence is never re-read, so a later pattern save must not stop it from pairing with its other leg.
-            else if (transactions.isRawSmsLinked(id)) false
-            else if (!patternsCurrent(current)) { reason = "stale_pattern_definition"; true }
-            else !inferenceCurrent(current)
+            else if (!patternsCurrent(current, linked)) { reason = "stale_pattern_definition"; true }
+            // Posted evidence is never re-read, so a newer model must not stop it from pairing with its other leg.
+            else !linked && !inferenceCurrent(current)
         }
         if(stale != null) FinancialTransactionSaveResult.Conflict(stale.event.rawSmsId,reason)
         else mutation()

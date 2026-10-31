@@ -308,12 +308,18 @@ class BankInterpretationService(
         check(prefs.edit().putString("scheduled_interpretation", version).commit())
     }
     fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean = refreshFilter()(record)
-    /** One pass reads the pattern file once, not once per pending message. */
-    fun refreshFilter(): (com.baraa.masroof.parsing.repository.ParsedEventRecord) -> Boolean {
+    /**
+     * One pass reads the pattern file once, not once per pending message. The audit history is written before
+     * the parse commits, so it only decides whether to schedule work; the worker itself ignores it ([readHistory]
+     * false) and a failed, retried run still refreshes the message.
+     */
+    fun refreshFilter(readHistory: Boolean = true): (com.baraa.masroof.parsing.repository.ParsedEventRecord) -> Boolean {
         val rules = lazy { engine().fingerprint }
-        return { record -> needsRefresh(record, rules) }
+        val read = if (readHistory) seedRead else emptySet()
+        return { record -> needsRefresh(record, rules, read) }
     }
-    private fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord, rules: Lazy<String>): Boolean {
+    private fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord, rules: Lazy<String>,
+        read: Set<String>): Boolean {
         // Successful facts resume derived work.
         if (record.event.parseStatus.name == "SUCCESS") return false
         val bank = record.event.bank.id
@@ -322,7 +328,7 @@ class BankInterpretationService(
         // Other banks refresh only what learning now changes, so an approved pattern is still applied explicitly.
         if (bank != SEED_BANK) return bank in classifiers.orEmpty() && (staleInference || record.event.rawSmsId in assistable)
         val fingerprint = rules.value
-        return record.event.messageFamily.name == "UNKNOWN" && record.event.rawSmsId !in seedRead ||
+        return record.event.messageFamily.name == "UNKNOWN" && record.event.rawSmsId !in read ||
             reasons.none { it == "rules:$fingerprint" || it.startsWith("rules:$fingerprint:") } || staleInference
     }
     /** Do not re-interpret posted evidence or human decisions on engine/model upgrades. */
