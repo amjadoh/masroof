@@ -9,11 +9,21 @@ import com.baraa.masroof.domain.model.CardRole
 import com.baraa.masroof.domain.model.CardType
 import com.baraa.masroof.domain.model.OwnershipStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.math.BigDecimal
 
 class BankHierarchyBuilderTest {
+    @Test
+    fun debitLinkMatchesFullNumberSuffixOrNothing() {
+        assertTrue(debitLinkMatchesAccount("1234", "1234"))
+        assertTrue(debitLinkMatchesAccount("1234", "SA00001234"))
+        assertTrue(debitLinkMatchesAccount("SA00001234", "1234"))
+        assertFalse(debitLinkMatchesAccount("9999", "1234"))
+        assertFalse(debitLinkMatchesAccount(null, "1234"))
+    }
+
     @Test
     fun nestsLinkedMadaUnderCurrentAccountAndLeavesUnlinkedDebitAtBankLevel() {
         val bank = Bank.BANK_ALJAZIRA

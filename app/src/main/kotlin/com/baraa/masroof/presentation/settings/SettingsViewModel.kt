@@ -1238,7 +1238,8 @@ class SettingsViewModel(
             val assignedDebitLast4s = mutableSetOf<String>()
             val currentNodes = currentAccounts.map { account ->
                 val matchedDebit = debitCards.filter { debit ->
-                    debit.last4 !in assignedDebitLast4s && debitMatchesAccount(debit, account)
+                    debit.last4 !in assignedDebitLast4s &&
+                        com.baraa.masroof.application.dashboard.debitLinkMatchesAccount(debit.linkedAccountMaskedNumber, account.maskedNumber)
                 }
                 matchedDebit.forEach { assignedDebitLast4s.add(it.last4) }
                 SettingsCurrentAccountNodeUi(account = account, debitCards = matchedDebit)
@@ -1269,16 +1270,6 @@ class SettingsViewModel(
             CardType.CREDIT -> false
             null -> cardNetwork == CardNetwork.MADA || linkedAccountMaskedNumber != null
         }
-
-    private fun debitMatchesAccount(debit: ManagedCardUi, account: ManagedAccountUi): Boolean {
-        val linked = debit.linkedAccountMaskedNumber
-        if (linked != null) {
-            return account.maskedNumber == linked ||
-                account.maskedNumber.endsWith(linked) ||
-                linked.endsWith(account.maskedNumber.takeLast(4))
-        }
-        return false
-    }
 
     fun openAccountTypePicker(account: ManagedAccountUi) {
         _uiState.update { it.copy(accountTypeTarget = account) }

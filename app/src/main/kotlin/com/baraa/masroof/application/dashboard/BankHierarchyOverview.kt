@@ -70,14 +70,6 @@ object BankHierarchyBuilder {
         val allDebitCards = creditFacilities.debitCards
         val assignedDebitKeys = mutableSetOf<String>()
 
-        fun debitMatchesAccount(debit: DebitCardOverview, maskedNumber: String): Boolean {
-            val linked = debit.linkedAccountMaskedNumber
-            if (linked != null) {
-                return maskedNumber == linked || maskedNumber.endsWith(linked) || linked.endsWith(maskedNumber.takeLast(4))
-            }
-            return false
-        }
-
         fun ownedAccountFor(entry: AccountRegistryEntry): OwnedAccount? =
             fleetByMasked[entry.bank to entry.maskedNumber]
 
@@ -99,7 +91,7 @@ object BankHierarchyBuilder {
             val currentNodes = currentEntries.map { entry ->
                 val matchedDebit = bankDebitCards.filter { debit ->
                     val cardKey = CardTransactionInvolvementResolver.cardKey(bank.id, debit.last4)
-                    cardKey !in assignedDebitKeys && debitMatchesAccount(debit, entry.maskedNumber)
+                    cardKey !in assignedDebitKeys && debitLinkMatchesAccount(debit.linkedAccountMaskedNumber, entry.maskedNumber)
                 }.also { matched ->
                     matched.forEach { debit ->
                         assignedDebitKeys.add(CardTransactionInvolvementResolver.cardKey(bank.id, debit.last4))
@@ -163,3 +155,7 @@ object BankHierarchyBuilder {
             LoanType.MORTGAGE -> "Mortgage"
         }
 }
+
+/** One rule for Home and Settings: a debit card sits under the current account its linked number names. */
+internal fun debitLinkMatchesAccount(linked: String?, maskedNumber: String): Boolean =
+    linked != null && (maskedNumber == linked || maskedNumber.endsWith(linked) || linked.endsWith(maskedNumber.takeLast(4)))
