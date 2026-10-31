@@ -39,15 +39,16 @@ data class PatternFactContract(
     }
 }
 
-enum class PatternAccountRole { SOURCE, DESTINATION }
+enum class PatternAccountRole { SOURCE, DESTINATION, CARD }
 
-/** Exact user link to an existing canonical account. It declares no ownership. Null field is a definition constant. */
+/** Exact user link to an existing canonical account or card. It declares no ownership. Null field is a definition constant. */
 data class PatternAccountBinding(val role: PatternAccountRole, val bank: BankId, val last4: String,
     val field: String? = null, val observedValue: String? = null) {
     init {
         require(last4.matches(Regex("[0-9]{4}")))
         require((field == null) == (observedValue == null))
         require(field == null || field in setOf("source_account", "destination_account", "account_reference"))
+        require(field == null || role != PatternAccountRole.CARD)
         require(field != "source_account" || role == PatternAccountRole.SOURCE)
         require(field != "destination_account" || role == PatternAccountRole.DESTINATION)
         require(observedValue == null || observedValue.matches(Regex("[0-9]{1,4}")))
@@ -112,7 +113,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         val activeRoles = roleMatches.filter { it.enabled }
         if (observe != null) {
             val roleFields = roleResult?.evidence.orEmpty().filter { it.field != "family" }
-                .associate { span -> span.field to TextSpan(span.slice(input), span.start, span.end) }
+                .associate { span -> span.field.lowercase(Locale.ROOT) to TextSpan(span.slice(input), span.start, span.end) }
             observe(taught + activeRoles.map { it to Preview(it.label, roleFields) })
         }
         // A taught pattern may complete an incomplete recognized role of the same family, never contradict it.
@@ -126,7 +127,8 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if ((selected == null && (roleMatches.isNotEmpty() || roleResult.status == ParseStatus.SUCCESS)) || roleMatches.any { !it.enabled })
                 return unresolved("PATTERN_DISABLED")
             val stamp = selected ?: roles.first()
-            return roleResult.copy(version = InterpretationVersion(1, "message-pattern-roles-v1", "$fingerprint:${stamp.id}:${stamp.revision}"),
+            val linked = selected?.factContract?.takeIf { it.version == 2 }?.accountBindings.orEmpty()
+            return withLinks(roleResult, linked).copy(version = InterpretationVersion(1, "message-pattern-roles-v1", "$fingerprint:${stamp.id}:${stamp.revision}"),
                 patternProvenance = PatternProvenance(fingerprint, stamp.id, stamp.revision, emptySet(), false, roleProfile = true))
         }
         if (roleResult?.blockers?.contains(Blocker.CONFLICTING_FACTS) == true)
@@ -192,10 +194,15 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if (parsed == null) block("PATTERN_TIME_INCOMPLETE")
             parsed
         }
-        val card = normalized("card")?.let(::unmaskedReference)?.let {
+        val observedCard = normalized("card")?.let(::unmaskedReference)?.let {
             if (!SUFFIX.matches(it) || contract.cardBank == null) { block("PATTERN_CARD_REFERENCE_UNRESOLVED"); null }
             else { definitionFacts += "CARD_BANK"; CardReference(contract.cardBank, it) }
         }
+        val cardLink = contract.accountBindings.singleOrNull { it.role == PatternAccountRole.CARD }
+            ?.takeIf { contract.family in CARD_LINKED }?.let { CardReference(it.bank, it.last4) }
+        if (cardLink != null && observedCard != null && cardLink != observedCard) block("PATTERN_CARD_BINDING_MISMATCH")
+        if (cardLink != null && observedCard == null) definitionFacts += setOf("CARD_IDENTITY", "CARD_BANK")
+        val card = observedCard ?: cardLink
         preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
         // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
         if (preview.fields.keys.any { it in NEUTRAL_REFERENCES && it !in boundFields && it !in contract.contextReferences }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
@@ -227,6 +234,50 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     }
 
     companion object {
+        /**
+         * Fills a role the message left empty from the user's approved link. A role the message names is never replaced:
+         * a different value blocks. Purchases and refunds take only a card, never a funding account.
+         */
+        internal fun withLinks(result: Interpretation, links: List<PatternAccountBinding>): Interpretation {
+            if (links.isEmpty() || result.status == ParseStatus.NON_FINANCIAL) return result
+            var facts = result.facts
+            val satisfied = mutableSetOf<String>()
+            val mismatches = mutableListOf<String>()
+            fun account(role: PatternAccountRole) = links.singleOrNull { it.role == role }?.let { AccountReference(it.bank, it.last4) }
+            val family = facts.family
+            val sourceLink = account(PatternAccountRole.SOURCE)?.takeIf { family in SOURCE_LINKED }
+            val destinationLink = account(PatternAccountRole.DESTINATION)?.takeIf { family == MessageFamily.TRANSFER_IN }
+            val cardLink = links.singleOrNull { it.role == PatternAccountRole.CARD }?.takeIf { family in CARD_LINKED }
+                ?.let { CardReference(it.bank, it.last4) }
+            if (sourceLink != null) when (facts.sourceAccount) {
+                null -> { facts = facts.copy(sourceAccount = sourceLink); satisfied += setOf("MISSING_TRANSFER_SOURCE", "MISSING_SOURCE_ROLE") }
+                sourceLink -> Unit
+                else -> mismatches += "PATTERN_ACCOUNT_BINDING_MISMATCH"
+            }
+            if (destinationLink != null) when (facts.destinationAccount) {
+                null -> { facts = facts.copy(destinationAccount = destinationLink); satisfied += "MISSING_TRANSFER_DESTINATION" }
+                destinationLink -> Unit
+                else -> mismatches += "PATTERN_ACCOUNT_BINDING_MISMATCH"
+            }
+            if (cardLink != null) when (facts.card) {
+                // A purchase that names a funding account is already complete; adding a card would change its channel.
+                null -> if (family == MessageFamily.CARD_PAYMENT || (facts.sourceAccount == null && facts.destinationAccount == null)) {
+                    facts = facts.copy(card = cardLink); satisfied += "MISSING_CARD_ROLE"
+                }
+                cardLink -> Unit
+                else -> mismatches += "PATTERN_CARD_BINDING_MISMATCH"
+            }
+            val diagnostics = result.diagnostics.filterNot { it.code in satisfied } + mismatches.distinct().map(::diagnostic)
+            val open = diagnostics.any { it.severity != DiagnosticSeverity.INFO }
+            val blockers = if (!open && result.blockers == setOf(Blocker.VALIDATION_ERROR)) emptySet()
+                else result.blockers + if (mismatches.isEmpty()) emptySet() else setOf(Blocker.VALIDATION_ERROR)
+            val status = if (blockers.isEmpty()) ParseStatus.SUCCESS else ParseStatus.REVIEW_REQUIRED
+            return result.copy(facts = facts.copy(executionState = if (status == ParseStatus.SUCCESS) "EXECUTED" else null),
+                diagnostics = diagnostics, blockers = blockers, status = status)
+        }
+        private val SOURCE_LINKED = setOf(MessageFamily.TRANSFER_OUT, MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT,
+            MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.FEE)
+        val CARD_LINKED = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT)
         private val DECIMAL = Regex("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?")
         private const val CURRENCY = "sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?"
         private val MONEY = Regex("(?:(${DECIMAL.pattern}) *($CURRENCY)|($CURRENCY) *(${DECIMAL.pattern}))")
