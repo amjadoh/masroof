@@ -261,11 +261,6 @@ object AccountFlowClassifier {
         }
     }
 
-    private fun linkedRecords(
-        tx: FinancialTransaction,
-        context: AccountFlowClassificationContext,
-    ): List<ParsedEventRecord> =
-        tx.linkedParsedEventIds.mapNotNull { context.parsedRecordsById[it] }
 
     private fun isAccountContainer(containerId: String): Boolean =
         containerId.startsWith("account:")
