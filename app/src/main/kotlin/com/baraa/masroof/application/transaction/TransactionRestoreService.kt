@@ -18,6 +18,9 @@ sealed interface RestoreResult {
     data class Success(val transaction: FinancialTransaction) : RestoreResult
 
     data class Rejected(val reason: String) : RestoreResult
+
+    /** Restored as financial; it posts once its other leg or an ownership answer arrives. */
+    data object AwaitingReview : RestoreResult
 }
 
 /**
@@ -65,6 +68,8 @@ class TransactionRestoreService(
         }
         val tx = financialTransactionRepository.findByRawSmsId(rawSmsId)
         if (tx == null) {
+            // Pending match and needs-review are not failures: keep the financial decision so a later pass posts it.
+            if (report.reviewCandidates.any { it.rawSmsId == rawSmsId }) return RestoreResult.AwaitingReview
             val rollbackReason = rollbackToIgnored(review.id, rawSmsId)
             return RestoreResult.Rejected(rollbackReason ?: "reconcile_failed")
         }

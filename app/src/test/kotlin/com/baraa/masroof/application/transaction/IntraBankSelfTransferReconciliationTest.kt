@@ -428,6 +428,36 @@ class IntraBankSelfTransferReconciliationTest {
     }
 
     @Test
+    fun restoringAnIgnoredLegThatAwaitsOwnership_staysFinancialInReview() = runBlocking {
+        persistParsed("sms-out", intraOut("2026-09-02 10:00"), Instant.parse("2026-09-02T07:00:00Z"))
+        val review = reviewRepo.upsertRequired("sms-out", ReviewKind.NEEDS_REVIEW, listOf("user_ignored_transaction"), Instant.now())
+        reviewRepo.markResolved(review.id, ReviewResolutionKind.USER_NON_FINANCIAL, Instant.now(), null)
+        val restore = TransactionRestoreService(
+            reviewRepository = reviewRepo,
+            financialTransactionRepository = ftRepo,
+            reconciliation = reconciliation,
+            reclassification = TransactionReclassificationService(
+                ftRepo,
+                com.baraa.masroof.application.review.EffectiveParsedEventProvider(parsedRepo,
+                    com.baraa.masroof.data.repository.RoomUserCorrectionRepository(db.userCorrectionDao())),
+                OwnershipResolver(accounts, cards, NoOpLoanRegistryRepository),
+            ),
+            clock = InstantClock.System,
+            reviewQueueUpdater = reviewQueueUpdater,
+        )
+
+        val result = restore.restore("sms-out")
+
+        assertEquals(RestoreResult.AwaitingReview, result)
+        assertEquals(ReviewResolutionKind.USER_FINANCIAL_TYPE, reviewRepo.findByRawSmsId("sms-out")!!.resolutionKind)
+        assertTrue(ftRepo.listAll().isEmpty())
+        // Once ownership is answered, the kept decision posts the transfer.
+        ownBothAccounts()
+        reconciliation.reconcileStoredEvents()
+        assertEquals(setOf("sms-out"), ftRepo.listRawSmsIds(ftRepo.listAll().single().id).toSet())
+    }
+
+    @Test
     fun twoThousand_differentDays_remainTwoAndSumToFourThousand() = runBlocking {
         ownBothAccounts()
         persistPair("day2", "2026-09-02 10:00", "2026-09-02T07:00:00Z")
