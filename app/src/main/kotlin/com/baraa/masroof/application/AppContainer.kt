@@ -14,6 +14,7 @@ import com.baraa.masroof.application.dashboard.DashboardLayoutPreferencesReposit
 import com.baraa.masroof.application.dashboard.DashboardCommitmentsWorkflow
 import com.baraa.masroof.application.dashboard.DashboardPeriodWorkflow
 import com.baraa.masroof.application.dashboard.DashboardRegistryWorkflow
+import com.baraa.masroof.application.dashboard.ForeignSarMarketRateProvider
 import com.baraa.masroof.application.dashboard.FrankfurterForeignSarRateProvider
 import com.baraa.masroof.application.dashboard.TransactionSarEquivalentResolver
 import com.baraa.masroof.application.review.EffectiveParsedEventProvider
@@ -514,7 +515,8 @@ class AppContainer(
             cardRegistryRepository = cardRegistryRepository,
             loanRegistryRepository = loanRegistryRepository,
             commitmentRepository = commitmentRepository,
-            sarEquivalentResolver = sarEquivalentResolver,
+            // Dashboard loads never call the network; market rates are written by enrichment.
+            sarEquivalentResolver = TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ -> null }),
         )
 
     val transactionRestoreService: TransactionRestoreService =
@@ -648,10 +650,12 @@ class AppContainer(
 
     val workerFactory: WorkerFactory =
         DelegatingWorkerFactory().apply {
-            addFactory(LiveSmsProcessingWorker.Factory({ processStoredSmsUseCase }, appLogService))
+            addFactory(LiveSmsProcessingWorker.Factory({ processStoredSmsUseCase }, appLogService) { maintenanceCompletionSignal.notifyCompleted() })
             addFactory(
                 ExchangeRateEnrichmentWorker.Factory {
-                    PendingExchangeRateEnricher { exchangeRateEnrichmentWorkflow.enrichPending() }
+                    PendingExchangeRateEnricher {
+                        if (exchangeRateEnrichmentWorkflow.enrichPending().persisted > 0) maintenanceCompletionSignal.notifyCompleted()
+                    }
                 },
             )
             addFactory(
@@ -924,7 +928,7 @@ class AppContainer(
 
     private suspend fun enrichExchangeRatesBestEffort() {
         try {
-            exchangeRateEnrichmentWorkflow.enrichPending()
+            if (exchangeRateEnrichmentWorkflow.enrichPending().persisted > 0) maintenanceCompletionSignal.notifyCompleted()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

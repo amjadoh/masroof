@@ -83,8 +83,8 @@ internal object FidelityFixtures {
             setOf("${bank.id}:7271", "${bank.id}:8842"))
         val snapshot = CreditCardBalanceSnapshot(money("5000"),money("2200"),LocalDate.parse("2026-10-15"),
             Instant.parse("2026-10-02T07:00:00Z"),Instant.parse("2026-10-02T07:00:00Z"))
-        val primary = CreditCardDashboardRow(bank,"7271",signed("800"),signed("800"),signed("800"),"2 أكتوبر — 1 نوفمبر",snapshot)
-        val child = primary.copy(last4="8842",calendarMonthSpendingNet=signed("600"),statementSpendingNet=signed("600"),salaryPeriodSpendingNet=signed("600"),snapshot=null)
+        val primary = CreditCardDashboardRow(bank,"7271",signed("800"),signed("800"),"2 أكتوبر — 1 نوفمبر",snapshot)
+        val child = primary.copy(last4="8842",statementSpendingNet=signed("600"),salaryPeriodSpendingNet=signed("600"),snapshot=null)
         val facility = CreditFacilityOverview(bank,primary,listOf(child),StatementDueSnapshot(money("2200"),snapshot.updatedAt,snapshot.dueDate),
             signed("1400"),signed("1400"),primary.statementPeriodLabel,null,Currency.SAR)
         val mada = DebitCardOverview(bank,"4421","مدى •• 4421","الجاري •• 3001","3001",CardNetwork.MADA,signed("2050"),null)

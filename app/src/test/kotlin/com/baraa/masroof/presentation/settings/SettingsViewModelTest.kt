@@ -37,6 +37,7 @@ import com.baraa.masroof.domain.repository.LoanRegistryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -575,7 +576,8 @@ class SettingsViewModelTest {
 
         vm.refresh()
         advanceUntilIdle()
-        assertTrue(vm.uiState.value.updateState is AppUpdateUiState.ReadyToInstall)
+        // The APK hash check runs on the IO dispatcher, outside the test scheduler.
+        vm.uiState.first { it.updateState is AppUpdateUiState.ReadyToInstall }
 
         vm.installPendingUpdate()
         advanceUntilIdle()
