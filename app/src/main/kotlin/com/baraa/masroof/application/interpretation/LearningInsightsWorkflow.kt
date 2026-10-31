@@ -10,7 +10,8 @@ data class LearningInsights(val pending: Boolean = false, val attempted: Int = 0
     val repeatedContradictions: Int = 0, val exclusions: Map<String,Int> = emptyMap(), val pendingDecisions: Int = 0,
     val statisticalFamilies: Int = 0, val statisticalSuggestions: Int = 0, val templateSuggestions: Int = 0,
     val personalUsed: Boolean = false, val trainingTemplates: Int = 0, val validationTemplates: Int = 0,
-    val personalReason: String = "NEEDS_EVALUATIONS")
+    val personalReason: String = "NEEDS_EVALUATIONS",
+    val requiredValidationTemplates: Int = com.baraa.masroof.ml.family.FamilyClassifier.MIN_ACCEPTED_VALIDATION_TEMPLATES)
 
 /** Operational counts have denominators. No correction does not prove a prediction correct. */
 class LearningInsightsWorkflow(private val learning: BankInterpretationService?,

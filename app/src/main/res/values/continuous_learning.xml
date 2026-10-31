@@ -20,4 +20,5 @@
     <string name="learning_baseline_better">الطريقة الأساسية أفضل في التقييم الحالي.</string>
     <string name="learning_personal_used_reason">النسخة الشخصية اجتازت الاختبارات وحسّنت النتائج.</string>
     <string name="learning_needs_examples">أحتاج أمثلة مستقلة أكثر للتدريب والتحقق قبل تعميم التعلم.</string>
+    <string name="learning_needs_examples_count">لديك %1$d من %2$d أمثلة تحقق مستقلة. كل رسالة من بنك الجزيرة تصححها بنفسك تقرّبك من التعلم الشخصي.</string>
 </resources>
