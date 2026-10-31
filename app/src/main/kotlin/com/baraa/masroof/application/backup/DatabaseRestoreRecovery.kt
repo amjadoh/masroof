@@ -222,14 +222,15 @@ object DatabaseRestoreRecovery {
         }
     }
 
-    internal fun cleanupCommitted(context: Context, live: File) {
+    /** Returns false when the import was rolled back onto the original database. */
+    internal fun cleanupCommitted(context: Context, live: File): Boolean {
         if (isSqliteOk(live)) {
             discardDatabase(rollbackFile(live))
             discardDatabase(preservedRollbackFile(live))
             discardDatabase(incomingFile(live))
             deleteSnapshots(live)
             journalFile(live).delete()
-            return
+            return true
         }
         // Imported preferences are already active. The current original is
         // .rollback only after it verifies. A preserved rollback is older
@@ -251,6 +252,7 @@ object DatabaseRestoreRecovery {
             live,
             recorded.copy(preservedRollback = preserved),
         )
+        return false
     }
 
     internal fun deleteRestoreArtifacts(live: File) {
@@ -264,6 +266,13 @@ object DatabaseRestoreRecovery {
     }
 
     private fun recoverWithoutJournal(context: Context, live: File) {
+        val preserved = preservedRollbackFile(live)
+        if (!hasPreexistingRollback(live) && !preserved.exists() && !hasSidecar(preserved)) {
+            // Interrupted before the first journal: nothing was installed, so drop the staged files.
+            discardDatabase(incomingFile(live))
+            deleteSnapshots(live)
+            journalTempFile(live).delete()
+        }
         if (!hasRestoreEvidence(live)) {
             if (!live.exists() || looksLikeSqlite(live)) return
             throw IncompleteRestoreException(

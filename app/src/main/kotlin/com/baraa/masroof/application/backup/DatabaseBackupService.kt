@@ -331,12 +331,14 @@ class DatabaseBackupService(
                     preservedRollback,
                 )
                 afterRestoreStage(DatabaseRestoreRecovery.Stage.COMMITTED)
-                DatabaseRestoreRecovery.cleanupCommitted(appContext, liveDb)
                 SensitiveFileCleanup.delete(packageDir)
+                if (!DatabaseRestoreRecovery.cleanupCommitted(appContext, liveDb)) {
+                    error("Imported database failed verification; original database restored")
+                }
                 secret.fill('\u0000')
+                appLogService?.info(AppLogCategories.BACKUP, "Database import succeeded; restart required")
                 restartAttempted = true
                 restart(BackupImportOutcome.SuccessNeedsRestart)
-                appLogService?.info(AppLogCategories.BACKUP, "Database import succeeded; restart required")
                 BackupImportOutcome.SuccessNeedsRestart
             } catch (error: Exception) {
                 if (incoming.exists()) discardDatabaseFiles(incoming)
