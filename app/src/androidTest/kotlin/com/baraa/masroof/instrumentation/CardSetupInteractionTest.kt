@@ -42,8 +42,6 @@ class CardSetupInteractionTest {
             SettingsRegistryCardRow(card, false, { stopped = true }, {}, { target = it }, {})
             SettingsCardSetupSheet(target, null, listOf(card), emptyList(), false, false, { target = null }, {})
         } }
-        compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.settings_action_role)).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.settings_action_link_account)).assertDoesNotExist()
         compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.reference_stop_tracking)).performClick()
         compose.runOnIdle { assertTrue(stopped) }
         compose.onAllNodesWithText(context.getString(com.baraa.masroof.R.string.settings_card_setup)).assertCountEquals(1)

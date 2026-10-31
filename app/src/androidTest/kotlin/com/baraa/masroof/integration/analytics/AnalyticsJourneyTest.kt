@@ -84,7 +84,7 @@ class AnalyticsJourneyTest {
         val workflow = AnalyticsWorkflow(container, TestStorageContext(host), fixtureClock)
         var showing by mutableStateOf(true)
         try {
-            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); container.stopLabAnalytics(); seed(container, fixtureToday); workflow.start() }
+            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); container.stopAnalytics(); seed(container, fixtureToday); workflow.start() }
             runBlocking { workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot?.status == "READY" }
             runBlocking {
@@ -175,7 +175,6 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithText(text(R.string.lab_analysis_cancel, language)).performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_commitments, language), useUnmergedTree = true).performClick()
                 screen("$language-${if (isDark) "dark" else "light"}-commitments")
-                compose.onNodeWithText(text(R.string.lab_analysis_alerts, language), useUnmergedTree = true).assertDoesNotExist()
                 compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, language), useUnmergedTree = true).performClick()
                 compose.onNodeWithTag("lab-history-3").performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_history_purchases, language)).performScrollTo().assertIsDisplayed()
@@ -297,7 +296,6 @@ class AnalyticsJourneyTest {
             compose.onNodeWithTag("lab-evidence-settlement").performScrollTo().assertIsDisplayed().performClick()
             assertEquals("settlement", openedTransaction)
             screen("en-light-quality-transactions")
-            compose.onNodeWithText(text(R.string.lab_analysis_payment_number, "en").format(1)).assertDoesNotExist()
             compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, "en")).performClick()
             compose.onNodeWithTag("lab-analysis-settings").performClick()
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-budget"))).performTextReplacement("invalid")
@@ -342,7 +340,7 @@ class AnalyticsJourneyTest {
         var showing by mutableStateOf(true)
         var opened: String? = null
         try {
-            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); c.stopLabAnalytics(); seed(c, fixtureToday); workflow.start(); workflow.refresh() }
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); c.stopAnalytics(); seed(c, fixtureToday); workflow.start(); workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot != null }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot)

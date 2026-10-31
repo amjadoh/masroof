@@ -20,7 +20,6 @@
     <string name="lab_analysis_back">رجوع</string>
     <string name="lab_analysis_settings">حد المشتريات والتنبيهات</string>
     <string name="lab_analysis_commitments">الالتزامات</string>
-    <string name="lab_analysis_alerts">التنبيهات</string>
     <string name="lab_analysis_commitments_hint">المستحقات المسجلة مؤكدة. الدفعات المكتشفة تقديرات منفصلة؛ لا تُضاف إلى توقع المشتريات ولا تُنشئ التزامًا قبل حفظك.</string>
     <string name="lab_analysis_confirmed">مستحق مؤكد</string>
     <string name="lab_analysis_estimated">تقدير</string>
@@ -28,7 +27,6 @@
     <string name="lab_analysis_no_candidates">لا توجد اقتراحات تكرار كافية حاليًا.</string>
     <string name="lab_analysis_weekly">أسبوعي</string>
     <string name="lab_analysis_monthly">شهري</string>
-    <string name="lab_analysis_payment_number">فتح الحركة %1$d</string>
     <string name="lab_analysis_review_candidate">مراجعة وإضافة الالتزام</string>
     <string name="lab_analysis_due_alert">استحقاق قريب</string>
     <string name="lab_analysis_payment_alert">تغير مبلغ دفعة متكررة</string>

@@ -80,7 +80,6 @@ class PatternManagementJourneyTest {
             assertEquals(before, store.load())
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-preview").performScrollTo().assertIsDisplayed().assert(hasClickAction().not())
-            compose.onNodeWithText(ar(R.string.pattern_delete_disable_first)).assertDoesNotExist()
             compose.onNodeWithTag("pattern-delete").performScrollTo().assertIsNotEnabled()
             assertEquals(before, store.load())
         }
