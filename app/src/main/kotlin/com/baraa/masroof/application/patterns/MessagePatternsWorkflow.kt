@@ -3,6 +3,7 @@ package com.baraa.masroof.application.patterns
 import com.baraa.masroof.data.patterns.MessagePatternStore
 import com.baraa.masroof.data.room.DatabaseAccessGate
 import com.baraa.masroof.engine.bank.patterns.BankMessagePatterns
+import com.baraa.masroof.engine.bank.patterns.CandidateKind
 import com.baraa.masroof.engine.bank.patterns.GenericCandidateExtractor
 import com.baraa.masroof.engine.bank.patterns.FieldSlot
 import com.baraa.masroof.engine.bank.patterns.SavedMessagePattern
@@ -43,8 +44,8 @@ class MessagePatternsWorkflow(
     suspend fun approvalExamples(bankId: String, generation: Long, patternId: String) =
         pendingPreview?.approvalExamples(bankId, generation, patternId).orEmpty()
 
-    suspend fun previewPending(bankId: String, generation: Long) =
-        requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation)
+    suspend fun previewPending(bankId: String, generation: Long, forceEnabledPatternId: String? = null) =
+        requireNotNull(pendingPreview) { "Pending preview is unavailable" }.preview(bankId, generation, forceEnabledPatternId = forceEnabledPatternId)
 
     suspend fun catalog(): PatternCatalog = load().toCatalog()
 
@@ -95,7 +96,7 @@ class MessagePatternsWorkflow(
     }
 
     suspend fun candidates(body: String) = withContext(ioDispatcher) {
-        GenericCandidateExtractor.extract(body).map { PatternText(it.text.raw, it.text.start, it.text.end) }.distinct()
+        GenericCandidateExtractor.extract(body).map { PatternText(it.text.raw, it.text.start, it.text.end, it.kind.name) }.distinct()
     }
 
     suspend fun editBindings(generation: Long, bankId: String, patternId: String, body: String) = withContext(ioDispatcher) {
@@ -125,12 +126,31 @@ class MessagePatternsWorkflow(
             require(sender in bank.senders) { "Select a configured sender" }
             require(bindings.any { it.field == "amount" && !it.ignored }) { "Bind the transaction amount" }
             require(bindings.all { it.ignored || it.field in operation.fields }) { "Field does not belong to operation" }
-            val pattern = SavedMessagePattern.fromChoices(prior?.id ?: java.util.UUID.randomUUID().toString(), bankId, sender,
-                operation.name, body, bindings.choices()).copy(revision = prior?.let { Math.addExact(it.revision, 1) } ?: 1,
+            fun build(choices: List<PatternBinding>) = SavedMessagePattern.fromChoices(prior?.id ?: java.util.UUID.randomUUID().toString(),
+                bankId, sender, operation.name, body, choices.choices()).copy(revision = prior?.let { Math.addExact(it.revision, 1) } ?: 1,
                     enabled = prior?.enabled ?: false)
+            // Unselected amounts, dates and numbers vary between messages; ignoring them keeps the pattern from matching only its teacher.
+            val auto = autoIgnored(body, bindings)
+            val (pattern, fixed) = runCatching { build(bindings + auto) to emptyList<PatternBinding>() }
+                .getOrElse { if (auto.isEmpty()) throw it else build(bindings) to auto }
             PatternTeachingPreview(configuration.generation, pattern,
-                requireNotNull(pattern.copy(enabled = true).preview(bankId, sender, body)).fields.displayFields())
+                requireNotNull(pattern.copy(enabled = true).preview(bankId, sender, body)).fields.displayFields(),
+                fixed.map { PatternText(body.substring(it.start, it.end), it.start, it.end) })
         }
+    }
+
+    // shortcut: all-or-nothing; a single candidate that breaks template separators drops every automatic ignore, upgrade to per-candidate retry if that shows up in practice.
+    private fun autoIgnored(body: String, bindings: List<PatternBinding>): List<PatternBinding> {
+        val firstLetter = body.indexOfFirst(Char::isLetter).takeIf { it >= 0 } ?: return emptyList()
+        val taken = bindings.map { it.start until it.end }.toMutableList()
+        val free = (1..16).filter { index -> bindings.none { it.field == "ignored_$index" } }.iterator()
+        return GenericCandidateExtractor.extract(body).filter { it.kind != CandidateKind.TEXT && it.text.start > firstLetter }
+            .mapNotNull { candidate ->
+                val range = candidate.text.start until candidate.text.end
+                if (taken.any { it.first < range.last + 1 && range.first < it.last + 1 } || !free.hasNext()) return@mapNotNull null
+                taken += range
+                PatternBinding("ignored_${free.next()}", range.first, range.last + 1, ignored = true)
+            }
     }
 
     suspend fun tryPreview(preview: PatternTeachingPreview, sender: String, body: String) = withContext(ioDispatcher) {

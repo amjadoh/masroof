@@ -125,6 +125,29 @@ class MessagePatternsWorkflowTest {
         } finally { directory.deleteRecursively() }
     }
 
+    @Test fun unselectedNumbersAndDatesAreIgnoredAutomaticallySoOtherMessagesStillMatch() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-auto-ignore-").toFile()
+        try {
+            val workflow = MessagePatternsWorkflow(MessagePatternStore(directory.resolve("patterns.json")), DatabaseAccessGate())
+            workflow.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank")))
+            val body = "Payment\nAmount:10SAR\nTo:SHOP\nRef:123456\nBalance:900.25SAR\nOn:15/10/26 12:30"
+            assertEquals("MONEY", workflow.candidates(body).single { it.text == "10SAR" }.kind)
+            assertEquals("DATE_TIME", workflow.candidates(body).single { it.text == "15/10/26 12:30" }.kind)
+            val preview = workflow.teach(1, "STC", "STC Bank", PatternOperation.PURCHASE, body, listOf(
+                PatternBinding("amount", body.indexOf("10SAR"), body.indexOf("10SAR") + 5),
+                PatternBinding("merchant", body.indexOf("SHOP"), body.indexOf("SHOP") + 4)))
+            assertEquals(setOf("amount", "merchant"), preview.fields.keys)
+            assertTrue(preview.fixedValues.isEmpty())
+            val other = body.replace("123456", "654321").replace("900.25", "12.00").replace("15/10/26 12:30", "16/10/26 09:05")
+            assertEquals("10SAR", workflow.tryPreview(preview, "STC Bank", other)!!.getValue("amount").text)
+            // Only an explicit selection may land before the first literal anchor; a leading number stays fixed text.
+            val leading = "123 Payment\nAmount:10SAR"
+            val fixed = workflow.teach(1, "STC", "STC Bank", PatternOperation.PURCHASE, leading,
+                listOf(PatternBinding("amount", leading.indexOf("10SAR"), leading.length)))
+            assertNull(workflow.tryPreview(fixed, "STC Bank", leading.replace("123", "456")))
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun editsWaitForAdmittedFinancialWorkAndRetiredInstancesCannotEdit() = runBlocking {
         val directory = Files.createTempDirectory("masroof-pattern-gate-").toFile()
         try {

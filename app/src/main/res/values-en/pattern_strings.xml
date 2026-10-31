@@ -11,7 +11,7 @@
     <string name="pattern_teach">New pattern</string>
     <string name="pattern_revision">%1$s — revision %2$d</string>
     <string name="pattern_disable">Disable pattern</string>
-    <string name="pattern_enable">Enable pattern for preview</string>
+    <string name="pattern_enable">Use this pattern</string>
     <string name="pattern_restore_revision">Restore revision %1$d as a new revision</string>
     <string name="pattern_message">Message</string>
     <string name="pattern_remove_binding">Remove binding</string>

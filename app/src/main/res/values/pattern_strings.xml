@@ -11,7 +11,7 @@
     <string name="pattern_teach">نمط جديد</string>
     <string name="pattern_revision">%1$s — الإصدار %2$d</string>
     <string name="pattern_disable">تعطيل النمط</string>
-    <string name="pattern_enable">تفعيل النمط للمعاينة</string>
+    <string name="pattern_enable">استخدام هذا النمط</string>
     <string name="pattern_restore_revision">استعادة الإصدار %1$d كإصدار جديد</string>
     <string name="pattern_message">الرسالة</string>
     <string name="pattern_remove_binding">إزالة الربط</string>
