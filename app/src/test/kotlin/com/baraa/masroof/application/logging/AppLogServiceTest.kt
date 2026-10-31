@@ -67,6 +67,21 @@ class AppLogServiceTest {
     }
 
     @Test
+    fun log_whenDiskWriteFails_keepsEntryInMemoryAndDoesNotThrow() {
+        val service = AppLogService(context)
+        service.clear()
+        val logPath = java.io.File(context.filesDir, AppLogService.LOG_FILE_NAME)
+        assertTrue(logPath.mkdirs())
+        try {
+            service.info("test", "kept")
+
+            assertEquals(listOf("kept"), service.readAll().map { it.message })
+        } finally {
+            logPath.deleteRecursively()
+        }
+    }
+
+    @Test
     fun fullLog_dropsRoutineEntriesBeforeFailures() {
         val service = AppLogService(context, maxEntries = 3, retentionDays = 14)
         service.clear()
