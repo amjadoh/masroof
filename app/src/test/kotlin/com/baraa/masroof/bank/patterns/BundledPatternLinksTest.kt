@@ -89,6 +89,10 @@ class BundledPatternLinksTest {
         val fee = run("barq.fee", "خصم رسوم\nمبلغ 5 SAR\n2026-09-15 12:30", source)
         assertEquals(fee.diagnostics.toString(), ParseStatus.SUCCESS, fee.status)
         assertEquals("1234", fee.facts.sourceAccount!!.maskedNumber)
+        // A cash withdrawal from a named credit card is the card's, never the linked account's.
+        val cardCash = run("barq.withdrawal", "سحب نقدي\nبطاقة ائتمانية: **4321\nمبلغ 500 SAR\n2026-09-15 12:30", source)
+        assertEquals(ParseStatus.REVIEW_REQUIRED, cardCash.status)
+        assertNull(cardCash.facts.sourceAccount)
         // A missing biller is not something an account link can supply.
         assertReviews("barq.bill", "سداد فاتورة\nمبلغ 50 SAR\n2026-09-15 12:30", source)
         // Links never fill another family's role: an incoming transfer has no own source account.

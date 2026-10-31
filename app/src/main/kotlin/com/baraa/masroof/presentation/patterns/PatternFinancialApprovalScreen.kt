@@ -149,8 +149,8 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 preview?.let { validated ->
                     MasroofAmountText("${validated.amount.amount.toPlainString()} ${validated.amount.currency}", MasroofAmountRole.Card)
                     Text(validated.occurredAt)
-                    accounts.singleOrNull { it.id == accountId }?.let { Text(stringResource(R.string.pattern_approval_account_summary, it.last4)) }
-                    cards.singleOrNull { it.id == cardId }?.let { Text(stringResource(R.string.pattern_approval_card_summary, it.last4)) }
+                    validated.accountLast4?.let { Text(stringResource(R.string.pattern_approval_account_summary, it)) }
+                    validated.cardLast4?.let { Text(stringResource(R.string.pattern_approval_card_summary, it)) }
                     Text(stringResource(R.string.pattern_approval_save_scope), style = MaterialTheme.typography.bodySmall)
                 }
                 val reason = when {
