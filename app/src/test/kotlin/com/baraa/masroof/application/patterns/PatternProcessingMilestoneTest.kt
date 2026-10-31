@@ -660,6 +660,44 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun editingFromAnotherAccountsMessageDropsApproval() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            w.addBank(w.catalog().generation, "Edit bank", "EditBank", "EDIT_BANK")
+            val body = "Transfer in\nAmount:10SAR\nAcc:321\nAt:2026-10-15 12:30"
+            fun bind(text: String, vararg values: Pair<String, String>) = values.map { (field, value) ->
+                PatternBinding(field, text.indexOf(value), text.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, "EDIT_BANK", "EditBank", PatternOperation.TRANSFER_IN, body,
+                bind(body, "amount" to "10SAR", "account_reference" to "321", "occurred_at" to "2026-10-15 12:30")))
+            val id = w.catalog().banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().id
+            val account = w.confirmPatternAccount("EDIT_BANK", "4321")
+            w.saveFinancial(w.previewFinancial(w.catalog().generation, "EDIT_BANK", id, PatternOperation.TRANSFER_IN,
+                account.id, body, "account_reference", emptySet()))
+            // The second account's message carries 765; keeping approval would credit it to ****4321.
+            val other = body.replace("321", "765")
+            val edited = w.saveTeaching(w.teach(w.load().generation, "EDIT_BANK", "EditBank", PatternOperation.TRANSFER_IN, other,
+                bind(other, "amount" to "10SAR", "account_reference" to "765", "occurred_at" to "2026-10-15 12:30"), patternId = id))
+            assertNull(edited.banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().factContract)
+        }
+    }
+
+    @Test fun aPatternChangeWhileATransferLegWaitsStillPostsThePair() = runBlocking {
+        fixture { c ->
+            listOf("3001", "3002").forEach { c.ownershipConfirmationService.confirmAccountOwned(
+                com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA, it)) }
+            val out = "حوالة صادرة الى حسابك الجاري\nمن: 3001\nمبلغ: SAR 2,000.00\nإلى: 3002\nفي: 2026-10-15 13:00"
+            val inn = "حوالة واردة داخلية\nمبلغ: SAR 2,000.00\nإلى: 3002\nاسم المرسل: TEST_PERSON\nرقم حساب المرسل: 3001\nالبنك المرسل: بنك الجزيرة\nفي: 2026-10-15 13:00"
+            c.processRawSmsUseCase.ingest(sms("leg-out", out, "AlJazira"))
+            // Any configuration save moves the generation, even in an unrelated bank.
+            c.messagePatternsWorkflow.addBank(c.messagePatternsWorkflow.catalog().generation, "Other bank", "OtherBank", "OTHER_BANK")
+            c.processRawSmsUseCase.ingest(RawSms("leg-in", "AlJazira", inn, Instant.parse("2026-10-15T10:00:05Z"), "leg-in",
+                SmsBodyHasher.sha256Hex(inn)))
+            val tx = c.financialTransactionRepository.listAll().single()
+            assertEquals(FinancialTransactionType.SELF_TRANSFER, tx.type)
+            assertEquals(setOf("leg-in", "leg-out"), c.financialTransactionRepository.listRawSmsIds(tx.id).toSet())
+        }
+    }
+
     @Test fun approvedGenericPatternPostsOnceAndNeverReparsesPostedOrManuallyDecidedEvidence() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow

@@ -25,6 +25,8 @@ class AutomaticInterpretationWriteGuard(
             val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && transactions.isRawSmsLinked(id)
             if (protected || current != prior) true
             else if (current.automationConfirmed || review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE) false
+            // Posted evidence is never re-read, so a later pattern save must not stop it from pairing with its other leg.
+            else if (transactions.isRawSmsLinked(id)) false
             else if (!patternsCurrent(current)) { reason = "stale_pattern_definition"; true }
             else !inferenceCurrent(current)
         }
