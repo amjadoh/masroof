@@ -26,6 +26,7 @@
     <string name="pattern_approval_error_currency_conflict">العملة المختارة تختلف عن عملة الرسالة. اختر العملة الصحيحة أو العملة من الرسالة.</string>
     <string name="pattern_approval_error_amount">تعذر التحقق من مبلغ موجب للحركة. راجع الرسالة والنمط.</string>
     <string name="pattern_approval_error_time">تاريخ الحركة أو وقتها غير مكتمل أو غير صالح. اختر رسالة كاملة بتوقيت صحيح.</string>
+    <string name="pattern_approval_error_message_context">الرسالة تحتوي عبارات متعارضة حسب قواعد البنك المدمجة، فلا يمكن اعتمادها تلقائياً. اتركها للمراجعة.</string>
     <string name="pattern_approval_error_conflict">أكثر من نمط يطابق الرسالة. راجع الأنماط المتداخلة قبل الاعتماد.</string>
     <string name="pattern_approval_error_non_financial">هذه رسالة أمنية أو غير مالية ولا يمكن اعتمادها كحركة مالية.</string>
     <string name="pattern_approval_error_changed">تغيّرت إعدادات النمط. ارجع وافتح الاعتماد مجددًا.</string>
