@@ -231,7 +231,7 @@ class ApprovedDesignScreenTest {
         val trend = DailySpendingTrend(points, SignedMoneyAmount.of(Money.of("40", Currency.SAR)))
         val snapshot = CreditCardBalanceSnapshot(Money.of("18500", Currency.SAR), Money.of("2400", Currency.SAR),
             LocalDate.parse("2026-10-20"), Instant.parse("2026-10-01T07:00:00Z"), Instant.parse("2026-10-10T07:00:00Z"))
-        val primary = CreditCardDashboardRow(bank, "1234", trend.totalSpending, trend.totalSpending, trend.totalSpending, null, snapshot)
+        val primary = CreditCardDashboardRow(bank, "1234", trend.totalSpending, trend.totalSpending, null, snapshot)
         val secondary = primary.copy(last4 = "5678", snapshot = snapshot.copy(availableBalance = Money.of("3500", Currency.SAR)))
         val facility = CreditFacilityOverview(bank, primary, listOf(secondary),
             StatementDueSnapshot(Money.of("2400", Currency.SAR), snapshot.updatedAt, snapshot.dueDate), trend.totalSpending, trend.totalSpending, null, null, Currency.SAR)

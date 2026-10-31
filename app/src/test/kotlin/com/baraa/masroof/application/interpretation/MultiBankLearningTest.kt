@@ -76,6 +76,16 @@ class MultiBankLearningTest {
             assertTrue("family_origin:HUMAN_TEMPLATE" in next.event.confidence.reasons)
             assertEquals(3, c.financialTransactionRepository.listAll().size)
             assertTrue(c.reviewRepository.listRequired().isEmpty())
+
+            // The seed bank's UNKNOWN message is read once per model, not on every sync (no refresh loop).
+            c.processRawSmsUseCase.ingest(raw("seed-unknown", "عزيزنا العميل رسالة غير مفهومة 123").copy(sender = "AlJazira"))
+            val unknown = requireNotNull(c.parsedEventRepository.findByRawSmsId("seed-unknown"))
+            assertEquals("UNKNOWN", unknown.event.messageFamily.name)
+            assertTrue(c.reviewRepository.findByRawSmsId("seed-unknown") != null)
+            var settled = false
+            repeat(50) { if (!settled) {
+                service.synchronizeFeedback(); settled = !service.needsRefresh(unknown); if (!settled) kotlinx.coroutines.delay(100) } }
+            assertTrue(settled)
         } finally {
             c.close()
             WorkManagerTestInitHelper.closeWorkDatabase()

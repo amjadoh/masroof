@@ -313,6 +313,71 @@ class DatabaseBackupImportTest {
     }
 
     @Test
+    fun import_invalidAfterCommit_restoresOriginalAndReportsFailure() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.deleteDatabase(MasroofDatabase.NAME)
+            DatabaseRestoreRecovery.deleteRestoreArtifacts(context.getDatabasePath(MasroofDatabase.NAME))
+            context.getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("onboarding_completed", false)
+                .commit()
+            val liveDatabase = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
+                .allowMainThreadQueries()
+                .build()
+            RoomCardRegistryRepository.from(liveDatabase).setOwnership(
+                CardReference(Bank.BANK_ALJAZIRA, "1111"),
+                OwnershipStatus.OWNED,
+            )
+            val importedDbFile = createCurrentDatabaseFile(context)
+            val backupZip = createBackupZip(importedDbFile)
+            val restartRequested = AtomicBoolean(false)
+            val livePath = context.getDatabasePath(MasroofDatabase.NAME).path
+            val backupService = DatabaseBackupService(
+                appContext = context,
+                database = liveDatabase,
+                closeDatabase = { liveDatabase.close() },
+                appVersionName = "test",
+                clockEpochMillis = { 1_700_000_000_000L },
+                restartProcess = { restartRequested.set(true) },
+                afterRestoreStage = { reached ->
+                    if (reached == DatabaseRestoreRecovery.Stage.COMMITTED) {
+                        File(livePath).writeText("imported-broken")
+                        listOf("-wal", "-shm", "-journal").forEach { File(livePath + it).delete() }
+                    }
+                },
+            )
+
+            val outcome = backupService.importFrom(Uri.fromFile(backupZip), confirmLegacyPlaintext = true)
+
+            assertEquals(BackupImportOutcome.Failed, outcome)
+            assertTrue(restartRequested.get())
+            assertFalse(
+                context.getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
+                    .getBoolean("onboarding_completed", false),
+            )
+            assertFalse(File(livePath + ".restore-journal").exists())
+            val restored = Room.databaseBuilder(context, MasroofDatabase::class.java, MasroofDatabase.NAME)
+                .allowMainThreadQueries()
+                .build()
+            try {
+                val cards = RoomCardRegistryRepository.from(restored)
+                assertEquals(
+                    OwnershipStatus.OWNED,
+                    cards.get(CardReference(Bank.BANK_ALJAZIRA, "1111"))!!.ownership,
+                )
+                assertNull(cards.get(CardReference(Bank.BANK_ALJAZIRA, "7271")))
+            } finally {
+                restored.close()
+                context.deleteDatabase(MasroofDatabase.NAME)
+                DatabaseRestoreRecovery.deleteRestoreArtifacts(context.getDatabasePath(MasroofDatabase.NAME))
+                backupZip.delete()
+                importedDbFile.delete()
+            }
+        }
+    }
+
+    @Test
     fun import_terminatedAfterEveryStage_restartsOntoOriginalOrCommittedDatabase() {
         runBlocking {
             val context = ApplicationProvider.getApplicationContext<Context>()

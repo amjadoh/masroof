@@ -45,13 +45,7 @@ class UntypedMadaDebitOverviewTest {
         )
         val overview = CreditCardsOverview(
             cards = emptyList(),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             aggregateStatementPeriodLabel = null,
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )

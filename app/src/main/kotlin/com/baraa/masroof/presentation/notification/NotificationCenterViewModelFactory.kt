@@ -14,6 +14,7 @@ fun notificationCenterViewModelFactory(
             notificationCenterMetricsWorkflow = container.notificationCenterMetricsWorkflow,
             notificationCenterService = container.notificationCenterService,
             permissionStateProvider = permissionStateProvider,
+            appLogService = container.appLogService,
         )
     }
 }

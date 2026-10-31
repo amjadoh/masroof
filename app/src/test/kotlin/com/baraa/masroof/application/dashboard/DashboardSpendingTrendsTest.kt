@@ -302,7 +302,7 @@ class DashboardSpendingTrendsTest {
     )
 
     private fun row(bank: Bank, last4: String) = CreditCardDashboardRow(bank, last4,
-        SignedMoneyAmount.zero(Currency.SAR), SignedMoneyAmount.zero(Currency.SAR), SignedMoneyAmount.zero(Currency.SAR), null, null)
+        SignedMoneyAmount.zero(Currency.SAR), SignedMoneyAmount.zero(Currency.SAR), null, null)
 
     private fun facility(primary: CreditCardDashboardRow, supplementaries: List<CreditCardDashboardRow> = emptyList()) =
         CreditFacilityOverview(primary.bank, primary, supplementaries, null,
