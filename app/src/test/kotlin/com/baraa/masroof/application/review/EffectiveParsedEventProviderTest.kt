@@ -148,11 +148,6 @@ class EffectiveParsedEventProviderTest {
         assertEquals(all.single { it.event.rawSmsId == "raw-multi" }, provider.findEffectiveByRawSmsId("raw-multi"))
         assertEquals(1, countingDao.perSmsQueries)
         assertEquals(0, countingDao.batchQueries)
-
-        countingDao.reset()
-        assertEquals(all.single { it.event.id == "pe-raw-multi" }, provider.getEffectiveById("pe-raw-multi"))
-        assertEquals(1, countingDao.perSmsQueries)
-        assertEquals(0, countingDao.batchQueries)
     }
 
     @Test

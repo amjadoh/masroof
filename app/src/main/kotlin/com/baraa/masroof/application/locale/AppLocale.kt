@@ -19,6 +19,4 @@ object AppLocale {
             Locale.Builder().setLanguage(TAG_AR)
                 .setUnicodeLocaleKeyword("nu", AppDigits.numberingSystem).build()
         }
-
-    fun isRtl(languageTag: String): Boolean = !isEnglish(languageTag)
 }

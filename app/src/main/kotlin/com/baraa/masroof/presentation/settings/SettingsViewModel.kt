@@ -4,8 +4,6 @@ import com.baraa.masroof.presentation.common.launchLogged
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.baraa.masroof.application.backup.BackupImportOutcome
-import com.baraa.masroof.application.backup.BackupPackageKind
 import com.baraa.masroof.application.backup.DatabaseBackupGateway
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.locale.AppLocaleRepository
@@ -16,11 +14,8 @@ import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.update.AppUpdateService
 import com.baraa.masroof.application.update.ApkInstaller
 import com.baraa.masroof.application.update.InstalledBuildInfo
-import com.baraa.masroof.application.update.PrivateRepoRequiresTokenException
 import com.baraa.masroof.application.update.UpdateChannel
 import com.baraa.masroof.application.update.UpdateCheckCoordinator
-import com.baraa.masroof.application.update.UpdateCheckResult
-import com.baraa.masroof.application.update.UpdateManifest
 import com.baraa.masroof.application.settings.CommitmentHistoryBuilder
 import com.baraa.masroof.application.settings.CommitmentRecordBuilder
 import com.baraa.masroof.application.settings.SettingsCommitmentsWorkflow
@@ -78,13 +73,11 @@ class SettingsViewModel(
         ),
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+    private val updates = SettingsUpdateActions(viewModelScope, _uiState, appUpdateService, updateCheckCoordinator,
+        appLogService, apkInstaller, canInstallPackages, onRequestInstallPermission)
+    private val backup = SettingsBackupActions(viewModelScope, _uiState, databaseBackupService, appLogService)
     private val _logEntries = MutableStateFlow(appLogService.readAll())
     val logEntries: StateFlow<List<com.baraa.masroof.application.logging.AppLogEntry>> = _logEntries.asStateFlow()
-    private var pendingImportUri: Uri? = null
-    private var pendingImportGeneration: Long = 0
-    private var verificationJob: kotlinx.coroutines.Job? = null
-    private var pendingLegacyImport: Boolean = false
-    private var pendingExportPassphrase: CharArray? = null
 
     fun refreshLogs() {
         _logEntries.value = appLogService.readAll()
@@ -117,7 +110,7 @@ class SettingsViewModel(
                 )
             }
             // An update-state failure must not leave `loading` stuck (it disables onboarding actions).
-            try { restorePendingUpdateState() } catch (_: Exception) {
+            try { updates.restorePendingUpdateState() } catch (_: Exception) {
                 appLogService.error(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Pending update state restore failed")
             }
             try {
@@ -438,121 +431,12 @@ class SettingsViewModel(
         }
     }
 
-    fun clearUpdateMessage() {
-        _uiState.update { it.copy(updateMessage = null) }
-    }
-
-    fun saveGithubToken(token: String) {
-        if (token.isBlank()) return
-        val saved = appUpdateService.saveToken(token)
-        _uiState.update {
-            it.copy(
-                githubTokenConfigured = appUpdateService.hasConfiguredToken(),
-                updateMessage = if (saved) {
-                    AppUpdateMessage.TOKEN_SAVED
-                } else {
-                    AppUpdateMessage.TOKEN_SAVE_FAILED
-                },
-            )
-        }
-    }
-
-    fun clearGithubToken() {
-        appUpdateService.clearDownloadCache()
-        appUpdateService.clearToken()
-        updateCheckCoordinator.clearPendingUpdate()
-        _uiState.update {
-            it.copy(
-                githubTokenConfigured = false,
-                updateState = AppUpdateUiState.Idle,
-                updateMessage = null,
-            )
-        }
-    }
-
-    fun setUpdateChannel(channel: UpdateChannel) {
-        if (channel == appUpdateService.getUpdateChannel()) return
-        appUpdateService.setUpdateChannel(channel)
-        updateCheckCoordinator.clearPendingUpdate()
-        _uiState.update {
-            it.copy(
-                updateChannel = channel,
-                updateState = AppUpdateUiState.Idle,
-                updateMessage = null,
-            )
-        }
-        checkForUpdates(silent = true)
-    }
-
-    fun checkForUpdates(silent: Boolean = false) {
-        if (_uiState.value.updateState is AppUpdateUiState.Checking ||
-            _uiState.value.updateState is AppUpdateUiState.Downloading
-        ) {
-            return
-        }
-        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings checkForUpdates", onError = { error ->
-            if (!silent) {
-                val message =
-                    when {
-                        error is PrivateRepoRequiresTokenException -> AppUpdateMessage.TOKEN_REQUIRED
-                        error.message?.contains("authentication failed", ignoreCase = true) == true ->
-                            AppUpdateMessage.AUTH_FAILED
-                        else -> AppUpdateMessage.CHECK_FAILED
-                    }
-                _uiState.update {
-                    it.copy(updateState = AppUpdateUiState.Idle, updateMessage = message)
-                }
-                restorePendingUpdateState()
-            } else {
-                _uiState.update { current ->
-                    if (current.updateState is AppUpdateUiState.Available ||
-                        current.updateState is AppUpdateUiState.ReadyToInstall ||
-                        current.updateState is AppUpdateUiState.UpToDate
-                    ) {
-                        current
-                    } else {
-                        current.copy(updateState = AppUpdateUiState.Idle)
-                    }
-                }
-                restorePendingUpdateState()
-            }
-        }) {
-            _uiState.update {
-                it.copy(
-                    updateState = AppUpdateUiState.Checking,
-                    updateMessage = null,
-                    githubTokenConfigured = appUpdateService.hasConfiguredToken(),
-                )
-            }
-            val result =
-                withContext(Dispatchers.IO) {
-                    updateCheckCoordinator.checkForUpdate(
-                        if (silent) "background" else "manual",
-                    ).getOrThrow()
-                }
-            when (result) {
-                UpdateCheckResult.UpToDate ->
-                    _uiState.update {
-                        it.copy(
-                            updateState = AppUpdateUiState.UpToDate,
-                            updateMessage = if (silent) null else AppUpdateMessage.UP_TO_DATE,
-                        )
-                    }
-
-                is UpdateCheckResult.UpdateAvailable ->
-                    applyAvailableUpdate(result.manifest, silent)
-            }
-        }
-    }
-
-    fun checkForUpdatesIfStale(silent: Boolean = true) {
-        if (!updateCheckCoordinator.shouldCheckNow()) {
-            restorePendingUpdateState()
-            return
-        }
-        checkForUpdates(silent = silent)
-    }
-
+    fun clearUpdateMessage() = updates.clearUpdateMessage()
+    fun saveGithubToken(token: String) = updates.saveGithubToken(token)
+    fun clearGithubToken() = updates.clearGithubToken()
+    fun setUpdateChannel(channel: UpdateChannel) = updates.setUpdateChannel(channel)
+    fun checkForUpdates(silent: Boolean = false) = updates.checkForUpdates(silent)
+    fun checkForUpdatesIfStale(silent: Boolean = true) = updates.checkForUpdatesIfStale(silent)
     fun logExportText(): String = appLogService.exportText()
 
     fun exportLogs(uri: Uri) {
@@ -581,81 +465,9 @@ class SettingsViewModel(
         _uiState.update { it.copy(logMessage = null) }
     }
 
-    fun downloadUpdate() {
-        val state = _uiState.value.updateState
-        val manifest =
-            when (state) {
-                is AppUpdateUiState.Available -> state.manifest
-                is AppUpdateUiState.ReadyToInstall -> state.manifest
-                else -> return
-            }
-        if (_uiState.value.updateState is AppUpdateUiState.Downloading) return
-
-        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings downloadUpdate", onError = {
-            _uiState.update {
-                it.copy(
-                    updateState = AppUpdateUiState.Available(manifest),
-                    updateMessage = AppUpdateMessage.DOWNLOAD_FAILED,
-                )
-            }
-        }) {
-            _uiState.update {
-                it.copy(
-                    updateState = AppUpdateUiState.Downloading(manifest, 0L, 0L),
-                    updateMessage = null,
-                )
-            }
-            withContext(Dispatchers.IO) {
-                appUpdateService
-                    .downloadUpdate(
-                        manifest = manifest,
-                        onProgress = { bytesRead, totalBytes ->
-                            _uiState.update {
-                                it.copy(
-                                    updateState = AppUpdateUiState.Downloading(
-                                        manifest = manifest,
-                                        bytesRead = bytesRead,
-                                        totalBytes = totalBytes,
-                                    ),
-                                )
-                            }
-                        },
-                    )
-                    .getOrThrow()
-            }
-            _uiState.update {
-                it.copy(
-                    updateState = AppUpdateUiState.ReadyToInstall(manifest),
-                    updateMessage = AppUpdateMessage.DOWNLOAD_SUCCESS,
-                )
-            }
-        }
-    }
-
-    fun installPendingUpdate() {
-        val state = _uiState.value.updateState
-        if (state !is AppUpdateUiState.ReadyToInstall) return
-
-        if (!canInstallPackages()) {
-            _uiState.update { it.copy(updateMessage = AppUpdateMessage.INSTALL_PERMISSION_REQUIRED) }
-            onRequestInstallPermission()
-            return
-        }
-
-        val apkFile = appUpdateService.updateApkFile(state.manifest)
-        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings installPendingUpdate", onError = { _uiState.update { it.copy(updateMessage = AppUpdateMessage.INSTALL_FAILED) } }) {
-            withContext(Dispatchers.Main) {
-                apkInstaller.install(apkFile).getOrThrow()
-            }
-            dismissUpdateUiWhileInstalling()
-        }
-    }
-
-    fun retryInstallAfterPermissionGranted() {
-        if (!canInstallPackages()) return
-        installPendingUpdate()
-    }
-
+    fun downloadUpdate() = updates.downloadUpdate()
+    fun installPendingUpdate() = updates.installPendingUpdate()
+    fun retryInstallAfterPermissionGranted() = updates.retryInstallAfterPermissionGranted()
     fun setLanguageTag(languageTag: String, onApplied: () -> Unit) {
         val normalized = when (languageTag) {
             AppLocale.TAG_EN -> AppLocale.TAG_EN
@@ -672,247 +484,17 @@ class SettingsViewModel(
         _uiState.update { it.copy(themeMode = mode) }
     }
 
-    fun clearBackupMessage() {
-        _uiState.update { it.copy(backupMessage = null) }
-    }
-
-    fun onExportPassphraseChange(value: String) {
-        _uiState.update { it.copy(exportPassphrase = value) }
-    }
-
-    fun onImportPassphraseChange(value: String) {
-        _uiState.update { it.copy(importPassphrase = value) }
-    }
-
-    /**
-     * Copies the export passphrase out of view state and clears the field.
-     * Returns false when the field is empty. Call [abandonPreparedExport] if the
-     * user dismisses the destination picker.
-     */
-    fun prepareExport(): Boolean {
-        if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return false
-        val current = _uiState.value.exportPassphrase
-        if (current.isEmpty()) {
-            _uiState.update { it.copy(backupMessage = BackupMessage.PASSPHRASE_REQUIRED) }
-            return false
-        }
-        abandonPreparedExport()
-        pendingExportPassphrase = current.toCharArray()
-        _uiState.update { it.copy(exportPassphrase = "", backupMessage = null) }
-        return true
-    }
-
-    fun abandonPreparedExport() {
-        pendingExportPassphrase?.fill('\u0000')
-        pendingExportPassphrase = null
-    }
-
-    fun offerImport(uri: Uri) {
-        if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
-        pendingImportGeneration++
-        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings offerImport", onError = {
-            _uiState.update {
-                it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
-            }
-        }) {
-            _uiState.update { it.copy(importingBackup = true, backupMessage = null) }
-            when (databaseBackupService.inspect(uri)) {
-                BackupPackageKind.LEGACY_PLAINTEXT -> {
-                    pendingImportUri = uri
-                    pendingLegacyImport = true
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            awaitingLegacyImportConfirm = true,
-                            awaitingImportConfirm = false,
-                        )
-                    }
-                }
-                BackupPackageKind.ENCRYPTED -> {
-                    if (_uiState.value.importPassphrase.isEmpty()) {
-                        pendingImportUri = uri
-                        pendingLegacyImport = false
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                awaitingImportPassword = true, backupVerified = false,
-                                backupMessage = null,
-                            )
-                        }
-                    } else {
-                        pendingImportUri = uri
-                        pendingLegacyImport = false
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                awaitingImportConfirm = true,
-                                awaitingLegacyImportConfirm = false,
-                            )
-                        }
-                    }
-                }
-                BackupPackageKind.UNRECOGNIZED ->
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            backupMessage = BackupMessage.IMPORT_INVALID,
-                        )
-                    }
-            }
-        }
-    }
-
-    fun cancelPendingImport() {
-        val verifying = verificationJob?.isActive == true
-        pendingImportGeneration++
-        verificationJob?.cancel()
-        verificationJob = null
-        pendingImportUri = null
-        pendingLegacyImport = false
-        _uiState.update {
-            it.copy(awaitingImportConfirm = false, awaitingLegacyImportConfirm = false, awaitingImportPassword = false,
-                backupVerified = false, importingBackup = if (verifying) false else it.importingBackup, importPassphrase = "")
-        }
-    }
-
-    fun verifyPendingImport() {
-        val uri = pendingImportUri ?: return
-        val passphrase = _uiState.value.importPassphrase.toCharArray()
-        if (passphrase.isEmpty() || _uiState.value.importingBackup) return
-        val generation = pendingImportGeneration
-        verificationJob = viewModelScope.launch {
-            _uiState.update { it.copy(importingBackup = true, backupMessage = null) }
-            try {
-                val result = databaseBackupService.verify(uri, passphrase)
-                if (generation != pendingImportGeneration) return@launch
-                _uiState.update { state ->
-                    when (result) {
-                        com.baraa.masroof.application.backup.BackupVerificationOutcome.VERIFIED -> state.copy(
-                            importingBackup = false, awaitingImportPassword = false, backupVerified = true,
-                            awaitingImportConfirm = true)
-                        com.baraa.masroof.application.backup.BackupVerificationOutcome.AUTHENTICATION_FAILED -> state.copy(
-                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_AUTH_FAILED)
-                        com.baraa.masroof.application.backup.BackupVerificationOutcome.INVALID_PACKAGE -> state.copy(
-                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_INVALID)
-                        com.baraa.masroof.application.backup.BackupVerificationOutcome.FAILED -> state.copy(
-                            importingBackup = false, backupVerified = false, backupMessage = BackupMessage.IMPORT_FAILED)
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } finally { passphrase.fill('\u0000') }
-        }
-    }
-
-    fun confirmPendingImport() {
-        val uri = pendingImportUri ?: return
-        val legacy = pendingLegacyImport
-        val passphrase = if (legacy) {
-            CharArray(0)
-        } else {
-            _uiState.value.importPassphrase.toCharArray()
-        }
-        if (!legacy && passphrase.isEmpty()) {
-            pendingImportUri = null
-            pendingLegacyImport = false
-            _uiState.update {
-                it.copy(
-                    awaitingImportConfirm = false,
-                    awaitingLegacyImportConfirm = false,
-                    backupMessage = BackupMessage.PASSPHRASE_REQUIRED,
-                )
-            }
-            return
-        }
-        pendingImportUri = null
-        pendingLegacyImport = false
-        _uiState.update {
-            it.copy(
-                awaitingImportConfirm = false,
-                awaitingLegacyImportConfirm = false,
-                importPassphrase = if (legacy) it.importPassphrase else "",
-            )
-        }
-        importBackup(uri, passphrase, legacy)
-    }
-
-    fun exportBackup(uri: Uri) {
-        if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
-        val passphrase = pendingExportPassphrase ?: run {
-            _uiState.update { it.copy(backupMessage = BackupMessage.EXPORT_REENTER_PASSPHRASE) }
-            return
-        }
-        pendingExportPassphrase = null
-        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings exportBackup", onError = {
-            _uiState.update {
-                it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_FAILED)
-            }
-        }, onFinally = { passphrase.fill('\u0000') }) {
-            _uiState.update { it.copy(exportingBackup = true, backupMessage = null, error = null) }
-            databaseBackupService.exportTo(uri, passphrase).getOrThrow()
-            _uiState.update {
-                it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_SUCCESS)
-            }
-        }
-    }
-
-    fun importBackup(
-        uri: Uri,
-        passphrase: CharArray = CharArray(0),
-        confirmLegacyPlaintext: Boolean = false,
-    ) {
-        if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
-        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings importBackup", onError = {
-            _uiState.update {
-                it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
-            }
-        }, onFinally = { passphrase.fill('\u0000') }) {
-            _uiState.update { it.copy(importingBackup = true, backupMessage = null, error = null) }
-            when (
-                databaseBackupService.importFrom(
-                    source = uri,
-                    passphrase = passphrase,
-                    confirmLegacyPlaintext = confirmLegacyPlaintext,
-                )
-            ) {
-                BackupImportOutcome.SuccessNeedsRestart -> {
-                    // Process restarts inside the service after a successful restore.
-                }
-                BackupImportOutcome.InvalidPackage ->
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            backupMessage = BackupMessage.IMPORT_INVALID,
-                        )
-                    }
-                BackupImportOutcome.Failed ->
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            backupMessage = BackupMessage.IMPORT_FAILED,
-                        )
-                    }
-                BackupImportOutcome.LegacyConfirmationRequired -> {
-                    pendingImportUri = uri
-                    pendingLegacyImport = true
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            awaitingLegacyImportConfirm = true,
-                        )
-                    }
-                }
-                BackupImportOutcome.AuthenticationFailed ->
-                    _uiState.update {
-                        it.copy(
-                            importingBackup = false,
-                            backupMessage = BackupMessage.IMPORT_AUTH_FAILED,
-                        )
-                    }
-            }
-        }
-    }
-
+    fun clearBackupMessage() = backup.clearBackupMessage()
+    fun onExportPassphraseChange(value: String) = backup.onExportPassphraseChange(value)
+    fun onImportPassphraseChange(value: String) = backup.onImportPassphraseChange(value)
+    fun prepareExport(): Boolean = backup.prepareExport()
+    fun abandonPreparedExport() = backup.abandonPreparedExport()
+    fun offerImport(uri: Uri) = backup.offerImport(uri)
+    fun cancelPendingImport() = backup.cancelPendingImport()
+    fun verifyPendingImport() = backup.verifyPendingImport()
+    fun confirmPendingImport() = backup.confirmPendingImport()
+    fun exportBackup(uri: Uri) = backup.exportBackup(uri)
+    fun importBackup(uri: Uri, passphrase: CharArray = CharArray(0), confirmLegacyPlaintext: Boolean = false) = backup.importBackup(uri, passphrase, confirmLegacyPlaintext)
     private fun updateRegistry(onUpdated: () -> Unit = {}, action: suspend () -> Unit) {
         if (_uiState.value.updating) return
         viewModelScope.launch {
@@ -981,65 +563,6 @@ class SettingsViewModel(
             val ref = LoanReference(loan.bank, loan.loanType)
             if (owned) settingsRegistryWorkflow.confirmLoanOwned(ref) else settingsRegistryWorkflow.markLoanExternal(ref)
             reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Loan(ref))
-        }
-    }
-
-    private fun restorePendingUpdateState() {
-        if (_uiState.value.updateState is AppUpdateUiState.Checking) {
-            return
-        }
-        if (_uiState.value.updateState is AppUpdateUiState.Downloading) {
-            val downloading = _uiState.value.updateState as AppUpdateUiState.Downloading
-            clearStaleUpdateUiIfInstalled(downloading.manifest)
-            return
-        }
-        val manifest = updateCheckCoordinator.restorePendingUpdate()
-        if (manifest == null) {
-            clearStaleUpdateUiIfInstalled()
-            return
-        }
-        applyAvailableUpdate(manifest, silent = true)
-    }
-
-    private fun dismissUpdateUiWhileInstalling() {
-        _uiState.update { it.copy(updateState = AppUpdateUiState.Idle, updateMessage = null) }
-    }
-
-    private fun clearStaleUpdateUiIfInstalled(manifest: UpdateManifest? = null) {
-        val resolvedManifest =
-            manifest ?: when (val current = _uiState.value.updateState) {
-                is AppUpdateUiState.Available -> current.manifest
-                is AppUpdateUiState.ReadyToInstall -> current.manifest
-                is AppUpdateUiState.Downloading -> current.manifest
-                else -> return
-            }
-        if (!appUpdateService.isUpdateStillNeeded(resolvedManifest)) {
-            appUpdateService.clearDownloadedApk(resolvedManifest)
-            updateCheckCoordinator.clearPendingUpdate()
-            _uiState.update { it.copy(updateState = AppUpdateUiState.Idle, updateMessage = null) }
-        }
-    }
-
-    private fun applyAvailableUpdate(
-        manifest: com.baraa.masroof.application.update.UpdateManifest,
-        silent: Boolean,
-    ) {
-        val downloaded = appUpdateService.updateApkFile(manifest)
-        val nextState =
-            if (
-                downloaded.exists() &&
-                com.baraa.masroof.application.update.ApkIntegrityVerifier.matches(downloaded, manifest.sha256)
-            ) {
-                AppUpdateUiState.ReadyToInstall(manifest)
-            } else {
-                if (downloaded.exists()) downloaded.delete()
-                AppUpdateUiState.Available(manifest)
-            }
-        _uiState.update {
-            it.copy(
-                updateState = nextState,
-                updateMessage = if (silent) null else AppUpdateMessage.UPDATE_AVAILABLE,
-            )
         }
     }
 

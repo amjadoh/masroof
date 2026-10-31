@@ -9,7 +9,6 @@
     <string name="teaching_next">Next</string>
     <string name="teaching_field_title">Where is %1$s?</string>
     <string name="teaching_field_progress">%1$d of %2$d</string>
-    <string name="teaching_back">Back</string>
     <string name="teaching_required">Required</string>
     <string name="teaching_optional">Optional</string>
     <string name="teaching_select_value">Select a value</string>
@@ -18,7 +17,6 @@
     <string name="teaching_sample_title">Does another message match?</string>
     <string name="teaching_confirm_field">Confirm and continue</string>
     <string name="teaching_skip_field">Not present</string>
-    <string name="teaching_previous">Previous</string>
     <string name="teaching_preview_title">Are these details correct?</string>
     <string name="teaching_try_another">Try another message</string>
     <string name="teaching_saved_title">Pattern saved for preview</string>

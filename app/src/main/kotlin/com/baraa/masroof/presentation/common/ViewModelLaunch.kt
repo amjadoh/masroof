@@ -16,7 +16,17 @@ internal fun ViewModel.launchLogged(
     onError: suspend (Exception) -> Unit = {},
     onFinally: () -> Unit = {},
     block: suspend CoroutineScope.() -> Unit,
-): Job = viewModelScope.launch {
+): Job = viewModelScope.launchLogged(log, category, action, onError, onFinally, block)
+
+/** Same as [ViewModel.launchLogged] for action holders that share a ViewModel's scope. */
+internal fun CoroutineScope.launchLogged(
+    log: AppLogService?,
+    category: String,
+    action: String,
+    onError: suspend (Exception) -> Unit = {},
+    onFinally: () -> Unit = {},
+    block: suspend CoroutineScope.() -> Unit,
+): Job = launch {
     try {
         block()
     } catch (e: CancellationException) {

@@ -750,7 +750,7 @@ class AppContainer(
         // Release readers that were waiting for startup before draining their service mutexes.
         startupMaintenanceOutcome.value = StartupMaintenanceOutcome.BLOCKED
         shutdownStage = "ANALYTICS_DRAINING"
-        stopLabAnalytics()
+        stopAnalytics()
         shutdownStage = "LEARNING_DRAINING"
         interpretationService?.close()
         shutdownStage = "APPLICATION_DRAINING"
@@ -778,7 +778,7 @@ class AppContainer(
             appLogService = appLogService,
             restartProcess = restartAfterRestore,
             beforeValidatedInstall = {
-                stopLabAnalytics()
+                stopAnalytics()
                 interpretationService?.invalidateForRestore()
                 com.baraa.masroof.application.analytics.AnalyticsNotifications.clear(appContext)
             },
@@ -879,7 +879,7 @@ class AppContainer(
 
     private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.AnalyticsWorkflow(this, appContext) }
     val analytics get() = analyticsDelegate.value
-    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) analytics.close() }
+    fun stopAnalytics() { if (analyticsDelegate.isInitialized()) analytics.close() }
     fun runStartupMaintenance() {
         startupMaintenanceJob = applicationScope.launch {
             val outcome = runStartupMaintenanceAttempt()
