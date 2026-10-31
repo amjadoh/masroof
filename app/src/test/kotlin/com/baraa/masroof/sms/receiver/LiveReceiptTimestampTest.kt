@@ -34,4 +34,11 @@ class LiveReceiptTimestampTest {
         assertEquals(deviceNow, LiveReceiptTimestamp.resolve(emptyList(), deviceNow))
         assertEquals(deviceNow, LiveReceiptTimestamp.resolve(listOf(0L, -1L), deviceNow))
     }
+
+    @Test
+    fun carrierTimeDaysAway_fallsBackToDeviceClock() {
+        val seconds = deviceNow.epochSecond // a carrier value stored in seconds reads as January 1970
+        assertEquals(deviceNow, LiveReceiptTimestamp.resolve(listOf(seconds), deviceNow))
+        assertEquals(deviceNow, LiveReceiptTimestamp.resolve(listOf(deviceNow.plusSeconds(8L * 86_400).toEpochMilli()), deviceNow))
+    }
 }

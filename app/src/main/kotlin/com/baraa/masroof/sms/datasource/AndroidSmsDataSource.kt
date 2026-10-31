@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.Telephony
 import com.baraa.masroof.sms.model.ProviderSmsRecord
+import com.baraa.masroof.sms.receiver.LiveReceiptTimestamp
 import java.time.Instant
 
 /**
@@ -54,9 +55,10 @@ class AndroidSmsDataSource(
                 val addressIdx = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
                 val bodyIdx = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
                 val dateIdx = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val dateSentIdx = c.getColumnIndexOrThrow(Telephony.Sms.DATE_SENT)
 
                 while (c.moveToNext()) {
-                    yield(readRow(c, idIdx, addressIdx, bodyIdx, dateIdx))
+                    yield(readRow(c, idIdx, addressIdx, bodyIdx, dateIdx, dateSentIdx))
                 }
             }
         } catch (e: SmsPermissionException) {
@@ -74,6 +76,7 @@ class AndroidSmsDataSource(
         addressIdx: Int,
         bodyIdx: Int,
         dateIdx: Int,
+        dateSentIdx: Int,
     ): InboxRow {
         val id = c.getString(idIdx)
         val address = c.getString(addressIdx)
@@ -86,7 +89,11 @@ class AndroidSmsDataSource(
                 providerMessageId = id,
                 sender = address,
                 body = body,
-                receivedAt = Instant.ofEpochMilli(c.getLong(dateIdx)),
+                // DATE is the phone's arrival time; DATE_SENT is the service-center time a live row stores.
+                receivedAt = LiveReceiptTimestamp.resolve(
+                    providerTimestampsMillis = listOf(c.getLong(dateSentIdx)),
+                    deviceNow = Instant.ofEpochMilli(c.getLong(dateIdx)),
+                ),
             ),
         )
     }
@@ -98,6 +105,7 @@ class AndroidSmsDataSource(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
+            Telephony.Sms.DATE_SENT,
         )
         /** Oldest → newest. */
         private const val SORT_ORDER = "${Telephony.Sms.DATE} ASC"
