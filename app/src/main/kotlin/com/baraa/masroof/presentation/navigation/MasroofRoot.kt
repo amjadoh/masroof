@@ -4,6 +4,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.key
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -84,6 +85,9 @@ fun MasroofRoot(
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
         }
+        if (onboarding.step == OnboardingStep.HOME && !onboarding.homeGuideSeen && selected == HomeDestination.Dashboard) {
+            HomeGuideCard(onDismiss = { onboardingViewModel.setHomeGuideSeen(true) })
+        }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             MasroofContent(
                 onboardingViewModel = onboardingViewModel,
@@ -121,6 +125,22 @@ fun MasroofRoot(
     }
 }
 
+}
+
+/** Shown once after setup; About can bring it back. Plain card, no overlay, so nothing on the dashboard is blocked. */
+@Composable
+private fun HomeGuideCard(onDismiss: () -> Unit) {
+    com.baraa.masroof.presentation.common.MasroofCard(Modifier.fillMaxWidth()
+        .padding(horizontal = com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal).testTag("home-guide")) {
+        com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.home_guide_title), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+        listOf(R.string.home_guide_dashboard, R.string.home_guide_review, R.string.home_guide_teach).forEach {
+            com.baraa.masroof.presentation.common.MasroofText(stringResource(it), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        com.baraa.masroof.presentation.common.MasroofButton(onDismiss, Modifier.fillMaxWidth().testTag("home-guide-dismiss")) {
+            com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.home_guide_dismiss))
+        }
+    }
 }
 
 @Composable
@@ -476,6 +496,7 @@ private fun MasroofContent(
             }
             HomeDestination.Settings -> SettingsRoute(
                 viewModel = settingsViewModel,
+                onShowGuideAgain = { onboardingViewModel.setHomeGuideSeen(false); returnFromSettings() },
                 statementReconciliationViewModel = statementReconciliationViewModel,
                 reviewRequiredCount = dashboardState.summary?.reviewRequiredCount ?: 0,
                 pendingLaunch = pendingSettingsLaunch,

@@ -261,6 +261,13 @@
     <string name="settings_log_category_logs">سجل</string>
     <string name="settings_logs_export">تصدير السجل</string>
     <string name="settings_logs_share">مشاركة السجل</string>
+    <string name="settings_show_guide_title">عرض الإرشاد مرة أخرى</string>
+    <string name="settings_show_guide_subtitle">يظهر دليل البداية فوق الصفحة الرئيسية مرة واحدة.</string>
+    <string name="home_guide_title">مرحبًا بك في مصروف</string>
+    <string name="home_guide_dashboard">• الرئيسية: ملخص مصاريفك ودخلك لكل فترة راتب. اسحب للأسفل للتحديث.</string>
+    <string name="home_guide_review">• المراجعة: الرسائل التي لم يفهمها مصروف تنتظرك هنا؛ صحّحها أو علّمه نمطها.</string>
+    <string name="home_guide_teach">• التعليم: من أي رسالة في المراجعة اختر «علّم مصروف هذه الرسالة»، ثم اعتمد النمط ليعمل تلقائيًا.</string>
+    <string name="home_guide_dismiss">فهمت</string>
     <string name="settings_report_problem_title">الإبلاغ عن مشكلة</string>
     <string name="settings_report_problem_subtitle">يفتح صفحة بلاغ على GitHub مع بيانات الإصدار والجهاز. شارك السجل معه إن لزم.</string>
     <string name="settings_logs_clear">مسح السجل</string>
