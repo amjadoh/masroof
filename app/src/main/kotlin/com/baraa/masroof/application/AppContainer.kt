@@ -542,8 +542,10 @@ class AppContainer(
         BankSmsRegistry(
             adapters = listOfNotNull(bankAdapterOverride),
             configuredAdapters = if (bankAdapterOverride != null) ({ emptyList() }) else
-                com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(messagePatternStore, alJaziraInterpret = { input, snapshot ->
-                    requireNotNull(interpretationService).interpret(input, snapshot) })::snapshot,
+                com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(messagePatternStore,
+                    assistedBanks = { requireNotNull(interpretationService).assistedBanks(it) },
+                    assistedInterpret = { input, snapshot, bankId ->
+                        requireNotNull(interpretationService).interpret(input, snapshot, bankId) })::snapshot,
         )
 
     val statementReconciliationWorkflow: StatementReconciliationWorkflow =
