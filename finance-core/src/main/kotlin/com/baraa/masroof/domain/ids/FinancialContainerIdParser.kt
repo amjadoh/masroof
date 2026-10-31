@@ -43,15 +43,15 @@ object FinancialContainerIdParser {
 
     fun isBankQualifiedAccountId(containerId: String?): Boolean = accountBankId(containerId) != null
 
+    fun isAccountContainer(containerId: String?): Boolean = containerId?.startsWith("account:") == true
+
+    fun isCardContainer(containerId: String?): Boolean = containerId?.startsWith("card:") == true
+
     fun accountContainerIdsFromContainers(
         sourceContainerId: String?,
         destinationContainerId: String?,
     ): Set<String> = buildSet {
-        if (!sourceContainerId.isNullOrBlank() && sourceContainerId.startsWith("account:")) {
-            add(sourceContainerId)
-        }
-        if (!destinationContainerId.isNullOrBlank() && destinationContainerId.startsWith("account:")) {
-            add(destinationContainerId)
-        }
+        if (isAccountContainer(sourceContainerId)) add(requireNotNull(sourceContainerId))
+        if (isAccountContainer(destinationContainerId)) add(requireNotNull(destinationContainerId))
     }
 }

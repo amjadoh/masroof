@@ -236,6 +236,6 @@ data class CurrentAccountTransactionScope(
                 .toSet()
 
         private fun isCreditCardContainer(containerId: String?): Boolean =
-            containerId?.startsWith("card:") == true
+            FinancialContainerIdParser.isCardContainer(containerId)
     }
 }

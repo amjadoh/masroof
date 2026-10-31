@@ -82,6 +82,6 @@ internal object AccountDailySpendingTrendsBuilder {
         if (transaction.linkedParsedEventIds.any { parsedById[it]?.details?.isCreditCardSms() == true }) return true
         if (involvement[transaction.id].orEmpty().any { it in creditKeys }) return true
         val card = if (transaction.type == FinancialTransactionType.REFUND) transaction.destinationContainerId else transaction.sourceContainerId
-        return card?.startsWith("card:") == true && card !in debitContainers
+        return com.baraa.masroof.domain.ids.FinancialContainerIdParser.isCardContainer(card) && card !in debitContainers
     }
 }
