@@ -57,7 +57,8 @@ fun MasroofGuidanceButton(
     description: String = title,
 ) {
     if (message.isBlank()) return
-    var open by remember(message) { mutableStateOf(false) }
+    // Not keyed on the text: a refresh that rewrites the help must not close it while it is being read.
+    var open by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val position = remember(density) {
         with(density) { MasroofGuidancePositionProvider(MasroofGuidanceStyle.anchorGap.roundToPx(), MasroofGuidanceStyle.windowMargin.roundToPx()) }
