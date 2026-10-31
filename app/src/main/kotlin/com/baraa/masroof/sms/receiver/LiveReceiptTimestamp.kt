@@ -7,8 +7,8 @@ import java.time.Instant
  * Canonical receipt time for a live SMS.
  *
  * Prefer the provider/SMSC timestamp Android supplies on each PDU. That is the
- * same clock the inbox `Telephony.Sms.DATE` column stores, so a later historical
- * copy can share one `receivedAt`. A missing or non-positive timestamp, or one
+ * same clock the inbox `Telephony.Sms.DATE_SENT` column stores (`DATE` is the
+ * phone's arrival time), so a later historical copy can share one `receivedAt`. A missing or non-positive timestamp, or one
  * that cannot be represented as an [Instant], falls back to the injected device
  * clock.
  *
