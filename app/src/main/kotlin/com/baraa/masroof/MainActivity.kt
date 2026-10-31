@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels {
         settingsViewModelFactory(
             container = container,
-            appVersion = BuildConfig.VERSION_NAME,
+            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             permissionStateProvider = { hasSmsPermissions() },
             onRequestInstallPermission = {
                 startActivity(InstallPermissionHelper.buildManageUnknownSourcesIntent(this))

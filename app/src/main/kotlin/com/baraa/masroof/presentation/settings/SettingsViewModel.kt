@@ -609,6 +609,8 @@ class SettingsViewModel(
         checkForUpdates(silent = silent)
     }
 
+    fun logExportText(): String = appLogService.exportText()
+
     fun exportLogs(uri: Uri) {
         viewModelScope.launch {
             _uiState.update { it.copy(exportingLogs = true, logMessage = null) }
@@ -621,7 +623,8 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                appLogService.failure(AppLogCategories.LOGS, "Log export", e)
                 _uiState.update {
                     it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_FAILED)
                 }
