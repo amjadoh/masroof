@@ -55,6 +55,7 @@ data class OnboardingUiState(
     val selectedDateOption: ImportDateOption = ImportDateOption.LAST_30_DAYS,
     val selectedImportDate: LocalDate? = null,
     val importState: ImportState = ImportState.Idle,
+    val importScanned: Int = 0,
     val accounts: List<OwnershipCandidateUi> = emptyList(),
     val cards: List<OwnershipCandidateUi> = emptyList(),
     val finalizing: Boolean = false,

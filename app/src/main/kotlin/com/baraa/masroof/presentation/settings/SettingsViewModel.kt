@@ -436,9 +436,9 @@ class SettingsViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(importingSms = true, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
+            _uiState.update { it.copy(importingSms = true, importScanned = 0, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
             try {
-                val result = workflow.import(bankIds, from, through)
+                val result = workflow.import(bankIds, from, through) { scanned -> _uiState.update { it.copy(importScanned = scanned) } }
                 _uiState.update { it.copy(scopedSmsImportResult = result) }
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
                 applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)

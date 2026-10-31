@@ -132,7 +132,7 @@ class DashboardProjectionBuilder(
             evidence = evidence,
             transactions = displayedTransactions,
             sarEquivalents = sarResolutions.sarAmounts(),
-            reviewRequiredCount = reviewRepository.listRequired().size,
+            reviewRequiredCount = reviewRepository.countRequired(),
             ownedAccounts = ownedAccounts,
             ownedAccountContainerIds = ownedAccounts
                 .map { FinancialContainerIdFactory.accountId(it.bank, it.maskedNumber) }

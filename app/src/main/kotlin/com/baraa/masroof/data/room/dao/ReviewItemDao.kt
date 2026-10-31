@@ -18,6 +18,9 @@ interface ReviewItemDao {
     @Query("SELECT * FROM review_item WHERE status = :status ORDER BY createdAtEpochMillis, id")
     suspend fun listByStatus(status: String): List<ReviewItemEntity>
 
+    @Query("SELECT COUNT(*) FROM review_item WHERE status = :status")
+    suspend fun countByStatus(status: String): Int
+
     @Query("SELECT * FROM review_item ORDER BY createdAtEpochMillis, id")
     suspend fun listAll(): List<ReviewItemEntity>
 

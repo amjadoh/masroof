@@ -15,6 +15,7 @@
     <string name="onboarding_date_last_27">من آخر يوم 27</string>
     <string name="onboarding_start_import">بدء الاستيراد</string>
     <string name="onboarding_import_scanning">جاري فحص الرسائل…</string>
+    <string name="onboarding_import_scanning_count">جاري فحص الرسائل… %1$d رسالة حتى الآن</string>
     <string name="onboarding_import_done">اكتمل الاستيراد</string>
     <string name="onboarding_import_counts">تم فحص %1$d • محلّل %2$d • مكرر %3$d • فشل %4$d • خارج البنوك المحددة %5$d</string>
     <string name="onboarding_import_empty_inbox">لم يُعثر على رسائل في الفترة المحددة. جرّب تاريخًا أقدم.</string>

@@ -28,6 +28,8 @@ class RoomReviewRepository(
         dao.listByStatus(ReviewStatus.REQUIRED.name).map(ReviewItemMapper::toDomain)
     }
 
+    override suspend fun countRequired(): Int = accessGate.withAccess { dao.countByStatus(ReviewStatus.REQUIRED.name) }
+
     override suspend fun listIgnored(): List<ReviewItem> = accessGate.withAccess {
         dao.listIgnored().map(ReviewItemMapper::toDomain)
     }
