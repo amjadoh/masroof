@@ -26,6 +26,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MessagePatternsJourneyTest {
+    // The prefilled selection repeats the value as text, so a chip is found by its span.
+    private fun candidateTag(body: String, value: String) = body.indexOf(value).let { "pattern-candidate-$it-${it + value.length}" }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun teachPreviewSaveAndDisableInArabic() = runBlocking {
@@ -47,7 +49,7 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:10SAR\nTo:SHOP")
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("10SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag("Payment\nAmount:10SAR\nTo:SHOP", "10SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         click(R.string.teaching_try_another)
@@ -111,7 +113,7 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithTag("pattern-body").assertRejectsTextEdits(source.body)
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("73SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag(source.body, "73SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
