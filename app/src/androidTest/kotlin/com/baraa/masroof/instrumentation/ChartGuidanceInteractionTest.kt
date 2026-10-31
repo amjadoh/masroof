@@ -46,6 +46,19 @@ class ChartGuidanceInteractionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun openHelp_staysOpenWhenARefreshRewritesItsText() {
+        val message = mutableStateOf("Updating")
+        compose.setContent { MasroofTheme { Surface {
+            com.baraa.masroof.presentation.common.MasroofGuidanceButton("Why", message.value, Modifier.testTag("help"))
+        } } }
+        compose.onNodeWithTag("help").performClick()
+        compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+        compose.runOnIdle { message.value = "Ready" }
+        compose.onNodeWithTag("guidance-popup").assertIsDisplayed()
+        compose.onNodeWithText("Ready").assertIsDisplayed()
+    }
+
+    @Test
     fun chartAndHelp_workInBothLanguagesAndThemes_withCorrectTouchDirection() {
         val language = mutableStateOf("ar")
         val dark = mutableStateOf(false)
