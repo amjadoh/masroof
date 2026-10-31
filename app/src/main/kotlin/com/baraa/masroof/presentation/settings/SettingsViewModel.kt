@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.settings
 
+import com.baraa.masroof.presentation.common.launchLogged
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -279,19 +280,12 @@ class SettingsViewModel(
 
     fun requestDelete(target: StopTrackingTarget) {
         if (_uiState.value.updating) return
-        viewModelScope.launch {
-            try {
-                val preview = settingsRegistryWorkflow.deletionPreview(target.registryDeleteTarget())
-                _uiState.update { it.copy(deleteRequest = RegistryDeleteUi(target,
-                    preview.linked.map { tx -> LinkedTransactionUi(tx.id, tx.merchant ?: tx.counterparty, tx.type, tx.amount,
-                        tx.occurredAt.atZone(tx.occurredAtZone?.let(java.time.ZoneId::of) ?: java.time.ZoneId.systemDefault()).toLocalDate()) },
-                    preview.linkedCount, preview.blocker)) }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) {
-                appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings deletionPreview", caught)
-                _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }
-            }
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Settings deletionPreview", onError = { _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) } }) {
+            val preview = settingsRegistryWorkflow.deletionPreview(target.registryDeleteTarget())
+            _uiState.update { it.copy(deleteRequest = RegistryDeleteUi(target,
+                preview.linked.map { tx -> LinkedTransactionUi(tx.id, tx.merchant ?: tx.counterparty, tx.type, tx.amount,
+                    tx.occurredAt.atZone(tx.occurredAtZone?.let(java.time.ZoneId::of) ?: java.time.ZoneId.systemDefault()).toLocalDate()) },
+                preview.linkedCount, preview.blocker)) }
         }
     }
 
@@ -435,20 +429,12 @@ class SettingsViewModel(
             _uiState.update { it.copy(smsPermissionGranted = false, scopedSmsImportFailed = true) }
             return
         }
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.SCAN, "Settings importSelectedBankSms", onError = { _uiState.update { it.copy(scopedSmsImportFailed = true) } }, onFinally = { _uiState.update { it.copy(importingSms = false) } }) {
             _uiState.update { it.copy(importingSms = true, importScanned = 0, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
-            try {
-                val result = workflow.import(bankIds, from, through) { scanned -> _uiState.update { it.copy(importScanned = scanned) } }
-                _uiState.update { it.copy(scopedSmsImportResult = result) }
-                val snapshot = settingsRegistryWorkflow.loadSnapshot()
-                applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SCAN, "Settings importSelectedBankSms", caught);
-                _uiState.update { it.copy(scopedSmsImportFailed = true) }
-            } finally {
-                _uiState.update { it.copy(importingSms = false) }
-            }
+            val result = workflow.import(bankIds, from, through) { scanned -> _uiState.update { it.copy(importScanned = scanned) } }
+            _uiState.update { it.copy(scopedSmsImportResult = result) }
+            val snapshot = settingsRegistryWorkflow.loadSnapshot()
+            applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
         }
     }
 
@@ -504,7 +490,33 @@ class SettingsViewModel(
         ) {
             return
         }
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings checkForUpdates", onError = { error ->
+            if (!silent) {
+                val message =
+                    when {
+                        error is PrivateRepoRequiresTokenException -> AppUpdateMessage.TOKEN_REQUIRED
+                        error.message?.contains("authentication failed", ignoreCase = true) == true ->
+                            AppUpdateMessage.AUTH_FAILED
+                        else -> AppUpdateMessage.CHECK_FAILED
+                    }
+                _uiState.update {
+                    it.copy(updateState = AppUpdateUiState.Idle, updateMessage = message)
+                }
+                restorePendingUpdateState()
+            } else {
+                _uiState.update { current ->
+                    if (current.updateState is AppUpdateUiState.Available ||
+                        current.updateState is AppUpdateUiState.ReadyToInstall ||
+                        current.updateState is AppUpdateUiState.UpToDate
+                    ) {
+                        current
+                    } else {
+                        current.copy(updateState = AppUpdateUiState.Idle)
+                    }
+                }
+                restorePendingUpdateState()
+            }
+        }) {
             _uiState.update {
                 it.copy(
                     updateState = AppUpdateUiState.Checking,
@@ -512,53 +524,23 @@ class SettingsViewModel(
                     githubTokenConfigured = appUpdateService.hasConfiguredToken(),
                 )
             }
-            try {
-                val result =
-                    withContext(Dispatchers.IO) {
-                        updateCheckCoordinator.checkForUpdate(
-                            if (silent) "background" else "manual",
-                        ).getOrThrow()
-                    }
-                when (result) {
-                    UpdateCheckResult.UpToDate ->
-                        _uiState.update {
-                            it.copy(
-                                updateState = AppUpdateUiState.UpToDate,
-                                updateMessage = if (silent) null else AppUpdateMessage.UP_TO_DATE,
-                            )
-                        }
-
-                    is UpdateCheckResult.UpdateAvailable ->
-                        applyAvailableUpdate(result.manifest, silent)
+            val result =
+                withContext(Dispatchers.IO) {
+                    updateCheckCoordinator.checkForUpdate(
+                        if (silent) "background" else "manual",
+                    ).getOrThrow()
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (error: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings checkForUpdates", error);
-                if (!silent) {
-                    val message =
-                        when {
-                            error is PrivateRepoRequiresTokenException -> AppUpdateMessage.TOKEN_REQUIRED
-                            error.message?.contains("authentication failed", ignoreCase = true) == true ->
-                                AppUpdateMessage.AUTH_FAILED
-                            else -> AppUpdateMessage.CHECK_FAILED
-                        }
+            when (result) {
+                UpdateCheckResult.UpToDate ->
                     _uiState.update {
-                        it.copy(updateState = AppUpdateUiState.Idle, updateMessage = message)
+                        it.copy(
+                            updateState = AppUpdateUiState.UpToDate,
+                            updateMessage = if (silent) null else AppUpdateMessage.UP_TO_DATE,
+                        )
                     }
-                    restorePendingUpdateState()
-                } else {
-                    _uiState.update { current ->
-                        if (current.updateState is AppUpdateUiState.Available ||
-                            current.updateState is AppUpdateUiState.ReadyToInstall ||
-                            current.updateState is AppUpdateUiState.UpToDate
-                        ) {
-                            current
-                        } else {
-                            current.copy(updateState = AppUpdateUiState.Idle)
-                        }
-                    }
-                    restorePendingUpdateState()
-                }
+
+                is UpdateCheckResult.UpdateAvailable ->
+                    applyAvailableUpdate(result.manifest, silent)
             }
         }
     }
@@ -574,22 +556,17 @@ class SettingsViewModel(
     fun logExportText(): String = appLogService.exportText()
 
     fun exportLogs(uri: Uri) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.LOGS, "Log export", onError = {
+            _uiState.update {
+                it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_FAILED)
+            }
+        }) {
             _uiState.update { it.copy(exportingLogs = true, logMessage = null) }
-            try {
-                withContext(Dispatchers.IO) {
-                    appLogService.exportTo(uri).getOrThrow()
-                }
-                _uiState.update {
-                    it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_SUCCESS)
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (e: Exception) {
-                appLogService.failure(AppLogCategories.LOGS, "Log export", e)
-                _uiState.update {
-                    it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_FAILED)
-                }
+            withContext(Dispatchers.IO) {
+                appLogService.exportTo(uri).getOrThrow()
+            }
+            _uiState.update {
+                it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_SUCCESS)
             }
         }
     }
@@ -614,47 +591,43 @@ class SettingsViewModel(
             }
         if (_uiState.value.updateState is AppUpdateUiState.Downloading) return
 
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings downloadUpdate", onError = {
+            _uiState.update {
+                it.copy(
+                    updateState = AppUpdateUiState.Available(manifest),
+                    updateMessage = AppUpdateMessage.DOWNLOAD_FAILED,
+                )
+            }
+        }) {
             _uiState.update {
                 it.copy(
                     updateState = AppUpdateUiState.Downloading(manifest, 0L, 0L),
                     updateMessage = null,
                 )
             }
-            try {
-                withContext(Dispatchers.IO) {
-                    appUpdateService
-                        .downloadUpdate(
-                            manifest = manifest,
-                            onProgress = { bytesRead, totalBytes ->
-                                _uiState.update {
-                                    it.copy(
-                                        updateState = AppUpdateUiState.Downloading(
-                                            manifest = manifest,
-                                            bytesRead = bytesRead,
-                                            totalBytes = totalBytes,
-                                        ),
-                                    )
-                                }
-                            },
-                        )
-                        .getOrThrow()
-                }
-                _uiState.update {
-                    it.copy(
-                        updateState = AppUpdateUiState.ReadyToInstall(manifest),
-                        updateMessage = AppUpdateMessage.DOWNLOAD_SUCCESS,
+            withContext(Dispatchers.IO) {
+                appUpdateService
+                    .downloadUpdate(
+                        manifest = manifest,
+                        onProgress = { bytesRead, totalBytes ->
+                            _uiState.update {
+                                it.copy(
+                                    updateState = AppUpdateUiState.Downloading(
+                                        manifest = manifest,
+                                        bytesRead = bytesRead,
+                                        totalBytes = totalBytes,
+                                    ),
+                                )
+                            }
+                        },
                     )
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings downloadUpdate", caught);
-                _uiState.update {
-                    it.copy(
-                        updateState = AppUpdateUiState.Available(manifest),
-                        updateMessage = AppUpdateMessage.DOWNLOAD_FAILED,
-                    )
-                }
+                    .getOrThrow()
+            }
+            _uiState.update {
+                it.copy(
+                    updateState = AppUpdateUiState.ReadyToInstall(manifest),
+                    updateMessage = AppUpdateMessage.DOWNLOAD_SUCCESS,
+                )
             }
         }
     }
@@ -670,17 +643,11 @@ class SettingsViewModel(
         }
 
         val apkFile = appUpdateService.updateApkFile(state.manifest)
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    apkInstaller.install(apkFile).getOrThrow()
-                }
-                dismissUpdateUiWhileInstalling()
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings installPendingUpdate", caught);
-                _uiState.update { it.copy(updateMessage = AppUpdateMessage.INSTALL_FAILED) }
+        launchLogged(appLogService, AppLogCategories.UPDATE, "Settings installPendingUpdate", onError = { _uiState.update { it.copy(updateMessage = AppUpdateMessage.INSTALL_FAILED) } }) {
+            withContext(Dispatchers.Main) {
+                apkInstaller.install(apkFile).getOrThrow()
             }
+            dismissUpdateUiWhileInstalling()
         }
     }
 
@@ -743,58 +710,54 @@ class SettingsViewModel(
     fun offerImport(uri: Uri) {
         if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
         pendingImportGeneration++
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings offerImport", onError = {
+            _uiState.update {
+                it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
+            }
+        }) {
             _uiState.update { it.copy(importingBackup = true, backupMessage = null) }
-            try {
-                when (databaseBackupService.inspect(uri)) {
-                    BackupPackageKind.LEGACY_PLAINTEXT -> {
+            when (databaseBackupService.inspect(uri)) {
+                BackupPackageKind.LEGACY_PLAINTEXT -> {
+                    pendingImportUri = uri
+                    pendingLegacyImport = true
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            awaitingLegacyImportConfirm = true,
+                            awaitingImportConfirm = false,
+                        )
+                    }
+                }
+                BackupPackageKind.ENCRYPTED -> {
+                    if (_uiState.value.importPassphrase.isEmpty()) {
                         pendingImportUri = uri
-                        pendingLegacyImport = true
+                        pendingLegacyImport = false
                         _uiState.update {
                             it.copy(
                                 importingBackup = false,
-                                awaitingLegacyImportConfirm = true,
-                                awaitingImportConfirm = false,
+                                awaitingImportPassword = true, backupVerified = false,
+                                backupMessage = null,
                             )
                         }
-                    }
-                    BackupPackageKind.ENCRYPTED -> {
-                        if (_uiState.value.importPassphrase.isEmpty()) {
-                            pendingImportUri = uri
-                            pendingLegacyImport = false
-                            _uiState.update {
-                                it.copy(
-                                    importingBackup = false,
-                                    awaitingImportPassword = true, backupVerified = false,
-                                    backupMessage = null,
-                                )
-                            }
-                        } else {
-                            pendingImportUri = uri
-                            pendingLegacyImport = false
-                            _uiState.update {
-                                it.copy(
-                                    importingBackup = false,
-                                    awaitingImportConfirm = true,
-                                    awaitingLegacyImportConfirm = false,
-                                )
-                            }
-                        }
-                    }
-                    BackupPackageKind.UNRECOGNIZED ->
+                    } else {
+                        pendingImportUri = uri
+                        pendingLegacyImport = false
                         _uiState.update {
                             it.copy(
                                 importingBackup = false,
-                                backupMessage = BackupMessage.IMPORT_INVALID,
+                                awaitingImportConfirm = true,
+                                awaitingLegacyImportConfirm = false,
                             )
                         }
+                    }
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings offerImport", caught);
-                _uiState.update {
-                    it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
-                }
+                BackupPackageKind.UNRECOGNIZED ->
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            backupMessage = BackupMessage.IMPORT_INVALID,
+                        )
+                    }
             }
         }
     }
@@ -880,21 +843,15 @@ class SettingsViewModel(
             return
         }
         pendingExportPassphrase = null
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings exportBackup", onError = {
+            _uiState.update {
+                it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_FAILED)
+            }
+        }, onFinally = { passphrase.fill('\u0000') }) {
             _uiState.update { it.copy(exportingBackup = true, backupMessage = null, error = null) }
-            try {
-                databaseBackupService.exportTo(uri, passphrase).getOrThrow()
-                _uiState.update {
-                    it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_SUCCESS)
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings exportBackup", caught);
-                _uiState.update {
-                    it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_FAILED)
-                }
-            } finally {
-                passphrase.fill('\u0000')
+            databaseBackupService.exportTo(uri, passphrase).getOrThrow()
+            _uiState.update {
+                it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_SUCCESS)
             }
         }
     }
@@ -905,59 +862,53 @@ class SettingsViewModel(
         confirmLegacyPlaintext: Boolean = false,
     ) {
         if (_uiState.value.exportingBackup || _uiState.value.importingBackup) return
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.BACKUP, "Settings importBackup", onError = {
+            _uiState.update {
+                it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
+            }
+        }, onFinally = { passphrase.fill('\u0000') }) {
             _uiState.update { it.copy(importingBackup = true, backupMessage = null, error = null) }
-            try {
-                when (
-                    databaseBackupService.importFrom(
-                        source = uri,
-                        passphrase = passphrase,
-                        confirmLegacyPlaintext = confirmLegacyPlaintext,
-                    )
-                ) {
-                    BackupImportOutcome.SuccessNeedsRestart -> {
-                        // Process restarts inside the service after a successful restore.
-                    }
-                    BackupImportOutcome.InvalidPackage ->
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                backupMessage = BackupMessage.IMPORT_INVALID,
-                            )
-                        }
-                    BackupImportOutcome.Failed ->
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                backupMessage = BackupMessage.IMPORT_FAILED,
-                            )
-                        }
-                    BackupImportOutcome.LegacyConfirmationRequired -> {
-                        pendingImportUri = uri
-                        pendingLegacyImport = true
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                awaitingLegacyImportConfirm = true,
-                            )
-                        }
-                    }
-                    BackupImportOutcome.AuthenticationFailed ->
-                        _uiState.update {
-                            it.copy(
-                                importingBackup = false,
-                                backupMessage = BackupMessage.IMPORT_AUTH_FAILED,
-                            )
-                        }
+            when (
+                databaseBackupService.importFrom(
+                    source = uri,
+                    passphrase = passphrase,
+                    confirmLegacyPlaintext = confirmLegacyPlaintext,
+                )
+            ) {
+                BackupImportOutcome.SuccessNeedsRestart -> {
+                    // Process restarts inside the service after a successful restore.
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings importBackup", caught);
-                _uiState.update {
-                    it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
+                BackupImportOutcome.InvalidPackage ->
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            backupMessage = BackupMessage.IMPORT_INVALID,
+                        )
+                    }
+                BackupImportOutcome.Failed ->
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            backupMessage = BackupMessage.IMPORT_FAILED,
+                        )
+                    }
+                BackupImportOutcome.LegacyConfirmationRequired -> {
+                    pendingImportUri = uri
+                    pendingLegacyImport = true
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            awaitingLegacyImportConfirm = true,
+                        )
+                    }
                 }
-            } finally {
-                passphrase.fill('\u0000')
+                BackupImportOutcome.AuthenticationFailed ->
+                    _uiState.update {
+                        it.copy(
+                            importingBackup = false,
+                            backupMessage = BackupMessage.IMPORT_AUTH_FAILED,
+                        )
+                    }
             }
         }
     }
@@ -1093,18 +1044,10 @@ class SettingsViewModel(
     }
 
     fun saveCommitment(commitmentId: String, draft: SettingsCommitmentsWorkflow.CommitmentEditorDraft) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Settings saveCommitment", onError = { _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) } }, onFinally = { _uiState.update { it.copy(savingCommitment = false) } }) {
             _uiState.update { it.copy(savingCommitment = true) }
-            try {
-                settingsCommitmentsWorkflow.update(commitmentId, draft)
-                applyCommitments(settingsCommitmentsWorkflow.listAll())
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings saveCommitment", caught);
-                _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }
-            } finally {
-                _uiState.update { it.copy(savingCommitment = false) }
-            }
+            settingsCommitmentsWorkflow.update(commitmentId, draft)
+            applyCommitments(settingsCommitmentsWorkflow.listAll())
         }
     }
 
