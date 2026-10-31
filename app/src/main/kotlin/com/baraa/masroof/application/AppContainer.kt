@@ -164,10 +164,9 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC", "BANK_SNB", "BANK_BARQ",
-        "BANK_EMIRATES_NBD", "BANK_SAB", "BANK_ALINMA").flatMap { bankId ->
+    private val bundledPatternBanks = appContext.assets.list("bank-patterns").orEmpty().filter { it.endsWith(".patterns.json") }.sorted().flatMap { file ->
         com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
-            appContext.assets.open("bank-patterns/$bankId.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
+            appContext.assets.open("bank-patterns/$file").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
     }
     // Restore recovery has finished and this container has not admitted work yet.
     private val messagePatternStore = com.baraa.masroof.data.patterns.MessagePatternStore(appContext).also {

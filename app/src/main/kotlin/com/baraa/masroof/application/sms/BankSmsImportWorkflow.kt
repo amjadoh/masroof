@@ -11,13 +11,14 @@ class BankSmsImportWorkflow(
     private val clock: Clock = Clock.systemDefaultZone(),
     private val onChanged: () -> Unit = {},
 ) {
-    suspend fun import(bankIds: Set<String>, from: LocalDate, through: LocalDate) = run {
+    suspend fun import(bankIds: Set<String>, from: LocalDate, through: LocalDate, onProgress: (scanned: Int) -> Unit = {}) = run {
         require(bankIds.isNotEmpty() && bankIds.all { it.isNotBlank() && it != Bank.UNKNOWN.id })
         require(!from.isAfter(through) && !through.isAfter(LocalDate.now(clock)))
         try { scanner.scan(
             receivedAfter = from.atStartOfDay(clock.zone).toInstant(),
             receivedBefore = through.plusDays(1).atStartOfDay(clock.zone).toInstant(),
             bankScopes = bankIds.map(::Bank).toSet(),
+            onProgress = onProgress,
         ).toHistoricalImportResult() } finally { onChanged() }
     }
 }

@@ -67,12 +67,13 @@ class HistoricalSmsScanner(
      * Scoped scans never certify whole-inbox analysis coverage.
      */
     suspend fun scan(receivedAfter: Instant? = null, receivedBefore: Instant? = null,
-        bankScopes: Set<Bank>? = null): SmsScanResult = withContext(ioDispatcher) {
+        bankScopes: Set<Bank>? = null, onProgress: (scanned: Int) -> Unit = {}): SmsScanResult = withContext(ioDispatcher) {
         require(receivedAfter == null || receivedBefore == null || receivedAfter < receivedBefore)
-        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, bankScopes) }
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, bankScopes, onProgress) }
     }
 
-    private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?): SmsScanResult {
+    private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?,
+        onProgress: (Int) -> Unit = {}): SmsScanResult {
         val scanStartedAt = clock.instant()
         appLogService?.info(
             AppLogCategories.SCAN,
@@ -125,6 +126,7 @@ class HistoricalSmsScanner(
                     if (receivedBefore != null && row.record.receivedAt >= receivedBefore) break
                 }
                 scanned++
+                if (scanned % PROGRESS_EVERY == 0) onProgress(scanned)
                 when (row) {
                     is InboxRow.Malformed -> {
                         skippedMalformed++
@@ -204,5 +206,9 @@ class HistoricalSmsScanner(
             AppLogCategories.SCAN,
             "Historical scan finished: ${AppLogFormatting.scanSummary(result)}",
         )
+    }
+
+    private companion object {
+        const val PROGRESS_EVERY = 25
     }
 }

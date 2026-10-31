@@ -15,6 +15,8 @@ interface ReviewRepository {
 
     suspend fun listRequired(): List<ReviewItem>
 
+    suspend fun countRequired(): Int = listRequired().size
+
     suspend fun listIgnored(): List<ReviewItem>
 
     suspend fun listAll(): List<ReviewItem>

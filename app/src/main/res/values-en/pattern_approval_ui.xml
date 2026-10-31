@@ -14,7 +14,8 @@
     <string name="pattern_approval_own_reference">Yes, %1$s identifies my account</string>
     <string name="pattern_approval_own_reference_help">Only this exact number is linked; different numbers remain in Review.</string>
     <string name="pattern_approval_account_summary">This movement will use your account •• %1$s</string>
-    <string name="pattern_approval_save_scope">Approval is for new messages. Processing pending messages is a separate action available immediately after saving.</string>
+    <string name="pattern_approval_save_scope">After approval the pattern runs on new messages automatically. Pending messages are processed with one tap after saving.</string>
+    <string name="pattern_approval_matching_preview">Matches %1$d pending messages. Approve the pattern to record them.</string>
     <string name="pattern_approval_need_message">Choose an imported message or paste a complete example that matches this pattern.</string>
     <string name="pattern_approval_need_account">Select your confirmed account, or add it and confirm ownership.</string>
     <string name="pattern_approval_need_reference">Choose whether the message numbers identify your account or the counterparty.</string>

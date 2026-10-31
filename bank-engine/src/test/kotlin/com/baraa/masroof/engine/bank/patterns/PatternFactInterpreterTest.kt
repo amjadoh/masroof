@@ -123,6 +123,21 @@ class PatternFactInterpreterTest {
         assertEquals(MessageFamily.TRANSFER_IN, result.facts.family)
     }
 
+    @Test fun arabicCurrencyWordsTeachAndInterpretAsSar() {
+        listOf("10 ريال", "10 ر.س", "10 ريال سعودي").forEach { amount ->
+            val text = "Payment\nAmount:$amount\nShop:MARKET"
+            val p = SavedMessagePattern.fromChoices("payment", bank.value, input.sender, "PURCHASE", text,
+                listOf(FieldChoice("amount", 15, 15 + amount.length)))
+                .copy(factContract = PatternFactContract(MessageFamily.PURCHASE, MoneyDirection.OUTGOING))
+            assertEquals(FieldKind.MONEY, p.parts.filterIsInstance<FieldSlot>().single().kind)
+            val result = PatternFactInterpreter(configuration(p)).interpretRouted(input.copy(body = text), bank)
+            assertEquals("10.00", result.facts.amount!!.amount.toPlainString(), amount)
+            assertEquals(Currency.SAR, result.facts.amount!!.currency)
+            assertEquals("25.50", PatternFactInterpreter(configuration(p)).interpretRouted(
+                input.copy(body = text.replace("10", "25.50")), bank).facts.amount!!.amount.toPlainString())
+        }
+    }
+
     @Test fun bareAmountsNeedAnExplicitCurrencyAndCannotBorrowAnAccountNumber() {
         val text = "Payment\nAmount:10\nAccount:1234"
         val p = SavedMessagePattern.fromChoices("payment", bank.value, input.sender, "PURCHASE", text,

@@ -17,7 +17,7 @@ enum class FieldKind(internal val dateFormat: String? = null, private val dateOn
 
     fun pattern(example: String): String = when (this) {
         MONEY -> {
-            val currency = "(?:sar|sr|usd|eur|gbp)"
+            val currency = "(?:sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
             "(?:$DECIMAL_PATTERN *$currency|$currency *$DECIMAL_PATTERN)"
         }
         DECIMAL -> DECIMAL_PATTERN

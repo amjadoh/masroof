@@ -76,7 +76,7 @@ class OnboardingOwnershipWorkflow(
             cards = cards,
             ownedAccountsCount = accounts.count { it.ownership == OwnershipStatus.OWNED },
             ownedCardsCount = cards.count { it.ownership == OwnershipStatus.OWNED },
-            reviewRequiredCount = reviewRepository.listRequired().size,
+            reviewRequiredCount = reviewRepository.countRequired(),
             hasUnknownCandidates = accounts.any { it.ownership == OwnershipStatus.UNKNOWN } ||
                 cards.any { it.ownership == OwnershipStatus.UNKNOWN },
         )

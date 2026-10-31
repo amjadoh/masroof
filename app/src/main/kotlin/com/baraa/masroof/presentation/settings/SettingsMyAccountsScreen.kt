@@ -42,11 +42,3 @@ fun SettingsAccountTypeDialog(
         },
     )
 }
-
-@Composable
-private fun accountTypeLabel(accountType: AccountType): String =
-    when (accountType) {
-        AccountType.CURRENT -> stringResource(R.string.settings_account_type_current)
-        AccountType.SAVINGS -> stringResource(R.string.settings_account_type_savings)
-        AccountType.WALLET -> stringResource(R.string.settings_account_type_wallet)
-    }

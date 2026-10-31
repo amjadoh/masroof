@@ -14,7 +14,7 @@ class NotificationCenterMetricsWorkflow(
     private val cardRegistryRepository: CardRegistryRepository,
     private val accountRegistryRepository: AccountRegistryRepository,
 ) {
-    suspend fun requiredReviewCount(): Int = reviewRepository.listRequired().size
+    suspend fun requiredReviewCount(): Int = reviewRepository.countRequired()
 
     suspend fun unregisteredCardCount(): Int =
         cardRegistryRepository.listAll()

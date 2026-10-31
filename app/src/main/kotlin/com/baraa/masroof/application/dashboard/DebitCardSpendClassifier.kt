@@ -120,9 +120,4 @@ object DebitCardSpendClassifier {
         }
     }
 
-    private fun linkedRecords(
-        tx: FinancialTransaction,
-        context: AccountFlowClassificationContext,
-    ): List<ParsedEventRecord> =
-        tx.linkedParsedEventIds.mapNotNull { context.parsedRecordsById[it] }
 }

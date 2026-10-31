@@ -13,4 +13,5 @@ object AppLogCategories {
     const val SETTINGS: String = "settings"
     const val UPDATE: String = "update"
     const val LOGS: String = "logs"
+    const val CRASH: String = "crash"
 }
