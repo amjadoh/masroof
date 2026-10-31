@@ -254,6 +254,9 @@
     <string name="settings_log_category_update">Update</string>
     <string name="settings_log_category_logs">Log</string>
     <string name="settings_logs_export">Export log</string>
+    <string name="settings_logs_share">Share log</string>
+    <string name="settings_report_problem_title">Report a problem</string>
+    <string name="settings_report_problem_subtitle">Opens a GitHub issue with your version and device. Share the log with it if needed.</string>
     <string name="settings_logs_clear">Clear log</string>
     <string name="settings_logs_clear_confirm_title">Clear diagnostic log?</string>
     <string name="settings_logs_clear_confirm_body">This cannot be undone.</string>

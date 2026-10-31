@@ -61,12 +61,15 @@ fun SettingsLogsScreen(
     val state by viewModel.uiState.collectAsState()
     val entries by viewModel.logEntries.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshLogs() }
-    SettingsLogsContent(state, entries, onBack, onRequestExport, viewModel::clearLogs, viewModel::clearLogMessage)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val shareTitle = stringResource(R.string.settings_logs_share)
+    SettingsLogsContent(state, entries, onBack, onRequestExport, viewModel::clearLogs, viewModel::clearLogMessage,
+        onShare = { com.baraa.masroof.presentation.dashboard.SharePlainText.share(context, viewModel.logExportText(), shareTitle, shareTitle) })
 }
 
 @Composable
 internal fun SettingsLogsContent(state: SettingsUiState, entries: List<AppLogEntry>, onBack: () -> Unit,
-    onRequestExport: () -> Unit, onClearLogs: () -> Unit, onClearMessage: () -> Unit) {
+    onRequestExport: () -> Unit, onClearLogs: () -> Unit, onClearMessage: () -> Unit, onShare: (() -> Unit)? = null) {
     val snackbarHostState = remember { SnackbarHostState() }
     val messageText = state.logMessage?.let { resolveLogMessage(it) }
     var selectedFilter by rememberSaveable { mutableStateOf(SettingsLogFilter.ALL) }
@@ -174,6 +177,13 @@ internal fun SettingsLogsContent(state: SettingsUiState, entries: List<AppLogEnt
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(stringResource(R.string.settings_logs_export))
+                    }
+                    if (onShare != null) OutlinedButton(
+                        onClick = onShare,
+                        enabled = entries.isNotEmpty() && !state.exportingLogs,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.settings_logs_share))
                     }
                     OutlinedButton(
                         onClick = { showClearConfirm = true },
