@@ -10,6 +10,37 @@ import org.junit.Test
 import java.nio.file.Files
 
 class MessagePatternsWorkflowTest {
+    @Test fun newerBundledRolesReachInstalledBanksUnlessTheUserDisabledThem() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-bundled-update-").toFile()
+        try {
+            val store = MessagePatternStore(directory.resolve("patterns.json"))
+            val text = java.io.File("src/main/assets/bank-patterns/BANK_BARQ.patterns.json").readText()
+            fun bank(json: String) = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(json).banks.single()
+            val updated = bank(text)
+            val old = bank(text.replace("\"incoming transfer\"", "\"incoming transfer v0\"").replace("\"outgoing transfer\"", "\"outgoing transfer v0\""))
+            store.installMissingBanks(listOf(old))
+            fun workflow() = MessagePatternsWorkflow(store, DatabaseAccessGate(), bundledBanks = listOf(updated))
+            workflow().setEnabled(store.load().generation, "BANK_BARQ", "barq.transfer-out", false)
+            val installed = workflow().load().banks.single().currentPatterns.associateBy { it.id }
+            val seeds = updated.patterns.associateBy { it.id }
+            assertEquals(seeds.getValue("barq.transfer-in"), installed.getValue("barq.transfer-in").copy(revision = 1))
+            assertEquals(2, installed.getValue("barq.transfer-in").revision)
+            assertNotEquals(seeds.getValue("barq.transfer-out").roleProfile, installed.getValue("barq.transfer-out").roleProfile)
+            val generation = store.load().generation
+            workflow().load()
+            assertEquals("A current bank is not rewritten again", generation, store.load().generation)
+            // Re-enabling hands the rule back to bundled updates.
+            workflow().setEnabled(store.load().generation, "BANK_BARQ", "barq.transfer-out", true)
+            assertEquals(seeds.getValue("barq.transfer-out").roleProfile,
+                workflow().load().banks.single().currentPatterns.single { it.id == "barq.transfer-out" }.roleProfile)
+            // Many releases keep one stored revision per role, far below the 128-revision bank limit.
+            repeat(200) { release ->
+                MessagePatternsWorkflow(store, DatabaseAccessGate(), bundledBanks = listOf(if (release % 2 == 0) old else updated)).load()
+            }
+            assertEquals(1, store.load().banks.single().patterns.count { it.id == "barq.transfer-in" })
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun deletingABundledPatternDoesNotReinstallItOnCatalogLoadOrRestart() = runBlocking {
         val directory = Files.createTempDirectory("masroof-delete-bundled-").toFile()
         try {

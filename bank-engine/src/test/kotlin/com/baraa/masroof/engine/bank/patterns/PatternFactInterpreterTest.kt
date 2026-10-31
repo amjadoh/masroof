@@ -100,12 +100,20 @@ class PatternFactInterpreterTest {
         assertEquals(interpreter.fingerprint, result.patternProvenance!!.configurationFingerprint)
     }
 
-    @Test fun conflictingPatternsNeverChooseAFirstWinnerEvenIfOnlyOneHasAContract() {
+    @Test fun conflictingApprovedPatternsNeverChooseAFirstWinner() {
         val first = pattern().copy(factContract = contract)
-        listOf(listOf(first, pattern().copy(id = "other")), listOf(pattern().copy(id = "other"), first)).forEach {
+        val second = pattern().copy(id = "other", factContract = contract)
+        listOf(listOf(first, second), listOf(second, first)).forEach {
             val result = PatternFactInterpreter(configuration(*it.toTypedArray())).interpretRouted(input, bank)
             assertEquals(MessageFamily.UNKNOWN, result.facts.family)
             assertTrue(Blocker.CONFLICTING_FACTS in result.blockers)
+        }
+    }
+
+    @Test fun anUnapprovedOverlapNeverBlocksTheApprovedPattern() {
+        val approved = pattern().copy(factContract = contract)
+        listOf(listOf(approved, pattern().copy(id = "other")), listOf(pattern().copy(id = "other"), approved)).forEach {
+            assertEquals(MessageFamily.TRANSFER_IN, PatternFactInterpreter(configuration(*it.toTypedArray())).interpretRouted(input, bank).facts.family)
         }
     }
 
