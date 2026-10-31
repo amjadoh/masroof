@@ -163,6 +163,97 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    private val barqOut = "حوالة صادرة داخلية\nالمبلغ: 175.74 SAR\nإلى : **0312\n2026-10-16 13:02"
+    private val barqOutFields = listOf("amount" to "175.74 SAR", "destination_account" to "**0312", "occurred_at" to "2026-10-16 13:02")
+    private fun bindings(body: String, fields: List<Pair<String, String>>) =
+        fields.map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+
+    private suspend fun approveBarqOut(w: MessagePatternsWorkflow, patternId: String): MessagePatternConfiguration {
+        val account = w.confirmPatternAccount("BANK_BARQ", "1482")
+        return w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", patternId,
+            PatternOperation.TRANSFER_OUT, account.id, barqOut, null, setOf("destination_account")))
+    }
+
+    @Test fun unapprovedTaughtPatternBesideABundledRoleOffersExamplesAndApproves() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            c.processRawSmsUseCase.ingest(sms("barq-out-1", barqOut, sender = "barq app"))
+            val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
+            w.saveTeaching(taught)
+            assertEquals(1, w.approvalExamples("BANK_BARQ", w.catalog().generation, taught.pattern.id).size)
+            assertEquals(1, w.applyPending("BANK_BARQ", approveBarqOut(w, taught.pattern.id).generation).posted)
+        }
+    }
+
+    // Earlier versions let Edit replace a bundled role with a taught template; the other roles then read UNKNOWN.
+    @Test fun bundledRoleReplacedByAnEarlierEditCanStillBeApproved() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            c.processRawSmsUseCase.ingest(sms("barq-out-2", barqOut, sender = "barq app"))
+            val bank = w.load().banks.single { it.bankId == "BANK_BARQ" }
+            val choices = barqOutFields.map { (field, value) -> barqOut.indexOf(value).let { FieldChoice(field, it, it + value.length) } }
+            w.saveBank(w.load().generation, bank.copy(patterns = listOf(SavedMessagePattern.fromChoices("barq.transfer-out", "BANK_BARQ",
+                "barq app", "TRANSFER_OUT", barqOut, choices).copy(revision = 2))))
+            assertEquals(1, w.approvalExamples("BANK_BARQ", w.catalog().generation, "barq.transfer-out").size)
+            assertEquals(1, w.applyPending("BANK_BARQ", approveBarqOut(w, "barq.transfer-out").generation).posted)
+        }
+    }
+
+    @Test fun bundledPatternsCannotBeEdited() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            assertFalse(w.catalog().banks.single { it.bankId == "BANK_BARQ" }.currentPatterns.single { it.id == "barq.transfer-out" }.canEdit)
+            assertTrue(runCatching { w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
+                bindings(barqOut, barqOutFields), "barq.transfer-out") }.isFailure)
+        }
+    }
+
+    @Test fun savingAnUnapprovedOverlappingPatternKeepsTheApprovedOnePosting() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
+            w.saveTeaching(taught)
+            approveBarqOut(w, taught.pattern.id)
+            w.saveTeaching(w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
+                bindings(barqOut, barqOutFields.filter { it.first != "destination_account" })))
+            c.processRawSmsUseCase.ingest(sms("barq-out-3", barqOut.replace("175.74", "99.00"), sender = "barq app"))
+            assertEquals(1, c.financialTransactionRepository.listAll().size)
+        }
+    }
+
+    @Test fun restoringAnOlderApprovedRevisionAsksForApprovalAgain() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
+            w.saveTeaching(taught)
+            approveBarqOut(w, taught.pattern.id)
+            w.saveTeaching(w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
+                bindings(barqOut, barqOutFields), taught.pattern.id))
+            val restored = w.restoreRevision(w.catalog().generation, "BANK_BARQ", taught.pattern.id, 2).toCatalog()
+                .banks.single { it.bankId == "BANK_BARQ" }.currentPatterns.single { it.id == taught.pattern.id }
+            assertEquals(PatternApprovalStatus.PREVIEW_ONLY, restored.status)
+            // Toggling keeps the current approval.
+            approveBarqOut(w, taught.pattern.id)
+            w.setEnabled(w.catalog().generation, "BANK_BARQ", taught.pattern.id, false)
+            w.setEnabled(w.catalog().generation, "BANK_BARQ", taught.pattern.id, true)
+            assertEquals(PatternApprovalStatus.APPROVED, w.catalog().banks.single { it.bankId == "BANK_BARQ" }
+                .currentPatterns.single { it.id == taught.pattern.id }.status)
+        }
+    }
+
+    @Test fun approvalOffersOnlyMovementsThatFitTheTaughtFields() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
+            w.saveTeaching(taught)
+            val view = w.catalog().banks.single { it.bankId == "BANK_BARQ" }.currentPatterns.single { it.id == taught.pattern.id }
+            assertEquals(listOf(PatternOperation.TRANSFER_IN, PatternOperation.TRANSFER_OUT), view.operations)
+            val account = w.confirmPatternAccount("BANK_BARQ", "1482")
+            assertTrue(runCatching { w.previewFinancial(w.catalog().generation, "BANK_BARQ", taught.pattern.id,
+                PatternOperation.PURCHASE, account.id, barqOut, null, setOf("destination_account")) }.isFailure)
+        }
+    }
+
     @Test fun bundledRoleThatCannotCompleteAMessageAsksForTeachingInsteadOfOfferingProcessing() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
@@ -414,6 +505,34 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun activatingANewBankImportsOnlyItsMessages() = runBlocking {
+        val source = object : com.baraa.masroof.sms.datasource.SmsDataSource {
+            override fun queryInbox(receivedAfter: Instant?) = listOf("AlRajhiBank", "STC Bank", "barq app").mapIndexed { index, sender ->
+                com.baraa.masroof.sms.datasource.InboxRow.Valid(com.baraa.masroof.sms.model.ProviderSmsRecord(
+                    "new-bank-$index", sender, incoming, Instant.parse("2026-10-15T10:00:00Z")))
+            }.asSequence()
+        }
+        fixture(source) { c ->
+            val w = c.messagePatternsWorkflow
+            assertTrue("A sender owned by another bank is refused", runCatching { w.addBank(w.load().generation, "Copy", "STC Bank") }.isFailure)
+            val bankId = w.addBank(w.load().generation, "Al Rajhi", "AlRajhiBank").banks.single { it.displayName == "Al Rajhi" }.bankId
+            val result = c.historicalSmsScanner.scan(bankScopes = setOf(Bank(bankId)))
+            assertEquals(result.toString(), 1, result.inserted)
+            assertEquals(result.toString(), 2, result.notRelevant)
+            assertNotNull(c.rawSmsRepository.findByDeviceMessageId("new-bank-0"))
+        }
+    }
+
+    @Test fun aSenderAddedToAlJaziraIsRecognized() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val bank = w.load().banks.single { it.bankId == "BANK_ALJAZIRA" }
+            w.updateBank(w.load().generation, "BANK_ALJAZIRA", bank.displayName ?: "AlJazira", bank.senders + "JZ-NEW")
+            c.processRawSmsUseCase.ingest(sms("jz-new-sender", incoming, sender = "JZ-NEW"))
+            assertNotNull("Captured for review instead of dropped as not matched", c.rawSmsRepository.getById("jz-new-sender"))
+        }
+    }
+
     @Test fun scopedImportUsesDynamicRoutingAndPreservesCollisionsWithoutClaimingOtherBanks() = runBlocking {
         var queries = 0
         val source = object : com.baraa.masroof.sms.datasource.SmsDataSource {
@@ -427,10 +546,10 @@ class PatternProcessingMilestoneTest {
         }
         fixture(source) { c ->
             val w = c.messagePatternsWorkflow
-            assertTrue(runCatching { w.importBank("NOT_REGISTERED") }.isFailure)
+            assertTrue(runCatching { c.historicalSmsScanner.scan(bankScopes = setOf(Bank("NOT_REGISTERED"))) }.isFailure)
             assertEquals(0, queries)
             w.saveBank(w.load().generation, BankMessagePatterns("COLLISION", listOf("STC Bank")))
-            val result = w.importBank("BANK_STC")
+            val result = c.historicalSmsScanner.scan(bankScopes = setOf(Bank("BANK_STC")))
             assertEquals(1, result.inserted)
             assertEquals(2, result.notRelevant)
             assertTrue(c.parsedEventRepository.listAll().isEmpty())

@@ -92,16 +92,18 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         val security = otpEvidence(SourceText(input.body))
         if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
             ParseStatus.NON_FINANCIAL, null, security, emptySet())
-        val matches = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
+        val taught = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
             // Use the pattern's declared sender only to invoke its body compiler, after routing.
             pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
         }
+        // An unapproved (preview-only) pattern is shown in previews but never competes with approved or bundled ones.
+        val matches = taught.filter { it.first.factContract != null }
         val roles = definition.currentPatterns.filter { it.roleProfile != null && it.sender in definition.senders }
         val roleResult = if (roles.isEmpty()) null else {
             val profiles = roles.map { requireNotNull(it.roleProfile) }
             val profile = profiles.first()
             if (profiles.any { it.network != profile.network || it.schema != profile.schema }) {
-                observe?.invoke(matches)
+                observe?.invoke(taught)
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
             }
             RuleInterpreter(profile.copy(rules = profiles.flatMap { it.rules }), familyAssist).interpretRouted(input, bank)
@@ -111,7 +113,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         if (observe != null) {
             val roleFields = roleResult?.evidence.orEmpty().filter { it.field != "family" }
                 .associate { span -> span.field to TextSpan(span.slice(input), span.start, span.end) }
-            observe(matches + activeRoles.map { it to Preview(it.label, roleFields) })
+            observe(taught + activeRoles.map { it to Preview(it.label, roleFields) })
         }
         // A taught pattern may complete an incomplete recognized role of the same family, never contradict it.
         val completesRole = roleResult != null && roleResult.status != ParseStatus.SUCCESS && matches.size == 1 &&
@@ -129,10 +131,10 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         if (roleResult?.blockers?.contains(Blocker.CONFLICTING_FACTS) == true)
             return unresolved("PATTERN_PROFILE_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
-        if (matches.isEmpty()) return unresolved("PATTERN_NOT_MATCHED")
+        if (matches.isEmpty()) return unresolved(if (taught.isEmpty()) "PATTERN_NOT_MATCHED" else "PATTERN_CONTRACT_MISSING")
         if (matches.size != 1) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
         val (pattern, preview) = matches.single()
-        val contract = pattern.factContract ?: return unresolved("PATTERN_CONTRACT_MISSING")
+        val contract = checkNotNull(pattern.factContract)
         if (contract.version !in 1..2 || (contract.version == 1 && (contract.accountBindings.isNotEmpty() || contract.contextReferences.isNotEmpty())))
             return unresolved("PATTERN_CONTRACT_UNSUPPORTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
 

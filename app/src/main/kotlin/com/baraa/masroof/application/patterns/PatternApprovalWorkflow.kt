@@ -63,6 +63,9 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             if (current.generation != generation) throw PatternApprovalException(PatternApprovalProblem.CONFIGURATION_CHANGED)
             val bank = current.banks.single { it.bankId == bankId }
             val pattern = bank.currentPatterns.single { it.id == patternId }
+            require(pattern.parts.filterIsInstance<FieldSlot>().filterNot { it.ignored }.all { it.field in operation.fields }) {
+                "Pattern fields do not belong to operation"
+            }
             val account = accountId?.let { id -> ownedAccounts(bankId).single { it.id == id } }
             val card = cardId?.let { id -> ownedCards(bankId).single { it.id == id } }
             if (account == null && card == null) throw PatternApprovalException(PatternApprovalProblem.ACCOUNT_REQUIRED)
