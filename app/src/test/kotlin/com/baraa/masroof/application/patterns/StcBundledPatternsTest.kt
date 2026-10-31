@@ -47,13 +47,17 @@ class StcBundledPatternsTest {
         })
 
     @Test fun bundledDefinitionsAreGeneratedFromBindingsAndMatchIndependentMessages() {
-        val generated = MessagePatternConfigurationCodec.encode(MessagePatternConfiguration(banks = listOf(generate())))
-        File("build/reports/pattern-seed/stc.generated.json").apply { requireNotNull(parentFile).mkdirs(); writeText(generated + "\n") }
         val bundled = File("src/main/assets/bank-patterns/BANK_STC.patterns.json")
         assertTrue("Generated artifact must be reviewed and bundled", bundled.exists())
+        // Role profiles are reviewed definitions; only the templates are generated from the seed rows.
+        val roles = MessagePatternConfigurationCodec.decode(bundled.readText()).banks.single().patterns.filter { it.roleProfile != null }
+        assertEquals(listOf("stc.withdrawal"), roles.map { it.id })
+        val generated = MessagePatternConfigurationCodec.encode(MessagePatternConfiguration(banks = listOf(
+            generate().let { it.copy(patterns = it.patterns + roles) })))
+        File("build/reports/pattern-seed/stc.generated.json").apply { requireNotNull(parentFile).mkdirs(); writeText(generated + "\n") }
         assertEquals(generated, bundled.readText().trim())
         val bank = MessagePatternConfigurationCodec.decode(bundled.readText()).banks.single()
-        assertEquals(8, bank.currentPatterns.size)
+        assertEquals(9, bank.currentPatterns.size)
         val literals = bank.patterns.flatMap { it.parts.filterIsInstance<StaticText>() }.joinToString { it.value }
         rows.filter { it.getValue("teach").jsonPrimitive.boolean }.forEach { row ->
             row.getValue("fields").jsonObject.values.forEach { assertFalse(literals.contains(it.jsonPrimitive.content)) }

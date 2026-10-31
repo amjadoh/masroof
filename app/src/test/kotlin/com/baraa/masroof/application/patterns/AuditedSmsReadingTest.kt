@@ -11,6 +11,28 @@ import java.time.Instant
 
 /** Entirely fictional values; production layouts, never private SMS fixtures. */
 class AuditedSmsReadingTest {
+    @Test fun stcCashWithdrawalReadsCardAndPrincipalWithoutGuessingAnAccount() {
+        val result = parse("BANK_STC", "STC Bank", "سحب صراف \nب:Mada: *8765\nب: 43.25 SAR\nفي:TEST ATM \nفي:20/10/26 15:51\n")
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals(MessageFamily.WITHDRAWAL, result.facts.family)
+        assertEquals("8765", result.facts.card?.last4)
+        assertEquals("43.25", result.facts.amount?.amount?.toPlainString())
+        assertEquals(CardChannel.DEBIT, result.facts.cardChannel)
+        assertNull(result.facts.sourceAccount)
+        for (body in listOf("سحب صراف\nب:Mada: *8765\nب: غير معروف",
+            "سحب صراف\nب:Mada: *876\nب: 43.25 SAR",
+            "سحب صراف\nب:Mada: *8765\nب: 43.25 SAR\nب: 54.32 SAR")) {
+            assertEquals(ParseStatus.REVIEW_REQUIRED, parse("BANK_STC", "STC Bank", body).status)
+        }
+    }
+
+    @Test fun unmatchedRoleProfileLeavesTransferToItsExactTemplate() {
+        // The bundled STC transfer template is preview-only, so reaching it ends at its missing contract.
+        val result = parse("BANK_STC", "STC Bank", "حوالة داخلية صادرة\nبـ:61.40ر.س\nإلى:TEST PERSON C\nالى:987\nفي:15/10/26 10:05")
+        assertEquals(listOf("PATTERN_CONTRACT_MISSING"), result.diagnostics.map { it.code })
+        assertEquals(ParseStatus.REVIEW_REQUIRED, result.status)
+    }
+
     @Test fun incomingThroughAnUnlistedBankKeepsExternalSourceUnknown() {
         val result = parse("BANK_SNB", "SNB-AlAhli", "حوالة واردة محلية\nمبلغ SAR 43.25\nمرسل من جهة تجريبية\nمن *\nإلى 4321*\nعبر البنك المركزي السعودي\nفي 26/10/20 12:30")
         assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
