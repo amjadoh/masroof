@@ -29,6 +29,8 @@ class LiveSmsProcessingWorker(
     params: WorkerParameters,
     private val processStoredSms: ProcessStoredSmsUseCase,
     private val appLogService: AppLogService? = null,
+    /** Lets an open dashboard reload after a successful pass. */
+    private val onProcessed: () -> Unit = {},
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val rawSmsId = inputData.getString(KEY_RAW_SMS_ID)
@@ -54,7 +56,10 @@ class LiveSmsProcessingWorker(
                 ProcessStoredSmsUseCase.REASON_REVIEW_NOT_PERSISTED -> Result.retry()
                 else -> retryOrGiveUp()
             }
-            else -> Result.success()
+            else -> {
+                onProcessed()
+                Result.success()
+            }
         }
     }
 
@@ -109,6 +114,7 @@ class LiveSmsProcessingWorker(
     class Factory(
         private val processStoredSms: () -> ProcessStoredSmsUseCase,
         private val appLogService: AppLogService? = null,
+        private val onProcessed: () -> Unit = {},
     ) : WorkerFactory() {
         override fun createWorker(
             appContext: Context,
@@ -116,7 +122,7 @@ class LiveSmsProcessingWorker(
             workerParameters: WorkerParameters,
         ): ListenableWorker? =
             if (workerClassName == LiveSmsProcessingWorker::class.java.name) {
-                LiveSmsProcessingWorker(appContext, workerParameters, processStoredSms(), appLogService)
+                LiveSmsProcessingWorker(appContext, workerParameters, processStoredSms(), appLogService, onProcessed)
             } else {
                 null
             }

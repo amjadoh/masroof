@@ -24,7 +24,26 @@ class TransactionListWorkflowTest {
         assertEquals(Money.of("20", Currency.SAR), projection.selection.totalAmount)
     }
 
-    private fun row(id: String, title: String, amount: String, currency: Currency = Currency.SAR) =
-        TransactionListRow(id, title, Money.of(amount, currency), FinancialTransactionType.EXPENSE,
+    @Test fun mixedIncomeAndPurchaseHaveNoTotal() {
+        val rows = listOf(row("salary", "salary", "5000", type = FinancialTransactionType.INCOME), row("buy", "buy", "100"))
+        val projection = workflow.project(rows, TransactionListQuery())
+        assertEquals(listOf(0, 1), projection.selection.indices)
+        assertNull(projection.selection.totalAmount)
+    }
+
+    @Test fun sarAndUsdRowsHaveNoTotal() {
+        val rows = listOf(row("sar", "local", "10"), row("usd", "foreign", "20", Currency.USD))
+        val projection = workflow.project(rows, TransactionListQuery())
+        assertEquals(listOf(0, 1), projection.selection.indices)
+        assertNull(projection.selection.totalAmount)
+    }
+
+    private fun row(
+        id: String,
+        title: String,
+        amount: String,
+        currency: Currency = Currency.SAR,
+        type: FinancialTransactionType = FinancialTransactionType.EXPENSE,
+    ) = TransactionListRow(id, title, Money.of(amount, currency), type,
             null, null, null, title)
 }
