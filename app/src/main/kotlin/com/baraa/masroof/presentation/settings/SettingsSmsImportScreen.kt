@@ -68,7 +68,8 @@ fun SettingsSmsImportScreen(state: SettingsUiState, bankId: String?, onBack: () 
             }
             if (busy) {
                 CircularProgressIndicator()
-                MasroofText(stringResource(R.string.onboarding_import_scanning))
+                MasroofText(if (state.importScanned > 0) stringResource(R.string.onboarding_import_scanning_count, state.importScanned)
+                    else stringResource(R.string.onboarding_import_scanning))
             }
             MasroofButton({ onImport(selected, from, through) }, Modifier.fillMaxWidth().testTag("import-selected-sms"),
                 enabled = !busy && selected.isNotEmpty() && !from.isAfter(through) && !through.isAfter(today) && state.smsPermissionGranted) {

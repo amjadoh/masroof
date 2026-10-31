@@ -404,9 +404,10 @@ class OnboardingViewModel(
 
                 onboardingPrefs.setHistoricalImportStartEpochMillis(startInstant.toEpochMilli())
                 onboardingPrefs.setHistoricalImportCompleted(false)
-                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, error = null) }
+                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, importScanned = 0, error = null) }
 
-                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through))
+                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through,
+                    onProgress = { scanned -> _uiState.update { it.copy(importScanned = scanned) } }))
                 val state = result.toImportState()
                 _uiState.update { it.copy(importState = state) }
 

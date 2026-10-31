@@ -16,7 +16,7 @@ fun onboardingViewModelFactory(
         OnboardingViewModel(
             onboardingPrefs = onboardingPreferencesRepository,
             historicalImportGateway = HistoricalImportGateway { request ->
-                container.bankSmsImportWorkflow.import(request.bankIds, request.from, request.through)
+                container.bankSmsImportWorkflow.import(request.bankIds, request.from, request.through, request.onProgress)
             },
             messagePatternsWorkflow = container.messagePatternsWorkflow,
             onboardingOwnershipWorkflow = container.onboardingOwnershipWorkflow,

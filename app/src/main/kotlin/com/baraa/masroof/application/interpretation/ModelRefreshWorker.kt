@@ -72,7 +72,7 @@ class ModelRefreshWorker(context: Context, params: WorkerParameters) : Coroutine
                     .setInputData(workDataOf("interpretationVersion" to version))
                     .addTag(TAG)
                     .build(),
-            ).result.get()
+            )
         }
     }
 }
