@@ -136,7 +136,10 @@ class TransactionRestoreService(
 
     /** Returns a failure reason when rollback could not complete; null on success. */
     private suspend fun rollbackToIgnored(reviewId: String, rawSmsId: String): String? {
-        if (!financialTransactionRepository.deleteIfExclusiveRawSmsLink(rawSmsId)) {
+        // No link means nothing was posted; the production delete reports false for that case.
+        if (financialTransactionRepository.isRawSmsLinked(rawSmsId) &&
+            !financialTransactionRepository.deleteIfExclusiveRawSmsLink(rawSmsId)
+        ) {
             return "rollback_delete_failed"
         }
         reviewRepository.markResolved(

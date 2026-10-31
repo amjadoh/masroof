@@ -414,6 +414,20 @@ class IntraBankSelfTransferReconciliationTest {
     }
 
     @Test
+    fun scopedPassOnLaterLeg_keepsOneMinuteApartPairTogether() = runBlocking {
+        ownBothAccounts()
+        persistParsed("sms-out", intraOut("2026-09-02 10:00"), Instant.parse("2026-09-02T07:00:00Z"))
+        persistParsed("sms-in", intraIn("2026-09-02 10:01"), Instant.parse("2026-09-02T07:01:00Z"))
+        reconciliation.reconcileStoredEvents()
+
+        reconciliation.reconcileAffectedRawSmsIds(listOf("sms-in"))
+
+        val tx = ftRepo.listAll().single()
+        assertEquals(FinancialTransactionType.SELF_TRANSFER, tx.type)
+        assertEquals(setOf("sms-in", "sms-out"), ftRepo.listRawSmsIds(tx.id).toSet())
+    }
+
+    @Test
     fun twoThousand_differentDays_remainTwoAndSumToFourThousand() = runBlocking {
         ownBothAccounts()
         persistPair("day2", "2026-09-02 10:00", "2026-09-02T07:00:00Z")
