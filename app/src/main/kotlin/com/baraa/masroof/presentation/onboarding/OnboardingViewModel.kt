@@ -104,6 +104,7 @@ class OnboardingViewModel(
                 it.copy(
                     permissionGranted = permissionGranted,
                     onboardingCompleted = completed,
+                    homeGuideSeen = onboardingPrefs.isHomeGuideSeen(),
                     selectedImportDate = selectedDate,
                     importThroughDate = through ?: today,
                     bankCatalog = catalog, selectedBankIds = selected, banksConfirmed = confirmed, loadingBanks = false,
@@ -538,7 +539,12 @@ class OnboardingViewModel(
     }
 
     fun enterApp() {
-        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME) }
+        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME, homeGuideSeen = onboardingPrefs.isHomeGuideSeen()) }
+    }
+
+    fun setHomeGuideSeen(seen: Boolean) {
+        onboardingPrefs.setHomeGuideSeen(seen)
+        _uiState.update { it.copy(homeGuideSeen = seen) }
     }
 
     private suspend fun loadCandidatesAndCounts() {

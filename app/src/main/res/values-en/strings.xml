@@ -256,6 +256,13 @@
     <string name="settings_log_category_logs">Log</string>
     <string name="settings_logs_export">Export log</string>
     <string name="settings_logs_share">Share log</string>
+    <string name="settings_show_guide_title">Show the guide again</string>
+    <string name="settings_show_guide_subtitle">The getting-started guide appears once above Home.</string>
+    <string name="home_guide_title">Welcome to Masroof</string>
+    <string name="home_guide_dashboard">• Home: your spending and income per salary period. Pull down to refresh.</string>
+    <string name="home_guide_review">• Review: messages Masroof did not understand wait here; correct them or teach their pattern.</string>
+    <string name="home_guide_teach">• Teaching: from any message in Review choose “Teach Masroof this message”, then approve the pattern so it runs automatically.</string>
+    <string name="home_guide_dismiss">Got it</string>
     <string name="settings_report_problem_title">Report a problem</string>
     <string name="settings_report_problem_subtitle">Opens a GitHub issue with your version and device. Share the log with it if needed.</string>
     <string name="settings_logs_clear">Clear log</string>

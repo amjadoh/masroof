@@ -60,6 +60,7 @@ data class OnboardingUiState(
     val cards: List<OwnershipCandidateUi> = emptyList(),
     val finalizing: Boolean = false,
     val onboardingCompleted: Boolean = false,
+    val homeGuideSeen: Boolean = true,
     val ownedAccountsCount: Int = 0,
     val ownedCardsCount: Int = 0,
     val reviewRequiredCount: Int = 0,
