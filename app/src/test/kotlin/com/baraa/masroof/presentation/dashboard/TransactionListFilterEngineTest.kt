@@ -4,6 +4,7 @@ import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TransactionListFilterEngineTest {
@@ -15,7 +16,7 @@ class TransactionListFilterEngineTest {
         )
         val result = TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).result
         assertEquals(2, result.transactions.size)
-        assertEquals(Money.of("5100.00", Currency.SAR), result.totalAmount)
+        assertNull(result.totalAmount) // income and spending do not share one total
     }
 
     @Test
@@ -56,7 +57,7 @@ class TransactionListFilterEngineTest {
                 ),
             )).result
         assertEquals(2, result.transactions.size)
-        assertEquals(Money.of("120.00", Currency.SAR), result.totalAmount)
+        assertNull(result.totalAmount) // refunds and purchases do not share one total
     }
 
     @Test
@@ -111,7 +112,7 @@ class TransactionListFilterEngineTest {
                 cardLast4s = setOf("7271"),
             )).result
         assertEquals(2, result.transactions.size)
-        assertEquals(Money.of("120.00", Currency.SAR), result.totalAmount)
+        assertNull(result.totalAmount) // refunds and purchases do not share one total
     }
 
     @Test
@@ -173,15 +174,12 @@ class TransactionListFilterEngineTest {
     }
 
     @Test
-    fun nonPrimaryCurrency_excludedFromTotal() {
+    fun nonPrimaryCurrency_suppressesTotal() {
         val txs = listOf(
             preview(type = FinancialTransactionType.EXPENSE, amount = "100", currency = Currency.SAR),
             preview(type = FinancialTransactionType.EXPENSE, amount = "23", currency = Currency.USD),
         )
-        assertEquals(
-            Money.of("100.00", Currency.SAR),
-            TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).result.totalAmount,
-        )
+        assertNull(TransactionListPresentationMapper.project(transactions = txs, filter = TransactionListFilterState()).result.totalAmount)
     }
 
     @Test

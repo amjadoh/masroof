@@ -198,9 +198,10 @@ internal object TransactionListProjectionCalculator {
         transactions: List<TransactionListRow>,
         currency: Currency,
     ): Money? {
-        val matching = transactions.filter { it.amount.currency == currency }
-        if (matching.isEmpty()) return null
-        return matching.fold(Money.zero(currency)) { acc, tx -> acc + tx.amount }
+        // Amounts are unsigned, so a total is only meaningful for one currency and one type.
+        if (transactions.isEmpty() || transactions.any { it.amount.currency != currency }) return null
+        if (transactions.distinctBy { it.typeLabelResHint }.size != 1) return null
+        return transactions.fold(Money.zero(currency)) { acc, tx -> acc + tx.amount }
     }
 }
 

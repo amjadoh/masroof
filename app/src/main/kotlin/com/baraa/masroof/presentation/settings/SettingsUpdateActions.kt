@@ -231,7 +231,10 @@ internal class SettingsUpdateActions(
             clearStaleUpdateUiIfInstalled()
             return
         }
-        applyAvailableUpdate(manifest, silent = true)
+        // Hashing the downloaded APK is file I/O; keep it off the main thread (this runs on every resume).
+        scope.launchLogged(appLogService, AppLogCategories.UPDATE, "Settings restorePendingUpdate") {
+            applyAvailableUpdate(manifest, silent = true, restoring = true)
+        }
     }
 
     private fun dismissUpdateUiWhileInstalling() {
@@ -253,12 +256,13 @@ internal class SettingsUpdateActions(
         }
     }
 
-    private fun applyAvailableUpdate(
+    private suspend fun applyAvailableUpdate(
         manifest: com.baraa.masroof.application.update.UpdateManifest,
         silent: Boolean,
+        restoring: Boolean = false,
     ) {
-        val downloaded = appUpdateService.updateApkFile(manifest)
-        val nextState =
+        val nextState = withContext(Dispatchers.IO) {
+            val downloaded = appUpdateService.updateApkFile(manifest)
             if (
                 downloaded.exists() &&
                 com.baraa.masroof.application.update.ApkIntegrityVerifier.matches(downloaded, manifest.sha256)
@@ -268,7 +272,10 @@ internal class SettingsUpdateActions(
                 if (downloaded.exists()) downloaded.delete()
                 AppUpdateUiState.Available(manifest)
             }
+        }
         settingsState.update {
+            // A check or download that started while restoring owns the state now.
+            if (restoring && (it.updateState is AppUpdateUiState.Checking || it.updateState is AppUpdateUiState.Downloading)) return@update it
             it.copy(
                 updateState = nextState,
                 updateMessage = if (silent) null else AppUpdateMessage.UPDATE_AVAILABLE,

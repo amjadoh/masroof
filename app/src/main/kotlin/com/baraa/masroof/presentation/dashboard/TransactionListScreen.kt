@@ -99,14 +99,6 @@ fun TransactionListScreen(
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.transaction_share)
     val shareSubject = stringResource(R.string.transaction_list_title)
-    val shareText = transactionListShareText(
-        periodLabel = periodLabel,
-        filter = filterState,
-        transactions = filterResult.transactions,
-        totalAmount = filterResult.totalAmount,
-        ownedCards = ownedCards,
-        ownedAccounts = ownedAccounts,
-    )
     val canShare = filterResult.transactions.isNotEmpty()
 
     val clearFilters = {
@@ -127,7 +119,15 @@ fun TransactionListScreen(
                 onClick = {
                     SharePlainText.share(
                         context = context,
-                        text = shareText,
+                        text = transactionListShareText(
+                            context = context,
+                            periodLabel = periodLabel,
+                            filter = filterState,
+                            transactions = filterResult.transactions,
+                            totalAmount = filterResult.totalAmount,
+                            ownedCards = ownedCards,
+                            ownedAccounts = ownedAccounts,
+                        ),
                         chooserTitle = shareChooserTitle,
                         subject = shareSubject,
                     )

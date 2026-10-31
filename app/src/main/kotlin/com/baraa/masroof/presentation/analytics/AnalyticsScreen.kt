@@ -275,8 +275,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                                 MasroofButton(onClick = { editing = c.key }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
                                     Text(stringResource(R.string.lab_analysis_review_candidate))
                                 }
-                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key, notRecurring = true) } }, modifier = Modifier.testTag("recurring-not-${c.key}")) { Text(stringResource(R.string.recurring_not_recurring)) }
-                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key) } }, modifier = Modifier.testTag("recurring-dismiss-${c.key}")) { Text(stringResource(R.string.recurring_dismiss)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Reject recurring candidate") { workflow.rejectCandidate(c.key, notRecurring = true) } }, modifier = Modifier.testTag("recurring-not-${c.key}")) { Text(stringResource(R.string.recurring_not_recurring)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Dismiss recurring candidate") { workflow.rejectCandidate(c.key) } }, modifier = Modifier.testTag("recurring-dismiss-${c.key}")) { Text(stringResource(R.string.recurring_dismiss)) }
                             }
                         }
                         if (state.recurringCorrections.isNotEmpty()) MasroofCard {
@@ -285,7 +285,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                             state.recurringCorrections.take(visible).forEach { correction ->
                                 Text(correction.name, style = MaterialTheme.typography.bodyMedium)
                                 Text(stringResource(if (correction.kind == "NOT_RECURRING") R.string.recurring_not_recurring else R.string.recurring_dismiss), style = MaterialTheme.typography.bodySmall)
-                                MasroofTextButton(onClick = { scope.launch { workflow.undoRecurringCorrection(correction.seriesKey) } }, modifier = Modifier.testTag("recurring-undo-${correction.seriesKey}")) { Text(stringResource(R.string.recurring_undo)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Undo recurring correction") { workflow.undoRecurringCorrection(correction.seriesKey) } }, modifier = Modifier.testTag("recurring-undo-${correction.seriesKey}")) { Text(stringResource(R.string.recurring_undo)) }
                             }
                             if (visible < state.recurringCorrections.size) MasroofTextButton(onClick = { visible += 20 }) { Text(stringResource(R.string.lab_analysis_more)) }
                         }
