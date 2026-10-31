@@ -164,13 +164,13 @@ class PendingPatternsWorkflow(
                     val matches = routed.matches.map { (pattern, preview) ->
                         PatternMatch(pattern.id, pattern.revision, pattern.label, preview.fields.displayFields())
                     }
-                    // Unapproved teaching stays a plain match so approval can use it as an example. Otherwise follow the
-                    // interpreter: a taught pattern may complete a bundled role, and a match that still cannot finish
-                    // the message would only return to review when processed.
-                    val unapproved = routed.matches.singleOrNull()?.let { it.first.factContract == null } == true
-                    val interpretation = routed.interpretation.takeUnless { unapproved }
-                    val chosen = if (interpretation == null) matches
-                        else matches.filter { it.patternId == interpretation.patternProvenance?.patternId }
+                    // The one unapproved taught match stays a plain match, even beside a bundled role, so approval can use
+                    // it as an example. Otherwise follow the interpreter: a taught pattern may complete a bundled role,
+                    // and a match that still cannot finish the message would only return to review when processed.
+                    val unapproved = routed.matches.filter { it.first.roleProfile == null }.singleOrNull()
+                        ?.takeIf { it.first.factContract == null }?.first?.id
+                    val interpretation = routed.interpretation.takeUnless { unapproved != null }
+                    val chosen = matches.filter { it.patternId == (unapproved ?: interpretation?.patternProvenance?.patternId) }
                     val status = when {
                         matches.isEmpty() -> PendingPatternStatus.NO_MATCH
                         chosen.size == 1 && (interpretation == null || interpretation.status == EngineParseStatus.SUCCESS) ->
