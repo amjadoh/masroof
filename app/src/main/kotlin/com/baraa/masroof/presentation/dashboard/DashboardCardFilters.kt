@@ -10,8 +10,9 @@ fun DashboardUiState.followedCreditFacilities(): CreditFacilitiesOverview? {
         facility.allCards.any { CardOwnershipKey.of(it) in ownedKeys }
     }
     val debitCards = overview.debitCards.filter { CardOwnershipKey.of(it) in ownedKeys }
-    if (facilities.isEmpty() && debitCards.isEmpty()) return null
-    return overview.copy(facilities = facilities, debitCards = debitCards)
+    val prepaidCards = overview.prepaidCards.filter { it.key in ownedKeys }
+    if (facilities.isEmpty() && debitCards.isEmpty() && prepaidCards.isEmpty()) return null
+    return overview.copy(facilities = facilities, debitCards = debitCards, prepaidCards = prepaidCards)
 }
 
 fun DashboardUiState.followedLoansOverview(): LoansOverview? {

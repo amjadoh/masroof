@@ -32,6 +32,52 @@ import java.time.Instant
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class AutomaticPatternWriteGuardTest {
+    @Test fun explicitOwnedAccountCanReplaceAnUnusedRoleFallbackButNotAnExactAlias() = runBlocking {
+        val directory = Files.createTempDirectory("explicit-account-fallback-").toFile()
+        try {
+            val store = MessagePatternStore(directory.resolve("patterns.json"))
+            val definition = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+                java.io.File("src/main/assets/bank-patterns/BANK_SNB.patterns.json").readText()).banks.single()
+            val configured = definition.copy(patterns = definition.patterns.map { pattern ->
+                if (pattern.label != "TRANSFER_OUT") pattern else pattern.copy(factContract = pattern.factContract!!.copy(
+                    version = 2, currency = Currency.SAR, accountBindings = listOf(
+                        PatternAccountBinding(PatternAccountRole.SOURCE, BankId(definition.bankId), "4321"))))
+            })
+            val snapshot = store.saveBank(0, configured)
+            val message = MessageInput("explicit-account", "SNB-AlAhli",
+                "حوالة صادرة محلية\nمن:8765*\nإلى:عميل تجريبي\nعبر:AL RAJHI BANK\nآيبان:*7654\nمبلغ:43.25 SAR\nفي:2026-10-20 12:30",
+                Instant.parse("2026-10-20T12:00:00Z"), true)
+            val bank = Bank(definition.bankId)
+            val parsed = InterpretationDraftMapper().map(message,
+                PatternFactInterpreter(snapshot).interpretRouted(message, BankId(definition.bankId)), bank) as ParseResult.Success
+            val record = ParsedEventRecord(parsed.event, parsed.details)
+            val owned = com.baraa.masroof.domain.model.AccountRegistryEntry.forTest(bank, "8765")
+                .copy(ownership = com.baraa.masroof.domain.model.OwnershipStatus.OWNED)
+            val accounts = com.baraa.masroof.testsupport.StubAccountRegistryRepository(owned)
+            val policy = PatternInterpretationWritePolicy(store, accounts)
+            assertEquals("8765", record.event.sourceAccountRef?.maskedNumber)
+            assertTrue(policy.isCurrent(record))
+            accounts.entries[0] = owned.copy(ownership = com.baraa.masroof.domain.model.OwnershipStatus.UNKNOWN)
+            assertFalse(policy.isCurrent(record))
+            accounts.entries[0] = owned.copy(ownership = com.baraa.masroof.domain.model.OwnershipStatus.EXTERNAL)
+            assertFalse(policy.isCurrent(record))
+            accounts.entries[0] = owned
+            assertFalse(policy.isCurrent(record.copy(event = record.event.copy(
+                sourceAccountRef = com.baraa.masroof.domain.model.AccountReference(Bank("BANK_BARQ"), "8765")))))
+            val exact = configured.copy(patterns = configured.patterns.map { pattern ->
+                if (pattern.label != "TRANSFER_OUT") pattern else pattern.copy(factContract = pattern.factContract!!.copy(
+                    accountBindings = listOf(PatternAccountBinding(PatternAccountRole.SOURCE, BankId(definition.bankId), "4321", "source_account", "321"))))
+            })
+            val strictSnapshot = store.saveBank(snapshot.generation, exact.copy(patterns = exact.currentPatterns
+                .filter { it.label == "TRANSFER_OUT" }.map { it.copy(revision = it.revision + 1) }))
+            assertFalse(policy.isCurrent(record))
+            val strictResult = InterpretationDraftMapper().map(message,
+                PatternFactInterpreter(strictSnapshot).interpretRouted(message, BankId(definition.bankId)), bank)
+            if (strictResult is ParseResult.Success)
+                assertFalse(policy.isCurrent(ParsedEventRecord(strictResult.event, strictResult.details)))
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun explicitCardPurchaseDoesNotRequireAnUnusedAccountFallback() = runBlocking {
         val directory = Files.createTempDirectory("unused-account-fallback-").toFile()
         try {

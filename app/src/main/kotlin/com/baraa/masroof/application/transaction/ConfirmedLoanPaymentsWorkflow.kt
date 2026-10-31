@@ -53,7 +53,7 @@ class ConfirmedLoanPaymentsWorkflow(
             val card = cards.get(cardRef) ?: return null
             if (card.ownership != OwnershipStatus.OWNED) return null
             return when (card.cardType) {
-                CardType.CREDIT -> if (accountRef == null) FinancialContainerIdFactory.cardId(cardRef) else null
+                CardType.CREDIT, CardType.PREPAID -> if (accountRef == null) FinancialContainerIdFactory.cardId(cardRef) else null
                 CardType.DEBIT -> {
                     val linked = card.linkedAccount ?: return null
                     if (linked.bank != cardRef.bank || accountRef != null && accountRef != linked ||

@@ -8,6 +8,7 @@ import com.baraa.masroof.parsing.repository.ParsedEventRecord
 enum class FlowExpenseCategory {
     EXTERNAL_TRANSFER_OUT,
     CREDIT_CARD_PAYMENT,
+    PREPAID_CARD_TOP_UP,
     CASH_WITHDRAWAL,
     BILL_PAYMENT,
     POS_PURCHASE,
@@ -32,6 +33,7 @@ data class CurrentAccountFlowDetailGrouping(
         val EXPENSE_DISPLAY_ORDER = listOf(
             FlowExpenseCategory.EXTERNAL_TRANSFER_OUT,
             FlowExpenseCategory.CREDIT_CARD_PAYMENT,
+            FlowExpenseCategory.PREPAID_CARD_TOP_UP,
             FlowExpenseCategory.CASH_WITHDRAWAL,
             FlowExpenseCategory.BILL_PAYMENT,
             FlowExpenseCategory.POS_PURCHASE,

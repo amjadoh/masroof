@@ -19,7 +19,7 @@ internal object MessageOwnershipPolicy {
         val localAccount = when (family) {
             MessageFamily.TRANSFER_IN, MessageFamily.REFUND -> destination
             MessageFamily.TRANSFER_OUT, MessageFamily.PURCHASE, MessageFamily.WITHDRAWAL,
-            MessageFamily.BILL_PAYMENT, MessageFamily.FEE, MessageFamily.CARD_PAYMENT,
+            MessageFamily.BILL_PAYMENT, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP,
             MessageFamily.FINANCING_INSTALLMENT -> source
             else -> return null
         }

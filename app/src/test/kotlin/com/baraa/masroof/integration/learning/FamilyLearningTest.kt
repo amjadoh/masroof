@@ -24,7 +24,11 @@ class FamilyLearningTest {
         assertEquals(a.terms,b.terms)
         assertEquals(a.template,b.template)
         assertEquals("حوالة محلية واردة",a.title)
-        MessageFamily.entries.forEach {assertEquals(it,FamilyAssistBridge.toBank(FamilyAssistBridge.toModel(it)))}
+        MessageFamily.entries.filterNot { it == MessageFamily.CARD_TOP_UP }
+            .forEach {assertEquals(it,FamilyAssistBridge.toBank(FamilyAssistBridge.toModel(it)))}
+        // No top-up training class exists. Explicit patterns and confirmed ownership
+        // must authorize it; the existing model must not relabel it as a card payment.
+        assertEquals(SmsFamilyLabel.UNKNOWN, FamilyAssistBridge.toModel(MessageFamily.CARD_TOP_UP))
     }
 
     @Test fun incompatibleCleaningMetadataCannotLoadASeed() {

@@ -46,10 +46,14 @@ class TransactionSarEquivalentResolver(
             if (!tx.amount.currency.convertsToSar()) continue
 
             val linkedRecord = linkedParsedRecord(tx, parsedByEventId)
+            val prepaidTopUp = tx.type == FinancialTransactionType.SELF_TRANSFER &&
+                com.baraa.masroof.domain.ids.FinancialContainerIdParser.cardLast4(tx.destinationContainerId) != null
             val includeFee = tx.type != FinancialTransactionType.REFUND
 
             val appliedRate = tx.appliedExchangeRate
             val appliedSource = tx.exchangeRateSource
+            // A market estimate cannot establish the actual account debit for a prepaid top-up.
+            if (prepaidTopUp && appliedSource != null && appliedSource != ExchangeRateSource.SMS) continue
             if (appliedRate != null && appliedSource != null) {
                 resolutionFromRate(
                     tx = tx,
@@ -83,6 +87,7 @@ class TransactionSarEquivalentResolver(
                 continue
             }
 
+            if (prepaidTopUp) continue
             val merchant = tx.merchant
                 ?: tx.linkedParsedEventIds.firstNotNullOfOrNull { parsedByEventId[it]?.event?.merchant }
             val historicalRate = rateIndex.rateForMerchant(merchant, tx.amount.currency, tx.occurredAt)

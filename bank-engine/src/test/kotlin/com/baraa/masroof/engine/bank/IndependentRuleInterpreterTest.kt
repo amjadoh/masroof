@@ -8,6 +8,16 @@ import org.junit.Test
 import java.time.Instant
 
 class IndependentRuleInterpreterTest {
+    @Test fun unknownTitleIsMissingProofNotContradictoryDirection() {
+        val unknown = parse("Unrecognized title\nAmount: SAR 43.25\n2026-10-17 13:00")
+        assertEquals(ParseStatus.REVIEW_REQUIRED, unknown.status)
+        assertTrue(Blocker.UNKNOWN_FAMILY in unknown.blockers)
+        assertFalse(unknown.diagnostics.any { it.code == "UNSAFE_DIRECTION" })
+        val conflicting = parse("Purchase\nRefund\nAmount: SAR 43.25\nCard: **1234\n2026-10-17 13:00")
+        assertEquals(ParseStatus.REVIEW_REQUIRED, conflicting.status)
+        assertTrue(Blocker.CONFLICTING_FACTS in conflicting.blockers)
+    }
+
     private val bank = BankId("TEST_BANK")
     private val catalog = BankCatalog(listOf(BankDefinition(bank, setOf("SyntheticBank"))))
     private fun input(body: String, sender: String = "SyntheticBank") =

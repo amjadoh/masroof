@@ -48,6 +48,7 @@ data class ManagedCardUi(
                 CardRole.STANDALONE, null -> when (cardType) {
                     CardType.DEBIT -> "Debit ••$last4"
                     CardType.CREDIT -> "Credit ••$last4"
+                    CardType.PREPAID -> "Prepaid ••$last4"
                     null -> "••$last4"
                 }
             }

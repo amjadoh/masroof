@@ -29,6 +29,8 @@ object FamilyAssistBridge {
         MessageFamily.TRANSFER_IN -> SmsFamilyLabel.TRANSFER_IN
         MessageFamily.TRANSFER_OUT -> SmsFamilyLabel.TRANSFER_OUT
         MessageFamily.CARD_PAYMENT -> SmsFamilyLabel.CARD_PAYMENT
+        // Top-ups require explicit rules; the existing model has no trained top-up label.
+        MessageFamily.CARD_TOP_UP -> SmsFamilyLabel.UNKNOWN
         MessageFamily.BILL_PAYMENT -> SmsFamilyLabel.BILL_PAYMENT
         MessageFamily.FINANCING_INSTALLMENT -> SmsFamilyLabel.FINANCING_INSTALLMENT
         MessageFamily.WITHDRAWAL -> SmsFamilyLabel.WITHDRAWAL

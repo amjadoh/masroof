@@ -143,6 +143,24 @@ class RoomCardRegistryRepositoryTest {
         assertEquals(account, card.linkedAccount)
     }
 
+    @Test fun configuredPrepaidPersistsWithoutCreditFacilityOrAccountLink() = runBlocking {
+        val reference = CardReference(Bank.BANK_ALJAZIRA, "3333")
+        seedCard("3333", CardRole.PRIMARY)
+        repository.configure(reference, com.baraa.masroof.domain.model.CardConfiguration(
+            com.baraa.masroof.domain.model.CardNetwork.VISA, CardType.PREPAID))
+        val card = repository.get(reference)!!
+        assertEquals(CardType.PREPAID, card.cardType)
+        assertEquals(null, card.cardRole)
+        assertEquals(null, card.creditFacilityId)
+        assertEquals(null, card.linkedAccount)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking {
+            repository.configure(reference, com.baraa.masroof.domain.model.CardConfiguration(
+                null, CardType.PREPAID,
+                linkedAccount = com.baraa.masroof.domain.model.AccountReference(Bank.BANK_ALJAZIRA, "3001")))
+        } }
+        assertEquals(card, repository.get(reference))
+    }
+
     @Test fun setupRejectsChangingAParentWithChildrenAndRollsBackAllFields() = runBlocking {
         val bank = Bank.BANK_ALJAZIRA
         seedCard("1111", CardRole.PRIMARY)

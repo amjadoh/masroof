@@ -81,6 +81,9 @@ class DefaultParsedEventValidator(
         }
 
         val score = draft.confidence?.score
+        if (family == MessageFamily.CARD_TOP_UP && (draft.sourceAccountRef == null || draft.cardRef == null)) {
+            findings += finding("V-018", "Prepaid top-up requires an explicit funding account and destination card")
+        }
         if (score != null && score < policy.minFinancialConfidence) {
             findings += finding(
                 "V-012",
@@ -228,6 +231,7 @@ class DefaultParsedEventValidator(
             MessageFamily.TRANSFER_IN to INCOMING,
             MessageFamily.TRANSFER_OUT to OUTGOING,
             MessageFamily.CARD_PAYMENT to setOf(MoneyDirection.OUTGOING, MoneyDirection.INCOMING),
+            MessageFamily.CARD_TOP_UP to OUTGOING,
             MessageFamily.BILL_PAYMENT to OUTGOING,
             MessageFamily.FINANCING_INSTALLMENT to OUTGOING,
             MessageFamily.WITHDRAWAL to OUTGOING,

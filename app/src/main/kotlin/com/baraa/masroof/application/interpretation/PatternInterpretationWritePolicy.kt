@@ -37,9 +37,14 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
                         card.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
                     continue
                 }
-                val reference = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
+                val fallback = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
+                // Role-reader constants are fallbacks, not aliases. The reader gives
+                // an explicit same-bank account precedence; validate that account's
+                // ownership instead. Exact observed-reference bindings stay strict.
+                val reference = if (stamp.roleProfile && binding.field == null && observed?.bank == fallback.bank)
+                    requireNotNull(observed) else fallback
                 val account = accounts?.get(reference) ?: return false
-                if (account.bank != reference.bank || account.maskedNumber != binding.last4 || account.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
+                if (account.bank != reference.bank || account.maskedNumber != reference.maskedNumber || account.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
                 if (observed != reference) return false
             }
             true

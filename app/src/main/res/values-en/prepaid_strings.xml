@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="prepaid_card_unconverted_funding">%1$d foreign-currency top-ups have no confirmed SAR equivalent; their value is excluded from SAR account outflow totals.</string>
+    <string name="settings_card_type_prepaid">Prepaid card</string>
+    <string name="prepaid_card_setup_hint">The card has its own balance. Top-ups transfer money to it; purchases count as spending once.</string>
+    <string name="prepaid_cards_title">Prepaid cards</string>
+    <string name="prepaid_card_top_up">Prepaid card top-up</string>
+    <string name="prepaid_card_top_ups">Period top-ups</string>
+    <string name="prepaid_card_spending">Period spending</string>
+    <string name="prepaid_card_refunds">Period refunds</string>
+    <string name="prepaid_card_movement">Net card balance movement</string>
+    <string name="prepaid_card_observed_balance">Latest balance reported by SMS</string>
+    <string name="prepaid_card_balance_unknown">Actual balance is unavailable from SMS</string>
+    <string name="prepaid_card_currency_hint">Currencies are shown separately. Net movement is not the actual balance; no unreported exchange rate is assumed.</string>
+</resources>

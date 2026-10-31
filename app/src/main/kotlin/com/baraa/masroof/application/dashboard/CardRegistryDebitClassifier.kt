@@ -21,7 +21,7 @@ object CardRegistryDebitClassifier {
     ): Boolean {
         when (entry.cardType) {
             CardType.DEBIT -> return true
-            CardType.CREDIT -> return false
+            CardType.CREDIT, CardType.PREPAID -> return false
             null -> Unit
         }
         if (entry.cardNetwork == CardNetwork.MADA) return true
