@@ -16,6 +16,7 @@ data class CardConfiguration(
             require(primaryLast4 == null || (primaryLast4.isNotBlank() && primaryLast4 != last4)) { "invalid_card_parent" }
         } else {
             require(role == null && primaryLast4 == null) { "debit_cannot_have_credit_role" }
+            require(type != CardType.PREPAID || linkedAccount == null) { "prepaid_has_independent_balance" }
             linkedAccount?.let {
                 require(it.bank == bank && !it.maskedNumber.isNullOrBlank()) { "invalid_linked_account" }
             }

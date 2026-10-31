@@ -9,6 +9,7 @@ import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.BankNetworkType
 import com.baraa.masroof.domain.model.CardReference
+import com.baraa.masroof.domain.model.CardType
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.LoanType
@@ -95,6 +96,7 @@ object TransactionAssembler {
         userConfirmed: Boolean = false,
         occurredAtZone: java.time.ZoneId? = null,
         deferIntraBankPairing: Boolean = true,
+        knownCardType: CardType? = null,
     ): Outcome {
         when (event.messageFamily) {
             MessageFamily.OTP,
@@ -129,8 +131,8 @@ object TransactionAssembler {
 
         val sourceFacts = accountFacts(event.sourceAccountRef, sourceOwnership)
         val destinationFacts = when (event.messageFamily) {
-            MessageFamily.CARD_PAYMENT ->
-                cardFacts(event.cardRef, cardOwnership)
+            MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP ->
+                cardFacts(event.cardRef, cardOwnership, knownCardType)
                     ?: accountFacts(event.destinationAccountRef, destinationOwnership)
 
             MessageFamily.FINANCING_INSTALLMENT ->
@@ -140,7 +142,7 @@ object TransactionAssembler {
         }
         val instrumentFacts = when (event.messageFamily) {
             MessageFamily.PURCHASE ->
-                cardFacts(event.cardRef, cardOwnership)
+                cardFacts(event.cardRef, cardOwnership, knownCardType)
                     ?: accountFacts(event.sourceAccountRef, sourceOwnership)
 
             else -> null
@@ -411,15 +413,15 @@ object TransactionAssembler {
     private fun cardFacts(
         ref: CardReference?,
         ownership: OwnershipStatus,
+        knownCardType: CardType? = null,
     ): ResolvedContainerFacts? {
         if (ref == null) return null
         val last4 = ref.last4?.trim().orEmpty()
         if (last4.isEmpty()) return null
-        // P7 registry does not know CardType — leave knownCardType null.
         return ResolvedContainerFacts(
             kind = ContainerKind.CARD,
             ownership = ownership,
-            knownCardType = null,
+            knownCardType = knownCardType,
         )
     }
 
@@ -442,7 +444,7 @@ object TransactionAssembler {
                 // Mada/debit purchases debit the current account; credit-card-only SMS has no account ref.
                 (durableSourceAccountId ?: durableCardId) to null
 
-            MessageFamily.CARD_PAYMENT ->
+            MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP ->
                 durableSourceAccountId to durableCardId
 
             MessageFamily.BILL_PAYMENT ->

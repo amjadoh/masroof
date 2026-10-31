@@ -80,7 +80,7 @@ internal class ObservationExtractor(
             if (found.isNotEmpty() && family !in allowed) fail("UNRELATED_$header")
             return found.singleOrNull()?.takeIf { family in allowed || family==MessageFamily.UNKNOWN }
         }
-        val cards = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.WITHDRAWAL,
+        val cards = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.WITHDRAWAL,
             MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
         val card = when (choose(listOf("card.credit", "card.debit", "card.statement"), "observation.cardType", cards, "CARD")) {
             "card.credit" -> CardChannel.CREDIT; "card.debit" -> CardChannel.DEBIT; "card.statement" -> CardChannel.STATEMENT; else -> null

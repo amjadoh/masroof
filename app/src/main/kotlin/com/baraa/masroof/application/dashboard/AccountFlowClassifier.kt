@@ -169,6 +169,11 @@ object AccountFlowClassifier {
             }
 
             FinancialTransactionType.SELF_TRANSFER -> buildList {
+                if (FinancialContainerIdParser.cardLast4(tx.destinationContainerId) != null &&
+                    scope.involvesOwnedSource(tx, parsedRecordsById)) {
+                    add(FlowAssignment.Expense(FlowExpenseCategory.PREPAID_CARD_TOP_UP))
+                    return@buildList
+                }
                 if (scope.involvesOwnedDestination(tx, parsedRecordsById)) {
                     add(FlowAssignment.SelfTransfer(SelfTransferLeg.IN))
                 }

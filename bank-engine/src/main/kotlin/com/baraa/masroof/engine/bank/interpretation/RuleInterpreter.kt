@@ -161,7 +161,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
-        if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
+        // An unrecognized title has no claimed direction to contradict. It remains
+        // review-only here, while an exact learned template may supply that proof.
+        if (family != MessageFamily.UNKNOWN && family !in INFORMATIONAL && direction != expected)
+            problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
         fun labels(field: ExtractionField): List<String> {
             val sets=matching.map {it.labels[field].orEmpty()}
@@ -195,7 +198,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val card = primary.card()
         val sourceObservedValue = defaults?.sourceObservedValue
         val account = primary.account(ExtractionField.SOURCE_ACCOUNT, defaults?.source?.maskedNumber?.takeIf {
-            family !in INFORMATIONAL && (family != MessageFamily.CARD_PAYMENT || sourceObservedValue != null) &&
+            family !in INFORMATIONAL && (family !in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP) || sourceObservedValue != null) &&
                 (!primary.hasCardReferenceRole() || family == MessageFamily.WITHDRAWAL || sourceObservedValue != null)
         }, sourceObservedValue)
         val destination = primary.account(ExtractionField.DESTINATION_ACCOUNT, defaults?.destination?.maskedNumber?.takeIf {
@@ -213,10 +216,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             if (amount == null || amount.amount.signum() <= 0) problem("MISSING_POSITIVE_PRINCIPAL")
             if (times.size != 1 && !receiptTime) problem("MISSING_TRANSACTION_TIME")
             if (family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) && card == null && account == null && destination == null) problem("MISSING_CARD_ROLE")
-            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) &&
+            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) &&
                 account == null && !(family == MessageFamily.BILL_PAYMENT && card != null)) problem("MISSING_SOURCE_ROLE")
         }
-        if (family == MessageFamily.CARD_PAYMENT && card == null) problem("MISSING_CARD_ROLE")
+        if (family in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP) && card == null) problem("MISSING_CARD_ROLE")
         if (family == MessageFamily.BILL_PAYMENT && details.biller == null) problem("MISSING_BILLER_ROLE")
         if (family == MessageFamily.FINANCING_INSTALLMENT && details.counterparty == null) problem("MISSING_FINANCING_ROLE")
         if (details.foreign != null && amount != null && details.foreign.currency == amount.currency && details.foreign != amount)
@@ -262,13 +265,13 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v16"
+        const val VERSION = "bank-rules-independent-v18"
         private const val MAX_BODY = 16000
         private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
         private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
-        private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
+        private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }
 }

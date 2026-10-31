@@ -359,6 +359,7 @@ class AppContainer(
             reviewRepository = reviewRepository,
             automaticWrite = { expected, write -> automaticInterpretationWriteGuard.write(expected,write) },
             confirmedLoanPayments = confirmedLoanPaymentsWorkflow,
+            cardRegistry = cardRegistryRepository,
         )
 
     val reviewQueueUpdater: ReviewQueueUpdater =
