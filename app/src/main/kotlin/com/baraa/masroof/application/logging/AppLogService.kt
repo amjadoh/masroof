@@ -37,7 +37,8 @@ class AppLogService(
         synchronized(lock) {
             entries.addLast(entry)
             pruneLocked()
-            rewriteDiskLocked()
+            // A full or broken disk must not crash callers; the entry stays in memory.
+            runCatching { rewriteDiskLocked() }
         }
     }
 
