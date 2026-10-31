@@ -485,6 +485,31 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun editingAnApprovedPatternKeepsApprovalOnlyWhenTheSameCheckPassesAgain() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            w.addBank(w.catalog().generation, "Edit bank", "EditBank", "EDIT_BANK")
+            val body = "Purchase\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            fun bind(vararg values: Pair<String, String>) = values.map { (field, value) ->
+                PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, "EDIT_BANK", "EditBank", PatternOperation.PURCHASE, body,
+                bind("amount" to "10SAR", "occurred_at" to "2026-10-15 12:30")))
+            val id = w.catalog().banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().id
+            val account = w.confirmPatternAccount("EDIT_BANK", "1234")
+            w.saveFinancial(w.previewFinancial(w.catalog().generation, "EDIT_BANK", id, PatternOperation.PURCHASE,
+                account.id, body, null, emptySet()))
+            val kept = w.saveTeaching(w.teach(w.load().generation, "EDIT_BANK", "EditBank", PatternOperation.PURCHASE, body,
+                bind("amount" to "10SAR", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30"), patternId = id))
+            val edited = kept.banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single()
+            assertEquals("1234", edited.factContract?.accountBindings?.single()?.last4)
+            assertTrue(edited.enabled)
+            // A different operation is a different financial meaning, so it always needs a fresh approval.
+            val changed = w.saveTeaching(w.teach(kept.generation, "EDIT_BANK", "EditBank", PatternOperation.REFUND, body,
+                bind("amount" to "10SAR", "occurred_at" to "2026-10-15 12:30"), patternId = id))
+            assertNull(changed.banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().factContract)
+        }
+    }
+
     @Test fun approvedGenericPatternPostsOnceAndNeverReparsesPostedOrManuallyDecidedEvidence() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow

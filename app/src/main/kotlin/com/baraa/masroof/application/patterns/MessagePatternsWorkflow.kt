@@ -135,7 +135,7 @@ class MessagePatternsWorkflow(
                 .getOrElse { if (auto.isEmpty()) throw it else build(bindings) to auto }
             PatternTeachingPreview(configuration.generation, pattern,
                 requireNotNull(pattern.copy(enabled = true).preview(bankId, sender, body)).fields.displayFields(),
-                fixed.map { PatternText(body.substring(it.start, it.end), it.start, it.end) })
+                fixed.map { PatternText(body.substring(it.start, it.end), it.start, it.end) }, body)
         }
     }
 
@@ -157,14 +157,20 @@ class MessagePatternsWorkflow(
         preview.pattern.copy(enabled = true).preview(preview.bankId, sender, body)?.fields?.displayFields()
     }
 
-    suspend fun saveTeaching(preview: PatternTeachingPreview) = withContext(ioDispatcher) {
-        accessGate.withRestore {
-            val current = store.load()
-            check(current.generation == preview.generation) { "Preview expired; review again" }
-            val bank = current.banks.single { it.bankId == preview.bankId }
-            require(preview.pattern.sender in bank.senders)
-            store.saveBank(preview.generation, bank.copy(patterns = listOf(preview.pattern)))
+    suspend fun saveTeaching(preview: PatternTeachingPreview): com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration {
+        val (saved, prior) = withContext(ioDispatcher) {
+            accessGate.withRestore {
+                val current = store.load()
+                check(current.generation == preview.generation) { "Preview expired; review again" }
+                val bank = current.banks.single { it.bankId == preview.bankId }
+                require(preview.pattern.sender in bank.senders)
+                val prior = bank.currentPatterns.singleOrNull { it.id == preview.patternId }?.factContract
+                store.saveBank(preview.generation, bank.copy(patterns = listOf(preview.pattern))) to prior
+            }
         }
+        // An edit keeps its approval only by passing the same full approval check again; the contract is never copied.
+        if (prior == null || activation == null || preview.body.isEmpty()) return saved
+        return activation.reapprove(saved.generation, preview.pattern, prior, preview.body) ?: saved
     }
 
     suspend fun setEnabled(generation: Long, bankId: String, patternId: String, enabled: Boolean) =
