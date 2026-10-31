@@ -65,6 +65,10 @@ class MultiBankLearningTest {
             val pending = requireNotNull(c.parsedEventRepository.findByRawSmsId("snb-loan-pending"))
             assertTrue(pending.event.confidence.reasons.toString(), "family_origin:HUMAN_TEMPLATE" in pending.event.confidence.reasons)
             assertEquals(2, c.financialTransactionRepository.listAll().size)
+            // Once refreshed with the current model, nothing is scheduled again (no refresh loop).
+            service.synchronizeFeedback()
+            assertTrue(c.reviewRepository.listRequired().none { review ->
+                c.parsedEventRepository.findByRawSmsId(review.rawSmsId)?.let(service::needsRefresh) == true })
 
             c.processRawSmsUseCase.ingest(raw("snb-loan-next", body(22, 298)))
             val next = requireNotNull(c.parsedEventRepository.findByRawSmsId("snb-loan-next"))
