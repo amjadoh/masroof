@@ -262,11 +262,9 @@ object AccountFlowClassifier {
     }
 
 
-    private fun isAccountContainer(containerId: String): Boolean =
-        containerId.startsWith("account:")
+    private fun isAccountContainer(containerId: String): Boolean = FinancialContainerIdParser.isAccountContainer(containerId)
 
-    private fun isCardContainer(containerId: String): Boolean =
-        containerId.startsWith("card:")
+    private fun isCardContainer(containerId: String): Boolean = FinancialContainerIdParser.isCardContainer(containerId)
 
     fun resolveBillPaymentTransactionIds(
         transactions: List<FinancialTransaction>,
