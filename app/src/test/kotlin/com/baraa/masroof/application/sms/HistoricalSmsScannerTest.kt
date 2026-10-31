@@ -130,13 +130,13 @@ class HistoricalSmsScannerTest {
         var coverage = 0
         val scanner = HistoricalSmsScanner(FakeSmsDataSource(rows),
             batchProcessor(RoomRawSmsRepository(db.rawSmsDao()), registry), coverageCompleted = { _, _ -> coverage++ })
-        val result = scanner.scan(bankScope = Bank.BANK_ALJAZIRA)
+        val result = scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA))
         assertEquals(1, result.reviewRequired)
         assertEquals(1, result.notRelevant)
         assertEquals(0, result.parsed)
         assertEquals(1, db.rawSmsDao().count())
         assertEquals(0, coverage)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
         assertEquals(1, db.rawSmsDao().count())
     }
 
@@ -144,11 +144,11 @@ class HistoricalSmsScannerTest {
         val source = FakeSmsDataSource(listOf(InboxRow.Valid(ProviderSmsRecord(
             "scoped-purchase", "AlJazira", purchaseBody(), Instant.parse("2026-08-01T10:00:00Z")))))
         val scanner = HistoricalSmsScanner(source, batchProcessor)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).parsed)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).parsed)
         val repository = RoomParsedEventRepository(db.parsedEventDao())
         val original = repository.listAll()
         assertEquals(1, original.size)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
         assertEquals(original, repository.listAll())
     }
 
@@ -156,7 +156,7 @@ class HistoricalSmsScannerTest {
         var queried = false
         val scanner = HistoricalSmsScanner(FakeSmsDataSource(emptyList(), onQuery = { queried = true }), batchProcessor)
         try {
-            scanner.scan(bankScope = Bank("NOT_REGISTERED"))
+            scanner.scan(bankScopes = setOf(Bank("NOT_REGISTERED")))
             org.junit.Assert.fail("Unsupported bank must be rejected")
         } catch (_: IllegalArgumentException) { }
         assertEquals(false, queried)

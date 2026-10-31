@@ -66,12 +66,10 @@ class HistoricalSmsScanner(
      * Unattributed suspicions remain the responsibility of the full inbox scan.
      * Scoped scans never certify whole-inbox analysis coverage.
      */
-    suspend fun scan(receivedAfter: Instant? = null, bankScope: Bank? = null,
-        receivedBefore: Instant? = null, bankScopes: Set<Bank>? = null): SmsScanResult = withContext(ioDispatcher) {
+    suspend fun scan(receivedAfter: Instant? = null, receivedBefore: Instant? = null,
+        bankScopes: Set<Bank>? = null): SmsScanResult = withContext(ioDispatcher) {
         require(receivedAfter == null || receivedBefore == null || receivedAfter < receivedBefore)
-        require(bankScope == null || bankScopes == null)
-        val scopes = bankScopes ?: bankScope?.let(::setOf)
-        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, scopes) }
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, bankScopes) }
     }
 
     private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?): SmsScanResult {
