@@ -276,7 +276,7 @@ class ReviewWorkflowService(
                 val sourceContainerId = FinancialContainerIdFactory.accountId(sourceRef)
                     ?: return ReviewWorkflowResult.Rejected("source_not_durable")
                 Triple(
-                    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+                    transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, event.destinationAccountRef),
                     sourceContainerId,
                     event.destinationAccountRef?.let(FinancialContainerIdFactory::accountId),
                 )
@@ -291,13 +291,16 @@ class ReviewWorkflowService(
                 val destContainerId = FinancialContainerIdFactory.accountId(destRef)
                     ?: return ReviewWorkflowResult.Rejected("destination_not_durable")
                 Triple(
-                    FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+                    transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_IN, event.sourceAccountRef),
                     event.sourceAccountRef?.let(FinancialContainerIdFactory::accountId),
                     destContainerId,
                 )
             }
 
             else -> return ReviewWorkflowResult.Rejected("not_a_transfer")
+        }
+        if (type == FinancialTransactionType.SELF_TRANSFER && sourceId == destId) {
+            return ReviewWorkflowResult.Rejected("same_transfer_account")
         }
 
         val (occurredAt, occurredAtZone) = resolvedTransactionTime(
@@ -330,6 +333,23 @@ class ReviewWorkflowService(
             }
         }
     }
+
+    /** True when resolving this transfer review records a movement between two owned accounts. */
+    suspend fun transferResolvesBetweenOwnAccounts(rawSmsId: String): Boolean {
+        val event = effectiveParsedEventProvider.findEffectiveByRawSmsId(rawSmsId)?.event ?: return false
+        val counterpart = when (event.messageFamily) {
+            MessageFamily.TRANSFER_OUT -> event.destinationAccountRef
+            MessageFamily.TRANSFER_IN -> event.sourceAccountRef
+            else -> return false
+        }
+        return transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, counterpart) == FinancialTransactionType.SELF_TRANSFER
+    }
+
+    /** Money moving to or from another owned account leaves one account and enters the other; it is never spending or income. */
+    private suspend fun transferTypeFor(external: FinancialTransactionType, counterpart: AccountReference?) =
+        if (counterpart != null && FinancialContainerIdFactory.accountId(counterpart) != null &&
+            ownershipResolver.resolveAccount(counterpart) == OwnershipStatus.OWNED) FinancialTransactionType.SELF_TRANSFER
+        else external
 
     suspend fun resolveSelfTransferPair(
         outgoingReviewId: String,

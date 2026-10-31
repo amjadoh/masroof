@@ -134,6 +134,7 @@ internal fun patternApprovalProblemText(problem: PatternApprovalProblem): Int = 
     PatternApprovalProblem.INVALID_AMOUNT -> R.string.pattern_approval_error_amount
     PatternApprovalProblem.INVALID_TIME -> R.string.pattern_approval_error_time
     PatternApprovalProblem.PATTERN_CONFLICT -> R.string.pattern_approval_error_conflict
+    PatternApprovalProblem.MESSAGE_CONTEXT_CONFLICT -> R.string.pattern_approval_error_message_context
     PatternApprovalProblem.NON_FINANCIAL -> R.string.pattern_approval_error_non_financial
     PatternApprovalProblem.CONFIGURATION_CHANGED -> R.string.pattern_approval_error_changed
     PatternApprovalProblem.VALIDATION -> R.string.pattern_financial_blocked
