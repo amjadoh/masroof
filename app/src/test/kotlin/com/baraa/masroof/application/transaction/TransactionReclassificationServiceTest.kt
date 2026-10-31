@@ -107,6 +107,19 @@ class TransactionReclassificationServiceTest {
         assertEquals(txId,decision.resolvedTransactionId)
     }
 
+    @Test fun moneyFromAnotherOwnedAccountIsATransferBetweenMyAccounts() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3002"))
+        persistIncomeTransfer(smsId = "sms-own", counterparty = "ME", amount = "100.00",
+            source = AccountReference(Bank.BANK_ALJAZIRA, "3002"))
+        val txId = TransactionIdFactory.fromRawSmsIds(listOf("sms-own"))
+        assertTrue(service.reclassify(txId, FinancialTransactionType.EXTERNAL_TRANSFER_IN) is ReclassificationResult.Success)
+        val updated = ftRepo.getById(txId)!!
+        assertEquals(FinancialTransactionType.SELF_TRANSFER, updated.type)
+        assertEquals(FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3002"), updated.sourceContainerId)
+        assertEquals(FinancialContainerIdFactory.accountId(Bank.BANK_ALJAZIRA, "3001"), updated.destinationContainerId)
+    }
+
     @Test fun decisionWriteFailureRollsBackTheFinancialEdit() = runBlocking {
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA,"3001"))
         persistIncomeTransfer(smsId="atomic-edit",counterparty="TEST",amount="100.00")
@@ -239,7 +252,8 @@ class TransactionReclassificationServiceTest {
         assertEquals(FinancialTransactionSaveResult.Saved, ftRepo.save(tx, listOf(smsId)))
     }
 
-    private suspend fun persistIncomeTransfer(smsId: String, counterparty: String, amount: String) {
+    private suspend fun persistIncomeTransfer(smsId: String, counterparty: String, amount: String,
+        source: AccountReference = AccountReference(Bank.UNKNOWN, "9999")) {
         val body = "transfer-$smsId"
         rawRepo.insertIfAbsent(
             RawSms(
@@ -260,7 +274,7 @@ class TransactionReclassificationServiceTest {
             parseStatus = ParseStatus.SUCCESS,
             amount = Money.of(amount, Currency.SAR),
             occurredAt = Instant.parse("2026-08-02T10:00:00Z"),
-            sourceAccountRef = AccountReference(Bank.UNKNOWN, "9999"),
+            sourceAccountRef = source,
             destinationAccountRef = AccountReference(Bank.BANK_ALJAZIRA, "3001"),
             cardRef = null,
             purchaseChannel = null,

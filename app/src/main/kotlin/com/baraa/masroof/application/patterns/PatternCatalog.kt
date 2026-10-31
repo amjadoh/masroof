@@ -17,7 +17,10 @@ data class PatternDefinitionView(val id: String, val bankId: String, val label: 
     val priorRevisions: List<Int>, val approval: PatternApprovalSettings? = null, val sender: String = "",
     val messageTemplate: String = example) {
     val canApprove: Boolean get() = status != PatternApprovalStatus.BUNDLED
-    val canEdit: Boolean get() = PatternOperation.entries.any { it.name == label }
+    // Editing teaches a new template under the same id, which would silently replace a bundled role rule.
+    val canEdit: Boolean get() = status != PatternApprovalStatus.BUNDLED && PatternOperation.entries.any { it.name == label }
+    /** Movements whose fields cover everything this template captures. */
+    val operations: List<PatternOperation> get() = PatternOperation.entries.filter { operation -> fields.all { it in operation.fields } }
     val canApply: Boolean get() = enabled && status != PatternApprovalStatus.PREVIEW_ONLY
     val referenceFields: List<String> get() = fields.filter {
         it in setOf("source_account", "destination_account", "account_reference", "funding_reference", "counterparty_bank")
