@@ -70,9 +70,9 @@ class PatternCurrentMessageJourneyTest {
             click(R.string.pattern_preview)
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
             click(R.string.pattern_save)
-            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.teaching_saved_title)).fetchSemanticsNodes().isNotEmpty() }
+            // From Review, saving opens the financial approval directly.
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-financial-save").fetchSemanticsNodes().isNotEmpty() }
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
-            click(R.string.pattern_financial_approve)
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
             // A taught pattern starts off; financial approval is the gate that switches it on.
