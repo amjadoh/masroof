@@ -54,8 +54,13 @@ class AutomaticPatternWriteGuardTest {
             assertFalse(policy.isCurrent(record))
             store.restoreRaw(com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.encode(snapshot))
             assertTrue(policy.isCurrent(record))
-            store.saveBank(snapshot.generation, definition.copy(patterns = listOf(purchase.copy(revision = 2, enabled = false))))
+            // A posted leg survives an unrelated save or a new enabled revision, but not a disable.
+            val next = store.saveBank(snapshot.generation, definition.copy(patterns = listOf(purchase.copy(revision = 2))))
             assertFalse(policy.isCurrent(record))
+            assertTrue(policy.isCurrent(record, posted = true))
+            store.saveBank(next.generation, definition.copy(patterns = listOf(purchase.copy(revision = 3, enabled = false))))
+            assertFalse(policy.isCurrent(record))
+            assertFalse(policy.isCurrent(record, posted = true))
         } finally { directory.deleteRecursively() }
     }
 
@@ -86,7 +91,7 @@ class AutomaticPatternWriteGuardTest {
             val guard = AutomaticInterpretationWriteGuard(effective, RoomReviewRepository(db.reviewItemDao()),
                 RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()), { true },
                 { work -> gate.withAccess { db.withTransaction { work() } } },
-                patternsCurrent = { check(db.inTransaction()); policy.isCurrent(it) })
+                patternsCurrent = { record, posted -> check(db.inTransaction()); policy.isCurrent(record, posted) })
             block(store, gate, requireNotNull(effective.findEffectiveByRawSmsId(input.evidenceId)), guard, effective, corrections)
         } finally { db.close(); directory.deleteRecursively() }
     }
