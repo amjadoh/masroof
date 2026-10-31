@@ -24,7 +24,7 @@
     <string name="teaching_saved_title">Pattern saved for preview</string>
     <string name="teaching_saved_scope">Saving alone posts nothing. Approve the pattern to switch it on, then apply it to matching messages.</string>
     <string name="teaching_fixed_values">These values stay fixed in the pattern: %1$s. Use “Ignore value” on any that change between messages.</string>
-    <string name="teaching_edit_resets_approval">Editing fields clears financial approval; approve the pattern again after saving.</string>
+    <string name="teaching_edit_resets_approval">After saving, the pattern is checked again with its previous approval settings. If the check passes it stays approved; otherwise approve it again.</string>
     <string name="teaching_return_review">Return to message review</string>
     <string name="teaching_saved_patterns">Patterns</string>
     <string name="teaching_review_title">Help me understand this message</string>

@@ -106,7 +106,14 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
                 teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
-                work { snapshot = workflow.catalog() }
+                work {
+                    val catalog = workflow.catalog()
+                    snapshot = catalog
+                    val saved = catalog.banks.flatMap { it.currentPatterns }.singleOrNull { it.id == preview.patternId }
+                    // An edit that passed its prior approval again stays approved; a fresh pattern from Review goes straight to approval.
+                    if (saved?.status == PatternApprovalStatus.APPROVED) { savedTeaching = false; savedApproval = true }
+                    else if (source != null && workflow.canApprove && saved?.canApprove == true) approving = true
+                }
             }, onReload = { work { snapshot = workflow.catalog() } },
             onBack = { if (source != null && editingPattern == null) onBack() else { teaching = false; editingPattern = null } },
             existingPattern = editingPattern, initialBody = editingBody)

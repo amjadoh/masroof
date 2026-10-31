@@ -231,8 +231,9 @@ class PatternProcessingMilestoneTest {
             val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
             w.saveTeaching(taught)
             approveBarqOut(w, taught.pattern.id)
-            w.saveTeaching(w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
-                bindings(barqOut, barqOutFields), taught.pattern.id))
+            // A different operation never keeps its approval, so the current revision is unapproved.
+            w.saveTeaching(w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.BILL_PAYMENT, barqOut,
+                bindings(barqOut, barqOutFields.filter { it.first != "destination_account" }), taught.pattern.id))
             val restored = w.restoreRevision(w.catalog().generation, "BANK_BARQ", taught.pattern.id, 2).toCatalog()
                 .banks.single { it.bankId == "BANK_BARQ" }.currentPatterns.single { it.id == taught.pattern.id }
             assertEquals(PatternApprovalStatus.PREVIEW_ONLY, restored.status)
@@ -606,6 +607,31 @@ class PatternProcessingMilestoneTest {
             assertEquals(ReviewStatus.RESOLVED, c.reviewRepository.findByRawSmsId("pending")!!.status)
             assertTrue(c.processRawSmsUseCase.ingest(sms("different", incoming.replace("321", "322"))) is SmsIngestionResult.ReviewRequired)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
+        }
+    }
+
+    @Test fun editingAnApprovedPatternKeepsApprovalOnlyWhenTheSameCheckPassesAgain() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            w.addBank(w.catalog().generation, "Edit bank", "EditBank", "EDIT_BANK")
+            val body = "Purchase\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            fun bind(vararg values: Pair<String, String>) = values.map { (field, value) ->
+                PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, "EDIT_BANK", "EditBank", PatternOperation.PURCHASE, body,
+                bind("amount" to "10SAR", "occurred_at" to "2026-10-15 12:30")))
+            val id = w.catalog().banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().id
+            val account = w.confirmPatternAccount("EDIT_BANK", "1234")
+            w.saveFinancial(w.previewFinancial(w.catalog().generation, "EDIT_BANK", id, PatternOperation.PURCHASE,
+                account.id, body, null, emptySet()))
+            val kept = w.saveTeaching(w.teach(w.load().generation, "EDIT_BANK", "EditBank", PatternOperation.PURCHASE, body,
+                bind("amount" to "10SAR", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30"), patternId = id))
+            val edited = kept.banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single()
+            assertEquals("1234", edited.factContract?.accountBindings?.single()?.last4)
+            assertTrue(edited.enabled)
+            // A different operation is a different financial meaning, so it always needs a fresh approval.
+            val changed = w.saveTeaching(w.teach(kept.generation, "EDIT_BANK", "EditBank", PatternOperation.REFUND, body,
+                bind("amount" to "10SAR", "occurred_at" to "2026-10-15 12:30"), patternId = id))
+            assertNull(changed.banks.single { it.bankId == "EDIT_BANK" }.currentPatterns.single().factContract)
         }
     }
 
