@@ -144,6 +144,23 @@ class AnalyticsPersistenceTest {
         assertEquals("-50.00", analysisAmount(s.actual).amount.toPlainString())
         assertEquals("-49.00", analysisAmount(s.total!!).amount.toPlainString())
     }
+    @Test fun backupAcceptsEveryRankedMerchantTheAnalysisStores() {
+        val base = snapshot()
+        val components = listOf("PURCHASES", "CASH", "TRANSFERS", "REFUNDS").map { kind ->
+            com.baraa.masroof.application.dashboard.AnalysisSpendingGroup(kind, if (kind == "PURCHASES") base.actual else 0, emptyList())
+        }
+        val merchants = (1..12).map { index ->
+            com.baraa.masroof.application.dashboard.AnalysisSpendingGroup("merchant:shop-$index", 100L * (13 - index), listOf("t$index"), "Shop $index")
+        }
+        fun archive(groups: List<com.baraa.masroof.application.dashboard.AnalysisSpendingGroup>): String {
+            val s = base.copy(insights = com.baraa.masroof.application.dashboard.AnalysisSpendingInsights(components, groups, null))
+            return AnalyticsJson.format.encodeToString(AnalyticsArchive(snapshots = listOf(
+                AnalysisSnapshotRow("merchants", s.sourceHash, s.issuedAt, AnalyticsJson.format.encodeToString(s)))))
+        }
+        AnalyticsBackup.validate(archive(merchants))
+        assertTrue(runCatching { AnalyticsBackup.validate(archive(merchants + merchants.first())) }.isFailure)
+        assertTrue(runCatching { AnalyticsBackup.validate(archive(listOf(merchants.first().copy(amount = 0)))) }.isFailure)
+    }
     @Test fun exportChecksTheCombinedFinancialAndAnalyticsSizeBeforeOpeningTheDestination() {
         val c = context()
         val directory = java.io.File(c.getDatabasePath("unused").parentFile, "export").apply { mkdirs() }
