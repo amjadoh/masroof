@@ -286,8 +286,12 @@ class BankInterpretationService(
         val required = reviews.listRequired()
         val records = parsed.listByRawSmsIds(required.map { it.rawSmsId })
         val models = classifiers.orEmpty()
-        val candidates = records.filter { it.event.bank.id != SEED_BANK && it.event.bank.id in models && it.event.parseStatus.name != "SUCCESS" &&
-            it.event.confidence.reasons.none { reason -> reason.startsWith("family_origin:") } }
+        // Rules ask for a family only when they found none; a message already read with this model is never re-read,
+        // otherwise a suggestion the rules cannot use would refresh the same message forever.
+        val candidates = records.filter { record -> val bank = record.event.bank.id
+            bank != SEED_BANK && bank in models && record.event.parseStatus.name != "SUCCESS" &&
+                record.event.messageFamily.name == "UNKNOWN" &&
+                store.history(record.event.rawSmsId).lastOrNull()?.activeModelVersion != models.getValue(bank).version }
         val bodies = raw.getByIds(candidates.map { it.event.rawSmsId }.toSet()).associateBy { it.id }
         assistable = candidates.filter { record -> bodies[record.event.rawSmsId]?.body?.let { body ->
             FamilyAssistBridge.suggest(models[record.event.bank.id], record.event.bank.id, body,
