@@ -198,7 +198,6 @@ object CreditFacilityOverviewBuilder {
         CreditCardDashboardRow(
             bank = entry.bank,
             last4 = entry.last4,
-            calendarMonthSpendingNet = SignedMoneyAmount.zero(overview.currency),
             statementSpendingNet = SignedMoneyAmount.zero(overview.currency),
             salaryPeriodSpendingNet = SignedMoneyAmount.zero(overview.currency),
             statementPeriodLabel = null,

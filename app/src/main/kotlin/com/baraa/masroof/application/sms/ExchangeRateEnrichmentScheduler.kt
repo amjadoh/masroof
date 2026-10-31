@@ -2,9 +2,11 @@ package com.baraa.masroof.application.sms
 
 import android.content.Context
 import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
@@ -85,6 +87,8 @@ class WorkManagerExchangeRateEnrichmentScheduler(
 
         fun workRequest(): OneTimeWorkRequest =
             OneTimeWorkRequestBuilder<ExchangeRateEnrichmentWorker>()
+                // Market rates need the network; an offline pass would persist nothing and never retry.
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
                 .addTag(WORK_TAG)
                 .build()
