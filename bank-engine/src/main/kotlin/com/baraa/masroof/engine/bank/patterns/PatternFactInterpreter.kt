@@ -165,7 +165,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             val match = MONEY.matchEntire(raw)
             val number = match?.groups?.get(1)?.value ?: match?.groups?.get(4)?.value
             val currencyText = match?.groups?.get(2)?.value ?: match?.groups?.get(3)?.value
-            val observedCurrency = currencyText?.let { if (it == "sr") Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
+            val observedCurrency = currencyText?.let { if (it == "sr" || it.startsWith("ر")) Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
             val declaredCurrency = contract.currency.takeIf { field == "amount" }
             if (observedCurrency != null && declaredCurrency != null && observedCurrency != declaredCurrency) {
                 block("PATTERN_CURRENCY_CONFLICT"); return null
@@ -228,7 +228,8 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
 
     companion object {
         private val DECIMAL = Regex("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?")
-        private val MONEY = Regex("(?:(${DECIMAL.pattern}) *(sar|sr|usd|eur|gbp)|(sar|sr|usd|eur|gbp) *(${DECIMAL.pattern}))")
+        private const val CURRENCY = "sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?"
+        private val MONEY = Regex("(?:(${DECIMAL.pattern}) *($CURRENCY)|($CURRENCY) *(${DECIMAL.pattern}))")
         private val SUFFIX = Regex("[0-9]{4}")
         private val NEUTRAL_REFERENCES = setOf("account_reference", "funding_reference", "counterparty_bank")
         private val SUPPORTED_FIELDS = setOf("amount", "merchant", "counterparty", "biller", "biller_code", "reference",

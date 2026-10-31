@@ -110,10 +110,9 @@ class PatternProcessingMilestoneTest {
             assertTrue(runCatching { w.saveFinancial(preview) }.isFailure)
             c.settingsRegistryWorkflow.confirmCardOwned(ref)
             val approved = w.saveFinancial(preview)
-            // A taught pattern starts off: approval alone posts nothing until it is switched on.
-            assertEquals(0, w.applyPending(bankId, approved.generation).posted)
-            val active = w.setEnabled(approved.generation, bankId, patternId, true)
-            assertEquals(1, w.applyPending(bankId, active.generation).posted)
+            // A taught pattern starts off; financial approval switches it on.
+            assertTrue(approved.banks.single { it.bankId == bankId }.currentPatterns.single().enabled)
+            assertEquals(1, w.applyPending(bankId, approved.generation).posted)
             assertTrue(c.accountRegistryRepository.listAll().none { it.bank.id == bankId })
             assertEquals(ref, c.parsedEventRepository.findByRawSmsId("card-pending")?.event?.cardRef)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
@@ -297,9 +296,11 @@ class PatternProcessingMilestoneTest {
                 w.saveTeaching(taught)
                 w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", taught.pattern.id,
                     PatternOperation.TRANSFER_OUT, account.id, body, null, setOf("account_reference")))
+                // Approval switches a pattern on and rejects an overlap with an active one; switch it off so the twin can be approved.
+                w.setEnabled(w.catalog().generation, "BANK_BARQ", taught.pattern.id, false)
                 taught.pattern.id
             }
-            // Approval rejects an overlap with an active pattern, but two approved while off can both be switched on.
+            // Two approved while off can both be switched on; the overlap is then reported, never resolved by guessing.
             ids.forEach { w.setEnabled(w.catalog().generation, "BANK_BARQ", it, true) }
             val report = w.previewPending("BANK_BARQ", w.catalog().generation)
             assertEquals(PendingPatternStatus.PATTERN_CONFLICT, report.rows.single().status)

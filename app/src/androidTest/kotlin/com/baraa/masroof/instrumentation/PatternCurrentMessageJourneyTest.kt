@@ -25,6 +25,8 @@ import org.junit.Test
 import java.time.Instant
 
 class PatternCurrentMessageJourneyTest {
+    // The prefilled selection repeats the value as text, so a chip is found by its span.
+    private fun candidateTag(body: String, value: String) = body.indexOf(value).let { "pattern-candidate-$it-${it + value.length}" }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun ar(id: Int) = AppLocaleContext.wrap(compose.activity, "ar").getString(id)
     private fun click(id: Int) {
@@ -59,11 +61,11 @@ class PatternCurrentMessageJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
             click(R.string.teaching_next)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("10SAR").performScrollTo().performClick()
+            compose.onNodeWithTag(candidateTag(body, "10SAR")).performScrollTo().performClick()
             compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.teaching_skip_field)
             click(R.string.teaching_skip_field)
-            compose.onNodeWithText("2026-10-15 12:30").performScrollTo().performClick()
+            compose.onNodeWithTag(candidateTag(body, "2026-10-15 12:30")).performScrollTo().performClick()
             compose.onNodeWithTag("pattern-bind").performClick()
             click(R.string.pattern_preview)
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
@@ -73,12 +75,9 @@ class PatternCurrentMessageJourneyTest {
             click(R.string.pattern_financial_approve)
             compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
-            // A taught pattern starts off; approval alone does not let it post until it is switched on.
+            // A taught pattern starts off; financial approval is the gate that switches it on.
             compose.waitUntil(10_000) { runBlocking { w.load().banks.single { it.bankId == "UI_BANK" }.currentPatterns.single().factContract != null } }
-            compose.onNodeWithTag("pattern-apply-current").assertDoesNotExist()
-            val taughtId = w.load().banks.single { it.bankId == "UI_BANK" }.currentPatterns.single().id
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-toggle-UI_BANK-$taughtId").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("pattern-toggle-UI_BANK-$taughtId").performScrollTo().performClick()
+            assertTrue(w.load().banks.single { it.bankId == "UI_BANK" }.currentPatterns.single().enabled)
             try {
                 compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-apply-current").fetchSemanticsNodes().isNotEmpty() }
             } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {

@@ -185,6 +185,7 @@ data class SettingsUiState(
     val cardTypeSuggestion: CardType? = null,
     val reparsingStored: Boolean = false,
     val importingSms: Boolean = false,
+    val importScanned: Int = 0,
     val smsPermissionGranted: Boolean = true,
     val exportingBackup: Boolean = false,
     val importingBackup: Boolean = false,

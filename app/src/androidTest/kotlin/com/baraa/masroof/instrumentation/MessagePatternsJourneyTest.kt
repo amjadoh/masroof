@@ -26,6 +26,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MessagePatternsJourneyTest {
+    // The prefilled selection repeats the value as text, so a chip is found by its span.
+    private fun candidateTag(body: String, value: String) = body.indexOf(value).let { "pattern-candidate-$it-${it + value.length}" }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun teachPreviewSaveAndDisableInArabic() = runBlocking {
@@ -47,7 +49,7 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:10SAR\nTo:SHOP")
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("10SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag("Payment\nAmount:10SAR\nTo:SHOP", "10SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         click(R.string.teaching_try_another)
@@ -111,7 +113,7 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithTag("pattern-body").assertRejectsTextEdits(source.body)
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("73SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag(source.body, "73SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
@@ -171,7 +173,14 @@ class MessagePatternsJourneyTest {
             compose.onNodeWithContentDescription(ar(R.string.settings_back)).performClick()
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-toggle-STC-purchase").performScrollTo().performClick()
-            compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
+            compose.waitUntil(10_000) { !store.load().banks.single().currentPatterns.single().enabled }
+            // Back is ignored while the screen is still busy saving the switch; retry until the bank page shows.
+            compose.waitUntil(10_000) {
+                val onBankPage = compose.onAllNodesWithText(ar(R.string.pattern_pending_title)).fetchSemanticsNodes().isNotEmpty()
+                if (!onBankPage) compose.onAllNodesWithContentDescription(ar(R.string.teaching_saved_patterns)).fetchSemanticsNodes()
+                    .firstOrNull()?.let { compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick() }
+                onBankPage
+            }
             click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)

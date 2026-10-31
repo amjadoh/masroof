@@ -436,9 +436,9 @@ class SettingsViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(importingSms = true, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
+            _uiState.update { it.copy(importingSms = true, importScanned = 0, scopedSmsImportResult = null, scopedSmsImportFailed = false) }
             try {
-                val result = workflow.import(bankIds, from, through)
+                val result = workflow.import(bankIds, from, through) { scanned -> _uiState.update { it.copy(importScanned = scanned) } }
                 _uiState.update { it.copy(scopedSmsImportResult = result) }
                 val snapshot = settingsRegistryWorkflow.loadSnapshot()
                 applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
@@ -571,6 +571,8 @@ class SettingsViewModel(
         checkForUpdates(silent = silent)
     }
 
+    fun logExportText(): String = appLogService.exportText()
+
     fun exportLogs(uri: Uri) {
         viewModelScope.launch {
             _uiState.update { it.copy(exportingLogs = true, logMessage = null) }
@@ -583,7 +585,8 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                appLogService.failure(AppLogCategories.LOGS, "Log export", e)
                 _uiState.update {
                     it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_FAILED)
                 }

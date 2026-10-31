@@ -15,5 +15,5 @@ object TransactionAmountResolver {
     }
 
     fun isCreditCardContainer(containerId: String?): Boolean =
-        containerId?.startsWith("card:") == true
+        com.baraa.masroof.domain.ids.FinancialContainerIdParser.isCardContainer(containerId)
 }

@@ -99,7 +99,14 @@ internal fun PatternTeachingScreen(
         finally { loadingExample = false }
     }
     LaunchedEffect(step, fieldIndex) {
-        if (step == 1) body = body.copy(selection = bindings.singleOrNull { it.field == field }?.let { TextRange(it.start, it.end) } ?: TextRange.Zero)
+        if (step != 1) return@LaunchedEffect
+        val bound = bindings.singleOrNull { it.field == field }
+        val kinds = when (field) { "amount" -> listOf("MONEY"); "occurred_at" -> listOf("DATE_TIME", "DATE"); else -> emptyList() }
+        // Offer the first unbound money/date value so the common fields only need a confirmation tap.
+        val suggested = kinds.firstNotNullOfOrNull { kind -> candidates.firstOrNull { candidate ->
+            candidate.kind == kind && bindings.none { it.start < candidate.end && candidate.start < it.end }
+        } }
+        body = body.copy(selection = bound?.let { TextRange(it.start, it.end) } ?: suggested?.let { TextRange(it.start, it.end) } ?: TextRange.Zero)
     }
     LaunchedEffect(generation) { preview = null; if (step >= 2) step = 1 }
     BackHandler { back() }
@@ -139,6 +146,7 @@ internal fun PatternTeachingScreen(
                             when (step) {
                                 0 -> {
                                     Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.titleMedium)
+                                    if (existingPattern?.status == PatternApprovalStatus.APPROVED) MasroofHintBox(stringResource(R.string.teaching_edit_resets_approval))
                                     if (bank.senders.size > 1) PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it] }
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
                                         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
@@ -154,6 +162,8 @@ internal fun PatternTeachingScreen(
                                     }
                                 }
                                 2 -> preview?.let { reviewed ->
+                                    if (reviewed.fixedValues.isNotEmpty()) MasroofHintBox(stringResource(R.string.teaching_fixed_values,
+                                        reviewed.fixedValues.joinToString(" · ") { it.text }))
                                     PatternTeachingReview(reviewed) { key ->
                                         bindings = bindings.filterNot { it.field == key }; preview = null
                                         fieldIndex = operation.fields.indexOf(key).coerceAtLeast(0); step = 1

@@ -458,8 +458,10 @@ class DashboardViewModel(
                 if (period != activePeriod) {
                     return@launch
                 }
+                val tag = languageTag
+                val formatter = dateFormatter
                 val previews = overview.transactions.map { tx ->
-                    toPreview(tx = tx, facts = overview.transactionFacts[tx.id])
+                    toPreview(tx = tx, facts = overview.transactionFacts[tx.id], tag = tag, formatter = formatter)
                 }
                 val (loadedLabel, loadedHint) = periodPresentation(overview.period)
                 _uiState.update {
@@ -498,8 +500,8 @@ class DashboardViewModel(
                 _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
-                appLogService?.error(AppLogCategories.DASHBOARD, "Dashboard load failed for period ${period.startDate}")
+            } catch (e: Exception) {
+                appLogService?.failure(AppLogCategories.DASHBOARD, "Dashboard load for period ${period.startDate}", e)
                 if (period != activePeriod) {
                     return@launch
                 }
@@ -519,6 +521,8 @@ class DashboardViewModel(
     private fun toPreview(
         tx: FinancialTransaction,
         facts: DashboardTransactionFacts?,
+        tag: String = languageTag,
+        formatter: DateTimeFormatter = dateFormatter,
     ): TransactionPreviewUi {
         val title = tx.merchant?.takeIf { it.isNotBlank() }
             ?: tx.counterparty?.takeIf { it.isNotBlank() }
@@ -533,8 +537,8 @@ class DashboardViewModel(
             title = title,
             amount = tx.amount,
             localDate = localDate,
-            amountLabel = MoneyUiFormatter.format(tx.amount, languageTag),
-            dateLabel = dateFormatter.format(localDate),
+            amountLabel = MoneyUiFormatter.format(tx.amount, tag),
+            dateLabel = formatter.format(localDate),
             type = tx.type,
             typeLabelResHint = effectiveType,
             direction = TransactionTypePresentation.direction(effectiveType),

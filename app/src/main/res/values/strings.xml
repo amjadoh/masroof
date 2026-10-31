@@ -15,6 +15,7 @@
     <string name="onboarding_date_last_27">من آخر يوم 27</string>
     <string name="onboarding_start_import">بدء الاستيراد</string>
     <string name="onboarding_import_scanning">جاري فحص الرسائل…</string>
+    <string name="onboarding_import_scanning_count">جاري فحص الرسائل… %1$d رسالة حتى الآن</string>
     <string name="onboarding_import_done">اكتمل الاستيراد</string>
     <string name="onboarding_import_counts">تم فحص %1$d • محلّل %2$d • مكرر %3$d • فشل %4$d • خارج البنوك المحددة %5$d</string>
     <string name="onboarding_import_empty_inbox">لم يُعثر على رسائل في الفترة المحددة. جرّب تاريخًا أقدم.</string>
@@ -259,6 +260,16 @@
     <string name="settings_log_category_update">تحديث</string>
     <string name="settings_log_category_logs">سجل</string>
     <string name="settings_logs_export">تصدير السجل</string>
+    <string name="settings_logs_share">مشاركة السجل</string>
+    <string name="settings_show_guide_title">عرض الإرشاد مرة أخرى</string>
+    <string name="settings_show_guide_subtitle">يظهر دليل البداية فوق الصفحة الرئيسية مرة واحدة.</string>
+    <string name="home_guide_title">مرحبًا بك في مصروف</string>
+    <string name="home_guide_dashboard">• الرئيسية: ملخص مصاريفك ودخلك لكل فترة راتب. اسحب للأسفل للتحديث.</string>
+    <string name="home_guide_review">• المراجعة: الرسائل التي لم يفهمها مصروف تنتظرك هنا؛ صحّحها أو علّمه نمطها.</string>
+    <string name="home_guide_teach">• التعليم: من أي رسالة في المراجعة اختر «علّم مصروف هذه الرسالة»، ثم اعتمد النمط ليعمل تلقائيًا.</string>
+    <string name="home_guide_dismiss">فهمت</string>
+    <string name="settings_report_problem_title">الإبلاغ عن مشكلة</string>
+    <string name="settings_report_problem_subtitle">يفتح صفحة بلاغ على GitHub مع بيانات الإصدار والجهاز. شارك السجل معه إن لزم.</string>
     <string name="settings_logs_clear">مسح السجل</string>
     <string name="settings_logs_clear_confirm_title">مسح سجل التطبيق؟</string>
     <string name="settings_logs_clear_confirm_body">لا يمكن التراجع عن هذا الإجراء.</string>

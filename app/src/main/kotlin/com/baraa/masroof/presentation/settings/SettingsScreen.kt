@@ -57,6 +57,7 @@ fun SettingsRoute(
     onRequestSmsPermission: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
     onOpenReviewExample: (String) -> Unit = { onOpenReview() },
+    onShowGuideAgain: () -> Unit = {},
     onOpenAccounts: (() -> Unit)? = null,
 ) {
     LaunchedEffect(Unit) {
@@ -369,6 +370,7 @@ fun SettingsRoute(
 
         SettingsDestination.About -> SettingsAboutScreen(
             appVersion = state.appVersion,
+            onShowGuideAgain = onShowGuideAgain,
             bankCatalog = state.bankCatalog,
             onOpenBanks = { navigateTo(SettingsDestination.Banks) },
             isNightlyBuild = state.isNightlyBuild,

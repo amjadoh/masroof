@@ -104,6 +104,7 @@ class OnboardingViewModel(
                 it.copy(
                     permissionGranted = permissionGranted,
                     onboardingCompleted = completed,
+                    homeGuideSeen = onboardingPrefs.isHomeGuideSeen(),
                     selectedImportDate = selectedDate,
                     importThroughDate = through ?: today,
                     bankCatalog = catalog, selectedBankIds = selected, banksConfirmed = confirmed, loadingBanks = false,
@@ -404,9 +405,10 @@ class OnboardingViewModel(
 
                 onboardingPrefs.setHistoricalImportStartEpochMillis(startInstant.toEpochMilli())
                 onboardingPrefs.setHistoricalImportCompleted(false)
-                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, error = null) }
+                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, importScanned = 0, error = null) }
 
-                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through))
+                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through,
+                    onProgress = { scanned -> _uiState.update { it.copy(importScanned = scanned) } }))
                 val state = result.toImportState()
                 _uiState.update { it.copy(importState = state) }
 
@@ -537,7 +539,12 @@ class OnboardingViewModel(
     }
 
     fun enterApp() {
-        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME) }
+        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME, homeGuideSeen = onboardingPrefs.isHomeGuideSeen()) }
+    }
+
+    fun setHomeGuideSeen(seen: Boolean) {
+        onboardingPrefs.setHomeGuideSeen(seen)
+        _uiState.update { it.copy(homeGuideSeen = seen) }
     }
 
     private suspend fun loadCandidatesAndCounts() {

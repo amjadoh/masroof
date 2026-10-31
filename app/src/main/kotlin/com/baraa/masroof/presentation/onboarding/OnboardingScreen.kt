@@ -444,7 +444,8 @@ private fun ImportingStep(modifier: Modifier, state: OnboardingUiState, onRetry:
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(Modifier.size(MasroofSpacing.sectionHeaderGap))
-                    Text(stringResource(R.string.onboarding_import_scanning))
+                    Text(if (state.importScanned > 0) stringResource(R.string.onboarding_import_scanning_count, state.importScanned)
+                        else stringResource(R.string.onboarding_import_scanning))
                 }
             }
             is ImportState.Completed -> {
@@ -567,7 +568,7 @@ private fun OwnershipStep(
             }
         }
         item { MasroofSectionHeader(title = stringResource(R.string.settings_bank_accounts_title), icon = MasroofIcons.externalIn) }
-        items(state.accounts) { candidate ->
+        items(state.accounts, key = { "${it.bank.id}:${it.suffix}" }) { candidate ->
             CandidateCard(
                 candidate = candidate,
                 ownedLabel = stringResource(R.string.onboarding_is_mine_account),
@@ -578,7 +579,7 @@ private fun OwnershipStep(
             )
         }
         item { MasroofSectionHeader(title = stringResource(R.string.settings_bank_cards_title), icon = MasroofIcons.cardPayment) }
-        items(state.cards) { candidate ->
+        items(state.cards, key = { "${it.bank.id}:${it.suffix}" }) { candidate ->
             CandidateCard(
                 candidate = candidate,
                 ownedLabel = stringResource(R.string.onboarding_is_mine_card),
