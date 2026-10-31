@@ -25,8 +25,8 @@ fun accountsSummaryHeroSpec(
     val formulaHint = if (totalInflow != null && totalOutflow != null) {
         stringResource(
             R.string.dashboard_remaining_formula,
-            formatHeroMoney(totalInflow, languageTag),
-            formatHeroMoney(totalOutflow, languageTag),
+            MoneyUiFormatter.format(totalInflow, languageTag),
+            MoneyUiFormatter.format(totalOutflow, languageTag),
         )
     } else {
         null
@@ -53,7 +53,7 @@ fun creditFacilitiesSummaryHeroSpec(overview: CreditFacilitiesOverview, locale: 
         accent = MasroofCardAccent.Credit,
         primary = DashboardSummaryMetricItem(
             title = stringResource(R.string.dashboard_credit_card_aggregate_due),
-            amount = overview.totalFacilityDue?.let { formatHeroMoney(it, locale.toLanguageTag()) }
+            amount = overview.totalFacilityDue?.let { MoneyUiFormatter.format(it, locale.toLanguageTag()) }
                 ?: stringResource(R.string.dashboard_value_unavailable), tone = DashboardMetricTone.Liability),
         secondary = emptyList(),
         subtitle = overview.facilities.singleOrNull()?.facilityDue?.dueDate?.let {
@@ -90,7 +90,7 @@ internal fun buildAccountsSummaryHeroSpec(
         accent = MasroofCardAccent.Account,
         primary = DashboardSummaryMetricItem(
             title = remainingTitle,
-            amount = totalRemaining?.let { formatHeroMoney(it, languageTag) } ?: unavailableLabel,
+            amount = totalRemaining?.let { MoneyUiFormatter.format(it, languageTag) } ?: unavailableLabel,
             tone = DashboardMetricTone.Signed,
             signedAmount = totalRemaining?.amount,
             hint = formulaHint,
@@ -114,7 +114,7 @@ internal fun buildLoansSummaryHeroSpec(
         accent = MasroofCardAccent.Liability,
         primary = DashboardSummaryMetricItem(
             title = remainingTitle,
-            amount = aggregateRemaining?.let { formatHeroMoney(it, languageTag) } ?: unavailableLabel,
+            amount = aggregateRemaining?.let { MoneyUiFormatter.format(it, languageTag) } ?: unavailableLabel,
             tone = DashboardMetricTone.Liability,
         ),
         secondary = emptyList(),
@@ -130,12 +130,7 @@ private fun moneyHeroMetric(
 ): DashboardSummaryMetricItem =
     DashboardSummaryMetricItem(
         title = title,
-        amount = money?.let { formatHeroMoney(it, languageTag) } ?: unavailableLabel,
+        amount = money?.let { MoneyUiFormatter.format(it, languageTag) } ?: unavailableLabel,
         tone = tone,
     )
 
-private fun formatHeroMoney(money: Money, languageTag: String): String =
-    MoneyUiFormatter.format(money, languageTag)
-
-private fun formatHeroMoney(signed: SignedMoneyAmount, languageTag: String): String =
-    MoneyUiFormatter.format(signed, languageTag)

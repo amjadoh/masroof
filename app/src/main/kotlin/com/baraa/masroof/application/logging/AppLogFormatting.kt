@@ -4,11 +4,7 @@ import com.baraa.masroof.application.sms.SmsScanResult
 import com.baraa.masroof.domain.model.MessageFamily
 
 object AppLogFormatting {
-    fun maskSender(sender: String): String {
-        val trimmed = sender.trim()
-        if (trimmed.length <= 4) return "****"
-        return "…${trimmed.takeLast(4)}"
-    }
+    fun maskSender(sender: String): String = maskId(sender)
 
     fun maskId(id: String): String {
         val trimmed = id.trim()

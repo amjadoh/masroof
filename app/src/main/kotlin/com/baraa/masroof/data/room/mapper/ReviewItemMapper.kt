@@ -36,15 +36,17 @@ object ReviewItemMapper {
             resolvedTransactionId = entity.resolvedTransactionId,
         )
 
-    fun encodeReasons(reasons: List<String>): String {
-        require(reasons.none { ReviewItemEntity.REASON_SEPARATOR in it }) {
-            "Review reason must not contain the persistence separator"
-        }
-        return reasons.joinToString(ReviewItemEntity.REASON_SEPARATOR.toString())
+    fun encodeReasons(reasons: List<String>): String = ReasonsCodec.encode(reasons, ReviewItemEntity.REASON_SEPARATOR)
+
+    fun decodeReasons(encoded: String): List<String> = ReasonsCodec.decode(encoded, ReviewItemEntity.REASON_SEPARATOR)
+}
+
+/** Persisted reason lists share one encoding; each entity keeps its own separator constant. */
+internal object ReasonsCodec {
+    fun encode(reasons: List<String>, separator: Char): String {
+        require(reasons.none { separator in it }) { "Reason must not contain the persistence separator" }
+        return reasons.joinToString(separator.toString())
     }
 
-    fun decodeReasons(encoded: String): List<String> {
-        if (encoded.isEmpty()) return emptyList()
-        return encoded.split(ReviewItemEntity.REASON_SEPARATOR)
-    }
+    fun decode(encoded: String, separator: Char): List<String> = if (encoded.isEmpty()) emptyList() else encoded.split(separator)
 }
