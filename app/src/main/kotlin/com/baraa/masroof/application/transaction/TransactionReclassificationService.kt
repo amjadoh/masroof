@@ -34,6 +34,9 @@ class TransactionReclassificationService(
     private val clock: Clock = Clock.systemUTC(),
     private val afterDecisionCommitted: () -> Unit = {},
 ) {
+    private suspend fun ownsCounterpart(ref: com.baraa.masroof.domain.model.AccountReference?) =
+        ref != null && ownershipResolver.resolveAccount(ref) == OwnershipStatus.OWNED
+
     suspend fun reclassify(
         transactionId: String,
         newType: FinancialTransactionType,
@@ -70,7 +73,7 @@ class TransactionReclassificationService(
                 if (FinancialContainerIdFactory.accountId(destRef) == null) {
                     return ReclassificationResult.Rejected("destination_not_durable")
                 }
-                null to destAccountId
+                if (ownsCounterpart(event.sourceAccountRef)) sourceAccountId to destAccountId else null to destAccountId
             }
 
             FinancialTransactionType.EXTERNAL_TRANSFER_OUT -> {
@@ -82,7 +85,7 @@ class TransactionReclassificationService(
                 if (FinancialContainerIdFactory.accountId(sourceRef) == null) {
                     return ReclassificationResult.Rejected("source_not_durable")
                 }
-                sourceAccountId to null
+                if (ownsCounterpart(event.destinationAccountRef)) sourceAccountId to destAccountId else sourceAccountId to null
             }
 
             FinancialTransactionType.EXPENSE ->
@@ -120,8 +123,11 @@ class TransactionReclassificationService(
                 return ReclassificationResult.Rejected("type_not_allowed")
         }
 
+        // Money moving between two owned accounts leaves one and enters the other; it is never spending or income.
+        val type = if (newType in EXTERNAL_TRANSFERS && sourceId != null && destId != null) FinancialTransactionType.SELF_TRANSFER else newType
+        if (type == FinancialTransactionType.SELF_TRANSFER && sourceId == destId) return ReclassificationResult.Rejected("same_transfer_account")
         val updated = existing.copy(
-            type = newType,
+            type = type,
             sourceContainerId = sourceId,
             destinationContainerId = destId,
         )
@@ -135,7 +141,7 @@ class TransactionReclassificationService(
         afterDecisionCommitted()
         appLogService?.info(
             AppLogCategories.TRANSACTION,
-            "Reclassified ${AppLogFormatting.maskId(transactionId)} to ${newType.name.lowercase()}",
+            "Reclassified ${AppLogFormatting.maskId(transactionId)} to ${type.name.lowercase()}",
         )
         return ReclassificationResult.Success(financialTransactionRepository.getById(updated.id) ?: updated)
     }
@@ -146,6 +152,7 @@ class TransactionReclassificationService(
     }
 
     companion object {
+        private val EXTERNAL_TRANSFERS = setOf(FinancialTransactionType.EXTERNAL_TRANSFER_IN, FinancialTransactionType.EXTERNAL_TRANSFER_OUT)
         val ALLOWED_TYPES: Set<FinancialTransactionType> = setOf(
             FinancialTransactionType.EXPENSE,
             FinancialTransactionType.INCOME,
