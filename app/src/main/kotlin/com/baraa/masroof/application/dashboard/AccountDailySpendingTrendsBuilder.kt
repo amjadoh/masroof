@@ -59,6 +59,7 @@ internal object AccountDailySpendingTrendsBuilder {
                     FlowExpenseCategory.POS_PURCHASE -> ChartDataCategory.ACCOUNT_PURCHASES
                     FlowExpenseCategory.FEE -> ChartDataCategory.FEES
                     FlowExpenseCategory.LOAN_REPAYMENT -> ChartDataCategory.LOAN_REPAYMENTS
+                    FlowExpenseCategory.PREPAID_CARD_TOP_UP -> ChartDataCategory.INTERNAL_TRANSFERS
                     null -> if (transaction.type == FinancialTransactionType.SELF_TRANSFER)
                         ChartDataCategory.INTERNAL_TRANSFERS else ChartDataCategory.UNATTRIBUTED_REFUNDS
                 }

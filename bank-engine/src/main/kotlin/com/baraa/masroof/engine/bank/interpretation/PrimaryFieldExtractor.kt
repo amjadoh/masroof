@@ -58,7 +58,7 @@ internal class PrimaryFieldExtractor(
                 prefix + suffix
             } else emptyList()
             Regex("(?m)^ *" + role(label)).findAll(source.text).forEach { mention ->
-                val longerRole = labels(field).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
+                val longerRole = ExtractionField.entries.flatMap(labels).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
                     Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
                 if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first } && separate.none { it.range.first == mention.range.first } &&
                     !(field == ExtractionField.AVAILABLE_BALANCE && negativeBalances.any { it.range.first == mention.range.first }))
@@ -73,7 +73,7 @@ internal class PrimaryFieldExtractor(
         } + (if (allowStandalone && field == ExtractionField.AMOUNT) Regex("(?m)^ *" + MoneyGrammar.VALUE + " *$")
             .findAll(source.text).mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList() else emptyList()) +
             titlePrefixes.flatMap { prefix ->
-                Regex("(?m)^ *" + source.phrase(prefix).pattern + " +(?:ب *|بمبلغ *)?" + MoneyGrammar.VALUE)
+                Regex("(?m)^ *" + source.phrase(prefix).pattern + "(?::[ \\t]*|[ \\t]+)(?:ب *|بمبلغ *)?" + MoneyGrammar.VALUE)
                     .findAll(source.text).filter { source.text.substring(0, it.range.first).isBlank() }
                     .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
             }

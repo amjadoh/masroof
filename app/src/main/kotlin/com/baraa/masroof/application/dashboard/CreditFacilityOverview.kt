@@ -28,8 +28,9 @@ data class CreditFacilitiesOverview(
     val facilities: List<CreditFacilityOverview>,
     val debitCards: List<DebitCardOverview>,
     val currency: Currency,
+    val prepaidCards: List<PrepaidCardOverview> = emptyList(),
 ) {
-    val cardCount: Int get() = facilities.sumOf { it.allCards.size } + debitCards.size
+    val cardCount: Int get() = facilities.sumOf { it.allCards.size } + debitCards.size + prepaidCards.size
 
     /** Every facility contributes once. Unknown or mixed-currency dues are not guessed. */
     val totalFacilityDue: Money?
@@ -41,7 +42,7 @@ data class CreditFacilitiesOverview(
             return amounts.reduce { total, amount -> total + amount }
         }
     val hasContent: Boolean
-        get() = facilities.isNotEmpty() || debitCards.isNotEmpty()
+        get() = facilities.isNotEmpty() || debitCards.isNotEmpty() || prepaidCards.isNotEmpty()
 }
 
 data class DebitCardOverview(

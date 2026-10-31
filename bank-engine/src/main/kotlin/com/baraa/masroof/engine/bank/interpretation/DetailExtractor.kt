@@ -70,7 +70,7 @@ internal class DetailExtractor(
             else it.normalized.toBigDecimalOrNull()?.takeIf { value -> value.signum() > 0 }?.stripTrailingZeros()
         })
         val date = one("paymentDueDate", entries("paymentDueDate").map {
-            DateGrammar.date(it.normalized)
+            DateGrammar.date(it.normalized) ?: DateGrammar.time(it.normalized)?.toLocalDate()
         })
         return RoleDetails(due, foreign, fee, rate, date, text("counterparty"), text("transactionReference", true),
             text("biller"), text("billerCode", true), reserved.toList())

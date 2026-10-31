@@ -61,7 +61,11 @@ fun SettingsCardSetupSheet(
                 val types = if (network == CardNetwork.MADA || target.ownership == OwnershipStatus.EXTERNAL)
                     listOf(CardType.DEBIT) else CardType.entries
                 MasroofSheetChoices(types, setOfNotNull(type), {
-                    stringResource(if (it == CardType.CREDIT) R.string.settings_card_type_credit else R.string.settings_card_type_debit)
+                    stringResource(when (it) {
+                        CardType.CREDIT -> R.string.settings_card_type_credit
+                        CardType.DEBIT -> R.string.settings_card_type_debit
+                        CardType.PREPAID -> R.string.settings_card_type_prepaid
+                    })
                 }, { typeName = it.name }, { "card-type-${it.name}" })
                 if (type == CardType.CREDIT) {
                     MasroofText(stringResource(R.string.settings_card_role_title), style = MaterialTheme.typography.titleSmall)
@@ -81,6 +85,8 @@ fun SettingsCardSetupSheet(
                         else registryLabel(availableAccounts.single { it.maskedNumber == masked })
                     }, { account = it.ifEmpty { null } }, { "card-account-$it" })
                 }
+                if (type == CardType.PREPAID) com.baraa.masroof.presentation.common.MasroofGuidanceLabel(
+                    stringResource(R.string.settings_card_type_prepaid), stringResource(R.string.prepaid_card_setup_hint))
                 if (blocksDependents) MasroofText(stringResource(R.string.settings_card_dependents_block), color = MaterialTheme.colorScheme.error)
                 if (failed) MasroofText(stringResource(R.string.settings_update_failed), color = MaterialTheme.colorScheme.error)
             }

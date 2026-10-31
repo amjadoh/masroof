@@ -72,7 +72,21 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         }
         // The first meaningful line supplies the family cue; party/reference fields cannot do so.
         val first = source.text.indexOfFirst(Char::isLetterOrDigit)
-        val lineStart = if (first < 0) 0 else source.text.lastIndexOf('\n', first).let { it + 1 }
+        var lineStart = if (first < 0) 0 else source.text.lastIndexOf('\n', first).let { it + 1 }
+        val firstEnd = source.text.indexOf('\n', lineStart).let { if (it < 0) source.text.length else it }
+        // A fixed courtesy header is not financial authority. Only an explicitly
+        // configured balance/statement title on the next meaningful line may follow it.
+        if (source.text.substring(lineStart, firstEnd).trim() in setOf("عزيزي العميل،", "عزيزي العميل,")) {
+            val next = (firstEnd until source.text.length).firstOrNull { source.text[it].isLetterOrDigit() } ?: -1
+            if (next >= 0) {
+                val nextStart = source.text.lastIndexOf('\n', next).let { it + 1 }
+                val nextEnd = source.text.indexOf('\n', nextStart).let { if (it < 0) source.text.length else it }
+                val nextTitle = source.text.substring(nextStart, nextEnd).trimStart()
+                if (snapshot.rules.filter { it.family == MessageFamily.BALANCE_NOTICE }.any { rule ->
+                    rule.phrases.any { source.phrase(it).find(nextTitle)?.range?.first == 0 }
+                }) lineStart = nextStart
+            }
+        }
         val lineEnd = source.text.indexOf('\n', lineStart).let { if (it < 0) source.text.length else it }
         val rawTitle = source.text.substring(lineStart, lineEnd)
         val leading = rawTitle.length - rawTitle.trimStart().length
@@ -83,14 +97,17 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         fun roleEnd(text: String) = rolePrefixes.mapNotNull { it.find(text)?.range?.last?.plus(1) }.maxOrNull() ?: 0
         val roleEnd = roleEnd(title)
         // Arabic conjunctions may join two independent family cues; never hide that collision.
-        fun titleMatches(phrase: String) = (if (phrase.firstOrNull() in '\u0600'..'\u06ff') listOf(phrase, "و$phrase") else listOf(phrase))
+        fun titleMatches(phrase: String, balanceTitle: Boolean = false) = (if (phrase.firstOrNull() in '\u0600'..'\u06ff') listOf(phrase, "و$phrase") else listOf(phrase))
             .flatMap { source.phrase(it).findAll(title).toList() }
-            .filter { roleEnd == 0 || (it.range.first == 0 && it.range.last + 1 > roleEnd) }
+            .filter { roleEnd == 0 || (it.range.first == 0 &&
+                (it.range.last + 1 > roleEnd || balanceTitle && it.range.last + 1 == roleEnd)) }
         if (Regex("^ *اسم المستفيد *: *[^\\n]+\\n+ *الاسم المختصر *: *[^\\n]+\\n+ *حالة *: *(?:غير نشط|نشط) *(?:\\n+ *(?:حساب|بنك|في) *: *[^\\n]+)*$").matches(source.text.trim())) {
             evidence += source.evidence("notice.beneficiary.directory", "family", 0..(source.text.length - 1))
             return result(Facts(MessageFamily.NON_FINANCIAL), ParseStatus.NON_FINANCIAL)
         }
-        val spansByRule = snapshot.rules.associateWith { rule -> rule.phrases.flatMap(::titleMatches).map { it.range } }
+        val spansByRule = snapshot.rules.associateWith { rule -> rule.phrases.flatMap {
+            titleMatches(it, rule.family == MessageFamily.BALANCE_NOTICE)
+        }.map { it.range } }
         val candidates = snapshot.rules.filter { rule -> spansByRule.getValue(rule).isNotEmpty() && rule.excludes.none(::contains) }
         // A configured compound title (e.g. refund of a purchase) consumes its nested literal,
         // but independent movement cues on another span still conflict.
@@ -149,9 +166,11 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         if (family !in INFORMATIONAL && hasUnprovenExecution(source)) problem("EXECUTION_NOT_PROVEN")
         if (hasNoticeContext(source) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
+        // An unrecognized title claims no family for transfer wording to contradict, so an
+        // exact learned template for the same bank keeps its authority over the message.
         if ((family == MessageFamily.TRANSFER_IN && OUTGOING.any(::contains)) ||
             (family == MessageFamily.TRANSFER_OUT && INCOMING.any(::contains)) ||
-            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT) && TRANSFER_CONTEXT.any { term ->
+            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT, MessageFamily.UNKNOWN) && TRANSFER_CONTEXT.any { term ->
                 source.phrase(term).findAll(source.text).any { cue ->
                     family != MessageFamily.REFUND || matchingTitleSpans.none { span ->
                         cue.range.first >= lineStart + leading + span.first && cue.range.last <= lineStart + leading + span.last }
@@ -161,7 +180,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
-        if (family !in INFORMATIONAL && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
+        // An unrecognized title has no claimed direction to contradict. It remains
+        // review-only here, while an exact learned template may supply that proof.
+        if (family != MessageFamily.UNKNOWN && family !in INFORMATIONAL && direction != expected)
+            problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
         fun labels(field: ExtractionField): List<String> {
             val sets=matching.map {it.labels[field].orEmpty()}
@@ -195,7 +217,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val card = primary.card()
         val sourceObservedValue = defaults?.sourceObservedValue
         val account = primary.account(ExtractionField.SOURCE_ACCOUNT, defaults?.source?.maskedNumber?.takeIf {
-            family !in INFORMATIONAL && (family != MessageFamily.CARD_PAYMENT || sourceObservedValue != null) &&
+            family !in INFORMATIONAL && (family !in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP) || sourceObservedValue != null) &&
                 (!primary.hasCardReferenceRole() || family == MessageFamily.WITHDRAWAL || sourceObservedValue != null)
         }, sourceObservedValue)
         val destination = primary.account(ExtractionField.DESTINATION_ACCOUNT, defaults?.destination?.maskedNumber?.takeIf {
@@ -213,10 +235,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             if (amount == null || amount.amount.signum() <= 0) problem("MISSING_POSITIVE_PRINCIPAL")
             if (times.size != 1 && !receiptTime) problem("MISSING_TRANSACTION_TIME")
             if (family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND) && card == null && account == null && destination == null) problem("MISSING_CARD_ROLE")
-            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) &&
-                account == null && !(family == MessageFamily.BILL_PAYMENT && card != null)) problem("MISSING_SOURCE_ROLE")
+            if (family in setOf(MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT) &&
+                account == null && !(family in setOf(MessageFamily.BILL_PAYMENT, MessageFamily.WITHDRAWAL) && card != null)) problem("MISSING_SOURCE_ROLE")
         }
-        if (family == MessageFamily.CARD_PAYMENT && card == null) problem("MISSING_CARD_ROLE")
+        if (family in setOf(MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP) && card == null) problem("MISSING_CARD_ROLE")
         if (family == MessageFamily.BILL_PAYMENT && details.biller == null) problem("MISSING_BILLER_ROLE")
         if (family == MessageFamily.FINANCING_INSTALLMENT && details.counterparty == null) problem("MISSING_FINANCING_ROLE")
         if (details.foreign != null && amount != null && details.foreign.currency == amount.currency && details.foreign != amount)
@@ -262,13 +284,13 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     }
 
     companion object {
-        const val VERSION = "bank-rules-independent-v16"
+        const val VERSION = "bank-rules-independent-v19"
         private const val MAX_BODY = 16000
         private val INCOMING = listOf("حوالة واردة", "حوالة مالية واردة", "حوالة فورية واردة", "تحويل وارد", "incoming transfer", "fund transfer credited", "salary credited")
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
         private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
-        private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
+        private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }
 }

@@ -42,6 +42,7 @@ object MessagePatternConfigurationCodec {
                         put("sourceAccountBank", contract.sourceAccountBank?.value?.let(::JsonPrimitive) ?: JsonNull)
                         put("destinationAccountBank", contract.destinationAccountBank?.value?.let(::JsonPrimitive) ?: JsonNull)
                         put("cardBank", contract.cardBank?.value?.let(::JsonPrimitive) ?: JsonNull)
+                        if (contract.version >= 3) put("confirmedLoanType", requireNotNull(contract.confirmedLoanType).name)
                         if (contract.version >= 2) {
                             putJsonArray("accountBindings") { contract.accountBindings.sortedBy { it.role.name }.forEach { binding -> add(buildJsonObject {
                                 put("role", binding.role.name); put("bankId", binding.bank.value); put("last4", binding.last4)
@@ -110,24 +111,26 @@ object MessagePatternConfigurationCodec {
                     p.flag("enabled"), parts, if (schema >= 2L) p.getValue("factContract").takeUnless { it == JsonNull }?.let {
                         val c = it.jsonObject
                         val version = c.integer("version")
-                        require(version in 1..2) { "Unsupported pattern fact contract" }
+                        require(version in 1..3) { "Unsupported pattern fact contract" }
                         c.only(*(listOf("version", "family", "direction", "currency", "sourceAccountBank", "destinationAccountBank", "cardBank") +
-                            if (version == 2) listOf("accountBindings", "contextReferences") else emptyList()).toTypedArray())
+                            (if (version >= 2) listOf("accountBindings", "contextReferences") else emptyList()) +
+                            (if (version >= 3) listOf("confirmedLoanType") else emptyList())).toTypedArray())
                         fun bank(key: String) = c.optionalText(key)?.also {
                             require(it.matches(Regex("[A-Za-z0-9_-]{1,64}")) && !it.equals("UNKNOWN", ignoreCase = true))
                         }?.let(::BankId)
                         PatternFactContract(MessageFamily.valueOf(c.text("family")), MoneyDirection.valueOf(c.text("direction")),
                             c.optionalText("currency")?.let(Currency::valueOf), bank("sourceAccountBank"),
                             bank("destinationAccountBank"), bank("cardBank"), version,
-                            if (version == 2) c.getValue("accountBindings").jsonArray.also { require(it.size <= 2) }.map { binding ->
+                            if (version >= 2) c.getValue("accountBindings").jsonArray.also { require(it.size <= 2) }.map { binding ->
                                 val b = binding.jsonObject
                                 b.only("role", "bankId", "last4", "field", "observedValue")
                                 PatternAccountBinding(PatternAccountRole.valueOf(b.text("role")), BankId(b.text("bankId")), b.text("last4"),
                                     b.optionalText("field"), b.optionalText("observedValue"))
                             } else emptyList(),
-                            if (version == 2) c.getValue("contextReferences").jsonArray.also { require(it.size <= 5) }.map {
+                            if (version >= 2) c.getValue("contextReferences").jsonArray.also { require(it.size <= 5) }.map {
                                 it.jsonPrimitive.also { p -> require(p.isString) }.content
-                            }.also { require(it.distinct().size == it.size) }.toSet() else emptySet())
+                            }.also { require(it.distinct().size == it.size) }.toSet() else emptySet(),
+                            if (version >= 3) com.baraa.masroof.engine.bank.LoanType.valueOf(c.text("confirmedLoanType")) else null)
                     } else null, if (schema >= 3L) p.getValue("roleProfile").takeUnless { it == JsonNull }?.let {
                         BankRuleProfileCodec.decode(json.encodeToString(JsonElement.serializer(), it))
                     } else null).also { it.validate() }

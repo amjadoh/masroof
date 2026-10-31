@@ -26,6 +26,7 @@ internal fun registryLabel(card: ManagedCardUi): String = maskedName(card.displa
     stringResource(when {
         card.cardNetwork == com.baraa.masroof.domain.model.CardNetwork.MADA -> R.string.card_network_mada
         card.cardType == CardType.DEBIT -> R.string.settings_card_type_debit
+        card.cardType == CardType.PREPAID -> R.string.settings_card_type_prepaid
         card.cardType == null -> R.string.settings_card_type_unknown
         card.cardRole == CardRole.SUPPLEMENTARY -> R.string.dashboard_credit_facility_additional
         card.cardRole == CardRole.PRIMARY -> R.string.dashboard_credit_facility_primary

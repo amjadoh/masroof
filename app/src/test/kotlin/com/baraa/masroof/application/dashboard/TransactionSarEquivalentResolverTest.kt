@@ -25,6 +25,23 @@ import java.time.ZoneId
 import java.util.TimeZone
 
 class TransactionSarEquivalentResolverTest {
+    @Test
+    fun prepaidTopUpNeverUsesMarketEstimateForAccountDebit() = runBlocking {
+        val resolver = TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ ->
+            error("A prepaid funding debit requires actual SMS conversion evidence")
+        })
+        val topUp = FinancialTransaction(
+            id = "fund", type = FinancialTransactionType.SELF_TRANSFER,
+            amount = Money.of("75", Currency.USD),
+            occurredAt = Instant.parse("2026-08-17T15:23:00Z"),
+            sourceContainerId = "account:bank_aljazira:3001",
+            destinationContainerId = "card:bank_aljazira:7271",
+            merchant = null, counterparty = null, categoryId = null,
+            linkedParsedEventIds = emptyList(),
+        )
+        assertEquals(emptyMap<String, SarEquivalentResolution>(), resolver.resolve(listOf(topUp), emptyList(), emptyMap()))
+    }
+
     private val noMarketRate = ForeignSarMarketRateProvider { _, _ -> null }
 
     @Test
