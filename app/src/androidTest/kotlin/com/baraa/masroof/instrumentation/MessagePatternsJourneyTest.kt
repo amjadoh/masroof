@@ -173,7 +173,14 @@ class MessagePatternsJourneyTest {
             compose.onNodeWithContentDescription(ar(R.string.settings_back)).performClick()
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-toggle-STC-purchase").performScrollTo().performClick()
-            compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
+            compose.waitUntil(10_000) { !store.load().banks.single().currentPatterns.single().enabled }
+            // Back is ignored while the screen is still busy saving the switch; retry until the bank page shows.
+            compose.waitUntil(10_000) {
+                val onBankPage = compose.onAllNodesWithText(ar(R.string.pattern_pending_title)).fetchSemanticsNodes().isNotEmpty()
+                if (!onBankPage) compose.onAllNodesWithContentDescription(ar(R.string.teaching_saved_patterns)).fetchSemanticsNodes()
+                    .firstOrNull()?.let { compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick() }
+                onBankPage
+            }
             click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)
