@@ -89,9 +89,10 @@ class ManualDecisionReplayTest {
             val resolved = ledger.workflow.resolveTransferAsExternal(review.id, com.baraa.masroof.application.review.ExternalTransferDirection.OUTGOING)
             assertTrue("seed=$seed resolve: $resolved", resolved is ReviewWorkflowResult.Success)
             val success = resolved as ReviewWorkflowResult.Success
+            // The intra-bank destination is owned, so the movement leaves one account and enters the other.
             assertEquals(
-                "seed=$seed external type",
-                FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+                "seed=$seed self type",
+                FinancialTransactionType.SELF_TRANSFER,
                 success.transaction!!.type,
             )
 
@@ -100,7 +101,7 @@ class ManualDecisionReplayTest {
             assertResolution(world, seed, parsed.rawSmsId, ReviewResolutionKind.USER_EXTERNAL_TRANSFER, posted = true)
             assertEquals(
                 "seed=$seed rewritten after replay",
-                FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+                FinancialTransactionType.SELF_TRANSFER,
                 world.ftRepo.findByRawSmsId(parsed.rawSmsId)!!.type,
             )
             assertEquals("seed=$seed movements", 1, world.ftRepo.listAll().size)

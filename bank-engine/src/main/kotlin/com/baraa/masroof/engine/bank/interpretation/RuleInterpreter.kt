@@ -146,12 +146,12 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
         if ((family == MessageFamily.TRANSFER_IN && OUTGOING.any(::contains)) ||
             (family == MessageFamily.TRANSFER_OUT && INCOMING.any(::contains)) ||
-            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT) && TRANSFER_CONTEXT.any(::contains)))
+            (family !in setOf(MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT, MessageFamily.UNKNOWN) && TRANSFER_CONTEXT.any(::contains)))
             problem("TRANSFER_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS)
         val supported = family in SUPPORTED
         if (!supported) problem("FAMILY_NOT_IMPLEMENTED", Blocker.UNSUPPORTED_RULE_SCHEMA)
         val expected = if (family in setOf(MessageFamily.REFUND, MessageFamily.TRANSFER_IN)) MoneyDirection.INCOMING else MoneyDirection.OUTGOING
-        // UNKNOWN is already blocked; reporting it as a conflict would also veto user-taught patterns.
+        // UNKNOWN is already blocked; reporting it (or transfer wording above) as a conflict would also veto user-taught patterns.
         if (family !in INFORMATIONAL && family != MessageFamily.UNKNOWN && direction != expected) problem("UNSAFE_DIRECTION", Blocker.CONFLICTING_FACTS)
 
         fun labels(field: ExtractionField): List<String> {
