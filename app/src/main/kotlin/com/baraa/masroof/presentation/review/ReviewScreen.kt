@@ -445,9 +445,10 @@ internal fun ReviewDetailScreen(
                 else -> null
             }
             if (detail.showExternalTransferAction && externalDirection != null) {
-                val externalIcon = when (detail.messageFamily) {
-                    MessageFamily.TRANSFER_IN -> MasroofIcons.externalIn
-                    MessageFamily.TRANSFER_OUT -> MasroofIcons.externalOut
+                val externalIcon = when {
+                    detail.transferBetweenOwnAccounts -> MasroofIcons.selfTransfer
+                    detail.messageFamily == MessageFamily.TRANSFER_IN -> MasroofIcons.externalIn
+                    detail.messageFamily == MessageFamily.TRANSFER_OUT -> MasroofIcons.externalOut
                     else -> MasroofIcons.selfTransfer
                 }
                 IconTextButton(
@@ -455,9 +456,10 @@ internal fun ReviewDetailScreen(
                     enabled = !resolving,
                     icon = externalIcon,
                     text = stringResource(
-                        when (detail.messageFamily) {
-                            MessageFamily.TRANSFER_IN -> R.string.review_action_external_transfer_in
-                            MessageFamily.TRANSFER_OUT -> R.string.review_action_external_transfer_out
+                        when {
+                            detail.transferBetweenOwnAccounts -> R.string.txn_type_self_transfer
+                            detail.messageFamily == MessageFamily.TRANSFER_IN -> R.string.review_action_external_transfer_in
+                            detail.messageFamily == MessageFamily.TRANSFER_OUT -> R.string.review_action_external_transfer_out
                             else -> R.string.review_action_external_transfer
                         },
                     ),

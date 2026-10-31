@@ -30,7 +30,7 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
     var exampleIndex by remember { mutableStateOf<Int?>(null) }
     var cardId by remember { mutableStateOf<String?>(null) }
     var accountId by remember { mutableStateOf<String?>(null) }
-    var operation by remember { mutableStateOf(pattern.approval?.operation ?: PatternOperation.entries.firstOrNull { it.name == pattern.label }) }
+    var operation by remember { mutableStateOf((pattern.approval?.operation ?: PatternOperation.entries.firstOrNull { it.name == pattern.label })?.takeIf { it in pattern.operations }) }
     var body by remember { mutableStateOf(initialBody) }
     var reference by remember { mutableStateOf(pattern.approval?.referenceField) }
     var referenceChosen by remember { mutableStateOf(pattern.referenceFields.isEmpty() || pattern.approval != null) }
@@ -102,8 +102,10 @@ internal fun PatternFinancialApprovalScreen(workflow: MessagePatternsWorkflow, g
                 onBody = { body = it; preview = null })
             MasroofCard {
                 val select = stringResource(R.string.pattern_financial_select_operation)
-                PatternChoice(listOf(select) + operationNames, operation?.let { operationNames[it.ordinal] } ?: select, !busy && !loading) {
-                    operation = PatternOperation.entries.getOrNull(it - 1); reference = null
+                val operations = pattern.operations
+                PatternChoice(listOf(select) + operations.map { operationNames[it.ordinal] },
+                    operation?.let { operationNames[it.ordinal] } ?: select, !busy && !loading) {
+                    operation = operations.getOrNull(it - 1); reference = null
                     referenceChosen = pattern.referenceFields.isEmpty(); preview = null
                 }
                 PatternApprovalAccounts(accounts, accountId, !busy && !loading,

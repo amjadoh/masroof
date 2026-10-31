@@ -18,8 +18,9 @@ and explicit account/card bank identities. It contains no ownership, financial
 transaction type, container id or posting flag.
 
 `PatternFactInterpreter` freezes the configuration and evaluates every enabled
-current definition for the routed bank. Overlaps, including preview-only patterns,
-remain conflicts. Sender detection is never repeated after routing.
+current definition for the routed bank. Overlaps between approved patterns remain
+conflicts. Preview-only patterns appear in previews but never compete. Sender
+detection is never repeated after routing.
 
 Supported roles: `amount`, `merchant`, `counterparty`, `biller`, `biller_code`,
 `reference`, `occurred_at`, `source_account`, `destination_account`, `card`,
