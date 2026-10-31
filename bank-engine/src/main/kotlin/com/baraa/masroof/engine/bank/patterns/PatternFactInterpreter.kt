@@ -200,7 +200,6 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         val cardLink = contract.accountBindings.singleOrNull { it.role == PatternAccountRole.CARD }
             ?.takeIf { contract.family in CARD_LINKED }?.let { CardReference(it.bank, it.last4) }
-        if (cardLink != null && observedCard != null && cardLink != observedCard) block("PATTERN_CARD_BINDING_MISMATCH")
         if (cardLink != null && observedCard == null) definitionFacts += setOf("CARD_IDENTITY", "CARD_BANK")
         val card = observedCard ?: cardLink
         preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
@@ -235,45 +234,31 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
 
     companion object {
         /**
-         * Fills a role the message left empty from the user's approved link. A role the message names is never replaced:
-         * a different value blocks. Purchases and refunds take only a card, never a funding account.
+         * Fills only a role the message left empty from the user's approved link; a value the message names stays
+         * the message's. Purchases and refunds take only a card, never a funding account.
          */
         internal fun withLinks(result: Interpretation, links: List<PatternAccountBinding>): Interpretation {
             if (links.isEmpty() || result.status == ParseStatus.NON_FINANCIAL) return result
             var facts = result.facts
             val satisfied = mutableSetOf<String>()
-            val mismatches = mutableListOf<String>()
-            fun account(role: PatternAccountRole) = links.singleOrNull { it.role == role }?.let { AccountReference(it.bank, it.last4) }
+            fun link(role: PatternAccountRole) = links.singleOrNull { it.role == role }
             val family = facts.family
-            val sourceLink = account(PatternAccountRole.SOURCE)?.takeIf { family in SOURCE_LINKED }
-            val destinationLink = account(PatternAccountRole.DESTINATION)?.takeIf { family == MessageFamily.TRANSFER_IN }
-            val cardLink = links.singleOrNull { it.role == PatternAccountRole.CARD }?.takeIf { family in CARD_LINKED }
-                ?.let { CardReference(it.bank, it.last4) }
-            if (sourceLink != null) when (facts.sourceAccount) {
-                null -> { facts = facts.copy(sourceAccount = sourceLink); satisfied += setOf("MISSING_TRANSFER_SOURCE", "MISSING_SOURCE_ROLE") }
-                sourceLink -> Unit
-                else -> mismatches += "PATTERN_ACCOUNT_BINDING_MISMATCH"
+            if (facts.sourceAccount == null && family in SOURCE_LINKED) link(PatternAccountRole.SOURCE)?.let {
+                facts = facts.copy(sourceAccount = AccountReference(it.bank, it.last4)); satisfied += setOf("MISSING_TRANSFER_SOURCE", "MISSING_SOURCE_ROLE")
             }
-            if (destinationLink != null) when (facts.destinationAccount) {
-                null -> { facts = facts.copy(destinationAccount = destinationLink); satisfied += "MISSING_TRANSFER_DESTINATION" }
-                destinationLink -> Unit
-                else -> mismatches += "PATTERN_ACCOUNT_BINDING_MISMATCH"
+            if (facts.destinationAccount == null && family == MessageFamily.TRANSFER_IN) link(PatternAccountRole.DESTINATION)?.let {
+                facts = facts.copy(destinationAccount = AccountReference(it.bank, it.last4)); satisfied += "MISSING_TRANSFER_DESTINATION"
             }
-            if (cardLink != null) when (facts.card) {
-                // A purchase that names a funding account is already complete; adding a card would change its channel.
-                null -> if (family == MessageFamily.CARD_PAYMENT || (facts.sourceAccount == null && facts.destinationAccount == null)) {
-                    facts = facts.copy(card = cardLink); satisfied += "MISSING_CARD_ROLE"
-                }
-                cardLink -> Unit
-                else -> mismatches += "PATTERN_CARD_BINDING_MISMATCH"
-            }
-            val diagnostics = result.diagnostics.filterNot { it.code in satisfied } + mismatches.distinct().map(::diagnostic)
+            // A purchase that names a funding account is already complete; adding a card would change its channel.
+            if (facts.card == null && family in CARD_LINKED &&
+                (family == MessageFamily.CARD_PAYMENT || (facts.sourceAccount == null && facts.destinationAccount == null)))
+                link(PatternAccountRole.CARD)?.let { facts = facts.copy(card = CardReference(it.bank, it.last4)); satisfied += "MISSING_CARD_ROLE" }
+            if (facts == result.facts) return result
+            val diagnostics = result.diagnostics.filterNot { it.code in satisfied }
             val open = diagnostics.any { it.severity != DiagnosticSeverity.INFO }
-            val blockers = if (!open && result.blockers == setOf(Blocker.VALIDATION_ERROR)) emptySet()
-                else result.blockers + if (mismatches.isEmpty()) emptySet() else setOf(Blocker.VALIDATION_ERROR)
-            val status = if (blockers.isEmpty()) ParseStatus.SUCCESS else ParseStatus.REVIEW_REQUIRED
-            return result.copy(facts = facts.copy(executionState = if (status == ParseStatus.SUCCESS) "EXECUTED" else null),
-                diagnostics = diagnostics, blockers = blockers, status = status)
+            if (open || result.blockers != setOf(Blocker.VALIDATION_ERROR)) return result.copy(facts = facts, diagnostics = diagnostics)
+            return result.copy(facts = facts.copy(executionState = "EXECUTED"), diagnostics = diagnostics,
+                blockers = emptySet(), status = ParseStatus.SUCCESS)
         }
         private val SOURCE_LINKED = setOf(MessageFamily.TRANSFER_OUT, MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT,
             MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.FEE)

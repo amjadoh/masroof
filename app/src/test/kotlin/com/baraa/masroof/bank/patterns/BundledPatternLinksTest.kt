@@ -45,10 +45,10 @@ class BundledPatternLinksTest {
         assertTrue(unlinked.diagnostics.any { it.code == "MISSING_TRANSFER_DESTINATION" })
 
         val named = "حوالة واردة داخلية\n100.00 SAR\nحساب المرسل: **5555\nلحساب: **9999\n2026-10-02 22:01"
+        // A destination the message names stays the message's; the link only fills a missing one.
         val other = run("barq.transfer-in", named, link(PatternAccountRole.DESTINATION, "1234"))
-        assertEquals(ParseStatus.REVIEW_REQUIRED, other.status)
+        assertEquals(ParseStatus.SUCCESS, other.status)
         assertEquals("9999", other.facts.destinationAccount!!.maskedNumber)
-        assertTrue(other.diagnostics.any { it.code == "PATTERN_ACCOUNT_BINDING_MISMATCH" })
     }
 
     @Test fun purchaseWithoutCard_takesOnlyALinkedCard() {
@@ -66,9 +66,8 @@ class BundledPatternLinksTest {
 
         val named = run("barq.purchase", "شراء\nمبلغ 25 SAR\nبطاقة مدى: **1111\nلدى TEST\n2026-09-15 12:30",
             link(PatternAccountRole.CARD, "4321"))
-        assertEquals(ParseStatus.REVIEW_REQUIRED, named.status)
+        assertEquals(ParseStatus.SUCCESS, named.status)
         assertEquals("1111", named.facts.card!!.last4)
-        assertTrue(named.diagnostics.any { it.code == "PATTERN_CARD_BINDING_MISMATCH" })
     }
 
     @Test fun eachFamily_isCompletedOnlyByTheRoleItIsMissing() {
@@ -87,6 +86,9 @@ class BundledPatternLinksTest {
         val cardPayment = "سداد بطاقة ائتمانية\nمبلغ 300 SAR\n2026-09-15 12:30"
         assertReviews("barq.card-payment", cardPayment, source)
         assertPosts("barq.card-payment", cardPayment, source, link(PatternAccountRole.CARD, "4321"))
+        val fee = run("barq.fee", "خصم رسوم\nمبلغ 5 SAR\n2026-09-15 12:30", source)
+        assertEquals(fee.diagnostics.toString(), ParseStatus.SUCCESS, fee.status)
+        assertEquals("1234", fee.facts.sourceAccount!!.maskedNumber)
         // A missing biller is not something an account link can supply.
         assertReviews("barq.bill", "سداد فاتورة\nمبلغ 50 SAR\n2026-09-15 12:30", source)
         // Links never fill another family's role: an incoming transfer has no own source account.

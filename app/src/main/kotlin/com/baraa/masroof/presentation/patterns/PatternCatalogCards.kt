@@ -92,7 +92,9 @@ internal fun PatternDetailCard(
         enabled = !busy, modifier = Modifier.testTag("pattern-edit"),
     )
     if (pattern.canApprove && onApprove != null) {
-        if (pattern.status == PatternApprovalStatus.APPROVED || pattern.approval != null && builtInRule) SettingsNavRow(
+        // Every built-in carries its rule's contract; only a saved account or card link makes it approved.
+        val linked = pattern.approval?.accountLast4 != null || pattern.approval?.cardLast4 != null
+        if (pattern.status == PatternApprovalStatus.APPROVED || builtInRule && linked) SettingsNavRow(
             icon = MasroofIcons.success, title = stringResource(R.string.pattern_financial_settings),
             subtitle = stringResource(R.string.pattern_financial_settings_help), onClick = onApprove,
             enabled = !busy,

@@ -34,9 +34,11 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
                     continue
                 }
                 val reference = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
+                val observed = if (binding.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.SOURCE) record.event.sourceAccountRef else record.event.destinationAccountRef
+                // A built-in link, like a card link, fills only a missing account; a taught link always supplies it.
+                if (pattern.roleProfile != null && observed != reference) continue
                 val account = accounts?.get(reference) ?: return false
                 if (account.bank != reference.bank || account.maskedNumber != binding.last4 || account.ownership != com.baraa.masroof.domain.model.OwnershipStatus.OWNED) return false
-                val observed = if (binding.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.SOURCE) record.event.sourceAccountRef else record.event.destinationAccountRef
                 if (observed != reference) return false
             }
             true

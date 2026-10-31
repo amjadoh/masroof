@@ -112,10 +112,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
                 teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
+                // A built-in edit keeps the original on until its replacement is approved, so messages never fall between them.
                 val replaced = replacingPattern
-                teachingOperation = null; replacingPattern = null
+                teachingOperation = null
                 work {
-                    replaced?.let { workflow.setEnabled(workflow.catalog().generation, bank.bankId, it, false) }
                     val catalog = workflow.catalog()
                     snapshot = catalog
                     val saved = catalog.banks.flatMap { it.currentPatterns }.singleOrNull { it.id == preview.patternId }
@@ -132,7 +132,13 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (pattern != null && approving) {
         PatternFinancialApprovalScreen(workflow, requireNotNull(snapshot).generation, pattern,
             source?.body ?: savedBody, source != null || savedBody.isNotBlank(),
-            onSaved = { snapshot = it; approving = false; savedTeaching = false; savedApproval = true; applied = null }, onBack = { approving = false })
+            onSaved = { saved ->
+                snapshot = saved; approving = false; savedTeaching = false; savedApproval = true; applied = null
+                replacingPattern?.let { replaced -> replacingPattern = null; work {
+                    workflow.setEnabled(workflow.catalog().generation, pattern.bankId, replaced, false)
+                    snapshot = workflow.catalog()
+                } }
+            }, onBack = { approving = false; replacingPattern = null })
         return
     }
     if (bank != null && pattern != null && history) {
