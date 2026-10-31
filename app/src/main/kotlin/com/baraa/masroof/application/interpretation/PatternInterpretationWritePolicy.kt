@@ -9,7 +9,11 @@ import kotlinx.coroutines.CancellationException
 /** Called under the financial transaction's access lease, which excludes configuration edits / restores. */
 class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
     private val accounts: com.baraa.masroof.domain.repository.AccountRegistryRepository? = null) {
-    suspend fun isCurrent(record: ParsedEventRecord): Boolean {
+    /**
+     * [posted] evidence is never re-read, so only its pattern's enabled state and owned accounts are checked:
+     * a later save (new generation or revision) must not stop a posted leg from pairing.
+     */
+    suspend fun isCurrent(record: ParsedEventRecord, posted: Boolean = false): Boolean {
         if (!isPatternDerived(record)) return true
         val stamp = PatternInterpretationStamp.decode(record.event.confidence.reasons) ?: return false
         return try {
@@ -18,8 +22,9 @@ class PatternInterpretationWritePolicy(private val store: MessagePatternStore,
                 ?.singleOrNull { it.id == stamp.patternId } ?: return false
             val contract = pattern.factContract ?: return false
             if (stamp.roleProfile != (pattern.roleProfile != null)) return false
-            if (!pattern.enabled || pattern.revision != stamp.revision ||
-                PatternFactInterpreter(configuration).fingerprint != stamp.fingerprint) return false
+            if (!pattern.enabled) return false
+            if (!posted && (pattern.revision != stamp.revision ||
+                PatternFactInterpreter(configuration).fingerprint != stamp.fingerprint)) return false
             for (binding in contract.accountBindings) {
                 val reference = com.baraa.masroof.domain.model.AccountReference(com.baraa.masroof.domain.model.Bank(binding.bank.value), binding.last4)
                 val account = accounts?.get(reference) ?: return false

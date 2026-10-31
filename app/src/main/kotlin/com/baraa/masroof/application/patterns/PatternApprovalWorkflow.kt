@@ -145,6 +145,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 preview(generation, bankId, pattern.id, operation, accountId, body, binding?.field,
                     prior.contextReferences, prior.currency, cardId)
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { continue }
+            // The edit message must carry the same account key the user approved, or another account's money moves here.
+            if (preview.pattern.factContract?.accountBindings?.singleOrNull()?.observedValue != binding?.observedValue) return null
             return try { save(preview, enable = pattern.enabled) }
             catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         }
