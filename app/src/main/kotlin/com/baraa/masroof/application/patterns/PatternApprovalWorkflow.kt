@@ -63,6 +63,12 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             if (current.generation != generation) throw PatternApprovalException(PatternApprovalProblem.CONFIGURATION_CHANGED)
             val bank = current.banks.single { it.bankId == bankId }
             val pattern = bank.currentPatterns.single { it.id == patternId }
+            val family = MessageFamily.valueOf(operation.name)
+            // A built-in rule keeps its own family and reads its own values; approval may only link where money goes.
+            val builtIn = pattern.roleProfile != null
+            if (builtIn && (operation.name != pattern.label || referenceField != null || contextReferences.isNotEmpty() ||
+                    currency != null || (accountId != null && family in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND))))
+                throw PatternApprovalException(PatternApprovalProblem.VALIDATION)
             require(pattern.parts.filterIsInstance<FieldSlot>().filterNot { it.ignored }.all { it.field in operation.fields }) {
                 "Pattern fields do not belong to operation"
             }
@@ -78,7 +84,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 val suffix = com.baraa.masroof.engine.bank.patterns.unmaskedReference(
                     com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(cardField.raw).comparisonBody)
                 if (suffix != card.last4) throw PatternApprovalException(PatternApprovalProblem.CARD_MISMATCH)
-            } else require(card == null) { "No explicit card reference" }
+            } else if (card != null && family !in PatternFactInterpreter.CARD_LINKED) throw PatternApprovalException(PatternApprovalProblem.VALIDATION)
             require(referenceField == null || account != null)
             val incoming = operation in setOf(PatternOperation.TRANSFER_IN, PatternOperation.REFUND)
             val role = if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE
@@ -89,10 +95,12 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 com.baraa.masroof.parsing.normalizer.MessageNormalizer().normalize(value).comparisonBody) }
             if (key != null && (!key.matches(Regex("[0-9]{1,4}")) || key.length == 4 && key != account?.maskedNumber))
                 throw PatternApprovalException(PatternApprovalProblem.REFERENCE_MISMATCH)
-            val contract = PatternFactContract(MessageFamily.valueOf(operation.name),
+            // A card the message names is read from it; a card it never names is the approved link.
+            val cardLink = card?.takeIf { cardField == null }?.let { PatternAccountBinding(PatternAccountRole.CARD, BankId(it.bank.id), it.last4) }
+            val contract = PatternFactContract(family,
                 if (incoming) MoneyDirection.INCOMING else MoneyDirection.OUTGOING, currency,
-                version = 2, cardBank = card?.let { BankId(bankId) },
-                accountBindings = account?.let { listOf(PatternAccountBinding(role, BankId(bankId), it.maskedNumber, referenceField, key)) }.orEmpty(),
+                version = 2, cardBank = card?.takeIf { cardField != null && !builtIn }?.let { BankId(bankId) },
+                accountBindings = listOfNotNull(account?.let { PatternAccountBinding(role, BankId(bankId), it.maskedNumber, referenceField, key) }, cardLink),
                 contextReferences = contextReferences)
             val next = pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = contract)
             val proposed = current.copy(generation = Math.addExact(generation, 1), banks = current.banks.map {
@@ -110,6 +118,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                     "PATTERN_PROFILE_CONTEXT_CONFLICT" in codes -> PatternApprovalProblem.MESSAGE_CONTEXT_CONFLICT
                     "PATTERN_REFERENCE_ROLE_UNRESOLVED" in codes || "PATTERN_ACCOUNT_REFERENCE_UNRESOLVED" in codes -> PatternApprovalProblem.REFERENCE_ROLE
                     "PATTERN_ACCOUNT_BINDING_MISMATCH" in codes -> PatternApprovalProblem.REFERENCE_MISMATCH
+                    "PATTERN_CARD_BINDING_MISMATCH" in codes -> PatternApprovalProblem.CARD_MISMATCH
                     "PATTERN_CURRENCY_CONFLICT" in codes -> PatternApprovalProblem.CURRENCY_CONFLICT
                     "PATTERN_MONEY_INCOMPLETE" in codes -> PatternApprovalProblem.CURRENCY_REQUIRED
                     "PATTERN_TIME_INCOMPLETE" in codes -> PatternApprovalProblem.INVALID_TIME
@@ -124,7 +133,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             }
             PatternFinancialPreview(generation, PatternFactInterpreter(current).fingerprint, next, accountId,
                 requireNotNull(result.event.amount), result.details.occurredAtLocal?.format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(
-                    java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed, cardId)
+                    java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)).orEmpty(), observed,
+                cardId.takeIf { contract.cardBank != null || cardLink != null })
         }
     }
 
@@ -132,12 +142,16 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
     internal suspend fun reapprove(generation: Long, pattern: SavedMessagePattern, prior: PatternFactContract,
         body: String): MessagePatternConfiguration? {
         val operation = PatternOperation.entries.firstOrNull { it.name == prior.family.name }
-        if (operation?.name != pattern.label || prior.accountBindings.size > 1) return null
+        if (operation?.name != pattern.label) return null
         val bankId = pattern.bankId
-        val binding = prior.accountBindings.singleOrNull()
+        val binding = prior.accountBindings.singleOrNull { it.role != PatternAccountRole.CARD }
+        val cardLink = prior.accountBindings.singleOrNull { it.role == PatternAccountRole.CARD }
         val (accountId, cardIds) = withContext(Dispatchers.IO) { gate.withAccess {
-            binding?.let { b -> ownedAccounts(bankId).singleOrNull { it.maskedNumber == b.last4 }?.id } to
-                if (prior.cardBank == null) listOf(null) else ownedCards(bankId).map { it.id }
+            binding?.let { b -> ownedAccounts(bankId).singleOrNull { it.maskedNumber == b.last4 }?.id } to when {
+                cardLink != null -> listOfNotNull(ownedCards(bankId).singleOrNull { it.last4 == cardLink.last4 }?.id)
+                prior.cardBank == null -> listOf(null)
+                else -> ownedCards(bankId).map { it.id }
+            }
         } }
         if (binding != null && accountId == null) return null
         for (cardId in cardIds) {
@@ -146,7 +160,7 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                     prior.contextReferences, prior.currency, cardId)
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { continue }
             // The edit message must carry the same account key the user approved, or another account's money moves here.
-            if (preview.pattern.factContract?.accountBindings?.singleOrNull()?.observedValue != binding?.observedValue) return null
+            if (preview.pattern.factContract?.accountBindings?.singleOrNull { it.role != PatternAccountRole.CARD }?.observedValue != binding?.observedValue) return null
             return try { save(preview, enable = pattern.enabled) }
             catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         }
@@ -159,11 +173,13 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
             check(current.generation == preview.generation && PatternFactInterpreter(current).fingerprint == preview.priorFingerprint) { "Preview expired" }
             preview.accountId?.let { id ->
                 val account = ownedAccounts(preview.pattern.bankId).single { it.id == id }
-                require(preview.pattern.factContract!!.accountBindings.single().last4 == account.maskedNumber)
+                require(preview.pattern.factContract!!.accountBindings.single { it.role != PatternAccountRole.CARD }.last4 == account.maskedNumber)
             }
             preview.cardId?.let { id ->
                 val card = ownedCards(preview.pattern.bankId).single { it.id == id }
-                require(preview.pattern.factContract!!.cardBank?.value == card.bank.id)
+                val contract = preview.pattern.factContract!!
+                require(contract.cardBank?.value == card.bank.id || contract.accountBindings.any {
+                    it.role == PatternAccountRole.CARD && it.bank.value == card.bank.id && it.last4 == card.last4 })
             }
             val bank = current.banks.single { it.bankId == preview.pattern.bankId }
             // Approval is the last human gate; an approved pattern that still had to be switched on was a third gate without extra safety.
