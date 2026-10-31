@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.platform.testTag
 import com.baraa.masroof.application.notification.NotificationAction
 import com.baraa.masroof.domain.model.FinancialTransactionType
@@ -76,17 +78,20 @@ fun MasroofRoot(
     var selected by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
     var generation by rememberSaveable { mutableStateOf(0) }
     fun navigate(destination: HomeDestination) { requested = destination; generation++ }
+    val tourTargets = remember { com.baraa.masroof.ui.components.MasroofCoachMarkTargets() }
+    val dashboardLoading by remember(dashboardViewModel) {
+        dashboardViewModel.uiState.map { it.loading }.distinctUntilChanged()
+    }.collectAsState(initial = true)
     androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.dashboard.LocalChartDataWorkflow provides dashboardViewModel.chartDataWorkflow,
-        com.baraa.masroof.presentation.analytics.LocalAnalyticsWorkflow provides dashboardViewModel.analytics) {
+        com.baraa.masroof.presentation.analytics.LocalAnalyticsWorkflow provides dashboardViewModel.analytics,
+        com.baraa.masroof.ui.components.LocalMasroofCoachMarkTargets provides tourTargets) {
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
                 if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.unreadAnalysisAlerts(dashboardViewModel.analytics),
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
-        }
-        if (onboarding.step == OnboardingStep.HOME && !onboarding.homeGuideSeen && selected == HomeDestination.Dashboard) {
-            HomeGuideCard(onDismiss = { onboardingViewModel.setHomeGuideSeen(true) })
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             MasroofContent(
@@ -118,29 +123,21 @@ fun MasroofRoot(
             com.baraa.masroof.presentation.common.MasroofBottomNavigation(entries.map { (destination, label, icon) ->
                 com.baraa.masroof.presentation.common.MasroofNavigationItem(stringResource(label), icon,
                     selected == destination,
-                    stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label))
+                    stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label),
+                    tourId = HomeTour.tabId(destination))
             }) { index -> if (!settingsViewModel.uiState.value.importingSms) navigate(entries[index].first) }
 
         }
     }
-}
-
-}
-
-/** Shown once after setup; About can bring it back. Plain card, no overlay, so nothing on the dashboard is blocked. */
-@Composable
-private fun HomeGuideCard(onDismiss: () -> Unit) {
-    com.baraa.masroof.presentation.common.MasroofCard(Modifier.fillMaxWidth()
-        .padding(horizontal = com.baraa.masroof.ui.theme.MasroofSpacing.screenHorizontal).testTag("home-guide")) {
-        com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.home_guide_title), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-        listOf(R.string.home_guide_dashboard, R.string.home_guide_review, R.string.home_guide_teach).forEach {
-            com.baraa.masroof.presentation.common.MasroofText(stringResource(it), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        com.baraa.masroof.presentation.common.MasroofButton(onDismiss, Modifier.fillMaxWidth().testTag("home-guide-dismiss")) {
-            com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.home_guide_dismiss))
-        }
+    if (HomeTour.autoStart && onboarding.step == OnboardingStep.HOME && !onboarding.homeGuideSeen &&
+        selected == HomeDestination.Dashboard && !dashboardLoading) {
+        val finish = { onboardingViewModel.setHomeGuideSeen(true) }
+        BackHandler(onBack = finish)
+        HomeTour(tourTargets, finish)
     }
+    }
+}
+
 }
 
 @Composable
