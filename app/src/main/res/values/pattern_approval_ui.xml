@@ -14,7 +14,8 @@
     <string name="pattern_approval_own_reference">نعم، %1$s يحدد حسابي</string>
     <string name="pattern_approval_own_reference_help">الربط لهذا الرقم فقط؛ الأرقام المختلفة تبقى للمراجعة.</string>
     <string name="pattern_approval_account_summary">ستُسجّل الحركة في حسابك •• %1$s</string>
-    <string name="pattern_approval_save_scope">الاعتماد للرسائل الجديدة. معالجة الرسائل المعلقة إجراء تالٍ؛ يمكنك بدء المعالجة بعد الحفظ مباشرة.</string>
+    <string name="pattern_approval_save_scope">بعد الاعتماد يعمل النمط على الرسائل الجديدة تلقائيًا. الرسائل المعلّقة تعالجها بضغطة واحدة بعد الحفظ.</string>
+    <string name="pattern_approval_matching_preview">يطابق %1$d رسالة معلّقة. اعتمد النمط لتسجيلها.</string>
     <string name="pattern_approval_need_message">اختر رسالة مستوردة أو ألصق رسالة كاملة تطابق هذا النمط.</string>
     <string name="pattern_approval_need_account">اختر حسابك المؤكد، أو أضفه وأكد ملكيته.</string>
     <string name="pattern_approval_need_reference">حدد ما إذا كانت أرقام الرسالة تخص حسابك أو الطرف الآخر.</string>

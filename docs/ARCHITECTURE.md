@@ -100,7 +100,9 @@ are separate actions and reuse existing ownership/intake/reconciliation services
 
 Financial pattern editing reuses teaching with the same bank-qualified pattern id
 and a new immutable revision. Matching example spans prefill the editor, including
-ignored variable slots. Saving clears financial approval and retains the enabled
+ignored variable slots. Unselected money, date and number candidates become ignored
+slots automatically when the template compiler accepts them; otherwise the preview
+lists them as fixed text. Financial approval switches the pattern on. Saving an edit clears financial approval and retains the enabled
 state; leaving the editor discards the draft. Supported teaching operation types
 use this editor; other built-in families retain their existing enable/revision controls.
 

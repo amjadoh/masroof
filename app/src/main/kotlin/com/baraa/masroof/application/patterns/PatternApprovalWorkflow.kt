@@ -136,7 +136,8 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 require(preview.pattern.factContract!!.cardBank?.value == card.bank.id)
             }
             val bank = current.banks.single { it.bankId == preview.pattern.bankId }
-            store.saveBank(current.generation, bank.copy(patterns = listOf(preview.pattern)))
+            // Approval is the last human gate; an approved pattern that still had to be switched on was a third gate without extra safety.
+            store.saveBank(current.generation, bank.copy(patterns = listOf(preview.pattern.copy(enabled = true))))
         }
     }
 }

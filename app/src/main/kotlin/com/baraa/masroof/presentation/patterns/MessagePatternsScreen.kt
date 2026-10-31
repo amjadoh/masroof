@@ -94,10 +94,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
         pending = result.pendingAfter
     }
     LaunchedEffect(bank?.bankId, snapshot?.generation, selectedPattern, teaching) {
-        if (bank != null && workflow.canPreviewPending && !teaching &&
-            (selectedPattern == null || pattern?.canApply == true)) {
+        if (bank != null && workflow.canPreviewPending && !teaching && (selectedPattern == null || pattern != null)) {
             pending = null
-            try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
+            try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation,
+                forceEnabledPatternId = pattern?.takeUnless { it.canApply }?.id) }
             catch (e: CancellationException) { throw e }
             catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
         }
@@ -214,6 +214,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         } }) else null,
                         onDelete = { confirmingDelete = true },
                         onHistory = { history = true })
+                    if (!pattern.canApply && workflow.canApprove) pending?.let { report ->
+                        val count = report.matchingCount(pattern.id)
+                        if (count > 0) MasroofHintBox(stringResource(R.string.pattern_approval_matching_preview, count))
+                    }
                     if (source?.reviewId != null && pattern.canApply && workflow.canApplyPending) {
                         MasroofButton(onClick = { applyPending(configuration.generation, source.reviewId, pattern.id) },
                             enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-current")) { Text(stringResource(R.string.teaching_apply_current)) }
