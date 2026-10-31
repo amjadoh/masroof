@@ -1231,7 +1231,9 @@ class TransactionReconciliationService(
             zoneId = zoneId,
             persistedZoneId = linked.occurredAtZone,
         )
-        return linked.occurredAt != expectedAt
+        // A matched pair takes the earlier leg's time, so the later leg may differ by up to the match window.
+        if (linked.linkedParsedEventIds.size != 2) return linked.occurredAt != expectedAt
+        return java.time.Duration.between(linked.occurredAt, expectedAt).abs() > TransactionMatcher.TRANSFER_MATCH_WINDOW
     }
 
     /**
