@@ -65,7 +65,7 @@ class BundledPatternApprovalTest {
         }
     }
 
-    @Test fun purchaseWithoutACardTakesTheLinkedCardAndANamedCardMustMatch() = runBlocking {
+    @Test fun purchaseWithoutACardTakesTheLinkedCardAndANamedCardStaysItsOwn() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
             val card = requireNotNull(c.cardRegistryRepository.get(c.settingsRegistryWorkflow.addCard(BARQ, "4321", null, cardConfig)))
@@ -81,10 +81,10 @@ class BundledPatternApprovalTest {
             c.processRawSmsUseCase.ingest(sms("purchase", purchase))
             assertEquals(CardReference(Bank(BARQ), "4321"), c.parsedEventRepository.findByRawSmsId("purchase")!!.event.cardRef)
             assertEquals(1, c.financialTransactionRepository.listAll().size)
-            // A message naming another card is never moved onto the linked one.
+            // A message naming another owned card keeps that card; the link never moves it.
             c.processRawSmsUseCase.ingest(sms("other-card", named.replace("4321", "1111")))
-            assertEquals(ParseStatus.REVIEW_REQUIRED, c.parsedEventRepository.findByRawSmsId("other-card")!!.event.parseStatus)
-            assertEquals(1, c.financialTransactionRepository.listAll().size)
+            assertEquals(CardReference(Bank(BARQ), "1111"), c.parsedEventRepository.findByRawSmsId("other-card")!!.event.cardRef)
+            assertEquals(2, c.financialTransactionRepository.listAll().size)
         }
     }
 
@@ -106,8 +106,29 @@ class BundledPatternApprovalTest {
         }
     }
 
+    @Test fun linkingLaterKeepsMessagesThatNameTheirOwnAccountPostingAndPairing() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val named = "حوالة واردة داخلية\n100.00 SAR\nحساب المرسل: **5555\nلحساب: **1111\n2026-10-02 22:01"
+            w.confirmPatternAccount(BARQ, "1111")
+            c.processRawSmsUseCase.ingest(sms("before-link", named))
+            val posted = requireNotNull(c.parsedEventRepository.findByRawSmsId("before-link"))
+            assertEquals(ParseStatus.SUCCESS, posted.event.parseStatus)
+            val account = w.confirmPatternAccount(BARQ, "1234")
+            w.saveFinancial(w.previewFinancial(w.catalog().generation, BARQ, "barq.transfer-in", PatternOperation.TRANSFER_IN,
+                account.id, incoming, null, emptySet()))
+            val policy = com.baraa.masroof.application.interpretation.PatternInterpretationWritePolicy(
+                com.baraa.masroof.data.patterns.MessagePatternStore(context), c.accountRegistryRepository, c.cardRegistryRepository)
+            assertTrue("a leg posted before the link still pairs", policy.isCurrent(posted, posted = true))
+            c.processRawSmsUseCase.ingest(sms("after-link", named.replace("100.00", "70.00")))
+            assertEquals(AccountReference(Bank(BARQ), "1111"),
+                c.parsedEventRepository.findByRawSmsId("after-link")!!.event.destinationAccountRef)
+        }
+    }
+
+    private lateinit var context: Context
     private suspend fun fixture(block: suspend (AppContainer) -> Unit) {
-        val context = TestStorageContext(ApplicationProvider.getApplicationContext<Context>(), "bundled-${java.util.UUID.randomUUID()}")
+        context = TestStorageContext(ApplicationProvider.getApplicationContext<Context>(), "bundled-${java.util.UUID.randomUUID()}")
         val container = AppContainer(context)
         try { kotlinx.coroutines.withTimeout(20_000) { block(container) } } finally { container.close(); context.getDatabasePath("masroof.db").parentFile?.deleteRecursively() }
     }
