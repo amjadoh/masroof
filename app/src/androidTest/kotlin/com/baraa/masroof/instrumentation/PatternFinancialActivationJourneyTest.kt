@@ -81,7 +81,8 @@ class PatternFinancialActivationJourneyTest {
             // Discarding a validated preview never approves or posts anything.
             compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_financial_approve)).fetchSemanticsNodes().isNotEmpty() }
-            assertTrue(w.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.all { it.factContract == null })
+            // Reviewed role profiles always carry a contract; only the templates await approval.
+            assertTrue(w.load().banks.single { it.bankId == "BANK_STC" }.currentPatterns.filter { it.roleProfile == null }.all { it.factContract == null })
             assertTrue(c.financialTransactionRepository.listAll().isEmpty())
             openApproval()
             compose.onNodeWithTag("pattern-financial-save").performScrollTo().performClick()
