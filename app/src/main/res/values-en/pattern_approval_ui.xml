@@ -25,6 +25,7 @@
     <string name="pattern_approval_error_currency_conflict">The selected currency conflicts with the message. Choose the correct currency or currency from the message.</string>
     <string name="pattern_approval_error_amount">A positive transaction amount could not be validated. Check the message and pattern.</string>
     <string name="pattern_approval_error_time">The transaction date or time is incomplete or invalid. Choose a complete message with a valid timestamp.</string>
+    <string name="pattern_approval_error_message_context">The bank\'s built-in rules find contradicting wording in this message, so it cannot be approved for automatic use. Leave it for review.</string>
     <string name="pattern_approval_error_conflict">Multiple patterns match this message. Review the overlapping patterns before approval.</string>
     <string name="pattern_approval_error_non_financial">This security or non-financial message cannot be approved as a financial movement.</string>
     <string name="pattern_approval_error_changed">Pattern settings changed. Go back and reopen approval.</string>
