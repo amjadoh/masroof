@@ -122,8 +122,8 @@ class HistoricalSmsScanner(
             for (row in rows) {
                 if (row is InboxRow.Valid) {
                     if (receivedAfter != null && row.record.receivedAt < receivedAfter) continue
-                    // Providers are ordered oldest first. The selected end date is exclusive.
-                    if (receivedBefore != null && row.record.receivedAt >= receivedBefore) break
+                    // Rows are ordered by arrival time but receivedAt is the carrier time, so skip rather than stop.
+                    if (receivedBefore != null && row.record.receivedAt >= receivedBefore) continue
                 }
                 scanned++
                 if (scanned % PROGRESS_EVERY == 0) onProgress(scanned)
