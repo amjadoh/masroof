@@ -18,6 +18,23 @@ import java.time.Instant
 import java.time.LocalDate
 
 class AlJaziraParseParityTest {
+    @Test fun unknownFormatRemainsReviewOnlyWithoutInventedContradictoryFacts() {
+        val fixture = Json.parseToJsonElement(File("src/test/resources/testdata/bank_aljazira/unknown/unknown_format_ar_001.json").readText()).jsonObject
+        val result = bundledAlJaziraPatternAdapter().parse(SmsParseInput(
+            fixture.getValue("id").jsonPrimitive.content, fixture.getValue("sender").jsonPrimitive.content,
+            fixture.getValue("body").jsonPrimitive.content, Instant.parse("2026-10-20T12:00:00Z")))
+        assertTrue(result is com.baraa.masroof.parsing.model.ParseResult.ReviewRequired)
+        val review = result as com.baraa.masroof.parsing.model.ParseResult.ReviewRequired
+        val event = requireNotNull(review.event)
+        assertEquals(MessageFamily.UNKNOWN, event.messageFamily)
+        assertEquals(ParseStatus.REVIEW_REQUIRED, event.parseStatus)
+        assertNull(event.amount)
+        assertNull(event.sourceAccountRef)
+        assertNull(event.destinationAccountRef)
+        assertTrue("ENGINE_UNKNOWN_FAMILY" in event.confidence.reasons)
+        assertFalse("ENGINE_CONFLICTING_FACTS" in event.confidence.reasons)
+    }
+
     @Test fun defaultIntegrationFixtureUsesBundledProductionDefinitions() {
         val result = engineFixtureAdapter().parse(SmsParseInput("default-fixture", "AlJazira",
             "Purchase\nAmount:10 SAR\nFrom account:4321\nMerchant:SHOP\nOn:2026-10-15 12:30",

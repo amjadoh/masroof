@@ -11,6 +11,45 @@ import java.time.Instant
 
 /** Entirely fictional values; production layouts, never private SMS fixtures. */
 class AuditedSmsReadingTest {
+    @Test fun incomingThroughAnUnlistedBankKeepsExternalSourceUnknown() {
+        val result = parse("BANK_SNB", "SNB-AlAhli", "حوالة واردة محلية\nمبلغ SAR 43.25\nمرسل من جهة تجريبية\nمن *\nإلى 4321*\nعبر البنك المركزي السعودي\nفي 26/10/20 12:30")
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals(MessageFamily.TRANSFER_IN, result.facts.family)
+        assertEquals("4321", result.facts.destinationAccount?.maskedNumber)
+        assertNull(result.facts.sourceAccount)
+        assertEquals(BankNetwork.INTER_BANK, result.facts.bankNetwork)
+    }
+
+    @Test fun financingCurrencyDoesNotTurnAContractNumberIntoAFundingAccount() {
+        val bank = "BANK_EMIRATES_NBD"
+        val bundled = MessagePatternConfigurationCodec.decode(File("src/main/assets/bank-patterns/$bank.patterns.json").readText())
+        val configured = bundled.copy(banks = bundled.banks.map { definition -> definition.copy(patterns = definition.patterns.map { pattern ->
+            if (pattern.label != "FINANCING_INSTALLMENT") pattern else pattern.copy(factContract = pattern.factContract!!.copy(
+                version = 2, currency = com.baraa.masroof.finance.value.Currency.SAR))
+        }) })
+        val restored = MessagePatternConfigurationCodec.decode(MessagePatternConfigurationCodec.encode(configured))
+        val body = "خصم قسط تمويل\nPersonal Finance : نوع التمويل\n43.25 : القسط المستحق\n1234.50 : اجمالي المبلغ المتبقي\nXX8765 : رقم الحساب\n20-10-2026 : التاريخ\n12:30:00 : الوقت"
+        for (variant in listOf(body, body.replace("XX8765 : رقم الحساب", "رقم الحساب: XX8765"))) {
+            val result = PatternFactInterpreter(restored).interpretRouted(MessageInput("fictional-loan", "EmiratesNBD", variant,
+                Instant.parse("2026-10-20T12:00:00Z"), true), BankId(bank))
+            assertEquals(MessageFamily.FINANCING_INSTALLMENT, result.facts.family)
+            assertEquals("43.25", result.facts.amount?.amount?.toPlainString())
+            assertEquals("1234.50", result.facts.outstandingBalance?.amount?.toPlainString())
+            assertEquals(LoanType.PERSONAL, result.facts.loanType)
+            assertNull(result.facts.sourceAccount)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, result.status)
+        }
+    }
+
+    @Test fun compactRecipientRolePreservesTheBeneficiaryAccount() {
+        val result = parse("BANK_SNB", "SNB-AlAhli", "حوالة صادرة داخلية ب43.25 SAR\nل8765* مستفيد تجريبي\n2026-10-20 12:30", "4321", family = "TRANSFER_OUT")
+        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals("4321", result.facts.sourceAccount?.maskedNumber)
+        assertEquals("8765", result.facts.destinationAccount?.maskedNumber)
+        val merchant = parse("BANK_SNB", "SNB-AlAhli", "حوالة صادرة داخلية ب43.25 SAR\nلدى متجر 8765\n2026-10-20 12:30", "4321", family = "TRANSFER_OUT")
+        assertNull(merchant.facts.destinationAccount)
+    }
+
     @Test fun incomingDefaultIsExplicitAndNeverOverridesTheObservedDestination() {
         val body = "حوالة واردة داخلية ب 43.25 SAR\nمن 8765* عميل تجريبي\n2026-10-20 12:30"
         val linked = parse("BANK_SNB", "SNB-AlAhli", body, "4321", family = "TRANSFER_IN", destinationDefault = true)
