@@ -27,6 +27,8 @@ class MasroofAndroidTestRunner : AndroidJUnitRunner() {
     }
 
     override fun callApplicationOnCreate(app: Application) {
+        // The first-run tour covers Home; journeys that drive Home must not wait behind it.
+        com.baraa.masroof.presentation.navigation.HomeTour.autoStart = false
         if (resume) {
             DebugProcessHalt.clearRequest(app.filesDir)
         }

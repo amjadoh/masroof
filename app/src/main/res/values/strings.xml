@@ -261,11 +261,6 @@
     <string name="settings_logs_share">مشاركة السجل</string>
     <string name="settings_show_guide_title">عرض الإرشاد مرة أخرى</string>
     <string name="settings_show_guide_subtitle">يظهر دليل البداية فوق الصفحة الرئيسية مرة واحدة.</string>
-    <string name="home_guide_title">مرحبًا بك في مصروف</string>
-    <string name="home_guide_dashboard">• الرئيسية: ملخص مصاريفك ودخلك لكل فترة راتب. اسحب للأسفل للتحديث.</string>
-    <string name="home_guide_review">• المراجعة: الرسائل التي لم يفهمها مصروف تنتظرك هنا؛ صحّحها أو علّمه نمطها.</string>
-    <string name="home_guide_teach">• التعليم: من أي رسالة في المراجعة اختر «علّم مصروف هذه الرسالة»، ثم اعتمد النمط ليعمل تلقائيًا.</string>
-    <string name="home_guide_dismiss">فهمت</string>
     <string name="settings_report_problem_title">الإبلاغ عن مشكلة</string>
     <string name="settings_report_problem_subtitle">يفتح صفحة بلاغ على GitHub مع بيانات الإصدار والجهاز. شارك السجل معه إن لزم.</string>
     <string name="settings_logs_clear">مسح السجل</string>
@@ -630,4 +625,18 @@
     <string name="commitment_payment_ambiguous">تطابق هذه الدفعة أكثر من التزام. راجع الالتزامات.</string>
     <string name="commitment_payment_missing_source">الحركة الأصلية غير متاحة. راجع هذا الالتزام.</string>
     <string name="commitment_open_payment">عرض حركة الدفع</string>
+    <string name="tour_summary_title">ملخص فترتك</string>
+    <string name="tour_summary_body">دخلك ومصاريفك منذ آخر راتب. اضغط على أي رقم لترى العمليات التي خلفه.</string>
+    <string name="tour_period_title">فترة الراتب</string>
+    <string name="tour_period_body">انتقل بين فترات الرواتب بالأسهم، وغيّر ما يظهر في الرئيسية من زر التخصيص.</string>
+    <string name="tour_transactions_title">كل العمليات</string>
+    <string name="tour_transactions_body">كل عملية سجّلها مصروف من رسائل البنك، مع البحث والتصفية.</string>
+    <string name="tour_review_title">المراجعة والتعليم</string>
+    <string name="tour_review_body">الرسائل التي لم يفهمها مصروف تنتظرك هنا. افتح رسالة واختر «علّم مصروف هذه الرسالة»، وبعد اعتماد النمط يفهم الرسائل المشابهة وحده.</string>
+    <string name="tour_settings_title">الإعدادات</string>
+    <string name="tour_settings_body">البنوك والبطاقات والنسخ الاحتياطي. ويمكنك إعادة هذه الجولة من «حول».</string>
+    <string name="tour_next">التالي</string>
+    <string name="tour_done">فهمت</string>
+    <string name="tour_skip">تخطي</string>
+    <string name="tour_progress">%1$d من %2$d</string>
 </resources>
