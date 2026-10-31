@@ -176,6 +176,8 @@ Live SMS is captured durably before WorkManager receives a raw SMS id. Historica
 
 The engine uses rules first. Eligible local family inference never supplies an amount, ownership or approval. Explicit corrections feed local learning. Rule/model refreshes target unresolved, unposted evidence without a manual decision. Previously posted history is preserved.
 
+Family learning is per bank. Every bank with bundled role rules gets its own classifier built only from that bank's human decisions, so a corrected message teaches later messages with the same template in that bank. Only the AlJazira seed carries statistical families and evaluations; other banks start with exact human templates and keep seed-gated statistics off. Banks without role rules (taught patterns only) are `UNSUPPORTED_BANK` for learning, because a taught pattern already fixes its family. Outside the seed bank, a learning change refreshes only the pending messages it would change, so approved patterns are still applied explicitly.
+
 ## Data and recovery
 
 `masroof.db` supports schema 18 only, with its fourteen tables and unchanged identity hash. Older database and backup schemas are rejected without migration or destructive fallback. Automatic schema-fact backfill is removed; already queued backfill work completes without parsing or writing. Existing preference files, Keystore alias, app id and worker names remain stable. `learning.db` stores labels/provenance; `analytics.db` stores advisory results and preferences. Old Lab files are neither imported nor deleted automatically.
