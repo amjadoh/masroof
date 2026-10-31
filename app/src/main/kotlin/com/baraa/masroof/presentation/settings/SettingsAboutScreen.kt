@@ -139,7 +139,14 @@ fun SettingsAboutScreen(
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_updates_title),
                     stringResource(R.string.settings_updates_hint), MasroofIcons.importBackup, onOpenUpdates)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_logs_title),
-                    stringResource(R.string.settings_logs_subtitle), MasroofIcons.logs, onOpenLogs, divider = false)
+                    stringResource(R.string.settings_logs_subtitle), MasroofIcons.logs, onOpenLogs)
+                val context = androidx.compose.ui.platform.LocalContext.current
+                com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_report_problem_title),
+                    stringResource(R.string.settings_report_problem_subtitle), MasroofIcons.guidance, divider = false, onClick = {
+                        val body = "Version: $appVersion\nAndroid: ${android.os.Build.VERSION.SDK_INT}\nDevice: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n\n"
+                        val url = "https://github.com/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/issues/new?body=${android.net.Uri.encode(body)}"
+                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                    })
             }
 
             }
