@@ -1,22 +1,24 @@
 package com.baraa.masroof.presentation.notification
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import com.baraa.masroof.application.logging.AppLogCategories
+import com.baraa.masroof.application.logging.AppLogService
 import com.baraa.masroof.application.notification.NotificationAction
 import com.baraa.masroof.application.notification.NotificationCenterMetricsWorkflow
 import com.baraa.masroof.application.notification.NotificationCenterService
 import com.baraa.masroof.application.notification.NotificationCenterSnapshot
 import com.baraa.masroof.application.notification.NotificationItem
+import com.baraa.masroof.presentation.common.launchLogged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 class NotificationCenterViewModel(
     private val notificationCenterMetricsWorkflow: NotificationCenterMetricsWorkflow,
     private val notificationCenterService: NotificationCenterService,
     private val permissionStateProvider: () -> Boolean,
+    private val appLogService: AppLogService? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(NotificationCenterUiState())
     val uiState: StateFlow<NotificationCenterUiState> = _uiState.asStateFlow()
@@ -25,7 +27,7 @@ class NotificationCenterViewModel(
 
     fun refresh(external: NotificationCenterExternalState = lastExternalState) {
         lastExternalState = external
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Notification center refresh", onError = { _uiState.update { it.copy(loading = false) } }) {
             _uiState.update { it.copy(loading = true) }
             val snapshot = NotificationCenterSnapshot(
                 smsPermissionGranted = permissionStateProvider(),

@@ -67,7 +67,6 @@ class SpendingAmountsTest {
         val row = CreditCardDashboardRow(
             bank = com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA,
             last4 = "1111",
-            calendarMonthSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             statementSpendingNet = SignedMoneyAmount.of(Money.of(statement, Currency.SAR)),
             salaryPeriodSpendingNet = SignedMoneyAmount.of(Money.of(salary, Currency.SAR)),
             statementPeriodLabel = null,

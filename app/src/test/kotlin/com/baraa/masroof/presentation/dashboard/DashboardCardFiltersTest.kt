@@ -123,7 +123,6 @@ class DashboardCardFiltersTest {
     private fun cardRow(last4: String, bank: Bank = Bank.BANK_ALJAZIRA) = CreditCardDashboardRow(
         bank = bank,
         last4 = last4,
-        calendarMonthSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
         statementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
         salaryPeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
         statementPeriodLabel = null,

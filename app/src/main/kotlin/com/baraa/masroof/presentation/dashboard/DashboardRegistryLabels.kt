@@ -1,6 +1,8 @@
 package com.baraa.masroof.presentation.dashboard
 
+import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.CreditCardDashboardRow
@@ -62,11 +64,18 @@ fun accountDisplayLabel(
     accounts: List<OwnedAccountUi>,
     bank: Bank,
     maskedNumber: String,
+): String = accountDisplayLabel(LocalContext.current, accounts, bank, maskedNumber)
+
+fun accountDisplayLabel(
+    context: Context,
+    accounts: List<OwnedAccountUi>,
+    bank: Bank,
+    maskedNumber: String,
 ): String {
     val match = accounts.find { it.bank == bank && it.maskedNumber == maskedNumber }
     val custom = DashboardRegistryLabels.customName(match?.displayName)
     if (custom != null) return custom
-    return stringResource(
+    return context.getString(
         R.string.dashboard_account_item,
         DashboardRegistryLabels.accountLast4(maskedNumber),
     )
@@ -76,11 +85,17 @@ fun accountDisplayLabel(
 fun accountDisplayLabel(
     accounts: List<OwnedAccountUi>,
     containerId: String,
+): String? = accountDisplayLabel(LocalContext.current, accounts, containerId)
+
+fun accountDisplayLabel(
+    context: Context,
+    accounts: List<OwnedAccountUi>,
+    containerId: String,
 ): String? {
     val bankId = containerId.removePrefix("account:").substringBefore(':').trim().takeIf { it.isNotEmpty() }
         ?: return null
     val masked = FinancialContainerIdParser.accountMaskedNumber(containerId) ?: return null
-    return accountDisplayLabel(accounts, Bank(bankId), masked)
+    return accountDisplayLabel(context, accounts, Bank(bankId), masked)
 }
 
 @Composable
@@ -99,11 +114,17 @@ fun cardDisplayLabel(
 fun cardDisplayLabel(
     cards: List<OwnedCardUi>,
     last4: String,
+): String = cardDisplayLabel(LocalContext.current, cards, last4)
+
+fun cardDisplayLabel(
+    context: Context,
+    cards: List<OwnedCardUi>,
+    last4: String,
 ): String {
     val match = cards.find { it.last4 == last4 }
     val custom = DashboardRegistryLabels.customName(match?.displayName)
     if (custom != null) return custom
-    return stringResource(R.string.dashboard_credit_card_last4, formatCardLast4(last4))
+    return context.getString(R.string.dashboard_credit_card_last4, formatCardLast4(last4))
 }
 
 @Composable

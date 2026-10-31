@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.baraa.masroof.presentation.common.launchLogged
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -286,7 +287,9 @@ class DashboardViewModel(
 
     fun reclassifySelectedTransaction(newType: FinancialTransactionType) {
         val transactionId = _uiState.value.selectedTransactionId ?: return
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.DASHBOARD, "Dashboard reclassifySelectedTransaction", onError = {
+            _uiState.update { it.copy(reclassifying = false, reclassifyError = "update_failed") }
+        }) {
             _uiState.update { it.copy(reclassifying = true, reclassifySuccess = false, reclassifyError = null, ignoreError = null) }
             when (val result = reclassificationService.reclassify(transactionId, newType)) {
                 is ReclassificationResult.Success -> {
