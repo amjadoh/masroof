@@ -168,10 +168,13 @@ class PatternProcessingMilestoneTest {
     private fun bindings(body: String, fields: List<Pair<String, String>>) =
         fields.map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
 
+    /** Approves and switches the pattern on; taught patterns start off. */
     private suspend fun approveBarqOut(w: MessagePatternsWorkflow, patternId: String): MessagePatternConfiguration {
         val account = w.confirmPatternAccount("BANK_BARQ", "1482")
-        return w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", patternId,
+        w.saveFinancial(w.previewFinancial(w.catalog().generation, "BANK_BARQ", patternId,
             PatternOperation.TRANSFER_OUT, account.id, barqOut, null, setOf("destination_account")))
+        val current = w.load().banks.single { it.bankId == "BANK_BARQ" }.currentPatterns.single { it.id == patternId }
+        return if (current.enabled) w.load() else w.setEnabled(w.load().generation, "BANK_BARQ", patternId, true)
     }
 
     @Test fun unapprovedTaughtPatternBesideABundledRoleOffersExamplesAndApproves() = runBlocking {
@@ -214,8 +217,10 @@ class PatternProcessingMilestoneTest {
             val taught = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut, bindings(barqOut, barqOutFields))
             w.saveTeaching(taught)
             approveBarqOut(w, taught.pattern.id)
-            w.saveTeaching(w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
-                bindings(barqOut, barqOutFields.filter { it.first != "destination_account" })))
+            val overlap = w.teach(w.catalog().generation, "BANK_BARQ", "barq app", PatternOperation.TRANSFER_OUT, barqOut,
+                bindings(barqOut, barqOutFields.filter { it.first != "destination_account" }))
+            w.saveTeaching(overlap)
+            w.setEnabled(w.load().generation, "BANK_BARQ", overlap.pattern.id, true)
             c.processRawSmsUseCase.ingest(sms("barq-out-3", barqOut.replace("175.74", "99.00"), sender = "barq app"))
             assertEquals(1, c.financialTransactionRepository.listAll().size)
         }

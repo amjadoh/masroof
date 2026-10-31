@@ -105,7 +105,9 @@ class PatternApprovalWorkflow(private val store: MessagePatternStore, private va
                 val codes = interpretation.diagnostics.map { it.code }.toSet()
                 val problem = when {
                     interpretation.facts.family == MessageFamily.OTP -> PatternApprovalProblem.NON_FINANCIAL
-                    "PATTERN_CONFLICT" in codes || "PATTERN_PROFILE_CONTEXT_CONFLICT" in codes -> PatternApprovalProblem.PATTERN_CONFLICT
+                    "PATTERN_CONFLICT" in codes -> PatternApprovalProblem.PATTERN_CONFLICT
+                    // The bank's built-in rules read contradicting wording; no second pattern is involved.
+                    "PATTERN_PROFILE_CONTEXT_CONFLICT" in codes -> PatternApprovalProblem.MESSAGE_CONTEXT_CONFLICT
                     "PATTERN_REFERENCE_ROLE_UNRESOLVED" in codes || "PATTERN_ACCOUNT_REFERENCE_UNRESOLVED" in codes -> PatternApprovalProblem.REFERENCE_ROLE
                     "PATTERN_ACCOUNT_BINDING_MISMATCH" in codes -> PatternApprovalProblem.REFERENCE_MISMATCH
                     "PATTERN_CURRENCY_CONFLICT" in codes -> PatternApprovalProblem.CURRENCY_CONFLICT
