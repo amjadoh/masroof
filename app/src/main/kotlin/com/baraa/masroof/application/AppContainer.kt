@@ -928,7 +928,7 @@ class AppContainer(
 
     private suspend fun enrichExchangeRatesBestEffort() {
         try {
-            exchangeRateEnrichmentWorkflow.enrichPending()
+            if (exchangeRateEnrichmentWorkflow.enrichPending().persisted > 0) maintenanceCompletionSignal.notifyCompleted()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

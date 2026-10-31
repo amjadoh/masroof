@@ -261,25 +261,26 @@ internal class SettingsUpdateActions(
         silent: Boolean,
         restoring: Boolean = false,
     ) {
-        val nextState = withContext(Dispatchers.IO) {
+        val before = settingsState.value.updateState
+        val ready = withContext(Dispatchers.IO) {
             val downloaded = appUpdateService.updateApkFile(manifest)
-            if (
-                downloaded.exists() &&
+            downloaded.exists() &&
                 com.baraa.masroof.application.update.ApkIntegrityVerifier.matches(downloaded, manifest.sha256)
-            ) {
-                AppUpdateUiState.ReadyToInstall(manifest)
-            } else {
-                if (downloaded.exists()) downloaded.delete()
-                AppUpdateUiState.Available(manifest)
-            }
         }
+        // A download, check, token clear or channel change during the hash owns the state and the file now.
+        if (settingsState.value.updateState != before) return
+        if (restoring && updateCheckCoordinator.restorePendingUpdate() != manifest) return
         settingsState.update {
-            // A check or download that started while restoring owns the state now.
-            if (restoring && (it.updateState is AppUpdateUiState.Checking || it.updateState is AppUpdateUiState.Downloading)) return@update it
             it.copy(
-                updateState = nextState,
+                updateState = if (ready) AppUpdateUiState.ReadyToInstall(manifest) else AppUpdateUiState.Available(manifest),
                 updateMessage = if (silent) null else AppUpdateMessage.UPDATE_AVAILABLE,
             )
+        }
+        if (!ready) {
+            withContext(Dispatchers.IO) {
+                val downloaded = appUpdateService.updateApkFile(manifest)
+                if (downloaded.exists()) downloaded.delete()
+            }
         }
     }
 }

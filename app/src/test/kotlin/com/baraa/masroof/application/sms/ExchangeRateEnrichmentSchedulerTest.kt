@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -75,9 +76,9 @@ class ExchangeRateEnrichmentSchedulerTest {
             pending,
         ).result.get()
 
-        scheduler.schedule()
-        scheduler.schedule()
-        scheduler.schedule()
+        schedule(scheduler)
+        schedule(scheduler)
+        schedule(scheduler)
 
         val infos = workManager
             .getWorkInfosForUniqueWork(WorkManagerExchangeRateEnrichmentScheduler.UNIQUE_WORK_NAME)
@@ -96,6 +97,13 @@ class ExchangeRateEnrichmentSchedulerTest {
     private fun assertSucceeded(infos: List<WorkInfo>) {
         assertTrue(infos.isNotEmpty())
         assertTrue(infos.all { it.state == WorkInfo.State.SUCCEEDED })
+    }
+
+    /** The request needs the network; the test driver stands in for a connected device. */
+    private fun schedule(scheduler: WorkManagerExchangeRateEnrichmentScheduler) {
+        scheduler.schedule()
+        val driver = WorkManagerTestInitHelper.getTestDriver(context)!!
+        uniqueWork().filter { !it.state.isFinished }.forEach { driver.setAllConstraintsMet(it.id) }
     }
 
     private fun uniqueWork(): List<WorkInfo> =
@@ -120,9 +128,9 @@ class ExchangeRateEnrichmentSchedulerTest {
         releaseFirstPass = CountDownLatch(1)
         val scheduler = WorkManagerExchangeRateEnrichmentScheduler { workManager }
 
-        scheduler.schedule()
+        schedule(scheduler)
         assertTrue(blockFirstPass!!.await(5, TimeUnit.SECONDS))
-        scheduler.schedule()
+        schedule(scheduler)
         releaseFirstPass!!.countDown()
 
         val finished = finishedUniqueWork().single()
@@ -141,13 +149,13 @@ class ExchangeRateEnrichmentSchedulerTest {
         }
         val scheduler = WorkManagerExchangeRateEnrichmentScheduler { workManager }
 
-        scheduler.schedule()
+        schedule(scheduler)
         assertTrue(enteredCompletion.await(5, TimeUnit.SECONDS))
         val finishing = uniqueWork()
         assertEquals(1, finishing.size)
         assertFalse(finishing.single().state.isFinished)
 
-        scheduler.schedule()
+        schedule(scheduler)
 
         val duringCompletion = uniqueWork()
         val finishingId = finishing.single().id
@@ -158,7 +166,7 @@ class ExchangeRateEnrichmentSchedulerTest {
         assertSucceeded(finishedUniqueWork())
         assertEquals(2, enrichCalls.get())
 
-        scheduler.schedule()
+        schedule(scheduler)
         assertSucceeded(finishedUniqueWork())
         assertEquals(3, enrichCalls.get())
     }
@@ -176,7 +184,7 @@ class ExchangeRateEnrichmentSchedulerTest {
         assertEquals(0, enrichCalls.get())
 
         fail = false
-        scheduler.schedule()
+        schedule(scheduler)
 
         assertSucceeded(finishedUniqueWork())
         assertEquals(1, enrichCalls.get())
@@ -186,6 +194,7 @@ class ExchangeRateEnrichmentSchedulerTest {
     fun workRequest_isTaggedForDiscovery() {
         val request = WorkManagerExchangeRateEnrichmentScheduler.workRequest()
         assertTrue(WorkManagerExchangeRateEnrichmentScheduler.WORK_TAG in request.tags)
+        assertEquals(NetworkType.CONNECTED, request.workSpec.constraints.requiredNetworkType)
     }
 
     private fun blockingEnricher(): PendingExchangeRateEnricher =

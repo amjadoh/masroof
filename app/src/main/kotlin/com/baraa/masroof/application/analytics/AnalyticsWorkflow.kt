@@ -96,14 +96,14 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
         AnalyticsWorker.scheduleDaily(context)
         importJob = scope.launch { AnalyticsImportGate.completed.collect { request() } }
     }
-    /** Time enters the fingerprint only as the local day and a 6-hour bucket. */
-    private fun clockKey() = LocalDate.now(clock) to clock.millis() / SIX_HOURS_MS
+    /** Unobserved fingerprint inputs: the local day, the 6-hour bucket and SMS permission. Cheap to read each minute. */
+    internal fun clockKey() = Triple(LocalDate.now(clock), clock.millis() / SIX_HOURS_MS, smsPermissionMissing())
     private fun millisUntilClockBoundary(): Long {
         val now = clock.millis()
         val midnight = LocalDate.now(clock).plusDays(1).atStartOfDay(clock.zone).toInstant().toEpochMilli()
         val bucket = (now / SIX_HOURS_MS + 1) * SIX_HOURS_MS
-        // Capped at an hour: delay() does not count device deep sleep.
-        return (minOf(midnight, bucket) - now).coerceIn(1_000L, 3_600_000L)
+        // Capped at a minute: delay() does not count deep sleep, and a permission change has no callback.
+        return (minOf(midnight, bucket) - now).coerceIn(1_000L, 60_000L)
     }
     private fun periodOffset(day: Long): Int =
         (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt()
