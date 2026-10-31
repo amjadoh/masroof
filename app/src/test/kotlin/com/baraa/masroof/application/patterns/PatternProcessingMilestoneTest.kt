@@ -121,6 +121,31 @@ class PatternProcessingMilestoneTest {
         }
     }
 
+    @Test fun approvalRejectsMissingOwnerWrongCardAndStaleConfigurationWithoutWriting() = runBlocking {
+        fixture { c ->
+            val w = c.messagePatternsWorkflow
+            val bankId = "GUARD_BANK"
+            w.addBank(w.catalog().generation, "Guard bank", "GuardBank", bankId)
+            val config = CardConfiguration(CardNetwork.VISA, CardType.CREDIT, CardRole.STANDALONE)
+            val card = requireNotNull(c.cardRegistryRepository.get(c.settingsRegistryWorkflow.addCard(bankId, "8219", null, config)))
+            val other = requireNotNull(c.cardRegistryRepository.get(c.settingsRegistryWorkflow.addCard(bankId, "1111", null, config)))
+            val body = "Purchase\nCard:8219\nAmount:10SAR\nMerchant:SHOP\nAt:2026-10-15 12:30"
+            val bindings = listOf("card" to "8219", "amount" to "10SAR", "occurred_at" to "2026-10-15 12:30")
+                .map { (field, value) -> PatternBinding(field, body.indexOf(value), body.indexOf(value) + value.length) }
+            w.saveTeaching(w.teach(w.catalog().generation, bankId, "GuardBank", PatternOperation.PURCHASE, body, bindings))
+            val before = w.load()
+            val id = before.banks.single { it.bankId == bankId }.currentPatterns.single().id
+            suspend fun problem(generation: Long, cardId: String?) = (runCatching {
+                w.previewFinancial(generation, bankId, id, PatternOperation.PURCHASE, null, body, null, emptySet(), cardId = cardId)
+            }.exceptionOrNull() as? PatternApprovalException)?.problem
+            assertEquals(PatternApprovalProblem.ACCOUNT_REQUIRED, problem(before.generation, null))
+            assertEquals(PatternApprovalProblem.CARD_MISMATCH, problem(before.generation, other.id))
+            assertEquals(PatternApprovalProblem.CONFIGURATION_CHANGED, problem(before.generation - 1, card.id))
+            assertEquals(before, w.load())
+            assertTrue(c.financialTransactionRepository.listAll().isEmpty())
+        }
+    }
+
     @Test fun manualStcCardLearnsAPurchasePatternWithAMaskedCardNumber() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow

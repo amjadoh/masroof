@@ -105,15 +105,6 @@ class MerchantSpendingOverviewBuilderTest {
         assertEquals(Money.of("47.50", Currency.SAR).amount, row.totalSpent.amount)
     }
 
-    @Test
-    fun dashboardLimitReturnsTopFiveWhileOverviewRetainsAllQualifyingMerchants() {
-        val overview = build((1..6).flatMap { index -> purchases("Merchant $index", 2, "$index") })
-
-        assertEquals(6, overview.merchants.size)
-        assertEquals(5, overview.topForDashboard().size)
-        assertEquals(overview.merchants.take(5), overview.topForDashboard())
-    }
-
     private fun build(transactions: List<FinancialTransaction>): MerchantSpendingOverview =
         MerchantSpendingOverviewBuilder.build(transactions, Currency.SAR, emptyMap())
 

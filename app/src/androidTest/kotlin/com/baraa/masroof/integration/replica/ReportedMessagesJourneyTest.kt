@@ -56,7 +56,7 @@ class ReportedMessagesJourneyTest {
             val account=AccountReference(bank,"3001"); val card=CardReference(bank,"8219")
             c.onboardingOwnershipWorkflow.confirmAccountOwned(account)
             c.onboardingOwnershipWorkflow.confirmCardOwned(card)
-            c.settingsRegistryWorkflow.markCardAsDebit(card)
+            c.cardRegistryRepository.markAsDebit(card)
             c.settingsRegistryWorkflow.linkDebitToAccount(card,account)
             val import=c.historicalSmsScanner.scan(Instant.EPOCH)
             assertEquals(import.toString(),0,import.failed)
@@ -210,7 +210,7 @@ class ReportedMessagesJourneyTest {
             val account=AccountReference(bank,"3001");val card=CardReference(bank,"8219")
             c.onboardingOwnershipWorkflow.confirmAccountOwned(account)
             c.onboardingOwnershipWorkflow.confirmCardOwned(card)
-            c.settingsRegistryWorkflow.markCardAsDebit(card)
+            c.cardRegistryRepository.markAsDebit(card)
             c.settingsRegistryWorkflow.linkDebitToAccount(card,account)
             val adapter=InterpretationTestAdapter(requireNotNull(c.interpretationService)::interpret)
             for(name in names) {

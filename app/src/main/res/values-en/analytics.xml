@@ -20,7 +20,6 @@
     <string name="lab_analysis_back">Back</string>
     <string name="lab_analysis_settings">Purchase limit and alerts</string>
     <string name="lab_analysis_commitments">Commitments</string>
-    <string name="lab_analysis_alerts">Alerts</string>
     <string name="lab_analysis_commitments_hint">Registered dues are confirmed. Detected payments are separate estimates, are not added to the purchase forecast, and create no commitment until you save.</string>
     <string name="lab_analysis_confirmed">Confirmed due</string>
     <string name="lab_analysis_estimated">Estimate</string>
@@ -28,7 +27,6 @@
     <string name="lab_analysis_no_candidates">No sufficiently supported recurring suggestions yet.</string>
     <string name="lab_analysis_weekly">Weekly</string>
     <string name="lab_analysis_monthly">Monthly</string>
-    <string name="lab_analysis_payment_number">Open transaction %1$d</string>
     <string name="lab_analysis_review_candidate">Review and add commitment</string>
     <string name="lab_analysis_due_alert">Upcoming due</string>
     <string name="lab_analysis_payment_alert">Recurring payment amount changed</string>

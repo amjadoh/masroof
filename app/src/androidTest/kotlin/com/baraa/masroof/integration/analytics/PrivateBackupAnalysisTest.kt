@@ -58,7 +58,7 @@ class PrivateBackupAnalysisTest {
             }
             c.runStartupMaintenance()
             c.awaitPostStartupBackgroundWorkForTesting()
-            c.stopLabAnalytics()
+            c.stopAnalytics()
             suspend fun ledgerFingerprint(): ByteArray = c.database.withTransaction {
                 val digest = MessageDigest.getInstance("SHA-256")
                 c.database.openHelper.readableDatabase.query("SELECT * FROM financial_transaction ORDER BY id").use { cursor ->

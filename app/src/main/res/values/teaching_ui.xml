@@ -9,7 +9,6 @@
     <string name="teaching_next">التالي</string>
     <string name="teaching_field_title">أين %1$s؟</string>
     <string name="teaching_field_progress">%1$d من %2$d</string>
-    <string name="teaching_back">رجوع</string>
     <string name="teaching_required">مطلوب</string>
     <string name="teaching_optional">اختياري</string>
     <string name="teaching_select_value">اختر قيمة</string>
@@ -18,7 +17,6 @@
     <string name="teaching_sample_title">هل تطابق رسالة أخرى؟</string>
     <string name="teaching_confirm_field">تأكيد ومتابعة</string>
     <string name="teaching_skip_field">غير موجود</string>
-    <string name="teaching_previous">السابق</string>
     <string name="teaching_preview_title">هل البيانات صحيحة؟</string>
     <string name="teaching_try_another">تجربة رسالة أخرى</string>
     <string name="teaching_saved_title">حُفظ النمط للمعاينة</string>
