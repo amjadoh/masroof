@@ -89,7 +89,8 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if (profiles.any { it.network != profile.network || it.schema != profile.schema })
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
             val defaults = roles.mapNotNull { pattern -> pattern.factContract?.takeIf { it.version >= 2 &&
-                it.accountBindings.isNotEmpty() && it.accountBindings.all { binding -> binding.bank == bank } }?.let { contract ->
+                (it.accountBindings.isNotEmpty() || it.family == MessageFamily.FINANCING_INSTALLMENT && it.currency != null) &&
+                it.accountBindings.all { binding -> binding.bank == bank } }?.let { contract ->
                 pattern.id to RuleFactDefaults(
                     contract.accountBindings.singleOrNull { it.role == PatternAccountRole.SOURCE }?.let { AccountReference(it.bank, it.last4) },
                     contract.accountBindings.singleOrNull { it.role == PatternAccountRole.DESTINATION }?.let { AccountReference(it.bank, it.last4) },

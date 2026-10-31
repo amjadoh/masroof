@@ -53,7 +53,8 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
             else {
                 require(contract.version == 2)
                 val binding = contract.accountBindings.singleOrNull()
-                if (binding == null) require(contract.accountBindings.isEmpty() && contract.currency == null)
+                if (binding == null) require(contract.accountBindings.isEmpty() &&
+                    (contract.currency == null || contract.family == com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT))
                 else {
                     require(contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
                         com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
