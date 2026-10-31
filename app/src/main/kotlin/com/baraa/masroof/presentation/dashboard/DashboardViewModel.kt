@@ -486,8 +486,8 @@ class DashboardViewModel(
                 _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
-                appLogService?.error(AppLogCategories.DASHBOARD, "Dashboard load failed for period ${period.startDate}")
+            } catch (e: Exception) {
+                appLogService?.failure(AppLogCategories.DASHBOARD, "Dashboard load for period ${period.startDate}", e)
                 if (period != activePeriod) {
                     return@launch
                 }

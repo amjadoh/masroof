@@ -60,9 +60,12 @@ class AppLogService(
         }
     }
 
+    /** The same text the export writes, for sharing from the log screen. */
+    fun exportText(): String = buildExportText(readAll())
+
     fun exportTo(uri: Uri): Result<Unit> =
         runCatching {
-            val text = buildExportText(readAll())
+            val text = exportText()
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(text.toByteArray(Charsets.UTF_8))
             } ?: error("Could not open export destination")
@@ -167,6 +170,8 @@ class AppLogService(
         val header = buildString {
             appendLine("Masroof diagnostic log")
             appendLine("Exported: ${formatter.format(Instant.now().atZone(zoneId))}")
+            appendLine("App: ${runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()}")
+            appendLine("Android: ${android.os.Build.VERSION.SDK_INT} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("Entries: ${entries.size}")
             appendLine("Retention: $maxEntries entries / $retentionDays days")
             appendLine()

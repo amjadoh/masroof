@@ -268,6 +268,9 @@
     <string name="settings_log_category_update">تحديث</string>
     <string name="settings_log_category_logs">سجل</string>
     <string name="settings_logs_export">تصدير السجل</string>
+    <string name="settings_logs_share">مشاركة السجل</string>
+    <string name="settings_report_problem_title">الإبلاغ عن مشكلة</string>
+    <string name="settings_report_problem_subtitle">يفتح صفحة بلاغ على GitHub مع بيانات الإصدار والجهاز. شارك السجل معه إن لزم.</string>
     <string name="settings_logs_clear">مسح السجل</string>
     <string name="settings_logs_clear_confirm_title">مسح سجل التطبيق؟</string>
     <string name="settings_logs_clear_confirm_body">لا يمكن التراجع عن هذا الإجراء.</string>
