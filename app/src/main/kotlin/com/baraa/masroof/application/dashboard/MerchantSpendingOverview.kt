@@ -41,11 +41,7 @@ data class MerchantSpendingOverview(
     val hasContent: Boolean
         get() = merchants.isNotEmpty()
 
-    fun topForDashboard(): List<MerchantSpendingRow> = merchants.take(DASHBOARD_MERCHANT_LIMIT)
-
     companion object {
-        const val DASHBOARD_MERCHANT_LIMIT = 5
-
         fun empty(): MerchantSpendingOverview = MerchantSpendingOverview(emptyList())
     }
 }

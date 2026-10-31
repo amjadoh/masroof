@@ -103,10 +103,6 @@ class SettingsRegistryWorkflow(
         cardRegistryRepository.linkDebitToAccount(card, account)
     }
 
-    suspend fun markCardAsDebit(card: CardReference) {
-        cardRegistryRepository.markAsDebit(card)
-    }
-
     suspend fun updateAccountType(account: AccountReference, accountType: AccountType) {
         accountRegistryRepository.updateAccountType(account, accountType)
     }

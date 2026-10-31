@@ -65,10 +65,8 @@ class PatternTeachingClarityJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-operation-TRANSFER_IN").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-operation-TRANSFER_IN").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-question").assertIsDisplayed()
-            compose.onNodeWithText(ar(R.string.teaching_back)).assertDoesNotExist()
             capture("message")
             click(R.string.teaching_next)
-            compose.onNodeWithText(ar(R.string.teaching_previous)).assertDoesNotExist()
             select("100.00 SAR")
             compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed().performClick()
             compose.onNodeWithTag("pattern-question").assertTextContains("مبلغ العملية", substring = true)

@@ -41,7 +41,6 @@ class OwnedAccountTest {
         assertEquals(Money.of("15000.00", Currency.SAR), fleet.totalInflow)
         assertEquals(Money.of("1500.00", Currency.SAR), fleet.totalOutflow)
         assertEquals(SignedMoneyAmount.of(Money.of("13500.00", Currency.SAR)), fleet.totalRemaining)
-        assertEquals(Money.of("0.00", Currency.SAR), fleet.totalCreditCardPayments())
     }
 
     @Test

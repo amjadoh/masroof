@@ -25,10 +25,6 @@ class OwnershipConfirmationService(
         accountRegistry.setOwnership(reference, OwnershipStatus.EXTERNAL)
     }
 
-    suspend fun clearAccountOwnership(reference: AccountReference) {
-        accountRegistry.setOwnership(reference, OwnershipStatus.UNKNOWN)
-    }
-
     suspend fun confirmCardOwned(reference: CardReference) {
         cardRegistry.setOwnership(reference, OwnershipStatus.OWNED)
     }
