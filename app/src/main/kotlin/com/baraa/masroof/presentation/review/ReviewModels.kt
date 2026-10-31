@@ -53,6 +53,7 @@ data class ReviewDetailUi(
     val bankChoices: List<ReviewBankChoiceUi> = emptyList(),
     val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
     val bankId: String? = null,
+    val transferBetweenOwnAccounts: Boolean = false,
 )
 
 enum class ReviewListMode {
