@@ -46,7 +46,7 @@ internal fun patternBadges(pattern: PatternDefinitionView, conflicting: Boolean)
 internal fun PatternDetailCard(
     bank: PatternBankView, pattern: PatternDefinitionView, busy: Boolean,
     onApprove: (() -> Unit)?, onToggle: () -> Unit, onHistory: () -> Unit,
-    onEdit: (() -> Unit)?, onDelete: () -> Unit,
+    onEdit: (() -> Unit)?, onDelete: () -> Unit, onCopy: (() -> Unit)? = null,
 ) {
     MasroofCard {
         val toggleLabel = stringResource(if (pattern.enabled) R.string.pattern_disable else R.string.pattern_enable)
@@ -65,23 +65,43 @@ internal fun PatternDetailCard(
         })
         MasroofGuidanceLabel(patternStatusName(pattern), explanation)
     }
+    val builtInRule = pattern.recognitionPhrases.isNotEmpty()
     MasroofCard {
-        MasroofSectionHeader(stringResource(R.string.pattern_template_preview), icon = MasroofIcons.preview)
+        MasroofSectionHeader(stringResource(if (builtInRule) R.string.pattern_builtin_phrases else R.string.pattern_template_preview),
+            icon = MasroofIcons.preview)
         PatternTemplatePreview(pattern)
     }
-    if (onEdit != null) SettingsNavRow(
+    // A built-in rule has no template to select from; its fields are shown read-only and Edit teaches a replacement.
+    if (builtInRule && pattern.fieldLabels.isNotEmpty()) MasroofCard(Modifier.testTag("pattern-builtin-fields")) {
+        MasroofSectionHeader(stringResource(R.string.pattern_message_fields), icon = MasroofIcons.edit)
+        Text(stringResource(R.string.pattern_builtin_fields_help), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        pattern.fieldLabels.forEach { (field, labels) ->
+            Text("${patternFieldName(field)}: ${labels.joinToString("، ")}", style = MaterialTheme.typography.bodyMedium)
+        }
+        if (onEdit != null) {
+            MasroofOutlinedButton(onEdit, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-edit")) {
+                Text(stringResource(R.string.pattern_builtin_edit))
+            }
+            Text(stringResource(R.string.pattern_builtin_edit_help), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else if (onEdit != null) SettingsNavRow(
         icon = MasroofIcons.edit, title = stringResource(R.string.pattern_message_fields),
         subtitle = stringResource(R.string.pattern_message_fields_help), onClick = onEdit,
         enabled = !busy, modifier = Modifier.testTag("pattern-edit"),
     )
     if (pattern.canApprove && onApprove != null) {
-        if (pattern.status == PatternApprovalStatus.APPROVED) SettingsNavRow(
+        if (pattern.status == PatternApprovalStatus.APPROVED || pattern.approval != null && builtInRule) SettingsNavRow(
             icon = MasroofIcons.success, title = stringResource(R.string.pattern_financial_settings),
             subtitle = stringResource(R.string.pattern_financial_settings_help), onClick = onApprove,
             enabled = !busy,
         ) else MasroofButton(onClick = onApprove, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.pattern_financial_approve))
         }
+    }
+    if (onCopy != null) MasroofOutlinedButton(onCopy, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-copy")) {
+        Text(stringResource(R.string.pattern_copy))
     }
     SettingsNavRow(
         icon = MasroofIcons.clock, title = stringResource(R.string.pattern_approval_advanced),
@@ -101,6 +121,12 @@ internal fun PatternDetailCard(
 @Composable
 internal fun PatternTemplatePreview(pattern: PatternDefinitionView) {
     Column(Modifier.fillMaxWidth().testTag("pattern-preview"), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
+        if (pattern.recognitionPhrases.isNotEmpty()) {
+            Text(stringResource(R.string.pattern_builtin_phrases_help), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SelectionContainer { Column { pattern.recognitionPhrases.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) } } }
+            return@Column
+        }
         Text(stringResource(R.string.pattern_template_preview_help), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         var template = pattern.messageTemplate

@@ -15,4 +15,10 @@
     <string name="pattern_template_preview_help">القيم بين الأقواس تتغيّر من رسالة لأخرى. المعاينة لا تسجّل أي عملية.</string>
     <string name="pattern_delete_action">حذف النمط</string>
     <string name="pattern_preview_done">تم</string>
+    <string name="pattern_builtin_phrases">كلمات التعرف</string>
+    <string name="pattern_builtin_phrases_help">يتعرف التطبيق على الرسالة إذا احتوت إحدى هذه العبارات. ترتيب الأسطر لا يهم.</string>
+    <string name="pattern_builtin_fields_help">يقرأ التطبيق كل قيمة من الكلمة التي تسبقها في الرسالة. لتغييرها اضغط «تعديل».</string>
+    <string name="pattern_builtin_edit">تعديل</string>
+    <string name="pattern_builtin_edit_help">يُنشئ نمطًا جديدًا من رسالة حقيقية ويوقف هذا النمط بعد الحفظ.</string>
+    <string name="pattern_copy">نسخ كنمط جديد</string>
 </resources>
