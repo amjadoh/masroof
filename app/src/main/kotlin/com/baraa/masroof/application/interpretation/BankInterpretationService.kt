@@ -49,6 +49,7 @@ class BankInterpretationService(
     val personalization: FamilyPersonalizationResult? get() = personalizations[SEED_BANK]
     // Templates of pending messages in banks other than the seed bank that learned decisions would now change.
     @Volatile private var assistable: Set<String> = emptySet()
+    @Volatile private var seedRead: Set<String> = emptySet()
     @Volatile private var synchronizedDecisions: String? = null
     @Volatile private var pendingFeedback = false
     private data class Attempt(val bank: String, val classifier: FamilyClassifier?, var requested: Boolean = false,
@@ -297,11 +298,22 @@ class BankInterpretationService(
             FamilyAssistBridge.suggest(models[record.event.bank.id], record.event.bank.id, body,
                 com.baraa.masroof.engine.bank.interpretation.FamilyTextPreparation.prepare(body).title)
         } != null }.map { it.event.rawSmsId }.toSet()
-        val pending = records.any { needsRefresh(it) && mayRefresh(it.event.rawSmsId) }
+        // Seed UNKNOWN messages already read with the current seed model are not read again (same guard as above).
+        seedRead = records.filter { it.event.bank.id == SEED_BANK && it.event.messageFamily.name == "UNKNOWN" &&
+            store.history(it.event.rawSmsId).lastOrNull()?.activeModelVersion == models[SEED_BANK]?.version }
+            .map { it.event.rawSmsId }.toSet()
+        val needs = refreshFilter()
+        val pending = records.any { needs(it) && mayRefresh(it.event.rawSmsId) }
         if (pending) ModelRefreshWorker.enqueue(context, version)
         check(prefs.edit().putString("scheduled_interpretation", version).commit())
     }
-    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean {
+    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean = refreshFilter()(record)
+    /** One pass reads the pattern file once, not once per pending message. */
+    fun refreshFilter(): (com.baraa.masroof.parsing.repository.ParsedEventRecord) -> Boolean {
+        val rules = lazy { engine().fingerprint }
+        return { record -> needsRefresh(record, rules) }
+    }
+    private fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord, rules: Lazy<String>): Boolean {
         // Successful facts resume derived work.
         if (record.event.parseStatus.name == "SUCCESS") return false
         val bank = record.event.bank.id
@@ -309,8 +321,8 @@ class BankInterpretationService(
         val staleInference = reasons.any { it.startsWith("family_origin:") } && "model:${classifiers?.get(bank)?.version}" !in reasons
         // Other banks refresh only what learning now changes, so an approved pattern is still applied explicitly.
         if (bank != SEED_BANK) return bank in classifiers.orEmpty() && (staleInference || record.event.rawSmsId in assistable)
-        val fingerprint = engine().fingerprint
-        return record.event.messageFamily.name == "UNKNOWN" ||
+        val fingerprint = rules.value
+        return record.event.messageFamily.name == "UNKNOWN" && record.event.rawSmsId !in seedRead ||
             reasons.none { it == "rules:$fingerprint" || it.startsWith("rules:$fingerprint:") } || staleInference
     }
     /** Do not re-interpret posted evidence or human decisions on engine/model upgrades. */

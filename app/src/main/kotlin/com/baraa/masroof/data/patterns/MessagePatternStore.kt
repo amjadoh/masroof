@@ -43,7 +43,7 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
                 versions[key] = pattern
             }
         }
-        val updated = bank.copy(patterns = versions.values.toList(), deletedPatternIds = deletedIds)
+        val updated = bank.copy(patterns = keepRecent(versions.values), deletedPatternIds = deletedIds)
         val next = MessagePatternConfiguration(Math.addExact(current.generation, 1),
             current.banks.filterNot { it.bankId == bank.bankId } + updated)
         val raw = MessagePatternConfigurationCodec.encode(next)
@@ -127,8 +127,15 @@ class MessagePatternStore(private val file: File, private val beforeReplace: () 
             if (updates.isEmpty() && senders == prior.senders) return null
             // An upgraded role keeps only its new revision, so repeated updates never grow the bounded history.
             val upgraded = updates.map { it.id }.toSet()
-            return prior.copy(senders = senders, patterns = prior.patterns.filterNot { it.id in upgraded && it.roleProfile != null } + updates)
+            return prior.copy(senders = senders,
+                patterns = keepRecent(prior.patterns.filterNot { it.id in upgraded && it.roleProfile != null } + updates))
         }
+
+        /** Every save adds a revision; keep the newest few per pattern so a bank never reaches the codec's 128 cap. */
+        internal fun keepRecent(patterns: Collection<SavedMessagePattern>): List<SavedMessagePattern> =
+            patterns.groupBy { it.id }.values.flatMap { history -> history.sortedByDescending { it.revision }.take(KEPT_REVISIONS) }
+
+        internal const val KEPT_REVISIONS = 4
 
         // ponytail: serialize local file operations process-wide; split by path only if multiple profiles need concurrent writes.
         private val lock = Any()
