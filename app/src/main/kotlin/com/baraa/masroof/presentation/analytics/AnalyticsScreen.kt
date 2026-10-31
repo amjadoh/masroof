@@ -73,7 +73,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     val label = when {
         state.unavailable -> R.string.lab_analysis_failed
         state.snapshot == null -> R.string.lab_analysis_preparing
-        state.updating -> R.string.lab_analysis_updating
+        // A refresh keeps the last status and its help; the line below says it is updating.
         state.snapshot.status != "READY" -> R.string.lab_analysis_insufficient
         state.snapshot.quality.blocked -> R.string.lab_analysis_quality_warning
         state.snapshot.method == "WEEKDAY_MEDIAN" -> R.string.lab_analysis_initial
@@ -87,7 +87,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     }
     MasroofGuidanceLabel(stringResource(label), guidance?.let { stringResource(it) },
         style = MaterialTheme.typography.labelMedium, contentColor = MaterialTheme.colorScheme.primary)
-    state.snapshot?.let { Text(stringResource(R.string.lab_analysis_updated, timestamp(it.issuedAt)),
+    state.snapshot?.let { Text(if (state.updating) stringResource(R.string.lab_analysis_updating)
+        else stringResource(R.string.lab_analysis_updated, timestamp(it.issuedAt)),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
