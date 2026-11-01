@@ -7,12 +7,10 @@ internal data class HomeBackStackEntry(val id: Int, val destination: HomeDestina
 
 internal typealias HomeBackStack = List<HomeBackStackEntry>
 
-private val homeRoot = HomeBackStackEntry(0, HomeDestination.Dashboard)
+internal fun homeRootStack(): HomeBackStack = listOf(HomeBackStackEntry(0, HomeDestination.Dashboard))
 
-internal fun homeRootStack(): HomeBackStack = listOf(homeRoot)
-
-/** The visible visit; the stack is never empty in practice, the fallback only guards a corrupt restore. */
-internal fun HomeBackStack.top(): HomeBackStackEntry = lastOrNull() ?: homeRoot
+/** The visible visit. Every operation and the restore keep the stack non-empty. */
+internal fun HomeBackStack.top(): HomeBackStackEntry = last()
 
 /** Saved as `"<id>:<HomeDestination>"`; entries naming a removed screen are dropped on restore. */
 internal val HomeBackStackSaver = listSaver<HomeBackStack, String>(
@@ -47,4 +45,4 @@ private fun withVisit(stack: HomeBackStack, destination: HomeDestination): HomeB
     return if (next.size <= MAX_HOME_VISITS) next else listOf(next.first()) + next.takeLast(MAX_HOME_VISITS - 1)
 }
 
-private fun nextHomeId(stack: HomeBackStack) = (stack.maxOfOrNull { it.id } ?: -1) + 1
+private fun nextHomeId(stack: HomeBackStack) = stack.maxOf { it.id } + 1
