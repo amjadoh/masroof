@@ -125,9 +125,11 @@ fun MasroofRoot(
             }) { index ->
                 if (settingsViewModel.uiState.value.importingSms) return@MasroofBottomNavigation
                 val tab = entries[index].first
-                // Home and a re-tapped tab start fresh; any other tab is pushed and keeps open details behind it.
-                if (tab == HomeDestination.Dashboard || tab == top) dashboardViewModel.closeTransactionDetail()
-                if (tab == HomeDestination.Dashboard || tab == top || tab == HomeDestination.Review) reviewViewModel.closeDetail()
+                // Home and a re-tapped tab start fresh. Another tab is pushed and keeps a transaction detail behind it,
+                // but Review always opens on its list because every Review visit shares one ViewModel.
+                val fresh = tab == HomeDestination.Dashboard || tab == top
+                if (fresh) dashboardViewModel.closeTransactionDetail()
+                if (fresh || tab == HomeDestination.Review) reviewViewModel.closeDetail()
                 homeStack = switchHomeTab(homeStack, tab)
             }
 
@@ -173,6 +175,7 @@ private fun MasroofContent(
     var liveEntryIds by rememberSaveable { mutableStateOf(entries.map { it.id }) }
     // The visit that opened the transaction detail; the detail shows only while that visit is on top.
     var transactionDetailOwner by rememberSaveable { mutableStateOf<Int?>(null) }
+    var pendingSettingsLaunch by remember { mutableStateOf<SettingsLaunchRequest?>(null) }
     LaunchedEffect(stack) {
         val ids = entries.map { it.id }
         (liveEntryIds - ids.toSet()).forEach(destinationStateHolder::removeState)
@@ -181,8 +184,9 @@ private fun MasroofContent(
             transactionDetailOwner = null
             dashboardViewModel.closeTransactionDetail()
         }
+        // A launch still waiting for Settings to load must not land in a later, unrelated Settings visit.
+        if (top.destination != HomeDestination.Settings) pendingSettingsLaunch = null
     }
-    var pendingSettingsLaunch by remember { mutableStateOf<SettingsLaunchRequest?>(null) }
     var transactionListSeedFilter by remember { mutableStateOf<TransactionListFilterState?>(null) }
     var transactionListOpenGeneration by remember { mutableStateOf(0) }
     var pendingLoansSummaryLoanKey by rememberSaveable { mutableStateOf<String?>(null) }
