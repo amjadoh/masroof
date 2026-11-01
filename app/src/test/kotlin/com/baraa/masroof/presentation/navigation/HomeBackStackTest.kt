@@ -6,7 +6,7 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 class HomeBackStackTest {
-    private fun destinations(stack: List<String>) = homeEntries(stack).map { it.destination }
+    private fun destinations(stack: HomeBackStack) = stack.map { it.destination }
 
     @Test
     fun pushThenPop_returnsToPreviousScreen() {
@@ -36,7 +36,7 @@ class HomeBackStackTest {
             stack = pushHome(stack, HomeDestination.Settings)
             stack = pushHome(stack, HomeDestination.NotificationCenter)
         }
-        val ids = homeEntries(stack).map { it.id }
+        val ids = (stack).map { it.id }
         assertEquals(ids.size, ids.toSet().size)
     }
 
@@ -55,25 +55,25 @@ class HomeBackStackTest {
         val again = switchHomeTab(settings, HomeDestination.Settings)
 
         assertEquals(destinations(settings), destinations(again))
-        assertEquals(homeEntries(settings).last().id + 1, homeEntries(again).last().id)
+        assertEquals((settings).last().id + 1, (again).last().id)
     }
 
     @Test
     fun homeTab_clearsHistoryAndOpensFreshDashboard() {
         val deep = switchHomeTab(pushHome(pushHome(homeRootStack(), HomeDestination.Settings), HomeDestination.NotificationCenter), HomeDestination.Review)
-        val home = homeEntries(switchHomeTab(deep, HomeDestination.Dashboard))
+        val home = (switchHomeTab(deep, HomeDestination.Dashboard))
 
         assertEquals(listOf(HomeDestination.Dashboard), home.map { it.destination })
         // A new visit id drops the old dashboard's saved sub-pages (analytics, flow detail).
-        assertEquals(homeEntries(deep).maxOf { it.id } + 1, home.single().id)
-        assertEquals(1, homeEntries(switchHomeTab(homeRootStack(), HomeDestination.Dashboard)).single().id)
+        assertEquals((deep).maxOf { it.id } + 1, home.single().id)
+        assertEquals(1, (switchHomeTab(homeRootStack(), HomeDestination.Dashboard)).single().id)
     }
 
     @Test
     fun longTabSwitching_keepsRootAndNewestVisitsOnly() {
         var stack = homeRootStack()
         repeat(100) { stack = switchHomeTab(stack, if (it % 2 == 0) HomeDestination.Settings else HomeDestination.Review) }
-        val entries = homeEntries(stack)
+        val entries = (stack)
 
         assertEquals(MAX_HOME_VISITS, entries.size)
         assertEquals(HomeBackStackEntry(0, HomeDestination.Dashboard), entries.first())
@@ -82,7 +82,12 @@ class HomeBackStackTest {
     }
 
     @Test
-    fun unknownEntry_isIgnored() {
-        assertEquals(listOf(HomeDestination.Dashboard), destinations(homeRootStack() + "7:RemovedScreen" + "junk"))
+    fun savedStackRoundTripsAndDropsRemovedScreens() {
+        val stack = pushHome(pushHome(homeRootStack(), HomeDestination.Settings), HomeDestination.NotificationCenter)
+        val saved = with(HomeBackStackSaver) { androidx.compose.runtime.saveable.SaverScope { true }.save(stack) }!!
+
+        assertEquals(stack, HomeBackStackSaver.restore(saved))
+        assertEquals(homeRootStack(), HomeBackStackSaver.restore(listOf("0:Dashboard", "7:RemovedScreen", "junk")))
+        assertEquals(homeRootStack(), HomeBackStackSaver.restore(listOf("junk")))
     }
 }
