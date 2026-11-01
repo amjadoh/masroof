@@ -31,16 +31,28 @@ class MasroofApplication : Application(), Configuration.Provider {
         }
         DatabaseRestoreRecovery.recover(this)
         container = AppContainer(this)
-        // The log write is synchronous, so the entry survives the process dying right after.
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            runCatching { container.appLogService.failure(AppLogCategories.CRASH, "Uncaught on ${thread.name}", error) }
-            previous?.uncaughtException(thread, error)
-        }
+        installCrashLog(container.appLogService)
         if (!isRobolectricUnitTest()) {
             com.baraa.masroof.application.maintenance.RetiredWorkCleanup.schedule(this, container.applicationScope, container.appLogService)
             container.runStartupMaintenance()
             UpdateCheckScheduler.schedule(this)
+        }
+    }
+
+    private companion object {
+        /** The current process's log; replaced, never chained, when the application is created again (tests). */
+        @Volatile private var crashLog: com.baraa.masroof.application.logging.AppLogService? = null
+        private val crashHandlerInstalled = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        /** The log write is synchronous, so the entry survives the process dying right after. */
+        fun installCrashLog(log: com.baraa.masroof.application.logging.AppLogService) {
+            crashLog = log
+            if (!crashHandlerInstalled.compareAndSet(false, true)) return
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+                runCatching { crashLog?.failure(AppLogCategories.CRASH, "Uncaught on ${thread.name}", error) }
+                previous?.uncaughtException(thread, error)
+            }
         }
     }
 
