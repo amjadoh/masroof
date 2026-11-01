@@ -52,7 +52,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var editingPatternId by rememberSaveable { mutableStateOf<String?>(null) }
     var editingBody by rememberSaveable { mutableStateOf("") }
     // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
-    var teachingOperation by remember { mutableStateOf<PatternOperation?>(null) }
+    var teachingOperation by rememberSaveable { mutableStateOf<PatternOperation?>(null) }
     var replacingPattern by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var history by rememberSaveable { mutableStateOf(false) }
