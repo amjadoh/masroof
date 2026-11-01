@@ -10,6 +10,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.application.locale.AppLocalePreferences
 import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
+import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.RawSms
 import com.baraa.masroof.sms.hash.SmsBodyHasher
 import com.baraa.masroof.testsupport.TestRuntime
@@ -17,6 +18,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +27,7 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
-/** Android Back always returns to the previous visit, whatever opened the current screen. */
+/** Android Back (and the toolbar arrow) always return to the previous visit, whatever opened the current screen. */
 class HomeBackNavigationJourneyTest {
     private val compose = createAndroidComposeRule<MainActivity>()
     private val seed = object : TestRule {
@@ -42,72 +44,151 @@ class HomeBackNavigationJourneyTest {
                     container.onboardingPreferencesRepository.setOnboardingStarted(true)
                     container.onboardingPreferencesRepository.setOnboardingCompleted(true)
                     container.onboardingOwnershipWorkflow.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
+                    container.onboardingOwnershipWorkflow.confirmCardOwned(CardReference(Bank.BANK_ALJAZIRA, "2210"))
                     repeat(3) { index ->
-                        val at = LocalDateTime.now().minusMinutes(index + 1L).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                        val body = "شراء من نقاط البيع\nبطاقة مدى: 2210\nخصمت من حساب: 3001\nلدى: Back Nav Shop ${'A' + index}\nبمبلغ: 12.00 SAR\nفي: $at"
-                        val id = "back-nav-$index"
-                        container.processRawSmsUseCase.ingest(RawSms(id, "AlJazira", body, Instant.now(), id, SmsBodyHasher.sha256Hex(body)))
+                        val body = "شراء من نقاط البيع\nبطاقة مدى: 2210\nخصمت من حساب: 3001\nلدى: Back Nav Shop ${'A' + index}\nبمبلغ: 12.00 SAR\nفي: ${minutesAgo(index + 1L)}"
+                        ingest(container, "back-nav-$index", body)
                     }
+                    // One unparsed message keeps a review item, which also yields a notification with a Review action.
+                    ingest(container, "back-nav-review", "سداد تمويل خاص\nمن: 3001\nالقسط: SAR 23\nالمبلغ المتبقي: SAR 298\nلـ: تمويل شخصي\nفي: ${minutesAgo(5)}")
+                    assertEquals(1, container.reviewRepository.listRequired().size)
+                    val source = container.financialTransactionRepository.listAll().first { it.merchant == "Back Nav Shop A" }
+                    container.commitmentFromTransactionService.createFromTransaction(source.id)
                 }
                 try { base.evaluate() } finally { TestRuntime.close() }
             }
         }
     }
 
+    private fun minutesAgo(minutes: Long) = LocalDateTime.now().minusMinutes(minutes).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+
+    private suspend fun ingest(container: com.baraa.masroof.application.AppContainer, id: String, body: String) {
+        container.processRawSmsUseCase.ingest(RawSms(id, "AlJazira", body, Instant.now(), id, SmsBodyHasher.sha256Hex(body)))
+    }
+
     @get:Rule val rule: TestRule = RuleChain.outerRule(seed).around(compose)
 
     private val patternsScreen = hasTestTag("pattern-open-${Bank.BANK_ALJAZIRA.id}-bank.purchase")
+    private val notificationsScreen get() = heading(text(R.string.notification_center_title))
+    private val dashboardScreen get() = hasText(text(R.string.reference_shortcut_accounts)) and hasClickAction()
 
-    @Test fun patternsThenNotificationsOrTab_backReturnsToPatterns() {
-        awaitText(text(R.string.reference_shortcut_accounts))
+    @Test fun patternTeaching_notificationsTabsAndRecreate_backReturnsToTheSameVisit() {
+        awaitNode(dashboardScreen)
         openPatterns()
 
+        // 2 + 15 + 16: typed teaching text survives notifications; a repeated icon tap changes nothing; the toolbar arrow equals Back.
+        clickText(text(R.string.pattern_teach))
+        compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Nav body 42")
+        openNotifications()
+        openNotifications()
+        compose.onNodeWithContentDescription(text(R.string.review_back)).performClick()
+        awaitNode(hasTestTag("pattern-body"))
+        compose.onNodeWithTag("pattern-body").assertTextContains("Nav body 42", substring = true)
+        pressDeviceBack(compose)
+        awaitNode(patternsScreen)
+
+        // 1: notifications icon then Back lands on the same patterns screen.
         openNotifications()
         pressDeviceBack(compose)
         awaitNode(patternsScreen)
 
-        // Another bottom tab is history too; back returns to the patterns screen, not Home.
+        // 13: recreation (rotation / process restore) keeps the visit and its stack.
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) { compose.activity.hasWindowFocus() }
+        awaitNode(patternsScreen)
+
+        // 10: another bottom tab is history too; Back returns to patterns, not Home.
         clickText(text(R.string.approved_nav_review))
+        awaitNode(heading(text(R.string.review_title)))
         compose.onNode(patternsScreen).assertDoesNotExist()
         pressDeviceBack(compose)
         awaitNode(patternsScreen)
 
-        // Home clears history, and Back on Home never closes the app.
-        clickText(text(R.string.approved_nav_home))
-        awaitText(text(R.string.reference_shortcut_accounts))
+        // 11: re-tapping the current tab restarts it at the hub; Back then leaves that fresh visit.
+        clickText(text(R.string.approved_nav_settings))
+        awaitNode(hasText(text(R.string.settings_banks_title)) and hasClickAction())
+        compose.onNode(patternsScreen).assertDoesNotExist()
         pressDeviceBack(compose)
-        compose.onNodeWithText(text(R.string.reference_shortcut_accounts)).assertIsDisplayed()
+        awaitNode(dashboardScreen)
+
+        // 12: Home clears history, and Back on Home never closes the app.
+        openNotifications()
+        clickText(text(R.string.approved_nav_home))
+        awaitNode(dashboardScreen)
+        pressDeviceBack(compose)
+        compose.onNode(dashboardScreen).assertIsDisplayed()
         assertFalse(compose.activity.isFinishing)
     }
 
-    @Test fun transactionDetailThenNotifications_backReturnsToSameDetailThenUnwinds() {
-        awaitText(text(R.string.reference_shortcut_accounts))
+    @Test fun transactionDetail_notificationsAndReviewAction_backUnwindsVisitByVisit() {
+        awaitNode(dashboardScreen)
         clickText(text(R.string.reference_shortcut_accounts))
         clickText("3001", substring = true)
-        val accountDetail = hasText(text(R.string.reference_account_detail_title)) and !hasClickAction()
+        val accountDetail = heading(text(R.string.reference_account_detail_title))
         awaitNode(accountDetail)
-        clickText("Back Nav Shop A")
-        awaitText(text(R.string.transaction_detail_title))
+        clickText("Back Nav Shop B")
+        val transactionDetail = heading(text(R.string.transaction_detail_title))
+        awaitNode(transactionDetail)
 
+        // 7: a notification action opens Review; Back returns to notifications, then to the origin.
+        openNotifications()
+        clickText(text(R.string.settings_hub_review_title))
+        awaitNode(heading(text(R.string.review_title)))
+        pressDeviceBack(compose)
+        awaitNode(notificationsScreen)
+
+        // 3 + 14: the same transaction detail returns, then every visit unwinds in order.
+        pressDeviceBack(compose)
+        awaitNode(transactionDetail)
+        pressDeviceBack(compose)
+        awaitNode(accountDetail)
+        pressDeviceBack(compose)
+        awaitNode(heading(text(R.string.dashboard_accounts_summary_screen_title)))
+        pressDeviceBack(compose)
+        awaitNode(dashboardScreen)
+    }
+
+    @Test fun commitmentsAnalyticsAndLearningExample_backReturnsToOrigin() {
+        awaitNode(dashboardScreen)
+
+        // 4: a commitment opened from the Commitments screen returns there, not to Home.
+        clickText(text(R.string.approved_commitments))
+        val commitments = heading(text(R.string.approved_commitments))
+        awaitNode(commitments)
+        clickText("Back Nav Shop A")
+        awaitNode(heading(text(R.string.settings_commitment_edit_title)))
+        pressDeviceBack(compose)
+        awaitNode(commitments)
+        pressDeviceBack(compose)
+        awaitNode(dashboardScreen)
+
+        // 9: analytics stays open on the dashboard visit after notifications and Back.
+        compose.onNodeWithTag("lab-forecast-entry").performScrollTo().performClick()
+        val analytics = hasText(text(R.string.analysis_forecasts_tab))
+        awaitNode(analytics)
         openNotifications()
         pressDeviceBack(compose)
-        awaitText(text(R.string.transaction_detail_title))
+        awaitNode(analytics)
+        pressDeviceBack(compose)
+        awaitNode(dashboardScreen)
 
+        // 6: a review example opened from message learning returns to that same settings page.
+        clickText(text(R.string.approved_nav_settings))
+        clickText(text(R.string.analysis_learning_settings))
+        clickText(text(R.string.personal_review_open, 1))
+        clickText("Message 1 ·", substring = true)
+        awaitNode(heading(text(R.string.review_detail_title)))
         pressDeviceBack(compose)
-        awaitNode(accountDetail)
+        awaitNode(heading(text(R.string.review_title)))
         pressDeviceBack(compose)
-        compose.onNodeWithText(text(R.string.dashboard_accounts_summary_screen_title)).assertIsDisplayed()
-        pressDeviceBack(compose)
-        awaitText(text(R.string.reference_shortcut_accounts))
+        awaitNode(hasText(text(R.string.personal_review_open, 1)) and hasClickAction())
     }
 
     private fun openPatterns() {
         clickText(text(R.string.approved_nav_settings))
         clickText(text(R.string.settings_banks_title))
         // The row shows the catalog display name, which stays Arabic in every locale.
-        val bankRow = (hasText("بنك الجزيرة") or hasText(text(R.string.bank_aljazira))) and hasClickAction()
-        awaitNode(bankRow)
-        compose.onAllNodes(bankRow).onFirst().performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { it() }
+        click((hasText("بنك الجزيرة") or hasText(text(R.string.bank_aljazira))) and hasClickAction())
         clickText(text(R.string.settings_bank_teaching))
         awaitNode(patternsScreen)
     }
@@ -115,22 +196,26 @@ class HomeBackNavigationJourneyTest {
     private fun openNotifications() {
         compose.onNode(hasContentDescription("unread notification", substring = true) or
             hasContentDescription(text(R.string.notification_center_title))).performClick()
-        awaitText(text(R.string.notification_center_title))
+        awaitNode(notificationsScreen)
     }
 
-    private fun text(id: Int): String = compose.activity.getString(id)
+    private fun heading(value: String) = hasText(value) and !hasClickAction()
+
+    private fun text(id: Int, vararg args: Any): String = compose.activity.getString(id, *args)
 
     private fun awaitNode(matcher: SemanticsMatcher) {
         compose.waitUntil(30_000) { compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
     }
 
-    private fun awaitText(value: String) = awaitNode(hasText(value))
+    private fun clickText(value: String, substring: Boolean = false) =
+        click(hasText(value, substring = substring) and hasClickAction())
 
-    private fun clickText(value: String, substring: Boolean = false) {
-        val target = hasText(value, substring = substring) and hasClickAction()
+    private fun click(target: SemanticsMatcher) {
         awaitNode(target)
-        compose.onAllNodes(target).onFirst().performScrollTo().assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        val node = compose.onAllNodes(target).onFirst()
+        // Bottom tabs and toolbar actions sit outside any scroll container.
+        runCatching { node.performScrollTo() }
+        node.assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick) { it() }
         compose.waitForIdle()
     }
 }
