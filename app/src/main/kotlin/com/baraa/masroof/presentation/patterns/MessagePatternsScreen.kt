@@ -43,6 +43,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var failed by remember { mutableStateOf(false) }
     var approving by rememberSaveable { mutableStateOf(false) }
     var savedTeaching by rememberSaveable { mutableStateOf(false) }
+    // Text the user typed; a Review message is never copied here because it is read again from the source.
     var savedBody by rememberSaveable { mutableStateOf("") }
     var showPending by rememberSaveable { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
@@ -50,7 +51,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var savedApproval by rememberSaveable { mutableStateOf(false) }
     // Saved by id: a restored teaching screen must still save a revision of the pattern being edited, not a new one.
     var editingPatternId by rememberSaveable { mutableStateOf<String?>(null) }
-    var editingBody by rememberSaveable { mutableStateOf("") }
+    // Only the starting text: the teaching screen saves what the user then edits.
+    var editingBody by remember { mutableStateOf("") }
     // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
     var teachingOperation by rememberSaveable { mutableStateOf<PatternOperation?>(null) }
     var replacingPattern by rememberSaveable { mutableStateOf<String?>(null) }
@@ -94,7 +96,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
     val pattern = bank?.currentPatterns?.singleOrNull { it.id == selectedPattern }
-    val editingPattern = editingPatternId?.let { id -> bank?.currentPatterns?.singleOrNull { it.id == id } }
+    // Looked up once per edit (and when the catalog first loads after a restore), so a later reload that no longer
+    // lists the pattern cannot quietly turn the edit into a new copy; saving then fails visibly instead.
+    val editingPattern = remember(editingPatternId, bank?.bankId) { editingPatternId?.let { id -> bank?.currentPatterns?.singleOrNull { it.id == id } } }
     fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
         val bankId = requireNotNull(bank).bankId
         pending = null
@@ -114,7 +118,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (bank != null && teaching && (source == null || source.sender in bank.senders)) {
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
-                teaching = false; editingPatternId = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
+                teaching = false; editingPatternId = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = if (source == null) body else ""
                 // A built-in edit keeps the original on until its replacement is approved, so messages never fall between them.
                 val replaced = replacingPattern
                 teachingOperation = null
