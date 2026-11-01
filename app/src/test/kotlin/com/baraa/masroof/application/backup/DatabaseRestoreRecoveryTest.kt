@@ -259,6 +259,62 @@ class DatabaseRestoreRecoveryTest {
     }
 
     @Test
+    fun importInterruptedBeforeJournal_failedCleanupDoesNotBlockStartup() {
+        writeDatabase(live, "current")
+        val incoming = DatabaseRestoreRecovery.incomingFile(live)
+        writeDatabase(incoming, "imported")
+        val snapshot = preferenceSnapshot(onboardingCompleted = true, reparsedSchemaVersion = 1)
+        DatabaseRestoreRecovery.writeSnapshots(live, original = snapshot, incoming = snapshot)
+        SensitiveFileCleanup.beforeUnlink = { file ->
+            if (file.name.contains(".incoming") || file.name.contains(".prefs-")) error("disk full")
+        }
+        try {
+            DatabaseRestoreRecovery.recover(context)
+        } finally {
+            SensitiveFileCleanup.beforeUnlink = null
+        }
+
+        assertEquals("current", readMarker(live))
+    }
+
+    @Test
+    fun importInterruptedBeforeJournal_withRollbackAtRest_dropsStagedFilesAndKeepsRollback() {
+        writeDatabase(live, "current")
+        val rollback = File(live.path + ".rollback")
+        writeDatabase(rollback, "previous")
+        val incoming = DatabaseRestoreRecovery.incomingFile(live)
+        writeDatabase(incoming, "imported")
+        val snapshot = preferenceSnapshot(onboardingCompleted = true, reparsedSchemaVersion = 1)
+        DatabaseRestoreRecovery.writeSnapshots(live, original = snapshot, incoming = snapshot)
+
+        DatabaseRestoreRecovery.recover(context)
+
+        assertEquals("current", readMarker(live))
+        assertEquals("previous", readMarker(rollback))
+        assertFalse(incoming.exists())
+        assertFalse(File(live.path + ".prefs-original").exists())
+        assertFalse(File(live.path + ".prefs-incoming").exists())
+    }
+
+    @Test
+    fun importInterruptedBeforeJournal_dropsStagedFilesWithoutIntegrityCheck() {
+        writeDatabase(live, "current")
+        val incoming = DatabaseRestoreRecovery.incomingFile(live)
+        writeDatabase(incoming, "imported")
+        val snapshot = preferenceSnapshot(onboardingCompleted = true, reparsedSchemaVersion = 1)
+        DatabaseRestoreRecovery.writeSnapshots(live, original = snapshot, incoming = snapshot)
+        DatabaseRestoreRecovery.integrityCheckCount = 0
+
+        DatabaseRestoreRecovery.recover(context)
+
+        assertEquals(0, DatabaseRestoreRecovery.integrityCheckCount)
+        assertEquals("current", readMarker(live))
+        assertFalse(incoming.exists())
+        assertFalse(File(live.path + ".prefs-original").exists())
+        assertFalse(File(live.path + ".prefs-incoming").exists())
+    }
+
+    @Test
     fun freshInstall_doesNotCreateADatabaseFile() {
         DatabaseRestoreRecovery.recover(context)
 

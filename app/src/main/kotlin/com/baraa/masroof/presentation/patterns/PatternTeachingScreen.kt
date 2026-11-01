@@ -72,7 +72,7 @@ internal fun PatternTeachingScreen(
         scope.launch {
             try { action() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { failed = true }
+            catch (caught: Exception) { workflow.reportFailure("PatternTeachingScreen", caught); failed = true }
             finally { busy = false }
         }
     }
@@ -96,7 +96,7 @@ internal fun PatternTeachingScreen(
             if (existingPattern != null && step == 0 && operation.name == existingPattern.label)
                 bindings = workflow.editBindings(generation, bank.bankId, existingPattern.id, body.text)
         } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
+        catch (caught: Exception) { workflow.reportFailure("PatternTeachingScreen", caught); failed = true }
         finally { loadingExample = false }
     }
     LaunchedEffect(step, fieldIndex) {

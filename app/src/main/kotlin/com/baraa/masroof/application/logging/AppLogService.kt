@@ -37,7 +37,8 @@ class AppLogService(
         synchronized(lock) {
             entries.addLast(entry)
             pruneLocked()
-            rewriteDiskLocked()
+            // A full or broken disk must not crash callers; the entry stays in memory.
+            runCatching { rewriteDiskLocked() }
         }
     }
 
@@ -46,6 +47,9 @@ class AppLogService(
     fun warn(category: String, message: String) = log(AppLogLevel.WARN, category, message)
 
     fun error(category: String, message: String) = log(AppLogLevel.ERROR, category, message)
+
+    /** A caught failure: the step, exception type and a masked message, so a report can be traced without SMS data. */
+    fun failure(category: String, action: String, error: Throwable) = error(category, "$action failed (${describe(error)})")
 
     fun readAll(): List<AppLogEntry> =
         synchronized(lock) { entries.toList() }
@@ -60,9 +64,12 @@ class AppLogService(
         }
     }
 
+    /** The same text the export writes, for sharing from the log screen. */
+    fun exportText(): String = buildExportText(readAll())
+
     fun exportTo(uri: Uri): Result<Unit> =
         runCatching {
-            val text = buildExportText(readAll())
+            val text = exportText()
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(text.toByteArray(Charsets.UTF_8))
             } ?: error("Could not open export destination")
@@ -76,8 +83,10 @@ class AppLogService(
 
     private fun pruneLocked(nowEpochMs: Long = clock()) {
         pruneExpiredLocked(nowEpochMs)
+        // Routine info/warn lines must not push failures out of a full log.
         while (entries.size > maxEntries) {
-            entries.removeFirst()
+            val oldestRoutine = entries.indexOfFirst { it.level != AppLogLevel.ERROR }
+            if (oldestRoutine >= 0) entries.removeAt(oldestRoutine) else entries.removeFirst()
         }
     }
 
@@ -167,6 +176,8 @@ class AppLogService(
         val header = buildString {
             appendLine("Masroof diagnostic log")
             appendLine("Exported: ${formatter.format(Instant.now().atZone(zoneId))}")
+            appendLine("App: ${runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()}")
+            appendLine("Android: ${android.os.Build.VERSION.SDK_INT} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("Entries: ${entries.size}")
             appendLine("Retention: $maxEntries entries / $retentionDays days")
             appendLine()
@@ -186,5 +197,12 @@ class AppLogService(
         const val LOG_FILE_NAME: String = "masroof-app.log"
         const val DEFAULT_MAX_ENTRIES: Int = 500
         const val DEFAULT_RETENTION_DAYS: Long = 14L
+
+        /** `IllegalStateException: Snapshot failed integrity_check ← SQLiteException`; digit runs are masked. */
+        fun describe(error: Throwable): String = buildString {
+            append(error.javaClass.simpleName)
+            error.message?.trim()?.takeIf { it.isNotEmpty() }?.let { append(": ").append(it.replace(Regex("[0-9]{4,}"), "####").take(160)) }
+            error.cause?.takeIf { it !== error }?.let { append(" ← ").append(it.javaClass.simpleName) }
+        }
     }
 }

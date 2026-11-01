@@ -182,6 +182,7 @@ class AppContainer(
         com.baraa.masroof.application.patterns.MessagePatternsWorkflow(
             messagePatternStore, databaseAccessGate, bundledBanks = bundledPatternBanks,
             requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
+            appLogService = appLogService,
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
                 accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
             importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },

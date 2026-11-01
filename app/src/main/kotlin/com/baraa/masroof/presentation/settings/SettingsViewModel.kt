@@ -186,7 +186,7 @@ class SettingsViewModel(
                 )
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings refresh", caught);
                 _uiState.update {
                     it.copy(
                         loading = false,
@@ -272,7 +272,7 @@ class SettingsViewModel(
             _uiState.update { it.copy(updating = true, error = null) }
             val suggestion = try {
                 settingsRegistryWorkflow.suggestedCardType(CardReference(card.bank, card.last4))
-            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }
+            } catch (ce: CancellationException) { throw ce } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings openCardNetworkPicker", caught); null }
             _uiState.update { it.copy(updating = false, cardNetworkTarget = card, cardTypeSuggestion = suggestion) }
         }
     }
@@ -482,7 +482,7 @@ class SettingsViewModel(
                 applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SCAN, "Settings importSelectedBankSms", caught);
                 _uiState.update { it.copy(scopedSmsImportFailed = true) }
             } finally {
                 _uiState.update { it.copy(importingSms = false) }
@@ -571,7 +571,7 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (error: Exception) {
+            } catch (error: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings checkForUpdates", error);
                 if (!silent) {
                     val message =
                         when {
@@ -609,6 +609,8 @@ class SettingsViewModel(
         checkForUpdates(silent = silent)
     }
 
+    fun logExportText(): String = appLogService.exportText()
+
     fun exportLogs(uri: Uri) {
         viewModelScope.launch {
             _uiState.update { it.copy(exportingLogs = true, logMessage = null) }
@@ -621,7 +623,8 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                appLogService.failure(AppLogCategories.LOGS, "Log export", e)
                 _uiState.update {
                     it.copy(exportingLogs = false, logMessage = LogMessage.EXPORT_FAILED)
                 }
@@ -683,7 +686,7 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings downloadUpdate", caught);
                 _uiState.update {
                     it.copy(
                         updateState = AppUpdateUiState.Available(manifest),
@@ -713,7 +716,7 @@ class SettingsViewModel(
                 dismissUpdateUiWhileInstalling()
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.UPDATE, "Settings installPendingUpdate", caught);
                 _uiState.update { it.copy(updateMessage = AppUpdateMessage.INSTALL_FAILED) }
             }
         }
@@ -826,7 +829,7 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings offerImport", caught);
                 _uiState.update {
                     it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
                 }
@@ -924,7 +927,7 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings exportBackup", caught);
                 _uiState.update {
                     it.copy(exportingBackup = false, backupMessage = BackupMessage.EXPORT_FAILED)
                 }
@@ -987,7 +990,7 @@ class SettingsViewModel(
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Settings importBackup", caught);
                 _uiState.update {
                     it.copy(importingBackup = false, backupMessage = BackupMessage.IMPORT_FAILED)
                 }
@@ -1009,13 +1012,13 @@ class SettingsViewModel(
                 onUpdated()
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings updateRegistry", caught);
                 // A manual decision may already be durable even when its reconciliation needs a retry.
                 try {
                     val snapshot = settingsRegistryWorkflow.loadSnapshot()
                     applyRegistries(snapshot.cards, snapshot.accounts, snapshot.loans)
                 } catch (error: CancellationException) { throw error }
-                catch (_: Exception) { /* Keep the prior snapshot and the visible error. */ }
+                catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings updateRegistry", caught); /* Keep the prior snapshot and the visible error. */ }
                 _uiState.update { it.copy(updating = false, error = SettingsError.UPDATE_FAILED) }
             }
         }
@@ -1136,7 +1139,7 @@ class SettingsViewModel(
                 applyCommitments(settingsCommitmentsWorkflow.listAll())
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Settings saveCommitment", caught);
                 _uiState.update { it.copy(error = SettingsError.UPDATE_FAILED) }
             } finally {
                 _uiState.update { it.copy(savingCommitment = false) }
