@@ -244,6 +244,9 @@ object TransactionAssembler {
      * unmatched, so ambiguous same-window legs are not posted as four self-transfers.
      * A lone owned-owned leg may post so a later counterpart can heal it.
      * Local side not OWNED stays pending.
+     *
+     * Callers pass only candidates that already passed [isAutomationEligible], including a
+     * user's financial confirmation, so the owned-owned leg is not gated a second time.
      */
     fun assembleUnmatchedOwnedTransfer(
         candidate: TransferMatchCandidate,
@@ -280,6 +283,7 @@ object TransactionAssembler {
                 occurredAtZone = TransactionTiming.zoneFor(event.bank, fallback = fallbackZone),
                 deferIntraBankPairing = false,
                 transferFee = candidate.transferFee,
+                userConfirmed = true,
             )
         }
 
