@@ -120,7 +120,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intent?.getStringExtra("lab_analysis_alert")?.let { AnalyticsNavigation.open(it) }
+        // A recreated activity (rotation, language) gets the same launch intent again; the alert was already opened.
+        if (savedInstanceState == null) intent?.getStringExtra("lab_analysis_alert")?.let { AnalyticsNavigation.open(it) }
         if (intent.getBooleanExtra(com.baraa.masroof.application.backup.DatabaseBackupService.EXTRA_RESTORE_FAILED, false)) {
             intent.removeExtra(com.baraa.masroof.application.backup.DatabaseBackupService.EXTRA_RESTORE_FAILED)
             android.widget.Toast.makeText(this, R.string.settings_import_failed, android.widget.Toast.LENGTH_LONG).show()

@@ -43,9 +43,6 @@ fun TransactionListScreen(
     onFilterChanged: (TransactionListFilterState) -> Unit,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    seedFilter: TransactionListFilterState? = null,
-    onSeedFilterApplied: () -> Unit = {},
-    openGeneration: Int = 0,
     ownedCards: List<OwnedCardUi> = emptyList(),
     ownedAccounts: List<OwnedAccountUi> = emptyList(),
 ) {
@@ -53,32 +50,14 @@ fun TransactionListScreen(
     var selectedTypeNames by rememberSaveable { mutableStateOf(listOf<String>()) }
     var selectedCardLast4s by rememberSaveable { mutableStateOf(listOf<String>()) }
     var selectedAccountContainerIds by rememberSaveable { mutableStateOf(listOf<String>()) }
-    var seedTransactionIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var filtersSheetOpen by rememberSaveable { mutableStateOf(false) }
-    var appliedOpenGeneration by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(-1) }
     val listState = rememberLazyListState()
-
-    LaunchedEffect(openGeneration) {
-        // A fold/configuration recreation restores the current draft; only a new
-        // navigation request should consume a seed and reset the filter sheet.
-        if (appliedOpenGeneration == openGeneration) return@LaunchedEffect
-        appliedOpenGeneration = openGeneration
-        val filter = seedFilter ?: TransactionListFilterState()
-        searchQuery = filter.searchQuery
-        selectedTypeNames = filter.types.map { it.name }
-        selectedCardLast4s = filter.cardLast4s.toList()
-        selectedAccountContainerIds = filter.accountContainerIds.toList()
-        seedTransactionIds = filter.transactionIds
-        filtersSheetOpen = false
-        onSeedFilterApplied()
-    }
 
     val filterState = remember(
         searchQuery,
         selectedTypeNames,
         selectedCardLast4s,
         selectedAccountContainerIds,
-        seedTransactionIds,
     ) {
         TransactionListFilterState(
             searchQuery = searchQuery,
@@ -87,7 +66,6 @@ fun TransactionListScreen(
             }.toSet(),
             cardLast4s = selectedCardLast4s.toSet(),
             accountContainerIds = selectedAccountContainerIds.toSet(),
-            transactionIds = seedTransactionIds,
         )
     }
 
@@ -234,7 +212,6 @@ fun TransactionListScreen(
                 selectedCardLast4s = draft.cardLast4s.toList()
                 selectedAccountContainerIds = draft.accountContainerIds.toList()
                 searchQuery = draft.searchQuery
-                seedTransactionIds = draft.transactionIds
             },
         )
     }

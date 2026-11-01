@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +13,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.platform.app.InstrumentationRegistry
@@ -53,8 +55,9 @@ class PatternManagementJourneyTest {
         val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
         try { ScreenshotArtifactWriter.publish(bitmap, "pattern-management", name) } finally { bitmap.recycle() }
     }
-    private fun show(workflow: MessagePatternsWorkflow, openPattern: Boolean = true) {
-        compose.setContent {
+    private fun show(workflow: MessagePatternsWorkflow, openPattern: Boolean = true,
+        setContent: (@Composable () -> Unit) -> Unit = { compose.setContent(it) }) {
+        setContent {
             val context = AppLocaleContext.wrap(LocalContext.current, "ar")
             keyboard = LocalSoftwareKeyboardController.current
             CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides context.resources.configuration,
@@ -142,6 +145,29 @@ class PatternManagementJourneyTest {
             assertEquals(listOf(1, 2, 3), versions.map { it.revision })
             assertNull(versions.last().factContract)
             assertNotNull(versions[1].factContract)
+        }
+    }
+
+    @Test fun editRestoredAfterRotationStillSavesARevisionNotACopy() = runBlocking {
+        fixture { workflow, store ->
+            val patternsBefore = store.load().banks.single().currentPatterns
+            val pattern = patternsBefore.single { it.id == "stc-sarie-in" }
+            val restoration = StateRestorationTester(compose)
+            show(workflow, openPattern = false, setContent = { restoration.setContent(it) })
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
+            compose.onNodeWithTag("pattern-edit").performScrollTo().performClick()
+            val body = "Inward transfer (SARIE)\n100.00 SAR\nFrom TEST PERSON\nFrom BJAZ\nAccount\n02-09-2026 08:01\nRef. No. *8PJ7"
+            compose.onNodeWithTag("pattern-body").performTextInput(body)
+            // Rotation or process restore while editing must keep editing the same pattern.
+            restoration.emulateSavedInstanceStateRestore()
+            compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_edit_title)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("pattern-body").assertTextContains("Inward transfer (SARIE)", substring = true)
+            compose.waitUntil(10_000) { runCatching { compose.onNodeWithText(ar(R.string.teaching_next)).assertIsEnabled() }.isSuccess }
+            click(R.string.teaching_next)
+            click(R.string.pattern_preview)
+            click(R.string.pattern_save)
+            compose.waitUntil(10_000) { store.load().banks.single().currentPatterns.single { it.id == pattern.id }.revision == pattern.revision + 1 }
+            assertEquals(patternsBefore.map { it.id }.sorted(), store.load().banks.single().currentPatterns.map { it.id }.sorted())
         }
     }
 

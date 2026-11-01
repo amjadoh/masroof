@@ -128,6 +128,47 @@ class MessagePatternsJourneyTest {
         Unit
     }
 
+    @Test fun copyFromReviewSurvivesRotationAndBackReturnsToThePattern() = runBlocking {
+        val file = compose.activity.cacheDir.resolve("synthetic-review-copy-restore.json")
+        file.delete()
+        val store = MessagePatternStore(file)
+        val workflow = MessagePatternsWorkflow(store, DatabaseAccessGate())
+        val source = com.baraa.masroof.application.patterns.PatternTeachingSource(null, "STC Bank", "Payment\nAmount:73SAR")
+        val returned = androidx.compose.runtime.mutableStateOf(false)
+        val restoration = androidx.compose.ui.test.junit4.StateRestorationTester(compose)
+        restoration.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme { Surface {
+                    if (returned.value) androidx.compose.material3.Text("Review remains pending")
+                    else MessagePatternsScreen(workflow, source = source, onBack = { returned.value = true })
+                } }
+            }
+        }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_add_bank)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
+        click(R.string.pattern_add_bank)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        click(R.string.teaching_next)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag(candidateTag(source.body, "73SAR")).performScrollTo().performClick()
+        compose.onNodeWithTag("pattern-bind").performClick()
+        click(R.string.pattern_preview)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
+        click(R.string.pattern_save)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-copy").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("pattern-copy").performScrollTo().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        // A copy is a teaching step inside the pattern; after rotation, Back must still return to that pattern, not leave to Review.
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(10_000) { returned.value || compose.onAllNodesWithTag("pattern-copy").fetchSemanticsNodes().isNotEmpty() }
+        assertFalse("Back from a restored copy left the pattern screen", returned.value)
+        file.delete()
+        Unit
+    }
+
     @Test fun bankPagePreviewsPendingMessagesWithoutRemovingReviews() = runBlocking {
         val context = compose.activity
         val db = androidx.room.Room.inMemoryDatabaseBuilder(context, com.baraa.masroof.data.room.MasroofDatabase::class.java)
