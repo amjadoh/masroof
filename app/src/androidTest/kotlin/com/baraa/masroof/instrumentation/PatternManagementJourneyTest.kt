@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -54,8 +55,9 @@ class PatternManagementJourneyTest {
         val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
         try { ScreenshotArtifactWriter.publish(bitmap, "pattern-management", name) } finally { bitmap.recycle() }
     }
-    private fun show(workflow: MessagePatternsWorkflow, openPattern: Boolean = true) {
-        compose.setContent {
+    private fun show(workflow: MessagePatternsWorkflow, openPattern: Boolean = true,
+        setContent: (@Composable () -> Unit) -> Unit = { compose.setContent(it) }) {
+        setContent {
             val context = AppLocaleContext.wrap(LocalContext.current, "ar")
             keyboard = LocalSoftwareKeyboardController.current
             CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides context.resources.configuration,
@@ -151,14 +153,7 @@ class PatternManagementJourneyTest {
             val patternsBefore = store.load().banks.single().currentPatterns
             val pattern = patternsBefore.single { it.id == "stc-sarie-in" }
             val restoration = StateRestorationTester(compose)
-            restoration.setContent {
-                val context = AppLocaleContext.wrap(LocalContext.current, "ar")
-                CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides context.resources.configuration,
-                    LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    MasroofTheme { Surface { MessagePatternsScreen(workflow, "BANK_STC", onBack = {}) } }
-                }
-            }
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-sarie-in").fetchSemanticsNodes().isNotEmpty() }
+            show(workflow, openPattern = false, setContent = { restoration.setContent(it) })
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-sarie-in").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-edit").performScrollTo().performClick()
             val body = "Inward transfer (SARIE)\n100.00 SAR\nFrom TEST PERSON\nFrom BJAZ\nAccount\n02-09-2026 08:01\nRef. No. *8PJ7"
