@@ -22,6 +22,8 @@ data class BackupPreferencesSnapshot(
     val labAnalysis: String? = null,
     val messagePatterns: String? = null,
     val onboardingSetup: String? = null,
+    /** Confirmed account opening balances; absent in older backups. */
+    val accountOpeningBalances: String? = null,
 )
 
 enum class BackupImportOutcome {

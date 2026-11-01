@@ -50,6 +50,8 @@ data class DashboardOverview(
     val ownedAccountContainerIds: Set<String> = emptySet(),
     val isCurrentPeriod: Boolean,
     val labSarEquivalents: Map<String, com.baraa.masroof.core.money.Money> = emptyMap(),
+    /** Owned accounts with a confirmed opening balance: opening + cash position since its day. */
+    val accountBalances: List<AccountBalance> = emptyList(),
 )
 
 /**
@@ -78,6 +80,7 @@ class DashboardService(
         parsedEventRepository = parsedEventRepository,
         rawSmsRepository = rawSmsRepository,
     ),
+    private val openingBalances: AccountOpeningBalanceSource = AccountOpeningBalanceSource { emptyList() },
 ) : DashboardOverviewLoader {
     private val projectionBuilder by lazy {
         DashboardProjectionBuilder(
@@ -93,6 +96,7 @@ class DashboardService(
             zoneId = zoneId,
             clock = clock,
             primaryCurrency = primaryCurrency,
+            openingBalances = openingBalances,
         )
     }
 
