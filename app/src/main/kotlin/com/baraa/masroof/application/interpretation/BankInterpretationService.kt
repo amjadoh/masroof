@@ -245,16 +245,20 @@ class BankInterpretationService(
         val probe = engine()
         val probeAssist = FamilyAssist { _, _ -> requested = true; null }
         learned.forEach { label ->
+            if (closed) return@withLock null
             val message = evidence[label.rawId] ?: return@forEach
             requested = false
             probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(label.bankId), probeAssist)
             if (requested) eligibleTemplates.getOrPut(label.bankId) { mutableSetOf() } += label.template
         }
-        val rebuilt = banks.associateWith { bank ->
+        val rebuilt = mutableMapOf<String, FamilyPersonalizationResult>()
+        for (bank in banks) {
+            // Each rebuild is CPU-only; stop between banks so closing the app never waits for every bank.
+            if (closed) return@withLock null
             // Statistical families and their evaluations belong to the seed bank; other banks start from exact human templates.
             val bankSeed = if (bank == seed.model.bankId) seed else seed.copy(
                 model = seed.model.copy(bankId = bank, enabledFamilies = emptySet()), evaluation = emptyList())
-            FamilyPersonalization.rebuild(bankSeed.model, learned.filter { it.bankId == bank }, bankSeed.evaluation,
+            rebuilt[bank] = FamilyPersonalization.rebuild(bankSeed.model, learned.filter { it.bankId == bank }, bankSeed.evaluation,
                 blocks.filter { it.bankId == bank }, eligibleTemplates[bank].orEmpty())
         }
         val updated = rebuilt.mapValues { it.value.classifier }
