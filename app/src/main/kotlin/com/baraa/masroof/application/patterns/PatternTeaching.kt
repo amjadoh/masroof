@@ -13,6 +13,8 @@ enum class PatternOperation(val fields: List<String>) {
     CARD_PAYMENT(listOf("amount", "card", "source_account", "occurred_at")),
     REFUND(listOf("amount", "merchant", "card", "occurred_at")),
     WITHDRAWAL(listOf("amount", "source_account", "card", "occurred_at")),
+    FEE(listOf("amount", "source_account", "occurred_at", "reference")),
+    FINANCING_INSTALLMENT(listOf("amount", "source_account", "counterparty", "occurred_at", "reference")),
 }
 
 /** In-memory source only: never saved in navigation state or written back to RawSms. */

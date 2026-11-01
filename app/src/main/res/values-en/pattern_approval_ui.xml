@@ -48,4 +48,6 @@
     <string name="pattern_badge_approved">Approved</string>
     <string name="pattern_badge_active">Active</string>
     <string name="pattern_badge_conflict">Conflict</string>
+    <string name="pattern_approval_card_summary">This movement will use your card •• %1$s</string>
+    <string name="pattern_approval_link_help">The account or card is used only when the message does not name one. A message naming a different number stays in review.</string>
 </resources>

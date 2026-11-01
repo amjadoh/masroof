@@ -230,6 +230,26 @@
     "status": "REVIEW_REQUIRED"
   },
   {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "barq-transfer-in-no-destination",
+    "body": "حوالة واردة داخلية\n100.00 SAR\nحساب المرسل: **5555\n2026-10-02 22:01",
+    "family": "TRANSFER_IN",
+    "amount": "100.00",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
+    "bankId": "BANK_BARQ",
+    "sender": "barq app",
+    "id": "barq-purchase-no-card",
+    "body": "شراء\nمبلغ 25 SAR\nلدى TEST\n2026-09-15 12:30",
+    "family": "PURCHASE",
+    "amount": "25",
+    "cardChannel": null,
+    "status": "REVIEW_REQUIRED"
+  },
+  {
     "bankId": "BANK_EMIRATES_NBD",
     "sender": "EmiratesNBD",
     "id": "bank_emirates_nbd-otp",

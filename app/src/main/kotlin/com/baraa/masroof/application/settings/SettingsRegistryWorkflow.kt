@@ -28,6 +28,8 @@ class SettingsRegistryWorkflow(
     private val transactions: com.baraa.masroof.domain.repository.FinancialTransactionRepository? = null,
     /** Accounts a taught message pattern posts to; deleting one would keep receiving transactions. */
     private val patternBoundAccounts: suspend () -> Set<AccountReference> = { emptySet() },
+    /** Cards a message pattern links to; deleting one would keep receiving transactions. */
+    private val patternBoundCards: suspend () -> Set<CardReference> = { emptySet() },
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO,
 ) {
     suspend fun addAccount(bankId: String, last4: String, name: String?): AccountReference {
@@ -173,8 +175,11 @@ class SettingsRegistryWorkflow(
     private suspend fun blocker(target: RegistryDeleteTarget, linked: List<com.baraa.masroof.domain.model.FinancialTransaction>): DeleteBlocker? {
         if (linked.isNotEmpty()) return DeleteBlocker.LINKED_TRANSACTIONS
         return when (target) {
-            is RegistryDeleteTarget.Card -> DeleteBlocker.SUPPLEMENTARY_CARDS.takeIf {
-                cardRegistryRepository.listAll().any { it.bank == target.card.bank && it.parentCardLast4 == target.card.last4 }
+            is RegistryDeleteTarget.Card -> when {
+                cardRegistryRepository.listAll().any { it.bank == target.card.bank && it.parentCardLast4 == target.card.last4 } ->
+                    DeleteBlocker.SUPPLEMENTARY_CARDS
+                target.card in patternBoundCards() -> DeleteBlocker.MESSAGE_PATTERN
+                else -> null
             }
             is RegistryDeleteTarget.Account -> when {
                 cardRegistryRepository.listAll().any {
