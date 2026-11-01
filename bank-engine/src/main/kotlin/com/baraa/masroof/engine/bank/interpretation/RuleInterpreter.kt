@@ -19,7 +19,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
     // Content identity prevents changing literals under an unchanged declared revision.
     val version = InterpretationVersion(1, VERSION, "literal-v${snapshot.schema}-r${snapshot.revision}-" +
         MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) })
+            .toHexString())
 
     // The snapshot is immutable. Validate its shape and normalized literals once.
     private val supportedSchema = run {
@@ -194,9 +194,14 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             // role must not become a merchant merely because a refund profile also uses it.
             return if (family==MessageFamily.UNKNOWN && field==ExtractionField.MERCHANT)
                 sets.drop(1).fold(sets.firstOrNull().orEmpty().toSet()) {common,next->common.intersect(next.toSet())}.toList()
-            else sets.flatten().distinct()
+            // Built in like TIME_LABELS: stored bank definitions are never rewritten, so common Arabic
+            // amount roles (ب١٠٠ريال, بقيمة 100 ريال) must reach existing installs through the engine.
+            else (sets.flatten() + if (field == ExtractionField.AMOUNT) AMOUNT_ROLES else emptyList()).distinct()
         }
-        val currencies = RoleLineReader(source, mapOf("principalCurrency" to listOf("العملة", "currency")), evidence, roleLabels)
+        // Opt-in rule capabilities apply only when the message title carries one of the rule's listed phrases.
+        fun titleOptIn(key: String) = matching.flatMap { it.observations[key].orEmpty() }.filter { source.phrase(it).containsMatchIn(title) }
+        val suffixLabels = titleOptIn("label.suffix").isNotEmpty()
+        val currencies = RoleLineReader(source, mapOf("principalCurrency" to listOf("العملة", "currency")), evidence, roleLabels, suffixLabels)
             .read("principalCurrency")
         val currency = currencies.map { it.normalized }.distinct().singleOrNull()
         if (currencies.isNotEmpty() && (currency == null || MoneyGrammar.withCurrency("1", currency) == null))
@@ -205,10 +210,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         val secondaryRanges = details.reserved.toMutableList()
         // Reserve all known secondary roles even when the selected rule does not expose them.
         SECONDARY.forEach { label ->
-            Regex("(?m)^ *" + source.phrase(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
+            Regex("(?m)^ *" + source.role(label).pattern + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE).findAll(source.text).forEach { secondaryRanges += it.range }
         }
         val primary = PrimaryFieldExtractor(source, ::labels, currency, secondaryRanges, evidence, ::problem, defaults?.currency?.name,
-            matching.any { it.observations["balance.signed"].orEmpty().isNotEmpty() })
+            matching.any { it.observations["balance.signed"].orEmpty().isNotEmpty() }, inlineAmountRoles = AMOUNT_ROLES)
         val negativeBalance = primary.negativeBalance()
         val balance = primary.money(ExtractionField.AVAILABLE_BALANCE) ?: negativeBalance?.takeIf { it.amount.signum() == 0 }
         if (balance != null && negativeBalance != null && negativeBalance.amount.signum() > 0)
@@ -293,6 +298,7 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
         private val OUTGOING = listOf("حوالة صادرة", "حوالة مالية صادرة", "حوالة فورية صادرة", "تحويل صادر", "outgoing transfer", "fund transfer debited", "transfer sent")
         private val TRANSFER_CONTEXT = INCOMING + OUTGOING + listOf("fund transfer", "حوالة", "تحويل")
         private val SECONDARY = listOf("رسوم:", "available balance", "balance", "الرصيد المتاح", "الرصيد", "due amount", "outstanding balance", "المبلغ المستحق", "fee amount", "مبلغ الرسوم", "tax amount", "مبلغ الضريبة", "minimum amount", "minimum payment", "الحد الادني للسداد", "foreign amount", "المبلغ الاجنبي", "international fee", "رسوم العمليات الدولية")
+        private val AMOUNT_ROLES = listOf("ب", "بقيمة", "بمبلغ")
         private val INFORMATIONAL = setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE)
         private val SUPPORTED = INFORMATIONAL + setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.WITHDRAWAL, MessageFamily.FEE, MessageFamily.CARD_PAYMENT, MessageFamily.CARD_TOP_UP, MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.TRANSFER_IN, MessageFamily.TRANSFER_OUT)
     }

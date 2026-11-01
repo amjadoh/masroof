@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="registry_delete">Delete</string>
+    <string name="registry_delete_account_title">Delete account?</string>
+    <string name="registry_delete_card_title">Delete card?</string>
+    <string name="registry_delete_loan_title">Delete loan?</string>
+    <string name="registry_delete_blocked_title">Can\'t delete</string>
+    <string name="registry_delete_help">It will be removed from your list. It may come back as unconfirmed if new messages mention it.</string>
+    <string name="registry_delete_name">Name</string>
+    <string name="registry_delete_copy">Copy name</string>
+    <string name="registry_delete_confirmation">Paste name to confirm</string>
+    <plurals name="registry_delete_blocked_transactions">
+        <item quantity="one">Linked to 1 recorded transaction. Stop tracking instead of deleting.</item>
+        <item quantity="other">Linked to %d recorded transactions. Stop tracking instead of deleting.</item>
+    </plurals>
+    <string name="registry_delete_blocked_supplementary">This card has supplementary cards. Delete or detach them first.</string>
+    <string name="registry_delete_blocked_linked_card">A card is linked to this account. Unlink it in card setup first.</string>
+    <string name="registry_delete_blocked_pattern">A message pattern records transactions to this account. Delete the pattern first.</string>
+    <string name="registry_delete_more">and %d more</string>
+    <string name="registry_delete_close">Close</string>
+</resources>

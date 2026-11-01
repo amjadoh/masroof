@@ -13,6 +13,8 @@ enum class PatternOperation(val fields: List<String>) {
     CARD_PAYMENT(listOf("amount", "card", "source_account", "occurred_at")),
     REFUND(listOf("amount", "merchant", "card", "occurred_at")),
     WITHDRAWAL(listOf("amount", "source_account", "card", "occurred_at")),
+    FEE(listOf("amount", "source_account", "occurred_at", "reference")),
+    FINANCING_INSTALLMENT(listOf("amount", "source_account", "counterparty", "occurred_at", "reference")),
     CARD_TOP_UP(listOf("amount", "source_account", "card", "occurred_at", "available_balance")),
 }
 
@@ -20,7 +22,8 @@ enum class PatternOperation(val fields: List<String>) {
 data class PatternTeachingSource(val bankId: String?, val sender: String, val body: String, val reviewId: String? = null)
 
 data class PatternBinding(val field: String, val start: Int, val end: Int, val ignored: Boolean = false)
-data class PatternText(val text: String, val start: Int, val end: Int)
+/** [kind] is a lexical hint name from candidate discovery (MONEY, DATE_TIME…); null for extracted fields. */
+data class PatternText(val text: String, val start: Int, val end: Int, val kind: String? = null)
 data class PatternMatch(val patternId: String, val revision: Int, val operation: String, val fields: Map<String, PatternText>)
 
 /** Immutable preview token retains the exact compiled definition reviewed before save. */
@@ -28,6 +31,10 @@ class PatternTeachingPreview internal constructor(
     val generation: Long,
     internal val pattern: SavedMessagePattern,
     val fields: Map<String, PatternText>,
+    /** Variable-looking values the template could not ignore automatically; they stay literal text. */
+    val fixedValues: List<PatternText> = emptyList(),
+    /** The teaching message, kept in memory so an edit can re-run the prior approval on it. */
+    internal val body: String = "",
 ) {
     val bankId get() = pattern.bankId
     val operation get() = pattern.label

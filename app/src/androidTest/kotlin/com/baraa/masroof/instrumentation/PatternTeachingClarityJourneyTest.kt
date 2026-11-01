@@ -6,8 +6,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -62,13 +65,14 @@ class PatternTeachingClarityJourneyTest {
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-operation-TRANSFER_IN").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-operation-TRANSFER_IN").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-question").assertIsDisplayed()
-            compose.onNodeWithText(ar(R.string.teaching_back)).assertDoesNotExist()
             capture("message")
             click(R.string.teaching_next)
-            compose.onNodeWithText(ar(R.string.teaching_previous)).assertDoesNotExist()
             select("100.00 SAR")
             compose.onNodeWithContentDescription(ar(R.string.review_back)).assertIsDisplayed().performClick()
             compose.onNodeWithTag("pattern-question").assertTextContains("مبلغ العملية", substring = true)
+            // Every field question carries a plain explanation with an SMS example.
+            compose.onNodeWithTag("pattern-field-help").assertIsDisplayed()
+            compose.onNode(hasAnyAncestor(hasTestTag("pattern-field-help")) and hasText("مثال", substring = true)).assertIsDisplayed()
             compose.onNodeWithTag("pattern-bind").performClick()
             repeat(5) { click(R.string.teaching_skip_field) }
             compose.onNodeWithTag("pattern-question").assertIsDisplayed().assertTextContains("بنك الطرف الآخر", substring = true)

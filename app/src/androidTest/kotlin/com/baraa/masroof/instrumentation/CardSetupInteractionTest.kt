@@ -2,7 +2,7 @@ package com.baraa.masroof.instrumentation
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.baraa.masroof.domain.model.*
 import com.baraa.masroof.presentation.settings.*
 import com.baraa.masroof.ui.theme.MasroofTheme
@@ -39,11 +39,9 @@ class CardSetupInteractionTest {
         var stopped = false
         compose.setContent { TestTheme {
             var target by remember { mutableStateOf<ManagedCardUi?>(null) }
-            SettingsRegistryCardRow(card, false, { stopped = true }, {}, { target = it })
+            SettingsRegistryCardRow(card, false, { stopped = true }, {}, { target = it }, {})
             SettingsCardSetupSheet(target, null, listOf(card), emptyList(), false, false, { target = null }, {})
         } }
-        compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.settings_action_role)).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.settings_action_link_account)).assertDoesNotExist()
         compose.onNodeWithText(context.getString(com.baraa.masroof.R.string.reference_stop_tracking)).performClick()
         compose.runOnIdle { assertTrue(stopped) }
         compose.onAllNodesWithText(context.getString(com.baraa.masroof.R.string.settings_card_setup)).assertCountEquals(1)

@@ -33,7 +33,6 @@
     <string name="settings_import_no_selected_bank_sms">لم يُعثر على رسائل للبنوك المحددة ضمن هذه الفترة.</string>
     <string name="settings_data_tools_title">أدوات البيانات</string>
     <string name="settings_data_tools_hint">إعادة تحليل الرسائل المخزنة ومراجعة تحويلات العملات</string>
-    <string name="settings_corrections_title">أثر تصحيحات الرسائل</string>
     <string name="settings_corrections_scope">هذه الصفحة تعرض أثر التصحيحات على مستوى التطبيق. تعليم حقول الرسالة واعتماد النمط متاحان داخل كل بنك.</string>
     <string name="settings_current_version">الإصدار الحالي: %1$s</string>
     <string name="settings_statement_bank_scope_hint">يجب أن يطابق البنك في الملف البنك المحدد هنا. تُقارن الحسابات المملوكة والمسجلة فقط.</string>

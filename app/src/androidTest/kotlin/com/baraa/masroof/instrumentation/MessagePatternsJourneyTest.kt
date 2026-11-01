@@ -6,7 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -26,6 +26,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MessagePatternsJourneyTest {
+    // The prefilled selection repeats the value as text, so a chip is found by its span.
+    private fun candidateTag(body: String, value: String) = body.indexOf(value).let { "pattern-candidate-$it-${it + value.length}" }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun teachPreviewSaveAndDisableInArabic() = runBlocking {
@@ -47,7 +49,7 @@ class MessagePatternsJourneyTest {
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:10SAR\nTo:SHOP")
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("10SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("10SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag("Payment\nAmount:10SAR\nTo:SHOP", "10SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         click(R.string.teaching_try_another)
@@ -62,12 +64,15 @@ class MessagePatternsJourneyTest {
         click(R.string.pattern_save)
         compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 1 }
         val patternId = store.load().banks.single().currentPatterns.single().id
-        compose.onNodeWithTag("pattern-toggle-STC-$patternId").performScrollTo().performClick()
-        compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
+        // A taught pattern starts off until the user switches it on.
         assertFalse(store.load().banks.single().currentPatterns.single().enabled)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-toggle-STC-$patternId").fetchSemanticsNodes().isNotEmpty() }
         capture("pattern-disabled")
         compose.runOnIdle { dark.value = true }
         capture("pattern-disabled-dark")
+        compose.onNodeWithTag("pattern-toggle-STC-$patternId").performScrollTo().performClick()
+        compose.waitUntil(10_000) { store.load().banks.single().patterns.size == 2 }
+        assertTrue(store.load().banks.single().currentPatterns.single().enabled)
         compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
         click(R.string.pattern_teach)
         compose.onNodeWithTag("pattern-body").performScrollTo().performTextInput("Payment\nAmount:30SAR")
@@ -101,20 +106,14 @@ class MessagePatternsJourneyTest {
             }
         }
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_add_bank)).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("STC Bank").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-            it(androidx.compose.ui.text.AnnotatedString("changed sender"))
-        }
-        compose.onNodeWithText("STC Bank").assertExists()
+        compose.onNodeWithText("STC Bank").assertRejectsTextEdits("STC Bank")
         compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
         click(R.string.pattern_add_bank)
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("pattern-body").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
-            it(androidx.compose.ui.text.AnnotatedString("changed body"))
-        }
-        compose.onNodeWithTag("pattern-body").assertTextContains(source.body)
+        compose.onNodeWithTag("pattern-body").assertRejectsTextEdits(source.body)
         click(R.string.teaching_next)
         compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("73SAR").performScrollTo().performClick()
+        compose.onNodeWithTag(candidateTag(source.body, "73SAR")).performScrollTo().performClick()
         compose.onNodeWithTag("pattern-bind").performClick()
         click(R.string.pattern_preview)
         compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
@@ -125,6 +124,47 @@ class MessagePatternsJourneyTest {
         assertEquals(listOf("STC Bank"), store.load().banks.single().senders)
         assertEquals(1, store.load().banks.single().patterns.size)
         assertEquals("Payment\nAmount:73SAR", source.body)
+        file.delete()
+        Unit
+    }
+
+    @Test fun copyFromReviewSurvivesRotationAndBackReturnsToThePattern() = runBlocking {
+        val file = compose.activity.cacheDir.resolve("synthetic-review-copy-restore.json")
+        file.delete()
+        val store = MessagePatternStore(file)
+        val workflow = MessagePatternsWorkflow(store, DatabaseAccessGate())
+        val source = com.baraa.masroof.application.patterns.PatternTeachingSource(null, "STC Bank", "Payment\nAmount:73SAR")
+        val returned = androidx.compose.runtime.mutableStateOf(false)
+        val restoration = androidx.compose.ui.test.junit4.StateRestorationTester(compose)
+        restoration.setContent {
+            val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
+            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration) {
+                MasroofTheme { Surface {
+                    if (returned.value) androidx.compose.material3.Text("Review remains pending")
+                    else MessagePatternsScreen(workflow, source = source, onBack = { returned.value = true })
+                } }
+            }
+        }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_add_bank)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(ar(R.string.pattern_bank_name)).performTextInput("بنك التجربة")
+        click(R.string.pattern_add_bank)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        click(R.string.teaching_next)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("73SAR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag(candidateTag(source.body, "73SAR")).performScrollTo().performClick()
+        compose.onNodeWithTag("pattern-bind").performClick()
+        click(R.string.pattern_preview)
+        compose.waitUntil(10_000) { compose.onAllNodesWithText(ar(R.string.pattern_save)).fetchSemanticsNodes().isNotEmpty() }
+        click(R.string.pattern_save)
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-copy").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("pattern-copy").performScrollTo().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        // A copy is a teaching step inside the pattern; after rotation, Back must still return to that pattern, not leave to Review.
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-body").fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(10_000) { returned.value || compose.onAllNodesWithTag("pattern-copy").fetchSemanticsNodes().isNotEmpty() }
+        assertFalse("Back from a restored copy left the pattern screen", returned.value)
         file.delete()
         Unit
     }
@@ -174,7 +214,14 @@ class MessagePatternsJourneyTest {
             compose.onNodeWithContentDescription(ar(R.string.settings_back)).performClick()
             compose.onNodeWithTag("pattern-open-STC-purchase").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-toggle-STC-purchase").performScrollTo().performClick()
-            compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick()
+            compose.waitUntil(10_000) { !store.load().banks.single().currentPatterns.single().enabled }
+            // Back is ignored while the screen is still busy saving the switch; retry until the bank page shows.
+            compose.waitUntil(10_000) {
+                val onBankPage = compose.onAllNodesWithText(ar(R.string.pattern_pending_title)).fetchSemanticsNodes().isNotEmpty()
+                if (!onBankPage) compose.onAllNodesWithContentDescription(ar(R.string.teaching_saved_patterns)).fetchSemanticsNodes()
+                    .firstOrNull()?.let { compose.onNodeWithContentDescription(ar(R.string.teaching_saved_patterns)).performClick() }
+                onBankPage
+            }
             click(R.string.pattern_pending_title)
             compose.waitUntil(10_000) { compose.onAllNodesWithText("غير مطابق: 2").fetchSemanticsNodes().isNotEmpty() }
             assertEquals(2, reviews.listRequired().size)
@@ -219,5 +266,15 @@ class MessagePatternsJourneyTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         android.os.SystemClock.sleep(250)
         ScreenshotArtifactWriter.publish(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot(), "pattern-journey", name)
+    }
+
+    /** Read-only text either has no SetText action (Compose 1.8+) or ignores it; the text must stay. */
+    private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertRejectsTextEdits(original: String) {
+        if (androidx.compose.ui.semantics.SemanticsActions.SetText in fetchSemanticsNode().config) {
+            performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetText) {
+                it(androidx.compose.ui.text.AnnotatedString("changed"))
+            }
+        }
+        assertTextContains(original)
     }
 }

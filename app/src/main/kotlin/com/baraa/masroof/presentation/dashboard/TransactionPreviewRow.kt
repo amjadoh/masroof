@@ -22,7 +22,7 @@ fun TransactionPreviewRow(
         com.baraa.masroof.domain.model.FinancialTransactionType.CREDIT_CARD_PAYMENT -> colors.card to colors.cardSoft
         else -> if (inward) colors.inflow to colors.inflowSoft else if (transfer) colors.account to colors.accountSoft else colors.outflow to colors.outflowSoft
     }
-    val title = row.title?.takeIf { it.isNotBlank() } ?: transactionTypeLabel(row.typeLabelResHint)
+    val title = transactionTitle(row)
     val money = formatLocalizedMoney(row.amount)
     val formatted = money.substringBeforeLast(' ')
     val currency = money.substringAfterLast(' ')

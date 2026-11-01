@@ -7,7 +7,8 @@ import java.util.Locale
 /** One bounded grammar for principal and secondary money. Never rounds unsupported precision. */
 internal object MoneyGrammar {
     private const val NUMBER = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?"
-    private const val CURRENCY = "(?:sar|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
+    private const val CURRENCY = "(?:sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?)"
+    // The currency may touch the number (SAR100 / 100SAR); the lookahead still rejects 100SARX.
     const val VALUE = "(?:(?<c1>$CURRENCY)[ \\t]*(?<n1>$NUMBER)|(?<n2>$NUMBER)[ \\t]*(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,+\\-−])"
     const val NEGATIVE_BALANCE = "(?:(?<c1>$CURRENCY)[ \\t]*[-−][ \\t]*(?<n1>$NUMBER)|[-−][ \\t]*(?<n2>$NUMBER)[ \\t]*(?<c2>$CURRENCY))(?![\\p{L}\\p{N}_.,+\\-−])"
     private val entire = Regex(VALUE)
@@ -23,7 +24,7 @@ internal object MoneyGrammar {
         if (number.length > 18) return null
         val currency = (match.groups["c1"] ?: match.groups["c2"])?.value ?: return null
         val code = when (currency) {
-            "ريال", "ريال سعودي", "ر.س", "ر.س." -> "SAR"
+            "ريال", "ريال سعودي", "ر.س", "ر.س.", "sr" -> "SAR"
             else -> currency.uppercase(Locale.ROOT)
         }
         return runCatching { Money.of(number.replace(",", ""), Currency.valueOf(code)) }.getOrNull()

@@ -82,6 +82,8 @@ data class TransactionPreviewUi(
 )
 
 data class DashboardUiState(
+    val transactionListQuery: TransactionListFilterState = TransactionListFilterState(),
+    val transactionListProjection: TransactionListProjectionUi = TransactionListProjectionUi(),
     val loading: Boolean = true,
     val period: FinancialPeriod? = null,
     val periodLabel: String = "",

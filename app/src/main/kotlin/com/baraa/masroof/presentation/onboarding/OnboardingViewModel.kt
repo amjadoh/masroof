@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.onboarding
 
+import com.baraa.masroof.presentation.common.launchLogged
+import com.baraa.masroof.application.logging.AppLogCategories
 import com.baraa.masroof.application.onboarding.ImportDatePolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -104,6 +106,7 @@ class OnboardingViewModel(
                 it.copy(
                     permissionGranted = permissionGranted,
                     onboardingCompleted = completed,
+                    homeGuideSeen = onboardingPrefs.isHomeGuideSeen(),
                     selectedImportDate = selectedDate,
                     importThroughDate = through ?: today,
                     bankCatalog = catalog, selectedBankIds = selected, banksConfirmed = confirmed, loadingBanks = false,
@@ -157,13 +160,10 @@ class OnboardingViewModel(
     }
 
     fun onBankAdded(bankId: String) {
-        viewModelScope.launch {
-            try {
-                val catalog = loadBankCatalog()
-                _uiState.update { it.copy(bankCatalog = catalog, loadingBanks = false, error = null) }
-                if (bankId !in _uiState.value.selectedBankIds) toggleBank(bankId)
-            } catch (error: CancellationException) { throw error }
-            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.SETTINGS, "Onboarding onBankAdded", caught); _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED) } }
+        launchLogged(appLogService, AppLogCategories.SETTINGS, "Onboarding onBankAdded", onError = { _uiState.update { it.copy(loadingBanks = false, error = OnboardingError.BANKS_LOAD_FAILED) } }) {
+            val catalog = loadBankCatalog()
+            _uiState.update { it.copy(bankCatalog = catalog, loadingBanks = false, error = null) }
+            if (bankId !in _uiState.value.selectedBankIds) toggleBank(bankId)
         }
     }
 
@@ -212,32 +212,26 @@ class OnboardingViewModel(
 
     fun restoreBackup(uri: Uri) {
         if (_uiState.value.restoringBackup) return
-        viewModelScope.launch {
-            try {
-                when (databaseBackupService.inspect(uri)) {
-                    BackupPackageKind.LEGACY_PLAINTEXT -> {
-                        pendingRestoreUri = uri
-                        _uiState.update {
-                            it.copy(awaitingLegacyRestoreConfirm = true, error = null)
-                        }
+        launchLogged(appLogService, AppLogCategories.BACKUP, "Onboarding restoreBackup", onError = { _uiState.update { it.copy(error = OnboardingError.BACKUP_RESTORE_FAILED) } }) {
+            when (databaseBackupService.inspect(uri)) {
+                BackupPackageKind.LEGACY_PLAINTEXT -> {
+                    pendingRestoreUri = uri
+                    _uiState.update {
+                        it.copy(awaitingLegacyRestoreConfirm = true, error = null)
                     }
-                    BackupPackageKind.ENCRYPTED -> {
-                        val passphrase = _uiState.value.restorePassphrase
-                        if (passphrase.isEmpty()) {
-                            _uiState.update { it.copy(error = OnboardingError.BACKUP_PASSPHRASE_REQUIRED) }
-                        } else {
-                            val secret = passphrase.toCharArray()
-                            _uiState.update { it.copy(restorePassphrase = "") }
-                            importRestore(uri, secret, confirmLegacyPlaintext = false)
-                        }
-                    }
-                    BackupPackageKind.UNRECOGNIZED ->
-                        _uiState.update { it.copy(error = OnboardingError.BACKUP_RESTORE_INVALID) }
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Onboarding restoreBackup", caught);
-                _uiState.update { it.copy(error = OnboardingError.BACKUP_RESTORE_FAILED) }
+                BackupPackageKind.ENCRYPTED -> {
+                    val passphrase = _uiState.value.restorePassphrase
+                    if (passphrase.isEmpty()) {
+                        _uiState.update { it.copy(error = OnboardingError.BACKUP_PASSPHRASE_REQUIRED) }
+                    } else {
+                        val secret = passphrase.toCharArray()
+                        _uiState.update { it.copy(restorePassphrase = "") }
+                        importRestore(uri, secret, confirmLegacyPlaintext = false)
+                    }
+                }
+                BackupPackageKind.UNRECOGNIZED ->
+                    _uiState.update { it.copy(error = OnboardingError.BACKUP_RESTORE_INVALID) }
             }
         }
     }
@@ -259,59 +253,53 @@ class OnboardingViewModel(
         passphrase: CharArray,
         confirmLegacyPlaintext: Boolean,
     ) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.BACKUP, "Onboarding importRestore", onError = {
+            _uiState.update {
+                it.copy(
+                    restoringBackup = false,
+                    error = OnboardingError.BACKUP_RESTORE_FAILED,
+                )
+            }
+        }, onFinally = { passphrase.fill('\u0000') }) {
             _uiState.update { it.copy(restoringBackup = true, error = null) }
-            try {
-                when (
-                    databaseBackupService.importFrom(
-                        source = uri,
-                        passphrase = passphrase,
-                        confirmLegacyPlaintext = confirmLegacyPlaintext,
-                    )
-                ) {
-                    BackupImportOutcome.SuccessNeedsRestart -> Unit
-                    BackupImportOutcome.InvalidPackage ->
-                        _uiState.update {
-                            it.copy(
-                                restoringBackup = false,
-                                error = OnboardingError.BACKUP_RESTORE_INVALID,
-                            )
-                        }
-                    BackupImportOutcome.Failed ->
-                        _uiState.update {
-                            it.copy(
-                                restoringBackup = false,
-                                error = OnboardingError.BACKUP_RESTORE_FAILED,
-                            )
-                        }
-                    BackupImportOutcome.LegacyConfirmationRequired -> {
-                        pendingRestoreUri = uri
-                        _uiState.update {
-                            it.copy(
-                                restoringBackup = false,
-                                awaitingLegacyRestoreConfirm = true,
-                            )
-                        }
+            when (
+                databaseBackupService.importFrom(
+                    source = uri,
+                    passphrase = passphrase,
+                    confirmLegacyPlaintext = confirmLegacyPlaintext,
+                )
+            ) {
+                BackupImportOutcome.SuccessNeedsRestart -> Unit
+                BackupImportOutcome.InvalidPackage ->
+                    _uiState.update {
+                        it.copy(
+                            restoringBackup = false,
+                            error = OnboardingError.BACKUP_RESTORE_INVALID,
+                        )
                     }
-                    BackupImportOutcome.AuthenticationFailed ->
-                        _uiState.update {
-                            it.copy(
-                                restoringBackup = false,
-                                error = OnboardingError.BACKUP_RESTORE_FAILED,
-                            )
-                        }
+                BackupImportOutcome.Failed ->
+                    _uiState.update {
+                        it.copy(
+                            restoringBackup = false,
+                            error = OnboardingError.BACKUP_RESTORE_FAILED,
+                        )
+                    }
+                BackupImportOutcome.LegacyConfirmationRequired -> {
+                    pendingRestoreUri = uri
+                    _uiState.update {
+                        it.copy(
+                            restoringBackup = false,
+                            awaitingLegacyRestoreConfirm = true,
+                        )
+                    }
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.BACKUP, "Onboarding importRestore", caught);
-                _uiState.update {
-                    it.copy(
-                        restoringBackup = false,
-                        error = OnboardingError.BACKUP_RESTORE_FAILED,
-                    )
-                }
-            } finally {
-                passphrase.fill('\u0000')
+                BackupImportOutcome.AuthenticationFailed ->
+                    _uiState.update {
+                        it.copy(
+                            restoringBackup = false,
+                            error = OnboardingError.BACKUP_RESTORE_FAILED,
+                        )
+                    }
             }
         }
     }
@@ -404,9 +392,10 @@ class OnboardingViewModel(
 
                 onboardingPrefs.setHistoricalImportStartEpochMillis(startInstant.toEpochMilli())
                 onboardingPrefs.setHistoricalImportCompleted(false)
-                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, error = null) }
+                _uiState.update { it.copy(step = OnboardingStep.IMPORTING, importState = ImportState.Scanning, importScanned = 0, error = null) }
 
-                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through))
+                val result = historicalImportGateway.scan(com.baraa.masroof.application.onboarding.OnboardingImportRequest(selection.selectedBankIds, from, through,
+                    onProgress = { scanned -> _uiState.update { it.copy(importScanned = scanned) } }))
                 val state = result.toImportState()
                 _uiState.update { it.copy(importState = state) }
 
@@ -470,42 +459,36 @@ class OnboardingViewModel(
     fun setAccountOwnership(candidate: OwnershipCandidateUi, owned: Boolean) {
         if (isBusy() || candidate.bank.id !in _uiState.value.selectedBankIds) return
         _uiState.update { it.copy(updatingOwnership = true, error = null) }
-        viewModelScope.launch {
-            try {
-                val ref = AccountReference(candidate.bank, candidate.suffix)
-                if (owned) {
-                    onboardingOwnershipWorkflow.confirmAccountOwned(ref)
-                } else {
-                    onboardingOwnershipWorkflow.markAccountExternal(ref)
-                }
-                reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
-                loadCandidatesAndCounts()
-            } catch (error: CancellationException) { throw error }
-            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding setAccountOwnership", caught);
-                reloadAfterOwnershipFailure()
-                _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
-            } finally { _uiState.update { it.copy(updatingOwnership = false) } }
+        launchLogged(appLogService, AppLogCategories.OWNERSHIP, "Onboarding setAccountOwnership", onError = {
+            reloadAfterOwnershipFailure()
+            _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
+        }, onFinally = { _uiState.update { it.copy(updatingOwnership = false) } }) {
+            val ref = AccountReference(candidate.bank, candidate.suffix)
+            if (owned) {
+                onboardingOwnershipWorkflow.confirmAccountOwned(ref)
+            } else {
+                onboardingOwnershipWorkflow.markAccountExternal(ref)
+            }
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Account(ref))
+            loadCandidatesAndCounts()
         }
     }
 
     fun setCardOwnership(candidate: OwnershipCandidateUi, owned: Boolean) {
         if (isBusy() || candidate.bank.id !in _uiState.value.selectedBankIds) return
         _uiState.update { it.copy(updatingOwnership = true, error = null) }
-        viewModelScope.launch {
-            try {
-                val ref = CardReference(candidate.bank, candidate.suffix)
-                if (owned) {
-                    onboardingOwnershipWorkflow.confirmCardOwned(ref)
-                } else {
-                    onboardingOwnershipWorkflow.markCardExternal(ref)
-                }
-                reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
-                loadCandidatesAndCounts()
-            } catch (error: CancellationException) { throw error }
-            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding setCardOwnership", caught);
-                reloadAfterOwnershipFailure()
-                _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
-            } finally { _uiState.update { it.copy(updatingOwnership = false) } }
+        launchLogged(appLogService, AppLogCategories.OWNERSHIP, "Onboarding setCardOwnership", onError = {
+            reloadAfterOwnershipFailure()
+            _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) }
+        }, onFinally = { _uiState.update { it.copy(updatingOwnership = false) } }) {
+            val ref = CardReference(candidate.bank, candidate.suffix)
+            if (owned) {
+                onboardingOwnershipWorkflow.confirmCardOwned(ref)
+            } else {
+                onboardingOwnershipWorkflow.markCardExternal(ref)
+            }
+            reconcileOwnershipChange(ReviewWorkflowService.OwnershipChange.Card(ref))
+            loadCandidatesAndCounts()
         }
     }
 
@@ -537,7 +520,12 @@ class OnboardingViewModel(
     }
 
     fun enterApp() {
-        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME) }
+        if (onboardingPrefs.isOnboardingCompleted()) _uiState.update { it.copy(step = OnboardingStep.HOME, homeGuideSeen = onboardingPrefs.isHomeGuideSeen()) }
+    }
+
+    fun setHomeGuideSeen(seen: Boolean) {
+        onboardingPrefs.setHomeGuideSeen(seen)
+        _uiState.update { it.copy(homeGuideSeen = seen) }
     }
 
     private suspend fun loadCandidatesAndCounts() {
@@ -561,10 +549,8 @@ class OnboardingViewModel(
 
     fun refreshOwnership() {
         if (_uiState.value.step != OnboardingStep.OWNERSHIP || isBusy()) return
-        viewModelScope.launch {
-            try { loadCandidatesAndCounts() }
-            catch (error: CancellationException) { throw error }
-            catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.OWNERSHIP, "Onboarding refreshOwnership", caught); _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }
+        launchLogged(appLogService, AppLogCategories.OWNERSHIP, "Onboarding refreshOwnership", onError = { _uiState.update { it.copy(error = OnboardingError.OWNERSHIP_UPDATE_FAILED) } }) {
+            loadCandidatesAndCounts()
         }
     }
 

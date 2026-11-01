@@ -1,7 +1,7 @@
 package com.baraa.masroof.analytics
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.LocalDate
 
 class AnalyticsEvaluationRegressionTest {
@@ -34,7 +34,7 @@ class AnalyticsEvaluationRegressionTest {
             val expected = (56 until history.size step 3).toList().takeLast(40).count { cut ->
                 cut + h <= history.size && history[cut + h - 1].day - history[cut].day == h - 1L
             }
-            assertEquals("h=$h", expected, result.baseline!!.errors[h].orEmpty().size)
+            assertEquals(expected, result.baseline!!.errors[h].orEmpty().size, "h=$h")
         }
     }
 

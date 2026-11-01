@@ -10,14 +10,12 @@
     <string name="onboarding_open_settings">فتح إعدادات التطبيق</string>
     <string name="onboarding_permission_denied_short">تم رفض صلاحية الرسائل.</string>
 
-    <string name="onboarding_import_date_title">من أي تاريخ تريد استيراد الحركات؟</string>
     <string name="onboarding_date_current_month">بداية الشهر الحالي</string>
     <string name="onboarding_date_last_30">آخر 30 يوم</string>
     <string name="onboarding_date_last_27">من آخر يوم 27</string>
-    <string name="onboarding_date_custom">تاريخ مخصص</string>
-    <string name="onboarding_selected_date">التاريخ المحدد: %1$s</string>
     <string name="onboarding_start_import">بدء الاستيراد</string>
     <string name="onboarding_import_scanning">جاري فحص الرسائل…</string>
+    <string name="onboarding_import_scanning_count">جاري فحص الرسائل… %1$d رسالة حتى الآن</string>
     <string name="onboarding_import_done">اكتمل الاستيراد</string>
     <string name="onboarding_import_counts">تم فحص %1$d • محلّل %2$d • مكرر %3$d • فشل %4$d • خارج البنوك المحددة %5$d</string>
     <string name="onboarding_import_empty_inbox">لم يُعثر على رسائل في الفترة المحددة. جرّب تاريخًا أقدم.</string>
@@ -29,8 +27,6 @@
 
     <string name="onboarding_ownership_title">تأكيد ملكية الحسابات والبطاقات</string>
     <string name="onboarding_ownership_must_resolve">حدد ملكية الحسابات والبطاقات المكتشفة للمتابعة.</string>
-    <string name="onboarding_accounts_section">الحسابات المكتشفة</string>
-    <string name="onboarding_cards_section">البطاقات المكتشفة</string>
     <string name="onboarding_account_suffix">حساب ينتهي بـ %1$s</string>
     <string name="onboarding_card_suffix">بطاقة تنتهي بـ %1$s</string>
     <string name="onboarding_is_mine_account">حسابي</string>
@@ -83,8 +79,6 @@
     <string name="settings_account_type_savings">حساب توفير</string>
     <string name="settings_account_type_wallet">محفظة</string>
     <string name="settings_action_cancel">إلغاء</string>
-    <string name="settings_action_role">الدور</string>
-    <string name="settings_action_link_account">ربط حساب</string>
     <string name="settings_card_network_title">شبكة البطاقة</string>
     <string name="settings_card_role_title">دور البطاقة</string>
     <string name="settings_card_role_primary">أساسية</string>
@@ -112,7 +106,6 @@
     <string name="settings_about_tagline">تطبيق لتتبع المصاريف من رسائل البنك — بدون ربط بحسابك البنكي.</string>
     <string name="settings_about_privacy_title">الخصوصية</string>
     <string name="settings_about_privacy_body">تُحلَّل الرسائل محلياً على جهازك. محتوى رسائل البنك المالية لا يُرفع. قد يتصل التطبيق بـ GitHub للتحديثات باستخدام رمزك الشخصي.</string>
-    <string name="settings_about_banks_title">البنوك المدعومة</string>
     <string name="settings_hub_review_title">مراجعة الحركات</string>
     <string name="settings_hub_review_subtitle_count">%1$d حركة تحتاج مراجعة</string>
     <string name="settings_hub_cards_subtitle">%1$d بطاقة • %2$d غير مسجّلة</string>
@@ -163,9 +156,6 @@
     <string name="settings_registry_accounts_hint">اختر بنكًا لإدارة حساباته.</string>
     <string name="settings_registry_cards_hint">اختر بنكًا لإدارة بطاقاته.</string>
     <string name="settings_registry_loans_hint">اختر بنكًا لإدارة قروضه.</string>
-    <string name="settings_hub_loans_subtitle">%1$d قرض</string>
-    <string name="settings_hub_loans_subtitle_only">%1$d قرض</string>
-    <string name="settings_hub_loans_subtitle_none">لا توجد قروض بعد</string>
     <string name="settings_bank_accounts_title">الحسابات</string>
     <string name="settings_bank_cards_title">البطاقات</string>
     <string name="settings_bank_loans_title">القروض</string>
@@ -269,6 +259,8 @@
     <string name="settings_log_category_logs">سجل</string>
     <string name="settings_logs_export">تصدير السجل</string>
     <string name="settings_logs_share">مشاركة السجل</string>
+    <string name="settings_show_guide_title">عرض الإرشاد مرة أخرى</string>
+    <string name="settings_show_guide_subtitle">يظهر دليل البداية فوق الصفحة الرئيسية مرة واحدة.</string>
     <string name="settings_report_problem_title">الإبلاغ عن مشكلة</string>
     <string name="settings_report_problem_subtitle">يفتح صفحة بلاغ على GitHub مع بيانات الإصدار والجهاز. شارك السجل معه إن لزم.</string>
     <string name="settings_logs_clear">مسح السجل</string>
@@ -314,17 +306,12 @@
     <string name="dashboard_account_remaining_calculated_hint">وارد − منصرف (تحويلات خارجية، سداد البطاقة الائتمانية، سحب نقدي، فواتير، أقساط تمويل، مدى، رسوم)</string>
     <string name="dashboard_accounts_remaining_total_title">صافي حركة الحسابات</string>
     <string name="dashboard_accounts_fleet_total_hint">مجموع كل الوارد − كل المنصرف لجميع حساباتك</string>
-    <string name="dashboard_manage_accounts">إدارة الحسابات</string>
-    <string name="dashboard_accounts_count_label">%1$d حساب</string>
     <string name="dashboard_account_linked_mada_label">مدى مربوط: %1$s</string>
-<string name="dashboard_account_detail_unavailable">لا تتوفر بيانات الفترة لهذا الحساب</string>
     <string name="dashboard_summary_transactions_title">الحركات المالية (%1$d)</string>
     <string name="dashboard_summary_transactions_empty">لا توجد حركات في هذه الفترة</string>
     <string name="dashboard_summary_view_all_transactions">عرض كل الحركات ›</string>
     <string name="dashboard_cards_summary_screen_title">البطاقات</string>
     <string name="dashboard_cards_summary_empty">لا توجد بطاقات متابَعة</string>
-    <string name="dashboard_manage_cards">إدارة البطاقات</string>
-    <string name="dashboard_cards_count_label">%1$d بطاقة</string>
     <string name="dashboard_view_all">عرض الكل ›</string>
     <string name="dashboard_customize">تخصيص</string>
     <string name="dashboard_customize_sheet_title">تخصيص الشاشة الرئيسية</string>
@@ -344,9 +331,7 @@
     <string name="dashboard_income_details_title">تفاصيل الوارد</string>
     <string name="dashboard_flow_detail_back">رجوع</string>
 <string name="dashboard_flow_detail_breakdown_title">تفصيل البنود</string>
-    <string name="dashboard_flow_detail_expense_total">إجمالي المخرجات: %1$s</string>
     <string name="dashboard_flow_detail_expense_total_hint">لا يشمل التحويل بين حساباتك أدناه</string>
-    <string name="dashboard_flow_detail_income_total">إجمالي الوارد: %1$s</string>
     <string name="dashboard_flow_detail_income_total_hint">لا يشمل التحويل بين حساباتك أدناه</string>
     <string name="dashboard_value_unavailable">غير متوفر</string>
     <string name="dashboard_remaining_formula">مدخلات %1$s − مخرجات %2$s = الصافي</string>
@@ -364,8 +349,6 @@
     <string name="dashboard_fees_short">رسوم</string>
     <string name="dashboard_loan_repayments">أقساط التمويل</string>
     <string name="dashboard_loans_summary_screen_title">القروض</string>
-    <string name="dashboard_loans_count_label">%1$d قروض</string>
-    <string name="dashboard_manage_loans">إدارة القروض</string>
     <string name="dashboard_loans_remaining_total_title">إجمالي المتبقي</string>
     <string name="dashboard_loans_summary_empty">لا توجد قروض متابعة</string>
     <string name="dashboard_commitments_total">الإجمالي</string>
@@ -450,6 +433,7 @@
     <string name="transaction_detail_direction">الاتجاه</string>
     <string name="transaction_detail_card">البطاقة</string>
     <string name="transaction_detail_merchant">التاجر / الوصف</string>
+    <string name="transaction_unknown_merchant">تاجر غير معروف</string>
     <string name="transaction_detail_sar_equivalent">المبلغ بالريال</string>
     <string name="transaction_detail_exchange_rate">سعر الصرف المستخدم (%1$s→SAR)</string>
     <string name="transaction_detail_exchange_rate_source">مصدر سعر الصرف</string>
@@ -491,7 +475,6 @@
     <string name="dashboard_load_error">تعذر تحميل الملخص المالي</string>
     <string name="dashboard_retry">إعادة المحاولة</string>
     <string name="dashboard_rescan_sms">إعادة استيراد الرسائل</string>
-    <string name="dashboard_rescanning">جاري استيراد الرسائل…</string>
     <string name="dashboard_rescan_ok">تم استيراد الرسائل بنجاح</string>
     <string name="dashboard_rescan_already_up_to_date">الرسائل مُستوردة مسبقاً — لا توجد رسائل جديدة في الفترة</string>
     <string name="dashboard_rescan_needs_review">وُجدت رسائل جديدة — راجعها من «مراجعة الحركات»</string>
@@ -500,7 +483,6 @@
     <string name="dashboard_rescan_no_transactions">وُجدت رسائل جديدة لكن لم تُحوَّل إلى حركات. قد تحتاج تأكيد ملكية الحساب/البطاقة أو مراجعة لاحقة.</string>
     <string name="dashboard_rescan_failed">تعذر استيراد الرسائل</string>
     <string name="dashboard_rescan_permission_denied">لا يمكن استيراد الرسائل بدون صلاحية الوصول للرسائل</string>
-    <string name="dashboard_rescan_dismiss">إخفاء</string>
     <string name="dashboard_sms_permission_title">صلاحية الرسائل غير مفعّلة</string>
     <string name="dashboard_sms_permission_body">لاستيراد الحركات البنكية من صندوق الرسائل، اسمح لمصروف بقراءة الرسائل. السحب للتحديث يعيد تحميل البيانات فقط بدون هذه الصلاحية.</string>
     <string name="dashboard_sms_permission_grant">السماح بقراءة الرسائل</string>
@@ -672,4 +654,18 @@
     <string name="settings_loan_payment_unconfirmed">%1$d حركة مستبعدة من التصحيح لوجود قرار يدوي أو قراءة أو مصدر سداد غير مؤكد.</string>
     <string name="settings_loan_payment_failed">تعذر إكمال الربط. راجع ملكية القرض ومصدر السداد، ثم أنشئ معاينة جديدة.</string>
     <string name="settings_manual_account_external">الحساب لشخص آخر، ومصروفاته مستقلة عن مصروفاتي</string>
+    <string name="tour_summary_title">ملخص فترتك</string>
+    <string name="tour_summary_body">دخلك ومصاريفك منذ آخر راتب. اضغط على أي رقم لترى العمليات التي خلفه.</string>
+    <string name="tour_period_title">فترة الراتب</string>
+    <string name="tour_period_body">انتقل بين فترات الرواتب بالأسهم، وغيّر ما يظهر في الرئيسية من زر التخصيص.</string>
+    <string name="tour_transactions_title">كل العمليات</string>
+    <string name="tour_transactions_body">كل عملية سجّلها مصروف من رسائل البنك، مع البحث والتصفية.</string>
+    <string name="tour_review_title">المراجعة والتعليم</string>
+    <string name="tour_review_body">الرسائل التي لم يفهمها مصروف تنتظرك هنا. افتح رسالة واختر «علّم مصروف هذه الرسالة»، وبعد اعتماد النمط يفهم الرسائل المشابهة وحده.</string>
+    <string name="tour_settings_title">الإعدادات</string>
+    <string name="tour_settings_body">البنوك والبطاقات والنسخ الاحتياطي. ويمكنك إعادة هذه الجولة من «حول».</string>
+    <string name="tour_next">التالي</string>
+    <string name="tour_done">فهمت</string>
+    <string name="tour_skip">تخطي</string>
+    <string name="tour_progress">%1$d من %2$d</string>
 </resources>

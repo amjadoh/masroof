@@ -39,7 +39,7 @@ class ForecastLifecycleDeviceTest {
         TestRuntime.reset(host)
         val c=TestRuntime.container(host)
         c.awaitPostStartupBackgroundWorkForTesting()
-        c.stopLabAnalytics()
+        c.stopAnalytics()
         val zone=ZoneId.systemDefault()
         val period=FinancialPeriodPolicy.periodContaining(LocalDate.now(zone))
         var origin=period.startDate.plusDays(offset)

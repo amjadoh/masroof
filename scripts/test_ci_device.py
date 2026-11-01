@@ -1,6 +1,11 @@
+import io
 import importlib.util
 from pathlib import Path
 import tempfile
+import os
+import subprocess
+import sys
+import textwrap
 import json
 from unittest.mock import patch
 import unittest
@@ -12,6 +17,70 @@ spec.loader.exec_module(device)
 
 
 class DeviceProtocolTest(unittest.TestCase):
+    def test_workflow_publishes_package_version_separately_from_runtime_api(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        resolve = workflow.split('      - name: Resolve validated Android image', 1)[1]
+        code = textwrap.dedent(resolve.split("python3 - <<'PY'", 1)[1].split('\n          PY', 1)[0])
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'output'
+            subprocess.run([sys.executable, '-c', code], cwd=device.ROOT,
+                           env=dict(os.environ, GITHUB_OUTPUT=str(output)), check=True, capture_output=True)
+            config = json.loads(device.CONFIG.read_text())
+            self.assertEqual([f"api-level={config['api']}", f"image-version={config['imageVersion']}"],
+                             output.read_text().splitlines())
+        self.assertEqual(int(config['imageVersion'].split('.')[0]), config['api'])
+        self.assertIn('api-level: ${{ needs.android-version.outputs.image-version }}', workflow)
+
+    def test_device_jobs_reserve_enough_internal_storage_for_api37(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        options = [line for line in workflow.splitlines() if 'emulator-options:' in line]
+        self.assertEqual(2, len(options))  # ordinary shards and stateful recovery
+        for line in options:
+            self.assertIn('-partition-size 8192', line)
+
+    def test_emulator_creation_uses_current_tools_instead_of_runner_preinstall(self):
+        workflow = (device.ROOT / '.github/workflows/ci.yml').read_text()
+        name = '      - name: Use current tools for emulator creation'
+        steps = workflow.split(name)[1:]
+        self.assertEqual(2, len(steps))
+        for step in steps:
+            code = textwrap.dedent(step.split('        run: |\n', 1)[1].split('      - ', 1)[0])
+            for preinstalled_current in (False, True):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory) / 'cmdline-tools'
+                    selected = root / ('latest' if preinstalled_current else '23.0')
+                    current = selected / 'bin'
+                    current.mkdir(parents=True)
+                    (selected / 'source.properties').write_text('Pkg.Revision=23.0\n')
+                    manager = current / 'avdmanager'
+                    manager.write_text('#!/bin/sh\nexit 0\n')
+                    manager.chmod(0o755)
+                    if not preinstalled_current:
+                        (root / 'latest').mkdir()
+                        (root / 'latest/source.properties').write_text('Pkg.Revision=12.0')
+                    subprocess.run(['bash', '-ec', code],
+                                   env=dict(os.environ, ANDROID_HOME=directory, PATH=str(current) + os.pathsep + os.environ['PATH']),
+                                   check=True, capture_output=True)
+                    self.assertEqual(selected.resolve(), (root / 'latest').resolve())
+                    self.assertEqual('Pkg.Revision=23.0\n', (root / 'latest/source.properties').read_text())
+        self.assertEqual(2, workflow.count("pre-emulator-launch-script: grep -Fx 'target=android-${{ needs.android-version.outputs.image-version }}'"))
+        for path in ['.github/workflows/ci.yml', '.github/workflows/release.yml']:
+            source = (device.ROOT / path).read_text()
+            count = source.count('uses: android-actions/setup-android@')
+            self.assertEqual(count, source.count("cmdline-tools-version: '16111833'"))
+
+    def test_adb_failure_preserves_the_install_error(self):
+        failure = subprocess.CalledProcessError(1, ['adb', 'install', 'app.apk'],
+                                               output='INSTALL_FAILED_INSUFFICIENT_STORAGE',
+                                               stderr='Requested internal only, but not enough space')
+        output = io.StringIO()
+        with patch.object(device.subprocess, 'run', side_effect=failure), patch.object(device.sys, 'stderr', output):
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                device.adb('install', 'app.apk')
+        self.assertIs(failure, raised.exception)
+        self.assertIn('INSTALL_FAILED_INSUFFICIENT_STORAGE', output.getvalue())
+        self.assertIn('not enough space', output.getvalue())
+
     def stream(self, status=0, final=True):
         p = device.Instrumentation()
         for line in ['INSTRUMENTATION_STATUS: class=example.CaseTest', 'INSTRUMENTATION_STATUS: test=case',
@@ -66,7 +135,6 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertEqual(cases, {c for group in suites.values() for c in group})
         self.assertEqual(len(cases), sum(map(len, suites.values())))
         self.assertEqual(20, len(suites['processDeath']))
-        self.assertEqual(2, len(suites['upgrade']))
         self.assertEqual(2, len(suites['excluded']))
         self.assertTrue(all(len(pair) == 2 for pair in config['processDeath']))
         with self.assertRaises(ValueError):
@@ -93,9 +161,9 @@ class DeviceProtocolTest(unittest.TestCase):
             bundle = Path(directory)
             apk = bundle / 'app.apk'
             apk.write_bytes(b'verified-apk')
-            config = dict(processDeath=[], upgrade=[], excluded={})
+            config = dict(processDeath=[], excluded={})
             manifest = dict(testedSha='a'*40, config=config, suites=dict(primary=['example.Test#case'],
-                processDeath=[], upgrade=[], excluded=[]), shards=[['example.Test#case']],
+                processDeath=[], excluded=[]), shards=[['example.Test#case']],
                 apks=dict(app=dict(file='app.apk', sha256=device.digest(apk))))
             def save(): (bundle / 'manifest.json').write_text(json.dumps(manifest))
             save()
@@ -124,6 +192,23 @@ class DeviceProtocolTest(unittest.TestCase):
         self.assertNotIn('gradlew', section)
         self.assertIn('scripts/ci_device.py run', section)
         self.assertIn('fail-fast: false', section)
+
+
+    def test_settle_waits_for_boot_load_and_never_blocks_forever(self):
+        from types import SimpleNamespace
+        readings = iter(['3.60 2.00 1.00 2/900 77', '1.20 2.00 1.00 1/900 77'])
+        def adb(*args, **_):
+            out = {'/proc/loadavg': lambda: next(readings), 'nproc': lambda: '4'}.get(args[-1], lambda: '')
+            return SimpleNamespace(stdout=out())
+        with patch.object(device, 'adb', side_effect=adb) as calls, patch.object(device.time, 'sleep') as sleep:
+            device.settle()
+        self.assertEqual(('shell', 'am', 'wait-for-broadcast-idle'), calls.call_args_list[0].args)
+        self.assertEqual(1, sleep.call_count)
+        busy = lambda *args, **_: SimpleNamespace(stdout='4' if args[-1] == 'nproc' else '9.00 9.00 9.00 4/900 77')
+        clock = iter(range(0, 1000, 100))
+        with patch.object(device, 'adb', side_effect=busy), patch.object(device.time, 'sleep'), \
+                patch.object(device.time, 'monotonic', side_effect=lambda: next(clock)):
+            device.settle(limit=250)  # returns at the deadline instead of failing the job
 
 
 if __name__ == '__main__': unittest.main()

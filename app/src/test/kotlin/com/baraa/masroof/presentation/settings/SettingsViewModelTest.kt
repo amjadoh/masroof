@@ -37,6 +37,7 @@ import com.baraa.masroof.domain.repository.LoanRegistryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -360,6 +361,58 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun deleteUnusedAccount_needsConfirmationThenRemovesIt() = runTest {
+        val accounts = FakeAccountRegistry(AccountRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "3001", OwnershipStatus.OWNED,
+            firstSeenRawSmsId = null, lastSeenRawSmsId = null))
+        val vm = viewModel(accounts = accounts, transactions = SettingsViewModelTestSupport.emptyFinancialTransactionRepository())
+        vm.refresh()
+        advanceUntilIdle()
+        vm.requestDelete(StopTrackingTarget.Account(vm.uiState.value.followedAccounts.single()))
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.deleteRequest!!.blocker)
+        assertEquals(1, accounts.entries.size)
+
+        vm.confirmDelete()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.deleteRequest)
+        assertTrue(accounts.entries.isEmpty())
+        assertTrue(vm.uiState.value.followedAccounts.isEmpty())
+    }
+
+    @Test
+    fun deleteLinkedAccount_isBlockedListsTransactionsAndOffersStopTracking() = runTest {
+        val accounts = FakeAccountRegistry(AccountRegistryEntry.forTest(Bank.BANK_ALJAZIRA, "3001", OwnershipStatus.OWNED,
+            firstSeenRawSmsId = null, lastSeenRawSmsId = null))
+        val posted = com.baraa.masroof.domain.model.FinancialTransaction(id = "tx-1",
+            type = com.baraa.masroof.domain.model.FinancialTransactionType.EXPENSE, amount = Money.of("25.00", Currency.SAR),
+            occurredAt = Instant.parse("2026-09-10T10:00:00Z"), sourceContainerId = "account:BANK_ALJAZIRA:3001",
+            destinationContainerId = null, merchant = "TEST SHOP", counterparty = null, categoryId = null,
+            linkedParsedEventIds = emptyList(), occurredAtZone = "Asia/Riyadh")
+        val ledger = object : com.baraa.masroof.domain.repository.FinancialTransactionRepository by
+            SettingsViewModelTestSupport.emptyFinancialTransactionRepository() {
+            override suspend fun listAll() = listOf(posted)
+        }
+        val vm = viewModel(accounts = accounts, transactions = ledger)
+        vm.refresh()
+        advanceUntilIdle()
+        vm.requestDelete(StopTrackingTarget.Account(vm.uiState.value.followedAccounts.single()))
+        advanceUntilIdle()
+        val request = vm.uiState.value.deleteRequest!!
+        assertEquals(com.baraa.masroof.application.settings.DeleteBlocker.LINKED_TRANSACTIONS, request.blocker)
+        assertEquals(1, request.linkedCount)
+        assertEquals("TEST SHOP", request.linked.single().title)
+        assertEquals(java.time.LocalDate.of(2026, 9, 10), request.linked.single().occurredOn)
+
+        vm.confirmDelete()
+        advanceUntilIdle()
+        assertEquals(1, accounts.entries.size)
+
+        vm.stopTrackingInsteadOfDelete()
+        assertNull(vm.uiState.value.deleteRequest)
+        assertEquals("3001", vm.uiState.value.stopConfirmAccountTarget?.maskedNumber)
+    }
+
+    @Test
     fun confirmStopAccountTracking_marksAccountExternal() = runTest {
         val accounts = FakeAccountRegistry(
             AccountRegistryEntry.forTest(
@@ -523,7 +576,8 @@ class SettingsViewModelTest {
 
         vm.refresh()
         advanceUntilIdle()
-        assertTrue(vm.uiState.value.updateState is AppUpdateUiState.ReadyToInstall)
+        // The APK hash check runs on the IO dispatcher, outside the test scheduler.
+        vm.uiState.first { it.updateState is AppUpdateUiState.ReadyToInstall }
 
         vm.installPendingUpdate()
         advanceUntilIdle()
@@ -750,6 +804,7 @@ class SettingsViewModelTest {
         cards: CardRegistryRepository = FakeCardRegistry(),
         accounts: AccountRegistryRepository = FakeAccountRegistry(),
         loans: LoanRegistryRepository = FakeLoanRegistry(),
+        transactions: com.baraa.masroof.domain.repository.FinancialTransactionRepository? = null,
         permissionStateProvider: () -> Boolean = { true },
         themeMode: ThemeMode = ThemeMode.SYSTEM,
         reparseResult: com.baraa.masroof.application.maintenance.ReparseAllStoredEventsResult =
@@ -772,6 +827,7 @@ class SettingsViewModelTest {
                 cards = cards,
                 accounts = accounts,
                 loans = loans,
+                transactions = transactions,
             ),
             settingsCommitmentsWorkflow = commitmentsWorkflow,
             appLocaleRepository = FakeAppLocaleRepository(),
@@ -854,6 +910,10 @@ class SettingsViewModelTest {
         override suspend fun updateDisplayName(reference: AccountReference, displayName: String?) {
             val index = entries.indexOfFirst { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }
             if (index >= 0) entries[index] = entries[index].copy(displayName = displayName)
+        }
+
+        override suspend fun delete(reference: AccountReference) {
+            entries.removeAll { it.bank == reference.bank && it.maskedNumber == reference.maskedNumber }
         }
     }
 

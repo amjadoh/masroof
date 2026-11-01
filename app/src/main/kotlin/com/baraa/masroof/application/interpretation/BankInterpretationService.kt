@@ -20,7 +20,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** ML is a family assistant; the production workflows retain all financial authority. */
+/**
+ * ML is a family assistant; the production workflows retain all financial authority.
+ * Every bank with bundled role rules gets its own classifier built from that bank's human decisions.
+ */
 class BankInterpretationService(
     private val context: Context,
     private val raw: RawSmsRepository,
@@ -39,13 +42,17 @@ class BankInterpretationService(
     @Volatile private var closed = false
     private val stopSignal = CompletableDeferred<Unit>()
     private val seed = runCatching {store.loadSeed()}.getOrElse { log.warn("ML","Seed unavailable: ${it.javaClass.simpleName}");null }
-    // Rebuild assistance from durable human decisions before enabling it.
-    @Volatile private var classifier: FamilyClassifier? = null
-    @Volatile var personalization: FamilyPersonalizationResult? = null
-        private set
+    // Rebuild assistance from durable human decisions before enabling it; one classifier per assisted bank.
+    @Volatile private var classifiers: Map<String, FamilyClassifier>? = null
+    @Volatile private var personalizations: Map<String, FamilyPersonalizationResult> = emptyMap()
+    /** Statistical personal learning needs an eligible seed, which only the seed bank has; other banks use exact templates. */
+    val personalization: FamilyPersonalizationResult? get() = personalizations[SEED_BANK]
+    // Templates of pending messages in banks other than the seed bank that learned decisions would now change.
+    @Volatile private var assistable: Set<String> = emptySet()
+    @Volatile private var seedRead: Set<String> = emptySet()
     @Volatile private var synchronizedDecisions: String? = null
     @Volatile private var pendingFeedback = false
-    private data class Attempt(val classifier: FamilyClassifier?, var requested: Boolean = false,
+    private data class Attempt(val bank: String, val classifier: FamilyClassifier?, var requested: Boolean = false,
         var outcome: String = "RULES", var prediction: FamilyModel.Prediction? = null)
     private val attempt = ThreadLocal<Attempt>()
     private fun engine() = PatternFactInterpreter(patterns())
@@ -54,7 +61,7 @@ class BankInterpretationService(
         trace?.requested = true
         val features = FamilyAssistBridge.clean(input.body).features
         trace?.prediction = features?.let { trace.classifier?.model?.predict(it) }
-        val result = FamilyAssistBridge.suggest(trace?.classifier,BANK,input.body,title)
+        val result = trace?.let { FamilyAssistBridge.suggest(it.classifier,it.bank,input.body,title) }
         trace?.outcome = when {
             trace?.classifier == null -> "FEEDBACK_PENDING"
             features == null -> "CLEANING_REJECTED"
@@ -73,14 +80,19 @@ class BankInterpretationService(
             else if(pendingFeedback) changes.trySend(Unit)
         }
     }
-    val modelVersion: String? get() = classifier?.version
-    val statisticalFamilyCount: Int get() = classifier?.model?.enabledFamilies?.size ?: 0
+    /** One stable version for all banks, so refresh work started for an older set of models is skipped. */
+    val modelVersion: String? get() = classifiers?.entries?.sortedBy { it.key }?.joinToString(",") { "${it.key}=${it.value.version}" }
+    val statisticalFamilyCount: Int get() = classifiers?.values?.sumOf { it.model.enabledFamilies.size } ?: 0
+    /** Banks whose bundled role rules can ask for a family; only these learn and receive suggestions. */
+    fun assistedBanks(configuration: MessagePatternConfiguration = patterns()): Set<String> =
+        configuration.banks.filter { bank -> bank.bankId.matches(BANK_ID) && bank.currentPatterns.any { it.roleProfile != null } }
+            .map { it.bankId }.toSet() + SEED_BANK
     val refreshVersion: String get() = "${engine().fingerprint}|${modelVersion ?: "rules-only"}"
-    fun interpret(input: MessageInput, snapshot: PatternFactInterpreter = engine()): Interpretation {
-        val trace = Attempt(classifier)
+    fun interpret(input: MessageInput, snapshot: PatternFactInterpreter = engine(), bankId: String = SEED_BANK): Interpretation {
+        val trace = Attempt(bankId, classifiers?.get(bankId))
         val activeModel = trace.classifier?.version
         attempt.set(trace)
-        val result = try { snapshot.interpretRouted(input,BankId(BANK),familyAssist) } finally { attempt.remove() }
+        val result = try { snapshot.interpretRouted(input,BankId(bankId),familyAssist) } finally { attempt.remove() }
         val interpretedAt = System.currentTimeMillis()
         // Advisory audit writes never decide whether a transaction may be posted.
         if(!closed) auditScope.launch {
@@ -122,8 +134,8 @@ class BankInterpretationService(
         changes.trySend(Unit)
     }
     fun invalidateFeedback() {
-        classifier = null
-        personalization = null
+        classifiers = null
+        personalizations = emptyMap()
         synchronizedDecisions = null
         changes.trySend(Unit)
     }
@@ -174,7 +186,7 @@ class BankInterpretationService(
         if(record.automationConfirmed) return true
         val inferred = record.event.confidence.reasons.any { it.startsWith("family_origin:") }
         if(!inferred) return true
-        val model = classifier ?: return false
+        val model = classifiers?.get(record.event.bank.id) ?: return false
         return "model:${model.version}" in record.event.confidence.reasons &&
             synchronizedDecisions == fingerprint(decisions())
     }
@@ -182,6 +194,7 @@ class BankInterpretationService(
     suspend fun synchronizeFeedback(): String? = mutex.withLock {
         if(closed) return@withLock null
         val seed = seed ?: run { schedulePendingRefresh(); return@withLock null }
+        val banks = assistedBanks()
         val before = decisions()
         val wanted = before.map { it.rawId }.toSet()
         val evidence = raw.getByIds(wanted).associateBy { it.id }
@@ -203,7 +216,7 @@ class BankInterpretationService(
                 reason in setOf("FIELDS_ONLY", "CONTEXT_ONLY") -> Unit
                 semantic[decision.rawId]?.id != decision.id -> reason = "SUPERSEDED"
                 message == null || event == null -> { state = LearningFeedbackState.PENDING; reason = "MISSING_EVIDENCE" }
-                bank != BANK -> reason = "UNSUPPORTED_BANK"
+                bank == null || bank !in banks -> reason = "UNSUPPORTED_BANK"
                 features == null -> reason = "CLEANING_${cleaned?.rejection?.name ?: "EMPTY"}"
                 reason == "DECISION_PENDING" -> state = LearningFeedbackState.PENDING
                 decision.family == MessageFamily.UNKNOWN && event.messageFamily.name != "UNKNOWN" -> {
@@ -227,20 +240,27 @@ class BankInterpretationService(
         }
         val learned = labels.map { row -> HumanFamilyLabel(row.bankId,row.rawId,row.decisionId,SmsFamilyLabel.valueOf(row.family),
             row.template,FamilyModelCodec.terms(kotlinx.serialization.json.Json.parseToJsonElement(row.featuresJson)),row.sourceAt,row.provenance) }
-        val eligibleTemplates = mutableSetOf<String>()
+        val eligibleTemplates = mutableMapOf<String, MutableSet<String>>()
         var requested = false
         val probe = engine()
         val probeAssist = FamilyAssist { _, _ -> requested = true; null }
         learned.forEach { label ->
             val message = evidence[label.rawId] ?: return@forEach
             requested = false
-            probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(BANK), probeAssist)
-            if (requested) eligibleTemplates += label.template
+            probe.interpretRouted(MessageInput(message.id, message.sender, message.body, message.receivedAt, true), BankId(label.bankId), probeAssist)
+            if (requested) eligibleTemplates.getOrPut(label.bankId) { mutableSetOf() } += label.template
         }
-        val rebuilt = FamilyPersonalization.rebuild(seed.model, learned, seed.evaluation, blocks, eligibleTemplates)
-        val updated = rebuilt.classifier
-        val conflicted = learned.groupBy { it.template }.filterValues { rows -> rows.map { it.family }.distinct().size > 1 }.keys + updated.latestBlocks.map { it.template }
-        val explained = feedback.map { row -> if(row.state == LearningFeedbackState.LEARNED.name && row.template in conflicted)
+        val rebuilt = banks.associateWith { bank ->
+            // Statistical families and their evaluations belong to the seed bank; other banks start from exact human templates.
+            val bankSeed = if (bank == seed.model.bankId) seed else seed.copy(
+                model = seed.model.copy(bankId = bank, enabledFamilies = emptySet()), evaluation = emptyList())
+            FamilyPersonalization.rebuild(bankSeed.model, learned.filter { it.bankId == bank }, bankSeed.evaluation,
+                blocks.filter { it.bankId == bank }, eligibleTemplates[bank].orEmpty())
+        }
+        val updated = rebuilt.mapValues { it.value.classifier }
+        val conflicted = learned.groupBy { it.bankId to it.template }.filterValues { rows -> rows.map { it.family }.distinct().size > 1 }.keys +
+            updated.values.flatMap { classifier -> classifier.latestBlocks.map { it.bankId to it.template } }
+        val explained = feedback.map { row -> if(row.state == LearningFeedbackState.LEARNED.name && row.bankId to row.template in conflicted)
             row.copy(state = LearningFeedbackState.BLOCKED.name, reason = "CONFLICTING_TEMPLATE") else row }
         pendingFeedback = explained.any { it.state == LearningFeedbackState.PENDING.name }
         store.saveFeedback(labels,explained)
@@ -248,14 +268,14 @@ class BankInterpretationService(
         if (closed) return@withLock null
         if(before != decisions()) { invalidateFeedback(); return@withLock null }
         synchronizedDecisions = fingerprint(before)
-        personalization = rebuilt
-        classifier = updated
+        personalizations = rebuilt
+        classifiers = updated
         schedulePendingRefresh()
         onFeedbackChanged()
-        updated.version
+        modelVersion
     }
     suspend fun feedbackStatus(rawId: String): LearningFeedbackStatus? {
-        if(classifier == null) return LearningFeedbackStatus(LearningFeedbackState.PENDING, "FEEDBACK_PENDING")
+        if(classifiers == null) return LearningFeedbackStatus(LearningFeedbackState.PENDING, "FEEDBACK_PENDING")
         return store.feedback().lastOrNull { it.rawId == rawId }?.let { LearningFeedbackStatus(LearningFeedbackState.valueOf(it.state),it.reason) }
     }
     suspend fun learningFeedback() = store.feedback()
@@ -265,17 +285,51 @@ class BankInterpretationService(
         val prefs = context.getSharedPreferences("learning_runtime", Context.MODE_PRIVATE)
         val version = refreshVersion
         val required = reviews.listRequired()
-        val pending = parsed.listByRawSmsIds(required.map { it.rawSmsId }).any { needsRefresh(it) && mayRefresh(it.event.rawSmsId) }
+        val records = parsed.listByRawSmsIds(required.map { it.rawSmsId })
+        val models = classifiers.orEmpty()
+        // Rules ask for a family only when they found none; a message already read with this model is never re-read,
+        // otherwise a suggestion the rules cannot use would refresh the same message forever.
+        val candidates = records.filter { record -> val bank = record.event.bank.id
+            bank != SEED_BANK && bank in models && record.event.parseStatus.name != "SUCCESS" &&
+                record.event.messageFamily.name == "UNKNOWN" &&
+                store.history(record.event.rawSmsId).lastOrNull()?.activeModelVersion != models.getValue(bank).version }
+        val bodies = raw.getByIds(candidates.map { it.event.rawSmsId }.toSet()).associateBy { it.id }
+        assistable = candidates.filter { record -> bodies[record.event.rawSmsId]?.body?.let { body ->
+            FamilyAssistBridge.suggest(models[record.event.bank.id], record.event.bank.id, body,
+                com.baraa.masroof.engine.bank.interpretation.FamilyTextPreparation.prepare(body).title)
+        } != null }.map { it.event.rawSmsId }.toSet()
+        // Seed UNKNOWN messages already read with the current seed model are not read again (same guard as above).
+        seedRead = records.filter { it.event.bank.id == SEED_BANK && it.event.messageFamily.name == "UNKNOWN" &&
+            store.history(it.event.rawSmsId).lastOrNull()?.activeModelVersion == models[SEED_BANK]?.version }
+            .map { it.event.rawSmsId }.toSet()
+        val needs = refreshFilter()
+        val pending = records.any { needs(it) && mayRefresh(it.event.rawSmsId) }
         if (pending) ModelRefreshWorker.enqueue(context, version)
         check(prefs.edit().putString("scheduled_interpretation", version).commit())
     }
-    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean {
-        // Successful facts resume derived work; this service supplies family assistance for AlJazira only.
-        if (record.event.bank.id != BANK || record.event.parseStatus.name == "SUCCESS") return false
-        val fingerprint = engine().fingerprint
-        return record.event.messageFamily.name == "UNKNOWN" ||
-            record.event.confidence.reasons.none { it == "rules:$fingerprint" || it.startsWith("rules:$fingerprint:") } ||
-            (record.event.confidence.reasons.any { it.startsWith("family_origin:") } && "model:$modelVersion" !in record.event.confidence.reasons)
+    fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord): Boolean = refreshFilter()(record)
+    /**
+     * One pass reads the pattern file once, not once per pending message. The audit history is written before
+     * the parse commits, so it only decides whether to schedule work; the worker itself ignores it ([readHistory]
+     * false) and a failed, retried run still refreshes the message.
+     */
+    fun refreshFilter(readHistory: Boolean = true): (com.baraa.masroof.parsing.repository.ParsedEventRecord) -> Boolean {
+        val rules = lazy { engine().fingerprint }
+        val read = if (readHistory) seedRead else emptySet()
+        return { record -> needsRefresh(record, rules, read) }
+    }
+    private fun needsRefresh(record: com.baraa.masroof.parsing.repository.ParsedEventRecord, rules: Lazy<String>,
+        read: Set<String>): Boolean {
+        // Successful facts resume derived work.
+        if (record.event.parseStatus.name == "SUCCESS") return false
+        val bank = record.event.bank.id
+        val reasons = record.event.confidence.reasons
+        val staleInference = reasons.any { it.startsWith("family_origin:") } && "model:${classifiers?.get(bank)?.version}" !in reasons
+        // Other banks refresh only what learning now changes, so an approved pattern is still applied explicitly.
+        if (bank != SEED_BANK) return bank in classifiers.orEmpty() && (staleInference || record.event.rawSmsId in assistable)
+        val fingerprint = rules.value
+        return record.event.messageFamily.name == "UNKNOWN" && record.event.rawSmsId !in read ||
+            reasons.none { it == "rules:$fingerprint" || it.startsWith("rules:$fingerprint:") } || staleInference
     }
     /** Do not re-interpret posted evidence or human decisions on engine/model upgrades. */
     suspend fun mayRefresh(rawSmsId: String): Boolean =
@@ -293,7 +347,7 @@ class BankInterpretationService(
     override fun close() {
         closed = true
         stopSignal.complete(Unit)
-        classifier = null
+        classifiers = null
         synchronizedDecisions = null
         tracker?.removeObserver(observer);tracker=null
         changes.close()
@@ -306,8 +360,12 @@ class BankInterpretationService(
             auditJob.join()
         }
         job=null
-        classifier = null
+        classifiers = null
         store.close()
     }
-    companion object { const val BANK="BANK_ALJAZIRA" }
+    companion object {
+        /** The bank of the bundled statistical seed. */
+        const val SEED_BANK="BANK_ALJAZIRA"
+        private val BANK_ID = Regex("[A-Z][A-Z0-9_]{0,63}")
+    }
 }

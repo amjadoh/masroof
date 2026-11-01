@@ -10,6 +10,43 @@ import org.junit.Test
 import java.nio.file.Files
 
 class MessagePatternsWorkflowTest {
+    @Test fun approvedLinksSurviveRestartsAndTravelWithNewerBundledRules() {
+        val text = java.io.File("src/main/assets/bank-patterns/BANK_BARQ.patterns.json").readText()
+        fun bank(json: String) = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(json).banks.single()
+        val seed = bank(text)
+        val current = seed.currentPatterns.single { it.id == "barq.transfer-in" }
+        val links = listOf(com.baraa.masroof.engine.bank.patterns.PatternAccountBinding(
+            com.baraa.masroof.engine.bank.patterns.PatternAccountRole.DESTINATION, com.baraa.masroof.finance.value.BankId("BANK_BARQ"), "1234"))
+        val approved = seed.copy(patterns = seed.currentPatterns.map {
+            if (it.id != current.id) it else it.copy(revision = current.revision + 1, factContract = it.factContract!!.copy(version = 2, accountBindings = links))
+        })
+        val configuration = com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration(banks = listOf(approved))
+        assertNull("Links alone are not a newer bundled rule", MessagePatternStore.installation(configuration, seed, emptySet()))
+        val newer = bank(text.replace("\"incoming transfer\"", "\"incoming transfer v2\""))
+        val upgraded = MessagePatternStore.installation(configuration, newer, emptySet())!!.currentPatterns.single { it.id == current.id }
+        assertEquals(current.revision + 2, upgraded.revision)
+        assertEquals(newer.currentPatterns.single { it.id == current.id }.roleProfile, upgraded.roleProfile)
+        assertEquals(links, upgraded.factContract!!.accountBindings)
+    }
+
+    @Test fun newerBundledRolesNeverRewriteAnInstalledBank() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-bundled-update-").toFile()
+        try {
+            val store = MessagePatternStore(directory.resolve("patterns.json"))
+            val text = java.io.File("src/main/assets/bank-patterns/BANK_BARQ.patterns.json").readText()
+            fun bank(json: String) = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(json).banks.single()
+            val updated = bank(text)
+            val old = bank(text.replace("\"incoming transfer\"", "\"incoming transfer v0\"").replace("\"outgoing transfer\"", "\"outgoing transfer v0\""))
+            store.installMissingBanks(listOf(old))
+            val installed = store.load()
+            // An app update must not change how an installed bank reads the user's messages.
+            store.installMissingBanks(listOf(updated))
+            assertEquals(installed, store.load())
+            assertEquals(installed, MessagePatternsWorkflow(store, DatabaseAccessGate(), bundledBanks = listOf(updated)).load())
+            assertEquals(installed.generation, store.load().generation)
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun deletingABundledPatternDoesNotReinstallItOnCatalogLoadOrRestart() = runBlocking {
         val directory = Files.createTempDirectory("masroof-delete-bundled-").toFile()
         try {
@@ -100,21 +137,51 @@ class MessagePatternsWorkflowTest {
             assertNull(workflow.tryPreview(preview, "OTHER", body))
             val saved = workflow.saveTeaching(preview)
             val id = saved.banks.single().currentPatterns.single().id
+            // A taught pattern starts off: it matches nothing until the user switches it on.
             val stored = saved.banks.single().currentPatterns.single()
-            assertNotNull(stored.preview("STC", "STC Bank", body))
-            assertNull(stored.preview("OTHER", "STC Bank", body))
-            workflow.setEnabled(2, "STC", id, false)
+            assertFalse(stored.enabled)
+            assertNull(stored.preview("STC", "STC Bank", body))
+            workflow.setEnabled(2, "STC", id, true)
+            val active = workflow.load().banks.single().currentPatterns.single()
+            assertNotNull(active.preview("STC", "STC Bank", body))
+            assertNull(active.preview("OTHER", "STC Bank", body))
+            workflow.setEnabled(3, "STC", id, false)
             assertNull(workflow.load().banks.single().currentPatterns.single().preview("STC", "STC Bank", body))
             assertTrue(runCatching { workflow.saveTeaching(preview) }.isFailure)
-            workflow.restoreRevision(3, "STC", id, 1)
+            workflow.restoreRevision(4, "STC", id, 2)
             val restored = workflow.load().banks.single()
             val versions = restored.patterns
-            assertEquals(listOf(1, 2, 3), versions.map { it.revision })
+            assertEquals(listOf(1, 2, 3, 4), versions.map { it.revision })
             assertNotNull(restored.currentPatterns.single().preview("STC", "STC Bank", body))
-            assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,
+            // Editing keeps the pattern's current on/off state.
+            assertTrue(workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body, bindings, patternId = id).pattern.enabled)
+            assertTrue(runCatching { workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body,
                 listOf(PatternBinding("merchant", body.indexOf("SHOP"), body.length))) }.isFailure)
-            assertTrue(runCatching { workflow.teach(4, "STC", "STC Bank", PatternOperation.PURCHASE, body,
+            assertTrue(runCatching { workflow.teach(5, "STC", "STC Bank", PatternOperation.PURCHASE, body,
                 bindings + PatternBinding("source_account", 0, 7)) }.isFailure)
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun unselectedNumbersAndDatesAreIgnoredAutomaticallySoOtherMessagesStillMatch() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-auto-ignore-").toFile()
+        try {
+            val workflow = MessagePatternsWorkflow(MessagePatternStore(directory.resolve("patterns.json")), DatabaseAccessGate())
+            workflow.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank")))
+            val body = "Payment\nAmount:10SAR\nTo:SHOP\nRef:123456\nBalance:900.25SAR\nOn:15/10/26 12:30"
+            assertEquals("MONEY", workflow.candidates(body).single { it.text == "10SAR" }.kind)
+            assertEquals("DATE_TIME", workflow.candidates(body).single { it.text == "15/10/26 12:30" }.kind)
+            val preview = workflow.teach(1, "STC", "STC Bank", PatternOperation.PURCHASE, body, listOf(
+                PatternBinding("amount", body.indexOf("10SAR"), body.indexOf("10SAR") + 5),
+                PatternBinding("merchant", body.indexOf("SHOP"), body.indexOf("SHOP") + 4)))
+            assertEquals(setOf("amount", "merchant"), preview.fields.keys)
+            assertTrue(preview.fixedValues.isEmpty())
+            val other = body.replace("123456", "654321").replace("900.25", "12.00").replace("15/10/26 12:30", "16/10/26 09:05")
+            assertEquals("10SAR", workflow.tryPreview(preview, "STC Bank", other)!!.getValue("amount").text)
+            // Only an explicit selection may land before the first literal anchor; a leading number stays fixed text.
+            val leading = "123 Payment\nAmount:10SAR"
+            val fixed = workflow.teach(1, "STC", "STC Bank", PatternOperation.PURCHASE, leading,
+                listOf(PatternBinding("amount", leading.indexOf("10SAR"), leading.length)))
+            assertNull(workflow.tryPreview(fixed, "STC Bank", leading.replace("123", "456")))
         } finally { directory.deleteRecursively() }
     }
 

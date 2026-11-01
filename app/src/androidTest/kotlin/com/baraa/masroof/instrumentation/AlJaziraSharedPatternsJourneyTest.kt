@@ -5,8 +5,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -63,6 +65,8 @@ class AlJaziraSharedPatternsJourneyTest {
             compose.waitUntil(10_000) { runBlocking { !c.messagePatternsWorkflow.load().banks.single { it.bankId == bankId }.currentPatterns.single { it.id == "bank.purchase" }.enabled } }
             c.processRawSmsUseCase.ingest(raw("pending"))
             assertEquals(1, c.financialTransactionRepository.listAll().size)
+            // The toggle's save finishes before the screen leaves its busy state; Advanced is disabled until then.
+            compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("pattern-advanced") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-advanced").performScrollTo().performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-restore-$bankId-bank.purchase-1").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-restore-$bankId-bank.purchase-1").performScrollTo().performClick()

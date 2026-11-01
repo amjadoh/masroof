@@ -32,31 +32,7 @@ fun SettingsRenameCardDialog(
     onSave: (String) -> Unit,
 ) {
     target ?: return
-    var name by rememberSaveable(target.last4) { mutableStateOf(target.displayName.orEmpty()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_rename_card_title)) },
-        text = {
-            OutlinedTextField(
-                visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.settings_display_name_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(name) }, enabled = !updating) {
-                Text(stringResource(R.string.settings_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.settings_cancel))
-            }
-        },
-    )
+    SettingsRenameDialog(stringResource(R.string.settings_rename_card_title), target.last4, target.displayName, updating, onDismiss, onSave)
 }
 
 @Composable
@@ -67,10 +43,24 @@ fun SettingsRenameAccountDialog(
     onSave: (String) -> Unit,
 ) {
     target ?: return
-    var name by rememberSaveable(target.maskedNumber) { mutableStateOf(target.displayName.orEmpty()) }
+    SettingsRenameDialog(
+        stringResource(R.string.settings_rename_account_title), target.maskedNumber, target.displayName, updating, onDismiss, onSave,
+    )
+}
+
+@Composable
+private fun SettingsRenameDialog(
+    title: String,
+    key: String,
+    displayName: String?,
+    updating: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var name by rememberSaveable(key) { mutableStateOf(displayName.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_rename_account_title)) },
+        title = { Text(title) },
         text = {
             OutlinedTextField(
                 visualTransformation = com.baraa.masroof.presentation.locale.AppDigitsVisualTransformation,
@@ -94,7 +84,6 @@ fun SettingsRenameAccountDialog(
     )
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsCardMetadataActions(
     enabled: Boolean,
@@ -102,6 +91,7 @@ fun SettingsCardMetadataActions(
     onPickNetwork: () -> Unit,
     includeRename: Boolean = true,
     onStop: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = MasroofSpacing.sectionGap),
         horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap),
@@ -109,6 +99,7 @@ fun SettingsCardMetadataActions(
         if (includeRename) com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), onRename, enabled = enabled)
         com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_card_setup), onPickNetwork, enabled = enabled)
         onStop?.let { com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), it, enabled = enabled, warning = true) }
+        onDelete?.let { SettingsDeleteAction(it, enabled) }
     }
 }
 

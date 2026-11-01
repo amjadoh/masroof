@@ -14,6 +14,7 @@ import com.baraa.masroof.application.dashboard.DashboardLayoutPreferencesReposit
 import com.baraa.masroof.application.dashboard.DashboardCommitmentsWorkflow
 import com.baraa.masroof.application.dashboard.DashboardPeriodWorkflow
 import com.baraa.masroof.application.dashboard.DashboardRegistryWorkflow
+import com.baraa.masroof.application.dashboard.ForeignSarMarketRateProvider
 import com.baraa.masroof.application.dashboard.FrankfurterForeignSarRateProvider
 import com.baraa.masroof.application.dashboard.TransactionSarEquivalentResolver
 import com.baraa.masroof.application.review.EffectiveParsedEventProvider
@@ -72,10 +73,8 @@ import com.baraa.masroof.data.preferences.SharedPrefsNotificationPreferencesRepo
 import com.baraa.masroof.data.preferences.SharedPrefsOnboardingPreferencesRepository
 import com.baraa.masroof.data.preferences.SharedPrefsThemePreferencesRepository
 import com.baraa.masroof.data.repository.RoomAccountRegistryRepository
-import com.baraa.masroof.data.repository.RoomBankRegistryRepository
 import com.baraa.masroof.data.repository.RoomCardRegistryRepository
 import com.baraa.masroof.data.repository.RoomCommitmentRepository
-import com.baraa.masroof.data.repository.RoomCreditFacilityRepository
 import com.baraa.masroof.data.repository.RoomLoanRegistryRepository
 import com.baraa.masroof.data.repository.RoomFinancialTransactionRepository
 import com.baraa.masroof.data.repository.RoomManualReviewResolutionRepository
@@ -95,9 +94,7 @@ import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.ownership.OwnershipDiscoveryService
 import com.baraa.masroof.domain.ownership.OwnershipResolver
 import com.baraa.masroof.domain.repository.AccountRegistryRepository
-import com.baraa.masroof.domain.repository.BankRegistryRepository
 import com.baraa.masroof.domain.repository.CommitmentRepository
-import com.baraa.masroof.domain.repository.CreditFacilityRepository
 import com.baraa.masroof.domain.repository.LoanRegistryRepository
 import com.baraa.masroof.domain.repository.CardRegistryRepository
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
@@ -168,10 +165,9 @@ class AppContainer(
 
     val databaseAccessGate: DatabaseAccessGate = DatabaseAccessGate()
 
-    private val bundledPatternBanks = listOf("BANK_ALJAZIRA", "BANK_STC", "BANK_SNB", "BANK_BARQ",
-        "BANK_EMIRATES_NBD", "BANK_SAB", "BANK_ALINMA").flatMap { bankId ->
+    private val bundledPatternBanks = appContext.assets.list("bank-patterns").orEmpty().filter { it.endsWith(".patterns.json") }.sorted().flatMap { file ->
         com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
-            appContext.assets.open("bank-patterns/$bankId.patterns.json").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
+            appContext.assets.open("bank-patterns/$file").bufferedReader(Charsets.UTF_8).use { it.readText() }).banks
     }
     // Restore recovery has finished and this container has not admitted work yet.
     private val messagePatternStore = com.baraa.masroof.data.patterns.MessagePatternStore(appContext).also {
@@ -185,7 +181,6 @@ class AppContainer(
             appLogService = appLogService,
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
                 accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
-            importBank = { bankId -> historicalSmsScanner.scan(bankScope = Bank(bankId)) },
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 messagePatternStore, databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
@@ -217,12 +212,6 @@ class AppContainer(
 
     val cardRegistryRepository: CardRegistryRepository =
         RoomCardRegistryRepository.from(database, databaseAccessGate)
-
-    val bankRegistryRepository: BankRegistryRepository =
-        RoomBankRegistryRepository(database.bankRegistryDao(), accessGate = databaseAccessGate)
-
-    val creditFacilityRepository: CreditFacilityRepository =
-        RoomCreditFacilityRepository(database.creditFacilityDao(), accessGate = databaseAccessGate)
 
     val loanRegistryRepository: LoanRegistryRepository =
         RoomLoanRegistryRepository.from(database, databaseAccessGate)
@@ -431,6 +420,19 @@ class AppContainer(
             ),
             effectiveEvents = effectiveParsedEventProvider,
             reviewRepository = reviewRepository,
+            transactions = financialTransactionRepository,
+            patternBoundAccounts = {
+                databaseAccessGate.withAccess { messagePatternStore.load() }.banks.flatMap { bank -> bank.currentPatterns }
+                    .flatMap { it.factContract?.accountBindings.orEmpty() }
+                    .filter { it.role != com.baraa.masroof.engine.bank.patterns.PatternAccountRole.CARD }
+                    .map { com.baraa.masroof.domain.model.AccountReference(Bank(it.bank.value), it.last4) }.toSet()
+            },
+            patternBoundCards = {
+                databaseAccessGate.withAccess { messagePatternStore.load() }.banks.flatMap { bank -> bank.currentPatterns }
+                    .flatMap { it.factContract?.accountBindings.orEmpty() }
+                    .filter { it.role == com.baraa.masroof.engine.bank.patterns.PatternAccountRole.CARD }
+                    .map { com.baraa.masroof.domain.model.CardReference(Bank(it.bank.value), it.last4) }.toSet()
+            },
         )
 
     val settingsCommitmentsWorkflow: SettingsCommitmentsWorkflow =
@@ -503,6 +505,8 @@ class AppContainer(
             marketRateProvider = FrankfurterForeignSarRateProvider(updateHttpClient),
         )
 
+    private val exchangeRateEnrichmentScheduler = WorkManagerExchangeRateEnrichmentScheduler { WorkManager.getInstance(appContext) }
+
     /** Writer of missing applied exchange rates; dashboard loads stay read-only. */
     val exchangeRateEnrichmentWorkflow: ExchangeRateEnrichmentWorkflow =
         ExchangeRateEnrichmentWorkflow(
@@ -534,7 +538,8 @@ class AppContainer(
             cardRegistryRepository = cardRegistryRepository,
             loanRegistryRepository = loanRegistryRepository,
             commitmentRepository = commitmentRepository,
-            sarEquivalentResolver = sarEquivalentResolver,
+            // Dashboard loads never call the network; market rates are written by enrichment.
+            sarEquivalentResolver = TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ -> null }),
             openingBalances = com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository(
                 appContext.getSharedPreferences(SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)),
         )
@@ -564,8 +569,10 @@ class AppContainer(
         BankSmsRegistry(
             adapters = listOfNotNull(bankAdapterOverride),
             configuredAdapters = if (bankAdapterOverride != null) ({ emptyList() }) else
-                com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(messagePatternStore, alJaziraInterpret = { input, snapshot ->
-                    requireNotNull(interpretationService).interpret(input, snapshot) })::snapshot,
+                com.baraa.masroof.application.interpretation.ConfiguredPatternAdapters(messagePatternStore,
+                    assistedBanks = { requireNotNull(interpretationService).assistedBanks(it) },
+                    assistedInterpret = { input, snapshot, bankId ->
+                        requireNotNull(interpretationService).interpret(input, snapshot, bankId) })::snapshot,
         )
 
     val statementReconciliationWorkflow: StatementReconciliationWorkflow =
@@ -616,9 +623,7 @@ class AppContainer(
             reviewQueueUpdater = reviewQueueUpdater,
             ingestionReviewService = ingestionReviewService,
             appLogService = appLogService,
-            exchangeRateEnrichmentScheduler = WorkManagerExchangeRateEnrichmentScheduler {
-                WorkManager.getInstance(appContext)
-            },
+            exchangeRateEnrichmentScheduler = exchangeRateEnrichmentScheduler,
             processingRecovery = processingRecovery,
             reviewRepository = reviewRepository,
             debugProcessHalt = debugProcessHaltProbe,
@@ -670,10 +675,12 @@ class AppContainer(
 
     val workerFactory: WorkerFactory =
         DelegatingWorkerFactory().apply {
-            addFactory(LiveSmsProcessingWorker.Factory({ processStoredSmsUseCase }, appLogService))
+            addFactory(LiveSmsProcessingWorker.Factory({ processStoredSmsUseCase }, appLogService) { maintenanceCompletionSignal.notifyCompleted() })
             addFactory(
                 ExchangeRateEnrichmentWorker.Factory {
-                    PendingExchangeRateEnricher { exchangeRateEnrichmentWorkflow.enrichPending() }
+                    PendingExchangeRateEnricher {
+                        if (exchangeRateEnrichmentWorkflow.enrichPending().persisted > 0) maintenanceCompletionSignal.notifyCompleted()
+                    }
                 },
             )
             addFactory(
@@ -698,7 +705,7 @@ class AppContainer(
         ownershipDiscovery = ownershipDiscoveryService,
         reconciliation = transactionReconciliationService,
         reviewQueueUpdater = reviewQueueUpdater,
-        exchangeRateEnrichment = exchangeRateEnrichmentWorkflow,
+        exchangeRateEnrichmentScheduler = exchangeRateEnrichmentScheduler,
         processingRecovery = processingRecovery,
         batchRecoveryScheduler = {
             HistoricalDerivedRecoveryWorker.enqueue(WorkManager.getInstance(appContext))
@@ -774,7 +781,7 @@ class AppContainer(
         // Release readers that were waiting for startup before draining their service mutexes.
         startupMaintenanceOutcome.value = StartupMaintenanceOutcome.BLOCKED
         shutdownStage = "ANALYTICS_DRAINING"
-        stopLabAnalytics()
+        stopAnalytics()
         shutdownStage = "LEARNING_DRAINING"
         interpretationService?.close()
         shutdownStage = "APPLICATION_DRAINING"
@@ -802,7 +809,7 @@ class AppContainer(
             appLogService = appLogService,
             restartProcess = restartAfterRestore,
             beforeValidatedInstall = {
-                stopLabAnalytics()
+                stopAnalytics()
                 interpretationService?.invalidateForRestore()
                 com.baraa.masroof.application.analytics.AnalyticsNotifications.clear(appContext)
             },
@@ -903,7 +910,7 @@ class AppContainer(
 
     private val analyticsDelegate = lazy { com.baraa.masroof.application.analytics.AnalyticsWorkflow(this, appContext) }
     val analytics get() = analyticsDelegate.value
-    fun stopLabAnalytics() { if (analyticsDelegate.isInitialized()) analytics.close() }
+    fun stopAnalytics() { if (analyticsDelegate.isInitialized()) analytics.close() }
     fun runStartupMaintenance() {
         startupMaintenanceJob = applicationScope.launch {
             val outcome = runStartupMaintenanceAttempt()
@@ -948,7 +955,7 @@ class AppContainer(
 
     private suspend fun enrichExchangeRatesBestEffort() {
         try {
-            exchangeRateEnrichmentWorkflow.enrichPending()
+            if (exchangeRateEnrichmentWorkflow.enrichPending().persisted > 0) maintenanceCompletionSignal.notifyCompleted()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

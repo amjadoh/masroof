@@ -55,8 +55,15 @@ class SharedPrefsOnboardingPreferencesRepository(
         prefs.edit().putString(KEY_SETUP_DRAFT, draft?.let { Json.encodeToString(it) }).apply()
     }
 
+    override fun isHomeGuideSeen(): Boolean = prefs.getBoolean(KEY_HOME_GUIDE_SEEN, false)
+
+    override fun setHomeGuideSeen(seen: Boolean) {
+        prefs.edit().putBoolean(KEY_HOME_GUIDE_SEEN, seen).apply()
+    }
+
     companion object {
         const val PREFS_NAME: String = "onboarding_prefs"
+        private const val KEY_HOME_GUIDE_SEEN = "home_guide_seen"
         const val KEY_SETUP_DRAFT: String = "bank_setup_draft"
         private const val KEY_ONBOARDING_STARTED = "onboarding_started"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"

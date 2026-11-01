@@ -146,17 +146,9 @@ object ParsedEventMapper {
         )
     }
 
-    fun encodeReasons(reasons: List<String>): String {
-        require(reasons.none { ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR in it }) {
-            "Confidence reason must not contain the persistence separator"
-        }
-        return reasons.joinToString(ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR.toString())
-    }
+    fun encodeReasons(reasons: List<String>): String = ReasonsCodec.encode(reasons, ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR)
 
-    fun decodeReasons(encoded: String): List<String> {
-        if (encoded.isEmpty()) return emptyList()
-        return encoded.split(ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR)
-    }
+    fun decodeReasons(encoded: String): List<String> = ReasonsCodec.decode(encoded, ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR)
 
     private fun accountRef(bankId: String?, masked: String?): AccountReference? {
         if (bankId == null && masked == null) return null

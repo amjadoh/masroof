@@ -44,7 +44,7 @@ object DashboardSpendingTrendsBuilder {
             creditKeys.add(key)
             cardRows[key] = transactions.filter { transaction ->
                 key in cards.transactionCardInvolvement[transaction.id].orEmpty() ||
-                    (container != null && (transaction.sourceContainerId == container || transaction.destinationContainerId == container))
+                    transaction.sourceContainerId == container || transaction.destinationContainerId == container
             }
         }
         cards.creditFacilities.debitCards.forEach { card ->

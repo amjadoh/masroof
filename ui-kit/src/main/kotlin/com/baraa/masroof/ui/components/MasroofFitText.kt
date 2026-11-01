@@ -45,7 +45,8 @@ fun TextMeasurer.fitScale(text: AnnotatedString, style: TextStyle, maxWidth: Int
 /**
  * One-line text that shrinks its font until it fits, so money is never cut to "…" or split mid-number.
  * Below the minimum scale it wraps at that scale rather than truncating.
- * shortcut: hand-rolled because Compose BOM 2024.06 lacks TextAutoSize; swap for `autoSize` after a BOM upgrade.
+ * Explicit money spans must scale with the base font; tab labels also reuse one common fit scale.
+ * Keep these shared measurements until native autosizing preserves both contracts.
  */
 @Composable
 fun MasroofFitText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier,

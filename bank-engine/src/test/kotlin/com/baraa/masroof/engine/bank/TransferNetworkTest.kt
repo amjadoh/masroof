@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class TransferNetworkTest {
@@ -71,7 +71,7 @@ class TransferNetworkTest {
             outgoing.replace("From account: 1234", "") + "\nNetwork: inter-bank",
             outgoing.replace("To account: 5678", "") + "\nNetwork: inter-bank",
             "$outgoing\nIncoming transfer\nNetwork: inter-bank")
-        cases.forEach { body -> assertEquals(body, ParseStatus.REVIEW_REQUIRED, parse(body).status) }
+        cases.forEach { body -> assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body).status, body) }
         val ambiguous = schema.copy(network = schema.network.copy(bankAliases = mapOf("LOCAL" to listOf("Same"), "REMOTE" to listOf("Same"))))
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$outgoing\nDestination bank: Same", ambiguous).status)
         val conflictingMarkers = schema.copy(rules = schema.rules.map { it.copy(observations = it.observations +
@@ -83,7 +83,7 @@ class TransferNetworkTest {
         listOf("Merchant: Destination bank: Remote Bank", "Counterparty: Remote Bank", "Transaction reference: inter-bank",
             "Note: Network: inter-bank", "[Remote Bank]").forEach { text ->
             val r = parse("$outgoing\n$text")
-            assertEquals(text, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, text)
             assertNull(r.facts.bankNetwork)
         }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("```\n$outgoing\nNetwork: inter-bank\n```").status)
@@ -137,7 +137,7 @@ class TransferNetworkTest {
         listOf("Merchant: Incoming transfer", "Counterparty Incoming transfer", "Transaction reference: Outgoing transfer",
             "From bank: Incoming transfer", "Income type: salary credited").forEach { title ->
             val r = parse("$title\n$fields\nNetwork: inter-bank")
-            assertEquals(title, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, title)
             assertEquals(MessageFamily.UNKNOWN, r.facts.family)
         }
         val configured = schema.copy(rules = schema.rules.filter { it.family == MessageFamily.TRANSFER_OUT })
@@ -150,14 +150,14 @@ class TransferNetworkTest {
         val config = schema.copy(network = schema.network.copy(standaloneSourceBrackets = true))
         val body = "Incoming transfer\nDeposited to account: 1234\nValue: 100 SAR\nFrom: Synthetic Person\n[Remote Bank]\nخصمت من حساب: 9999\nTime: 13:00 18-10-2026"
         val result = parse(body, config)
-        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals(ParseStatus.SUCCESS, result.status, result.diagnostics.toString())
         assertNull(result.facts.sourceAccount)
         assertEquals(local, result.facts.destinationAccount!!.bank)
         assertEquals(BankNetwork.INTER_BANK, result.facts.bankNetwork)
         assertTrue(result.evidence.any { it.field == "sourceBank" && it.slice(input(body)) == "[Remote Bank]" })
         listOf(body.replace("Deposited to account: 1234", ""), body.replace("From: Synthetic Person", ""),
             body.replace("Remote Bank", "Unknown"), "$body\nSource bank: Local Bank").forEach {
-            assertEquals(it, ParseStatus.REVIEW_REQUIRED, parse(it, config).status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, parse(it, config).status, it)
         }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse(body).status)
     }

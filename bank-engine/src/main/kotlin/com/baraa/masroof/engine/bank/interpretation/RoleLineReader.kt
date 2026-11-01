@@ -10,9 +10,11 @@ internal class RoleLineReader(
     private val bindings: Map<String, List<String>>,
     private val evidence: MutableList<Evidence>,
     knownLabels: List<String> = emptyList(),
+    /** Only rules that declare `label.suffix` read `value : label` lines (e.g. EmiratesNBD). */
+    private val suffixLabels: Boolean = false,
 ) {
     private val prefixes = (bindings.values.flatten() + knownLabels).distinct().map {
-        SourceText(it).text.length to Regex("^ *" + source.phrase(it).pattern + "(?=[ \\t:]|$)")
+        SourceText(it).text.length to Regex("^ *" + source.phrase(it).pattern.removeSuffix("(?![\\p{L}\\p{N}_])") + "(?=[ \\t:0-9]|$)")
     }
 
     fun read(field: String): List<RoleLine> = bindings[field].orEmpty().distinct().flatMap { label ->
@@ -24,7 +26,7 @@ internal class RoleLineReader(
             val tail = match.groups["tail"]!!
             var first = tail.value.indexOfFirst { !it.isWhitespace() }
             val last = tail.value.indexOfLast { !it.isWhitespace() }
-            if (first < 0 || !(tail.value.first().isWhitespace() || tail.value.first() == ':')) RoleLine("", "", match.range)
+            if (first < 0 || !(tail.value.first().isWhitespace() || tail.value.first() == ':' || tail.value.first().isDigit())) RoleLine("", "", match.range)
             else {
                 if (tail.value[first] == ':') first++
                 while (first <= last && tail.value[first].isWhitespace()) first++

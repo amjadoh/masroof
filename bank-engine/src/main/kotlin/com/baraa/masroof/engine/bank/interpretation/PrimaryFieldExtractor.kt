@@ -14,6 +14,10 @@ internal class PrimaryFieldExtractor(
     private val problem: (String, Blocker) -> Unit,
     private val fallbackCurrency: String? = null,
     private val allowNegativeBalance: Boolean = false,
+    /** Rules declaring `label.suffix` also read `value : label` lines. */
+    private val suffixLabels: Boolean = false,
+    /** Amount roles also read inside a line (`تم شراء بقيمة100ريال`); a currency is always required. */
+    private val inlineAmountRoles: List<String> = emptyList(),
 ) {
     var usedAccountCurrencyForAmount: Boolean = false
         private set
@@ -77,11 +81,16 @@ internal class PrimaryFieldExtractor(
                     .findAll(source.text).filter { source.text.substring(0, it.range.first).isBlank() }
                     .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
             }
-        hits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
-        if (field == ExtractionField.AMOUNT && currency != null && hits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
+        val inline = if (field != ExtractionField.AMOUNT || inlineAmountRoles.isEmpty()) emptyList() else
+            Regex("(?<![\\p{L}\\p{N}_])و?(?:" + inlineAmountRoles.joinToString("|") { Regex.escape(SourceText(it).text) } + ")[ \\t]*" + MoneyGrammar.VALUE)
+                .findAll(source.text).filterNot { match -> overlaps(match.range) || hits.any { it.range.last >= match.range.first && match.range.last >= it.range.first } }
+                .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
+        val allHits = hits + inline
+        allHits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
+        if (field == ExtractionField.AMOUNT && currency != null && allHits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
             problem("CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)
-        if (hits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
-        return hits.firstOrNull()?.value
+        if (allHits.map { it.value }.distinct().size > 1) { problem("CONFLICTING_${field.name}", Blocker.CONFLICTING_FACTS); return null }
+        return allHits.firstOrNull()?.value
     }
 
     fun identifier(field: ExtractionField): String? {
@@ -154,6 +163,7 @@ internal class PrimaryFieldExtractor(
         val merchants = labels(ExtractionField.MERCHANT).flatMap { label ->
             Regex("(?m)^ *" + source.phrase(label).pattern + "(?:[ \\t]*:[ \\t]*|[ \\t]+)([^\\n\\r]+)").findAll(source.text).map { match ->
                 val range = match.groups[1]!!.range
+                // A masked card/account suffix is a reference, not a merchant name.
                 if (source.text.substring(range).trim().matches(Regex("[*x]*[0-9]{4}[*x]*"))) return@map null
                 evidence += source.evidence("extract.merchant", "MERCHANT", range)
                 source.original(range).trim()
@@ -163,6 +173,7 @@ internal class PrimaryFieldExtractor(
         return merchants.singleOrNull()
     }
 
+    /** [ignoreUnbound] is for informational messages, whose dates (reminders, statements) are not transaction times. */
     fun transactionTimes(ignoreUnbound: Boolean = false): List<LocalDateTime> {
         val times = DateGrammar.timestamp.findAll(source.text).mapNotNull { match ->
             val lineStart = source.text.lastIndexOf('\n', match.range.first).let { if (it < 0) 0 else it + 1 }

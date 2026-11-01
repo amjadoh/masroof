@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.application.dashboard.*
 import com.baraa.masroof.R
@@ -61,7 +61,7 @@ class ChartDataSheetInteractionTest {
         val state = FidelityFixtures.financial()
         val trends = state.spendingTrends!!
         val facility = state.creditFacilities!!.facilities.first()
-        val mada = state.creditFacilities!!.debitCards.first()
+        val mada = state.creditFacilities.debitCards.first()
         val prefs = compose.activity.getSharedPreferences("native-chart-choices", android.content.Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
         val repository = SharedPrefsChartDataPreferencesRepository(prefs)

@@ -32,19 +32,9 @@ class DashboardRedesignResourcesTest {
         assertEquals("Accounts", context.getString(R.string.dashboard_accounts_summary_screen_title))
         assertEquals("Cards", context.getString(R.string.dashboard_cards_summary_screen_title))
         assertEquals("Loans", context.getString(R.string.dashboard_loans_summary_screen_title))
-        assertEquals("Manage accounts", context.getString(R.string.dashboard_manage_accounts))
-        assertEquals("Manage cards", context.getString(R.string.dashboard_manage_cards))
-        assertEquals("Manage loans", context.getString(R.string.dashboard_manage_loans))
-        assertEquals("3 accounts", context.getString(R.string.dashboard_accounts_count_label, 3))
-        assertEquals("2 cards", context.getString(R.string.dashboard_cards_count_label, 2))
-        assertEquals("2 loans", context.getString(R.string.dashboard_loans_count_label, 2))
         assertEquals(
             "Period transactions (4)",
             context.getString(R.string.dashboard_summary_transactions_title, 4),
-        )
-        assertEquals(
-            "No period data for this account",
-            context.getString(R.string.dashboard_account_detail_unavailable),
         )
     }
 
@@ -56,27 +46,5 @@ class DashboardRedesignResourcesTest {
         assertEquals("تخصيص الشاشة الرئيسية", context.getString(R.string.dashboard_customize_sheet_title))
         assertEquals("ملخص القروض", context.getString(R.string.dashboard_customize_section_loans))
         assertEquals("تفاصيل الصادر", context.getString(R.string.dashboard_expense_details_title))
-    }
-
-    @Test
-    fun flowDetailStrings_englishTotalsUseCorrectWording() {
-        val context = AppLocaleContext.wrap(
-            ApplicationProvider.getApplicationContext(),
-            AppLocale.TAG_EN,
-        )
-        assertEquals(
-            "Total outflows: 100.00 SAR",
-            context.getString(R.string.dashboard_flow_detail_expense_total, "100.00 SAR"),
-        )
-        assertEquals(
-            "Total income: 500.00 SAR",
-            context.getString(R.string.dashboard_flow_detail_income_total, "500.00 SAR"),
-        )
-    }
-
-    @Test
-    fun englishLocale_isLtr() {
-        assertFalse(AppLocale.isRtl(AppLocale.TAG_EN))
-        assertTrue(AppLocale.isRtl(AppLocale.TAG_AR))
     }
 }

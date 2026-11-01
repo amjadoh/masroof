@@ -86,6 +86,29 @@ class HistoricalSmsScannerTest {
             bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
     }
 
+    @Test fun aCarrierTimeAfterTheRangeDoesNotEndTheScanEarly() = runBlocking {
+        val from = Instant.parse("2026-08-01T00:00:00Z")
+        val until = from.plusSeconds(86_400)
+        // The inbox is ordered by arrival; a row whose carrier time is past the range can come before in-range rows.
+        val rows = listOf(
+            ProviderSmsRecord("spam-ahead", "Promo", "offer", until.plusSeconds(5)),
+            ProviderSmsRecord("in-range", "AlJazira", purchaseBody(), until.minusSeconds(60)),
+        ).map(InboxRow::Valid)
+        val result = HistoricalSmsScanner(FakeSmsDataSource(rows), batchProcessor)
+            .scan(receivedAfter = from, receivedBefore = until, bankScopes = setOf(Bank.BANK_ALJAZIRA))
+        assertEquals(1, result.parsed)
+    }
+
+    @Test fun scanReportsProgressEveryTwentyFiveRowsAndRequiredReviewsAreCountedWithoutLoadingThem() = runBlocking {
+        val at = Instant.parse("2026-08-01T10:00:00Z")
+        val rows = (1..60).map { InboxRow.Valid(ProviderSmsRecord("p-$it", "OtherBank", purchaseBody(), at)) }
+        val progress = mutableListOf<Int>()
+        HistoricalSmsScanner(FakeSmsDataSource(rows), batchProcessor).scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)) { progress += it }
+        assertEquals(listOf(25, 50), progress)
+        val reviews = RoomReviewRepository(db.reviewItemDao())
+        assertEquals(reviews.listRequired().size, reviews.countRequired())
+    }
+
     @Test fun invalidOrEmptyScopeIsRejectedBeforeInboxAccess() = runBlocking {
         var queried = false
         val scanner = HistoricalSmsScanner(FakeSmsDataSource(emptyList(), onQuery = { queried = true }), batchProcessor)
@@ -130,13 +153,13 @@ class HistoricalSmsScannerTest {
         var coverage = 0
         val scanner = HistoricalSmsScanner(FakeSmsDataSource(rows),
             batchProcessor(RoomRawSmsRepository(db.rawSmsDao()), registry), coverageCompleted = { _, _ -> coverage++ })
-        val result = scanner.scan(bankScope = Bank.BANK_ALJAZIRA)
+        val result = scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA))
         assertEquals(1, result.reviewRequired)
         assertEquals(1, result.notRelevant)
         assertEquals(0, result.parsed)
         assertEquals(1, db.rawSmsDao().count())
         assertEquals(0, coverage)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
         assertEquals(1, db.rawSmsDao().count())
     }
 
@@ -144,11 +167,11 @@ class HistoricalSmsScannerTest {
         val source = FakeSmsDataSource(listOf(InboxRow.Valid(ProviderSmsRecord(
             "scoped-purchase", "AlJazira", purchaseBody(), Instant.parse("2026-08-01T10:00:00Z")))))
         val scanner = HistoricalSmsScanner(source, batchProcessor)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).parsed)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).parsed)
         val repository = RoomParsedEventRepository(db.parsedEventDao())
         val original = repository.listAll()
         assertEquals(1, original.size)
-        assertEquals(1, scanner.scan(bankScope = Bank.BANK_ALJAZIRA).duplicates)
+        assertEquals(1, scanner.scan(bankScopes = setOf(Bank.BANK_ALJAZIRA)).duplicates)
         assertEquals(original, repository.listAll())
     }
 
@@ -156,7 +179,7 @@ class HistoricalSmsScannerTest {
         var queried = false
         val scanner = HistoricalSmsScanner(FakeSmsDataSource(emptyList(), onQuery = { queried = true }), batchProcessor)
         try {
-            scanner.scan(bankScope = Bank("NOT_REGISTERED"))
+            scanner.scan(bankScopes = setOf(Bank("NOT_REGISTERED")))
             org.junit.Assert.fail("Unsupported bank must be rejected")
         } catch (_: IllegalArgumentException) { }
         assertEquals(false, queried)

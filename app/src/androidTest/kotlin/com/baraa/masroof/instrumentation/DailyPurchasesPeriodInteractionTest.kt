@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.DailySpendingTrend
@@ -150,8 +150,8 @@ class DailyPurchasesPeriodInteractionTest {
         val original = FidelityFixtures.financial()
         val futureStart = java.time.LocalDate.now().plusMonths(1)
         val trends = original.spendingTrends!!.copy(overall = empty, purchases = empty, accounts = empty, creditCards = empty,
-            debitCards = empty, byAccount = original.spendingTrends!!.byAccount.mapValues { empty },
-            byCard = original.spendingTrends!!.byCard.mapValues { empty })
+            debitCards = empty, byAccount = original.spendingTrends.byAccount.mapValues { empty },
+            byCard = original.spendingTrends.byCard.mapValues { empty })
         val financial = original.copy(period = com.baraa.masroof.domain.period.FinancialPeriod(futureStart, futureStart.plusDays(30)),
             dailySpendingTrend = empty, spendingTrends = trends)
         val debit = financial.creditFacilities!!.debitCards.first()

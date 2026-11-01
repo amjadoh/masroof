@@ -18,9 +18,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -98,15 +98,13 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     val state by workflow.state.collectAsState()
     val scope = rememberCoroutineScope()
     val target by AnalyticsNavigation.target.collectAsState()
-    // A distinct saved-state key avoids restoring the former integer tab as a String.
-    var tab by rememberSaveable(key = "analysis-tab-name") { mutableStateOf("spending") }
+    var displayedTab by rememberSaveable { mutableIntStateOf(0) }
     val spendingScroll = rememberScrollState()
     val forecastScroll = rememberScrollState()
     val commitmentsScroll = rememberScrollState()
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
     val detailScroll = key(detail) { rememberScrollState() }
     var evidenceKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val displayedTab = listOf("spending", "forecasts", "commitments").indexOf(tab).coerceAtLeast(0)
     var settings by rememberSaveable { mutableStateOf(target == "settings") }
     var settingsEntry by rememberSaveable { mutableStateOf(target == "settings") }
     var endedAlert by rememberSaveable { mutableStateOf(false) }
@@ -121,7 +119,6 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     }
     LaunchedEffect(pendingTarget, state.updating, state.snapshot?.sourceHash) {
         val id = pendingTarget ?: return@LaunchedEffect
-        if (id == "resume") { pendingTarget = null; return@LaunchedEffect }
         if (id == "settings") { settings = true; settingsEntry = true; pendingTarget = null; return@LaunchedEffect }
         if (state.updating) return@LaunchedEffect
         val alert = state.alerts.firstOrNull { it.id == id } ?: try { workflow.findAlert(id) }
@@ -130,7 +127,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
         settings = false; settingsEntry = false
         detail = null
         evidenceKey = null
-        tab = if (alert?.kind in listOf("DUE", "PAYMENT")) "commitments" else "spending"
+        displayedTab = if (alert?.kind in listOf("DUE", "PAYMENT")) 2 else 0
         purchaseRange = 0
         endedAlert = alert == null || alert.resolved
         if (alert != null && !alert.resolved) {
@@ -154,6 +151,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 saving = true; failure = false
                 scope.launch {
                     try { if (workflow.acceptCandidate(candidate.key, draft)) editing = null else failure = true }
+                    catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                     catch (_: Exception) { failure = true }
                     finally { saving = false }
                 }
@@ -204,9 +202,9 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                 val tabScale = remember(tabLabels, tabStyle, labelWidth) {
                     tabLabels.minOf { tabMeasurer.fitScale(androidx.compose.ui.text.AnnotatedString(it), tabStyle, labelWidth) ?: MASROOF_FIT_MIN_SCALE }
                 }
-                TabRow(selectedTabIndex = displayedTab) {
+                SecondaryTabRow(selectedTabIndex = displayedTab) {
                     tabLabels.forEachIndexed { index, label ->
-                        Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; tab = listOf("spending", "forecasts", "commitments")[index] },
+                        Tab(selected = displayedTab == index, onClick = { pendingTarget = null; focusedAlert = null; displayedTab = index },
                             modifier = Modifier.testTag("analysis-tab-$index").heightIn(min = MasroofSpacing.minimumTouchTarget)) {
                             Text(label, Modifier.padding(horizontal = MasroofSpacing.smallGap),
                                 style = tabStyle.scaledBy(tabScale), maxLines = 1, softWrap = false)
@@ -277,8 +275,8 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                                 MasroofButton(onClick = { editing = c.key }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
                                     Text(stringResource(R.string.lab_analysis_review_candidate))
                                 }
-                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key, notRecurring = true) } }, modifier = Modifier.testTag("recurring-not-${c.key}")) { Text(stringResource(R.string.recurring_not_recurring)) }
-                                MasroofTextButton(onClick = { scope.launch { workflow.rejectCandidate(c.key) } }, modifier = Modifier.testTag("recurring-dismiss-${c.key}")) { Text(stringResource(R.string.recurring_dismiss)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Reject recurring candidate") { workflow.rejectCandidate(c.key, notRecurring = true) } }, modifier = Modifier.testTag("recurring-not-${c.key}")) { Text(stringResource(R.string.recurring_not_recurring)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Dismiss recurring candidate") { workflow.rejectCandidate(c.key) } }, modifier = Modifier.testTag("recurring-dismiss-${c.key}")) { Text(stringResource(R.string.recurring_dismiss)) }
                             }
                         }
                         if (state.recurringCorrections.isNotEmpty()) MasroofCard {
@@ -287,7 +285,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                             state.recurringCorrections.take(visible).forEach { correction ->
                                 Text(correction.name, style = MaterialTheme.typography.bodyMedium)
                                 Text(stringResource(if (correction.kind == "NOT_RECURRING") R.string.recurring_not_recurring else R.string.recurring_dismiss), style = MaterialTheme.typography.bodySmall)
-                                MasroofTextButton(onClick = { scope.launch { workflow.undoRecurringCorrection(correction.seriesKey) } }, modifier = Modifier.testTag("recurring-undo-${correction.seriesKey}")) { Text(stringResource(R.string.recurring_undo)) }
+                                MasroofTextButton(onClick = { scope.launchLogged(workflow.appLogService, "LAB_ANALYTICS", "Undo recurring correction") { workflow.undoRecurringCorrection(correction.seriesKey) } }, modifier = Modifier.testTag("recurring-undo-${correction.seriesKey}")) { Text(stringResource(R.string.recurring_undo)) }
                             }
                             if (visible < state.recurringCorrections.size) MasroofTextButton(onClick = { visible += 20 }) { Text(stringResource(R.string.lab_analysis_more)) }
                         }
@@ -313,7 +311,6 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     return visibleAnalysisAlerts(state, currentAnalysisTime()).count { !it.read }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable private fun SpendingTab(state: AnalysisUiState, range: Int, onRangeChanged: (Int) -> Unit,
     onMerchants: () -> Unit, onOpenGroup: (String) -> Unit) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {

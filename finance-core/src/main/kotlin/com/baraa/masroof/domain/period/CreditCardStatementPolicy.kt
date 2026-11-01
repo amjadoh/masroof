@@ -27,8 +27,5 @@ object CreditCardStatementPolicy {
         return clampDay(previousMonth.year, previousMonth.monthValue, statementDay)
     }
 
-    private fun clampDay(year: Int, month: Int, day: Int): LocalDate {
-        val length = LocalDate.of(year, month, 1).lengthOfMonth()
-        return LocalDate.of(year, month, minOf(day, length))
-    }
+    private fun clampDay(year: Int, month: Int, day: Int): LocalDate = FinancialPeriodPolicy.clampDay(year, month, day)
 }

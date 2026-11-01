@@ -17,6 +17,8 @@ data class ReviewListItemUi(
     val reasonLabel: String,
     val dismissibleAsNonFinancial: Boolean = false,
     val ignored: Boolean = false,
+    /** Localized title used when the SMS named no merchant or counterparty. */
+    val titleRes: Int? = null,
 )
 
 data class ReviewBankChoiceUi(
@@ -51,6 +53,7 @@ data class ReviewDetailUi(
     val bankChoices: List<ReviewBankChoiceUi> = emptyList(),
     val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
     val bankId: String? = null,
+    val transferBetweenOwnAccounts: Boolean = false,
 )
 
 enum class ReviewListMode {

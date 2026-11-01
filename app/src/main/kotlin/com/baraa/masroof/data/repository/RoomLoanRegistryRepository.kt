@@ -100,4 +100,9 @@ class RoomLoanRegistryRepository(
                 accessGate = accessGate,
             )
     }
+
+    override suspend fun delete(reference: LoanReference): Unit = accessGate.withAccess<Unit> {
+        RegistryIdentity.requireKnownBank(reference.bank, "LoanRegistry.delete")
+        dao.delete(reference.bank.id, reference.loanType.name)
+    }
 }

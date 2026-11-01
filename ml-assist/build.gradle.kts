@@ -1,7 +1,9 @@
 plugins { kotlin("jvm") }
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
-kotlin { jvmToolchain(17) }
-dependencies { testImplementation(libs.junit) }
+kotlin { jvmToolchain(21) }
+dependencies { testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.launcher) }
 
 tasks.register<JavaExec>("trainRecurringSeed") {
     group = "verification"
@@ -13,3 +15,6 @@ tasks.register<JavaExec>("trainRecurringSeed") {
         providers.gradleProperty("recurringReport").getOrElse("$projectDir/RECURRING_EVALUATION.json"))
     if (providers.gradleProperty("recurringCheck").orNull == "true") args("--check")
 }
+
+// The pure modules use Jupiter; Android and Robolectric retain their native runner.
+tasks.test { useJUnitPlatform() }

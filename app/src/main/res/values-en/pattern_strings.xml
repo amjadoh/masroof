@@ -11,29 +11,27 @@
     <string name="pattern_teach">New pattern</string>
     <string name="pattern_revision">%1$s — revision %2$d</string>
     <string name="pattern_disable">Disable pattern</string>
-    <string name="pattern_enable">Enable pattern for preview</string>
+    <string name="pattern_enable">Use this pattern</string>
     <string name="pattern_restore_revision">Restore revision %1$d as a new revision</string>
-    <string name="pattern_selection_hint">Choose the operation first. Extract values, then tap a value or select it in the text, choose its field and bind. Not every field is required.</string>
     <string name="pattern_message">Message</string>
-    <string name="pattern_extract">Extract values</string>
-    <string name="pattern_bind">Bind selected text to field</string>
     <string name="pattern_remove_binding">Remove binding</string>
     <string name="pattern_preview">Preview</string>
     <string name="pattern_other_message">Another message to test</string>
     <string name="pattern_test">Test pattern</string>
     <string name="pattern_no_match">This message does not match. No data changed.</string>
     <string name="pattern_save">Save</string>
-    <string-array name="pattern_operations"><item>Purchase</item><item>Incoming transfer</item><item>Outgoing transfer</item><item>Bill payment</item><item>Card payment</item><item>Refund</item><item>Withdrawal</item><item>Prepaid card top-up</item></string-array>
-    <string-array name="pattern_field_keys"><item>amount</item><item>merchant</item><item>card</item><item>occurred_at</item><item>available_balance</item><item>counterparty</item><item>source_account</item><item>destination_account</item><item>counterparty_bank</item><item>reference</item><item>biller</item><item>account_reference</item><item>funding_reference</item><item>fee</item></string-array>
-    <string-array name="pattern_field_names"><item>Transaction amount</item><item>Merchant</item><item>Card</item><item>Transaction date and time</item><item>Available balance</item><item>Counterparty</item><item>Source account</item><item>Destination account</item><item>Counterparty bank</item><item>Reference</item><item>Biller</item><item>Account reference</item><item>Funding reference</item><item>Transfer fee</item></string-array>
+    <string-array name="pattern_operations"><item>Purchase</item><item>Incoming transfer</item><item>Outgoing transfer</item><item>Bill payment</item><item>Card payment</item><item>Refund</item><item>Withdrawal</item><item>Fee</item><item>Financing installment</item><item>Prepaid card top-up</item></string-array>
+    <string-array name="pattern_field_keys"><item>amount</item><item>merchant</item><item>card</item><item>occurred_at</item><item>available_balance</item><item>counterparty</item><item>source_account</item><item>destination_account</item><item>counterparty_bank</item><item>reference</item><item>biller</item><item>account_reference</item><item>funding_reference</item><item>biller_code</item><item>outstanding_balance</item><item>international_fee</item><item>foreign_amount</item><item>fee</item></string-array>
+    <string-array name="pattern_field_names"><item>Transaction amount</item><item>Merchant</item><item>Card</item><item>Transaction date and time</item><item>Available balance</item><item>Counterparty</item><item>Source account</item><item>Destination account</item><item>Counterparty bank</item><item>Reference</item><item>Biller</item><item>Account reference</item><item>Funding reference</item><item>Biller code</item><item>Due amount</item><item>International fee</item><item>Foreign amount</item><item>Transfer fee</item></string-array>
+    <!-- Same order as pattern_field_keys: what each field means, with an example from a real-looking SMS. -->
+    <string-array name="pattern_field_help"><item>The amount debited or credited by this transaction, not the balance. Example: “Amount: 120.00 SAR”</item><item>The shop or party you paid. Example: “At: TEST SHOP”</item><item>The last four digits of your card as the message shows them, even with stars. Example: “Card: *1234”</item><item>When the transaction happened. Example: “At: 15/10/26 12:30”</item><item>The balance left after the transaction; never counted as the amount. Example: “Balance: 900 SAR”</item><item>The person or party on the other side of a transfer. Example: “To: Mohammed”</item><item>The account the money left, usually its last digits. Example: “From: *3001”</item><item>The account the money reached. Example: “To account: *5678”</item><item>The other party\'s bank in a transfer. Example: “From Al Rajhi Bank”</item><item>Ref or Ref. No.: the bank\'s number for this transaction; it does not identify an account. Example: “Ref. No. 123456”</item><item>Who the bill was paid to. Example: “Biller: STC”</item><item>Acc or Ac Ref: your account\'s last digits as the bank writes them, sometimes only three. Example: “Acc: *345”</item><item>How money was added, such as a card or another account. Example: “Via: *6789”</item><item>The SADAD biller number. Example: “Biller code: 001”</item><item>What is due on a card or financing; never counted as the transaction amount. Example: “Due amount: 1,000 SAR”</item><item>Extra fee for transactions outside Saudi Arabia. Example: “Intl fee: 2.50 SAR”</item><item>The transaction amount in a non-SAR currency before conversion. Example: “USD 20.00”</item><item>The transfer fee the bank states separately from the amount. Example: “Fee 0.58 SAR”</item></string-array>
     <string name="pattern_ignore">Variable value to ignore</string>
     <string name="pattern_teach_from_review">Teach a pattern from this message</string>
     <string name="pattern_sender_mismatch">This sender is not configured for the selected bank. Choose the correct bank; message routing will not change.</string>
     <string name="pattern_pending_title">Pending message preview</string>
-    <string name="pattern_pending_scope">Preview does not change messages. Applying approved patterns is a separate action; posted evidence, corrections and manual decisions are excluded.</string>
     <string name="pattern_pending_refresh">Refresh preview</string>
     <string name="pattern_pending_limited">The first 1,000 review messages are checked; up to 50 bank results are shown. This is not full message coverage.</string>
     <string name="pattern_pending_row">Message %1$d — %2$s</string>
-    <string-array name="pattern_pending_statuses"><item>One match</item><item>No match</item><item>Pattern conflict</item><item>Bank conflict</item></string-array>
+    <string-array name="pattern_pending_statuses"><item>One match</item><item>No match</item><item>Pattern conflict</item><item>Bank conflict</item><item>Needs teaching</item></string-array>
     <string name="pattern_pending_open">Open review message</string>
 </resources>

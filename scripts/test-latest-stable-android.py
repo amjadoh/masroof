@@ -18,6 +18,20 @@ def image(api, *, channel="channel-0", suffix="", extra="", revision="", obsolet
 
 
 class LatestStableAndroidTest(unittest.TestCase):
+    def test_minor_package_identifier_keeps_runtime_api_separate(self):
+        xml = '<repository>' + image(36) + image('37.0') + '</repository>'
+        selected = resolver.latest_stable_image(xml)
+        self.assertEqual(37, selected.api)
+        self.assertEqual('37.0', selected.sdk)
+
+    def test_numeric_minor_order_and_empty_release_codename(self):
+        xml = '<repository>' + image('37.2', extra='<codename/>') + image('37.10') + image('37.9') + '</repository>'
+        self.assertEqual('37.10', resolver.latest_stable_image(xml).sdk)
+
+    def test_rejects_mismatched_package_and_metadata_versions(self):
+        xml = '<repository>' + image(36) + image('37.0').replace('<api-level>37.0</api-level>', '<api-level>36</api-level>') + '</repository>'
+        self.assertEqual(36, resolver.latest_stable_api(xml))
+
     def test_selects_highest_stable_not_repository_order(self):
         xml = "<repository>" + image(36) + image(34) + image(35) + "</repository>"
         self.assertEqual(36, resolver.latest_stable_api(xml))

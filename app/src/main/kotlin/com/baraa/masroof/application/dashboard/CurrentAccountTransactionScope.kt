@@ -192,12 +192,6 @@ data class CurrentAccountTransactionScope(
         return FinancialContainerIdFactory.accountId(record.event.bank, last4)
     }
 
-    private fun linkedRecords(
-        tx: FinancialTransaction,
-        parsedRecordsById: Map<String, ParsedEventRecord>,
-    ): List<ParsedEventRecord> =
-        tx.linkedParsedEventIds.mapNotNull { parsedRecordsById[it] }
-
     companion object {
         fun isDebitCardAttributedTransaction(
             tx: FinancialTransaction,
@@ -242,6 +236,6 @@ data class CurrentAccountTransactionScope(
                 .toSet()
 
         private fun isCreditCardContainer(containerId: String?): Boolean =
-            containerId?.startsWith("card:") == true
+            FinancialContainerIdParser.isCardContainer(containerId)
     }
 }

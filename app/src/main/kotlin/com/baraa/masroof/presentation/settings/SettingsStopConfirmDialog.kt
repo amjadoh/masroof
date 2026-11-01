@@ -9,16 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofIcons
-import com.baraa.masroof.presentation.common.formatCardLast4
 
 @Composable
 fun SettingsStopConfirmDialog(
-    target: ManagedCardUi?,
+    title: String,
+    body: String,
     updating: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    target ?: return
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -28,15 +27,8 @@ fun SettingsStopConfirmDialog(
                 tint = MaterialTheme.colorScheme.error,
             )
         },
-        title = { Text(stringResource(R.string.settings_stop_confirm_title)) },
-        text = {
-            Text(
-                stringResource(
-                    R.string.settings_stop_confirm_body,
-                    formatCardLast4(target.last4),
-                ),
-            )
-        },
+        title = { Text(title) },
+        text = { Text(body) },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !updating) {
                 Text(stringResource(R.string.settings_stop_confirm_action))

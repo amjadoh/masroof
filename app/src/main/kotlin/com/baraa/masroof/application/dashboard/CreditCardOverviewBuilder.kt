@@ -95,9 +95,6 @@ object CreditCardOverviewBuilder {
         )
         val salaryPeriodStart = FinancialPeriodPolicy.toInclusiveStartInstant(salaryPeriod.startDate, zoneId)
         val salaryPeriodLabel = dayMonth.format(salaryPeriod.startDate)
-        val calendarMonthAnchor = salaryPeriod.displayEndDateInclusive.withDayOfMonth(1)
-        val calendarMonthStart = calendarMonthAnchor.atStartOfDay(zoneId).toInstant()
-        val calendarMonthLabel = dayMonth.format(calendarMonthAnchor)
 
         val latestStatementByCard = snapshotCandidates
             .filter { it.isStatement && it.updatedAt.isBefore(periodEndExclusive) }
@@ -139,19 +136,10 @@ object CreditCardOverviewBuilder {
                 primaryCurrency = primaryCurrency,
                 sarEquivalents = sarEquivalents,
             )
-            val calendarMonthNet = netSpending(
-                transactions = cardTransactions,
-                cardId = cardId,
-                startInclusive = calendarMonthStart,
-                endExclusive = periodEndExclusive,
-                primaryCurrency = primaryCurrency,
-                sarEquivalents = sarEquivalents,
-            )
 
             CreditCardDashboardRow(
                 bank = ref.bank,
                 last4 = ref.last4.orEmpty(),
-                calendarMonthSpendingNet = calendarMonthNet,
                 statementSpendingNet = statementNet,
                 salaryPeriodSpendingNet = salaryNet,
                 statementPeriodLabel = statementLabel,
@@ -166,22 +154,13 @@ object CreditCardOverviewBuilder {
             .filter { it.isStatement && it.updatedAt.isBefore(periodEndExclusive) }
             .maxByOrNull { it.updatedAt }
 
-        val aggregatePeriodSpending = sumCreditCardSpending(rows) { it.salaryPeriodSpendingNet }
-        val aggregateStatementSpending = sumCreditCardSpending(rows) { it.statementSpendingNet }
         val aggregateStatementLabel = latestStatement?.updatedAt?.let {
             dayMonth.format(it.atZone(zoneId).toLocalDate())
         } ?: dayMonth.format(globalStatementStart.atZone(zoneId).toLocalDate())
-        val statementDue = resolveLatestStatementDue(rows)
 
         return CreditCardsOverview(
             cards = rows,
-            aggregateDueAmount = statementDue?.amount,
-            aggregateDueUpdatedAt = statementDue?.updatedAt,
-            aggregateDueDate = statementDue?.dueDate,
-            aggregatePeriodSpendingNet = aggregatePeriodSpending,
-            aggregateStatementSpendingNet = aggregateStatementSpending,
             aggregateStatementPeriodLabel = aggregateStatementLabel,
-            calendarMonthLabel = calendarMonthLabel,
             salaryPeriodLabel = salaryPeriodLabel,
             currency = primaryCurrency,
         )

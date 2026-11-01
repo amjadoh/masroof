@@ -1,7 +1,7 @@
 package com.baraa.masroof.analytics
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class ForecastReplayTest {
     private fun data(laterAmount: Long, gaps: Set<Long> = emptySet()) = FinancialCleaner.clean(

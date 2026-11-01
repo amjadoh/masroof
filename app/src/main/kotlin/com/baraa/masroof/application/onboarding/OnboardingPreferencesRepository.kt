@@ -33,4 +33,9 @@ interface OnboardingPreferencesRepository {
     fun getSetupDraft(): OnboardingSetupDraft?
 
     fun setSetupDraft(draft: OnboardingSetupDraft?)
+
+    /** First-run home guide. Not part of backups, so a restored install sees it once more. */
+    fun isHomeGuideSeen(): Boolean = true
+
+    fun setHomeGuideSeen(seen: Boolean) {}
 }

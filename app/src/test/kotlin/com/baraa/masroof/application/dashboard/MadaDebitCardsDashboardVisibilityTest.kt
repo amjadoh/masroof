@@ -46,13 +46,7 @@ class MadaDebitCardsDashboardVisibilityTest {
         )
         val overview = CreditCardsOverview(
             cards = listOf(creditRow("1111")),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             aggregateStatementPeriodLabel = null,
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
@@ -158,7 +152,6 @@ class MadaDebitCardsDashboardVisibilityTest {
         CreditCardDashboardRow(
             bank = Bank.BANK_ALJAZIRA,
             last4 = last4,
-            calendarMonthSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             statementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             salaryPeriodSpendingNet = SignedMoneyAmount(BigDecimal("100.00"), Currency.SAR),
             statementPeriodLabel = null,
@@ -168,13 +161,7 @@ class MadaDebitCardsDashboardVisibilityTest {
     private fun emptyCreditOverview(): CreditCardsOverview =
         CreditCardsOverview(
             cards = emptyList(),
-            aggregateDueAmount = null,
-            aggregateDueUpdatedAt = null,
-            aggregateDueDate = null,
-            aggregatePeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
-            aggregateStatementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
             aggregateStatementPeriodLabel = null,
-            calendarMonthLabel = null,
             salaryPeriodLabel = "Aug",
             currency = Currency.SAR,
         )
