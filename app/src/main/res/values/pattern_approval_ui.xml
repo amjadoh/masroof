@@ -48,4 +48,6 @@
     <string name="pattern_badge_approved">معتمد</string>
     <string name="pattern_badge_active">مفعّل</string>
     <string name="pattern_badge_conflict">تعارض</string>
+    <string name="pattern_approval_card_summary">ستُسجّل الحركة على بطاقتك •• %1$s</string>
+    <string name="pattern_approval_link_help">يُستخدم الحساب أو البطاقة فقط عندما لا تذكره الرسالة. إذا ذكرت الرسالة رقمًا مختلفًا تبقى للمراجعة.</string>
 </resources>

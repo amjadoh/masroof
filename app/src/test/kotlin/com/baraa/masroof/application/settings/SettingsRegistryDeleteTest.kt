@@ -29,10 +29,11 @@ class SettingsRegistryDeleteTest {
     private val world = DashboardLedgerWorld(ApplicationProvider.getApplicationContext())
     private val bank = com.baraa.masroof.domain.model.Bank.BANK_ALJAZIRA
     private var boundAccounts = emptySet<AccountReference>()
+    private var boundCards = emptySet<CardReference>()
     private val workflow = SettingsRegistryWorkflow(world.cards, world.accounts, world.loans,
         OwnershipConfirmationService(world.accounts, world.cards, world.loans), world.parsedRepo,
         inTransaction = { block -> world.db.withTransaction { block() } }, transactions = world.ftRepo,
-        patternBoundAccounts = { boundAccounts })
+        patternBoundAccounts = { boundAccounts }, patternBoundCards = { boundCards })
 
     @After fun close() = world.close()
 
@@ -63,7 +64,11 @@ class SettingsRegistryDeleteTest {
         val target = RegistryDeleteTarget.Account(account)
         workflow.addCard(bank.id, "4444", null, CardConfiguration(CardNetwork.MADA, CardType.DEBIT, linkedAccount = account))
         assertEquals(DeleteBlocker.LINKED_CARD, workflow.deletionPreview(target).blocker)
-        workflow.delete(RegistryDeleteTarget.Card(CardReference(bank, "4444")))
+        val card = RegistryDeleteTarget.Card(CardReference(bank, "4444"))
+        boundCards = setOf(card.card)
+        assertEquals(DeleteBlocker.MESSAGE_PATTERN, workflow.deletionPreview(card).blocker)
+        boundCards = emptySet()
+        workflow.delete(card)
 
         boundAccounts = setOf(account)
         assertEquals(DeleteBlocker.MESSAGE_PATTERN, workflow.deletionPreview(target).blocker)

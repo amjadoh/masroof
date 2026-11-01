@@ -78,7 +78,11 @@ Manual account/card entries require explicit ownership confirmation; card creati
 configuration are atomic. Entries alone create neither balances nor transactions.
 Pattern approval can select an explicitly referenced owned, configured card with an
 optional account binding; it never invents a funding account. Approval rechecks ownership
-and the configuration generation before saving. Financial schema v18 and the existing
+and the configuration generation before saving. A built-in role rule keeps its family and
+readings; approval may only add an owned account link (or a card link for purchases, refunds
+and card payments). A link fills only a role the message leaves empty, never replaces a value
+the message names, and never funds a purchase, refund or card-named movement from an account.
+Editing a built-in teaches a new pattern and turns the built-in off once the replacement is approved. Financial schema v18 and the existing
 ingestion, validation and posting guards are unchanged.
 
 The bank catalog groups definitions by operation and opens each bank-qualified

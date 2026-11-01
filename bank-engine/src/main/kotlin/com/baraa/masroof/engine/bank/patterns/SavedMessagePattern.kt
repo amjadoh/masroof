@@ -46,7 +46,10 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
         if (this.roleProfile != null) {
             this.roleProfile.validate()
             val rule = this.roleProfile.rules.single()
-            require(this.parts.isEmpty() && rule.id == id && this.factContract == PatternFactContract(rule.family, rule.direction))
+            // Approval may add exact account/card links; every other built-in fact stays the rule's own.
+            val contract = requireNotNull(this.factContract)
+            require(this.parts.isEmpty() && rule.id == id && contract.accountBindings.none { it.field != null } &&
+                contract.copy(version = 1, accountBindings = emptyList()) == PatternFactContract(rule.family, rule.direction))
         } else require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
         require(this.parts.withIndex().all { (index, part) -> if (index % 2 == 0) part is StaticText else part is FieldSlot })
         require(this.parts.filterIsInstance<StaticText>().sumOf { it.value.length } <= 4096)
