@@ -126,7 +126,8 @@ fun MasroofRoot(
                 if (settingsViewModel.uiState.value.importingSms) return@MasroofBottomNavigation
                 val tab = entries[index].first
                 // Home and a re-tapped tab start fresh; any other tab is pushed and keeps open details behind it.
-                if (tab == HomeDestination.Dashboard || tab == top) { dashboardViewModel.closeTransactionDetail(); reviewViewModel.closeDetail() }
+                if (tab == HomeDestination.Dashboard || tab == top) dashboardViewModel.closeTransactionDetail()
+                if (tab == HomeDestination.Dashboard || tab == top || tab == HomeDestination.Review) reviewViewModel.closeDetail()
                 homeStack = switchHomeTab(homeStack, tab)
             }
 
@@ -190,7 +191,12 @@ private fun MasroofContent(
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
 
-    fun push(destination: HomeDestination) = onStackChange(pushHome(stack, destination))
+    fun push(destination: HomeDestination) {
+        val next = pushHome(stack, destination)
+        // The review ViewModel is shared, so a new Review visit must not open on an older visit's message.
+        if (next !== stack && destination == HomeDestination.Review) reviewViewModel.closeDetail()
+        onStackChange(next)
+    }
 
     fun pop() {
         val popped = popHome(stack) ?: return
@@ -205,7 +211,11 @@ private fun MasroofContent(
     }
 
     val labTarget by AnalyticsNavigation.target.collectAsState()
-    LaunchedEffect(labTarget) { if (labTarget != null && top.destination != HomeDestination.Dashboard) push(HomeDestination.Dashboard) }
+    LaunchedEffect(labTarget) {
+        if (labTarget == null) return@LaunchedEffect
+        // A full-screen detail hides the dashboard, which is what opens the alert.
+        if (top.destination == HomeDestination.Dashboard) dashboardViewModel.closeTransactionDetail() else push(HomeDestination.Dashboard)
+    }
     val labCenterReturns by AnalyticsNavigation.centerReturns.collectAsState()
     var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
     LaunchedEffect(labCenterReturns) {
@@ -235,7 +245,9 @@ private fun MasroofContent(
     }
 
     if (onboardingState.step == OnboardingStep.HOME) {
-        val detailOnTop = dashboardState.selectedTransactionId != null && transactionDetailOwner == top.id
+        // A closed detail has no owner; a detail opened without one (deep link, direct ViewModel call) belongs to the visible screen.
+        LaunchedEffect(dashboardState.selectedTransactionId) { if (dashboardState.selectedTransactionId == null) transactionDetailOwner = null }
+        val detailOnTop = dashboardState.selectedTransactionId != null && (transactionDetailOwner ?: top.id) == top.id
         BackHandler {
             when {
                 detailOnTop -> dashboardViewModel.closeTransactionDetail()

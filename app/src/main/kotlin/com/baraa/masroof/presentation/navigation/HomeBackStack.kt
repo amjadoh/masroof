@@ -16,16 +16,24 @@ internal fun homeEntries(stack: List<String>): List<HomeBackStackEntry> = stack.
 
 /** Opens [destination] on top; a repeated tap on the current screen changes nothing. */
 internal fun pushHome(stack: List<String>, destination: HomeDestination): List<String> =
-    if (homeEntries(stack).lastOrNull()?.destination == destination) stack else stack + encodeHome(nextHomeId(stack), destination)
+    if (homeEntries(stack).lastOrNull()?.destination == destination) stack else withVisit(stack, destination)
 
 /** `null` means the stack is at its root and back should be consumed. */
 internal fun popHome(stack: List<String>): List<String>? = if (stack.size <= 1) null else stack.dropLast(1)
 
-/** Dashboard clears history; the current tab restarts fresh; another tab is pushed like any link. */
+/** Home clears history and reopens a fresh dashboard; the current tab restarts fresh; another tab is pushed like any link. */
 internal fun switchHomeTab(stack: List<String>, tab: HomeDestination): List<String> = when {
-    tab == HomeDestination.Dashboard -> stack.take(1)
+    tab == HomeDestination.Dashboard -> listOf(encodeHome(nextHomeId(stack), tab))
     homeEntries(stack).lastOrNull()?.destination == tab -> stack.dropLast(1) + encodeHome(nextHomeId(stack), tab)
-    else -> stack + encodeHome(nextHomeId(stack), tab)
+    else -> withVisit(stack, tab)
+}
+
+/** Saved state for every visit lives in one bundle with a size limit, so only the newest visits are kept behind the root. */
+internal const val MAX_HOME_VISITS = 30
+
+private fun withVisit(stack: List<String>, destination: HomeDestination): List<String> {
+    val next = stack + encodeHome(nextHomeId(stack), destination)
+    return if (next.size <= MAX_HOME_VISITS) next else listOf(next.first()) + next.takeLast(MAX_HOME_VISITS - 1)
 }
 
 private fun encodeHome(id: Int, destination: HomeDestination) = "$id:${destination.name}"
