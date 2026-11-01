@@ -27,10 +27,7 @@ class AuditedSmsReadingTest {
     }
 
     @Test fun barqWalletTopUpIsAnIncomingTransferThatStillNeedsItsLocalAccount() {
-        val result = parse("BANK_BARQ", "barq app", "إضافة اموال لمحفظة برق
-المبلغ: 400.0 SAR
-البطاقة: **8765
-في: 2026-10-22 20:31")
+        val result = parse("BANK_BARQ", "barq app", "إضافة اموال لمحفظة برق\nالمبلغ: 400.0 SAR\nالبطاقة: **8765\nفي: 2026-10-22 20:31")
         assertEquals(MessageFamily.TRANSFER_IN, result.facts.family)
         assertEquals(0, result.facts.amount!!.amount.compareTo("400".toBigDecimal()))
         assertEquals(ParseStatus.REVIEW_REQUIRED, result.status)
