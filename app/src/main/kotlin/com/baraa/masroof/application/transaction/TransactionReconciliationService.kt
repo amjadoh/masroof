@@ -411,7 +411,7 @@ class TransactionReconciliationService(
                     listOf(ownershipReview))
                 continue
             }
-            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType)
+            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType, userConfirmed)
             val loanType = record.details.loanType
             val loanOwn = loanType?.let {
                 ownershipResolver.resolveLoan(LoanReference(event.bank, it))
@@ -958,6 +958,10 @@ class TransactionReconciliationService(
         var failed = 0
         val failedRawSmsIds = linkedSetOf<String>()
         val settledRawSmsIds = linkedSetOf<String>()
+        fun keepFee(rawSmsId: String) {
+            alreadyLinked++
+            settledRawSmsIds += rawSmsId
+        }
 
         for (existing in staleFees) {
             val record = existing.linkedParsedEventIds
@@ -978,7 +982,7 @@ class TransactionReconciliationService(
                 ?: OwnershipStatus.UNKNOWN
             val cardOwn = event.cardRef?.let { ownershipResolver.resolveCard(it) }
                 ?: OwnershipStatus.UNKNOWN
-            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType)
+            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType, record.automationConfirmed)
             val loanType = record.details.loanType
             val loanOwn = loanType?.let {
                 ownershipResolver.resolveLoan(LoanReference(event.bank, it))
@@ -1007,8 +1011,7 @@ class TransactionReconciliationService(
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
                     if (outcome.transaction.type != FinancialTransactionType.LOAN_REPAYMENT) {
-                        failed++
-                        failedRawSmsIds += event.rawSmsId
+                        keepFee(event.rawSmsId)
                         continue
                     }
                     val healed = outcome.transaction.copy(id = existing.id)
@@ -1025,10 +1028,9 @@ class TransactionReconciliationService(
                     }
                 }
 
-                else -> {
-                    failed++
-                    failedRawSmsIds += event.rawSmsId
-                }
+                // Missing loan type, a source that is not owned, or an external loan: no repayment can be
+                // built. The FEE row already counts as a repayment, so it is kept rather than failed forever.
+                else -> keepFee(event.rawSmsId)
             }
         }
 
@@ -1347,8 +1349,11 @@ class TransactionReconciliationService(
         event: ParsedEvent,
         sourceOwnership: OwnershipStatus,
         loanType: LoanType?,
+        userConfirmed: Boolean,
     ) {
         if (event.messageFamily != MessageFamily.FINANCING_INSTALLMENT) return
+        // Confirming ownership is a write, so unvalidated evidence must not make it.
+        if (!TransactionAssembler.isAutomationEligible(event, userConfirmed)) return
         if (sourceOwnership != OwnershipStatus.OWNED) return
         val resolvedLoanType = loanType ?: return
         val reference = LoanReference(event.bank, resolvedLoanType)
