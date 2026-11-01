@@ -196,7 +196,7 @@ class MessagePatternsJourneyTest {
                 }
             }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-internal-in").fetchSemanticsNodes().isNotEmpty() }
-            assertEquals(9, workflow.load().banks.single().currentPatterns.size)
+            assertEquals(12, workflow.load().banks.single().currentPatterns.size)
             capture("stc-ready-patterns")
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
             compose.onNodeWithTag("pattern-toggle-BANK_STC-stc-internal-in").performScrollTo().performClick()

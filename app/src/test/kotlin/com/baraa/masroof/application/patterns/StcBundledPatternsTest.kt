@@ -57,12 +57,12 @@ class StcBundledPatternsTest {
         File("build/reports/pattern-seed/stc.generated.json").apply { requireNotNull(parentFile).mkdirs(); writeText(generated + "\n") }
         assertEquals(generated, bundled.readText().trim())
         val bank = MessagePatternConfigurationCodec.decode(bundled.readText()).banks.single()
-        assertEquals(9, bank.currentPatterns.size)
+        assertEquals(12, bank.currentPatterns.size)
         val literals = bank.patterns.flatMap { it.parts.filterIsInstance<StaticText>() }.joinToString { it.value }
         rows.filter { it.getValue("teach").jsonPrimitive.boolean }.forEach { row ->
             row.getValue("fields").jsonObject.values.forEach { assertFalse(literals.contains(it.jsonPrimitive.content)) }
         }
-        assertEquals(11, rows.count { !it.getValue("teach").jsonPrimitive.boolean })
+        assertEquals(13, rows.count { !it.getValue("teach").jsonPrimitive.boolean })
         rows.forEach { row ->
             val match = SavedMessagePattern.unique(bank.currentPatterns, "BANK_STC", "STC Bank", row.text("body"))!!
             assertEquals(row.text("id"), match.first.id)
@@ -87,7 +87,7 @@ class StcBundledPatternsTest {
             val workflow = MessagePatternsWorkflow(store, DatabaseAccessGate(), bundledBanks = listOf(generate()))
             val seeded = workflow.load()
             assertEquals(1L, seeded.generation)
-            assertEquals(8, seeded.banks.single().patterns.size)
+            assertEquals(11, seeded.banks.single().patterns.size)
             assertEquals(seeded, workflow.load())
             workflow.setEnabled(1, "BANK_STC", "stc-qattah", false)
             assertFalse(workflow.load().banks.single().currentPatterns.single { it.id == "stc-qattah" }.enabled)

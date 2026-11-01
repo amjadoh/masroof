@@ -291,14 +291,14 @@ class PatternProcessingMilestoneTest {
         }
     }
 
-    @Test fun allEightStcLayoutsCanBeExplicitlyApprovedWithoutInventingFundingCardsOrIncome() = runBlocking {
+    @Test fun everyStcLayoutCanBeExplicitlyApprovedWithoutInventingFundingCardsOrIncome() = runBlocking {
         fixture { c ->
             val w = c.messagePatternsWorkflow
             val account = w.confirmPatternAccount("BANK_STC", "4321")
             val rows = Json.parseToJsonElement(java.io.File("src/test/resources/testdata/patterns/stc-seed-v1.json").readText())
                 .jsonObject.getValue("rows").let { it as kotlinx.serialization.json.JsonArray }.map { it.jsonObject }
                 .filter { it.getValue("teach").jsonPrimitive.content == "true" }
-            assertEquals(8, rows.size)
+            assertEquals(11, rows.size)
             for (row in rows) {
                 val id = row.getValue("id").jsonPrimitive.content
                 val body = row.getValue("body").jsonPrimitive.content

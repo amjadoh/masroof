@@ -37,6 +37,7 @@ class DashboardProjectionBuilder(
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.systemDefaultZone(),
     private val primaryCurrency: Currency = Currency.SAR,
+    private val openingBalances: AccountOpeningBalanceSource = AccountOpeningBalanceSource { emptyList() },
 ) {
     private val cardsProjection = CardsDashboardProjection(
         financialTransactionRepository = financialTransactionRepository,
@@ -95,19 +96,54 @@ class DashboardProjectionBuilder(
                 loanInvolvement = commitments.transactionLoanInvolvement,
             ),
             ownedAccountContainerIds = context.ownedAccountContainerIds,
+            accountBalances = accountBalances(context),
         )
     }
 
-    private suspend fun loadContext(
-        period: FinancialPeriod,
+    /**
+     * Each confirmed opening plus the account's cash position since that day, with the same
+     * evidence, rates and self-transfer rules as the period view. Independent of the period shown.
+     */
+    private suspend fun accountBalances(context: DashboardProjectionContext): List<AccountBalance> {
+        val owned = context.ownedAccounts.associateBy { "${it.bank.id}:${it.maskedNumber}" }
+        val openings = openingBalances.load().filter { it.key in owned }
+        return openings.groupBy { it.date }.flatMap { (date, group) ->
+            val transactions = financialTransactionRepository.listOccurredBetween(
+                startInclusive = FinancialPeriodPolicy.toInclusiveStartInstant(date, zoneId),
+                endExclusive = BALANCE_WINDOW_END,
+            )
+            val prepared = prepare(transactions, context.cardRegistry, BALANCE_WINDOW_END)
+            val summaries = OwnedAccountPeriodSummaryCalculator.summarize(
+                ownedAccounts = group.map { owned.getValue(it.key) },
+                transactions = prepared.transactions,
+                parsedRecords = prepared.evidence.parsedRecords,
+                primaryCurrency = primaryCurrency,
+                sarEquivalents = prepared.sarAmounts,
+                debitCardScope = DebitCardScopeFactory.fromRegistry(
+                    cards = context.cardRegistry,
+                    parsedRecords = prepared.evidence.parsedRecords,
+                    registryAccounts = context.ownedAccounts,
+                ),
+            )
+            AccountBalanceCalculator.balances(group, summaries)
+        }
+    }
+
+    private class Prepared(
+        val evidence: DashboardEvidence,
+        val transactions: List<FinancialTransaction>,
+        val sarAmounts: Map<String, com.baraa.masroof.core.money.Money>,
+    )
+
+    private suspend fun prepare(
         transactions: List<FinancialTransaction>,
-    ): DashboardProjectionContext {
-        val cardRegistry = cardRegistryRepository.listAll()
-        val periodEndExclusive = FinancialPeriodPolicy.toExclusiveEndInstant(period.endDateExclusive, zoneId)
+        cardRegistry: List<com.baraa.masroof.domain.model.CardRegistryEntry>,
+        endExclusive: java.time.Instant,
+    ): Prepared {
         val evidence = evidenceSource.load(
             transactions = transactions,
             registryCards = cardRegistry,
-            periodEndExclusive = periodEndExclusive,
+            periodEndExclusive = endExclusive,
         )
         val enrichedTransactions = TransactionDisplayEnricher.enrichMerchants(
             transactions = transactions,
@@ -123,6 +159,18 @@ class DashboardProjectionBuilder(
             transactions = AppliedExchangeRateSyncer.applyInMemory(enrichedTransactions, sarResolutions),
             parsedRecords = evidence.parsedRecords,
         )
+        return Prepared(evidence, displayedTransactions, sarResolutions.sarAmounts())
+    }
+
+    private suspend fun loadContext(
+        period: FinancialPeriod,
+        transactions: List<FinancialTransaction>,
+    ): DashboardProjectionContext {
+        val cardRegistry = cardRegistryRepository.listAll()
+        val periodEndExclusive = FinancialPeriodPolicy.toExclusiveEndInstant(period.endDateExclusive, zoneId)
+        val prepared = prepare(transactions, cardRegistry, periodEndExclusive)
+        val evidence = prepared.evidence
+        val displayedTransactions = prepared.transactions
         val ownedAccounts = accountRegistryRepository.listAll()
             .filter { it.bank != Bank.UNKNOWN && it.ownership == OwnershipStatus.OWNED }
         return DashboardProjectionContext(
@@ -131,7 +179,7 @@ class DashboardProjectionBuilder(
             today = LocalDate.now(clock),
             evidence = evidence,
             transactions = displayedTransactions,
-            sarEquivalents = sarResolutions.sarAmounts(),
+            sarEquivalents = prepared.sarAmounts,
             reviewRequiredCount = reviewRepository.listRequired().size,
             ownedAccounts = ownedAccounts,
             ownedAccountContainerIds = ownedAccounts
@@ -151,5 +199,10 @@ class DashboardProjectionBuilder(
             zoneId = zoneId,
             primaryCurrency = primaryCurrency,
         )
+    }
+
+    private companion object {
+        /** Balances include every movement after their opening day, also future-dated ones. */
+        val BALANCE_WINDOW_END: java.time.Instant = java.time.Instant.parse("9999-01-01T00:00:00Z")
     }
 }

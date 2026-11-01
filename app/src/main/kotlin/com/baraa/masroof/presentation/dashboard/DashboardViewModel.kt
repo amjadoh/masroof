@@ -439,6 +439,7 @@ class DashboardViewModel(
                 val ownedAccounts = mergeOwnedAccounts(
                     registryAccounts = loadOwnedAccounts(),
                     periodSummaries = overview.ownedAccountPeriodSummaries,
+                    balances = overview.accountBalances,
                 )
                 val committedIds = dashboardCommitmentsWorkflow.committedSourceTransactionIds()
                 ensureActive()
@@ -552,11 +553,13 @@ class DashboardViewModel(
     private fun mergeOwnedAccounts(
         registryAccounts: List<OwnedAccountUi>,
         periodSummaries: List<com.baraa.masroof.application.dashboard.OwnedAccountPeriodSummary>,
+        balances: List<com.baraa.masroof.application.dashboard.AccountBalance> = emptyList(),
     ): List<OwnedAccountUi> {
         val netsByKey = periodSummaries.associateBy { "${it.bank.id}:${it.maskedNumber}" }
+        val balancesByKey = balances.associateBy { "${it.bank.id}:${it.maskedNumber}" }
         return registryAccounts.map { account ->
-            val summary = netsByKey["${account.bank.id}:${account.maskedNumber}"]
-            account.copy(periodSummary = summary?.summary)
+            val key = "${account.bank.id}:${account.maskedNumber}"
+            account.copy(periodSummary = netsByKey[key]?.summary, balance = balancesByKey[key])
         }
     }
 

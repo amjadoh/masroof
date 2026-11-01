@@ -30,6 +30,7 @@ fun AccountDetailScreen(
                 subtitle = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank),
                 trend = state.spendingTrends?.byAccount?.get("${account.bank.id}:${account.maskedNumber}"),
                 chartKey = "account:${account.bank.id}:${account.maskedNumber}",
+                balance = account.balance,
             )
         }
 

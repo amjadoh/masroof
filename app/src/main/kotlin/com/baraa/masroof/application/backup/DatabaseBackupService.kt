@@ -600,6 +600,7 @@ class DatabaseBackupService(
             historicalImportStartEpochMillis = importStart,
             historicalImportCompleted = onboarding.getBoolean(KEY_IMPORT_COMPLETED, false),
             onboardingSetup = onboarding.getString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, null),
+            accountOpeningBalances = onboarding.getString(com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository.KEY_OPENING_BALANCES, null),
             languageTag = locale.getString(
                 SharedPrefsAppLocaleRepository.KEY_LANGUAGE_TAG,
                 AppLocale.DEFAULT_TAG,
@@ -632,6 +633,7 @@ class DatabaseBackupService(
             putBoolean(KEY_ONBOARDING_COMPLETED, snapshot.onboardingCompleted)
             putBoolean(KEY_IMPORT_COMPLETED, snapshot.historicalImportCompleted)
             putString(SharedPrefsOnboardingPreferencesRepository.KEY_SETUP_DRAFT, snapshot.onboardingSetup)
+            putString(com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository.KEY_OPENING_BALANCES, snapshot.accountOpeningBalances)
             val start = snapshot.historicalImportStartEpochMillis
             if (start == null) {
                 remove(KEY_IMPORT_START_EPOCH_MILLIS)

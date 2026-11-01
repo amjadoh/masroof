@@ -60,6 +60,8 @@ data class Facts(
     val network: String? = null,
     /** Magnitude of an explicitly negative available balance; never a transaction amount. */
     val negativeAvailableBalance: Money? = null,
+    /** Fee the sending bank states apart from [amount] on an outgoing transfer. */
+    val transferFee: Money? = null,
 )
 
 /** Half-open offsets into the ORIGINAL input body, never folded comparison text. */

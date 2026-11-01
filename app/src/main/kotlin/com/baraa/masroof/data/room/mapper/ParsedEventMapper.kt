@@ -25,8 +25,9 @@ object ParsedEventMapper {
         val availableDecimal = if (details.negativeAvailableBalance != null) availableMagnitude?.toBigDecimal()?.negate()?.toPlainString() else availableMagnitude
         val (outstandingDecimal, outstandingCurrency) =
             MoneyPersistence.toColumns(details.outstandingBalance)
+        // Transfer families reuse the fee columns for the stated transfer fee (schema v18).
         val (internationalFeeDecimal, internationalFeeCurrency) =
-            MoneyPersistence.toColumns(details.internationalFee)
+            MoneyPersistence.toColumns(details.internationalFee ?: details.transferFee)
         val (labeledForeignDecimal, labeledForeignCurrency) =
             MoneyPersistence.toColumns(details.labeledForeignAmount)
 
@@ -110,8 +111,10 @@ object ParsedEventMapper {
             parseStatus = enumValue(ParseStatus::class.java, entity.parseStatus),
         )
 
-    fun toDetails(entity: ParsedEventEntity): ParsedEventDetails =
-        ParsedEventDetails(
+    fun toDetails(entity: ParsedEventEntity): ParsedEventDetails {
+        val fee = MoneyPersistence.fromColumns(entity.internationalFeeDecimal, entity.internationalFeeCurrency)
+        val transfer = entity.messageFamily in setOf(MessageFamily.TRANSFER_IN.name, MessageFamily.TRANSFER_OUT.name)
+        return ParsedEventDetails(
             transactionReference = entity.transactionReference,
             availableBalance = MoneyPersistence.fromColumns(
                 entity.availableBalanceDecimal?.takeUnless { it.toBigDecimal().signum() < 0 },
@@ -131,10 +134,8 @@ object ParsedEventMapper {
             cardSmsChannel = entity.cardSmsChannel?.let { cardSmsChannel(it) },
             paymentDueDate = entity.paymentDueDate?.let { java.time.LocalDate.parse(it) },
             exchangeRate = entity.exchangeRate?.toBigDecimalOrNull(),
-            internationalFee = MoneyPersistence.fromColumns(
-                entity.internationalFeeDecimal,
-                entity.internationalFeeCurrency,
-            ),
+            internationalFee = fee.takeUnless { transfer },
+            transferFee = fee.takeIf { transfer && it != null && it.amount.signum() > 0 },
             labeledForeignAmount = MoneyPersistence.fromColumns(
                 entity.labeledForeignAmountDecimal,
                 entity.labeledForeignAmountCurrency,
@@ -143,6 +144,7 @@ object ParsedEventMapper {
             debitSourceAccountLast4 = entity.debitSourceAccountLast4,
             salaryIncomeWording = entity.salaryIncomeWording?.let(::intToBoolean),
         )
+    }
 
     fun encodeReasons(reasons: List<String>): String {
         require(reasons.none { ParsedEventEntity.CONFIDENCE_REASON_SEPARATOR in it }) {

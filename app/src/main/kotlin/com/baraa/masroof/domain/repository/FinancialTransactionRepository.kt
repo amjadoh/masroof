@@ -21,6 +21,20 @@ interface FinancialTransactionRepository {
     ): FinancialTransactionSaveResult
 
     /**
+     * [save] plus the parent's companion rows (its transfer fee) in the same write.
+     * A stored companion that is no longer assembled is removed. Deleting the parent
+     * later removes its companions. Test doubles without companion storage reject them.
+     */
+    suspend fun save(
+        transaction: FinancialTransaction,
+        rawSmsIds: Collection<String>,
+        companions: List<FinancialTransaction>,
+    ): FinancialTransactionSaveResult {
+        if (companions.isNotEmpty()) throw UnsupportedOperationException("Companion rows need atomic storage")
+        return save(transaction, rawSmsIds)
+    }
+
+    /**
      * Saves [transaction] after removing exclusive stale rows that block the same
      * [rawSmsIds]. Production Room implementation is atomic; the default falls back
      * to delete-then-save for in-memory test doubles.
@@ -47,6 +61,17 @@ interface FinancialTransactionRepository {
             }
         }
         return save(transaction, ids)
+    }
+
+    /** [replaceExclusiveStaleLinks] that also writes the parent's [companions]. */
+    suspend fun replaceExclusiveStaleLinks(
+        transaction: FinancialTransaction,
+        rawSmsIds: Collection<String>,
+        staleRawSmsIds: Collection<String>,
+        companions: List<FinancialTransaction>,
+    ): FinancialTransactionSaveResult {
+        if (companions.isNotEmpty()) throw UnsupportedOperationException("Companion rows need atomic storage")
+        return replaceExclusiveStaleLinks(transaction, rawSmsIds, staleRawSmsIds)
     }
 
     suspend fun getById(id: String): FinancialTransaction?
