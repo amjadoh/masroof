@@ -37,7 +37,6 @@ import com.baraa.masroof.presentation.dashboard.LoanOwnershipKey
 import com.baraa.masroof.presentation.dashboard.LoansSummaryRoute
 import com.baraa.masroof.presentation.dashboard.MerchantSpendingSummaryRoute
 import com.baraa.masroof.presentation.dashboard.TransactionDetailScreen
-import com.baraa.masroof.presentation.dashboard.TransactionListFilterState
 import com.baraa.masroof.presentation.dashboard.TransactionListScreen
 import com.baraa.masroof.presentation.notification.NotificationCenterRoute
 import com.baraa.masroof.presentation.notification.NotificationCenterViewModel
@@ -185,7 +184,6 @@ private fun MasroofContent(
         // A launch still waiting for Settings to load must not land in a later, unrelated Settings visit.
         if (top.destination != HomeDestination.Settings) pendingSettingsLaunch = null
     }
-    var transactionListSeedFilter by remember { mutableStateOf<TransactionListFilterState?>(null) }
     var pendingLoansSummaryLoanKey by rememberSaveable { mutableStateOf<String?>(null) }
     var loansSummaryDetailExitsSummary by rememberSaveable { mutableStateOf(false) }
     var pendingCardsSummaryCardKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -225,15 +223,24 @@ private fun MasroofContent(
         consumedLabCenterReturn = labCenterReturns
     }
 
+    // A detail opened straight from another screen backs out of the summary, not to its list.
+    fun openCards(card: String? = null, debit: String? = null, exitsSummary: Boolean = card != null || debit != null) {
+        pendingCardsSummaryCardKey = card
+        pendingCardsSummaryDebitKey = debit
+        cardsSummaryDetailExitsSummary = exitsSummary
+        push(HomeDestination.CardsSummary)
+    }
+
+    fun openLoans(loan: String? = null, exitsSummary: Boolean = loan != null) {
+        pendingLoansSummaryLoanKey = loan
+        loansSummaryDetailExitsSummary = exitsSummary
+        push(HomeDestination.LoansSummary)
+    }
+
     // [launch] replaces the Settings stack of this fresh visit so the first back returns to the caller.
     fun openSettings(launch: SettingsLaunchRequest? = null) {
         pendingSettingsLaunch = launch
         push(HomeDestination.Settings)
-    }
-
-    fun openTransactionList(filter: TransactionListFilterState? = null) {
-        transactionListSeedFilter = filter
-        push(HomeDestination.AllTransactions)
     }
 
     val notificationExternalState = notificationCenterExternalState(
@@ -253,7 +260,7 @@ private fun MasroofContent(
             when {
                 detailOnTop -> dashboardViewModel.closeTransactionDetail()
                 top.destination == HomeDestination.Review && reviewState.selectedDetail != null -> reviewViewModel.closeDetail()
-                // Consume system back on the home screen — do not exit the app.
+                // pop() does nothing at the root, so system back never exits the app.
                 else -> pop()
             }
         }
@@ -282,7 +289,7 @@ private fun MasroofContent(
             HomeDestination.Dashboard -> Box {
                 DashboardRoute(
                 viewModel = dashboardViewModel,
-                onOpenAllTransactions = { openTransactionList() },
+                onOpenAllTransactions = { push(HomeDestination.AllTransactions) },
                 onOpenTransaction = ::openTransaction,
                 onOpenSettings = { openSettings() },
                 onImportSms = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.SmsImport())) },
@@ -297,35 +304,12 @@ private fun MasroofContent(
                     )
                 },
                 onOpenAccountsSummary = { push(HomeDestination.AccountsSummary) },
-                onOpenCardsSummary = {
-                    pendingCardsSummaryCardKey = null
-                    pendingCardsSummaryDebitKey = null
-                    cardsSummaryDetailExitsSummary = false
-                    push(HomeDestination.CardsSummary)
-                },
-                onOpenLoansSummary = {
-                    pendingLoansSummaryLoanKey = null
-                    loansSummaryDetailExitsSummary = false
-                    push(HomeDestination.LoansSummary)
-                },
+                onOpenCardsSummary = { openCards() },
+                onOpenLoansSummary = { openLoans() },
                 onOpenMerchantsSummary = { push(HomeDestination.MerchantsSummary) },
-                onOpenLoanDetail = { loan ->
-                    pendingLoansSummaryLoanKey = LoanOwnershipKey.of(loan)
-                    loansSummaryDetailExitsSummary = true
-                    push(HomeDestination.LoansSummary)
-                },
-                onOpenCardDetail = { card ->
-                    pendingCardsSummaryCardKey = CardOwnershipKey.of(card)
-                    pendingCardsSummaryDebitKey = null
-                    cardsSummaryDetailExitsSummary = true
-                    push(HomeDestination.CardsSummary)
-                },
-                onOpenDebitDetail = { debit ->
-                    pendingCardsSummaryDebitKey = CardOwnershipKey.of(debit)
-                    pendingCardsSummaryCardKey = null
-                    cardsSummaryDetailExitsSummary = true
-                    push(HomeDestination.CardsSummary)
-                },
+                onOpenLoanDetail = { loan -> openLoans(loan = LoanOwnershipKey.of(loan)) },
+                onOpenCardDetail = { card -> openCards(card = CardOwnershipKey.of(card)) },
+                onOpenDebitDetail = { debit -> openCards(debit = CardOwnershipKey.of(debit)) },
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
@@ -374,16 +358,11 @@ private fun MasroofContent(
             HomeDestination.CommitmentsSummary -> com.baraa.masroof.presentation.dashboard.CommitmentsSummaryScreen(
                 dashboardState, ::pop, { row ->
                     when (row.source) {
-                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.CREDIT_CARD -> {
-                            pendingCardsSummaryCardKey = row.creditFacilityKey
-                            cardsSummaryDetailExitsSummary = true
-                            push(HomeDestination.CardsSummary)
-                        }
-                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.LOAN -> {
-                            pendingLoansSummaryLoanKey = row.loanKey
-                            loansSummaryDetailExitsSummary = true
-                            push(HomeDestination.LoansSummary)
-                        }
+                        // Commitment rows always back out of the summary, even when the row has no key.
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.CREDIT_CARD ->
+                            openCards(card = row.creditFacilityKey, exitsSummary = true)
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.LOAN ->
+                            openLoans(loan = row.loanKey, exitsSummary = true)
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.USER -> row.userCommitmentId?.let { id ->
                             openSettings(launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
                         }
@@ -420,9 +399,6 @@ private fun MasroofContent(
                         onFilterChanged = dashboardViewModel::setTransactionListQuery,
                         onBack = ::pop,
                         onOpenTransaction = ::openTransaction,
-                        seedFilter = transactionListSeedFilter,
-                        onSeedFilterApplied = { transactionListSeedFilter = null },
-                        openGeneration = top.id,
                         ownedCards = dashboardState.ownedCards,
                         ownedAccounts = dashboardState.ownedAccounts,
                     )
@@ -439,7 +415,7 @@ private fun MasroofContent(
             HomeDestination.Settings -> SettingsRoute(
                 viewModel = settingsViewModel,
                 // The home guide only shows on the dashboard, so this clears history like the Home tab.
-                onShowGuideAgain = { onboardingViewModel.setHomeGuideSeen(false); dashboardViewModel.refresh(); onStackChange(switchHomeTab(stack, HomeDestination.Dashboard)) },
+                onShowGuideAgain = { onboardingViewModel.setHomeGuideSeen(false); onStackChange(switchHomeTab(stack, HomeDestination.Dashboard)) },
                 statementReconciliationViewModel = statementReconciliationViewModel,
                 reviewRequiredCount = dashboardState.summary?.reviewRequiredCount ?: 0,
                 pendingLaunch = pendingSettingsLaunch,
