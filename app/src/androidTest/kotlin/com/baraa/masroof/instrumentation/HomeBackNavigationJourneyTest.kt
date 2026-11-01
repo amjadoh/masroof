@@ -115,10 +115,11 @@ class HomeBackNavigationJourneyTest {
         // 12: Home clears history, and Back on Home never closes the app.
         openNotifications()
         clickText(text(R.string.approved_nav_home))
-        awaitNode(dashboardScreen)
+        // A fresh dashboard visit reloads; on a slow device its content is composed before it is shown.
+        awaitDisplayed(dashboardScreen)
         pressDeviceBack(compose)
-        compose.onNode(dashboardScreen).assertIsDisplayed()
         assertFalse(compose.activity.isFinishing)
+        awaitDisplayed(dashboardScreen)
     }
 
     @Test fun transactionDetail_notificationsAndReviewAction_backUnwindsVisitByVisit() {
@@ -314,6 +315,10 @@ class HomeBackNavigationJourneyTest {
 
     private fun awaitNode(matcher: SemanticsMatcher) {
         compose.waitUntil(30_000) { compose.onAllNodes(matcher).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
+    }
+
+    private fun awaitDisplayed(matcher: SemanticsMatcher) {
+        compose.waitUntil(30_000) { runCatching { compose.onNode(matcher).assertIsDisplayed() }.isSuccess }
     }
 
     private fun clickText(value: String, substring: Boolean = false) =
