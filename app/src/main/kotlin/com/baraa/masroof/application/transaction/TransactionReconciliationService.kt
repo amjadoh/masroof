@@ -1055,12 +1055,10 @@ class TransactionReconciliationService(
 
         return when (
             // The posted legs being replaced keep their stored, already authorized facts.
-            val result = guardedWrite(rawSmsIds, evidence, postedLegs = staleRawSmsIds.toSet()) { financialTransactionRepository.replaceExclusiveStaleLinks(
-                transaction = transaction,
-                rawSmsIds = rawSmsIds,
-                staleRawSmsIds = staleRawSmsIds,
-                companions = companions,
-            ) }
+            val result = guardedWrite(rawSmsIds, evidence, postedLegs = staleRawSmsIds.toSet()) {
+                if (companions.isEmpty()) financialTransactionRepository.replaceExclusiveStaleLinks(transaction, rawSmsIds, staleRawSmsIds)
+                else financialTransactionRepository.replaceExclusiveStaleLinks(transaction, rawSmsIds, staleRawSmsIds, companions)
+            }
         ) {
             FinancialTransactionSaveResult.Saved -> UpgradePersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> UpgradePersistOutcome.Already

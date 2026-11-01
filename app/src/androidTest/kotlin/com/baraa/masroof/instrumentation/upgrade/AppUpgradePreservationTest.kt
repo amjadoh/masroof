@@ -69,7 +69,7 @@ class AppUpgradePreservationTest {
         // Ignore only the new optional null display field when comparing against the old APK.
         // A non-null negative balance and every pre-existing persisted fact remain in the fingerprint.
         appendLine(container.parsedEventRepository.listAll().sortedBy { it.event.id }.toString()
-            .replace(", negativeAvailableBalance=null)", ")"))
+            .replace(", transferFee=null)", ")").replace(", negativeAvailableBalance=null)", ")"))
         appendLine(container.financialTransactionRepository.listAll().sortedBy { it.id })
         appendLine(container.accountRegistryRepository.listAll().sortedBy { it.id })
         appendLine(container.cardRegistryRepository.listAll().sortedBy { it.id })
