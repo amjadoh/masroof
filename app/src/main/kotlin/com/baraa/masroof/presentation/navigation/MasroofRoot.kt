@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.key
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.presentation.common.MasroofAppBar
@@ -55,6 +54,7 @@ import com.baraa.masroof.presentation.statement.StatementReconciliationViewModel
 
 /**
  * Minimal root composition: onboarding while incomplete, dashboard + review after HOME.
+ * Home screens live on one back stack ([HomeBackStack.kt]); back always returns to the previous visit.
  */
 @Composable
 fun MasroofRoot(
@@ -74,10 +74,8 @@ fun MasroofRoot(
 ) {
     val onboarding by onboardingViewModel.uiState.collectAsState()
     val notifications by notificationCenterViewModel.uiState.collectAsState()
-    var requested by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
-    var selected by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
-    var generation by rememberSaveable { mutableStateOf(0) }
-    fun navigate(destination: HomeDestination) { requested = destination; generation++ }
+    var homeStack by rememberSaveable { mutableStateOf(homeRootStack()) }
+    val top = homeEntries(homeStack).lastOrNull()?.destination ?: HomeDestination.Dashboard
     val tourTargets = remember { com.baraa.masroof.ui.components.MasroofCoachMarkTargets() }
     val dashboardLoading by remember(dashboardViewModel) {
         dashboardViewModel.uiState.map { it.loading }.distinctUntilChanged()
@@ -90,7 +88,7 @@ fun MasroofRoot(
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
                 if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.unreadAnalysisAlerts(dashboardViewModel.analytics),
-                    onClick = { navigate(HomeDestination.NotificationCenter) })
+                    onClick = { homeStack = pushHome(homeStack, HomeDestination.NotificationCenter) })
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -108,9 +106,8 @@ fun MasroofRoot(
                 onRequestImport = onRequestImport,
                 onRequestExportLogs = onRequestExportLogs,
                 onRequestRestoreBackup = onRequestRestoreBackup,
-
-                requestedDestination = requested, navigationGeneration = generation,
-                onDestinationChanged = { selected = it },
+                stack = homeStack,
+                onStackChange = { homeStack = it },
             )
         }
         if (onboarding.step == OnboardingStep.HOME) {
@@ -122,15 +119,21 @@ fun MasroofRoot(
             )
             com.baraa.masroof.presentation.common.MasroofBottomNavigation(entries.map { (destination, label, icon) ->
                 com.baraa.masroof.presentation.common.MasroofNavigationItem(stringResource(label), icon,
-                    selected == destination,
+                    top == destination,
                     stringResource(if (destination == HomeDestination.Settings) R.string.dashboard_open_settings else label),
                     tourId = HomeTour.tabId(destination))
-            }) { index -> if (!settingsViewModel.uiState.value.importingSms) navigate(entries[index].first) }
+            }) { index ->
+                if (settingsViewModel.uiState.value.importingSms) return@MasroofBottomNavigation
+                val tab = entries[index].first
+                // Home and a re-tapped tab start fresh; any other tab is pushed and keeps open details behind it.
+                if (tab == HomeDestination.Dashboard || tab == top) { dashboardViewModel.closeTransactionDetail(); reviewViewModel.closeDetail() }
+                homeStack = switchHomeTab(homeStack, tab)
+            }
 
         }
     }
     if (HomeTour.autoStart && onboarding.step == OnboardingStep.HOME && !onboarding.homeGuideSeen &&
-        selected == HomeDestination.Dashboard && !dashboardLoading) {
+        top == HomeDestination.Dashboard && !dashboardLoading) {
         val finish = { onboardingViewModel.setHomeGuideSeen(true) }
         BackHandler(onBack = finish)
         HomeTour(tourTargets, finish)
@@ -155,33 +158,31 @@ private fun MasroofContent(
     onRequestImport: () -> Unit,
     onRequestExportLogs: () -> Unit,
     onRequestRestoreBackup: () -> Unit,
-    requestedDestination: HomeDestination,
-    navigationGeneration: Int,
-    onDestinationChanged: (HomeDestination) -> Unit,
+    stack: List<String>,
+    onStackChange: (List<String>) -> Unit,
 ) {
     val onboardingState by onboardingViewModel.uiState.collectAsState()
     val reviewState by reviewViewModel.uiState.collectAsState()
     val dashboardState by dashboardViewModel.uiState.collectAsState()
     val settingsState by settingsViewModel.uiState.collectAsState()
-    val notificationState by notificationCenterViewModel.uiState.collectAsState()
-    var homeDestination by rememberSaveable { mutableStateOf(HomeDestination.Dashboard) }
-    // Full-screen transaction details remove the destination from composition temporarily.
-    // Retain its selection and scroll until a different destination or fresh navigation opens.
-    val destinationStateHolder = key(homeDestination, navigationGeneration) {
-        rememberSaveableStateHolder()
+    val entries = homeEntries(stack)
+    val top = entries.lastOrNull() ?: HomeBackStackEntry(0, HomeDestination.Dashboard)
+    // Each visit keeps its own saved state (settings stack, selected card, scroll) while covered by another screen.
+    val destinationStateHolder = rememberSaveableStateHolder()
+    var liveEntryIds by rememberSaveable { mutableStateOf(entries.map { it.id }) }
+    // The visit that opened the transaction detail; the detail shows only while that visit is on top.
+    var transactionDetailOwner by rememberSaveable { mutableStateOf<Int?>(null) }
+    LaunchedEffect(stack) {
+        val ids = entries.map { it.id }
+        (liveEntryIds - ids.toSet()).forEach(destinationStateHolder::removeState)
+        liveEntryIds = ids
+        if (transactionDetailOwner != null && transactionDetailOwner !in ids) {
+            transactionDetailOwner = null
+            dashboardViewModel.closeTransactionDetail()
+        }
     }
-    var settingsReturnDestination by rememberSaveable {
-        mutableStateOf(HomeDestination.Dashboard)
-    }
-    var reviewReturnDestination by rememberSaveable {
-        mutableStateOf(HomeDestination.Dashboard)
-    }
-    var reviewReturnToAnalysis by rememberSaveable { mutableStateOf(false) }
     var pendingSettingsLaunch by remember { mutableStateOf<SettingsLaunchRequest?>(null) }
     var transactionListSeedFilter by remember { mutableStateOf<TransactionListFilterState?>(null) }
-    var transactionListReturnDestination by rememberSaveable {
-        mutableStateOf(HomeDestination.Dashboard)
-    }
     var transactionListOpenGeneration by remember { mutableStateOf(0) }
     var pendingLoansSummaryLoanKey by rememberSaveable { mutableStateOf<String?>(null) }
     var loansSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
@@ -189,74 +190,39 @@ private fun MasroofContent(
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsToHome by rememberSaveable { mutableStateOf(false) }
 
+    fun push(destination: HomeDestination) = onStackChange(pushHome(stack, destination))
+
+    fun pop() {
+        val popped = popHome(stack) ?: return
+        // Settings and Review change transactions; whatever is underneath re-reads them.
+        if (top.destination == HomeDestination.Settings || top.destination == HomeDestination.Review) dashboardViewModel.refresh()
+        onStackChange(popped)
+    }
+
+    fun openTransaction(id: String) {
+        transactionDetailOwner = top.id
+        dashboardViewModel.openTransactionDetail(id)
+    }
+
     val labTarget by AnalyticsNavigation.target.collectAsState()
-    LaunchedEffect(labTarget) { if (labTarget != null) { dashboardViewModel.closeTransactionDetail(); homeDestination = HomeDestination.Dashboard } }
+    LaunchedEffect(labTarget) { if (labTarget != null && top.destination != HomeDestination.Dashboard) push(HomeDestination.Dashboard) }
     val labCenterReturns by AnalyticsNavigation.centerReturns.collectAsState()
     var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
     LaunchedEffect(labCenterReturns) {
-        if (labCenterReturns > consumedLabCenterReturn) homeDestination = HomeDestination.NotificationCenter
+        if (labCenterReturns > consumedLabCenterReturn) pop()
         consumedLabCenterReturn = labCenterReturns
     }
-    var consumedNavigationGeneration by rememberSaveable { mutableStateOf(0) }
-    LaunchedEffect(navigationGeneration) {
-        if (navigationGeneration > consumedNavigationGeneration) {
-            consumedNavigationGeneration = navigationGeneration
-            settingsReturnDestination = HomeDestination.Dashboard
-            reviewReturnDestination = HomeDestination.Dashboard
-            reviewReturnToAnalysis = false
-            transactionListReturnDestination = HomeDestination.Dashboard
-            dashboardViewModel.closeTransactionDetail()
-            reviewViewModel.closeDetail()
-            transactionListSeedFilter = null
-            pendingLoansSummaryLoanKey = null
-            pendingCardsSummaryCardKey = null
-            pendingCardsSummaryDebitKey = null
-            if (requestedDestination == HomeDestination.Settings) {
-                pendingSettingsLaunch = SettingsLaunchRequest(SettingsDestination.Hub)
-            }
-            homeDestination = requestedDestination
-        }
-    }
-    LaunchedEffect(homeDestination) { onDestinationChanged(homeDestination) }
 
-    // [launch] replaces the Settings stack so the first back returns to [returnTo].
-    fun openSettings(
-        returnTo: HomeDestination = HomeDestination.Dashboard,
-        launch: SettingsLaunchRequest? = null,
-    ) {
-        settingsReturnDestination = returnTo
+    // [launch] replaces the Settings stack of this fresh visit so the first back returns to the caller.
+    fun openSettings(launch: SettingsLaunchRequest? = null) {
         pendingSettingsLaunch = launch
-        homeDestination = HomeDestination.Settings
+        push(HomeDestination.Settings)
     }
 
-    fun openReview(returnTo: HomeDestination) {
-        reviewReturnToAnalysis = false
-        reviewReturnDestination = returnTo
-        homeDestination = HomeDestination.Review
-    }
-
-    fun returnFromSettings() {
-        homeDestination = settingsReturnDestination
-        dashboardViewModel.refresh()
-    }
-
-    fun returnFromReview() {
-        homeDestination = reviewReturnDestination
-        if (reviewReturnToAnalysis) {
-            AnalyticsNavigation.open("resume")
-            reviewReturnToAnalysis = false
-        }
-        if (reviewReturnDestination == HomeDestination.Dashboard) dashboardViewModel.refresh()
-    }
-
-    fun openTransactionList(
-        filter: TransactionListFilterState? = null,
-        returnTo: HomeDestination = HomeDestination.Dashboard,
-    ) {
+    fun openTransactionList(filter: TransactionListFilterState? = null) {
         transactionListSeedFilter = filter
-        transactionListReturnDestination = returnTo
         transactionListOpenGeneration++
-        homeDestination = HomeDestination.AllTransactions
+        push(HomeDestination.AllTransactions)
     }
 
     val notificationExternalState = notificationCenterExternalState(
@@ -269,37 +235,21 @@ private fun MasroofContent(
     }
 
     if (onboardingState.step == OnboardingStep.HOME) {
+        val detailOnTop = dashboardState.selectedTransactionId != null && transactionDetailOwner == top.id
         BackHandler {
-            if (dashboardState.selectedTransactionId != null) {
-                dashboardViewModel.closeTransactionDetail()
-            } else {
-                when (homeDestination) {
-                    HomeDestination.AllTransactions -> homeDestination = transactionListReturnDestination
-                    HomeDestination.AccountsSummary,
-                    HomeDestination.CardsSummary,
-                    HomeDestination.LoansSummary,
-                    HomeDestination.CommitmentsSummary,
-                    HomeDestination.MerchantsSummary,
-                    HomeDestination.NotificationCenter,
-                    -> homeDestination = HomeDestination.Dashboard
-                    HomeDestination.DailyExpenses -> homeDestination = HomeDestination.MerchantsSummary
-                    HomeDestination.Settings -> returnFromSettings()
-                    HomeDestination.Review -> {
-                        if (reviewState.selectedDetail != null) reviewViewModel.closeDetail() else returnFromReview()
-                    }
-                    // Consume system back on the home screen — do not exit the app.
-                    HomeDestination.Dashboard -> Unit
-                }
+            when {
+                detailOnTop -> dashboardViewModel.closeTransactionDetail()
+                top.destination == HomeDestination.Review && reviewState.selectedDetail != null -> reviewViewModel.closeDetail()
+                // Consume system back on the home screen — do not exit the app.
+                else -> pop()
             }
         }
 
-        val detailOpenedFromAllTransactions =
-            homeDestination == HomeDestination.AllTransactions &&
-                dashboardState.selectedTransactionId != null
+        val detailOpenedFromAllTransactions = top.destination == HomeDestination.AllTransactions && detailOnTop
 
         val labAnalysisVisible by AnalyticsNavigation.analysisVisible.collectAsState()
-        val labOverlayDetail = homeDestination == HomeDestination.Dashboard && labAnalysisVisible && dashboardState.selectedTransactionId != null
-        if (!detailOpenedFromAllTransactions && !labOverlayDetail) {
+        val labOverlayDetail = top.destination == HomeDestination.Dashboard && labAnalysisVisible && detailOnTop
+        if (detailOnTop && !detailOpenedFromAllTransactions && !labOverlayDetail) {
             if (showTransactionDetail(
                     dashboardState = dashboardState,
                     onBack = dashboardViewModel::closeTransactionDetail,
@@ -316,20 +266,17 @@ private fun MasroofContent(
         LaunchedEffect(Unit) { settingsViewModel.loadBankCatalog() }
         androidx.compose.runtime.CompositionLocalProvider(com.baraa.masroof.presentation.settings.LocalSettingsBankNames provides
             settingsState.bankCatalog?.banks.orEmpty().mapNotNull { bank -> bank.displayName?.let { bank.bankId to it } }.toMap()) {
-        key(navigationGeneration) {
-        destinationStateHolder.SaveableStateProvider(homeDestination) {
-        when (homeDestination) {
+        destinationStateHolder.SaveableStateProvider(top.id) {
+        when (top.destination) {
             HomeDestination.Dashboard -> Box {
                 DashboardRoute(
                 viewModel = dashboardViewModel,
-                notificationUnreadCount = notificationState.unreadCount,
-                onOpenNotificationCenter = { homeDestination = HomeDestination.NotificationCenter },
                 onOpenAllTransactions = { openTransactionList() },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onOpenTransaction = ::openTransaction,
                 onOpenSettings = { openSettings() },
                 onImportSms = { openSettings(launch = SettingsLaunchRequest(SettingsDestination.SmsImport())) },
-                onOpenReview = { openReview(HomeDestination.Dashboard); reviewReturnToAnalysis = true },
-                onOpenCommitments = { homeDestination = HomeDestination.CommitmentsSummary },
+                onOpenReview = { push(HomeDestination.Review) },
+                onOpenCommitments = { push(HomeDestination.CommitmentsSummary) },
                 onManageCardsInSettings = {
                     openSettings(
                         launch = resolveManageSettingsLaunch(
@@ -338,39 +285,35 @@ private fun MasroofContent(
                         ),
                     )
                 },
-                onOpenAccountsSummary = {
-                    homeDestination = HomeDestination.AccountsSummary
-                },
+                onOpenAccountsSummary = { push(HomeDestination.AccountsSummary) },
                 onOpenCardsSummary = {
                     pendingCardsSummaryCardKey = null
                     pendingCardsSummaryDebitKey = null
                     cardsSummaryDetailExitsToHome = false
-                    homeDestination = HomeDestination.CardsSummary
+                    push(HomeDestination.CardsSummary)
                 },
                 onOpenLoansSummary = {
                     pendingLoansSummaryLoanKey = null
                     loansSummaryDetailExitsToHome = false
-                    homeDestination = HomeDestination.LoansSummary
+                    push(HomeDestination.LoansSummary)
                 },
-                onOpenMerchantsSummary = {
-                    homeDestination = HomeDestination.MerchantsSummary
-                },
+                onOpenMerchantsSummary = { push(HomeDestination.MerchantsSummary) },
                 onOpenLoanDetail = { loan ->
                     pendingLoansSummaryLoanKey = LoanOwnershipKey.of(loan)
                     loansSummaryDetailExitsToHome = true
-                    homeDestination = HomeDestination.LoansSummary
+                    push(HomeDestination.LoansSummary)
                 },
                 onOpenCardDetail = { card ->
                     pendingCardsSummaryCardKey = CardOwnershipKey.of(card)
                     pendingCardsSummaryDebitKey = null
                     cardsSummaryDetailExitsToHome = true
-                    homeDestination = HomeDestination.CardsSummary
+                    push(HomeDestination.CardsSummary)
                 },
                 onOpenDebitDetail = { debit ->
                     pendingCardsSummaryDebitKey = CardOwnershipKey.of(debit)
                     pendingCardsSummaryCardKey = null
                     cardsSummaryDetailExitsToHome = true
-                    homeDestination = HomeDestination.CardsSummary
+                    push(HomeDestination.CardsSummary)
                 },
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
@@ -385,8 +328,8 @@ private fun MasroofContent(
             }
             HomeDestination.AccountsSummary -> AccountsSummaryRoute(
                 viewModel = dashboardViewModel,
-                onBack = { homeDestination = HomeDestination.Dashboard },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onBack = ::pop,
+                onOpenTransaction = ::openTransaction,
             )
             HomeDestination.CardsSummary -> CardsSummaryRoute(
                 viewModel = dashboardViewModel,
@@ -397,11 +340,10 @@ private fun MasroofContent(
                     pendingCardsSummaryCardKey = null
                     pendingCardsSummaryDebitKey = null
                 },
-                onBack = { homeDestination = HomeDestination.Dashboard },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onBack = ::pop,
+                onOpenTransaction = ::openTransaction,
                 onManageCard = { bank ->
-                    openSettings(returnTo = HomeDestination.CardsSummary,
-                        launch = SettingsLaunchRequest(com.baraa.masroof.presentation.navigation.SettingsDestination.BankCards(bank.id)))
+                    openSettings(launch = SettingsLaunchRequest(com.baraa.masroof.presentation.navigation.SettingsDestination.BankCards(bank.id)))
                 },
             )
             HomeDestination.LoansSummary -> LoansSummaryRoute(
@@ -409,62 +351,54 @@ private fun MasroofContent(
                 initialSelectedLoanKey = pendingLoansSummaryLoanKey,
                 detailBackExitsSummary = loansSummaryDetailExitsToHome,
                 onInitialSelectionConsumed = { pendingLoansSummaryLoanKey = null },
-                onBack = { homeDestination = HomeDestination.Dashboard },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onBack = ::pop,
+                onOpenTransaction = ::openTransaction,
             )
             HomeDestination.MerchantsSummary -> MerchantSpendingSummaryRoute(
                 viewModel = dashboardViewModel,
-                onBack = { homeDestination = HomeDestination.Dashboard },
-                onOpenDaily = { homeDestination = HomeDestination.DailyExpenses },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                onBack = ::pop,
+                onOpenDaily = { push(HomeDestination.DailyExpenses) },
+                onOpenTransaction = ::openTransaction,
             )
             HomeDestination.CommitmentsSummary -> com.baraa.masroof.presentation.dashboard.CommitmentsSummaryScreen(
-                dashboardState, { homeDestination = HomeDestination.Dashboard }, { row ->
+                dashboardState, ::pop, { row ->
                     when (row.source) {
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.CREDIT_CARD -> {
                             pendingCardsSummaryCardKey = row.creditFacilityKey
                             cardsSummaryDetailExitsToHome = true
-                            homeDestination = HomeDestination.CardsSummary
+                            push(HomeDestination.CardsSummary)
                         }
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.LOAN -> {
                             pendingLoansSummaryLoanKey = row.loanKey
                             loansSummaryDetailExitsToHome = true
-                            homeDestination = HomeDestination.LoansSummary
+                            push(HomeDestination.LoansSummary)
                         }
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.USER -> row.userCommitmentId?.let { id ->
-                            openSettings(returnTo = HomeDestination.CommitmentsSummary,
-                                launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
+                            openSettings(launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
                         }
                     }
-                }, onOpenPayment = dashboardViewModel::openTransactionDetail)
+                }, onOpenPayment = ::openTransaction)
             HomeDestination.DailyExpenses -> com.baraa.masroof.presentation.dashboard.DailyExpensesScreen(
-                state = dashboardState, onBack = { homeDestination = HomeDestination.MerchantsSummary },
-                onOpenTransaction = dashboardViewModel::openTransactionDetail)
+                state = dashboardState, onBack = ::pop,
+                onOpenTransaction = ::openTransaction)
             HomeDestination.NotificationCenter -> NotificationCenterRoute(
                 viewModel = notificationCenterViewModel,
                 externalState = notificationExternalState,
-                onBack = { homeDestination = HomeDestination.Dashboard },
+                onBack = ::pop,
                 onNavigate = { action ->
                     handleNotificationAction(
                         action = action,
                         settingsState = settingsState,
                         onRequestPermissions = onRequestPermissions,
                         onOpenAppSettings = onOpenAppSettings,
-                        onOpenReview = {
-                            openReview(returnTo = HomeDestination.NotificationCenter)
-                        },
-                        onOpenSettings = { launch ->
-                            openSettings(
-                                returnTo = HomeDestination.NotificationCenter,
-                                launch = launch,
-                            )
-                        },
+                        onOpenReview = { push(HomeDestination.Review) },
+                        onOpenSettings = { launch -> openSettings(launch = launch) },
                     )
                 },
             )
             HomeDestination.Review -> ReviewRoute(
                 viewModel = reviewViewModel,
-                onBack = ::returnFromReview,
+                onBack = ::pop,
             )
             HomeDestination.AllTransactions -> {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -473,15 +407,15 @@ private fun MasroofContent(
                         transactions = dashboardState.allTransactions,
                         projection = dashboardState.transactionListProjection,
                         onFilterChanged = dashboardViewModel::setTransactionListQuery,
-                        onBack = { homeDestination = transactionListReturnDestination },
-                        onOpenTransaction = dashboardViewModel::openTransactionDetail,
+                        onBack = ::pop,
+                        onOpenTransaction = ::openTransaction,
                         seedFilter = transactionListSeedFilter,
                         onSeedFilterApplied = { transactionListSeedFilter = null },
                         openGeneration = transactionListOpenGeneration,
                         ownedCards = dashboardState.ownedCards,
                         ownedAccounts = dashboardState.ownedAccounts,
                     )
-                    showTransactionDetail(
+                    if (detailOnTop) showTransactionDetail(
                         dashboardState = dashboardState,
                         onBack = dashboardViewModel::closeTransactionDetail,
                         onReclassify = dashboardViewModel::reclassifySelectedTransaction,
@@ -493,17 +427,17 @@ private fun MasroofContent(
             }
             HomeDestination.Settings -> SettingsRoute(
                 viewModel = settingsViewModel,
-                onShowGuideAgain = { onboardingViewModel.setHomeGuideSeen(false); returnFromSettings() },
+                // The home guide only shows on the dashboard, so this clears history like the Home tab.
+                onShowGuideAgain = { onboardingViewModel.setHomeGuideSeen(false); dashboardViewModel.refresh(); onStackChange(switchHomeTab(stack, HomeDestination.Dashboard)) },
                 statementReconciliationViewModel = statementReconciliationViewModel,
                 reviewRequiredCount = dashboardState.summary?.reviewRequiredCount ?: 0,
                 pendingLaunch = pendingSettingsLaunch,
                 onPendingLaunchConsumed = { pendingSettingsLaunch = null },
-                onBack = ::returnFromSettings,
-                onOpenReview = { openReview(returnTo = HomeDestination.Settings) },
-                onOpenAccounts = { dashboardViewModel.refresh(); homeDestination = HomeDestination.AccountsSummary },
+                onBack = ::pop,
+                onOpenReview = { push(HomeDestination.Review) },
+                onOpenAccounts = { dashboardViewModel.refresh(); push(HomeDestination.AccountsSummary) },
                 onOpenReviewExample = { id ->
-                    pendingSettingsLaunch = SettingsLaunchRequest(SettingsDestination.MessageLearning)
-                    openReview(returnTo = HomeDestination.Settings)
+                    push(HomeDestination.Review)
                     reviewViewModel.setListMode(com.baraa.masroof.presentation.review.ReviewListMode.PENDING)
                     reviewViewModel.openDetail(id)
                 },
@@ -514,7 +448,6 @@ private fun MasroofContent(
                 onRequestSmsPermission = onRequestPermissions,
                 onOpenAppSettings = onOpenAppSettings,
             )
-        }
         }
         }
         }

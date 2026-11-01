@@ -51,8 +51,6 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 @Composable
 fun DashboardRoute(
     viewModel: DashboardViewModel,
-    notificationUnreadCount: Int = 0,
-    onOpenNotificationCenter: () -> Unit = {},
     onOpenAllTransactions: () -> Unit = {},
     onOpenTransaction: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},

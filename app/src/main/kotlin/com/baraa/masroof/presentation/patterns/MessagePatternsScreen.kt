@@ -10,6 +10,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -32,28 +33,28 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     onImportBank: ((String) -> Unit)? = null, onOpenAccounts: (() -> Unit)? = null) {
     val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<PatternCatalog?>(null) }
-    var selectedBank by remember { mutableStateOf(bankScope) }
-    var selectedPattern by remember { mutableStateOf<String?>(null) }
-    var teaching by remember { mutableStateOf(source != null) }
-    var addingBank by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var sender by remember { mutableStateOf(source?.sender.orEmpty()) }
+    var selectedBank by rememberSaveable { mutableStateOf(bankScope) }
+    var selectedPattern by rememberSaveable { mutableStateOf<String?>(null) }
+    var teaching by rememberSaveable { mutableStateOf(source != null) }
+    var addingBank by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var sender by rememberSaveable { mutableStateOf(source?.sender.orEmpty()) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
-    var approving by remember { mutableStateOf(false) }
-    var savedTeaching by remember { mutableStateOf(false) }
-    var savedBody by remember { mutableStateOf("") }
-    var showPending by remember { mutableStateOf(false) }
+    var approving by rememberSaveable { mutableStateOf(false) }
+    var savedTeaching by rememberSaveable { mutableStateOf(false) }
+    var savedBody by rememberSaveable { mutableStateOf("") }
+    var showPending by rememberSaveable { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
-    var savedApproval by remember { mutableStateOf(false) }
+    var savedApproval by rememberSaveable { mutableStateOf(false) }
     var editingPattern by remember { mutableStateOf<PatternDefinitionView?>(null) }
-    var editingBody by remember { mutableStateOf("") }
+    var editingBody by rememberSaveable { mutableStateOf("") }
     // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
     var teachingOperation by remember { mutableStateOf<PatternOperation?>(null) }
-    var replacingPattern by remember { mutableStateOf<String?>(null) }
-    var confirmingDelete by remember { mutableStateOf(false) }
-    var history by remember { mutableStateOf(false) }
+    var replacingPattern by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    var history by rememberSaveable { mutableStateOf(false) }
     var quickPreview by remember { mutableStateOf<PatternDefinitionView?>(null) }
     val scope = rememberCoroutineScope()
     fun work(action: suspend () -> Unit) {
