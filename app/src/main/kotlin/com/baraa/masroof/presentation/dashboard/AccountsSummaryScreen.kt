@@ -19,6 +19,7 @@ import com.baraa.masroof.application.dashboard.cashPosition
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.presentation.common.MasroofIcons
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
+import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
 import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 @Composable
@@ -136,9 +137,13 @@ private fun resolveOwnedAccountUi(
 private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> Unit) {
     val movement = account.periodSummary?.cashPosition()
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
+    val balance = account.balance
+    val guidance = if (balance == null) stringResource(R.string.dashboard_account_remaining_calculated_hint)
+        else stringResource(R.string.dashboard_account_balance_hint, formatLocalizedTransactionDate(balance.asOfDate, "d MMMM yyyy"), formatLocalizedMoney(balance.opening))
     EntitySummaryCard(account.displayLabel(), "",
         MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick,
-        guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint), actionLabel = stringResource(R.string.reference_account_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank)) {
+        guidance = guidance, actionLabel = stringResource(R.string.reference_account_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank)) {
+        if (balance != null) com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_account_balance_title), formatLocalizedMoney(balance.balance), dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_inflow), movement?.inflow?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_total_spent), movement?.outflow?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)

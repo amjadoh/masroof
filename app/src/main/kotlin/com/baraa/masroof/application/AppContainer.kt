@@ -534,6 +534,8 @@ class AppContainer(
             loanRegistryRepository = loanRegistryRepository,
             commitmentRepository = commitmentRepository,
             sarEquivalentResolver = sarEquivalentResolver,
+            openingBalances = com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository(
+                appContext.getSharedPreferences(SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)),
         )
 
     val transactionRestoreService: TransactionRestoreService =
