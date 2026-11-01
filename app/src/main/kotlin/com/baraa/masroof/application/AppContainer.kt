@@ -116,6 +116,7 @@ import com.baraa.masroof.application.sms.DebugProcessHaltProbe
 import com.baraa.masroof.application.sms.DebugProcessHalt
 import com.baraa.masroof.application.sms.HistoricalDerivedRecovery
 import com.baraa.masroof.application.sms.HistoricalDerivedRecoveryWorker
+import com.baraa.masroof.application.sms.LiveCaptureRecoveryWorker
 import com.baraa.masroof.application.sms.HistoricalSmsBatchProcessor
 import com.baraa.masroof.application.sms.HistoricalSmsScanner
 import com.baraa.masroof.application.sms.LiveSmsIntake
@@ -741,6 +742,10 @@ class AppContainer(
                 HistoricalDerivedRecoveryWorker.enqueue(WorkManager.getInstance(appContext))
             },
             debugProcessHalt = debugProcessHaltProbe,
+            captureRecoveryScheduler = { receivedAfter ->
+                LiveCaptureRecoveryWorker.enqueue(WorkManager.getInstance(appContext), receivedAfter)
+            },
+            clock = clock,
         )
 
     val workerFactory: WorkerFactory =
@@ -758,6 +763,13 @@ class AppContainer(
                     recovery = { historicalDerivedRecovery },
                     appLogService = appLogService,
                 ),
+            )
+            addFactory(
+                LiveCaptureRecoveryWorker.Factory(
+                    scanner = { historicalSmsScanner },
+                    startupReady = { awaitStartupMaintenance() == StartupMaintenanceOutcome.READY },
+                    appLogService = appLogService,
+                ) { maintenanceCompletionSignal.notifyCompleted() },
             )
         }
 
