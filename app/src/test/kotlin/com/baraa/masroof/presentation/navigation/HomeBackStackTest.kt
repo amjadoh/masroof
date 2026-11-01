@@ -59,9 +59,26 @@ class HomeBackStackTest {
     }
 
     @Test
-    fun homeTab_clearsHistoryButKeepsRootVisit() {
+    fun homeTab_clearsHistoryAndOpensFreshDashboard() {
         val deep = switchHomeTab(pushHome(pushHome(homeRootStack(), HomeDestination.Settings), HomeDestination.NotificationCenter), HomeDestination.Review)
-        assertEquals(homeRootStack(), switchHomeTab(deep, HomeDestination.Dashboard))
+        val home = homeEntries(switchHomeTab(deep, HomeDestination.Dashboard))
+
+        assertEquals(listOf(HomeDestination.Dashboard), home.map { it.destination })
+        // A new visit id drops the old dashboard's saved sub-pages (analytics, flow detail).
+        assertEquals(homeEntries(deep).maxOf { it.id } + 1, home.single().id)
+        assertEquals(1, homeEntries(switchHomeTab(homeRootStack(), HomeDestination.Dashboard)).single().id)
+    }
+
+    @Test
+    fun longTabSwitching_keepsRootAndNewestVisitsOnly() {
+        var stack = homeRootStack()
+        repeat(100) { stack = switchHomeTab(stack, if (it % 2 == 0) HomeDestination.Settings else HomeDestination.Review) }
+        val entries = homeEntries(stack)
+
+        assertEquals(MAX_HOME_VISITS, entries.size)
+        assertEquals(HomeBackStackEntry(0, HomeDestination.Dashboard), entries.first())
+        assertEquals(HomeDestination.Review, entries.last().destination)
+        assertEquals(100, entries.last().id)
     }
 
     @Test

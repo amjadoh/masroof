@@ -48,7 +48,8 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
     var savedApproval by rememberSaveable { mutableStateOf(false) }
-    var editingPattern by remember { mutableStateOf<PatternDefinitionView?>(null) }
+    // Saved by id: a restored teaching screen must still save a revision of the pattern being edited, not a new one.
+    var editingPatternId by rememberSaveable { mutableStateOf<String?>(null) }
     var editingBody by rememberSaveable { mutableStateOf("") }
     // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
     var teachingOperation by remember { mutableStateOf<PatternOperation?>(null) }
@@ -93,6 +94,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
     val pattern = bank?.currentPatterns?.singleOrNull { it.id == selectedPattern }
+    val editingPattern = editingPatternId?.let { id -> bank?.currentPatterns?.singleOrNull { it.id == id } }
     fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
         val bankId = requireNotNull(bank).bankId
         pending = null
@@ -112,7 +114,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (bank != null && teaching && (source == null || source.sender in bank.senders)) {
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
-                teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
+                teaching = false; editingPatternId = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
                 // A built-in edit keeps the original on until its replacement is approved, so messages never fall between them.
                 val replaced = replacingPattern
                 teachingOperation = null
@@ -126,7 +128,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                 }
             }, onReload = { work { snapshot = workflow.catalog() } },
             onBack = { if (source != null && editingPattern == null && teachingOperation == null) onBack()
-                else { teaching = false; editingPattern = null; teachingOperation = null; replacingPattern = null } },
+                else { teaching = false; editingPatternId = null; teachingOperation = null; replacingPattern = null } },
             existingPattern = editingPattern, initialBody = editingBody, initialOperation = teachingOperation)
         return
     }
@@ -232,13 +234,13 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         } },
                         onEdit = if (pattern.canEdit) ({ work {
                             editingBody = exampleBody(pattern)
-                            editingPattern = pattern; teaching = true
+                            editingPatternId = pattern.id; teaching = true
                         } }) else if (pattern.recognitionPhrases.isNotEmpty() && operationOf(pattern) != null) ({ work {
-                            editingBody = exampleBody(pattern); editingPattern = null
+                            editingBody = exampleBody(pattern); editingPatternId = null
                             teachingOperation = operationOf(pattern); replacingPattern = pattern.id; teaching = true
                         } }) else null,
                         onCopy = operationOf(pattern)?.let { operation -> { work {
-                            editingBody = exampleBody(pattern); editingPattern = null
+                            editingBody = exampleBody(pattern); editingPatternId = null
                             teachingOperation = operation; replacingPattern = null; teaching = true
                         } } },
                         onDelete = { confirmingDelete = true },
@@ -276,7 +278,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                         Text(bank.senders.joinToString(), style = MaterialTheme.typography.bodySmall)
                     }
                     if (source != null && source.sender !in bank.senders) Text(stringResource(R.string.pattern_sender_mismatch), color = MaterialTheme.colorScheme.error)
-                    MasroofButton(onClick = { teaching = true; editingPattern = null; editingBody = ""; savedTeaching = false; savedBody = "" },
+                    MasroofButton(onClick = { teaching = true; editingPatternId = null; editingBody = ""; savedTeaching = false; savedBody = "" },
                         enabled = !busy && (source == null || source.sender in bank.senders), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_teach)) }
                     Text(stringResource(R.string.teaching_catalog), style = MaterialTheme.typography.titleLarge)
                     val conflicting = pending?.conflictingPatternIds.orEmpty()

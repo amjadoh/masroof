@@ -12,6 +12,7 @@ import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.RawSms
+import com.baraa.masroof.presentation.navigation.AnalyticsNavigation
 import com.baraa.masroof.sms.hash.SmsBodyHasher
 import com.baraa.masroof.testsupport.TestRuntime
 import java.time.Instant
@@ -134,6 +135,17 @@ class HomeBackNavigationJourneyTest {
         openNotifications()
         clickText(text(R.string.settings_hub_review_title))
         awaitNode(heading(text(R.string.review_title)))
+        // A new Review visit opens on the list, even when an older visit left a message open.
+        clickText(text(R.string.reference_review_evidence))
+        awaitNode(heading(text(R.string.review_detail_title)))
+        openNotifications()
+        clickText(text(R.string.settings_hub_review_title))
+        awaitNode(heading(text(R.string.review_title)))
+        compose.onNode(heading(text(R.string.review_detail_title))).assertDoesNotExist()
+        pressDeviceBack(compose)
+        awaitNode(notificationsScreen)
+        pressDeviceBack(compose)
+        awaitNode(heading(text(R.string.review_title)))
         pressDeviceBack(compose)
         awaitNode(notificationsScreen)
 
@@ -169,7 +181,26 @@ class HomeBackNavigationJourneyTest {
         openNotifications()
         pressDeviceBack(compose)
         awaitNode(analytics)
-        pressDeviceBack(compose)
+
+        // 12: the Home tab always lands on the dashboard itself, never on a saved analytics page.
+        clickText(text(R.string.approved_nav_settings))
+        clickText(text(R.string.approved_nav_home))
+        awaitNode(dashboardScreen)
+        compose.onNode(analytics).assertDoesNotExist()
+        compose.onNodeWithTag("lab-forecast-entry").performScrollTo().performClick()
+        awaitNode(analytics)
+        clickText(text(R.string.approved_nav_home))
+        awaitNode(dashboardScreen)
+        compose.onNode(analytics).assertDoesNotExist()
+
+        // An analytics alert (system notification tap) opens even while a dashboard transaction detail is open.
+        clickText("Back Nav Shop", substring = true)
+        awaitNode(heading(text(R.string.transaction_detail_title)))
+        compose.runOnUiThread { AnalyticsNavigation.open("settings") }
+        awaitNode(hasText(text(R.string.lab_analysis_budget_section)))
+        compose.onNode(heading(text(R.string.transaction_detail_title))).assertDoesNotExist()
+        clickText(text(R.string.lab_analysis_cancel))
+        clickText(text(R.string.approved_nav_home))
         awaitNode(dashboardScreen)
 
         // 6: a review example opened from message learning returns to that same settings page.
