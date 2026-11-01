@@ -1,9 +1,9 @@
 package com.baraa.masroof.finance
 
 import java.io.File
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 /** Prevent empty source scans or an app-side copy from undoing the extraction. */
 class FinancialCoreOwnershipTest {
@@ -28,16 +28,15 @@ class FinancialCoreOwnershipTest {
         )
         expected.forEach { (directory, names) ->
             names.forEach { name ->
-                assertTrue("Missing extracted policy: $directory/$name", File(core, "$directory/$name.kt").isFile)
+                assertTrue(File(core, "$directory/$name.kt").isFile, "Missing extracted policy: $directory/$name")
             }
         }
         val sources = core.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        assertTrue("Missing finance core sources", sources.isNotEmpty())
+        assertTrue(sources.isNotEmpty(), "Missing finance core sources")
         sources.forEach { file ->
             val relative = file.relativeTo(core)
-            assertFalse("Duplicate financial source in app: $relative", File(app, relative.path).exists())
-            assertFalse("Financial policies must not perform storage/network I/O: $relative",
-                Regex("\\bjava\\.(io|nio\\.file|sql|net)\\.").containsMatchIn(file.readText()))
+            assertFalse(File(app, relative.path).exists(), "Duplicate financial source in app: $relative")
+            assertFalse(Regex("\\bjava\\.(io|nio\\.file|sql|net)\\.").containsMatchIn(file.readText()), "Financial policies must not perform storage/network I/O: $relative")
         }
     }
 
@@ -52,8 +51,8 @@ class FinancialCoreOwnershipTest {
             "application/transaction/ReconciliationCompletionPolicy.kt",
             "parsing/finalize/ParseFinalizer.kt",
         ).forEach { path ->
-            assertTrue("Missing app responsibility: $path", File(app, path).isFile)
-            assertFalse("App responsibility leaked into finance core: $path", File(core, path).exists())
+            assertTrue(File(app, path).isFile, "Missing app responsibility: $path")
+            assertFalse(File(core, path).exists(), "App responsibility leaked into finance core: $path")
         }
     }
 }

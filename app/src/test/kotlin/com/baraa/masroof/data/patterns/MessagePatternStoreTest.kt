@@ -59,6 +59,16 @@ class MessagePatternStoreTest {
         assertEquals(listOf(file.name), file.parentFile.listFiles()!!.map { it.name })
     }
 
+    @Test fun manySavesKeepOnlyRecentRevisionsSoTheBankNeverFills() = withFile { file ->
+        val first = pattern("STC", "STC Bank")
+        val store = MessagePatternStore(file)
+        (1..200).forEach { revision ->
+            store.saveBank(revision - 1L, bank(first.copy(revision = revision, enabled = revision % 2 == 0)))
+        }
+        val kept = store.load().banks.single().patterns
+        assertEquals(listOf(197, 198, 199, 200), kept.map { it.revision }.sorted())
+    }
+
     @Test fun explicitFactContractsRoundTripAndCannotRewriteAPriorRevision() = withFile { file ->
         val contract = PatternFactContract(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
             com.baraa.masroof.engine.bank.MoneyDirection.OUTGOING, com.baraa.masroof.finance.value.Currency.SAR)

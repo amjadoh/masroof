@@ -8,9 +8,9 @@ import com.baraa.masroof.domain.model.MessageFamily
 import com.baraa.masroof.domain.model.MoneyDirection
 import com.baraa.masroof.domain.model.ParseStatus
 import com.baraa.masroof.domain.model.ParsedEvent
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class InformationalMessagePolicyTest {
     @Test
@@ -20,7 +20,7 @@ class InformationalMessagePolicyTest {
             MessageFamily.NON_FINANCIAL,
             MessageFamily.BALANCE_NOTICE,
         ).forEach { family ->
-            assertTrue(family.name, InformationalMessagePolicy.shouldAutoIgnore(family))
+            assertTrue(InformationalMessagePolicy.shouldAutoIgnore(family), family.name)
         }
     }
 
@@ -58,7 +58,7 @@ class InformationalMessagePolicyTest {
             MessageFamily.TRANSFER_OUT,
             MessageFamily.FEE,
         ).forEach { family ->
-            assertFalse(family.name, InformationalMessagePolicy.shouldAutoIgnore(family))
+            assertFalse(InformationalMessagePolicy.shouldAutoIgnore(family), family.name)
         }
     }
 

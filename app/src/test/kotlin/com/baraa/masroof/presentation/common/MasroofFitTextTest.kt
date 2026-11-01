@@ -2,6 +2,7 @@ package com.baraa.masroof.presentation.common
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
@@ -43,5 +44,17 @@ class MasroofFitTextTest {
 
     @Test fun reportsNoFitBelowMinimumScale() {
         assertNull(measurer.fitScale(amount, style, (fullWidth * MASROOF_FIT_MIN_SCALE / 2).toInt()))
+    }
+    @Test fun explicitMoneySpansShrinkWithTheNumber() {
+        val text = AnnotatedString("100 SAR", listOf(
+            AnnotatedString.Range(SpanStyle(fontSize = 20.sp), 4, 7),
+            AnnotatedString.Range(SpanStyle(), 0, 3),
+        ))
+        val scaled = text.scaledBy(0.5f)
+        assertEquals("100 SAR", scaled.text)
+        assertEquals(10.sp, scaled.spanStyles[0].item.fontSize)
+        assertEquals(SpanStyle().fontSize, scaled.spanStyles[1].item.fontSize)
+        assertEquals(4, scaled.spanStyles[0].start)
+        assertEquals(7, scaled.spanStyles[0].end)
     }
 }

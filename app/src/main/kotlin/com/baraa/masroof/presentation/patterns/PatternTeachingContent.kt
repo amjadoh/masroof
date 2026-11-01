@@ -26,7 +26,7 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 import com.baraa.masroof.ui.theme.MasroofTeachingTokens
 
 @Composable
-internal fun PatternTeachingHeader(step: Int, question: String, fieldIndex: Int, fieldCount: Int, required: Boolean) {
+internal fun PatternTeachingHeader(step: Int, question: String, fieldIndex: Int, fieldCount: Int, required: Boolean, help: String? = null) {
     Row(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
         listOf(R.string.teaching_step_kind, R.string.teaching_step_fields, R.string.teaching_step_confirm).forEachIndexed { index, label ->
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
@@ -43,6 +43,7 @@ internal fun PatternTeachingHeader(step: Int, question: String, fieldIndex: Int,
         }
         Text(question, style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.fillMaxWidth().testTag("pattern-question").semantics { heading() })
+        help?.let { com.baraa.masroof.presentation.common.MasroofHintBox(it, Modifier.testTag("pattern-field-help")) }
     }
 }
 
@@ -52,7 +53,6 @@ internal fun TeachingMessage(body: TextFieldValue, readOnly: Boolean, enabled: B
         label = { Text(stringResource(R.string.pattern_message)) }, modifier = Modifier.fillMaxWidth().testTag("pattern-body"))
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PatternTeachingValues(body: TextFieldValue, candidates: List<PatternText>, enabled: Boolean,
     onBody: (TextFieldValue) -> Unit, onCandidate: (PatternText) -> Unit, canIgnore: Boolean, onIgnore: () -> Unit) {

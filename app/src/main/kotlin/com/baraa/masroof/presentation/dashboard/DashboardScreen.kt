@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.baraa.masroof.ui.components.coachMarkTarget
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
@@ -50,8 +51,6 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 @Composable
 fun DashboardRoute(
     viewModel: DashboardViewModel,
-    notificationUnreadCount: Int = 0,
-    onOpenNotificationCenter: () -> Unit = {},
     onOpenAllTransactions: () -> Unit = {},
     onOpenTransaction: (String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -209,6 +208,7 @@ internal fun DashboardScreen(
                     onCustomize = onOpenCustomize,
                     customizeLabel = stringResource(R.string.dashboard_customize),
                     guidance = state.periodAdjustmentHint,
+                    modifier = Modifier.coachMarkTarget(com.baraa.masroof.presentation.navigation.HomeTour.PERIOD),
                 )
 
                 if (!state.isCurrentPeriod) {
@@ -314,6 +314,7 @@ private fun DashboardCustomizableSections(
                         accountsFleet = accountsFleet,
                         onIncome = onOpenIncomeDetails,
                         onOutflow = onOpenExpenseDetails,
+                        modifier = Modifier.coachMarkTarget(com.baraa.masroof.presentation.navigation.HomeTour.SUMMARY),
                     )
                 }
 

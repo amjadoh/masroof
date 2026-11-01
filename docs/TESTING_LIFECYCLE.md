@@ -15,7 +15,6 @@ This is a map of existing production paths and executable coverage, not a claim 
 | UI draft/apply/discard and language/theme geometry | Four independent fidelity variants and four chart interaction variants, existing sheet/geometry tests; assertions and pages/scopes retained |
 | First SQLite open -> application close | `StartupQueryShutdownTest` uses a real connection callback barrier; storage corruption recovery tests remain unchanged; startup unit teardown now closes the container normally |
 | Whole worker/database lease -> restore/close | Model refresh workflow/worker tests, database access/restore recovery tests and native backup/recovery cases |
-| Real installed APK update | `AppUpgradePreservationTest` seeds real SMS/ledger, account/card/loan ownership, active/paused commitments and a correction; identical persisted fingerprint required after baseline-to-current update |
 | CI output -> merge/release authority | `test_ci_device.py`, routing/script tests and `test_verify_ci_status.py`; incomplete/skipped/duplicate/missing case output and partial CI are rejected |
 
 ## Root causes corrected
@@ -27,3 +26,35 @@ Commitment display names are editable labels. Payment matching now uses the sour
 No financial database, schema version, application identity, preference namespace or production worker identity is added or changed by this work. The financial schema remains v18. Existing auxiliary learning/analytics databases retain their own migration tests.
 
 Restore also retires queued readers immediately. A reader waiting behind exclusive restore has not started Room work; it must receive `DatabaseRestartRequiredException` when that instance is retired. Waiting until the restore block exits deadlocks when restore first joins an analytics refresh that is itself waiting for that block. `DatabaseAccessGateTest.retirementReleasesQueuedReadersBeforeTheRestoreBlockCanFinish` controls that order, and the native shutdown/backup restore cases cover it through production wiring. Admitted leases still drain normally.
+
+## Modernization scenario map
+
+The original 60 `TransactionReconciliationServiceTest` methods retain their bodies and names:
+29 posting/matching/idempotence scenarios remain there, 16 automation/informational-authority
+scenarios live in `ReconciliationAuthorityTest`, 11 pairing/healing scenarios in
+`ReconciliationTransferHealingTest`, and four persisted-timezone scenarios in
+`ReconciliationTimingTest`. An inherited fixture opens a fresh in-memory Room database before
+each test and closes it afterward; no ledger or database is shared between scenarios.
+
+Pure-module Jupiter migration preserves all 267 original test methods (95 finance-core,
+121 bank-engine, 51 ml-assist). Android/Robolectric tests remain JUnit 4. Added regressions cover
+cancellation propagation, SDK package/runtime separation, transaction-list query refresh,
+duplicate display IDs, foreign-currency totals and explicit money-span scaling. The complete
+baseline contains 2,027 named test methods; [modernization report](KOTLIN_MODERNIZATION.md) records current verification.
+
+## Retained lifecycle regression requirements
+
+- Historical parsed facts and the durable batch retry intent commit atomically;
+  failed derived work remains incomplete even if other rows posted.
+- Manual non-financial decisions, exclusive ledger deletion and retry cleanup
+  share a transaction. Interrupted writes roll back together.
+- Every restored preference commit must succeed before COMMITTED. Retain rollback
+  evidence until the database and preferences agree; wipe sensitive staging data
+  at discard boundaries, never files still required for recovery.
+- Tokens and backup phrases stay out of saved UI state. A picker result arriving
+  after process death without its in-memory phrase must show a retry outcome.
+- Saved UI state cannot authorize startup financial access. Active imports survive
+  activity resume, while provider iteration and parsing stay off the main thread.
+- Process-death capture tests join the actual startup job before arming a halt;
+  waiting only for blocking maintenance leaves pending-processing scheduling racing
+  with capture. Use completion barriers rather than timing sleeps.

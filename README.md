@@ -1,51 +1,79 @@
-# Masroof | مصروف
+<p align="center">
+  <img src="ui-kit/src/main/res/drawable-nodpi/masroof_approved_logo.webp" width="88" alt="Masroof wallet logo">
+</p>
 
-Masroof is a local-first Android personal finance app. It turns supported bank SMS into reviewed financial records, account and card summaries, commitments, and spending insights.
+<h1 align="center">Masroof · مصروف</h1>
+<p align="center">Your bank messages. Your financial picture. On your phone.</p>
+<p align="center"><a href="README_AR.md">العربية</a> · <a href="https://github.com/bakhshb/masroof/releases">Download APK</a> · <a href="docs/ARCHITECTURE.md">Developer docs</a></p>
+<p align="center"><a href="https://github.com/bakhshb/masroof/actions/workflows/ci.yml"><img src="https://github.com/bakhshb/masroof/actions/workflows/ci.yml/badge.svg?branch=main" alt="Main CI status"></a></p>
 
-[العربية](README_AR.md)
+Masroof is a local-first Android personal finance app. It turns supported bank SMS into account and card summaries, a searchable transaction history, commitments, and spending insights. Messages that need a decision stay in a review inbox.
 
-## Features
+## A look inside
 
-- Historical SMS import for selected banks and receipt-date ranges, plus durable live processing with duplicate protection and retry recovery.
-- A rule-based bank engine with validation and explicit ownership confirmation. AlJazira uses bundled role definitions; six STC templates require explicit financial approval.
-- Local machine learning for eligible message families and learning from explicit user corrections. It never invents amounts, ownership, or financial approval.
-- Salary-period dashboards, transaction details, a review inbox, accounts, cards, credit facilities, loans, and commitments.
-- Purchase forecasts, recurring-payment suggestions, historical spending, and a unified notification center. Phone alerts are opt-in.
-- Arabic/RTL and English, shared design components, and light/dark/system appearance.
-- Encrypted backup and recovery, including analytics and message patterns; financial backups must use schema v18.
-
-## Project
-
-| Module | Responsibility |
+| Your salary period | Accounts and cards |
 | --- | --- |
-| `app` | Android UI, application workflows, SMS intake, persistence and recovery |
-| `bank-engine` | Pure Kotlin bank-scoped patterns, interpretation and extraction evidence |
-| `finance-core` | Pure financial value models, periods, identities, classification, matching and assembly |
-| `ml-assist` | Pure Kotlin family assistance, forecasting and recurring-pattern detection |
-| `ui-kit` | Shared theme, fonts, components and charts |
+| <img src="docs/screenshots/home-en.png" width="280" alt="English home screen showing salary-period inflow, outflow and commitments"> | <img src="docs/screenshots/cards-en.png" width="280" alt="English cards screen showing credit facilities and debit cards"> |
+| **Search your transactions** | **Review uncertain messages** |
+| <img src="docs/screenshots/transactions-en.png" width="280" alt="English transaction history with search and filters"> | <img src="docs/screenshots/review-en.png" width="280" alt="English review inbox for messages requiring a decision"> |
 
-The tested engine and analytics are integrated directly into the app. There is no separate Lab screen, database namespace or generated copy of the application. Existing internal Kotlin package names are retained where that avoids unnecessary changes.
+These are production screens captured with synthetic financial data. Arabic/RTL, English, and light/dark/system appearance are supported.
 
-## Build and verify
+## Get started
 
-Use JDK 17 and an Android SDK configured in `local.properties` (`sdk.dir=...`).
+1. Download an APK from [Releases](https://github.com/bakhshb/masroof/releases) and install it on Android 8.0 or later.
+2. Select your banks and the receipt-date range you want to import. Grant SMS access when prompted.
+3. Confirm ownership of your accounts and cards, configure card types, and review uncertain messages.
+4. Explore your salary-period dashboard. New supported bank messages enter the same durable processing and review flow.
+
+The app includes an update checker. Choose stable or nightly releases in Settings; nightly builds are prereleases. Export a password-protected backup before moving to another device.
+
+## What you can do
+
+- **Understand your cash flow:** salary-period inflow, outflow, spending, and account balances.
+- **Track cards and commitments:** debit spending, shared credit-facility dues, loans, and recurring payments.
+- **Find the evidence:** transaction search, filters, SMS details, and a review inbox with explicit corrections.
+- **Choose what to import:** bank-scoped historical SMS import with inclusive receipt dates, duplicate protection, and retry recovery.
+- **Teach message patterns:** review extracted fields and explicitly approve financial patterns before applying them.
+- **Explore spending:** historical spending, purchase forecasts, recurring-payment suggestions, and optional phone alerts.
+- **Keep a backup:** encrypted export and recovery, including settings, analysis, and message patterns.
+
+Forecasts and suggestions are advisory. Local learning can assist eligible message families, but never supplies money, ownership, or posting approval. Statistical models remain disabled when their qualification requirements are not met; rules and consistent explicit human templates remain available.
+
+## Bank support
+
+| Bank or catalog entry | Current status |
+| --- | --- |
+| Bank AlJazira | Bundled role definitions and fixture-tested interpretation |
+| STC Bank | Six bundled templates; explicit financial approval is required |
+| Other configured banks | Catalog visibility is not automatic parsing support; teach and approve suitable patterns in Settings |
+
+A bank name in the catalog does not guarantee every message format is supported. Unknown, suspected, and ambiguous messages remain reviewable. Account/card ownership is always a separate decision.
+
+## Privacy and data
+
+Financial records and SMS evidence are stored locally. Automatic Android cloud backup is disabled. Existing exchange-rate and app-update features use the network; the app is not entirely offline. Exported backups are protected by a passphrase.
+
+Updates preserve the production financial database at **schema v18**. Other financial database/backup schemas are rejected without destructive fallback. Model and engine refreshes preserve posted history and manual decisions. See [architecture and recovery](docs/ARCHITECTURE.md) for the storage contracts.
+
+## Build and contribute
+
+Install JDK 27 for Gradle, JDK 21 for compilation/Android unit tests, and Android SDK 37 with Build Tools 37.0.0. Set `sdk.dir` in your local, untracked `local.properties` file.
 
 ```bash
 ./gradlew :app:assembleDebug
 ./gradlew :app:testDebugUnitTest --tests '*MessagePatternsWorkflowTest'
 ./gradlew lintDebug detekt
-python3 ml-assist/tools/train_family_model.py --check
-python3 ml-assist/tools/test_training.py
 ```
 
-Tests export the exact Kotlin-cleaned training features to `app/build/model-training/features.json`; the training check consumes that export. Full unit suites run in PR/main CI; run focused tests locally. Device smoke and stateful recovery/update journeys run separately in CI. Release checks green CI before building the APK.
+Pure JVM modules use JUnit Jupiter; Android/Robolectric tests retain their Android-compatible runner. Run focused tests locally. Full unit suites, model reproducibility, APK builds, device shards, and process-death recovery run in PR/main CI. Release publication checks successful CI for the exact commit before building the APK.
 
-## Data and upgrades
+| Module | Responsibility |
+| --- | --- |
+| `app` | Android UI, workflows, SMS intake, persistence, and recovery |
+| `bank-engine` | Pure bank-pattern interpretation and extraction evidence |
+| `finance-core` | Money, periods, identities, financial classification, matching, and assembly |
+| `ml-assist` | Local family assistance, forecasting, and recurrence detection |
+| `ui-kit` | Shared theme, fonts, components, and charts |
 
-The production database remains `masroof.db`, schema version 18. Updates preserve financial records, SMS identities, ownership, corrections, commitments, settings within schema v18. Older database and financial backup schemas are rejected without migration or destructive fallback. Optional features use separate `learning.db` and `analytics.db` stores. Old Lab data is not imported or automatically erased. Engine/model refreshes target unresolved evidence and preserve posted transactions and manual decisions.
-
-SMS access is requested for import and live intake. Financial data is stored locally; automatic Android cloud backup is disabled. Network access is used by existing exchange-rate and app-update features. Exported backups are password protected. Forecasts are advisory and never post financial transactions.
-
-See [architecture](docs/ARCHITECTURE.md), [analytics](docs/ANALYTICS.md), [design system](docs/DESIGN_SYSTEM.md), [CI](docs/CI.md), [releases](docs/RELEASE.md), and [agent notes](AGENTS.md).
-
-[Cutover file inventory](docs/PRODUCTION_CUTOVER.md).
+Read the [architecture](docs/ARCHITECTURE.md), [testing and CI](docs/CI.md), [release workflow](docs/RELEASE.md), [design system](docs/DESIGN_SYSTEM.md), [analytics](docs/ANALYTICS.md), [learning tools](ml-assist/tools/README.md), and [agent conventions](AGENTS.md) before changing financial behavior. The [modernization record](docs/KOTLIN_MODERNIZATION.md) documents version choices and compatibility verification.

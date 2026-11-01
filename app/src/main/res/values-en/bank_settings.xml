@@ -33,7 +33,6 @@
     <string name="settings_import_no_selected_bank_sms">No messages for the selected banks were found in this period.</string>
     <string name="settings_data_tools_title">Data tools</string>
     <string name="settings_data_tools_hint">Reanalyse stored messages and review exchange rate corrections</string>
-    <string name="settings_corrections_title">Effect of message corrections</string>
     <string name="settings_corrections_scope">This page shows correction insights across the app. Teach message fields and approve patterns inside each bank.</string>
     <string name="settings_current_version">Current version: %1$s</string>
     <string name="settings_statement_bank_scope_hint">The bank in the file must match this selection. Only exact, registered owned accounts are compared.</string>

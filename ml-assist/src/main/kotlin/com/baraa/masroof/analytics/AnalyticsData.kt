@@ -79,7 +79,7 @@ object FinancialCleaner {
 }
 
 fun hash(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-    .joinToString("") { "%02x".format(it) }
+    .toHexString()
 fun median(values: List<Double>): Double {
     if (values.isEmpty()) return 0.0
     val sorted = values.sorted(); val middle = sorted.size / 2

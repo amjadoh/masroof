@@ -31,12 +31,9 @@ class BankSmsRegistry(
             }
         }
         return when (matches.size) {
-            0 ->
-                if (suspicions.isNotEmpty()) {
-                    BankRoutingResult.SuspectedBank(evidence = suspicions.distinct())
-                } else {
-                    BankRoutingResult.NotMatched(reason = unmatchedReason ?: "sender_not_in_scope")
-                }
+            0 if suspicions.isNotEmpty() ->
+                BankRoutingResult.SuspectedBank(evidence = suspicions.distinct())
+            0 -> BankRoutingResult.NotMatched(reason = unmatchedReason ?: "sender_not_in_scope")
             1 -> matches.single()
             else -> BankRoutingResult.Ambiguous(candidates = matches.sortedBy { it.adapter.bank.id })
         }

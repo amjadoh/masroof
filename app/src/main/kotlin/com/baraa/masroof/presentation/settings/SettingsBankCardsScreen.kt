@@ -1,10 +1,10 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.baraa.masroof.presentation.settings
 
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,6 +24,7 @@ import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.presentation.common.CardOwnershipInlinePrompt
 import com.baraa.masroof.presentation.common.MasroofIcons
+import com.baraa.masroof.presentation.common.formatCardLast4
 import com.baraa.masroof.presentation.common.MasroofSecondaryScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,7 @@ fun SettingsBankCardsScreen(
     onPickCardNetwork: (ManagedCardUi) -> Unit,
     onDismissCardNetwork: () -> Unit,
     onSaveCardSetup: (com.baraa.masroof.domain.model.CardConfiguration) -> Unit = {},
+    deleteActions: RegistryDeleteActions,
     onOpenBank: (() -> Unit)? = null,
     onAddManual: (() -> Unit)? = null,
 ) {
@@ -54,12 +56,16 @@ fun SettingsBankCardsScreen(
     val stoppedCards = state.stoppedCards.filter { it.bank == bank }
     val bankTree = state.bankTree(bank.id)
 
-    SettingsStopConfirmDialog(
-        target = state.stopConfirmCardTarget,
-        updating = state.updating,
-        onDismiss = onDismissStopConfirm,
-        onConfirm = onConfirmStopTracking,
-    )
+    SettingsDeleteDialogHost(state, deleteActions) { (it as? StopTrackingTarget.Card)?.card?.let { card -> registryLabel(card) } }
+    state.stopConfirmCardTarget?.let { target ->
+        SettingsStopConfirmDialog(
+            title = stringResource(R.string.settings_stop_confirm_title),
+            body = stringResource(R.string.settings_stop_confirm_body, formatCardLast4(target.last4)),
+            updating = state.updating,
+            onDismiss = onDismissStopConfirm,
+            onConfirm = onConfirmStopTracking,
+        )
+    }
     SettingsRenameCardDialog(
         target = state.renameCardTarget,
         updating = state.updating,
@@ -126,6 +132,8 @@ fun SettingsBankCardsScreen(
                                 onConfirmOwned = { onConfirmOwned(card) },
                                 onMarkExternal = { onMarkExternal(card) },
                             )
+                            SettingsDeleteAction({ deleteActions.onRequest(StopTrackingTarget.Card(card)) }, !state.updating,
+                                Modifier.padding(top = MasroofSpacing.cardInnerGap))
                         },
                     )
                 }
@@ -141,6 +149,7 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Card(it)) },
                         )
                     }
                     bankTree.allDebitCards.forEach { card ->
@@ -150,6 +159,7 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Card(it)) },
                         )
                     }
                 } else {
@@ -160,6 +170,7 @@ fun SettingsBankCardsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameCard = onRenameCard,
                             onPickCardNetwork = onPickCardNetwork,
+                            onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Card(it)) },
                         )
                     }
                 }
@@ -192,6 +203,8 @@ fun SettingsBankCardsScreen(
                                 onClick = { onResumeTracking(card) },
                                 enabled = !state.updating,
                             )
+                            androidx.compose.foundation.layout.Spacer(Modifier.width(com.baraa.masroof.ui.theme.MasroofSpacing.smallGap))
+                            SettingsDeleteAction({ deleteActions.onRequest(StopTrackingTarget.Card(card)) }, !state.updating)
                         },
                     )
                 }
@@ -215,6 +228,7 @@ internal fun SettingsRegistryCardRow(
     onRequestStopTracking: (ManagedCardUi) -> Unit,
     onRenameCard: (ManagedCardUi) -> Unit,
     onPickCardNetwork: (ManagedCardUi) -> Unit,
+    onRequestDelete: (ManagedCardUi) -> Unit,
 ) {
     SettingsRegistryItemCard(
         icon = MasroofIcons.cardPayment,
@@ -237,6 +251,7 @@ internal fun SettingsRegistryCardRow(
                 onPickNetwork = { onPickCardNetwork(card) },
                 includeRename = false,
                 onStop = { onRequestStopTracking(card) },
+                onDelete = { onRequestDelete(card) },
             )
         },
     )

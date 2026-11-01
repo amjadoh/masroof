@@ -15,10 +15,6 @@ object RegistryEntityIdFactory {
 
     fun newCardId(): String = "creg_${randomToken()}"
 
-    fun newCreditFacilityId(): String = "freg_${randomToken()}"
-
-    fun newLoanId(): String = "lreg_${randomToken()}"
-
     fun newCommitmentId(): String = "cmt_${randomToken()}"
 
     fun stableAccountId(bankId: String, maskedNumber: String): String =
@@ -37,7 +33,7 @@ object RegistryEntityIdFactory {
         val canonical = parts.joinToString(separator = "\u001e")
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))
-        val hex = digest.take(16).joinToString(separator = "") { byte -> "%02x".format(byte) }
+        val hex = digest.toHexString(endIndex = 16)
         return "${prefix}_$hex"
     }
 

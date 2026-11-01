@@ -10,6 +10,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -32,25 +33,31 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     onImportBank: ((String) -> Unit)? = null, onOpenAccounts: (() -> Unit)? = null) {
     val bankScope = source?.bankId ?: initialBankId
     var snapshot by remember { mutableStateOf<PatternCatalog?>(null) }
-    var selectedBank by remember { mutableStateOf(bankScope) }
-    var selectedPattern by remember { mutableStateOf<String?>(null) }
-    var teaching by remember { mutableStateOf(source != null) }
-    var addingBank by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var sender by remember { mutableStateOf(source?.sender.orEmpty()) }
+    var selectedBank by rememberSaveable { mutableStateOf(bankScope) }
+    var selectedPattern by rememberSaveable { mutableStateOf<String?>(null) }
+    var teaching by rememberSaveable { mutableStateOf(source != null) }
+    var addingBank by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var sender by rememberSaveable { mutableStateOf(source?.sender.orEmpty()) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
-    var approving by remember { mutableStateOf(false) }
-    var savedTeaching by remember { mutableStateOf(false) }
-    var savedBody by remember { mutableStateOf("") }
-    var showPending by remember { mutableStateOf(false) }
+    var approving by rememberSaveable { mutableStateOf(false) }
+    var savedTeaching by rememberSaveable { mutableStateOf(false) }
+    // Text the user typed; a Review message is never copied here because it is read again from the source.
+    var savedBody by rememberSaveable { mutableStateOf("") }
+    var showPending by rememberSaveable { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingPatternReport?>(null) }
     var applied by remember { mutableStateOf<PendingPatternApplyReport?>(null) }
-    var savedApproval by remember { mutableStateOf(false) }
-    var editingPattern by remember { mutableStateOf<PatternDefinitionView?>(null) }
+    var savedApproval by rememberSaveable { mutableStateOf(false) }
+    // Saved by id: a restored teaching screen must still save a revision of the pattern being edited, not a new one.
+    var editingPatternId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Only the starting text: the teaching screen saves what the user then edits.
     var editingBody by remember { mutableStateOf("") }
-    var confirmingDelete by remember { mutableStateOf(false) }
-    var history by remember { mutableStateOf(false) }
+    // A copy or a built-in edit teaches a new pattern of the same movement; the edit then turns the original off.
+    var teachingOperation by rememberSaveable { mutableStateOf<PatternOperation?>(null) }
+    var replacingPattern by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmingDelete by rememberSaveable { mutableStateOf(false) }
+    var history by rememberSaveable { mutableStateOf(false) }
     var quickPreview by remember { mutableStateOf<PatternDefinitionView?>(null) }
     val scope = rememberCoroutineScope()
     fun work(action: suspend () -> Unit) {
@@ -62,6 +69,9 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
             catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
             finally { busy = false }
         }
+    }
+    suspend fun exampleBody(pattern: PatternDefinitionView) = source?.body ?: savedBody.ifBlank {
+        workflow.approvalExamples(pattern.bankId, requireNotNull(snapshot).generation, pattern.id).firstOrNull()?.body.orEmpty()
     }
     fun back() {
         if (busy) return
@@ -86,17 +96,21 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     BackHandler { back() }
     val bank = snapshot?.banks?.singleOrNull { it.bankId == selectedBank }
     val pattern = bank?.currentPatterns?.singleOrNull { it.id == selectedPattern }
+    // Looked up once per edit (and when the catalog first loads after a restore), so a later reload that no longer
+    // lists the pattern cannot quietly turn the edit into a new copy; saving then fails visibly instead.
+    val editingPattern = remember(editingPatternId, bank?.bankId) { editingPatternId?.let { id -> bank?.currentPatterns?.singleOrNull { it.id == id } } }
     fun applyPending(generation: Long, reviewId: String? = null, patternId: String? = null) = work {
         val bankId = requireNotNull(bank).bankId
         pending = null
-        applied = workflow.applyPending(bankId, generation, reviewId, patternId)
-        pending = workflow.previewPending(bankId, generation)
+        val result = workflow.applyPending(bankId, generation, reviewId, patternId)
+        applied = result
+        pending = result.pendingAfter
     }
-    LaunchedEffect(bank?.bankId, snapshot?.generation, showPending, selectedPattern, teaching) {
-        if (bank != null && workflow.canPreviewPending && !teaching &&
-            (showPending && selectedPattern == null || pattern?.canApply == true)) {
+    LaunchedEffect(bank?.bankId, snapshot?.generation, selectedPattern, teaching) {
+        if (bank != null && workflow.canPreviewPending && !teaching && (selectedPattern == null || pattern != null)) {
             pending = null
-            try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation) }
+            try { pending = workflow.previewPending(bank.bankId, requireNotNull(snapshot).generation,
+                forceEnabledPatternId = pattern?.takeUnless { it.canApply }?.id) }
             catch (e: CancellationException) { throw e }
             catch (caught: Exception) { workflow.reportFailure("MessagePatternsScreen", caught); failed = true }
         }
@@ -104,17 +118,34 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
     if (bank != null && teaching && (source == null || source.sender in bank.senders)) {
         PatternTeachingScreen(workflow, requireNotNull(snapshot).generation, bank, source,
             onSaved = { preview, body ->
-                teaching = false; editingPattern = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = body
-                work { snapshot = workflow.catalog() }
+                teaching = false; editingPatternId = null; selectedPattern = preview.patternId; savedTeaching = true; savedBody = if (source == null) body else ""
+                // A built-in edit keeps the original on until its replacement is approved, so messages never fall between them.
+                val replaced = replacingPattern
+                teachingOperation = null
+                work {
+                    val catalog = workflow.catalog()
+                    snapshot = catalog
+                    val saved = catalog.banks.flatMap { it.currentPatterns }.singleOrNull { it.id == preview.patternId }
+                    // An edit that passed its prior approval again stays approved; a fresh pattern from Review goes straight to approval.
+                    if (saved?.status == PatternApprovalStatus.APPROVED) { savedTeaching = false; savedApproval = true }
+                    else if ((source != null || replaced != null) && workflow.canApprove && saved?.canApprove == true) approving = true
+                }
             }, onReload = { work { snapshot = workflow.catalog() } },
-            onBack = { if (source != null && editingPattern == null) onBack() else { teaching = false; editingPattern = null } },
-            existingPattern = editingPattern, initialBody = editingBody)
+            onBack = { if (source != null && editingPattern == null && teachingOperation == null) onBack()
+                else { teaching = false; editingPatternId = null; teachingOperation = null; replacingPattern = null } },
+            existingPattern = editingPattern, initialBody = editingBody, initialOperation = teachingOperation)
         return
     }
     if (pattern != null && approving) {
         PatternFinancialApprovalScreen(workflow, requireNotNull(snapshot).generation, pattern,
             source?.body ?: savedBody, source != null || savedBody.isNotBlank(),
-            onSaved = { snapshot = it; approving = false; savedTeaching = false; savedApproval = true; applied = null }, onBack = { approving = false })
+            onSaved = { saved ->
+                snapshot = saved; approving = false; savedTeaching = false; savedApproval = true; applied = null
+                replacingPattern?.let { replaced -> replacingPattern = null; work {
+                    workflow.setEnabled(workflow.catalog().generation, pattern.bankId, replaced, false)
+                    snapshot = workflow.catalog()
+                } }
+            }, onBack = { approving = false; replacingPattern = null })
         return
     }
     if (bank != null && pattern != null && history) {
@@ -206,13 +237,22 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                             snapshot = workflow.catalog(); savedApproval = false; applied = null
                         } },
                         onEdit = if (pattern.canEdit) ({ work {
-                            editingBody = source?.body ?: savedBody.ifBlank {
-                                workflow.approvalExamples(bank.bankId, configuration.generation, pattern.id).firstOrNull()?.body.orEmpty()
-                            }
-                            editingPattern = pattern; teaching = true
+                            editingBody = exampleBody(pattern)
+                            editingPatternId = pattern.id; teaching = true
+                        } }) else if (pattern.recognitionPhrases.isNotEmpty() && operationOf(pattern) != null) ({ work {
+                            editingBody = exampleBody(pattern); editingPatternId = null
+                            teachingOperation = operationOf(pattern); replacingPattern = pattern.id; teaching = true
                         } }) else null,
+                        onCopy = operationOf(pattern)?.let { operation -> { work {
+                            editingBody = exampleBody(pattern); editingPatternId = null
+                            teachingOperation = operation; replacingPattern = null; teaching = true
+                        } } },
                         onDelete = { confirmingDelete = true },
                         onHistory = { history = true })
+                    if (!pattern.canApply && workflow.canApprove) pending?.let { report ->
+                        val count = report.matchingCount(pattern.id)
+                        if (count > 0) MasroofHintBox(stringResource(R.string.pattern_approval_matching_preview, count))
+                    }
                     if (source?.reviewId != null && pattern.canApply && workflow.canApplyPending) {
                         MasroofButton(onClick = { applyPending(configuration.generation, source.reviewId, pattern.id) },
                             enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("pattern-apply-current")) { Text(stringResource(R.string.teaching_apply_current)) }
@@ -244,9 +284,10 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                     if (workflow.canApprove) BankMessageAccountSetupCard(workflow, bank.bankId, bank.displayName ?: bank.bankId,
                         configuration.generation, { work { snapshot = workflow.catalog() } })
                     if (source != null && source.sender !in bank.senders) Text(stringResource(R.string.pattern_sender_mismatch), color = MaterialTheme.colorScheme.error)
-                    MasroofButton(onClick = { teaching = true; editingPattern = null; editingBody = ""; savedTeaching = false; savedBody = "" },
+                    MasroofButton(onClick = { teaching = true; editingPatternId = null; editingBody = ""; savedTeaching = false; savedBody = "" },
                         enabled = !busy && (source == null || source.sender in bank.senders), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.pattern_teach)) }
                     Text(stringResource(R.string.teaching_catalog), style = MaterialTheme.typography.titleLarge)
+                    val conflicting = pending?.conflictingPatternIds.orEmpty()
                     bank.currentPatterns.groupBy { it.label }.forEach { (label, patterns) ->
                         MasroofCard {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -258,7 +299,7 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
                                     MasroofReferenceNavigationRow(
                                         title = item.example.lineSequence().firstOrNull { it.isNotBlank() }?.take(80) ?: patternOperationName(item.label),
                                         subtitle = patternOperationName(item.label),
-                                        status = patternStatusName(item), icon = MasroofIcons.sms,
+                                        badges = patternBadges(item, item.id in conflicting), icon = MasroofIcons.sms,
                                         onClick = { if (!busy) { selectedPattern = item.id; savedBody = ""; applied = null; savedApproval = false } },
                                         divider = index != patterns.lastIndex,
                                         modifier = Modifier.weight(1f).testTag("pattern-open-${bank.bankId}-${item.id}"),
@@ -285,7 +326,6 @@ fun MessagePatternsScreen(workflow: MessagePatternsWorkflow, initialBankId: Stri
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 internal fun PatternChoice(options: List<String>, selected: String, enabled: Boolean, onChoose: (Int) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
@@ -294,3 +334,5 @@ internal fun PatternChoice(options: List<String>, selected: String, enabled: Boo
         }
     }
 }
+
+private fun operationOf(pattern: PatternDefinitionView) = PatternOperation.entries.firstOrNull { it.name == pattern.label }

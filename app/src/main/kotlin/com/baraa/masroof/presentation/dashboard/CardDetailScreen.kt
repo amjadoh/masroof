@@ -13,6 +13,8 @@ fun CardDetailScreen(
     state: DashboardUiState,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
+    /** Opens this bank's card settings (network, type, account, role). */
+    onManageCard: (() -> Unit)? = null,
 ) {
     val cardTransactions = DashboardSummaryTransactionFilter.forCard(
         transactions = state.allTransactions,
@@ -41,6 +43,11 @@ fun CardDetailScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        onManageCard?.let { manage ->
+            com.baraa.masroof.presentation.common.MasroofOutlinedButton(manage, Modifier.fillMaxWidth()) {
+                com.baraa.masroof.presentation.common.MasroofText(androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.settings_card_setup))
+            }
+        }
         val trend = state.spendingTrends?.byCard?.get(CardOwnershipKey.of(row))
         trend?.let { CardReferenceAverage(it) }
         SpendingTrendSection(trend, androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.approved_card_daily),

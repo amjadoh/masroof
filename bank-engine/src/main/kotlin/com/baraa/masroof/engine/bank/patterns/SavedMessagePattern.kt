@@ -47,26 +47,32 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
             this.roleProfile.validate()
             val rule = this.roleProfile.rules.single()
             val contract = requireNotNull(this.factContract)
-            require(this.parts.isEmpty() && rule.id == id && contract.family == rule.family && contract.direction == rule.direction)
-            require(contract.sourceAccountBank == null && contract.destinationAccountBank == null && contract.cardBank == null && contract.contextReferences.isEmpty())
-            if (contract.version == 1) require(contract == PatternFactContract(rule.family, rule.direction))
-            else {
-                require(contract.version == 2)
-                val binding = contract.accountBindings.singleOrNull()
-                if (binding == null) require(contract.accountBindings.isEmpty() &&
-                    (contract.currency == null || contract.family == com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT))
+            // Approval may add exact account/card links; every other built-in fact stays the rule's own.
+            val upstreamLink = this.parts.isEmpty() && rule.id == id && contract.accountBindings.none { it.field != null } &&
+                contract.copy(version = 1, accountBindings = emptyList()) == PatternFactContract(rule.family, rule.direction)
+            // Confirmed bank setup keeps its own versioned contract with a bound account and currency.
+            if (!upstreamLink) {
+                require(this.parts.isEmpty() && rule.id == id && contract.family == rule.family && contract.direction == rule.direction)
+                require(contract.sourceAccountBank == null && contract.destinationAccountBank == null && contract.cardBank == null && contract.contextReferences.isEmpty())
+                if (contract.version == 1) require(contract == PatternFactContract(rule.family, rule.direction))
                 else {
-                    require(contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
-                        com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
-                        com.baraa.masroof.engine.bank.MessageFamily.REFUND, com.baraa.masroof.engine.bank.MessageFamily.WITHDRAWAL,
-                        com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT,
-                        com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP, com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT))
-                    if (contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP,
-                            com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT)) require(binding.field != null)
-                    val incoming = contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN,
-                        com.baraa.masroof.engine.bank.MessageFamily.REFUND)
-                    require(binding.bank.value == bankId && binding.field in setOf(null, "source_account", "destination_account") && contract.currency != null &&
-                        binding.role == if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE)
+                    require(contract.version == 2)
+                    val binding = contract.accountBindings.singleOrNull()
+                    if (binding == null) require(contract.accountBindings.isEmpty() &&
+                        (contract.currency == null || contract.family == com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT))
+                    else {
+                        require(contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.PURCHASE,
+                            com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN, com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_OUT,
+                            com.baraa.masroof.engine.bank.MessageFamily.REFUND, com.baraa.masroof.engine.bank.MessageFamily.WITHDRAWAL,
+                            com.baraa.masroof.engine.bank.MessageFamily.FEE, com.baraa.masroof.engine.bank.MessageFamily.FINANCING_INSTALLMENT,
+                            com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP, com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT))
+                        if (contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.CARD_PAYMENT, com.baraa.masroof.engine.bank.MessageFamily.CARD_TOP_UP,
+                                com.baraa.masroof.engine.bank.MessageFamily.BILL_PAYMENT)) require(binding.field != null)
+                        val incoming = contract.family in setOf(com.baraa.masroof.engine.bank.MessageFamily.TRANSFER_IN,
+                            com.baraa.masroof.engine.bank.MessageFamily.REFUND)
+                        require(binding.bank.value == bankId && binding.field in setOf(null, "source_account", "destination_account") && contract.currency != null &&
+                            binding.role == if (incoming) PatternAccountRole.DESTINATION else PatternAccountRole.SOURCE)
+                    }
                 }
             }
         } else require(this.parts.size in 3..33 && this.parts.size % 2 == 1)
@@ -127,7 +133,7 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
                     choice.field in numericMoneyFields && raw.matches(Regex(FieldKind.DECIMAL.pattern(raw))) -> FieldKind.DECIMAL
                     raw.matches(Regex("[0-9]+")) -> FieldKind.DIGITS
                     raw.matches(Regex(FieldKind.MONEY.pattern(raw))) && FieldKind.MONEY.accepts(raw) -> FieldKind.MONEY
-                    else -> FieldKind.values().firstOrNull { it.dateFormat != null && raw.matches(Regex(it.pattern(raw))) && it.accepts(raw) }
+                    else -> FieldKind.entries.firstOrNull { it.dateFormat != null && raw.matches(Regex(it.pattern(raw))) && it.accepts(raw) }
                         ?: FieldKind.TEXT
                 }
                 // Explicit user ranges also cover values discovery could not offer.

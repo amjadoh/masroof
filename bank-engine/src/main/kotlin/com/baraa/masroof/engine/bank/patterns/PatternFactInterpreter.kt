@@ -42,15 +42,16 @@ data class PatternFactContract(
     }
 }
 
-enum class PatternAccountRole { SOURCE, DESTINATION }
+enum class PatternAccountRole { SOURCE, DESTINATION, CARD }
 
-/** Exact user link to an existing canonical account. It declares no ownership. Null field is a definition constant. */
+/** Exact user link to an existing canonical account or card. It declares no ownership. Null field is a definition constant. */
 data class PatternAccountBinding(val role: PatternAccountRole, val bank: BankId, val last4: String,
     val field: String? = null, val observedValue: String? = null) {
     init {
         require(last4.matches(Regex("[0-9]{4}")))
         require((field == null) == (observedValue == null))
         require(field == null || field in setOf("source_account", "destination_account", "account_reference"))
+        require(field == null || role != PatternAccountRole.CARD)
         require(field != "source_account" || role == PatternAccountRole.SOURCE)
         require(field != "destination_account" || role == PatternAccountRole.DESTINATION)
         require(observedValue == null || observedValue.matches(Regex("[0-9]{1,4}|(?=[*x0-9]{1,34}$)(?=.*[*x])(?=.*[0-9])[*x0-9]+")))
@@ -65,6 +66,9 @@ private val PATTERN_REFERENCE_FIELDS = setOf("source_account", "destination_acco
 data class PatternProvenance(val configurationFingerprint: String, val patternId: String, val revision: Int,
     val definitionFacts: Set<String>, val usesReceiptTime: Boolean, val roleProfile: Boolean = false)
 
+/** A message's interpretation and the enabled patterns it matched on the way. */
+data class RoutedPreview(val interpretation: Interpretation, val matches: List<Pair<SavedMessagePattern, Preview>>)
+
 /** Immutable configuration snapshot. Routing has already selected the bank; sender detection is not repeated. */
 class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     private val snapshot = configuration.copy(banks = configuration.banks.map {
@@ -72,7 +76,18 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     })
     val fingerprint: String = fingerprint(snapshot)
 
-    fun interpretRouted(input: MessageInput, bank: BankId, familyAssist: FamilyAssist? = null): Interpretation {
+    fun interpretRouted(input: MessageInput, bank: BankId, familyAssist: FamilyAssist? = null): Interpretation =
+        interpret(input, bank, familyAssist, null)
+
+    /** One pass for previews: the interpretation plus every enabled pattern, taught or role, the message matches. */
+    fun previewRouted(input: MessageInput, bank: BankId): RoutedPreview {
+        var matched = emptyList<Pair<SavedMessagePattern, Preview>>()
+        val interpretation = interpret(input, bank, null) { matched = it }
+        return RoutedPreview(interpretation, matched)
+    }
+
+    private fun interpret(input: MessageInput, bank: BankId, familyAssist: FamilyAssist?,
+        observe: ((List<Pair<SavedMessagePattern, Preview>>) -> Unit)?): Interpretation {
         val version = InterpretationVersion(1, "message-pattern-facts-v1", fingerprint)
         fun unresolved(code: String, blocker: Blocker = Blocker.UNKNOWN_FAMILY) = Interpretation(input.evidenceId,
             version, bank, Facts(MessageFamily.UNKNOWN), ParseStatus.REVIEW_REQUIRED, null, emptyList(),
@@ -82,13 +97,22 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         val security = otpEvidence(SourceText(input.body))
         if (security.isNotEmpty()) return Interpretation(input.evidenceId, version, bank, Facts(MessageFamily.OTP),
             ParseStatus.NON_FINANCIAL, null, security, emptySet())
+        val taught = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
+            // Use the pattern's declared sender only to invoke its body compiler, after routing.
+            pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
+        }
+        // An unapproved (preview-only) pattern is shown in previews but never competes with approved or bundled ones.
+        val matches = taught.filter { it.first.factContract != null }
         val roles = definition.currentPatterns.filter { it.roleProfile != null && it.sender in definition.senders }
         val roleResult = if (roles.isEmpty()) null else {
             val profiles = roles.map { requireNotNull(it.roleProfile) }
             val profile = profiles.first()
-            if (profiles.any { it.network != profile.network || it.schema != profile.schema })
+            if (profiles.any { it.network != profile.network || it.schema != profile.schema }) {
+                observe?.invoke(taught)
                 return unresolved("PATTERN_PROFILE_CONFLICT", Blocker.CONFLICTING_FACTS)
-            val defaults = roles.mapNotNull { pattern -> pattern.factContract?.takeIf { it.version >= 2 &&
+            }
+            // Confirmed bank setup (a bound account with a declared currency) fills its roles inside the rule.
+            val defaults = roles.mapNotNull { pattern -> pattern.factContract?.takeIf { it.version >= 2 && it.currency != null &&
                 (it.accountBindings.isNotEmpty() || it.family == MessageFamily.FINANCING_INSTALLMENT && it.currency != null) &&
                 it.accountBindings.all { binding -> binding.bank == bank } }?.let { contract ->
                 pattern.id to RuleFactDefaults(
@@ -102,11 +126,16 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         val roleMatches = roles.filter { pattern -> roleResult?.evidence?.any { it.field == "family" && it.ruleId == pattern.id } == true }
         val activeRoles = roleMatches.filter { it.enabled }
-        val matches = definition.currentPatterns.filter { it.roleProfile == null && it.sender in definition.senders }.mapNotNull { pattern ->
-            // Use the pattern's declared sender only to invoke its body compiler, after routing.
-            pattern.preview(bank.value, pattern.sender, input.body)?.let { pattern to it }
+        if (observe != null) {
+            val roleFields = roleResult?.evidence.orEmpty().filter { it.field != "family" }
+                .associate { span -> span.field.lowercase(Locale.ROOT) to TextSpan(span.slice(input), span.start, span.end) }
+            observe(taught + activeRoles.map { it to Preview(it.label, roleFields) })
         }
-        if (roleResult != null && (matches.isEmpty() || activeRoles.isNotEmpty())) {
+        // A taught pattern may complete an incomplete recognized role of the same family, never contradict it.
+        val completesRole = roleResult != null && roleResult.status != ParseStatus.SUCCESS && matches.size == 1 &&
+            roleResult.facts.family != MessageFamily.UNKNOWN && matches.single().first.factContract?.family == roleResult.facts.family
+        // A matching preview-only template keeps its approval offer unless a recognized role is active.
+        if (roleResult != null && !completesRole && (taught.isEmpty() || activeRoles.isNotEmpty())) {
             if (matches.isNotEmpty()) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
             val selected = activeRoles.firstOrNull() ?: roles.firstOrNull {
                 it.enabled && roleResult.familyInference != null && it.factContract?.family == roleResult.facts.family
@@ -114,14 +143,16 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if ((selected == null && (roleMatches.isNotEmpty() || roleResult.status == ParseStatus.SUCCESS)) || roleMatches.any { !it.enabled })
                 return unresolved("PATTERN_DISABLED")
             val stamp = selected ?: roles.first()
-            return roleResult.copy(version = InterpretationVersion(1, "message-pattern-roles-v1", "$fingerprint:${stamp.id}:${stamp.revision}"),
+            // Only an approved built-in link (no declared currency) is applied here; confirmed setup was applied as rule defaults.
+            val linked = selected?.factContract?.takeIf { it.version == 2 && it.currency == null }?.accountBindings.orEmpty()
+            return withLinks(roleResult, linked).copy(version = InterpretationVersion(1, "message-pattern-roles-v1", "$fingerprint:${stamp.id}:${stamp.revision}"),
                 patternProvenance = PatternProvenance(fingerprint, stamp.id, stamp.revision, emptySet(), false, roleProfile = true))
         }
         if (roleResult?.blockers?.contains(Blocker.CONFLICTING_FACTS) == true)
             return unresolved("PATTERN_PROFILE_CONTEXT_CONFLICT", Blocker.CONFLICTING_FACTS).let {
                 it.copy(diagnostics = it.diagnostics + roleResult.diagnostics)
             }
-        if (matches.isEmpty()) return unresolved("PATTERN_NOT_MATCHED")
+        if (matches.isEmpty()) return unresolved(if (taught.isEmpty()) "PATTERN_NOT_MATCHED" else "PATTERN_CONTRACT_MISSING")
         if (matches.size != 1) return unresolved("PATTERN_CONFLICT", Blocker.CONFLICTING_FACTS)
         val (pattern, preview) = matches.single()
         val contract = pattern.factContract ?: return unresolved("PATTERN_CONTRACT_MISSING")
@@ -141,7 +172,11 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         fun boundAccount(role: PatternAccountRole): AccountReference? {
             val binding = contract.accountBindings.singleOrNull { it.role == role } ?: return null
             if (binding.field != null) {
-                if (normalized(binding.field) != binding.observedValue) { block("PATTERN_ACCOUNT_BINDING_MISMATCH"); return null }
+                // Bindings saved before masks were stripped keep the masked line (e.g. "*123"); both forms name the same line.
+                val line = normalized(binding.field)
+                if (line != binding.observedValue && line?.let(::unmaskedReference) != binding.observedValue?.let(::unmaskedReference)) {
+                    block("PATTERN_ACCOUNT_BINDING_MISMATCH"); return null
+                }
                 boundFields += binding.field
             }
             definitionFacts += "${role.name}_ACCOUNT_IDENTITY"
@@ -155,7 +190,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             val match = MONEY.matchEntire(raw)
             val number = match?.groups?.get(1)?.value ?: match?.groups?.get(4)?.value
             val currencyText = match?.groups?.get(2)?.value ?: match?.groups?.get(3)?.value
-            val observedCurrency = currencyText?.let { if (it == "sr") Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
+            val observedCurrency = currencyText?.let { if (it == "sr" || it.startsWith("ر")) Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
             // A stated transfer fee is charged in the transfer's declared currency.
             val declaredCurrency = contract.currency.takeIf { field == "amount" || field == "fee" }
             if (observedCurrency != null && declaredCurrency != null && observedCurrency != declaredCurrency) {
@@ -170,7 +205,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         }
         fun account(field: String, referenceBank: BankId?): AccountReference? {
             if (field in contract.contextReferences || field in boundFields) return null
-            val raw = normalized(field) ?: return null
+            val raw = normalized(field)?.let(::unmaskedReference) ?: return null
             if (!SUFFIX.matches(raw) || referenceBank == null) { block("PATTERN_ACCOUNT_REFERENCE_UNRESOLVED"); return null }
             definitionFacts += "${field.uppercase(Locale.ROOT)}_BANK"
             return AccountReference(referenceBank, raw)
@@ -186,10 +221,14 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         // A bank clock placeholder (e.g. 01-01-1970) is not a transaction time; the durable receipt is.
         val placeholderTime = parsedTime != null && parsedTime.year < MIN_TRANSACTION_YEAR
         val time = parsedTime.takeUnless { placeholderTime }
-        val card = normalized("card")?.let {
+        val observedCard = normalized("card")?.let(::unmaskedReference)?.let {
             if (!SUFFIX.matches(it) || contract.cardBank == null) { block("PATTERN_CARD_REFERENCE_UNRESOLVED"); null }
             else { definitionFacts += "CARD_BANK"; CardReference(contract.cardBank, it) }
         }
+        val cardLink = contract.accountBindings.singleOrNull { it.role == PatternAccountRole.CARD }
+            ?.takeIf { contract.family in CARD_LINKED }?.let { CardReference(it.bank, it.last4) }
+        if (cardLink != null && observedCard == null) definitionFacts += setOf("CARD_IDENTITY", "CARD_BANK")
+        val card = observedCard ?: cardLink
         preview.fields.keys.filter { it !in SUPPORTED_FIELDS }.forEach { block("PATTERN_ROLE_UNSUPPORTED") }
         // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
         if (preview.fields.keys.any { it in NEUTRAL_REFERENCES && it !in boundFields && it !in contract.contextReferences }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
@@ -230,8 +269,41 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
     }
 
     companion object {
+        /**
+         * Fills only a role the message left empty from the user's approved link; a value the message names stays
+         * the message's. Purchases and refunds take only a card, never a funding account.
+         */
+        internal fun withLinks(result: Interpretation, links: List<PatternAccountBinding>): Interpretation {
+            if (links.isEmpty() || result.status == ParseStatus.NON_FINANCIAL) return result
+            var facts = result.facts
+            val satisfied = mutableSetOf<String>()
+            fun link(role: PatternAccountRole) = links.singleOrNull { it.role == role }
+            val family = facts.family
+            // A movement that names a card was paid by it; only a card payment names the card it settles.
+            if (facts.sourceAccount == null && family in SOURCE_LINKED && (facts.card == null || family == MessageFamily.CARD_PAYMENT))
+                link(PatternAccountRole.SOURCE)?.let {
+                facts = facts.copy(sourceAccount = AccountReference(it.bank, it.last4)); satisfied += setOf("MISSING_TRANSFER_SOURCE", "MISSING_SOURCE_ROLE")
+            }
+            if (facts.destinationAccount == null && family == MessageFamily.TRANSFER_IN) link(PatternAccountRole.DESTINATION)?.let {
+                facts = facts.copy(destinationAccount = AccountReference(it.bank, it.last4)); satisfied += "MISSING_TRANSFER_DESTINATION"
+            }
+            // A purchase that names a funding account is already complete; adding a card would change its channel.
+            if (facts.card == null && family in CARD_LINKED &&
+                (family == MessageFamily.CARD_PAYMENT || (facts.sourceAccount == null && facts.destinationAccount == null)))
+                link(PatternAccountRole.CARD)?.let { facts = facts.copy(card = CardReference(it.bank, it.last4)); satisfied += "MISSING_CARD_ROLE" }
+            if (facts == result.facts) return result
+            val diagnostics = result.diagnostics.filterNot { it.code in satisfied }
+            val open = diagnostics.any { it.severity != DiagnosticSeverity.INFO }
+            if (open || result.blockers != setOf(Blocker.VALIDATION_ERROR)) return result.copy(facts = facts, diagnostics = diagnostics)
+            return result.copy(facts = facts.copy(executionState = "EXECUTED"), diagnostics = diagnostics,
+                blockers = emptySet(), status = ParseStatus.SUCCESS)
+        }
+        private val SOURCE_LINKED = setOf(MessageFamily.TRANSFER_OUT, MessageFamily.WITHDRAWAL, MessageFamily.CARD_PAYMENT,
+            MessageFamily.BILL_PAYMENT, MessageFamily.FINANCING_INSTALLMENT, MessageFamily.FEE)
+        val CARD_LINKED = setOf(MessageFamily.PURCHASE, MessageFamily.REFUND, MessageFamily.CARD_PAYMENT)
         private val DECIMAL = Regex("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?")
-        private val MONEY = Regex("(?:(${DECIMAL.pattern}) *(sar|sr|usd|eur|gbp)|(sar|sr|usd|eur|gbp) *(${DECIMAL.pattern}))")
+        private const val CURRENCY = "sar|sr|usd|eur|gbp|ريال سعودي|ريال|ر\\.س\\.?"
+        private val MONEY = Regex("(?:(${DECIMAL.pattern}) *($CURRENCY)|($CURRENCY) *(${DECIMAL.pattern}))")
         private val SUFFIX = Regex("[0-9]{4}")
         private const val MIN_TRANSACTION_YEAR = 2000
         private val NEUTRAL_REFERENCES = setOf("account_reference", "funding_reference", "counterparty_bank")
@@ -289,7 +361,11 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
                     }
                 }
             }
-            return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(it) }
+            return MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).toHexString()
         }
     }
 }
+
+/** `*1234`, `xx1234`, `1234**` and `(1234)` name the same reference as `1234`; approval and interpretation share this. */
+fun unmaskedReference(normalized: String): String =
+    normalized.trim().replace(Regex("^[(*x•.]+|[)*x•.]+$"), "")

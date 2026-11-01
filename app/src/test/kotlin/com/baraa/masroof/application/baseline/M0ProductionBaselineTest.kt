@@ -75,15 +75,15 @@ class M0ProductionBaselineTest {
     fun toolchainAndSideloadUpdate_matchTheReviewedBuild() {
         val versions = File("../gradle/libs.versions.toml").readText()
         // M1 updates the reviewed toolchain; financial and storage baseline locks stay unchanged.
-        assertEquals("2.0.21", version(versions, "kotlin"))
-        assertEquals("8.6.1", version(versions, "agp"))
-        assertEquals("2.6.1", version(versions, "room"))
-        assertEquals("2.9.0", version(versions, "workmanager"))
-        assertEquals("2024.06.00", version(versions, "composeBom"))
+        assertEquals("2.4.21", version(versions, "kotlin"))
+        assertEquals("9.5.0", version(versions, "agp"))
+        assertEquals("2.8.5", version(versions, "room"))
+        assertEquals("2.12.0", version(versions, "workmanager"))
+        assertEquals("2026.09.00", version(versions, "composeBom"))
         val gradle = File("build.gradle.kts").readText()
         assertTrue(gradle.contains("applicationId = \"com.baraa.masroof\""))
-        assertTrue(gradle.contains("compileSdk = 35"))
-        assertTrue(gradle.contains("targetSdk = 34"))
+        assertTrue(gradle.contains("compileSdk = 37"))
+        assertTrue(gradle.contains("targetSdk = 36"))
         assertTrue(gradle.contains("minSdk = 26"))
         assertTrue(gradle.contains("project(\":bank-engine\")"))
         assertFalse(gradle.contains("project(\":lab:android\")"))
@@ -109,12 +109,12 @@ class M0ProductionBaselineTest {
     fun userPaths_selectBanksThenDiscoverAndReview() {
         assertEquals(
             listOf("WELCOME", "BANKS", "PERMISSION", "IMPORT_DATE", "IMPORTING", "OWNERSHIP", "FINALIZE", "HOME"),
-            OnboardingStep.values().map { it.name },
+            OnboardingStep.entries.map { it.name },
         )
         assertEquals("my_accounts", SettingsDestination.MyAccounts.encode())
         assertEquals("my_cards", SettingsDestination.MyCards.encode())
         assertEquals("about", SettingsDestination.About.encode())
-        assertTrue(HomeDestination.values().any { it.name == "Review" })
+        assertTrue(HomeDestination.entries.any { it.name == "Review" })
         assertFalse(File(sourceRoot, "presentation/navigation/SettingsDestination.kt").readText().contains("add_card"))
         assertFalse(File(sourceRoot, "presentation/navigation/AppNavigation.kt").readText().contains("Beta"))
     }

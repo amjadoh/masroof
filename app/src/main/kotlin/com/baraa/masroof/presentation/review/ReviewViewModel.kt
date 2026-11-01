@@ -1,5 +1,7 @@
 package com.baraa.masroof.presentation.review
 
+import com.baraa.masroof.presentation.common.launchLogged
+import com.baraa.masroof.application.logging.AppLogCategories
 import androidx.lifecycle.ViewModel
 import com.baraa.masroof.application.locale.AppLocale
 import com.baraa.masroof.application.locale.AppLocaleRepository
@@ -21,6 +23,7 @@ import com.baraa.masroof.domain.model.ReviewResolutionKind
 import com.baraa.masroof.domain.model.ReviewStatus
 import com.baraa.masroof.presentation.dashboard.MoneyUiFormatter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +52,7 @@ class ReviewViewModel(
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
 
     private var refreshRequested = false
+    private var refreshJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -69,16 +73,12 @@ class ReviewViewModel(
 
     fun refresh() {
         refreshRequested = true
-        viewModelScope.launch {
+        // A slower load for the previous tab must not overwrite the current one.
+        refreshJob?.cancel()
+        refreshJob = launchLogged(appLogService, AppLogCategories.REVIEW, "Review refresh", onError = { _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) } }) {
             _uiState.update { it.copy(loading = true, error = null) }
-            try {
-                val summaries = loadCurrentSummaries()
-                applySummaries(summaries)
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review refresh", caught);
-                _uiState.update { it.copy(loading = false, error = ReviewError.LOAD_FAILED) }
-            }
+            val summaries = loadCurrentSummaries()
+            applySummaries(summaries)
         }
     }
 
@@ -98,35 +98,29 @@ class ReviewViewModel(
     }
 
     fun dismissAllInformational() {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review dismissAllInformational", onError = { _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) } }) {
             _uiState.update { it.copy(resolving = true, error = null, message = null, actionErrorDetail = null) }
-            try {
-                val summaries = detailLoader.loadSummaries()
-                val dismissible = summaries.filter { summary ->
-                    shouldOfferNonFinancialDismiss(
-                        messageFamily = summary.messageFamily,
-                        reasons = summary.review.reasons,
-                    )
+            val summaries = detailLoader.loadSummaries()
+            val dismissible = summaries.filter { summary ->
+                shouldOfferNonFinancialDismiss(
+                    messageFamily = summary.messageFamily,
+                    reasons = summary.review.reasons,
+                )
+            }
+            var dismissed = 0
+            for (summary in dismissible) {
+                when (reviewWorkflowService.resolveAsNonFinancial(summary.review.id)) {
+                    is ReviewWorkflowResult.Success -> dismissed++
+                    is ReviewWorkflowResult.Rejected -> Unit
                 }
-                var dismissed = 0
-                for (summary in dismissible) {
-                    when (reviewWorkflowService.resolveAsNonFinancial(summary.review.id)) {
-                        is ReviewWorkflowResult.Success -> dismissed++
-                        is ReviewWorkflowResult.Rejected -> Unit
-                    }
-                }
-                applySummaries(detailLoader.loadSummaries())
-                _uiState.update {
-                    it.copy(
-                        resolving = false,
-                        message = if (dismissed > 0) ReviewMessage.RESOLVED else it.message,
-                        error = if (dismissed == 0 && dismissible.isNotEmpty()) ReviewError.ACTION_FAILED else null,
-                    )
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review dismissAllInformational", caught);
-                _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) }
+            }
+            applySummaries(detailLoader.loadSummaries())
+            _uiState.update {
+                it.copy(
+                    resolving = false,
+                    message = if (dismissed > 0) ReviewMessage.RESOLVED else it.message,
+                    error = if (dismissed == 0 && dismissible.isNotEmpty()) ReviewError.ACTION_FAILED else null,
+                )
             }
         }
     }
@@ -169,20 +163,14 @@ class ReviewViewModel(
     /** Reload saved facts after teaching; returning never triggers financial reconciliation. */
     fun refreshAfterPatternTeaching() {
         val id = _uiState.value.selectedDetail?.id ?: return
-        viewModelScope.launch {
-            try {
-                val detail = detailLoader.loadDetail(id)
-                val resolved = detail?.review?.status == ReviewStatus.RESOLVED
-                val updated = if (detail == null || resolved) null else toDetailUi(detail, pairCandidatesFor(detail))
-                applySummaries(loadCurrentSummaries())
-                _uiState.update {
-                    if (it.selectedDetail?.id != id) it
-                    else it.copy(selectedDetail = updated, message = if (resolved) ReviewMessage.RESOLVED else null)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review refreshAfterPatternTeaching", caught);
-                _uiState.update { it.copy(error = ReviewError.LOAD_FAILED) }
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review refreshAfterPatternTeaching", onError = { _uiState.update { it.copy(error = ReviewError.LOAD_FAILED) } }) {
+            val detail = detailLoader.loadDetail(id)
+            val resolved = detail?.review?.status == ReviewStatus.RESOLVED
+            val updated = if (detail == null || resolved) null else toDetailUi(detail, pairCandidatesFor(detail))
+            applySummaries(loadCurrentSummaries())
+            _uiState.update {
+                if (it.selectedDetail?.id != id) it
+                else it.copy(selectedDetail = updated, message = if (resolved) ReviewMessage.RESOLVED else null)
             }
         }
     }
@@ -246,38 +234,34 @@ class ReviewViewModel(
 
     fun restoreIgnoredMessage(newType: FinancialTransactionType? = null) {
         val rawSmsId = _uiState.value.selectedDetail?.rawSmsId ?: return
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review restoreIgnoredMessage", onError = {
+            _uiState.update {
+                it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
+            }
+        }) {
             _uiState.update { it.copy(resolving = true, error = null, message = null, actionErrorDetail = null) }
-            try {
-                when (val result = transactionRestoreService.restore(rawSmsId, newType)) {
-                    is RestoreResult.Success -> {
-                        val summaries = loadCurrentSummaries()
-                        applySummaries(summaries)
-                        _uiState.update {
-                            it.copy(
-                                loading = false,
-                                resolving = false,
-                                selectedDetail = null,
-                                message = ReviewMessage.RESTORED,
-                                error = null,
-                            )
-                        }
-                    }
-                    is RestoreResult.Rejected -> {
-                        _uiState.update {
-                            it.copy(
-                                resolving = false,
-                                error = ReviewError.ACTION_FAILED,
-                                actionErrorDetail = result.reason,
-                            )
-                        }
+            when (val result = transactionRestoreService.restore(rawSmsId, newType)) {
+                is RestoreResult.Success, RestoreResult.AwaitingReview -> {
+                    val summaries = loadCurrentSummaries()
+                    applySummaries(summaries)
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            resolving = false,
+                            selectedDetail = null,
+                            message = ReviewMessage.RESTORED,
+                            error = null,
+                        )
                     }
                 }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review restoreIgnoredMessage", caught);
-                _uiState.update {
-                    it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
+                is RestoreResult.Rejected -> {
+                    _uiState.update {
+                        it.copy(
+                            resolving = false,
+                            error = ReviewError.ACTION_FAILED,
+                            actionErrorDetail = result.reason,
+                        )
+                    }
                 }
             }
         }
@@ -343,12 +327,12 @@ class ReviewViewModel(
 
     fun resolveSelfTransferPair(partnerReviewId: String) {
         val currentId = _uiState.value.selectedDetail?.id ?: return
-        viewModelScope.launch {
-            val detail = detailLoader.loadDetail(currentId) ?: return@launch
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review resolveSelfTransferPair", onError = { _uiState.update { it.copy(resolving = false, error = ReviewError.ACTION_FAILED) } }) {
+            val detail = detailLoader.loadDetail(currentId) ?: return@launchLogged
             val (outgoingId, incomingId) = when (detail.messageFamily) {
                 MessageFamily.TRANSFER_OUT -> currentId to partnerReviewId
                 MessageFamily.TRANSFER_IN -> partnerReviewId to currentId
-                else -> return@launch
+                else -> return@launchLogged
             }
             runAction {
                 reviewWorkflowService.resolveSelfTransferPair(outgoingId, incomingId)
@@ -357,38 +341,34 @@ class ReviewViewModel(
     }
 
     private fun runAction(action: suspend () -> ReviewWorkflowResult) {
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.REVIEW, "Review runAction", onError = {
+            _uiState.update {
+                it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
+            }
+        }) {
             _uiState.update { it.copy(resolving = true, error = null, message = null, actionErrorDetail = null) }
-            try {
-                when (val result = action()) {
-                    is ReviewWorkflowResult.Success -> {
-                        val resolved = result.review.status == ReviewStatus.RESOLVED
-                        refreshAfterAction(
-                            message = if (resolved) ReviewMessage.RESOLVED else ReviewMessage.STILL_NEEDS_REVIEW,
-                            closeDetail = resolved,
+            when (val result = action()) {
+                is ReviewWorkflowResult.Success -> {
+                    val resolved = result.review.status == ReviewStatus.RESOLVED
+                    refreshAfterAction(
+                        message = if (resolved) ReviewMessage.RESOLVED else ReviewMessage.STILL_NEEDS_REVIEW,
+                        closeDetail = resolved,
+                    )
+                }
+                is ReviewWorkflowResult.Rejected -> {
+                    if (result.reason == "transfer_evidence_changed") {
+                        val detail = _uiState.value.selectedDetail?.let { detailLoader.loadDetail(it.id) }
+                        val candidates = detail?.let { pairCandidatesFor(it) }.orEmpty()
+                        val updated = detail?.let { toDetailUi(it, candidates) }
+                        _uiState.update { it.copy(selectedDetail = updated) }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            resolving = false,
+                            error = ReviewError.ACTION_FAILED,
+                            actionErrorDetail = result.reason,
                         )
                     }
-                    is ReviewWorkflowResult.Rejected -> {
-                        if (result.reason == "transfer_evidence_changed") {
-                            val detail = _uiState.value.selectedDetail?.let { detailLoader.loadDetail(it.id) }
-                            val candidates = detail?.let { pairCandidatesFor(it) }.orEmpty()
-                            val updated = detail?.let { toDetailUi(it, candidates) }
-                            _uiState.update { it.copy(selectedDetail = updated) }
-                        }
-                        _uiState.update {
-                            it.copy(
-                                resolving = false,
-                                error = ReviewError.ACTION_FAILED,
-                                actionErrorDetail = result.reason,
-                            )
-                        }
-                    }
-                }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.REVIEW, "Review runAction", caught);
-                _uiState.update {
-                    it.copy(resolving = false, error = ReviewError.ACTION_FAILED, actionErrorDetail = null)
                 }
             }
         }
@@ -459,6 +439,9 @@ class ReviewViewModel(
                 review.kind.toUiLabelRes()
             },
             title = summary.title ?: "—",
+            titleRes = if (summary.title != null) null
+                else if (summary.messageFamily in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) com.baraa.masroof.R.string.transaction_unknown_merchant
+                else summary.messageFamily.toUiLabelRes(),
             smsBody = summary.body?.trim().orEmpty().ifEmpty { "—" },
             amountLabel = summary.amount?.let { MoneyUiFormatter.format(it, languageTag) },
             dateLabel = dateLabel,
@@ -516,6 +499,8 @@ class ReviewViewModel(
             pairCandidates = pairCandidates,
             showExternalTransferAction = !ignored && (isTransferOut || isTransferIn) &&
                 (pendingMatch || review.kind == ReviewKind.NEEDS_REVIEW),
+            transferBetweenOwnAccounts = !ignored && (isTransferOut || isTransferIn) &&
+                reviewWorkflowService.transferResolvesBetweenOwnAccounts(review.rawSmsId),
             showIncomingIncomeAction = !ignored && pendingMatch && isTransferIn,
             showFinancialTypeActions = !ignored && review.kind == ReviewKind.NEEDS_REVIEW &&
                 !dismissNonFinancial &&

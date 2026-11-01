@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.baraa.masroof.presentation.common.launchLogged
 import com.baraa.masroof.presentation.locale.AppLocaleContext
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -61,6 +62,19 @@ class DashboardViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    private val transactionListWorkflow = com.baraa.masroof.application.dashboard.TransactionListWorkflow()
+
+    fun setTransactionListQuery(query: TransactionListFilterState) {
+        _uiState.update { it.copy(transactionListQuery = query).withTransactionListProjection() }
+    }
+
+    private fun DashboardUiState.withTransactionListProjection(): DashboardUiState = copy(
+        transactionListProjection = TransactionListPresentationMapper.project(
+            allTransactions, transactionListQuery, CardOwnershipKey.ownedKeys(ownedCards),
+            ownedAccountContainerIds, transactionAccountInvolvement, workflow = transactionListWorkflow,
+        ),
+    )
 
     private var activePeriod: DashboardSalaryPeriod = dashboardPeriodWorkflow.currentPeriod()
     private var followCurrentPeriod = true
@@ -273,7 +287,9 @@ class DashboardViewModel(
 
     fun reclassifySelectedTransaction(newType: FinancialTransactionType) {
         val transactionId = _uiState.value.selectedTransactionId ?: return
-        viewModelScope.launch {
+        launchLogged(appLogService, AppLogCategories.DASHBOARD, "Dashboard reclassifySelectedTransaction", onError = {
+            _uiState.update { it.copy(reclassifying = false, reclassifyError = "update_failed") }
+        }) {
             _uiState.update { it.copy(reclassifying = true, reclassifySuccess = false, reclassifyError = null, ignoreError = null) }
             when (val result = reclassificationService.reclassify(transactionId, newType)) {
                 is ReclassificationResult.Success -> {
@@ -428,7 +444,7 @@ class DashboardViewModel(
                         transactionCardInvolvement = emptyMap(),
                         transactionLoanInvolvement = emptyMap(),
                         transactionDebitSpendInvolvement = emptyMap(),
-                    )
+                    ).withTransactionListProjection()
                 }
             }
 
@@ -446,8 +462,10 @@ class DashboardViewModel(
                 if (period != activePeriod) {
                     return@launch
                 }
+                val tag = languageTag
+                val formatter = dateFormatter
                 val previews = overview.transactions.map { tx ->
-                    toPreview(tx = tx, facts = overview.transactionFacts[tx.id])
+                    toPreview(tx = tx, facts = overview.transactionFacts[tx.id], tag = tag, formatter = formatter)
                 }
                 val (loadedLabel, loadedHint) = periodPresentation(overview.period)
                 _uiState.update {
@@ -481,7 +499,7 @@ class DashboardViewModel(
                         ownedAccounts = ownedAccounts,
                         ownedAccountContainerIds = overview.ownedAccountContainerIds,
                         committedSourceTransactionIds = committedIds,
-                    )
+                    ).withTransactionListProjection()
                 }
                 _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
@@ -507,6 +525,8 @@ class DashboardViewModel(
     private fun toPreview(
         tx: FinancialTransaction,
         facts: DashboardTransactionFacts?,
+        tag: String = languageTag,
+        formatter: DateTimeFormatter = dateFormatter,
     ): TransactionPreviewUi {
         val title = tx.merchant?.takeIf { it.isNotBlank() }
             ?: tx.counterparty?.takeIf { it.isNotBlank() }
@@ -521,8 +541,8 @@ class DashboardViewModel(
             title = title,
             amount = tx.amount,
             localDate = localDate,
-            amountLabel = MoneyUiFormatter.format(tx.amount, languageTag),
-            dateLabel = dateFormatter.format(localDate),
+            amountLabel = MoneyUiFormatter.format(tx.amount, tag),
+            dateLabel = formatter.format(localDate),
             type = tx.type,
             typeLabelResHint = effectiveType,
             direction = TransactionTypePresentation.direction(effectiveType),

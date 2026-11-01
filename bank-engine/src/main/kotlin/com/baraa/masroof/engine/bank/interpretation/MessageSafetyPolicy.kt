@@ -3,14 +3,19 @@ package com.baraa.masroof.engine.bank.interpretation
 import com.baraa.masroof.engine.bank.Evidence
 
 /** Shared security gate: bank rules and learned patterns cannot override OTP evidence. */
-internal fun otpEvidence(source: SourceText): List<Evidence> = OTP_TERMS.flatMap { term ->
-    source.phrase(term).findAll(source.text).map { source.evidence("security.otp", "family", it.range) }.toList()
-}
+internal fun otpEvidence(source: SourceText): List<Evidence> = (OTP_TERMS.flatMap { term ->
+    source.phrase(term).findAll(source.text).toList()
+} + GLUED_OTP.findAll(source.text)).map { source.evidence("security.otp", "family", it.range) }
+
+// "OTP1234": the code may touch the word.
+private val GLUED_OTP = Regex("(?<![\\p{L}\\p{N}_])otp(?=[0-9])")
 
 private val OTP_TERMS = listOf("otp", "one time password", "one-time password", "password", "passcode", "pin",
     "verification code", "security code", "authentication code", "رمز التحقق", "رمز تحقق", "رمز التوثيق",
     "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري",
-    "الرقم السري لمره واحده", "الرقم السري لمرة واحدة")
+    "الرقم السري لمرة واحدة", "الرقم السري لمره واحده", "الرمز السري", "رمز التأكيد", "رمز الدخول", "رمز المرور",
+    "كلمة السر", "كود التحقق", "كود التفعيل", "activation code", "do not share this code", "لا تشارك الرمز")
+// Approval/authorization and "transaction code" wording are left out on purpose: real purchase SMS carry them.
 
 internal fun hasUnprovenExecution(source: SourceText) = unprovenExecutionRanges(source).isNotEmpty()
 

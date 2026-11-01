@@ -17,6 +17,10 @@ object MasroofGuidanceStyle {
     val windowMargin = MasroofSpacing.screenHorizontal
     val shape = MasroofShapes.small
     val elevation = 6.dp
+    /** First-run tour: dim level of the screen around the lit-up target. */
+    const val tourScrimAlpha = 0.6f
+    val tourSpotlightPadding = MasroofSpacing.smallGap
+    val tourSpotlightRadius = 12.dp
     val backgroundColor: androidx.compose.ui.graphics.Color
         @androidx.compose.runtime.Composable get() =
             if (androidx.compose.material3.MaterialTheme.colorScheme.background == MasroofDarkColors.Background) {

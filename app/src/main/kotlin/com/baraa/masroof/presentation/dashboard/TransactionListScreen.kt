@@ -39,47 +39,25 @@ import com.baraa.masroof.presentation.common.ShareActionIcon
 fun TransactionListScreen(
     periodLabel: String,
     transactions: List<TransactionPreviewUi>,
+    projection: TransactionListProjectionUi,
+    onFilterChanged: (TransactionListFilterState) -> Unit,
     onBack: () -> Unit,
     onOpenTransaction: (String) -> Unit,
-    seedFilter: TransactionListFilterState? = null,
-    onSeedFilterApplied: () -> Unit = {},
-    openGeneration: Int = 0,
-    ownedCardKeys: Set<String> = emptySet(),
-    ownedAccountContainerIds: Set<String> = emptySet(),
     ownedCards: List<OwnedCardUi> = emptyList(),
     ownedAccounts: List<OwnedAccountUi> = emptyList(),
-    transactionAccountInvolvement: Map<String, Set<String>> = emptyMap(),
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedTypeNames by rememberSaveable { mutableStateOf(listOf<String>()) }
     var selectedCardLast4s by rememberSaveable { mutableStateOf(listOf<String>()) }
     var selectedAccountContainerIds by rememberSaveable { mutableStateOf(listOf<String>()) }
-    var seedTransactionIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var filtersSheetOpen by rememberSaveable { mutableStateOf(false) }
-    var appliedOpenGeneration by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(-1) }
     val listState = rememberLazyListState()
-
-    LaunchedEffect(openGeneration) {
-        // A fold/configuration recreation restores the current draft; only a new
-        // navigation request should consume a seed and reset the filter sheet.
-        if (appliedOpenGeneration == openGeneration) return@LaunchedEffect
-        appliedOpenGeneration = openGeneration
-        val filter = seedFilter ?: TransactionListFilterState()
-        searchQuery = filter.searchQuery
-        selectedTypeNames = filter.types.map { it.name }
-        selectedCardLast4s = filter.cardLast4s.toList()
-        selectedAccountContainerIds = filter.accountContainerIds.toList()
-        seedTransactionIds = filter.transactionIds
-        filtersSheetOpen = false
-        onSeedFilterApplied()
-    }
 
     val filterState = remember(
         searchQuery,
         selectedTypeNames,
         selectedCardLast4s,
         selectedAccountContainerIds,
-        seedTransactionIds,
     ) {
         TransactionListFilterState(
             searchQuery = searchQuery,
@@ -88,44 +66,17 @@ fun TransactionListScreen(
             }.toSet(),
             cardLast4s = selectedCardLast4s.toSet(),
             accountContainerIds = selectedAccountContainerIds.toSet(),
-            transactionIds = seedTransactionIds,
         )
     }
 
-    val filterResult = remember(transactions, filterState, transactionAccountInvolvement) {
-        TransactionListFilterEngine.apply(
-            transactions = transactions,
-            filter = filterState,
-            accountInvolvementByTransactionId = transactionAccountInvolvement,
-        )
-    }
-    val availableTypes = remember(transactions) {
-        TransactionListFilterEngine.availableTypes(transactions)
-    }
-    val availableCards = remember(transactions, ownedCardKeys) {
-        TransactionListFilterEngine.availableCardLast4s(
-            transactions = transactions,
-            ownedCardKeys = ownedCardKeys,
-        )
-    }
-    val availableAccounts = remember(transactions, ownedAccountContainerIds, transactionAccountInvolvement) {
-        TransactionListFilterEngine.availableAccountContainerIds(
-            transactions = transactions,
-            ownedAccountContainerIds = ownedAccountContainerIds,
-            involvementByTransactionId = transactionAccountInvolvement,
-        )
-    }
+    LaunchedEffect(filterState) { onFilterChanged(filterState) }
+    val filterResult = projection.result
+    val availableTypes = projection.availableTypes
+    val availableCards = projection.availableCards
+    val availableAccounts = projection.availableAccounts
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.transaction_share)
     val shareSubject = stringResource(R.string.transaction_list_title)
-    val shareText = transactionListShareText(
-        periodLabel = periodLabel,
-        filter = filterState,
-        transactions = filterResult.transactions,
-        totalAmount = filterResult.totalAmount,
-        ownedCards = ownedCards,
-        ownedAccounts = ownedAccounts,
-    )
     val canShare = filterResult.transactions.isNotEmpty()
 
     val clearFilters = {
@@ -146,7 +97,15 @@ fun TransactionListScreen(
                 onClick = {
                     SharePlainText.share(
                         context = context,
-                        text = shareText,
+                        text = transactionListShareText(
+                            context = context,
+                            periodLabel = periodLabel,
+                            filter = filterState,
+                            transactions = filterResult.transactions,
+                            totalAmount = filterResult.totalAmount,
+                            ownedCards = ownedCards,
+                            ownedAccounts = ownedAccounts,
+                        ),
                         chooserTitle = shareChooserTitle,
                         subject = shareSubject,
                     )
@@ -253,7 +212,6 @@ fun TransactionListScreen(
                 selectedCardLast4s = draft.cardLast4s.toList()
                 selectedAccountContainerIds = draft.accountContainerIds.toList()
                 searchQuery = draft.searchQuery
-                seedTransactionIds = draft.transactionIds
             },
         )
     }

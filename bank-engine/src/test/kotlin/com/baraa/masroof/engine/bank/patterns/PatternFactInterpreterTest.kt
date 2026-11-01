@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank.patterns
 import com.baraa.masroof.engine.bank.*
 import com.baraa.masroof.finance.value.BankId
 import com.baraa.masroof.finance.value.Currency
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.LocalDateTime
 
@@ -100,12 +100,20 @@ class PatternFactInterpreterTest {
         assertEquals(interpreter.fingerprint, result.patternProvenance!!.configurationFingerprint)
     }
 
-    @Test fun conflictingPatternsNeverChooseAFirstWinnerEvenIfOnlyOneHasAContract() {
+    @Test fun conflictingApprovedPatternsNeverChooseAFirstWinner() {
         val first = pattern().copy(factContract = contract)
-        listOf(listOf(first, pattern().copy(id = "other")), listOf(pattern().copy(id = "other"), first)).forEach {
+        val second = pattern().copy(id = "other", factContract = contract)
+        listOf(listOf(first, second), listOf(second, first)).forEach {
             val result = PatternFactInterpreter(configuration(*it.toTypedArray())).interpretRouted(input, bank)
             assertEquals(MessageFamily.UNKNOWN, result.facts.family)
             assertTrue(Blocker.CONFLICTING_FACTS in result.blockers)
+        }
+    }
+
+    @Test fun anUnapprovedOverlapNeverBlocksTheApprovedPattern() {
+        val approved = pattern().copy(factContract = contract)
+        listOf(listOf(approved, pattern().copy(id = "other")), listOf(pattern().copy(id = "other"), approved)).forEach {
+            assertEquals(MessageFamily.TRANSFER_IN, PatternFactInterpreter(configuration(*it.toTypedArray())).interpretRouted(input, bank).facts.family)
         }
     }
 
@@ -113,6 +121,21 @@ class PatternFactInterpreterTest {
         val result = PatternFactInterpreter(configuration(pattern().copy(factContract = contract)))
             .interpretRouted(input.copy(sender = "Explicit stored bank choice"), bank)
         assertEquals(MessageFamily.TRANSFER_IN, result.facts.family)
+    }
+
+    @Test fun arabicCurrencyWordsTeachAndInterpretAsSar() {
+        listOf("10 ريال", "10 ر.س", "10 ريال سعودي").forEach { amount ->
+            val text = "Payment\nAmount:$amount\nShop:MARKET"
+            val p = SavedMessagePattern.fromChoices("payment", bank.value, input.sender, "PURCHASE", text,
+                listOf(FieldChoice("amount", 15, 15 + amount.length)))
+                .copy(factContract = PatternFactContract(MessageFamily.PURCHASE, MoneyDirection.OUTGOING))
+            assertEquals(FieldKind.MONEY, p.parts.filterIsInstance<FieldSlot>().single().kind)
+            val result = PatternFactInterpreter(configuration(p)).interpretRouted(input.copy(body = text), bank)
+            assertEquals("10.00", result.facts.amount!!.amount.toPlainString(), amount)
+            assertEquals(Currency.SAR, result.facts.amount!!.currency)
+            assertEquals("25.50", PatternFactInterpreter(configuration(p)).interpretRouted(
+                input.copy(body = text.replace("10", "25.50")), bank).facts.amount!!.amount.toPlainString())
+        }
     }
 
     @Test fun bareAmountsNeedAnExplicitCurrencyAndCannotBorrowAnAccountNumber() {

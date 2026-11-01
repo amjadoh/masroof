@@ -3,7 +3,6 @@ package com.baraa.masroof.application.dashboard
 import com.baraa.masroof.application.commitment.CommitmentPauseTransitions
 import com.baraa.masroof.core.money.Currency
 import com.baraa.masroof.core.money.Money
-import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.model.Commitment
 import com.baraa.masroof.domain.model.CommitmentRecurrence
 import com.baraa.masroof.domain.model.FinancialTransaction
@@ -253,15 +252,8 @@ object CommitmentsOverviewBuilder {
         primaryCurrency: Currency,
         sarEquivalents: Map<String, Money>,
     ): Boolean {
-        val cardIds = facility.allCards.mapNotNull { card ->
-            FinancialContainerIdFactory.cardId(card.bank, card.last4)
-        }.toSet()
         val paid = transactions.fold(Money.zero(primaryCurrency)) { total, transaction ->
-            if (
-                transaction.type != FinancialTransactionType.CREDIT_CARD_PAYMENT ||
-                transaction.destinationContainerId !in cardIds ||
-                transaction.occurredAt.isBefore(due.updatedAt)
-            ) {
+            if (!facility.isPaymentToward(due, transaction)) {
                 total
             } else {
                 val amount = TransactionAmountResolver.effectiveAmount(

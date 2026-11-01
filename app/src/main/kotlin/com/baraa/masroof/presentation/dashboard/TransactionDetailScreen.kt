@@ -272,7 +272,7 @@ fun TransactionDetailScreen(
         ) {
             MasroofCard {
                 Text(
-                    transaction.title ?: transactionTypeLabel(transaction.typeLabelResHint),
+                    transactionTitle(transaction),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 MasroofAmountText(
@@ -324,7 +324,8 @@ fun TransactionDetailScreen(
                             )
                         }
                     }
-                    transaction.title?.let { title ->
+                    (transaction.title?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.transaction_unknown_merchant).takeIf { transaction.expectsMerchant() })?.let { title ->
                         IconLabelRow(
                             icon = MasroofIcons.merchant,
                             label = stringResource(R.string.transaction_detail_merchant),

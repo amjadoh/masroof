@@ -18,7 +18,6 @@ data class CreditCardBalanceSnapshot(
 data class CreditCardDashboardRow(
     val bank: Bank,
     val last4: String,
-    val calendarMonthSpendingNet: SignedMoneyAmount,
     val statementSpendingNet: SignedMoneyAmount,
     val salaryPeriodSpendingNet: SignedMoneyAmount,
     val statementPeriodLabel: String?,
@@ -26,22 +25,16 @@ data class CreditCardDashboardRow(
 )
 
 /**
- * All credit cards with dual spending windows (calendar month + statement cycle).
+ * All credit cards with statement-cycle and salary-period spending.
  */
 data class CreditCardsOverview(
     val cards: List<CreditCardDashboardRow>,
-    val aggregateDueAmount: Money?,
-    val aggregateDueUpdatedAt: Instant?,
-    val aggregateDueDate: LocalDate?,
-    val aggregatePeriodSpendingNet: SignedMoneyAmount,
-    val aggregateStatementSpendingNet: SignedMoneyAmount,
     val aggregateStatementPeriodLabel: String?,
-    val calendarMonthLabel: String?,
     val salaryPeriodLabel: String?,
     val currency: Currency,
 ) {
     val hasContent: Boolean
-        get() = cards.isNotEmpty() || aggregateDueAmount != null
+        get() = cards.isNotEmpty()
 }
 
 /**
