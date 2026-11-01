@@ -9,7 +9,7 @@
 - All modal bottom sheets use `MasroofBottomSheet`; geometry and adaptive widths live in `MasroofSheetTokens`. Header/actions stay fixed and only the body scrolls. Multiple-choice rows use `MasroofSheetChoices`. Draft changes apply only on Save/Apply; Back, scrim, swipe, Close and Cancel discard them. Busy financial writes block dismissal.
 - Chart category projections and filtering live in application dashboard builders / `ChartDataWorkflow`. Chart choices never change entity balances, dues, or full-scope summary metrics. Persist keys with their bank-qualified entity identity, never translated names or only last4.
 - Do not add hardcoded `dp` values in feature screens when an existing token fits; add a new token in `ui-kit/src/main/kotlin/com/baraa/masroof/ui/theme/` only when the design truly needs a new size.
-- App navigation lives in `presentation/navigation/` (`MasroofRoot`, `HomeDestination`, `SettingsDestination`).
+- App navigation lives in `presentation/navigation/` (`MasroofRoot`, `HomeDestination`, `SettingsDestination`). Home screens sit on one back stack (`HomeBackStack.kt`): open a screen with `push`, return with `pop`; never assign a fixed return screen. Each visit keeps its own saved state, so screen-local navigation state (which sub-page is shown) must be `rememberSaveable`.
 - Debug builds expose a design catalog at **Settings → About → Design catalog** (`presentation/debug/DesignCatalogScreen.kt`) for previewing tokens and shared components.
 
 ## Architecture (follow on every feature)

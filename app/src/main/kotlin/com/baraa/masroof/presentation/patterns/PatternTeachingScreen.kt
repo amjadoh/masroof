@@ -8,6 +8,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -34,10 +35,11 @@ internal fun PatternTeachingScreen(
     source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
     existingPattern: PatternDefinitionView? = null, initialBody: String = "", initialOperation: PatternOperation? = null,
 ) {
+    // shortcut: step, bindings and candidates restart when another screen covers this one; typed text survives. Upgrade if users lose work.
     var step by remember { mutableIntStateOf(0) }
-    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
-    var sender by remember { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
-    var body by remember { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
+    var operation by rememberSaveable { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
+    var sender by rememberSaveable { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
+    var body by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
     var fieldIndex by remember { mutableIntStateOf(0) }
     var bindings by remember { mutableStateOf(emptyList<PatternBinding>()) }
     var candidates by remember { mutableStateOf(emptyList<PatternText>()) }

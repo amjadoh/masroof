@@ -60,7 +60,8 @@ fun ReviewRoute(
         viewModel.refresh()
     }
     val state by viewModel.uiState.collectAsState()
-    var teachingSource by androidx.compose.runtime.remember {
+    // Survives being covered by another screen (notifications, settings) so back lands on the same teaching.
+    var teachingSource by androidx.compose.runtime.saveable.rememberSaveable(stateSaver = teachingSourceSaver) {
         androidx.compose.runtime.mutableStateOf<com.baraa.masroof.application.patterns.PatternTeachingSource?>(null)
     }
     val patterns = viewModel.messagePatternsWorkflow
@@ -567,3 +568,8 @@ private fun restoreFailureLabelRes(reason: String): Int? =
             R.string.settings_restore_failed
         else -> null
     }
+
+private val teachingSourceSaver = androidx.compose.runtime.saveable.listSaver<com.baraa.masroof.application.patterns.PatternTeachingSource?, String?>(
+    save = { source -> if (source == null) emptyList() else listOf(source.bankId, source.sender, source.body, source.reviewId) },
+    restore = { saved -> if (saved.isEmpty()) null else com.baraa.masroof.application.patterns.PatternTeachingSource(saved[0], saved[1]!!, saved[2]!!, saved[3]) },
+)
