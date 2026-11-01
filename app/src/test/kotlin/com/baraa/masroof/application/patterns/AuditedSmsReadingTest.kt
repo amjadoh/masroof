@@ -26,6 +26,13 @@ class AuditedSmsReadingTest {
         }
     }
 
+    @Test fun barqWalletTopUpIsAnIncomingTransferThatStillNeedsItsLocalAccount() {
+        val result = parse("BANK_BARQ", "barq app", "إضافة اموال لمحفظة برق\nالمبلغ: 400.0 SAR\nالبطاقة: **8765\nفي: 2026-10-22 20:31")
+        assertEquals(MessageFamily.TRANSFER_IN, result.facts.family)
+        assertEquals(0, result.facts.amount!!.amount.compareTo("400".toBigDecimal()))
+        assertEquals(ParseStatus.REVIEW_REQUIRED, result.status)
+    }
+
     @Test fun unmatchedRoleProfileLeavesTransferToItsExactTemplate() {
         // The bundled STC transfer template is preview-only, so reaching it ends at its missing contract.
         val result = parse("BANK_STC", "STC Bank", "حوالة داخلية صادرة\nبـ:61.40ر.س\nإلى:TEST PERSON C\nالى:987\nفي:15/10/26 10:05")

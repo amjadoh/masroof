@@ -370,10 +370,6 @@ class DashboardEvidenceQueriesTest {
                 """.trimIndent(),
             ),
         )
-        java.io.File("/opt/cursor/artifacts").mkdirs()
-        java.io.File("/opt/cursor/artifacts/m7-query-plan.txt").writeText(
-            plans.entries.joinToString("\n") { (name, plan) -> "== $name ==\n$plan" },
-        )
         plans.forEach { (name, plan) ->
             assertTrue(
                 "$name plan must keep the existing card index and not require a new one:\n$plan",

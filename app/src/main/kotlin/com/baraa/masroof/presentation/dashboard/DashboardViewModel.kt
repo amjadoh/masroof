@@ -247,14 +247,14 @@ class DashboardViewModel(
             val outsidePeriod = _uiState.value.allTransactions.none { it.id == transactionId } && _uiState.value.recentTransactions.none { it.id == transactionId }
             val labRow = if (!outsidePeriod) null else try {
                 analytics?.evidence(listOf(transactionId))?.firstOrNull()?.let { item -> item.transaction?.let { toPreview(it, item.facts) } }
-            } catch (ce: CancellationException) { throw ce } catch (_: Exception) { null }
+            } catch (ce: CancellationException) { throw ce } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.DASHBOARD, "Dashboard loadSelectedTransactionSms", caught); null }
             val evidence = try {
                 smsEvidenceLoader.loadForTransaction(transactionId).map { item ->
                     TransactionSmsEvidenceUi(body = item.body, sender = item.sender, provenance = item.provenance)
                 }
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.DASHBOARD, "Dashboard loadSelectedTransactionSms", caught);
                 emptyList()
             }
             _uiState.update { current ->
@@ -312,7 +312,7 @@ class DashboardViewModel(
                 dashboardCommitmentsWorkflow.createFromTransaction(transactionId)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
+            } catch (caught: Exception) { appLogService?.failure(com.baraa.masroof.application.logging.AppLogCategories.DASHBOARD, "Dashboard markSelectedTransactionAsCommitment", caught);
                 CommitmentCreationResult.Rejected("create_failed")
             }
             when (result) {
@@ -486,8 +486,8 @@ class DashboardViewModel(
                 _uiState.value.selectedTransactionId?.let(::loadSelectedTransactionSms)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Exception) {
-                appLogService?.error(AppLogCategories.DASHBOARD, "Dashboard load failed for period ${period.startDate}")
+            } catch (e: Exception) {
+                appLogService?.failure(AppLogCategories.DASHBOARD, "Dashboard load for period ${period.startDate}", e)
                 if (period != activePeriod) {
                     return@launch
                 }

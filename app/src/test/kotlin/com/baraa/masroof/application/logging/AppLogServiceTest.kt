@@ -67,6 +67,45 @@ class AppLogServiceTest {
     }
 
     @Test
+    fun log_whenDiskWriteFails_keepsEntryInMemoryAndDoesNotThrow() {
+        val service = AppLogService(context)
+        service.clear()
+        val logPath = java.io.File(context.filesDir, AppLogService.LOG_FILE_NAME)
+        assertTrue(logPath.mkdirs())
+        try {
+            service.info("test", "kept")
+
+            assertEquals(listOf("kept"), service.readAll().map { it.message })
+        } finally {
+            logPath.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun fullLog_dropsRoutineEntriesBeforeFailures() {
+        val service = AppLogService(context, maxEntries = 3, retentionDays = 14)
+        service.clear()
+        service.error("backup", "Database export failed")
+        repeat(5) { service.info("sms", "routine $it") }
+
+        val entries = service.readAll()
+        assertEquals(3, entries.size)
+        assertEquals("Database export failed", entries.first().message)
+        assertEquals(AppLogLevel.ERROR, entries.first().level)
+    }
+
+    @Test
+    fun failure_recordsActionTypeAndMaskedMessage() {
+        val service = AppLogService(context, maxEntries = 10, retentionDays = 14)
+        service.clear()
+        service.failure("backup", "Backup verification",
+            IllegalStateException("Account 30019876 failed", java.io.IOException("disk")))
+
+        assertEquals("Backup verification failed (IllegalStateException: Account #### failed ← IOException)",
+            service.readAll().single().message)
+    }
+
+    @Test
     fun serialize_escapesEmbeddedNewlinesAndTabs() {
         val service = AppLogService(context, maxEntries = 10, retentionDays = 14)
         service.clear()

@@ -222,14 +222,15 @@ object DatabaseRestoreRecovery {
         }
     }
 
-    internal fun cleanupCommitted(context: Context, live: File) {
+    /** Returns false when the import was rolled back onto the original database. */
+    internal fun cleanupCommitted(context: Context, live: File): Boolean {
         if (isSqliteOk(live)) {
             discardDatabase(rollbackFile(live))
             discardDatabase(preservedRollbackFile(live))
             discardDatabase(incomingFile(live))
             deleteSnapshots(live)
             journalFile(live).delete()
-            return
+            return true
         }
         // Imported preferences are already active. The current original is
         // .rollback only after it verifies. A preserved rollback is older
@@ -251,6 +252,7 @@ object DatabaseRestoreRecovery {
             live,
             recorded.copy(preservedRollback = preserved),
         )
+        return false
     }
 
     internal fun deleteRestoreArtifacts(live: File) {
@@ -264,6 +266,10 @@ object DatabaseRestoreRecovery {
     }
 
     private fun recoverWithoutJournal(context: Context, live: File) {
+        val preserved = preservedRollbackFile(live)
+        if (!hasPreexistingRollback(live) && !preserved.exists() && !hasSidecar(preserved)) {
+            dropStagedImport(live)
+        }
         if (!hasRestoreEvidence(live)) {
             if (!live.exists() || looksLikeSqlite(live)) return
             throw IncompleteRestoreException(
@@ -272,6 +278,7 @@ object DatabaseRestoreRecovery {
         }
         if (isSqliteOk(live)) {
             reclaimOrphanedPreservedRollback(live)
+            dropStagedImport(live)
             return
         }
         if (isSqliteOk(rollbackFile(live))) {
@@ -281,6 +288,17 @@ object DatabaseRestoreRecovery {
         throw IncompleteRestoreException(
             "A database file exists but neither copy is a valid SQLite database",
         )
+    }
+
+    /**
+     * Files from an import that stopped before its first journal. Every journal
+     * stage deletes the snapshots before the journal, so with no journal they
+     * were never applied. Best effort: a failed delete must not block startup.
+     */
+    private fun dropStagedImport(live: File) {
+        runCatching { discardDatabase(incomingFile(live)) }
+        runCatching { deleteSnapshots(live) }
+        runCatching { journalTempFile(live).delete() }
     }
 
     private fun selectOriginalDatabase(context: Context, live: File) {
