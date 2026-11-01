@@ -756,9 +756,12 @@ class AppContainer(
     val workerFactory: WorkerFactory =
         DelegatingWorkerFactory().apply {
             addFactory(
-                LiveSmsProcessingWorker.Factory({ processStoredSmsUseCase }, appLogService, ::startupFinancialReady) {
-                    maintenanceCompletionSignal.notifyCompleted()
-                },
+                LiveSmsProcessingWorker.Factory(
+                    processStoredSms = { processStoredSmsUseCase },
+                    appLogService = appLogService,
+                    startupReady = ::startupFinancialReady,
+                    isRestartRequired = { it is com.baraa.masroof.data.room.DatabaseRestartRequiredException },
+                ) { maintenanceCompletionSignal.notifyCompleted() },
             )
             addFactory(
                 ExchangeRateEnrichmentWorker.Factory {
