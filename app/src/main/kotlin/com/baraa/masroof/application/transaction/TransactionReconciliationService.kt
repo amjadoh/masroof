@@ -60,7 +60,8 @@ class TransactionReconciliationService(
     private val effectiveParsedEventProvider: EffectiveParsedEventProvider? = null,
     private val reviewRepository: ReviewRepository? = null,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
-    private val automaticWrite: (suspend (List<ParsedEventRecord>, suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult)? = null,
+    /** Guards an automatic write; the set names posted legs whose stored facts a transfer heal reuses. */
+    private val automaticWrite: (suspend (List<ParsedEventRecord>, Set<String>, suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult)? = null,
     private val confirmedLoanPayments: ConfirmedLoanPaymentsWorkflow? = null,
     private val cardRegistry: com.baraa.masroof.domain.repository.CardRegistryRepository? = null,
 ) {
@@ -429,11 +430,12 @@ class TransactionReconciliationService(
                         transactionOccurredAt = transactionOccurredAt,
                         userConfirmed = userConfirmed,
                         occurredAtZone = zone,
+                        transferFee = record.details.transferFee,
                     )
                     when (single) {
                         is TransactionAssembler.Outcome.Assembled -> {
                             when (
-                                persist(single.transaction, single.rawSmsIds, evidence)
+                                persist(single.transaction, single.rawSmsIds, evidence, single.companions)
                             ) {
                                 PersistOutcome.Saved -> {
                                     assembledSingle++
@@ -461,6 +463,7 @@ class TransactionReconciliationService(
                                 sourceOwnership = sourceOwn,
                                 destinationOwnership = destOwn,
                                 effectiveOccurredAt = transactionOccurredAt,
+                                transferFee = record.details.transferFee,
                             )
                             pendingMatch++
                         }
@@ -498,7 +501,7 @@ class TransactionReconciliationService(
                         )
                     ) {
                         is TransactionAssembler.Outcome.Assembled -> {
-                            when (persist(outcome.transaction, outcome.rawSmsIds, evidence)) {
+                            when (persist(outcome.transaction, outcome.rawSmsIds, evidence, outcome.companions)) {
                                 PersistOutcome.Saved -> {
                                     assembledSingle++
                                     settledRawSmsIds += event.rawSmsId
@@ -579,7 +582,7 @@ class TransactionReconciliationService(
                 )
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
-                    when (persist(outcome.transaction, outcome.rawSmsIds, evidence)) {
+                    when (persist(outcome.transaction, outcome.rawSmsIds, evidence, outcome.companions)) {
                         PersistOutcome.Saved -> {
                             matchedPairs++
                             matchedEventIds += pair.outgoing.event.id
@@ -623,7 +626,7 @@ class TransactionReconciliationService(
                 )
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
-                    when (persist(unmatched.transaction, unmatched.rawSmsIds, evidence)) {
+                    when (persist(unmatched.transaction, unmatched.rawSmsIds, evidence, unmatched.companions)) {
                         PersistOutcome.Saved -> {
                             assembledSingle++
                             pendingMatch = (pendingMatch - 1).coerceAtLeast(0)
@@ -823,6 +826,7 @@ class TransactionReconciliationService(
                             zoneId = zoneId,
                             persistedZoneId = leg.transaction?.occurredAtZone,
                         ),
+                        transferFee = leg.record?.details?.transferFee,
                     ),
                 )
             }
@@ -879,7 +883,7 @@ class TransactionReconciliationService(
                     val rawSmsIds = listOf(outLeg.event.rawSmsId, inLeg.event.rawSmsId)
                         .distinct()
                         .sorted()
-                    when (upgradePersist(outcome.transaction, outcome.rawSmsIds, rawSmsIds, evidence)) {
+                    when (upgradePersist(outcome.transaction, outcome.rawSmsIds, rawSmsIds, evidence, outcome.companions)) {
                         UpgradePersistOutcome.Saved -> {
                             matchedPairs++
                             assembledSingle++
@@ -890,6 +894,8 @@ class TransactionReconciliationService(
                             alreadyLinked += 2
                             settledRawSmsIds += rawSmsIds
                         }
+
+                        UpgradePersistOutcome.Kept -> Unit
 
                         UpgradePersistOutcome.Failed -> {
                             failed++
@@ -1027,30 +1033,42 @@ class TransactionReconciliationService(
         )
     }
 
-    private enum class UpgradePersistOutcome { Saved, Already, Failed }
+    private enum class UpgradePersistOutcome { Saved, Already, Kept, Failed }
+
+    private companion object {
+        /** [com.baraa.masroof.application.interpretation.AutomaticInterpretationWriteGuard] refusals of outdated evidence. */
+        val STALE_EVIDENCE_REFUSALS = setOf("stale_family_inference", "stale_pattern_definition")
+    }
 
     private suspend fun upgradePersist(
         transaction: FinancialTransaction,
         rawSmsIds: List<String>,
         staleRawSmsIds: List<String>,
         evidence: Map<String,ParsedEventRecord>,
+        companions: List<FinancialTransaction> = emptyList(),
     ): UpgradePersistOutcome {
-        when (persist(transaction, rawSmsIds, evidence)) {
+        when (persist(transaction, rawSmsIds, evidence, companions)) {
             PersistOutcome.Saved -> return UpgradePersistOutcome.Saved
             PersistOutcome.Already -> return UpgradePersistOutcome.Already
             PersistOutcome.Failed -> Unit
         }
 
         return when (
-            guardedWrite(rawSmsIds, evidence) { financialTransactionRepository.replaceExclusiveStaleLinks(
+            // The posted legs being replaced keep their stored, already authorized facts.
+            val result = guardedWrite(rawSmsIds, evidence, postedLegs = staleRawSmsIds.toSet()) { financialTransactionRepository.replaceExclusiveStaleLinks(
                 transaction = transaction,
                 rawSmsIds = rawSmsIds,
                 staleRawSmsIds = staleRawSmsIds,
+                companions = companions,
             ) }
         ) {
             FinancialTransactionSaveResult.Saved -> UpgradePersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> UpgradePersistOutcome.Already
-            is FinancialTransactionSaveResult.Conflict -> UpgradePersistOutcome.Failed
+            is FinancialTransactionSaveResult.Conflict ->
+                // Evidence read by an older definition may not authorize a new included-fee join;
+                // the posted legs stay as they are instead of blocking maintenance.
+                if (companions.isNotEmpty() && result.existingTransactionId in STALE_EVIDENCE_REFUSALS) UpgradePersistOutcome.Kept
+                else UpgradePersistOutcome.Failed
         }
     }
 
@@ -1067,22 +1085,24 @@ class TransactionReconciliationService(
         transaction: FinancialTransaction,
         rawSmsIds: List<String>,
         evidence: Map<String,ParsedEventRecord>,
+        companions: List<FinancialTransaction> = emptyList(),
     ): PersistOutcome =
         when (guardedWrite(rawSmsIds, evidence) {
             val attributed = confirmedLoanPayments?.attribute(transaction, rawSmsIds.map { evidence.getValue(it) }) ?: transaction
-            financialTransactionRepository.save(attributed, rawSmsIds)
+            if (companions.isEmpty()) financialTransactionRepository.save(attributed, rawSmsIds)
+            else financialTransactionRepository.save(attributed, rawSmsIds, companions)
         }) {
             FinancialTransactionSaveResult.Saved -> PersistOutcome.Saved
             FinancialTransactionSaveResult.AlreadyExists -> PersistOutcome.Already
             is FinancialTransactionSaveResult.Conflict -> PersistOutcome.Failed
         }
 
-    private suspend fun guardedWrite(ids: List<String>, evidence: Map<String,ParsedEventRecord>,
+    private suspend fun guardedWrite(ids: List<String>, evidence: Map<String,ParsedEventRecord>, postedLegs: Set<String> = emptySet(),
         write: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult {
         val guard = automaticWrite ?: return write()
         val missing = ids.firstOrNull { it !in evidence }
         if(missing != null) return FinancialTransactionSaveResult.Conflict(missing,"missing_evidence_snapshot")
-        return guard(ids.map { evidence.getValue(it) },write)
+        return guard(ids.map { evidence.getValue(it) }, postedLegs, write)
     }
 
     private data class LegacyReleaseResult(
@@ -1235,6 +1255,7 @@ class TransactionReconciliationService(
                 receivedAt = receivedAt,
                 zoneId = zoneId,
             ),
+            transferFee = record.details.transferFee,
         )
     }
 
@@ -1258,7 +1279,9 @@ class TransactionReconciliationService(
             zoneId = zoneId,
             persistedZoneId = linked.occurredAtZone,
         )
-        return linked.occurredAt != expectedAt
+        if (linked.linkedParsedEventIds.size < 2) return linked.occurredAt != expectedAt
+        // A pair carries one leg's time; a leg outside the pairing window was merged onto another movement.
+        return java.time.Duration.between(linked.occurredAt, expectedAt).abs() > TransactionMatcher.TRANSFER_MATCH_WINDOW
     }
 
     /**

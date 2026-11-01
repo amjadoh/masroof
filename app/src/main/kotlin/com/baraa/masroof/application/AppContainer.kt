@@ -357,7 +357,7 @@ class AppContainer(
             ownershipConfirmationService = ownershipConfirmationService,
             effectiveParsedEventProvider = effectiveParsedEventProvider,
             reviewRepository = reviewRepository,
-            automaticWrite = { expected, write -> automaticInterpretationWriteGuard.write(expected,write) },
+            automaticWrite = { expected, posted, write -> automaticInterpretationWriteGuard.write(expected, posted, write) },
             confirmedLoanPayments = confirmedLoanPaymentsWorkflow,
             cardRegistry = cardRegistryRepository,
         )

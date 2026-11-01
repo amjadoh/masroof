@@ -116,7 +116,7 @@ class SavedMessagePattern(val id: String, val bankId: String, val sender: String
 
     companion object {
         private val numericMoneyFields = setOf("amount", "available_balance", "outstanding_balance",
-            "international_fee", "foreign_amount", "due_amount")
+            "international_fee", "foreign_amount", "due_amount", "fee")
 
         fun fromChoices(id: String, bankId: String, sender: String, label: String, body: String,
             choices: List<FieldChoice>): SavedMessagePattern {

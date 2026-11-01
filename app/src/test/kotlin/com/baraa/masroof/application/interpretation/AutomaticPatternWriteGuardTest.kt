@@ -164,12 +164,35 @@ class AutomaticPatternWriteGuardTest {
             val corrections = RoomUserCorrectionRepository(db.userCorrectionDao())
             val effective = EffectiveParsedEventProvider(parsed, corrections)
             val policy = PatternInterpretationWritePolicy(store)
+            transactions = RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao())
             val guard = AutomaticInterpretationWriteGuard(effective, RoomReviewRepository(db.reviewItemDao()),
-                RoomFinancialTransactionRepository(db.financialTransactionDao(), db.parsedEventDao()), { true },
+                transactions, { true },
                 { work -> gate.withAccess { db.withTransaction { work() } } },
                 patternsCurrent = { check(db.inTransaction()); policy.isCurrent(it) })
             block(store, gate, requireNotNull(effective.findEffectiveByRawSmsId(input.evidenceId)), guard, effective, corrections)
         } finally { db.close(); directory.deleteRecursively() }
+    }
+
+    private lateinit var transactions: RoomFinancialTransactionRepository
+
+    @Test fun anOlderDefinitionOnlyAdmitsAPostedLegThatATransferHealReuses() = runBlocking {
+        withFixture { store, gate, record, guard, _, _ ->
+            gate.withRestore { store.saveBank(1, store.load().banks.single().copy(patterns = listOf(pattern.copy(revision = 2)))) }
+            var wrote = false
+            val legs = setOf(input.evidenceId)
+            // Unposted evidence from an older definition never writes, even when named as a leg.
+            assertTrue(guard.write(listOf(record), legs) { wrote = true; FinancialTransactionSaveResult.Saved } is FinancialTransactionSaveResult.Conflict)
+            assertFalse(wrote)
+            transactions.save(com.baraa.masroof.domain.model.FinancialTransaction(
+                id = "posted", type = com.baraa.masroof.domain.model.FinancialTransactionType.EXPENSE,
+                amount = record.event.amount!!, occurredAt = input.receivedAt, sourceContainerId = null, destinationContainerId = null,
+                merchant = null, counterparty = null, categoryId = null, linkedParsedEventIds = listOf(record.event.id)), listOf(input.evidenceId))
+            // Its stored facts were authorized when posted; a heal that replaces it may reuse them.
+            assertEquals(FinancialTransactionSaveResult.Saved, guard.write(listOf(record), legs) { wrote = true; FinancialTransactionSaveResult.Saved })
+            assertTrue(wrote)
+            // Any other automatic write with that evidence still needs the current definition.
+            assertTrue(guard.write(listOf(record)) { fail("Stale evidence wrote"); FinancialTransactionSaveResult.Saved } is FinancialTransactionSaveResult.Conflict)
+        }
     }
 
     @Test fun currentProvenanceSurvivesRoomAndAllowsTheGuardedWrite() = runBlocking {
