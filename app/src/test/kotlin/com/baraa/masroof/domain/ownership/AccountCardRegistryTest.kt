@@ -124,16 +124,6 @@ class AccountCardRegistryTest {
     }
 
     @Test
-    fun clearReturnsToUnknown_keepsRow() = runBlocking {
-        accounts.observe(alj3001, "sms-1")
-        confirmation.confirmAccountOwned(alj3001)
-        confirmation.clearAccountOwnership(alj3001)
-        val entry = accounts.get(alj3001)!!
-        assertEquals(OwnershipStatus.UNKNOWN, entry.ownership)
-        assertEquals("sms-1", entry.firstSeenRawSmsId)
-    }
-
-    @Test
     fun bankScopedIdentitiesRemainSeparate() = runBlocking {
         confirmation.confirmAccountOwned(alj3001)
         assertEquals(OwnershipStatus.OWNED, accounts.resolve(alj3001))

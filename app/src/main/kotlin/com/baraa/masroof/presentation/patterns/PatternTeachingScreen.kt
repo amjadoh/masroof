@@ -8,6 +8,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -28,19 +31,20 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Question and navigation stay visible; only message content scrolls. Drafts are saved explicitly. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PatternTeachingScreen(
     workflow: MessagePatternsWorkflow, generation: Long, bank: PatternBankView,
     source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
-    existingPattern: PatternDefinitionView? = null, initialBody: String = "",
+    existingPattern: PatternDefinitionView? = null, initialBody: String = "", initialOperation: PatternOperation? = null,
 ) {
-    var step by remember { mutableIntStateOf(0) }
-    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: PatternOperation.PURCHASE) }
-    var sender by remember { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
-    var body by remember { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
-    var fieldIndex by remember { mutableIntStateOf(0) }
-    var bindings by remember { mutableStateOf(emptyList<PatternBinding>()) }
+    // Progress survives another screen covering this one. A restored preview step falls back to binding (LaunchedEffect(generation)).
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var operation by rememberSaveable { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
+    var sender by rememberSaveable { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
+    // A Review message is read again from its source on restore, so only text the user typed is saved.
+    var body by rememberSaveable(stateSaver = if (source == null) TextFieldValue.Saver else notSaved) { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
+    var fieldIndex by rememberSaveable { mutableIntStateOf(0) }
+    var bindings by rememberSaveable(stateSaver = bindingsSaver) { mutableStateOf(emptyList<PatternBinding>()) }
     var candidates by remember { mutableStateOf(emptyList<PatternText>()) }
     var preview by remember { mutableStateOf<PatternTeachingPreview?>(null) }
     var sample by remember { mutableStateOf("") }
@@ -100,7 +104,14 @@ internal fun PatternTeachingScreen(
         finally { loadingExample = false }
     }
     LaunchedEffect(step, fieldIndex) {
-        if (step == 1) body = body.copy(selection = bindings.singleOrNull { it.field == field }?.let { TextRange(it.start, it.end) } ?: TextRange.Zero)
+        if (step != 1) return@LaunchedEffect
+        val bound = bindings.singleOrNull { it.field == field }
+        val kinds = when (field) { "amount" -> listOf("MONEY"); "occurred_at" -> listOf("DATE_TIME", "DATE"); else -> emptyList() }
+        // Offer the first unbound money/date value so the common fields only need a confirmation tap.
+        val suggested = kinds.firstNotNullOfOrNull { kind -> candidates.firstOrNull { candidate ->
+            candidate.kind == kind && bindings.none { it.start < candidate.end && candidate.start < it.end }
+        } }
+        body = body.copy(selection = bound?.let { TextRange(it.start, it.end) } ?: suggested?.let { TextRange(it.start, it.end) } ?: TextRange.Zero)
     }
     LaunchedEffect(generation) { preview = null; if (step >= 2) step = 1 }
     BackHandler { back() }
@@ -120,7 +131,8 @@ internal fun PatternTeachingScreen(
         Box(modifier, contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = MasroofTeachingTokens.maxWidth).fillMaxSize().imePadding(),
                 verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount")
+                PatternTeachingHeader(step, question, fieldIndex, operation.fields.size, field == "amount",
+                    help = if (step == 1) patternFieldHelp(field) else null)
                 if (busy || loadingExample) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (failed) MasroofOutlinedButton({ preview = null; failed = false; onReload() }, enabled = !busy) {
                     Text(stringResource(R.string.dashboard_retry))
@@ -139,6 +151,7 @@ internal fun PatternTeachingScreen(
                             when (step) {
                                 0 -> {
                                     Text(bank.displayName ?: bank.bankId, style = MaterialTheme.typography.titleMedium)
+                                    if (existingPattern?.status == PatternApprovalStatus.APPROVED) MasroofHintBox(stringResource(R.string.teaching_edit_resets_approval))
                                     if (bank.senders.size > 1) PatternChoice(bank.senders, sender, !busy && source == null) { sender = bank.senders[it] }
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
                                         verticalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
@@ -154,6 +167,8 @@ internal fun PatternTeachingScreen(
                                     }
                                 }
                                 2 -> preview?.let { reviewed ->
+                                    if (reviewed.fixedValues.isNotEmpty()) MasroofHintBox(stringResource(R.string.teaching_fixed_values,
+                                        reviewed.fixedValues.joinToString(" · ") { it.text }))
                                     PatternTeachingReview(reviewed) { key ->
                                         bindings = bindings.filterNot { it.field == key }; preview = null
                                         fieldIndex = operation.fields.indexOf(key).coerceAtLeast(0); step = 1
@@ -201,10 +216,24 @@ internal fun PatternTeachingScreen(
     }
 }
 
+private val notSaved = Saver<TextFieldValue, Any>(save = { null }, restore = { null })
+
+private val bindingsSaver = listSaver<List<PatternBinding>, Any>(
+    save = { bindings -> bindings.flatMap { listOf(it.field, it.start, it.end, it.ignored) } },
+    restore = { saved -> saved.chunked(4) { PatternBinding(it[0] as String, it[1] as Int, it[2] as Int, it[3] as Boolean) } },
+)
+
 @Composable
 internal fun patternFieldName(key: String): String {
     val keys = stringArrayResource(R.array.pattern_field_keys)
     return stringArrayResource(R.array.pattern_field_names).getOrNull(keys.indexOf(key)) ?: key
+}
+
+/** Plain explanation and an SMS example for a field such as Ref / Acc; null for unknown keys. */
+@Composable
+internal fun patternFieldHelp(key: String): String? {
+    val keys = stringArrayResource(R.array.pattern_field_keys)
+    return stringArrayResource(R.array.pattern_field_help).getOrNull(keys.indexOf(key))
 }
 
 @Composable

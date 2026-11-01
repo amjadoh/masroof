@@ -147,4 +147,11 @@ class RoomAccountRegistryRepository(
                 accessGate = accessGate,
             )
     }
+
+    override suspend fun delete(reference: AccountReference): Unit = accessGate.withAccess<Unit> {
+        RegistryIdentity.requireKnownBank(reference.bank, "AccountRegistry.delete")
+        val masked = reference.maskedNumber?.trim().orEmpty()
+        require(masked.isNotEmpty()) { "maskedNumber required" }
+        dao.delete(reference.bank.id, masked)
+    }
 }

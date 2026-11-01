@@ -19,10 +19,7 @@
     <string name="lab_analysis_updated">Last result: %1$s</string>
     <string name="lab_analysis_back">Back</string>
     <string name="lab_analysis_settings">Purchase limit and alerts</string>
-    <string name="lab_analysis_purchases">Purchases</string>
     <string name="lab_analysis_commitments">Commitments</string>
-    <string name="lab_analysis_alerts">Alerts</string>
-    <string name="lab_analysis_alert_count">Unread analysis alerts: %1$d</string>
     <string name="lab_analysis_commitments_hint">Registered dues are confirmed. Detected payments are separate estimates, are not added to the purchase forecast, and create no commitment until you save.</string>
     <string name="lab_analysis_confirmed">Confirmed due</string>
     <string name="lab_analysis_estimated">Estimate</string>
@@ -30,20 +27,13 @@
     <string name="lab_analysis_no_candidates">No sufficiently supported recurring suggestions yet.</string>
     <string name="lab_analysis_weekly">Weekly</string>
     <string name="lab_analysis_monthly">Monthly</string>
-    <string name="lab_analysis_evidence_count">Based on %1$d previous payments.</string>
-    <string name="lab_analysis_payment_number">Open transaction %1$d</string>
     <string name="lab_analysis_review_candidate">Review and add commitment</string>
-    <string name="lab_analysis_reject">Dismiss suggestion</string>
-    <string name="lab_analysis_alerts_hint">Alerts stay inside the app by default. Phone notifications can be enabled in settings.</string>
-    <string name="lab_analysis_no_alerts">No current alerts.</string>
     <string name="lab_analysis_due_alert">Upcoming due</string>
     <string name="lab_analysis_payment_alert">Recurring payment amount changed</string>
     <string name="lab_analysis_actual_alert">Actual purchases exceeded the limit</string>
     <string name="lab_analysis_budget_alert">Purchases forecast to exceed the limit</string>
-    <string name="lab_analysis_snoozed">Snoozed for one day</string>
     <string name="lab_analysis_read">Mark as read</string>
     <string name="lab_analysis_snooze">Snooze one day</string>
-    <string name="lab_analysis_range">Forecast range: %1$s — %2$s</string>
     <string name="lab_analysis_no_range">Not enough evaluations to show a reliable range yet.</string>
     <string name="lab_analysis_range_unavailable">Forecast range not available yet</string>
     <string name="lab_analysis_budget">Purchase limit per salary period (SAR, optional)</string>
@@ -57,7 +47,6 @@
     <string name="lab_analysis_history">Published forecast history</string>
     <string name="lab_analysis_final_actual">Actual after the period ended</string>
     <string name="lab_analysis_history_hint">Starts when enabled. Historical evaluations are not presented as previously published forecasts.</string>
-    <string name="lab_analysis_quality">Data quality</string>
     <string name="lab_analysis_quality_hint">Uses approved transactions, excluding duplicate references and incomplete data. Valid large payments stay in totals. Analysis runs locally without sending transactions or message text.</string>
     <string name="lab_analysis_show_data">Show data details</string>
     <string name="lab_analysis_hide_data">Hide data details</string>
@@ -73,7 +62,6 @@
     <string name="lab_analysis_phone">Show analysis notifications on your phone</string>
     <string name="lab_analysis_shadow">Predicted limit notifications start after seven silent monitoring days and two fresh results at least six hours apart. In-app results are available now.</string>
     <string name="lab_analysis_permission_denied">Phone permission was denied. In-app alerts remain available.</string>
-    <string name="lab_analysis_invalid">Enter a valid positive amount and 1–30 reminder days, or leave the limit empty.</string>
     <string name="lab_analysis_save">Save</string>
     <string name="lab_analysis_cancel">Cancel</string>
     <string name="lab_analysis_close">Close</string>
@@ -114,18 +102,12 @@
     <string name="lab_analysis_component_transfers">Outgoing external transfers</string>
     <string name="lab_analysis_component_refunds">Refunds deducted</string>
     <string name="lab_analysis_comparison_dates">Complete days: %1$s — %2$s, compared with %3$s — %4$s</string>
-    <string name="lab_analysis_comparison_delta">Change from the previous period: %1$s</string>
     <string name="lab_analysis_comparison_percent">Change: %1$s%%</string>
     <string name="lab_analysis_comparison_current">Spending through yesterday</string>
     <string name="lab_analysis_comparison_previous">Same number of days in the previous period</string>
     <string name="lab_analysis_comparison_missing">Comparison needs complete, covered days in both periods.</string>
-    <string name="lab_analysis_changes">Largest contributions to the change</string>
     <string name="lab_analysis_changes_hint">These comparisons describe the arithmetic change. A merchant can be part of a component, so rows are not additive.</string>
-    <string name="lab_analysis_change_value">%1$s: change %2$s</string>
-    <string name="lab_analysis_top_merchants">Top merchants by net purchases</string>
     <string name="lab_analysis_no_merchants">No named purchases available to show merchants.</string>
-    <string name="lab_analysis_evidence">Show transactions</string>
-    <string name="lab_analysis_quality_title">Is there enough data?</string>
     <string name="lab_analysis_quality_initial">Enough for an initial estimate</string>
     <string name="lab_analysis_quality_insufficient">More history needed for an estimate</string>
     <string name="lab_analysis_quality_personal">Personal model in use</string>
@@ -156,7 +138,6 @@
     <string name="lab_analysis_history_expand">Show result timestamps</string>
     <string name="lab_analysis_history_collapse">Hide result timestamps</string>
     <string name="lab_analysis_scope_short">Includes purchases, cash withdrawals and outgoing external transfers; refunds are deducted.</string>
-    <string name="lab_analysis_chart_legend">Actual through yesterday · today and future estimates use a dashed line</string>
     <string name="lab_analysis_quality_periods_reason">The personal model needs four complete salary periods before evaluation.</string>
     <string name="lab_analysis_quality_purchase_days_reason">The personal model needs 20 purchase days in the continuous history.</string>
 </resources>

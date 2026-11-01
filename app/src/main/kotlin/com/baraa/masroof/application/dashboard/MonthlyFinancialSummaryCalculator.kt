@@ -42,14 +42,10 @@ object MonthlyFinancialSummaryCalculator {
                 FinancialTransactionType.BILL_PAYMENT,
                 FinancialTransactionType.FEE,
                 -> {
-                    if (
-                        tx.type == FinancialTransactionType.FEE &&
+                    // A financing-installment fee is a loan repayment, not spending.
+                    val loanFee = tx.type == FinancialTransactionType.FEE &&
                         LoanRepaymentAttribution.isLoanRepayment(tx, parsedRecordsById)
-                    ) {
-                        Unit
-                    } else {
-                        spendingGross = spendingGross + amount
-                    }
+                    if (!loanFee) spendingGross = spendingGross + amount
                 }
 
                 FinancialTransactionType.REFUND ->

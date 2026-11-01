@@ -1,12 +1,16 @@
 package com.baraa.masroof.presentation.dashboard
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.core.money.Money
+import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.presentation.common.formatCardLast4
+import com.baraa.masroof.presentation.common.toUiLabelRes
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun transactionDetailShareText(transaction: TransactionPreviewUi): String {
@@ -62,8 +66,9 @@ fun transactionDetailShareText(transaction: TransactionPreviewUi): String {
     )
 }
 
-@Composable
+/** Built on demand when the user shares, not on every recomposition. */
 fun transactionListShareText(
+    context: Context,
     periodLabel: String,
     filter: TransactionListFilterState,
     transactions: List<TransactionPreviewUi>,
@@ -71,55 +76,59 @@ fun transactionListShareText(
     ownedCards: List<OwnedCardUi> = emptyList(),
     ownedAccounts: List<OwnedAccountUi> = emptyList(),
 ): String {
-    val typeLabels = filter.types.map { transactionTypeLabel(it) }.sorted()
-    val cardLabels = filter.cardLast4s.map { last4 -> cardDisplayLabel(ownedCards, last4) }.sorted()
+    val locale = context.resources.configuration.locales[0]
+    val dateFormatter = DateTimeFormatter.ofPattern("d MMM", locale)
+    fun money(amount: Money) = MoneyUiFormatter.format(amount, locale.toLanguageTag())
+    fun typeLabel(type: FinancialTransactionType) = context.getString(type.toUiLabelRes())
+    val typeLabels = filter.types.map(::typeLabel).sorted()
+    val cardLabels = filter.cardLast4s.map { last4 -> cardDisplayLabel(context, ownedCards, last4) }.sorted()
     val accountLabels = filter.accountContainerIds.mapNotNull { containerId ->
-        accountDisplayLabel(ownedAccounts, containerId)
+        accountDisplayLabel(context, ownedAccounts, containerId)
     }.sorted()
     val rows = transactions.map { tx ->
         TransactionShareText.listRow(
-            date = formatLocalizedTransactionDate(tx.localDate),
-            title = tx.title ?: transactionTypeLabel(tx.typeLabelResHint),
-            amount = formatLocalizedMoney(tx.amount),
-            type = transactionTypeLabel(tx.typeLabelResHint),
+            date = dateFormatter.format(tx.localDate),
+            title = tx.title ?: typeLabel(tx.typeLabelResHint),
+            amount = money(tx.amount),
+            type = typeLabel(tx.typeLabelResHint),
         )
     }
     return TransactionShareText.listDocument(
-        title = stringResource(
+        title = context.getString(
             R.string.transaction_share_list_heading,
-            stringResource(R.string.app_name),
+            context.getString(R.string.app_name),
             periodLabel,
         ),
         metaLines = listOfNotNull(
             filter.searchQuery.trim().takeIf { it.isNotEmpty() }?.let { query ->
-                TransactionShareText.field(stringResource(R.string.transaction_share_search), query)
+                TransactionShareText.field(context.getString(R.string.transaction_share_search), query)
             },
             typeLabels.takeIf { it.isNotEmpty() }?.let { labels ->
                 TransactionShareText.field(
-                    stringResource(R.string.transaction_share_types),
+                    context.getString(R.string.transaction_share_types),
                     labels.joinToString(" • "),
                 )
             },
             cardLabels.takeIf { it.isNotEmpty() }?.let { labels ->
                 TransactionShareText.field(
-                    stringResource(R.string.transaction_share_cards),
+                    context.getString(R.string.transaction_share_cards),
                     labels.joinToString(" • "),
                 )
             },
             accountLabels.takeIf { it.isNotEmpty() }?.let { labels ->
                 TransactionShareText.field(
-                    stringResource(R.string.transaction_share_accounts),
+                    context.getString(R.string.transaction_share_accounts),
                     labels.joinToString(" • "),
                 )
             },
             TransactionShareText.field(
-                stringResource(R.string.transaction_share_count),
+                context.getString(R.string.transaction_share_count),
                 transactions.size.toString(),
             ),
             totalAmount?.let { amount ->
                 TransactionShareText.field(
-                    stringResource(R.string.transaction_share_total),
-                    formatLocalizedMoney(amount),
+                    context.getString(R.string.transaction_share_total),
+                    money(amount),
                 )
             },
         ),

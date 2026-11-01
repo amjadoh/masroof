@@ -42,16 +42,15 @@ def source_cases(root=ROOT):
 
 def classify(cases, config):
     stateful = {case for pair in config['processDeath'] for case in pair}
-    upgrade = set(config['upgrade'])
     excluded = set(config['excluded'])
-    if stateful & upgrade or (stateful | upgrade) & excluded:
+    if stateful & excluded:
         raise ValueError('Suites overlap')
-    if not (stateful | upgrade | excluded) <= cases:
+    if not (stateful | excluded) <= cases:
         raise ValueError('A registered lifecycle case no longer exists')
-    unknown = {c for c in cases - stateful - upgrade if '.processdeath.' in c or '.upgrade.' in c}
+    unknown = {c for c in cases - stateful if '.processdeath.' in c}
     if unknown: raise ValueError(f'Unpaired lifecycle phases: {sorted(unknown)}')
-    return {'primary': sorted(cases - stateful - upgrade - excluded),
-            'processDeath': sorted(stateful), 'upgrade': sorted(upgrade), 'excluded': sorted(excluded)}
+    return {'primary': sorted(cases - stateful - excluded),
+            'processDeath': sorted(stateful), 'excluded': sorted(excluded)}
 
 
 def partition(cases, count, weights):
@@ -95,10 +94,11 @@ def bundle():
     weights = json.loads((ROOT / 'ci/device-durations.json').read_text())
     BUNDLE.mkdir(parents=True, exist_ok=True)
     artifacts = {'app': ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
-                 'tests': ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
-                 'baseline': ROOT / 'app/build/upgrade-baseline/app/build/outputs/apk/debug/app-debug.apk'}
-    version = tomllib.loads((ROOT / 'gradle/libs.versions.toml').read_text())['versions']['androidxTestOrchestrator']
-    for key, group, name in [('orchestrator', 'androidx/test', 'orchestrator'), ('services', 'androidx/test/services', 'test-services')]:
+                 'tests': ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'}
+    versions = tomllib.loads((ROOT / 'gradle/libs.versions.toml').read_text())['versions']
+    for key, group, name, ref in [('orchestrator', 'androidx/test', 'orchestrator', 'androidxTestOrchestrator'),
+                                  ('services', 'androidx/test/services', 'test-services', 'androidxTestServices')]:
+        version = versions[ref]
         target = BUNDLE / f'{key}.apk'
         url = f'https://dl.google.com/dl/android/maven2/{group}/{name}/{version}/{name}-{version}.apk'
         with urllib.request.urlopen(url, timeout=60) as response: target.write_bytes(response.read())
@@ -108,12 +108,12 @@ def bundle():
         target = BUNDLE / f'{key}.apk'
         if source != target: shutil.copyfile(source, target)
         paths[key] = dict(file=target.name, sha256=digest(target), **apk_identity(target, config['buildTools']))
-    expected_packages = dict(app=config['appId'], baseline=config['appId'], tests=config['appId']+'.test',
+    expected_packages = dict(app=config['appId'], tests=config['appId']+'.test',
                              orchestrator='androidx.test.orchestrator', services='androidx.test.services')
     for key, package in expected_packages.items():
         if paths[key]['package'] != package: raise ValueError(f'Wrong APK identity: {key}')
-    if len({paths[key]['certificate'] for key in ['app', 'tests', 'baseline']}) != 1:
-        raise ValueError('Baseline, application and tests must share the same test signing certificate')
+    if len({paths[key]['certificate'] for key in ['app', 'tests']}) != 1:
+        raise ValueError('Application and tests must share the same test signing certificate')
     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     manifest = dict(version=1, testedSha=sha, sourceSha=os.environ.get('PR_HEAD_SHA', sha), config=config,
                     suites=suites, shards=partition(suites['primary'], config['shards'], weights), apks=paths)
@@ -182,13 +182,31 @@ class Instrumentation:
 
 
 def adb(*args, check=True, timeout=30):
-    return subprocess.run(['adb', *args], check=check, capture_output=True, text=True, timeout=timeout)
+    try:
+        return subprocess.run(['adb', *args], check=check, capture_output=True, text=True, timeout=timeout)
+    except subprocess.CalledProcessError as failure:
+        print(failure.stdout or '', file=sys.stderr)
+        print(failure.stderr or '', file=sys.stderr)
+        raise
+
+
+def settle(limit=180, busy=0.5):
+    # A fresh image keeps running boot work after sys.boot_completed; an app started under that CPU
+    # load can miss Android's startup deadline ("failed to complete startup" ANR) before any test runs.
+    deadline = time.monotonic() + limit
+    adb('shell', 'am', 'wait-for-broadcast-idle', check=False, timeout=limit)
+    cpus = int(adb('shell', 'nproc', check=False).stdout.strip() or 1)
+    while time.monotonic() < deadline:
+        load = adb('shell', 'cat', '/proc/loadavg', check=False).stdout.split()
+        if not load or float(load[0]) / cpus < busy: return
+        time.sleep(5)
 
 
 def collect(directory):
     directory.mkdir(parents=True, exist_ok=True)
     for name, args in [('device.log', ['logcat', '-d']), ('jobs.txt', ['shell', 'dumpsys', 'jobscheduler']),
-                       ('activity.txt', ['shell', 'dumpsys', 'activity', 'processes'])]:
+                       ('activity.txt', ['shell', 'dumpsys', 'activity', 'processes']),
+                       ('storage.txt', ['shell', 'df', '-h', '/data'])]:
         try: (directory / name).write_text(adb(*args, check=False, timeout=10).stdout)
         except subprocess.TimeoutExpired: (directory / name).write_text('Diagnostic command timed out')
     for remote, local in [('/sdcard/m19-statement-screenshots/.', 'statement'),
@@ -260,8 +278,7 @@ def verify_bundle():
 def restore():
     manifest = verify_bundle()
     for key, target in [('app', ROOT / 'app/build/outputs/apk/debug/app-debug.apk'),
-                        ('tests', ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'),
-                        ('baseline', ROOT / 'app/build/upgrade-baseline/app/build/outputs/apk/debug/app-debug.apk')]:
+                        ('tests', ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk')]:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(BUNDLE / manifest['apks'][key]['file'], target)
 
@@ -269,7 +286,7 @@ def restore():
 def phase(case, resume):
     manifest = verify_bundle()
     config = manifest['config']
-    if case not in manifest['suites']['processDeath'] + manifest['suites']['upgrade']:
+    if case not in manifest['suites']['processDeath']:
         raise ValueError('Unregistered lifecycle phase')
     directory = ROOT / 'app/build/reports/device-ci/phases' / case.replace('#', '-')
     directory.mkdir(parents=True, exist_ok=True)
@@ -278,6 +295,7 @@ def phase(case, resume):
     if resume: args += ['-e', 'm13Resume', 'true']
     args.append(config['runner'])
     try:
+        settle()
         execute(shlex.join(args), [case], config, directory)
         print(f'PASS: {case}', flush=True)
         (directory / 'device.log').write_text(adb('logcat', '-d', check=False).stdout)
@@ -300,6 +318,7 @@ def run(index):
         for key in ['app', 'tests', 'orchestrator', 'services']:
             adb('install', '--force-queryable', '-r', '-t', str(BUNDLE / manifest['apks'][key]['file']), timeout=90)
         all_cases = sorted(c for group in manifest['suites'].values() for c in group)
+        settle()
         discovery = shlex.join(['am', 'instrument', '-w', '-r', '-e', 'log', 'true', config['runner']])
         execute(discovery, all_cases, config, directory, discovery=True)
         service = adb('shell', 'pm', 'path', 'androidx.test.services').stdout.strip().removeprefix('package:')

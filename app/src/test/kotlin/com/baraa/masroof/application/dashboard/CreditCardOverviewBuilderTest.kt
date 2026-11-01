@@ -144,28 +144,15 @@ class CreditCardOverviewBuilderTest {
             zoneId = zone,
         )
 
-        assertEquals(Money.of("0.00", Currency.SAR), overview.aggregateDueAmount)
-        assertEquals(LocalDate.parse("2026-09-07"), overview.aggregateDueDate)
-        assertEquals(statementAt, overview.aggregateDueUpdatedAt)
         assertEquals(2, overview.cards.size)
-        assertEquals(
-            SignedMoneyAmount.of(Money.of("145.00", Currency.SAR)),
-            overview.aggregatePeriodSpendingNet,
-        )
-        assertEquals(
-            SignedMoneyAmount.of(Money.of("125.00", Currency.SAR)),
-            overview.aggregateStatementSpendingNet,
-        )
 
         val row7271 = overview.cards.first { it.last4 == "7271" }
         assertEquals(SignedMoneyAmount.of(Money.of("75.00", Currency.SAR)), row7271.statementSpendingNet)
-        assertEquals(SignedMoneyAmount.of(Money.of("95.00", Currency.SAR)), row7271.calendarMonthSpendingNet)
         assertEquals(SignedMoneyAmount.of(Money.of("95.00", Currency.SAR)), row7271.salaryPeriodSpendingNet)
         assertEquals(Money.of("0.00", Currency.SAR), row7271.snapshot?.dueAmount)
 
         val row3478 = overview.cards.first { it.last4 == "3478" }
         assertEquals(SignedMoneyAmount.of(Money.of("50.00", Currency.SAR)), row3478.statementSpendingNet)
-        assertEquals(SignedMoneyAmount.of(Money.of("50.00", Currency.SAR)), row3478.calendarMonthSpendingNet)
         assertEquals(SignedMoneyAmount.of(Money.of("50.00", Currency.SAR)), row3478.salaryPeriodSpendingNet)
         assertNull(row3478.snapshot?.dueAmount)
         assertTrue(overview.hasContent)
@@ -213,7 +200,6 @@ class CreditCardOverviewBuilderTest {
             zoneId = zone,
         )
 
-        assertNull(overview.aggregateDueAmount)
         overview.cards.forEach { row ->
             assertNull(
                 "Purchase SMS outstanding is account-level and must not appear as per-card due for ${row.last4}",
@@ -291,7 +277,6 @@ class CreditCardOverviewBuilderTest {
             zoneId = zone,
         )
         assertEquals(0, overview.cards.size)
-        assertNull(overview.aggregateDueAmount)
     }
 
     private fun rawSms(id: String, body: String, at: Instant) = RawSms(

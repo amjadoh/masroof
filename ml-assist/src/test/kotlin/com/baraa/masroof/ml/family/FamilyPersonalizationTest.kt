@@ -1,7 +1,7 @@
 package com.baraa.masroof.ml.family
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class FamilyPersonalizationTest {
     private val features = requireNotNull(FamilyInputCleaner.clean("سداد تمويل خاص", listOf("من", "القسط")).features)

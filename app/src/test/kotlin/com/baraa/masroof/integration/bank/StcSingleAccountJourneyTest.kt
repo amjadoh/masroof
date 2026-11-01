@@ -101,6 +101,10 @@ class StcSingleAccountJourneyTest {
                 workflow.saveFinancial(preview)
             }
             assertTrue(container.financialTransactionRepository.listAll().isEmpty())
+            // An approved pattern posts to this account, so it cannot be deleted even before anything is posted.
+            val deleteOwn = com.baraa.masroof.application.settings.RegistryDeleteTarget.Account(ownAccount)
+            assertEquals(com.baraa.masroof.application.settings.DeleteBlocker.MESSAGE_PATTERN,
+                container.settingsRegistryWorkflow.deletionPreview(deleteOwn).blocker)
             beforeApproval.forEach { (id, evidence) -> assertEquals(evidence, container.parsedEventRepository.findByRawSmsId(id)) }
 
             val approved = workflow.catalog()
@@ -147,6 +151,11 @@ class StcSingleAccountJourneyTest {
             assertEquals(3, dashboard.transactions.size)
             assertEquals(0, workflow.applyPending(bankId, workflow.catalog().generation).processed)
             assertEquals(posted, container.financialTransactionRepository.listAll())
+            val linked = container.settingsRegistryWorkflow.deletionPreview(deleteOwn)
+            assertEquals(com.baraa.masroof.application.settings.DeleteBlocker.LINKED_TRANSACTIONS, linked.blocker)
+            assertEquals(3, linked.linkedCount)
+            assertTrue(runCatching { container.settingsRegistryWorkflow.delete(deleteOwn) }.isFailure)
+            assertEquals(listOf(ownAccount), container.accountRegistryRepository.listAll().map { AccountReference(it.bank, it.maskedNumber) })
 
             // A later counterparty suffix must use the same approved own-account constant.
             val future = row("stc-future", incoming.replace("100SAR", "20SAR").replace("Acc:321", "Acc:999"), "2026-10-17T10:00:00Z")

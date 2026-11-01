@@ -81,4 +81,7 @@ interface LoanRegistryDao {
         loanType: String,
         displayName: String?,
     ): Int
+
+    @Query("DELETE FROM loan_registry WHERE bankId = :bankId AND loanType = :loanType")
+    suspend fun delete(bankId: String, loanType: String): Int
 }

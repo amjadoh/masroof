@@ -25,12 +25,6 @@ class EffectiveParsedEventProvider(
         return applyCorrections(stored, corrections)
     }
 
-    suspend fun getEffectiveById(id: String): ParsedEventRecord? {
-        val stored = parsedEventRepository.getById(id) ?: return null
-        val corrections = userCorrectionRepository.listForRawSmsId(stored.event.rawSmsId)
-        return applyCorrections(stored, corrections)
-    }
-
     suspend fun listEffectiveByRawSmsIds(rawSmsIds: Collection<String>): List<ParsedEventRecord> =
         withCorrections(parsedEventRepository.listByRawSmsIds(rawSmsIds))
 

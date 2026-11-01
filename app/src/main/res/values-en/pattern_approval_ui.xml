@@ -3,7 +3,6 @@
     <string name="pattern_approval_imported_message">An imported message</string>
     <string name="pattern_approval_example">Message %1$d · %2$s</string>
     <string name="pattern_approval_choose_imported">Choose an imported message</string>
-    <string name="pattern_approval_original_message">Show original message</string>
     <string name="pattern_approval_manual_message">Use another example message</string>
     <string name="pattern_approval_account_question">Which account receives this movement?</string>
     <string name="pattern_approval_confirmed_account">Your confirmed account</string>
@@ -15,7 +14,8 @@
     <string name="pattern_approval_own_reference">Yes, %1$s identifies my account</string>
     <string name="pattern_approval_own_reference_help">Only this exact number is linked; different numbers remain in Review.</string>
     <string name="pattern_approval_account_summary">This movement will use your account •• %1$s</string>
-    <string name="pattern_approval_save_scope">Approval is for new messages. Processing pending messages is a separate action available immediately after saving.</string>
+    <string name="pattern_approval_save_scope">After approval the pattern runs on new messages automatically. Pending messages are processed with one tap after saving.</string>
+    <string name="pattern_approval_matching_preview">Matches %1$d pending messages. Approve the pattern to record them.</string>
     <string name="pattern_approval_need_message">Choose an imported message or paste a complete example that matches this pattern.</string>
     <string name="pattern_approval_need_account">Select your confirmed account, or add it and confirm ownership.</string>
     <string name="pattern_approval_need_reference">Choose whether the message numbers identify your account or the counterparty.</string>
@@ -26,14 +26,14 @@
     <string name="pattern_approval_error_currency_conflict">The selected currency conflicts with the message. Choose the correct currency or currency from the message.</string>
     <string name="pattern_approval_error_amount">A positive transaction amount could not be validated. Check the message and pattern.</string>
     <string name="pattern_approval_error_time">The transaction date or time is incomplete or invalid. Choose a complete message with a valid timestamp.</string>
+    <string name="pattern_approval_error_message_context">The bank\'s built-in rules find contradicting wording in this message, so it cannot be approved for automatic use. Leave it for review.</string>
     <string name="pattern_approval_error_conflict">Multiple patterns match this message. Review the overlapping patterns before approval.</string>
     <string name="pattern_approval_error_non_financial">This security or non-financial message cannot be approved as a financial movement.</string>
     <string name="pattern_approval_error_changed">Pattern settings changed. Go back and reopen approval.</string>
     <string name="pattern_approval_waiting">Awaiting approval · no financial posting yet</string>
     <string name="pattern_approval_ready">Financially approved</string>
     <string name="pattern_approval_saved">Pattern approved for new messages</string>
-    <string name="pattern_approval_saved_help">Saving alone did not process imported messages. Process matching pending messages below.</string>
-    <string name="pattern_approval_edit">Edit approval</string>
+    <string name="pattern_approval_saved_help">Saving alone did not process messages. If the pattern is off, turn it on, then process matching pending messages below.</string>
     <string name="pattern_approval_process_matching">Process matching pending messages (%1$d)</string>
     <string name="pattern_approval_matching_count">Pending messages matching this pattern: %1$d</string>
     <string name="pattern_approval_no_pending">No eligible pending messages for this pattern in the checked scope.</string>
@@ -41,7 +41,13 @@
     <string name="pattern_approval_dashboard_scope">Posted movements appear in the matching dashboard period. Net movement is not the actual bank balance.</string>
     <string name="pattern_approval_view_accounts">View account figures</string>
     <string name="pattern_approval_advanced">History</string>
-    <string name="pattern_approval_revision_help">A revision is a saved version of pattern settings. Enabling, disabling or restoring creates a new version; its number does not mean financial approval succeeded.</string>
     <string name="pattern_approval_import_hint">Some patterns at this bank need approval before posting movements. You can import now; unapproved messages remain in Review.</string>
     <string name="pattern_approval_open_patterns">Approve patterns and process pending messages</string>
+    <string name="pattern_badge_builtin">Built-in</string>
+    <string name="pattern_badge_awaiting">Awaiting approval</string>
+    <string name="pattern_badge_approved">Approved</string>
+    <string name="pattern_badge_active">Active</string>
+    <string name="pattern_badge_conflict">Conflict</string>
+    <string name="pattern_approval_card_summary">This movement will use your card •• %1$s</string>
+    <string name="pattern_approval_link_help">The account or card is used only when the message does not name one. A message naming a different number stays in review.</string>
 </resources>

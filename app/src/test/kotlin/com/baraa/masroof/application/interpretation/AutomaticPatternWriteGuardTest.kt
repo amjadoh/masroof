@@ -135,8 +135,13 @@ class AutomaticPatternWriteGuardTest {
             assertFalse(policy.isCurrent(record))
             store.restoreRaw(com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.encode(snapshot))
             assertTrue(policy.isCurrent(record))
-            store.saveBank(snapshot.generation, definition.copy(patterns = listOf(purchase.copy(revision = 2, enabled = false))))
+            // A posted leg survives an unrelated save or a new enabled revision, but not a disable.
+            val next = store.saveBank(snapshot.generation, definition.copy(patterns = listOf(purchase.copy(revision = 2))))
             assertFalse(policy.isCurrent(record))
+            assertTrue(policy.isCurrent(record, posted = true))
+            store.saveBank(next.generation, definition.copy(patterns = listOf(purchase.copy(revision = 3, enabled = false))))
+            assertFalse(policy.isCurrent(record))
+            assertFalse(policy.isCurrent(record, posted = true))
         } finally { directory.deleteRecursively() }
     }
 
@@ -168,7 +173,7 @@ class AutomaticPatternWriteGuardTest {
             val guard = AutomaticInterpretationWriteGuard(effective, RoomReviewRepository(db.reviewItemDao()),
                 transactions, { true },
                 { work -> gate.withAccess { db.withTransaction { work() } } },
-                patternsCurrent = { check(db.inTransaction()); policy.isCurrent(it) })
+                patternsCurrent = { record, posted -> check(db.inTransaction()); policy.isCurrent(record, posted) })
             block(store, gate, requireNotNull(effective.findEffectiveByRawSmsId(input.evidenceId)), guard, effective, corrections)
         } finally { db.close(); directory.deleteRecursively() }
     }
@@ -190,8 +195,8 @@ class AutomaticPatternWriteGuardTest {
             // Its stored facts were authorized when posted; a heal that replaces it may reuse them.
             assertEquals(FinancialTransactionSaveResult.Saved, guard.write(listOf(record), legs) { wrote = true; FinancialTransactionSaveResult.Saved })
             assertTrue(wrote)
-            // Any other automatic write with that evidence still needs the current definition.
-            assertTrue(guard.write(listOf(record)) { fail("Stale evidence wrote"); FinancialTransactionSaveResult.Saved } is FinancialTransactionSaveResult.Conflict)
+            // Posted evidence is never re-read, so a later save of its definition does not block other writes either.
+            assertEquals(FinancialTransactionSaveResult.Saved, guard.write(listOf(record)) { FinancialTransactionSaveResult.Saved })
         }
     }
 

@@ -32,3 +32,11 @@ internal fun registryLabel(card: ManagedCardUi): String = maskedName(card.displa
         card.cardRole == CardRole.PRIMARY -> R.string.dashboard_credit_facility_primary
         else -> R.string.dashboard_credit_card_credit_badge
     }), card.last4)
+
+@Composable
+internal fun accountTypeLabel(accountType: com.baraa.masroof.domain.model.AccountType): String =
+    when (accountType) {
+        com.baraa.masroof.domain.model.AccountType.CURRENT -> stringResource(R.string.settings_account_type_current)
+        com.baraa.masroof.domain.model.AccountType.SAVINGS -> stringResource(R.string.settings_account_type_savings)
+        com.baraa.masroof.domain.model.AccountType.WALLET -> stringResource(R.string.settings_account_type_wallet)
+    }

@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class M8StatementAuthorityTest {

@@ -8,7 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
@@ -56,7 +56,7 @@ class ReportedMessagesJourneyTest {
             val account=AccountReference(bank,"3001"); val card=CardReference(bank,"8219")
             c.onboardingOwnershipWorkflow.confirmAccountOwned(account)
             c.onboardingOwnershipWorkflow.confirmCardOwned(card)
-            c.settingsRegistryWorkflow.markCardAsDebit(card)
+            c.cardRegistryRepository.markAsDebit(card)
             c.settingsRegistryWorkflow.linkDebitToAccount(card,account)
             val import=c.historicalSmsScanner.scan(Instant.EPOCH)
             assertEquals(import.toString(),0,import.failed)
@@ -142,7 +142,7 @@ class ReportedMessagesJourneyTest {
         runBlocking {TestRuntime.reset(host)}
         val c=AppContainer(TestStorageContext(host))
         val store=ViewModelStore()
-        val configuration=Configuration(host.resources.configuration).apply {setLocale(Locale("ar"))}
+        val configuration=Configuration(host.resources.configuration).apply {setLocale(Locale.forLanguageTag("ar"))}
         val arabic=host.createConfigurationContext(configuration)
         var dark by mutableStateOf(true)
         try {
@@ -210,7 +210,7 @@ class ReportedMessagesJourneyTest {
             val account=AccountReference(bank,"3001");val card=CardReference(bank,"8219")
             c.onboardingOwnershipWorkflow.confirmAccountOwned(account)
             c.onboardingOwnershipWorkflow.confirmCardOwned(card)
-            c.settingsRegistryWorkflow.markCardAsDebit(card)
+            c.cardRegistryRepository.markAsDebit(card)
             c.settingsRegistryWorkflow.linkDebitToAccount(card,account)
             val adapter=InterpretationTestAdapter(requireNotNull(c.interpretationService)::interpret)
             for(name in names) {

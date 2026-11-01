@@ -2,7 +2,7 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 
 // Applied only to the new pure contracts. Test tools may depend on coroutines/JUnit;
 // shipped compile/runtime dependencies may contain only Kotlin/JDK support libraries.
-val verifyPureJvmDependencies by tasks.registering {
+val verifyPureJvmDependencies = tasks.register("verifyPureJvmDependencies") {
     doLast {
         listOf("compileClasspath", "runtimeClasspath").forEach { name ->
             configurations.getByName(name).incoming.resolutionResult.allComponents.forEach { component ->

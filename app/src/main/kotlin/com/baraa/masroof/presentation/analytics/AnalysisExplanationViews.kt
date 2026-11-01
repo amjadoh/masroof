@@ -138,7 +138,9 @@ internal fun forecastReasonResource(reason: String?): Int = when (reason) {
             Text(stringResource(R.string.learning_distinct_origins, learning.statisticalSuggestions, learning.templateSuggestions), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(if (learning.personalUsed) R.string.learning_personal_used else R.string.learning_personal_collecting), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.learning_personal_examples, learning.trainingTemplates, learning.validationTemplates), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(personalLearningReason(learning.personalReason)), style = MaterialTheme.typography.bodySmall)
+            Text(if (learning.personalReason == "NEEDS_EVALUATIONS") stringResource(R.string.learning_needs_examples_count,
+                learning.validationTemplates, learning.requiredValidationTemplates)
+                else stringResource(personalLearningReason(learning.personalReason)), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.learning_counts, learning.attempted, learning.suggested, learning.understood, learning.posted, learning.awaitingReview), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.learning_feedback_counts, learning.learned, learning.blocked, learning.excluded, learning.repeatedContradictions, learning.pendingDecisions), style = MaterialTheme.typography.bodySmall)
             learning.exclusions.forEach { (reason,count) -> Text(stringResource(R.string.learning_exclusion_count,

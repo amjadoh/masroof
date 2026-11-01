@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -67,7 +67,7 @@ class RoleBoundDetailsTest {
         listOf(cardPayment to MessageFamily.CARD_PAYMENT, bill to MessageFamily.BILL_PAYMENT,
             loan to MessageFamily.FINANCING_INSTALLMENT).forEach { (body, family) ->
             val r = parse(body)
-            assertEquals(body, ParseStatus.SUCCESS, r.status); assertEquals(family, r.facts.family)
+            assertEquals(ParseStatus.SUCCESS, r.status, body); assertEquals(family, r.facts.family)
             assertEquals("1234", r.facts.sourceAccount!!.maskedNumber)
             assertEquals(MoneyDirection.OUTGOING, r.facts.direction)
             assertNull(r.facts.destinationAccount); assertNull(r.facts.loanType)
@@ -80,7 +80,7 @@ class RoleBoundDetailsTest {
         listOf(cardPayment.replace("Card: 5678", ""), cardPayment.replace("From account: 1234", ""),
             bill.replace("Biller: Synthetic Utilities", ""),
             loan.replace("Counterparty: Synthetic Finance", ""), loan.replace("From account: 1234", ""))
-            .forEach { assertEquals(it, ParseStatus.REVIEW_REQUIRED, parse(it).status) }
+            .forEach { assertEquals(ParseStatus.REVIEW_REQUIRED, parse(it).status, it) }
         val noCode = parse(bill.replace("Biller code: 001", ""))
         assertEquals(ParseStatus.SUCCESS, noCode.status)
         assertNull(noCode.facts.billerCode)
@@ -109,7 +109,7 @@ class RoleBoundDetailsTest {
             "Due amount:", "Biller code: 1e+2", "Exchange rate=0", "Foreign amount=USD 23",
             "Due amount", "International fee=NaN").forEach { detail ->
             val r = parse("$purchase\n$detail")
-            assertEquals(detail, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, detail)
             assertNull(r.facts.executionState)
         }
     }
@@ -119,7 +119,7 @@ class RoleBoundDetailsTest {
         listOf("Foreign amount: USD 23", "Due amount: SAR 23", "Fee amount: SAR 23",
             "Merchant: Amount: USD 23", "Transaction reference: Amount: USD 23").forEach { detail ->
             val r = parse("$noPrincipal\n$detail")
-            assertEquals(detail, ParseStatus.REVIEW_REQUIRED, r.status)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, detail)
             assertNull(r.facts.amount)
         }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$noPrincipal\nForeign amount: USD 23", RuleLibrary.initial()).status)

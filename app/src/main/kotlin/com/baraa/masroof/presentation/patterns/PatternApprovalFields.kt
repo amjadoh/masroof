@@ -97,7 +97,7 @@ internal fun PatternApprovalReferences(pattern: PatternDefinitionView, operation
     MasroofCard {
         Text(stringResource(R.string.pattern_approval_reference_question), style = MaterialTheme.typography.titleMedium)
         fields.filterKeys { it in pattern.referenceFields }.forEach { (key, value) ->
-            MasroofDetailRow(patternFieldName(key), value.text)
+            MasroofDetailRow(patternFieldName(key), value.text, guidance = patternFieldHelp(key))
         }
         PatternApprovalRadio(stringResource(R.string.pattern_approval_other_reference),
             stringResource(R.string.pattern_approval_other_reference_help), chosen && reference == null, enabled,
@@ -134,6 +134,7 @@ internal fun patternApprovalProblemText(problem: PatternApprovalProblem): Int = 
     PatternApprovalProblem.INVALID_AMOUNT -> R.string.pattern_approval_error_amount
     PatternApprovalProblem.INVALID_TIME -> R.string.pattern_approval_error_time
     PatternApprovalProblem.PATTERN_CONFLICT -> R.string.pattern_approval_error_conflict
+    PatternApprovalProblem.MESSAGE_CONTEXT_CONFLICT -> R.string.pattern_approval_error_message_context
     PatternApprovalProblem.NON_FINANCIAL -> R.string.pattern_approval_error_non_financial
     PatternApprovalProblem.CONFIGURATION_CHANGED -> R.string.pattern_approval_error_changed
     PatternApprovalProblem.VALIDATION -> R.string.pattern_financial_blocked

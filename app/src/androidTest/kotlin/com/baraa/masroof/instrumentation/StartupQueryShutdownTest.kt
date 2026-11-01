@@ -79,15 +79,13 @@ class StartupQueryShutdownTest {
                 override fun onCreate(db: SupportSQLiteDatabase) = original.onCreate(db)
                 override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = original.onUpgrade(db, oldVersion, newVersion)
                 override fun onOpen(db: SupportSQLiteDatabase) {
-                    original.onOpen(object : SupportSQLiteDatabase by db {
-                        override fun execSQL(sql: String) {
-                            if (sql.contains("CREATE TEMP TABLE", true) && once.compareAndSet(false, true)) {
-                                entered.countDown()
-                                check(release.await(20, TimeUnit.SECONDS)) { "First connection barrier was not released" }
-                            }
-                            db.execSQL(sql)
-                        }
-                    })
+                    // Hold the first connection inside SQLiteOpenHelper's open callback. Room's own
+                    // open-time SQL path is internal (2.7+ no longer uses SupportSQLiteDatabase.execSQL).
+                    if (once.compareAndSet(false, true)) {
+                        entered.countDown()
+                        check(release.await(20, TimeUnit.SECONDS)) { "First connection barrier was not released" }
+                    }
+                    original.onOpen(db)
                 }
             }
             PreservingOpenHelperFactory().create(SupportSQLiteOpenHelper.Configuration.builder(config.context)

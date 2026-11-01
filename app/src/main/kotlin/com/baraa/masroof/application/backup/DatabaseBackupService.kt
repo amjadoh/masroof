@@ -81,11 +81,15 @@ class DatabaseBackupService(
                     BackupFailureException(BackupFailureCategory.PASSPHRASE_REQUIRED),
                 )
             }
+            // Logged on failure so a device report names the failing step (never data).
+            var stage = "staging"
             runCatching {
                 val staging = createStagingDir("export")
                 try {
                     val dbCopy = File(staging, BackupPackageFormat.DATABASE_ENTRY)
+                    stage = "snapshot"
                     writeConsistentSnapshot(dbCopy)
+                    stage = "integrity"
                     verifyIsolatedSnapshot(dbCopy)
 
                     val exportedAt = clockEpochMillis()
@@ -98,10 +102,13 @@ class DatabaseBackupService(
                     )
                     File(staging, BackupPackageFormat.MANIFEST_ENTRY)
                         .writeText(BackupPackageCodec.encodeManifest(manifest))
+                    stage = "preferences"
                     File(staging, BackupPackageFormat.PREFERENCES_ENTRY)
                         .writeText(BackupPackageCodec.encodePreferences(capturePreferences()))
 
+                    stage = "size"
                     com.baraa.masroof.application.analytics.AnalyticsBackup.validateExportSize(staging, archiveLimits)
+                    stage = "write"
                     writeEncryptedPackage(staging, destination, secret)
                 } finally {
                     SensitiveFileCleanup.delete(staging)
@@ -111,8 +118,9 @@ class DatabaseBackupService(
             }.onFailure { error ->
                 logExportFailure(
                     (error as? BackupFailureException)?.category ?: BackupFailureCategory.EXPORT_FAILED,
-                    AppLogService.describe(error),
+                    "$stage/${AppLogService.describe(error)}",
                 )
+                deletePartialExport(destination)
             }
         } finally {
             secret.fill('\u0000')
@@ -765,6 +773,11 @@ class DatabaseBackupService(
             AppLogCategories.BACKUP,
             "Database export failed: ${category.logToken}" + (detail?.let { " ($it)" } ?: ""),
         )
+    }
+
+    /** The picker already created the destination; a failed export must not leave an empty or partial file. */
+    private fun deletePartialExport(destination: Uri) {
+        runCatching { android.provider.DocumentsContract.deleteDocument(appContext.contentResolver, destination) }
     }
 
     private fun logImportFailure(category: BackupFailureCategory, detail: String? = null) {

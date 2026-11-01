@@ -28,6 +28,6 @@ internal fun SavedMessagePattern.previewRoles(body: String): Preview? {
     val result = RuleInterpreter(requireNotNull(roleProfile)).interpretRouted(input, BankId(bankId))
     if (result.evidence.none { it.field == "family" && it.ruleId == id }) return null
     return Preview(label, result.evidence.filter { it.field != "family" }.associate { span ->
-        span.field to TextSpan(span.slice(input), span.start, span.end)
+        span.field.lowercase(java.util.Locale.ROOT) to TextSpan(span.slice(input), span.start, span.end)
     })
 }

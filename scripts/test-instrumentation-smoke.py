@@ -114,7 +114,7 @@ if "beta-dashboard-screenshots" in sys.argv[2] and os.environ.get("TEST_SCREENSH
         self.assertIn('scripts/ci_device.py run --shard', app)
         self.assertNotIn('gradlew', app)
         self.assertIn('fail-fast: false', app)
-        self.assertIn('suite: [production, upgrade]', recovery)
+        self.assertIn('suite: [production]', recovery)
         self.assertNotIn('gradlew', recovery)
         self.assertIn('CI_DEVICE_BUNDLE:', recovery)
         for section in [app, recovery]:

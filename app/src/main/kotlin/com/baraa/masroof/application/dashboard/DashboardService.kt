@@ -81,6 +81,7 @@ class DashboardService(
         rawSmsRepository = rawSmsRepository,
     ),
     private val openingBalances: AccountOpeningBalanceSource = AccountOpeningBalanceSource { emptyList() },
+    private val computeDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
 ) : DashboardOverviewLoader {
     private val projectionBuilder by lazy {
         DashboardProjectionBuilder(
@@ -100,14 +101,15 @@ class DashboardService(
         )
     }
 
-    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview {
+    // Callers run in viewModelScope (Main); mapping and every builder/calculator belong off the UI thread.
+    override suspend fun loadOverview(period: FinancialPeriod): DashboardOverview = kotlinx.coroutines.withContext(computeDispatcher) {
         val startInclusive = FinancialPeriodPolicy.toInclusiveStartInstant(period.startDate, zoneId)
         val endExclusive = FinancialPeriodPolicy.toExclusiveEndInstant(period.endDateExclusive, zoneId)
         val transactions = financialTransactionRepository.listOccurredBetween(
             startInclusive = startInclusive,
             endExclusive = endExclusive,
         )
-        return projectionBuilder.build(period = period, transactions = transactions)
+        projectionBuilder.build(period = period, transactions = transactions)
     }
 
     suspend fun loadCurrentOverview(): DashboardOverview =

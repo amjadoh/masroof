@@ -1063,7 +1063,6 @@ class CommitmentsOverviewBuilderTest {
             primary = CreditCardDashboardRow(
                 bank = Bank.BANK_ALJAZIRA,
                 last4 = last4,
-                calendarMonthSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
                 statementSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
                 salaryPeriodSpendingNet = SignedMoneyAmount.zero(Currency.SAR),
                 statementPeriodLabel = null,

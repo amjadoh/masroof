@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.room.withTransaction
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -53,7 +53,7 @@ class AnalyticsJourneyTest {
         var language by mutableStateOf("ar")
         var dark by mutableStateOf(false)
         compose.setContent {
-            val config=Configuration(host.resources.configuration).apply { setLocale(Locale(language));fontScale=1.3f }
+            val config=Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(language));fontScale=1.3f }
             CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config),LocalConfiguration provides config) {
                 MasroofTheme(darkTheme=dark) { MasroofScreenBackground {
                     Column(androidx.compose.ui.Modifier.verticalScroll(rememberScrollState())) {
@@ -64,8 +64,8 @@ class AnalyticsJourneyTest {
         }
         for(locale in listOf("ar","en")) for(isDark in listOf(false,true)) {
             compose.runOnUiThread { language=locale;dark=isDark }
-            val context=host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale(locale)) })
-            val date=java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale(locale)).format(LocalDate.ofEpochDay(origin))
+            val context=host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(locale)) })
+            val date=java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy",Locale.forLanguageTag(locale)).format(LocalDate.ofEpochDay(origin))
             val label=com.baraa.masroof.application.locale.AppDigits.display(context.getString(R.string.learning_forecast_origin,date,20))
             compose.onNodeWithText(label).performScrollTo().assertIsDisplayed()
             compose.onNodeWithText(text(R.string.learning_forecast_hint,locale)).assertDoesNotExist()
@@ -84,7 +84,7 @@ class AnalyticsJourneyTest {
         val workflow = AnalyticsWorkflow(container, TestStorageContext(host), fixtureClock)
         var showing by mutableStateOf(true)
         try {
-            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); container.stopLabAnalytics(); seed(container, fixtureToday); workflow.start() }
+            runBlocking { container.awaitStartupMaintenance(); container.awaitPostStartupBackgroundWorkForTesting(); container.stopAnalytics(); seed(container, fixtureToday); workflow.start() }
             runBlocking { workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot?.status == "READY" }
             runBlocking {
@@ -93,8 +93,8 @@ class AnalyticsJourneyTest {
                 assertEquals("Purchase scope exactly matches the current graph", expected, workflow.state.value.snapshot!!.actual)
                 val snapshot = workflow.state.value.snapshot!!
                 assertEquals(snapshot.actual, snapshot.insights!!.components.sumOf { it.amount })
-                assertNotNull(snapshot.insights!!.comparison)
-                assertTrue(snapshot.insights!!.merchants.isNotEmpty())
+                assertNotNull(snapshot.insights.comparison)
+                assertTrue(snapshot.insights.merchants.isNotEmpty())
                 assertEquals(com.baraa.masroof.analytics.AnalyticsVersion.EVALUATION, snapshot.evaluationVersion)
                 for (past in workflow.state.value.purchasePeriods.filter { it.actual != null }) {
                     val period = com.baraa.masroof.domain.period.FinancialPeriod(LocalDate.ofEpochDay(past.start), LocalDate.ofEpochDay(past.end))
@@ -123,7 +123,7 @@ class AnalyticsJourneyTest {
             var open by mutableStateOf(false)
             compose.setContent { if (showing) {
                 val registryOwner = requireNotNull(LocalActivityResultRegistryOwner.current)
-                val config = Configuration(host.resources.configuration).apply { setLocale(Locale(locale)); fontScale = if (locale == "en") 1.3f else 1f }
+                val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(locale)); fontScale = if (locale == "en") 1.3f else 1f }
                 val context = host.createConfigurationContext(config)
                 CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides config, LocalAnalyticsWorkflow provides workflow,
                     LocalActivityResultRegistryOwner provides registryOwner) {
@@ -175,7 +175,6 @@ class AnalyticsJourneyTest {
                 compose.onNodeWithText(text(R.string.lab_analysis_cancel, language)).performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_commitments, language), useUnmergedTree = true).performClick()
                 screen("$language-${if (isDark) "dark" else "light"}-commitments")
-                compose.onNodeWithText(text(R.string.lab_analysis_alerts, language), useUnmergedTree = true).assertDoesNotExist()
                 compose.onNodeWithText(text(R.string.lab_analysis_spending_tab, language), useUnmergedTree = true).performClick()
                 compose.onNodeWithTag("lab-history-3").performScrollTo().performClick()
                 compose.onNodeWithText(text(R.string.lab_analysis_history_purchases, language)).performScrollTo().assertIsDisplayed()
@@ -202,6 +201,8 @@ class AnalyticsJourneyTest {
             compose.onNodeWithText(text(R.string.lab_analysis_review_candidate, "en")).performScrollTo().performClick()
             compose.onNodeWithText(text(R.string.settings_commitment_save, "en")).performScrollTo().performClick()
             compose.waitUntil(30_000) { runBlocking { container.commitmentRepository.listAll().size == originalCommitments.size + 1 } }
+            // The Save click's coroutine runs on the v2 test dispatcher; let it finish and release the workflow lock.
+            compose.waitForIdle()
             runBlocking {
                 // Repeating a Save after a crash cannot insert a second financial commitment.
                 workflow.acceptCandidate(candidate.key, workflow.editorDraft(candidate))
@@ -271,7 +272,7 @@ class AnalyticsJourneyTest {
             awaitAnalysis(workflow) { it.snapshot != null }
             compose.setContent { if (showing) {
                 val registryOwner = requireNotNull(LocalActivityResultRegistryOwner.current)
-                val config = Configuration(host.resources.configuration).apply { setLocale(Locale(language)); fontScale = if (language == "en") 1.3f else 1f }
+                val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)); fontScale = if (language == "en") 1.3f else 1f }
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config, LocalAnalyticsWorkflow provides workflow, LocalActivityResultRegistryOwner provides registryOwner) {
                     MasroofTheme(darkTheme = dark) { MasroofScreenBackground {
                         if (center) {
@@ -295,7 +296,6 @@ class AnalyticsJourneyTest {
             compose.onNodeWithTag("lab-evidence-settlement").performScrollTo().assertIsDisplayed().performClick()
             assertEquals("settlement", openedTransaction)
             screen("en-light-quality-transactions")
-            compose.onNodeWithText(text(R.string.lab_analysis_payment_number, "en").format(1)).assertDoesNotExist()
             compose.onNodeWithContentDescription(text(R.string.lab_analysis_back, "en")).performClick()
             compose.onNodeWithTag("lab-analysis-settings").performClick()
             compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("lab-analysis-budget"))).performTextReplacement("invalid")
@@ -340,12 +340,12 @@ class AnalyticsJourneyTest {
         var showing by mutableStateOf(true)
         var opened: String? = null
         try {
-            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); c.stopLabAnalytics(); seed(c, fixtureToday); workflow.start(); workflow.refresh() }
+            runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); c.stopAnalytics(); seed(c, fixtureToday); workflow.start(); workflow.refresh() }
             awaitAnalysis(workflow) { it.snapshot != null }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot)
             val insights = requireNotNull(snapshot.insights)
-            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")); fontScale = 1.3f }
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag("en")); fontScale = 1.3f }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config,
                     LocalAnalyticsWorkflow provides workflow) {
@@ -436,7 +436,7 @@ class AnalyticsJourneyTest {
             val original = runBlocking { c.financialTransactionRepository.listAll() }
             val snapshot = requireNotNull(workflow.state.value.snapshot).let { it.copy(quality = it.quality.copy(
                 pendingReviews = 1, blocked = true, reasons = listOf("SMS_PERMISSION", "PROCESSING_RETRY"))) }
-            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")) }
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag("en")) }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config) {
                     MasroofTheme { if (selection != null) AnalysisTransactionsScreen(snapshot, selection!!, workflow, { selection = null }, { opened = it })
@@ -482,7 +482,7 @@ class AnalyticsJourneyTest {
             runBlocking { c.awaitStartupMaintenance(); c.awaitPostStartupBackgroundWorkForTesting(); seed(c); c.analytics.refresh() }
             awaitAnalysis(c.analytics) { true }
             val before = runBlocking { c.financialTransactionRepository.listAll() }
-            val config = Configuration(host.resources.configuration).apply { setLocale(Locale("en")); fontScale = 1.3f }
+            val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag("en")); fontScale = 1.3f }
             compose.setContent { if (showing) {
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config, LocalAnalyticsWorkflow provides c.analytics) {
                     MasroofTheme { MasroofScreenBackground {
@@ -580,7 +580,7 @@ class AnalyticsJourneyTest {
             assertEquals((1..6).map { "observed-$it" }.reversed(), observation.referenceIds)
             val before = runBlocking { c.financialTransactionRepository.listAll() }
             compose.setContent { if (showing) {
-                val config = Configuration(host.resources.configuration).apply { setLocale(Locale(language)); fontScale = 1.3f }
+                val config = Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)); fontScale = 1.3f }
                 CompositionLocalProvider(LocalContext provides host.createConfigurationContext(config), LocalConfiguration provides config,
                     LocalAnalyticsWorkflow provides workflow) {
                     MasroofTheme(darkTheme = dark) { MasroofScreenBackground { AnalyticsRoute({}, { opened = it }) } }
@@ -685,17 +685,18 @@ class AnalyticsJourneyTest {
                 }
                 compose.onNodeWithTag("learning-review-session").performScrollTo().performClick()
                 compose.waitUntil(30_000) {
-                    compose.onAllNodesWithTag("learning-example-${examples.first().reviewId}").fetchSemanticsNodes().size == 1
+                    compose.onAllNodesWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).fetchSemanticsNodes().size == 1
                 }
             }
             openReviewSession()
-            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").assertIsDisplayed()
+            // The modal can merge button semantics while its body reloads; target the actual tagged action.
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithTag("sheet-cancel").performClick()
             assertNull(opened)
             assertEquals(before, runBlocking { c.reviewWorkflowService.listRequiredReviews() })
             assertEquals(financial, runBlocking { c.financialTransactionRepository.listAll() })
             openReviewSession()
-            compose.onNodeWithTag("learning-example-${examples.first().reviewId}").performClick()
+            compose.onNodeWithTag("learning-example-${examples.first().reviewId}", useUnmergedTree = true).assertHasClickAction().assertIsEnabled().performClick()
             assertEquals(examples.first().reviewId, opened)
             compose.onNodeWithTag("masroof-bottom-sheet").assertDoesNotExist()
             screen("optional-distinct-message-review")
@@ -730,11 +731,14 @@ class AnalyticsJourneyTest {
         c.analytics.request()
     }
     // Workflow completion is external to Compose; waiting must not pump its virtual frame clock.
-    private fun awaitAnalysis(workflow: AnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState = runBlocking {
-        withTimeout(90_000) { workflow.state.first { !it.updating && condition(it) } }
+    // compose.waitUntil keeps the v2 test dispatcher running, so work launched from a click can finish.
+    private fun awaitAnalysis(workflow: AnalyticsWorkflow, condition: (AnalysisUiState) -> Boolean): AnalysisUiState {
+        var matched: AnalysisUiState? = null
+        compose.waitUntil(90_000) { workflow.state.value.takeIf { !it.updating && condition(it) }?.also { matched = it } != null }
+        return matched!!
     }
 
-    private fun text(id: Int, language: String): String = host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale(language)) }).getString(id)
+    private fun text(id: Int, language: String): String = host.createConfigurationContext(Configuration(host.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) }).getString(id)
     private fun screen(name: String) {
         compose.waitForIdle()
         val directory = File(host.getExternalFilesDir(null), "analytics-screens").apply { mkdirs() }

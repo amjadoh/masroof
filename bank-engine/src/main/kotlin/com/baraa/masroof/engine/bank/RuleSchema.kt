@@ -36,7 +36,7 @@ data class BankRuleSchema(val schema: Int = 1, val revision: Int, val rules: Lis
             require(rule.direction in setOf(MoneyDirection.INCOMING, MoneyDirection.OUTGOING))
             require(rule.phrases.isNotEmpty())
             require(rule.detailLabels.keys.all { it in setOf("dueAmount", "foreignAmount", "counterparty", "transactionReference", "biller", "billerCode", "paymentDueDate") })
-            require(rule.observations.keys.all { it in setOf("purchase.pos", "purchase.online", "card.credit", "card.debit", "card.debit_source", "card.statement", "card.available_balance", "card.credit_balance", "balance.signed", "network.intra", "network.inter", "network.sourceBankRole", "network.destinationBankRole", "amount.standalone", "amount.title", "income.salary", "loan.personal", "loan.auto", "loan.mortgage", "loan.generic", "fee.sar_unlabeled") })
+            require(rule.observations.keys.all { it in setOf("purchase.pos", "purchase.online", "card.credit", "card.debit", "card.debit_source", "card.statement", "card.available_balance", "card.credit_balance", "balance.signed", "network.intra", "network.inter", "network.sourceBankRole", "network.destinationBankRole", "amount.standalone", "amount.title", "label.suffix", "income.salary", "loan.personal", "loan.auto", "loan.mortgage", "loan.generic", "fee.sar_unlabeled") })
             (listOf(rule.phrases, rule.excludes) + rule.labels.values + rule.detailLabels.values + rule.observations.values).forEach { terms ->
                 require(terms.size <= 20 && terms.all {
                     it.isNotBlank() && it.length <= 100 && '\n' !in it && '\r' !in it

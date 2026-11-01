@@ -52,6 +52,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
     private val mutable = MutableStateFlow(AnalysisUiState())
     val state: StateFlow<AnalysisUiState> = mutable.asStateFlow()
     private var started = false
+    val appLogService: com.baraa.masroof.application.logging.AppLogService get() = container.appLogService
     private val onboardingPrefs = context.getSharedPreferences(com.baraa.masroof.data.preferences.SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)
     private val localePrefs = context.getSharedPreferences(com.baraa.masroof.data.preferences.SharedPrefsAppLocaleRepository.PREFS_NAME, Context.MODE_PRIVATE)
     private val preferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> request() }
@@ -71,7 +72,10 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             }
             if (closed) return@launch
             container.database.invalidationTracker.addObserver(observer)
-            runCatching { loadCached() }
+            try { loadCached() } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                container.appLogService.failure("LAB_ANALYTICS", "Load cached analysis", failure)
+            }
             request()
             for (ignored in changes) {
                 if (closed) break
@@ -86,12 +90,25 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             }
         }
         clockJob = scope.launch {
-            var tick = clock.millis() / 3600_000
-            while (isActive) { delay(60_000); val current = clock.millis() / 3600_000; if (current != tick) { tick = current; request() } }
+            var key = clockKey()
+            while (isActive) { delay(millisUntilClockBoundary()); val current = clockKey(); if (current != key) { key = current; request() } }
         }
         AnalyticsWorker.scheduleDaily(context)
         importJob = scope.launch { AnalyticsImportGate.completed.collect { request() } }
     }
+    /** Unobserved fingerprint inputs: the local day, the 6-hour bucket and SMS permission. Cheap to read each minute. */
+    internal fun clockKey() = Triple(LocalDate.now(clock), clock.millis() / SIX_HOURS_MS, smsPermissionMissing())
+    private fun millisUntilClockBoundary(): Long {
+        val now = clock.millis()
+        val midnight = LocalDate.now(clock).plusDays(1).atStartOfDay(clock.zone).toInstant().toEpochMilli()
+        val bucket = (now / SIX_HOURS_MS + 1) * SIX_HOURS_MS
+        // Capped at a minute: delay() does not count deep sleep, and a permission change has no callback.
+        return (minOf(midnight, bucket) - now).coerceIn(1_000L, 60_000L)
+    }
+    private fun periodOffset(day: Long): Int =
+        (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt()
+    private fun smsPermissionMissing() =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED
     fun request() { if (closed) return; generation.incrementAndGet(); mutable.update { it.copy(updating = true) }; changes.trySend(Unit) }
 
     suspend fun messageReviewExamples() = withContext(Dispatchers.IO) {
@@ -153,7 +170,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             // A successful historical import also covers days with no financial rows.
             val covered = importedFrom
             val retry = read.retry
-            val noPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED
+            val noPermission = smsPermissionMissing()
             val importBusy = AnalyticsImportGate.active()
             val blocked = retry || importBusy || !onboarding.isHistoricalImportCompleted() || noPermission
             store.analytics().initializePreferences(AnalysisPreferencesRow(enabledAt = clock.millis()))
@@ -190,9 +207,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
                 prefs = prefs.copy(gapDays = gapText)
                 store.analytics().preferences(prefs)
             }
-            val clean = FinancialCleaner.clean(facts, start.toEpochDay(), todayDay, covered, gaps) { day ->
-                val date = LocalDate.ofEpochDay(day); (day - FinancialPeriodPolicy.periodContaining(date).startDate.toEpochDay()).toInt()
-            }
+            val clean = FinancialCleaner.clean(facts, start.toEpochDay(), todayDay, covered, gaps, ::periodOffset)
             val completed = completedAnalysisPeriods(clean, todayDay)
             val categories = historical.spendingTrends?.purchases?.categoryTrends.orEmpty()
             val cashIds = categories[ChartDataCategory.CASH_WITHDRAWALS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
@@ -222,7 +237,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
             val feedback = store.analytics().feedback().joinToString { "${it.seriesKey}:${it.kind}:${it.decidedAt}:${hash(it.payload)}" }
-            val canonical = "continuous-learning-v1|${RecurringLearningWorkflow.version}|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|$feedback|${read.committedCadences}|${clock.millis() / (6 * 3600_000L)}"
+            val canonical = "continuous-learning-v1|${RecurringLearningWorkflow.version}|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|$feedback|${read.committedCadences}|${clock.millis() / SIX_HOURS_MS}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
                 dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights, read.committedCadences)
     }
@@ -231,9 +246,9 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
     private suspend fun refreshOnWorker() = mutex.withLock {
         if (closed) return@withLock
         if (container.awaitStartupMaintenance() != StartupMaintenanceOutcome.READY) return@withLock
+        if (AnalyticsImportGate.active()) return@withLock // import completion calls request()
         val version = generation.get()
         val input = source()
-        if (AnalyticsImportGate.active()) return@withLock
         val dao = store.analytics(); val prefs = dao.preferences() ?: AnalysisPreferencesRow(enabledAt = clock.millis())
         val comparisons = settleComparisons(input)
         val performance = ForecastPerformancePolicy.evaluate(comparisons)
@@ -243,7 +258,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
         if (latest?.sourceHash == input.fingerprint && !captureMissing) { loadCached(); finishUi(input); return@withLock }
         val previous = dao.models().filterNot { it.id.startsWith("baseline:") }.mapNotNull { runCatching { json.decodeFromString<StoredHuber>(it.payload).takeIf { it.modelVersion == AnalyticsVersion.MODEL && it.cleaningVersion == AnalyticsVersion.CLEANING && it.evaluationVersion == AnalyticsVersion.EVALUATION }?.model() }.getOrNull() }.maxByOrNull { it.trainedThrough }
         val result = PurchaseForecaster.forecast(input.clean, input.start, input.end, input.today, input.completed,
-            { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() }, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
+            ::periodOffset, previous, { before -> completedAnalysisPeriods(input.clean, before) }, allowPersonal = performance.allowPersonal)
         val feedback = dao.feedback().map { row ->
             if (row.kind != "CONFIRM_PENDING") row else {
                 val payload = json.decodeFromString<RecurringFeedbackPayload>(row.payload)
@@ -289,7 +304,8 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(result.actual, it) },
             recurringLearning = recurringStatus)
         // A committed source invalidation while fitting invalidates the entire result.
-        if (generation.get() != version || input.fingerprint != source().fingerprint) { request(); return@withLock }
+        // Room tables, preferences, import completion and the clock bump generation; SMS permission does not.
+        if (generation.get() != version || ("SMS_PERMISSION" in input.reasons) != smsPermissionMissing()) { request(); return@withLock }
         val alerts = alerts(snapshot, candidates.filter { status(it) != "REJECTED" }, dao.alerts(), prefs)
         store.withTransaction {
             dao.snapshot(AnalysisSnapshotRow(hash("$at|${input.fingerprint}"), input.fingerprint, at, json.encodeToString(snapshot)))
@@ -469,7 +485,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             purchasePeriodHistory(input.clean, input.start).filter { it.complete }.map { period ->
                 val origin = period.start + 7
                 ForecastReplay.evaluate(input.clean, period.start, period.end, origin, completedAnalysisPeriods(input.clean, origin),
-                    { day -> (day - FinancialPeriodPolicy.periodContaining(LocalDate.ofEpochDay(day)).startDate.toEpochDay()).toInt() },
+                    ::periodOffset,
                     { day -> completedAnalysisPeriods(input.clean, day) })
             }
         }
@@ -522,7 +538,10 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
         }
         if (storeDelegate.isInitialized()) store.close()
     }
-    companion object { fun from(context: Context): AnalyticsWorkflow = (context.applicationContext as MasroofApplication).container.analytics }
+    companion object {
+        private const val SIX_HOURS_MS = 6 * 3600_000L
+        fun from(context: Context): AnalyticsWorkflow = (context.applicationContext as MasroofApplication).container.analytics
+    }
 }
 
 /** Scanner hook is process-local; persisted retry/import-completion gates cover restart. */

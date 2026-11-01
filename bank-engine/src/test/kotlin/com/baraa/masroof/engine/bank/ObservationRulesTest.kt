@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class ObservationRulesTest {
@@ -61,7 +61,7 @@ class ObservationRulesTest {
         listOf("Card type: credit\nCard type: debit", "Card type: unknown", "Purchase channel: online\nChannel: pos",
             "Channel: unsupported", "Loan type: auto", "Income type: salary", "Card type=credit").forEach { role ->
             val r = parse("$purchase\n$role")
-            assertEquals(role, ParseStatus.REVIEW_REQUIRED, r.status); assertNull(r.facts.executionState)
+            assertEquals(ParseStatus.REVIEW_REQUIRED, r.status, role); assertNull(r.facts.executionState)
         }
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$loan\nLoan type: auto\nLoan type: personal").status)
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$incoming\nCard type: credit").status)

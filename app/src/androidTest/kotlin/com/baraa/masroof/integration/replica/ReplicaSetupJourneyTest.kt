@@ -1,8 +1,11 @@
 package com.baraa.masroof.integration.replica
 
 import com.baraa.masroof.testsupport.*
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
@@ -280,10 +283,12 @@ class ReplicaSetupJourneyTest {
         com.baraa.masroof.sms.hash.SmsBodyHasher.sha256Hex(body))
     private fun selectOwnership(entityLabel: String, action: Int) {
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(entityLabel))
-        val label = compose.onNodeWithText(entityLabel).fetchSemanticsNode().boundsInRoot
-        val button = compose.onAllNodesWithText(text(action)).fetchSemanticsNodes()
-            .filter { it.boundsInRoot.center.y >= label.bottom }.minBy { it.boundsInRoot.top - label.bottom }
-        val target = SemanticsMatcher("ownership action for $entityLabel") { it.id == button.id }
+        // The action shares the label's card; match by that, since a clipped button has no on-screen bounds.
+        fun SemanticsNode.hasText(value: String) =
+            config.getOrNull(SemanticsProperties.Text)?.any { it.text == value } == true
+        val target = SemanticsMatcher("ownership action for $entityLabel") { node ->
+            node.hasText(text(action)) && node.parent?.children?.any { it.hasText(entityLabel) } == true
+        }
         compose.onNode(target).performScrollTo()
         // Registry refresh disables ownership writes; wait for the same readiness a user sees.
         compose.waitUntil(20_000) { runCatching { compose.onNode(target).assertIsEnabled() }.isSuccess }

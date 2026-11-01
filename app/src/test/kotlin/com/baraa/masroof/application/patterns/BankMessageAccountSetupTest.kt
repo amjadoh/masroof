@@ -27,20 +27,20 @@ class BankMessageAccountSetupTest {
             val accounts = StubAccountRegistryRepository(owned)
             val cards = NoOpCardRegistryRepository()
             val store = MessagePatternStore(directory.resolve("patterns.json"))
-            val body = "Purchase\nAmount:42SAR\nFrom:900*567\nAt:2026-10-13 12:30"
-            val pattern = SavedMessagePattern.fromChoices("masked-reference", bank.id, "barq app", "PURCHASE", body,
+            val body = "Bill\nAmount:42SAR\nFrom:900*567\nAt:2026-10-13 12:30"
+            val pattern = SavedMessagePattern.fromChoices("masked-reference", bank.id, "barq app", "BILL_PAYMENT", body,
                 listOf("amount" to "42SAR", "source_account" to "900*567", "occurred_at" to "2026-10-13 12:30").map { (field, value) ->
                     FieldChoice(field, body.indexOf(value), body.indexOf(value) + value.length)
                 })
             store.saveBank(0, BankMessagePatterns(bank.id, listOf("barq app"), patterns = listOf(pattern)))
             val workflow = PatternApprovalWorkflow(store, DatabaseAccessGate(), accounts,
                 OwnershipConfirmationService(accounts, cards, NoOpLoanRegistryRepository))
-            val preview = workflow.preview(store.load().generation, bank.id, pattern.id, PatternOperation.PURCHASE,
+            val preview = workflow.preview(store.load().generation, bank.id, pattern.id, PatternOperation.BILL_PAYMENT,
                 owned.id, body, "source_account", emptySet(), Currency.SAR)
             workflow.save(preview)
             val reloaded = MessagePatternStore(directory.resolve("patterns.json")).load()
             assertEquals("900*567", reloaded.banks.single().currentPatterns.single().factContract!!.accountBindings.single().observedValue)
-            val mismatch = runCatching { workflow.preview(reloaded.generation, bank.id, pattern.id, PatternOperation.PURCHASE,
+            val mismatch = runCatching { workflow.preview(reloaded.generation, bank.id, pattern.id, PatternOperation.BILL_PAYMENT,
                 owned.id, body.replace("900*567", "900*4321"), "source_account", emptySet(), Currency.SAR) }.exceptionOrNull()
             assertEquals(PatternApprovalProblem.REFERENCE_MISMATCH, (mismatch as? PatternApprovalException)?.problem)
             assertEquals(reloaded, store.load())

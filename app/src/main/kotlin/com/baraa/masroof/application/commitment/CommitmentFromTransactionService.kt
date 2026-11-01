@@ -10,6 +10,7 @@ import com.baraa.masroof.domain.repository.CommitmentRepository.CommitmentDraft
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
 import java.time.Clock
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 
 sealed interface CommitmentCreationResult {
     data object Success : CommitmentCreationResult
@@ -51,6 +52,8 @@ class CommitmentFromTransactionService(
                     updatedAt = now,
                 ),
             )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             return if (commitmentRepository.getBySourceTransactionId(transactionId) != null) {
                 CommitmentCreationResult.AlreadyExists

@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank.patterns
 import com.baraa.masroof.engine.bank.*
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class RolePatternsTest {
@@ -32,14 +32,17 @@ class RolePatternsTest {
         assertNotEquals(MessageFamily.PURCHASE, collision.facts.family)
     }
 
-    @Test fun learnedAndRoleMatchesRemainConflictsEvenWithTheSameFamily() {
+    @Test fun approvedLearnedAndRoleMatchesRemainConflictsEvenWithTheSameFamily() {
         val taught = SavedMessagePattern.fromChoices("taught", bank.bankId, "OTHER", "PURCHASE", body,
             listOf("amount" to "10 SAR", "card" to "1234", "merchant" to "SHOP", "occurred_at" to "2026-10-15 12:30").map { (field, value) ->
                 FieldChoice(field, body.indexOf(value), body.indexOf(value) + value.length)
             })
-        val result = parse(bank.copy(patterns = bank.patterns + taught))
+        val result = parse(bank.copy(patterns = bank.patterns +
+            taught.copy(factContract = PatternFactContract(MessageFamily.PURCHASE, MoneyDirection.OUTGOING))))
         assertTrue(Blocker.CONFLICTING_FACTS in result.blockers)
         assertEquals(MessageFamily.UNKNOWN, result.facts.family)
+        // A preview-only template has no authority, so it cannot take a recognized message away from its role.
+        assertEquals(ParseStatus.SUCCESS, parse(bank.copy(patterns = bank.patterns + taught)).status)
     }
 
     @Test fun roleProfilesOwnTheirCollectionsAndRejectAContradictoryContract() {

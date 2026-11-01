@@ -20,4 +20,5 @@
     <string name="learning_baseline_better">The base method performs better in the current evaluation.</string>
     <string name="learning_personal_used_reason">The personal model passed evaluation and improved the results.</string>
     <string name="learning_needs_examples">More independent training and validation examples are needed before personal generalization.</string>
+    <string name="learning_needs_examples_count">You have %1$d of %2$d independent validation examples. Each Al Jazira message you correct yourself brings personal learning closer.</string>
 </resources>

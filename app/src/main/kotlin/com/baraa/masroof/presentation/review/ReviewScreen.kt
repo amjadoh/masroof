@@ -1,4 +1,3 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.baraa.masroof.presentation.review
 
@@ -27,6 +26,10 @@ import com.baraa.masroof.presentation.common.MasroofText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -57,26 +60,51 @@ fun ReviewRoute(
     viewModel: ReviewViewModel,
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(Unit) {
-        viewModel.refresh()
-    }
     val state by viewModel.uiState.collectAsState()
-    var teachingSource by androidx.compose.runtime.remember {
-        androidx.compose.runtime.mutableStateOf<com.baraa.masroof.application.patterns.PatternTeachingSource?>(null)
+    // Every Review visit shares this ViewModel, so each visit saves the message it shows (and whether it is teaching it)
+    // and reopens it when it returns. Only the id is saved; the message text is read again from the database.
+    var openReviewId by rememberSaveable { mutableStateOf<String?>(null) }
+    var teaching by rememberSaveable { mutableStateOf(false) }
+    var returning by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(viewModel) {
+        // A new visit keeps what navigation left in the ViewModel: the list, or a message opened with the visit.
+        if (returning && viewModel.uiState.value.selectedDetail?.id != openReviewId) {
+            viewModel.closeDetail()
+            openReviewId?.let(viewModel::openDetail)
+        }
+        returning = true
+        viewModel.refresh()
+        var shown: String? = null
+        viewModel.uiState.map { it.selectedDetail?.id }.distinctUntilChanged().collect { selected ->
+            // Follow every message the ViewModel opens. Forget the visit's message only when it is closed, not while it loads.
+            // Teaching belongs to one message, so another message opens on its detail.
+            if (selected != null) { if (selected != openReviewId) teaching = false; openReviewId = selected }
+            else if (shown == openReviewId) { openReviewId = null; teaching = false }
+            shown = selected
+        }
+    }
+    // Recorded before the load ends, so a rotation mid-load keeps the message the user tapped. A hidden older
+    // message is closed first, so Back while the new one loads acts on what is on screen.
+    fun open(id: String) {
+        teaching = false
+        openReviewId = id
+        if (viewModel.uiState.value.selectedDetail?.id != id) viewModel.closeDetail()
+        viewModel.openDetail(id)
     }
     val patterns = viewModel.messagePatternsWorkflow
-    val source = teachingSource
-    if (source != null && patterns != null) {
-        com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns, source = source,
-            onOpenReview = { id -> teachingSource = null; viewModel.openDetail(id) }, onBack = {
-                teachingSource = null
+    val detail = state.selectedDetail?.takeIf { it.id == openReviewId }
+    if (teaching && detail != null && patterns != null) {
+        com.baraa.masroof.presentation.patterns.MessagePatternsScreen(patterns,
+            source = com.baraa.masroof.application.patterns.PatternTeachingSource(detail.bankId, requireNotNull(detail.sender), detail.body, detail.id),
+            onOpenReview = ::open, onBack = {
+                teaching = false
                 viewModel.refreshAfterPatternTeaching()
             })
         return
     }
-    if (state.selectedDetail != null) {
+    if (detail != null) {
         ReviewDetailScreen(
-            detail = state.selectedDetail!!,
+            detail = detail,
             resolving = state.resolving,
             message = state.message,
             error = state.error,
@@ -90,18 +118,14 @@ fun ReviewRoute(
             onConfirmOwnershipCardOwned = viewModel::confirmOwnershipCardOwned,
             onMarkOwnershipCardExternal = viewModel::markOwnershipCardExternal,
             onRestoreIgnored = viewModel::restoreIgnoredMessage,
-            onTeachPattern = if (patterns != null) ({
-                val detail = state.selectedDetail!!
-                teachingSource = com.baraa.masroof.application.patterns.PatternTeachingSource(
-                    detail.bankId, requireNotNull(detail.sender), detail.body, detail.id)
-            }) else null,
+            onTeachPattern = if (patterns != null) ({ teaching = true }) else null,
         )
     } else {
         ReviewListScreen(
             state = state,
             onBack = onBack,
             onRefresh = viewModel::refresh,
-            onOpen = viewModel::openDetail,
+            onOpen = ::open,
             onDismissAllInformational = viewModel::dismissAllInformational,
             onListModeChange = viewModel::setListMode,
         )
@@ -261,7 +285,7 @@ internal fun ReviewListCard(item: ReviewListItemUi, onClick: () -> Unit) {
     MasroofCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text(item.titleRes?.let { stringResource(it) } ?: item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             com.baraa.masroof.presentation.common.MasroofBadge(stringResource(item.kindLabelRes),
                 if (item.ignored) com.baraa.masroof.presentation.common.MasroofCardAccent.Inflow
                 else com.baraa.masroof.presentation.common.MasroofCardAccent.Liability)
@@ -446,9 +470,10 @@ internal fun ReviewDetailScreen(
                 else -> null
             }
             if (detail.showExternalTransferAction && externalDirection != null) {
-                val externalIcon = when (detail.messageFamily) {
-                    MessageFamily.TRANSFER_IN -> MasroofIcons.externalIn
-                    MessageFamily.TRANSFER_OUT -> MasroofIcons.externalOut
+                val externalIcon = when {
+                    detail.transferBetweenOwnAccounts -> MasroofIcons.selfTransfer
+                    detail.messageFamily == MessageFamily.TRANSFER_IN -> MasroofIcons.externalIn
+                    detail.messageFamily == MessageFamily.TRANSFER_OUT -> MasroofIcons.externalOut
                     else -> MasroofIcons.selfTransfer
                 }
                 IconTextButton(
@@ -456,9 +481,10 @@ internal fun ReviewDetailScreen(
                     enabled = !resolving,
                     icon = externalIcon,
                     text = stringResource(
-                        when (detail.messageFamily) {
-                            MessageFamily.TRANSFER_IN -> R.string.review_action_external_transfer_in
-                            MessageFamily.TRANSFER_OUT -> R.string.review_action_external_transfer_out
+                        when {
+                            detail.transferBetweenOwnAccounts -> R.string.txn_type_self_transfer
+                            detail.messageFamily == MessageFamily.TRANSFER_IN -> R.string.review_action_external_transfer_in
+                            detail.messageFamily == MessageFamily.TRANSFER_OUT -> R.string.review_action_external_transfer_out
                             else -> R.string.review_action_external_transfer
                         },
                     ),

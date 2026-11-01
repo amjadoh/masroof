@@ -27,7 +27,7 @@ import com.baraa.masroof.ui.theme.MasroofShapes
 import com.baraa.masroof.ui.theme.MasroofThemeExtras
 
 data class MasroofNavigationItem(val label: String, val icon: ImageVector,
-    val selected: Boolean, val description: String = label)
+    val selected: Boolean, val description: String = label, val tourId: String? = null)
 
 @Composable
 fun MasroofBottomNavigation(items: List<MasroofNavigationItem>, onSelect: (Int) -> Unit, enabled: Boolean = true, displayText: (String) -> String = { it }) {
@@ -40,7 +40,7 @@ fun MasroofBottomNavigation(items: List<MasroofNavigationItem>, onSelect: (Int) 
                 horizontalArrangement = Arrangement.spacedBy(MasroofReference.navigationGap)) {
                 items.forEachIndexed { index, item ->
                     val color = if (item.selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Surface(modifier = Modifier.weight(1f).semantics {
+                    Surface(modifier = Modifier.weight(1f).then(item.tourId?.let { Modifier.coachMarkTarget(it) } ?: Modifier).semantics {
                         contentDescription = item.description; selected = item.selected
                     }, color = if (item.selected) MasroofReference.selectedNavigationColor() else Color.Transparent,
                         shape = MasroofShapes.small) {

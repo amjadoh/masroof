@@ -3,23 +3,31 @@ package com.baraa.masroof.application.interpretation
 import com.baraa.masroof.bank.BankSmsAdapter
 import com.baraa.masroof.bank.MessagePatternSmsAdapter
 import com.baraa.masroof.data.patterns.MessagePatternStore
+import com.baraa.masroof.engine.bank.Interpretation
+import com.baraa.masroof.engine.bank.MessageInput
+import com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration
 import com.baraa.masroof.engine.bank.patterns.PatternFactInterpreter
 
 /** Each routing attempt sees one complete document. */
 class ConfiguredPatternAdapters(private val store: MessagePatternStore,
-    private val alJaziraInterpret: ((com.baraa.masroof.engine.bank.MessageInput, PatternFactInterpreter) -> com.baraa.masroof.engine.bank.Interpretation)? = null) {
-    private var configurationSnapshot: com.baraa.masroof.engine.bank.patterns.MessagePatternConfiguration? = null
+    private val assistedBanks: (MessagePatternConfiguration) -> Set<String> = { emptySet() },
+    private val assistedInterpret: ((MessageInput, PatternFactInterpreter, String) -> Interpretation)? = null) {
+    private var configurationSnapshot: MessagePatternConfiguration? = null
+    private var assistedSnapshot: Set<String> = emptySet()
     private var adapterSnapshot: List<BankSmsAdapter> = emptyList()
 
     @Synchronized
     fun snapshot(): List<BankSmsAdapter> {
         val configuration = store.load()
-        if (configuration === configurationSnapshot) return adapterSnapshot
+        val assisted = assistedBanks(configuration)
+        if (configuration === configurationSnapshot && assisted == assistedSnapshot) return adapterSnapshot
         val interpreter = PatternFactInterpreter(configuration)
-        val adapters = configuration.banks.sortedBy { it.bankId }.map {
-            MessagePatternSmsAdapter(it, interpreter, alJaziraInterpret.takeIf { _ -> it.bankId == "BANK_ALJAZIRA" })
+        val adapters = configuration.banks.sortedBy { it.bankId }.map { bank ->
+            MessagePatternSmsAdapter(bank, interpreter, assistedInterpret?.takeIf { bank.bankId in assisted }
+                ?.let { interpret -> { input, snapshot -> interpret(input, snapshot, bank.bankId) } })
         }
         configurationSnapshot = configuration
+        assistedSnapshot = assisted
         adapterSnapshot = adapters
         return adapters
     }

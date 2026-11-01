@@ -7,6 +7,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PatternCatalogTest {
+    @Test fun builtInRulesShowPhrasesAndFieldWordsAndApproveOnlyMovements() {
+        val catalog = com.baraa.masroof.data.patterns.MessagePatternConfigurationCodec.decode(
+            java.io.File("src/main/assets/bank-patterns/BANK_BARQ.patterns.json").readText()).toCatalog()
+        val patterns = catalog.banks.single().currentPatterns.associateBy { it.id }
+        val incoming = patterns.getValue("barq.transfer-in")
+        assertTrue("حوالة داخلية واردة" in incoming.recognitionPhrases)
+        assertEquals(listOf("من حساب", "حساب المرسل", "from a/c"), incoming.fieldLabels["source_account"])
+        assertTrue(incoming.fields.isEmpty())
+        assertTrue(incoming.canApprove)
+        assertFalse(incoming.canEdit)
+        assertTrue(patterns.getValue("barq.fee").canApprove)
+        assertTrue(patterns.getValue("barq.installment").canApprove)
+        assertFalse(patterns.getValue("barq.notice").canApprove)
+    }
+
     @Test fun displayChoicesKeepRevisionsAndApprovalSeparateFromMatching() {
         val body = "Transfer:10SAR From:123 To:456"
         val pattern = SavedMessagePattern.fromChoices("transfer", "BANK_TEST", "TEST", "TRANSFER_OUT", body,
