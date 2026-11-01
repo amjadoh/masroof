@@ -8,6 +8,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -34,12 +37,14 @@ internal fun PatternTeachingScreen(
     source: PatternTeachingSource?, onSaved: (PatternTeachingPreview, String) -> Unit, onReload: () -> Unit, onBack: () -> Unit,
     existingPattern: PatternDefinitionView? = null, initialBody: String = "", initialOperation: PatternOperation? = null,
 ) {
-    var step by remember { mutableIntStateOf(0) }
-    var operation by remember { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
-    var sender by remember { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
-    var body by remember { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
-    var fieldIndex by remember { mutableIntStateOf(0) }
-    var bindings by remember { mutableStateOf(emptyList<PatternBinding>()) }
+    // Progress survives another screen covering this one. A restored preview step falls back to binding (LaunchedEffect(generation)).
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var operation by rememberSaveable { mutableStateOf(PatternOperation.entries.firstOrNull { it.name == existingPattern?.label } ?: initialOperation ?: PatternOperation.PURCHASE) }
+    var sender by rememberSaveable { mutableStateOf(source?.sender ?: existingPattern?.sender?.takeIf { it.isNotBlank() } ?: bank.senders.first()) }
+    // A Review message is read again from its source on restore, so only text the user typed is saved.
+    var body by rememberSaveable(stateSaver = if (source == null) TextFieldValue.Saver else notSaved) { mutableStateOf(TextFieldValue(source?.body ?: initialBody)) }
+    var fieldIndex by rememberSaveable { mutableIntStateOf(0) }
+    var bindings by rememberSaveable(stateSaver = bindingsSaver) { mutableStateOf(emptyList<PatternBinding>()) }
     var candidates by remember { mutableStateOf(emptyList<PatternText>()) }
     var preview by remember { mutableStateOf<PatternTeachingPreview?>(null) }
     var sample by remember { mutableStateOf("") }
@@ -210,6 +215,13 @@ internal fun PatternTeachingScreen(
         }
     }
 }
+
+private val notSaved = Saver<TextFieldValue, Any>(save = { null }, restore = { null })
+
+private val bindingsSaver = listSaver<List<PatternBinding>, Any>(
+    save = { bindings -> bindings.flatMap { listOf(it.field, it.start, it.end, it.ignored) } },
+    restore = { saved -> saved.chunked(4) { PatternBinding(it[0] as String, it[1] as Int, it[2] as Int, it[3] as Boolean) } },
+)
 
 @Composable
 internal fun patternFieldName(key: String): String {

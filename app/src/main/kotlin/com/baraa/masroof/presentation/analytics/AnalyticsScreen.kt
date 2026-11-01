@@ -119,7 +119,6 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
     }
     LaunchedEffect(pendingTarget, state.updating, state.snapshot?.sourceHash) {
         val id = pendingTarget ?: return@LaunchedEffect
-        if (id == "resume") { pendingTarget = null; return@LaunchedEffect }
         if (id == "settings") { settings = true; settingsEntry = true; pendingTarget = null; return@LaunchedEffect }
         if (state.updating) return@LaunchedEffect
         val alert = state.alerts.firstOrNull { it.id == id } ?: try { workflow.findAlert(id) }
