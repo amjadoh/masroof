@@ -74,6 +74,17 @@ fun MasroofRoot(
     val notifications by notificationCenterViewModel.uiState.collectAsState()
     var homeStack by rememberSaveable(stateSaver = HomeBackStackSaver) { mutableStateOf(homeRootStack()) }
     val top = homeStack.top().destination
+    // Every stack change goes through here, so the rules for the shared ViewModels apply to each push, pop and tab.
+    fun navigate(next: HomeBackStack) {
+        val leaving = homeStack.top()
+        val entering = next.top()
+        if (entering.id == leaving.id) return
+        // Settings and Review change transactions, so whatever shows next (a list, a detail) must reload.
+        if (leaving.destination == HomeDestination.Settings || leaving.destination == HomeDestination.Review) dashboardViewModel.refresh()
+        // Review visits share one ViewModel: a new visit opens on the list; a returning visit reopens its own message.
+        if (entering.destination == HomeDestination.Review && homeStack.entries.none { it.id == entering.id }) reviewViewModel.closeDetail()
+        homeStack = next
+    }
     val tourTargets = remember { com.baraa.masroof.ui.components.MasroofCoachMarkTargets() }
     val dashboardLoading by remember(dashboardViewModel) {
         dashboardViewModel.uiState.map { it.loading }.distinctUntilChanged()
@@ -86,7 +97,7 @@ fun MasroofRoot(
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
                 if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.unreadAnalysisAlerts(dashboardViewModel.analytics),
-                    onClick = { homeStack = pushHome(homeStack, HomeDestination.NotificationCenter) })
+                    onClick = { navigate(pushHome(homeStack, HomeDestination.NotificationCenter)) })
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -105,7 +116,7 @@ fun MasroofRoot(
                 onRequestExportLogs = onRequestExportLogs,
                 onRequestRestoreBackup = onRequestRestoreBackup,
                 stack = homeStack,
-                onStackChange = { homeStack = it },
+                onStackChange = ::navigate,
             )
         }
         if (onboarding.step == OnboardingStep.HOME) {
@@ -122,13 +133,7 @@ fun MasroofRoot(
                     tourId = HomeTour.tabId(destination))
             }) { index ->
                 if (settingsViewModel.uiState.value.importingSms) return@MasroofBottomNavigation
-                val tab = entries[index].first
-                // Home and a re-tapped tab start fresh. Another tab is pushed and keeps a transaction detail behind it,
-                // but Review always opens on its list because every Review visit shares one ViewModel.
-                val fresh = tab == HomeDestination.Dashboard || tab == top
-                if (fresh) dashboardViewModel.closeTransactionDetail()
-                if (fresh || tab == HomeDestination.Review) reviewViewModel.closeDetail()
-                homeStack = switchHomeTab(homeStack, tab)
+                navigate(switchHomeTab(homeStack, entries[index].first))
             }
 
         }
@@ -169,12 +174,12 @@ private fun MasroofContent(
     val top = stack.top()
     // Each visit keeps its own saved state (settings stack, selected card, scroll) while covered by another screen.
     val destinationStateHolder = rememberSaveableStateHolder()
-    var liveEntryIds by rememberSaveable { mutableStateOf(stack.map { it.id }) }
+    var liveEntryIds by rememberSaveable { mutableStateOf(stack.entries.map { it.id }) }
     // The visit that opened the transaction detail; the detail shows only while that visit is on top.
     var transactionDetailOwner by rememberSaveable { mutableStateOf<Int?>(null) }
     var pendingSettingsLaunch by remember { mutableStateOf<SettingsLaunchRequest?>(null) }
     LaunchedEffect(stack) {
-        val ids = stack.map { it.id }
+        val ids = stack.entries.map { it.id }
         (liveEntryIds - ids.toSet()).forEach(destinationStateHolder::removeState)
         liveEntryIds = ids
         if (transactionDetailOwner != null && transactionDetailOwner !in ids) {
@@ -190,20 +195,9 @@ private fun MasroofContent(
     var pendingCardsSummaryDebitKey by rememberSaveable { mutableStateOf<String?>(null) }
     var cardsSummaryDetailExitsSummary by rememberSaveable { mutableStateOf(false) }
 
-    fun push(destination: HomeDestination) {
-        val next = pushHome(stack, destination)
-        // The review ViewModel is shared, so a new Review visit must not open on an older visit's message.
-        if (next !== stack && destination == HomeDestination.Review) reviewViewModel.closeDetail()
-        onStackChange(next)
-    }
+    fun push(destination: HomeDestination) = onStackChange(pushHome(stack, destination))
 
-    fun pop() {
-        val popped = popHome(stack) ?: return
-        // Settings and Review change transactions. The dashboard reloads itself when it returns; other screens need a reload.
-        val changedData = top.destination == HomeDestination.Settings || top.destination == HomeDestination.Review
-        if (changedData && popped.top().destination != HomeDestination.Dashboard) dashboardViewModel.refresh()
-        onStackChange(popped)
-    }
+    fun pop() { popHome(stack)?.let(onStackChange) }
 
     fun openTransaction(id: String) {
         transactionDetailOwner = top.id
@@ -422,7 +416,7 @@ private fun MasroofContent(
                 onPendingLaunchConsumed = { pendingSettingsLaunch = null },
                 onBack = ::pop,
                 onOpenReview = { push(HomeDestination.Review) },
-                onOpenAccounts = { dashboardViewModel.refresh(); push(HomeDestination.AccountsSummary) },
+                onOpenAccounts = { push(HomeDestination.AccountsSummary) },
                 onOpenReviewExample = { id ->
                     push(HomeDestination.Review)
                     reviewViewModel.setListMode(com.baraa.masroof.presentation.review.ReviewListMode.PENDING)

@@ -135,17 +135,21 @@ class HomeBackNavigationJourneyTest {
         openNotifications()
         clickText(text(R.string.settings_hub_review_title))
         awaitNode(heading(text(R.string.review_title)))
-        // A new Review visit opens on the list, even when an older visit left a message open.
+        // A new Review visit opens on the list; the older visit gets its own message back when it returns.
         clickText(text(R.string.reference_review_evidence))
-        awaitNode(heading(text(R.string.review_detail_title)))
+        val reviewDetail = heading(text(R.string.review_detail_title))
+        awaitNode(reviewDetail)
         openNotifications()
         clickText(text(R.string.settings_hub_review_title))
         awaitNode(heading(text(R.string.review_title)))
-        compose.onNode(heading(text(R.string.review_detail_title))).assertDoesNotExist()
+        compose.onNode(reviewDetail).assertDoesNotExist()
         pressDeviceBack(compose)
         awaitNode(notificationsScreen)
         pressDeviceBack(compose)
+        awaitNode(reviewDetail)
+        pressDeviceBack(compose)
         awaitNode(heading(text(R.string.review_title)))
+        compose.onNode(reviewDetail).assertDoesNotExist()
         pressDeviceBack(compose)
         awaitNode(notificationsScreen)
 
@@ -213,6 +217,80 @@ class HomeBackNavigationJourneyTest {
         awaitNode(heading(text(R.string.review_title)))
         pressDeviceBack(compose)
         awaitNode(hasText(text(R.string.personal_review_open, 1)) and hasClickAction())
+    }
+
+    @Test fun detailsTeachingAndRecreation_keepTheirPlaceAcrossTabsAndOtherVisits() {
+        awaitNode(dashboardScreen)
+        val transactionDetail = heading(text(R.string.transaction_detail_title))
+        val transactionList = heading(text(R.string.transaction_list_title))
+        val settingsHub = hasText(text(R.string.settings_banks_title)) and hasClickAction()
+
+        // A re-tapped tab restarts only itself; the dashboard's open detail stays behind it.
+        clickText("Back Nav Shop B")
+        awaitNode(transactionDetail)
+        clickText(text(R.string.approved_nav_transactions))
+        awaitNode(transactionList)
+        clickText(text(R.string.approved_nav_transactions))
+        awaitNode(transactionList)
+        pressDeviceBack(compose)
+        awaitNode(transactionDetail)
+
+        // A change made while Settings covers the detail shows as soon as Back returns to it.
+        // A plain write sends no maintenance signal, so only the reload on leaving Settings can show it.
+        clickText(text(R.string.approved_nav_settings))
+        awaitNode(settingsHub)
+        runBlocking {
+            val repository = TestRuntime.container(InstrumentationRegistry.getInstrumentation().targetContext).financialTransactionRepository
+            repository.update(repository.listAll().first { it.merchant == "Back Nav Shop B" }.copy(merchant = "Renamed In Settings"))
+        }
+        pressDeviceBack(compose)
+        awaitNode(transactionDetail)
+        awaitNode(hasText("Renamed In Settings"))
+        pressDeviceBack(compose)
+        awaitNode(dashboardScreen)
+
+        // Teaching from Review keeps its step and bindings, and an older Review visit gets its message back.
+        clickText(text(R.string.approved_nav_review))
+        clickText(text(R.string.reference_review_evidence))
+        val reviewDetail = heading(text(R.string.review_detail_title))
+        awaitNode(reviewDetail)
+        click(hasTestTag("review-teach-pattern"))
+        clickText(text(R.string.teaching_next))
+        click(hasTestTag("pattern-bind") and isEnabled())
+        val preview = hasText(text(R.string.pattern_preview)) and hasClickAction() and isEnabled()
+        awaitNode(preview)
+        openNotifications()
+        clickText(text(R.string.approved_nav_review))
+        awaitNode(heading(text(R.string.review_title)))
+        compose.onNode(reviewDetail).assertDoesNotExist()
+        compose.onNode(hasTestTag("pattern-bind")).assertDoesNotExist()
+        pressDeviceBack(compose)
+        awaitNode(notificationsScreen)
+        pressDeviceBack(compose)
+        awaitNode(preview)
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) { compose.activity.hasWindowFocus() }
+        awaitNode(preview)
+        // Back walks the teaching steps: second field, first field (still binding), kind, then the message it came from.
+        pressDeviceBack(compose)
+        compose.onNode(preview).assertExists()
+        pressDeviceBack(compose)
+        awaitNode(hasTestTag("pattern-operation-PURCHASE"))
+        pressDeviceBack(compose)
+        awaitNode(reviewDetail)
+
+        // Recreating the activity with an alert's launch intent must not open the alert again over Settings.
+        clickText(text(R.string.approved_nav_settings))
+        awaitNode(settingsHub)
+        compose.runOnUiThread { compose.activity.intent.putExtra("lab_analysis_alert", "settings") }
+        repeat(2) {
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) { compose.activity.hasWindowFocus() }
+            awaitNode(settingsHub)
+        }
+        compose.onNode(hasText(text(R.string.lab_analysis_budget_section))).assertDoesNotExist()
+        pressDeviceBack(compose)
+        awaitNode(reviewDetail)
     }
 
     private fun openPatterns() {
