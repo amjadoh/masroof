@@ -42,6 +42,7 @@ class ExternalAccountSettingsTest {
                         ) },
                         onPickAccountType = {}, onDismissAccountType = {}, onSelectAccountType = {},
                         onViewExternalSpending = { opened = it },
+                        deleteActions = RegistryDeleteActions({}, {}, {}, {}),
                     )
                 }
             }
