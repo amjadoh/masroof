@@ -57,9 +57,10 @@ class RegistryDeleteScreensTest {
     }
 
     /** Presses Delete on each tab and returns the targets in tab order, checking the dialog names that item. */
-    private fun deleteOnEveryTab(names: List<String>): List<StopTrackingTarget> {
-        tabs.forEachIndexed { index, (_, tab) ->
-            compose.onNodeWithText(ar(tab)).performClick()
+    private fun deleteOnEveryTab(names: List<String>, externalTab: Int = R.string.reference_stopped): List<StopTrackingTarget> {
+        tabs.forEachIndexed { index, (ownership, tab) ->
+            // Our account and card screens name the external tab after its holder rather than "stopped".
+            compose.onNodeWithText(ar(if (ownership == OwnershipStatus.EXTERNAL) externalTab else tab)).performClick()
             compose.onNodeWithTag("registry-delete-action").performScrollTo().performClick()
             compose.onNodeWithTag("registry-delete-name").assert(hasText(names[index], substring = true))
             compose.onNodeWithTag("registry-delete-cancel").performClick()
@@ -77,7 +78,7 @@ class RegistryDeleteScreensTest {
         show {
             SettingsBankAccountsScreen(bank, state, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, deleteActions = actions)
         }
-        assertEquals(accounts, deleteOnEveryTab(accounts.map { it.displayName!! })
+        assertEquals(accounts, deleteOnEveryTab(accounts.map { it.displayName!! }, R.string.settings_external_accounts)
             .map { (it as StopTrackingTarget.Account).account })
     }
 
@@ -89,7 +90,7 @@ class RegistryDeleteScreensTest {
         show {
             SettingsBankCardsScreen(bank, state, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, deleteActions = actions)
         }
-        assertEquals(cards, deleteOnEveryTab(cards.map { it.displayName!! }).map { (it as StopTrackingTarget.Card).card })
+        assertEquals(cards, deleteOnEveryTab(cards.map { it.displayName!! }, R.string.settings_external_cards).map { (it as StopTrackingTarget.Card).card })
     }
 
     @Test fun loanScreenDeletesTheItemOfEachTab() {
