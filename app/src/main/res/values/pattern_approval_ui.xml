@@ -3,7 +3,6 @@
     <string name="pattern_approval_imported_message">رسالة من المستورد</string>
     <string name="pattern_approval_example">رسالة %1$d · %2$s</string>
     <string name="pattern_approval_choose_imported">اختر رسالة مستوردة</string>
-    <string name="pattern_approval_original_message">عرض نص الرسالة الأصلي</string>
     <string name="pattern_approval_manual_message">استخدام رسالة مثال أخرى</string>
     <string name="pattern_approval_account_question">إلى أي حساب تُسجّل الحركة؟</string>
     <string name="pattern_approval_confirmed_account">حسابك المؤكد</string>
@@ -15,7 +14,8 @@
     <string name="pattern_approval_own_reference">نعم، %1$s يحدد حسابي</string>
     <string name="pattern_approval_own_reference_help">الربط لهذا الرقم فقط؛ الأرقام المختلفة تبقى للمراجعة.</string>
     <string name="pattern_approval_account_summary">ستُسجّل الحركة في حسابك •• %1$s</string>
-    <string name="pattern_approval_save_scope">الاعتماد للرسائل الجديدة. معالجة الرسائل المعلقة إجراء تالٍ؛ يمكنك بدء المعالجة بعد الحفظ مباشرة.</string>
+    <string name="pattern_approval_save_scope">بعد الاعتماد يعمل النمط على الرسائل الجديدة تلقائيًا. الرسائل المعلّقة تعالجها بضغطة واحدة بعد الحفظ.</string>
+    <string name="pattern_approval_matching_preview">يطابق %1$d رسالة معلّقة. اعتمد النمط لتسجيلها.</string>
     <string name="pattern_approval_need_message">اختر رسالة مستوردة أو ألصق رسالة كاملة تطابق هذا النمط.</string>
     <string name="pattern_approval_need_account">اختر حسابك المؤكد، أو أضفه وأكد ملكيته.</string>
     <string name="pattern_approval_need_reference">حدد ما إذا كانت أرقام الرسالة تخص حسابك أو الطرف الآخر.</string>
@@ -26,14 +26,14 @@
     <string name="pattern_approval_error_currency_conflict">العملة المختارة تختلف عن عملة الرسالة. اختر العملة الصحيحة أو العملة من الرسالة.</string>
     <string name="pattern_approval_error_amount">تعذر التحقق من مبلغ موجب للحركة. راجع الرسالة والنمط.</string>
     <string name="pattern_approval_error_time">تاريخ الحركة أو وقتها غير مكتمل أو غير صالح. اختر رسالة كاملة بتوقيت صحيح.</string>
+    <string name="pattern_approval_error_message_context">الرسالة تحتوي عبارات متعارضة حسب قواعد البنك المدمجة، فلا يمكن اعتمادها تلقائياً. اتركها للمراجعة.</string>
     <string name="pattern_approval_error_conflict">أكثر من نمط يطابق الرسالة. راجع الأنماط المتداخلة قبل الاعتماد.</string>
     <string name="pattern_approval_error_non_financial">هذه رسالة أمنية أو غير مالية ولا يمكن اعتمادها كحركة مالية.</string>
     <string name="pattern_approval_error_changed">تغيّرت إعدادات النمط. ارجع وافتح الاعتماد مجددًا.</string>
     <string name="pattern_approval_waiting">بانتظار اعتمادك · لا يسجّل حركات بعد</string>
     <string name="pattern_approval_ready">معتمد ماليًا</string>
     <string name="pattern_approval_saved">اعتمد النمط للرسائل الجديدة</string>
-    <string name="pattern_approval_saved_help">لم تُعالج الرسائل المستوردة بالحفظ وحده. عالج المعلّق المطابق من الزر أدناه.</string>
-    <string name="pattern_approval_edit">تعديل الاعتماد</string>
+    <string name="pattern_approval_saved_help">لم تُعالج الرسائل بالحفظ وحده. إذا كان النمط معطّلًا ففعّله، ثم عالج المعلّق المطابق من الزر أدناه.</string>
     <string name="pattern_approval_process_matching">معالجة المعلّق المطابق (%1$d)</string>
     <string name="pattern_approval_matching_count">رسائل معلّقة تطابق هذا النمط: %1$d</string>
     <string name="pattern_approval_no_pending">لا توجد رسائل معلّقة مؤهلة لهذا النمط في النطاق المفحوص.</string>
@@ -41,7 +41,13 @@
     <string name="pattern_approval_dashboard_scope">تظهر الحركات المسجلة ضمن فترة الداشبورد المناسبة. صافي الحركة لا يمثل رصيد البنك الفعلي.</string>
     <string name="pattern_approval_view_accounts">عرض أرقام الحسابات</string>
     <string name="pattern_approval_advanced">الإصدارات</string>
-    <string name="pattern_approval_revision_help">الإصدار نسخة محفوظة من إعدادات النمط. التفعيل والتعطيل والاستعادة تنشئ إصدارًا جديدًا؛ رقم الإصدار لا يعني نجاح الاعتماد المالي.</string>
     <string name="pattern_approval_import_hint">بعض أنماط هذا البنك تحتاج اعتمادك قبل تسجيل الحركات. يمكن إكمال الاستيراد وستبقى الرسائل غير المعتمدة في المراجعة.</string>
     <string name="pattern_approval_open_patterns">اعتماد الأنماط ومعالجة المعلّق</string>
+    <string name="pattern_badge_builtin">مدمج</string>
+    <string name="pattern_badge_awaiting">بانتظار الاعتماد</string>
+    <string name="pattern_badge_approved">معتمد</string>
+    <string name="pattern_badge_active">مفعّل</string>
+    <string name="pattern_badge_conflict">تعارض</string>
+    <string name="pattern_approval_card_summary">ستُسجّل الحركة على بطاقتك •• %1$s</string>
+    <string name="pattern_approval_link_help">يُستخدم الحساب أو البطاقة فقط عندما لا تذكره الرسالة. إذا ذكرت الرسالة رقمًا مختلفًا تبقى للمراجعة.</string>
 </resources>

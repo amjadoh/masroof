@@ -175,3 +175,14 @@ Dashboard summary and detail pages emit into the `ColumnScope` supplied by
 `DashboardSummaryScaffold`. The scaffold owns scrolling, the period display,
 loading/error gates and `MasroofSpacing.sectionGap`; pages add a nested layout
 only for sections with their own grouping or spacing.
+
+## Text fitting and documentation captures
+
+`MasroofFitText` scales explicit money spans together with the base font. Shared tab labels also
+use one common fit scale; below the minimum, money wraps instead of truncating. Retain the small
+measurement helper until native autosizing preserves these contracts and visual parity. The
+old Compose-version limitation no longer explains this choice.
+
+The English and Arabic README screenshots in `docs/screenshots/` come from production fidelity
+fixtures with synthetic financial data. Capture both languages with the same fixture and theme;
+never substitute real account evidence or hand-edit financial values in screenshots.

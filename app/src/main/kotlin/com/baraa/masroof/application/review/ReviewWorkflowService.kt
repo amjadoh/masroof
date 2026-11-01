@@ -9,6 +9,9 @@ import com.baraa.masroof.application.transaction.ReconciliationIncompleteExcepti
 import com.baraa.masroof.application.transaction.ReconciliationReport
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
@@ -72,6 +75,7 @@ class ReviewWorkflowService(
     private val newCorrectionId: () -> String = {
         UserCorrectionIdFactory.create(UUID.randomUUID().toString())
     },
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /**
      * Full-history reconciliation and review-queue refresh.
@@ -81,7 +85,8 @@ class ReviewWorkflowService(
      * restore, ownership changes, and other resolved review actions reconcile
      * at most the affected RawSms ids, then reload that queue without a second sweep.
      */
-    suspend fun refreshReviewQueue() {
+    // Full-history reconcile; never on the caller's (often main) thread.
+    suspend fun refreshReviewQueue(): Unit = withContext(ioDispatcher) {
         val report = try {
             reconciliationService.reconcileStoredEventsDetailed()
         } catch (e: CancellationException) {
@@ -121,7 +126,7 @@ class ReviewWorkflowService(
      * Account and card matches are exact bank-scoped references. Loan matches
      * are the bank plus loan type. Unrelated history is not loaded.
      */
-    suspend fun reconcileOwnershipChange(change: OwnershipChange) {
+    suspend fun reconcileOwnershipChange(change: OwnershipChange): Unit = withContext(ioDispatcher) {
         val rawSmsIds = when (change) {
             is OwnershipChange.Account ->
                 parsedEventRepository.listRawSmsIdsReferencingAccount(change.account)
@@ -271,7 +276,7 @@ class ReviewWorkflowService(
                 val sourceContainerId = FinancialContainerIdFactory.accountId(sourceRef)
                     ?: return ReviewWorkflowResult.Rejected("source_not_durable")
                 Triple(
-                    FinancialTransactionType.EXTERNAL_TRANSFER_OUT,
+                    transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, event.destinationAccountRef),
                     sourceContainerId,
                     event.destinationAccountRef?.let(FinancialContainerIdFactory::accountId),
                 )
@@ -286,13 +291,16 @@ class ReviewWorkflowService(
                 val destContainerId = FinancialContainerIdFactory.accountId(destRef)
                     ?: return ReviewWorkflowResult.Rejected("destination_not_durable")
                 Triple(
-                    FinancialTransactionType.EXTERNAL_TRANSFER_IN,
+                    transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_IN, event.sourceAccountRef),
                     event.sourceAccountRef?.let(FinancialContainerIdFactory::accountId),
                     destContainerId,
                 )
             }
 
             else -> return ReviewWorkflowResult.Rejected("not_a_transfer")
+        }
+        if (type == FinancialTransactionType.SELF_TRANSFER && sourceId == destId) {
+            return ReviewWorkflowResult.Rejected("same_transfer_account")
         }
 
         val (occurredAt, occurredAtZone) = resolvedTransactionTime(
@@ -325,6 +333,23 @@ class ReviewWorkflowService(
             }
         }
     }
+
+    /** True when resolving this transfer review records a movement between two owned accounts. */
+    suspend fun transferResolvesBetweenOwnAccounts(rawSmsId: String): Boolean {
+        val event = effectiveParsedEventProvider.findEffectiveByRawSmsId(rawSmsId)?.event ?: return false
+        val counterpart = when (event.messageFamily) {
+            MessageFamily.TRANSFER_OUT -> event.destinationAccountRef
+            MessageFamily.TRANSFER_IN -> event.sourceAccountRef
+            else -> return false
+        }
+        return transferTypeFor(FinancialTransactionType.EXTERNAL_TRANSFER_OUT, counterpart) == FinancialTransactionType.SELF_TRANSFER
+    }
+
+    /** Money moving to or from another owned account leaves one account and enters the other; it is never spending or income. */
+    private suspend fun transferTypeFor(external: FinancialTransactionType, counterpart: AccountReference?) =
+        if (counterpart != null && FinancialContainerIdFactory.accountId(counterpart) != null &&
+            ownershipResolver.resolveAccount(counterpart) == OwnershipStatus.OWNED) FinancialTransactionType.SELF_TRANSFER
+        else external
 
     suspend fun resolveSelfTransferPair(
         outgoingReviewId: String,

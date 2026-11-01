@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -164,11 +164,12 @@ class ApprovedFidelityMatrixTest {
             "transactions" -> TransactionListScreen(
                 periodLabel = periodLabel,
                 transactions = financial.allTransactions,
+                projection = TransactionListPresentationMapper.project(financial.allTransactions, TransactionListFilterState()),
+                onFilterChanged = {},
                 onBack = {},
                 onOpenTransaction = {},
                 ownedCards = financial.ownedCards,
-                ownedAccounts = financial.ownedAccounts,
-                transactionAccountInvolvement = financial.transactionAccountInvolvement
+                ownedAccounts = financial.ownedAccounts
             )
             "accounts" -> AccountsSummaryScreen(
                 state = financial,
@@ -425,6 +426,7 @@ class ApprovedFidelityMatrixTest {
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
                 onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
                 onRenameAccount = {},
                 onDismissRenameAccount = {},
                 onSaveAccountName = {},
@@ -442,6 +444,7 @@ class ApprovedFidelityMatrixTest {
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
                 onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
                 onRenameCard = {},
                 onDismissRenameCard = {},
                 onSaveCardName = {},
@@ -457,7 +460,8 @@ class ApprovedFidelityMatrixTest {
                 onRequestStopTracking = {},
                 onResumeTracking = {},
                 onDismissStopConfirm = {},
-                onConfirmStopTracking = {}
+                onConfirmStopTracking = {},
+                deleteActions = RegistryDeleteActions({}, {}, {}, {}),
             )
             "myCommitments" -> SettingsCommitmentsScreen(
                 state = settingsState,

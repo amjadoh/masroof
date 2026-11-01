@@ -1,8 +1,6 @@
 package com.baraa.masroof.application.dashboard
 
-import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.ids.FinancialContainerIdParser
-import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.parsing.repository.ParsedEventRecord
@@ -64,11 +62,4 @@ object CardTransactionInvolvementResolver {
     }
 
     fun cardKey(bankId: String, last4: String): String = "$bankId:$last4"
-
-    fun cardContainerId(cardKey: String): String? {
-        val parts = cardKey.split(":", limit = 2)
-        if (parts.size != 2) return null
-        val bank = Bank.fromId(parts[0])
-        return FinancialContainerIdFactory.cardId(bank, parts[1])
-    }
 }

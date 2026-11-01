@@ -3,8 +3,8 @@ package com.baraa.masroof.engine.bank
 import com.baraa.masroof.engine.bank.interpretation.RuleInterpreter
 import com.baraa.masroof.engine.bank.rules.RuleLibrary
 import com.baraa.masroof.finance.value.BankId
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class MessageLayoutCoverageTest {
@@ -18,7 +18,7 @@ class MessageLayoutCoverageTest {
         for (variant in listOf(body, body.replace("8219", "٨٢١٩").replace("3001", "٣٠٠١"),
             body.replace("بطاقة (مدى):8219 \nحساب رقم: 3001", "حساب رقم: 3001\nبطاقة (مدى):8219"))) {
             val r = parse(variant)
-            assertEquals(r.diagnostics.toString(), ParseStatus.SUCCESS, r.status)
+            assertEquals(ParseStatus.SUCCESS, r.status, r.diagnostics.toString())
             assertEquals(MessageFamily.WITHDRAWAL, r.facts.family)
             assertEquals(MoneyDirection.OUTGOING, r.facts.direction)
             assertEquals("8219", r.facts.card?.last4)
@@ -52,7 +52,7 @@ class MessageLayoutCoverageTest {
         assertTrue(r.evidence.any { it.field == "CARD" && ar.substring(it.start, it.end) == "٤٥٦٧" })
         val inline = "Online Purchase Apple Pay Credit Card: 4567 at :Other Shop of : 32.50 SAR on : 2026-08-03 14:32 Available Balance is: 900 SAR Due Amount: 20 SAR"
         val e = parse(inline)
-        assertEquals(e.diagnostics.toString(), ParseStatus.SUCCESS, e.status)
+        assertEquals(ParseStatus.SUCCESS, e.status, e.diagnostics.toString())
         assertEquals("Other Shop", e.facts.merchant); assertEquals(CardChannel.CREDIT, e.facts.cardChannel)
         assertEquals("4567", e.facts.card!!.last4)
         assertTrue(e.evidence.all { it.start >= 0 && it.end <= inline.length && it.end > it.start })
@@ -89,7 +89,7 @@ class MessageLayoutCoverageTest {
     @Test fun sameLineCardNumberAndDirectoryMetadataStayRoleBound() {
         val body = "Credit Card: Refund\nCard: Credit Number:4567\nFrom: Synthetic Shop\nAmount: 12 SAR\nDate: 2026-08-03 14:32"
         val result = parse(body)
-        assertEquals(result.diagnostics.toString(), ParseStatus.SUCCESS, result.status)
+        assertEquals(ParseStatus.SUCCESS, result.status, result.diagnostics.toString())
         assertEquals("4567", result.facts.card!!.last4)
         assertEquals(ParseStatus.REVIEW_REQUIRED, parse("$body\nCard: 9999").status)
         assertEquals("Synthetic Shop", result.facts.merchant)

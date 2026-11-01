@@ -272,7 +272,7 @@ class TransactionRestoreServiceTest {
             source: com.baraa.masroof.domain.model.ExchangeRateSource,
         ): Boolean = false
 
-        override suspend fun deleteIfExclusiveRawSmsLink(rawSmsId: String): Boolean = true
+        override suspend fun deleteIfExclusiveRawSmsLink(rawSmsId: String): Boolean = false
 
         override suspend fun unlinkRawSms(rawSmsId: String): Boolean = true
 
@@ -294,7 +294,7 @@ class TransactionRestoreServiceTest {
             endExclusive: Instant,
         ): List<FinancialTransaction> = emptyList()
 
-        override suspend fun isRawSmsLinked(rawSmsId: String): Boolean = false
+        override suspend fun isRawSmsLinked(rawSmsId: String): Boolean = true
 
         override suspend fun listRawSmsIds(transactionId: String): List<String> = emptyList()
 

@@ -29,4 +29,8 @@ interface AccountRegistryRepository {
     suspend fun updateDisplayName(reference: AccountReference, displayName: String?)
 
     suspend fun updateAccountType(reference: AccountReference, accountType: AccountType)
+
+    /** Removes the registry row only; callers verify nothing still references the account. */
+    suspend fun delete(reference: AccountReference): Unit =
+        throw UnsupportedOperationException("Account registry delete is not supported")
 }

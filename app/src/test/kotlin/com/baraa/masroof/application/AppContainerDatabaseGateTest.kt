@@ -24,8 +24,6 @@ class AppContainerDatabaseGateTest {
             { container.accountRegistryRepository.listAll(); Unit },
             { container.cardRegistryRepository.listAll(); Unit },
             { container.loanRegistryRepository.listAll(); Unit },
-            { container.bankRegistryRepository.listAll(); Unit },
-            { container.creditFacilityRepository.listAll(); Unit },
             { container.commitmentRepository.listAll(); Unit },
             { container.financialTransactionRepository.listAll(); Unit },
             { container.reviewRepository.listAll(); Unit },

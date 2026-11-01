@@ -8,6 +8,9 @@ import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.repository.AccountRegistryRepository
 import com.baraa.masroof.domain.repository.CardRegistryRepository
 import com.baraa.masroof.domain.repository.ReviewRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Onboarding ownership candidates, counts, and confirmation actions.
@@ -17,6 +20,7 @@ class OnboardingOwnershipWorkflow(
     private val cardRegistryRepository: CardRegistryRepository,
     private val ownershipConfirmationService: OwnershipConfirmationService,
     private val reviewRepository: ReviewRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     enum class CandidateKind {
         ACCOUNT,
@@ -41,7 +45,7 @@ class OnboardingOwnershipWorkflow(
         val hasUnknownCandidates: Boolean,
     )
 
-    suspend fun loadSnapshot(bankIds: Set<String>? = null): Snapshot {
+    suspend fun loadSnapshot(bankIds: Set<String>? = null): Snapshot = withContext(ioDispatcher) {
         val accounts = accountRegistryRepository.listAll()
             .filter { it.bank != Bank.UNKNOWN && (bankIds == null || it.bank.id in bankIds) }
             .map {
@@ -67,12 +71,12 @@ class OnboardingOwnershipWorkflow(
                 )
             }
             .sortedBy { it.suffix }
-        return Snapshot(
+        Snapshot(
             accounts = accounts,
             cards = cards,
             ownedAccountsCount = accounts.count { it.ownership == OwnershipStatus.OWNED },
             ownedCardsCount = cards.count { it.ownership == OwnershipStatus.OWNED },
-            reviewRequiredCount = reviewRepository.listRequired().size,
+            reviewRequiredCount = reviewRepository.countRequired(),
             hasUnknownCandidates = accounts.any { it.ownership == OwnershipStatus.UNKNOWN } ||
                 cards.any { it.ownership == OwnershipStatus.UNKNOWN },
         )

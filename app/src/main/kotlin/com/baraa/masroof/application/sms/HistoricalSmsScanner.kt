@@ -66,15 +66,14 @@ class HistoricalSmsScanner(
      * Unattributed suspicions remain the responsibility of the full inbox scan.
      * Scoped scans never certify whole-inbox analysis coverage.
      */
-    suspend fun scan(receivedAfter: Instant? = null, bankScope: Bank? = null,
-        receivedBefore: Instant? = null, bankScopes: Set<Bank>? = null): SmsScanResult = withContext(ioDispatcher) {
+    suspend fun scan(receivedAfter: Instant? = null, receivedBefore: Instant? = null,
+        bankScopes: Set<Bank>? = null, onProgress: (scanned: Int) -> Unit = {}): SmsScanResult = withContext(ioDispatcher) {
         require(receivedAfter == null || receivedBefore == null || receivedAfter < receivedBefore)
-        require(bankScope == null || bankScopes == null)
-        val scopes = bankScopes ?: bankScope?.let(::setOf)
-        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, scopes) }
+        com.baraa.masroof.application.analytics.AnalyticsImportGate.during { scanOnDispatcher(receivedAfter, receivedBefore, bankScopes, onProgress) }
     }
 
-    private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?): SmsScanResult {
+    private suspend fun scanOnDispatcher(receivedAfter: Instant?, receivedBefore: Instant?, bankScopes: Set<Bank>?,
+        onProgress: (Int) -> Unit = {}): SmsScanResult {
         val scanStartedAt = clock.instant()
         appLogService?.info(
             AppLogCategories.SCAN,
@@ -123,10 +122,11 @@ class HistoricalSmsScanner(
             for (row in rows) {
                 if (row is InboxRow.Valid) {
                     if (receivedAfter != null && row.record.receivedAt < receivedAfter) continue
-                    // Providers are ordered oldest first. The selected end date is exclusive.
-                    if (receivedBefore != null && row.record.receivedAt >= receivedBefore) break
+                    // Rows are ordered by arrival time but receivedAt is the carrier time, so skip rather than stop.
+                    if (receivedBefore != null && row.record.receivedAt >= receivedBefore) continue
                 }
                 scanned++
+                if (scanned % PROGRESS_EVERY == 0) onProgress(scanned)
                 when (row) {
                     is InboxRow.Malformed -> {
                         skippedMalformed++
@@ -163,14 +163,13 @@ class HistoricalSmsScanner(
                                 inserted++
                                 failed++
                             }
-                            is SmsIngestionResult.Failed -> {
-                                // rawSmsId == null → RawSms never persisted
-                                // rawSmsId != null → RawSms already stored; later step failed
-                                if (outcome.rawSmsId != null) {
-                                    inserted++
-                                }
+                            // rawSmsId != null → RawSms already stored; later step failed
+                            is SmsIngestionResult.Failed if outcome.rawSmsId != null -> {
+                                inserted++
                                 failed++
                             }
+                            // rawSmsId == null → RawSms never persisted
+                            is SmsIngestionResult.Failed -> failed++
                             is SmsIngestionResult.DerivedIncomplete -> {
                                 // Historical ingest does not run derived work; a leak is still stored evidence.
                                 inserted++
@@ -207,5 +206,9 @@ class HistoricalSmsScanner(
             AppLogCategories.SCAN,
             "Historical scan finished: ${AppLogFormatting.scanSummary(result)}",
         )
+    }
+
+    private companion object {
+        const val PROGRESS_EVERY = 25
     }
 }

@@ -1,7 +1,7 @@
 package com.baraa.masroof.analytics
 
-import org.junit.Assert.*
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class RecurringLearningTest {
     private fun features(label: RecurringLabel) = when (label) {
@@ -25,7 +25,7 @@ class RecurringLearningTest {
         val seed = RecurringModel("seed", List(3) { List(9) { 0.0 } }, accepted = true)
         val rows = examples(150)
         val result = RecurringLearning.personalize(seed, rows, examples(60).map { it.copy(seriesKey = "validation-${it.seriesKey}") })
-        assertTrue("reason=${result.reason}", result.personalUsed)
+        assertTrue(result.personalUsed, "reason=${result.reason}")
         assertTrue(result.validationSeries >= 8)
         assertEquals(150, result.trainingSeries + result.validationSeries)
         assertNotEquals(seed.weights, result.model!!.weights)

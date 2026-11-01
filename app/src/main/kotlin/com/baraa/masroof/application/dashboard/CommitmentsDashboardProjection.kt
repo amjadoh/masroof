@@ -1,6 +1,5 @@
 package com.baraa.masroof.application.dashboard
 
-import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.repository.CommitmentRepository
@@ -95,13 +94,8 @@ class CommitmentsDashboardProjection(
         )
         return relevantFacilities.flatMap { facility ->
             val due = facility.facilityDue ?: return@flatMap emptyList()
-            val cardIds = facility.allCards.mapNotNull { card ->
-                FinancialContainerIdFactory.cardId(card.bank, card.last4)
-            }.toSet()
             creditCardPayments.filter { transaction ->
-                transaction.id !in context.transactionIds &&
-                    transaction.destinationContainerId in cardIds &&
-                    !transaction.occurredAt.isBefore(due.updatedAt)
+                transaction.id !in context.transactionIds && facility.isPaymentToward(due, transaction)
             }
         }.distinctBy { it.id }
     }

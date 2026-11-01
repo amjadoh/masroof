@@ -72,6 +72,27 @@ class DashboardViewModelTest {
     private val previousPeriod = FinancialPeriodPolicy.previous(currentPeriod)
     private val previous2Period = FinancialPeriodPolicy.previous(previousPeriod)
 
+    @Test
+    fun transactionListQueryIsReappliedWhenDashboardRowsRefresh() = runTest {
+        val loader = FakeLoader()
+        val transaction = foreignTransaction().copy(amount = Money.of("15", Currency.SAR))
+        loader.put(currentPeriod, overview(currentPeriod, "15").copy(transactions = listOf(transaction)))
+        val vm = viewModel(loader)
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(Money.of("15", Currency.SAR), vm.uiState.value.transactionListProjection.result.totalAmount)
+
+        vm.setTransactionListQuery(TransactionListFilterState(searchQuery = "no match"))
+        assertTrue(vm.uiState.value.transactionListProjection.result.transactions.isEmpty())
+        loader.put(currentPeriod, overview(currentPeriod, "20").copy(
+            transactions = listOf(transaction.copy(amount = Money.of("20", Currency.SAR)))))
+        vm.refresh()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.transactionListProjection.result.totalAmount)
+        vm.setTransactionListQuery(TransactionListFilterState())
+        assertEquals(Money.of("20", Currency.SAR), vm.uiState.value.transactionListProjection.result.totalAmount)
+    }
+
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)

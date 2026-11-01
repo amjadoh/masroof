@@ -4,7 +4,6 @@ import android.content.Context
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.period.FinancialPeriod
 import com.baraa.masroof.domain.period.SalaryCycleStartAdjustment
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -31,9 +30,6 @@ object FinancialPeriodUiFormatter {
                 context.getString(R.string.dashboard_period_adjustment_late_saturday)
             null -> null
         }
-
-    fun formatDayMonth(context: Context, date: LocalDate): String =
-        dayMonthFormatter(context).format(date)
 
     private fun dayMonthFormatter(context: Context): DateTimeFormatter {
         val locale: Locale = context.resources.configuration.locales[0]

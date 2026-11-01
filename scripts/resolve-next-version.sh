@@ -103,34 +103,24 @@ MINOR=${MINOR:-0}
 PATCH=${PATCH:-0}
 
 # 3. Calculate Next Version Name and Tag
+case "$BUMP" in
+  major)
+    NEXT_STABLE="$((MAJOR + 1)).0.0"
+    ;;
+  minor)
+    NEXT_STABLE="${MAJOR}.$((MINOR + 1)).0"
+    ;;
+  patch)
+    NEXT_STABLE="${MAJOR}.${MINOR}.$((PATCH + 1))"
+    ;;
+esac
+
 if [[ "$TYPE" == "release" ]]; then
-  case "$BUMP" in
-    major)
-      NEXT_STABLE="$((MAJOR + 1)).0.0"
-      ;;
-    minor)
-      NEXT_STABLE="${MAJOR}.$((MINOR + 1)).0"
-      ;;
-    patch)
-      NEXT_STABLE="${MAJOR}.${MINOR}.$((PATCH + 1))"
-      ;;
-  esac
   VERSION_NAME="${NEXT_STABLE}"
   TAG="v${NEXT_STABLE}"
   IS_PRERELEASE="false"
 else
   # Nightly is based on the NEXT intended stable version
-  case "$BUMP" in
-    major)
-      NEXT_STABLE="$((MAJOR + 1)).0.0"
-      ;;
-    minor)
-      NEXT_STABLE="${MAJOR}.$((MINOR + 1)).0"
-      ;;
-    patch)
-      NEXT_STABLE="${MAJOR}.${MINOR}.$((PATCH + 1))"
-      ;;
-  esac
 
   # Find existing nightly numbers for this NEXT_STABLE
   NIGHTLY_NUMBERS=()
@@ -169,6 +159,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+consume_version_code() {
+  local code
+  code=$(jq -r '.versionCode // empty' "$TMP_DIR/version.json" 2>/dev/null || true)
+  if [[ "$code" =~ ^[0-9]+$ ]] && (( code > 0 )); then
+    if (( code > MAX_CODE )); then
+      MAX_CODE=$code
+    fi
+  else
+    echo "Error: Corrupt or invalid versionCode in version.json for release '${release_tag}'" >&2
+    exit 1
+  fi
+  rm -f "$TMP_DIR/version.json"
+}
+
 if command -v gh >/dev/null 2>&1; then
   # Inspect top releases (newest first) to find max versionCode from version.json
   VERSION_CODE_RELEASE_TAGS=$(list_release_tags_or_fail --limit 50 --json tagName,isDraft -q '.[] | select((.isDraft // false) == false) | .tagName')
@@ -176,16 +180,7 @@ if command -v gh >/dev/null 2>&1; then
     [[ -z "$release_tag" ]] && continue
     if gh release download "$release_tag" -D "$TMP_DIR" --pattern version.json 2>/dev/null; then
       if [[ -f "$TMP_DIR/version.json" ]] && command -v jq >/dev/null 2>&1; then
-        code=$(jq -r '.versionCode // empty' "$TMP_DIR/version.json" 2>/dev/null || true)
-        if [[ "$code" =~ ^[0-9]+$ ]] && (( code > 0 )); then
-          if (( code > MAX_CODE )); then
-            MAX_CODE=$code
-          fi
-        else
-          echo "Error: Corrupt or invalid versionCode in version.json for release '${release_tag}'" >&2
-          exit 1
-        fi
-        rm -f "$TMP_DIR/version.json"
+        consume_version_code
       fi
     else
       # If download failed, check if version.json is an asset of this release.
@@ -197,18 +192,9 @@ if command -v gh >/dev/null 2>&1; then
         for attempt in 1 2 3; do
           if gh release download "$release_tag" -D "$TMP_DIR" --pattern version.json 2>/dev/null; then
             if [[ -f "$TMP_DIR/version.json" ]] && command -v jq >/dev/null 2>&1; then
-              code=$(jq -r '.versionCode // empty' "$TMP_DIR/version.json" 2>/dev/null || true)
-              if [[ "$code" =~ ^[0-9]+$ ]] && (( code > 0 )); then
-                if (( code > MAX_CODE )); then
-                  MAX_CODE=$code
-                fi
-                rm -f "$TMP_DIR/version.json"
-                download_succeeded=true
-                break
-              else
-                echo "Error: Corrupt or invalid versionCode in version.json for release '${release_tag}'" >&2
-                exit 1
-              fi
+              consume_version_code
+              download_succeeded=true
+              break
             fi
           fi
           sleep 1

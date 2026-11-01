@@ -30,7 +30,6 @@ import java.time.LocalDate
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun ForecastTab(state: AnalysisUiState, workflow: AnalyticsWorkflow, onQuality: () -> Unit, onPerformance: () -> Unit) {
     val s = state.snapshot ?: return
     val explanation = remember(s) { AnalysisPresentationBuilder.forecast(s) }

@@ -130,6 +130,29 @@ data class SettingsBankSummaryUi(
         get() = unregisteredAccountCount + unregisteredCardCount
 }
 
+/** One confirmation can be active at a time; this draft is never persisted. */
+sealed interface StopTrackingTarget {
+    data class Card(val card: ManagedCardUi) : StopTrackingTarget
+    data class Account(val account: ManagedAccountUi) : StopTrackingTarget
+    data class Loan(val loan: ManagedLoanUi) : StopTrackingTarget
+}
+
+/** A delete request for one registry item, with what blocks it; never persisted. */
+data class RegistryDeleteUi(
+    val target: StopTrackingTarget,
+    val linked: List<LinkedTransactionUi>,
+    val linkedCount: Int,
+    val blocker: com.baraa.masroof.application.settings.DeleteBlocker?,
+)
+
+data class LinkedTransactionUi(
+    val id: String,
+    val title: String?,
+    val type: com.baraa.masroof.domain.model.FinancialTransactionType,
+    val amount: com.baraa.masroof.core.money.Money,
+    val occurredOn: LocalDate,
+)
+
 data class SettingsUiState(
     val loading: Boolean = true,
     val followedCards: List<ManagedCardUi> = emptyList(),
@@ -154,9 +177,8 @@ data class SettingsUiState(
     val languageTag: String = "",
     val themeMode: ThemeMode = ThemeMode.DEFAULT,
     val updating: Boolean = false,
-    val stopConfirmCardTarget: ManagedCardUi? = null,
-    val stopConfirmAccountTarget: ManagedAccountUi? = null,
-    val stopConfirmLoanTarget: ManagedLoanUi? = null,
+    val stopTrackingTarget: StopTrackingTarget? = null,
+    val deleteRequest: RegistryDeleteUi? = null,
     val renameCardTarget: ManagedCardUi? = null,
     val renameAccountTarget: ManagedAccountUi? = null,
     val accountTypeTarget: ManagedAccountUi? = null,
@@ -172,6 +194,7 @@ data class SettingsUiState(
     val cardTypeSuggestion: CardType? = null,
     val reparsingStored: Boolean = false,
     val importingSms: Boolean = false,
+    val importScanned: Int = 0,
     val smsPermissionGranted: Boolean = true,
     val exportingBackup: Boolean = false,
     val importingBackup: Boolean = false,
@@ -194,7 +217,12 @@ data class SettingsUiState(
     val fxRateCorrectionManualFollowUp: Int = 0,
     val fxRateCorrectionRunning: Boolean = false,
     val fxRateCorrectionAwaitingConfirm: Boolean = false,
-)
+) {
+    val stopConfirmCardTarget: ManagedCardUi? get() = (stopTrackingTarget as? StopTrackingTarget.Card)?.card
+    val stopConfirmAccountTarget: ManagedAccountUi? get() = (stopTrackingTarget as? StopTrackingTarget.Account)?.account
+    val stopConfirmLoanTarget: ManagedLoanUi? get() = (stopTrackingTarget as? StopTrackingTarget.Loan)?.loan
+
+}
 
 enum class LogMessage {
     EXPORT_SUCCESS,

@@ -208,7 +208,7 @@ class PreVacuumBackupSnapshotTest {
     private fun insertBatch(connection: SQLiteDatabase, id: Long, marker: String) {
         connection.execSQL(
             "INSERT OR REPLACE INTO snapshot_batch(batch_id, marker) VALUES (?, ?)",
-            arrayOf(id, marker),
+            arrayOf<Any>(id, marker),
         )
     }
 

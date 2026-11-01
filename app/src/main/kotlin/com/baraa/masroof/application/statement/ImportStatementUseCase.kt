@@ -23,13 +23,10 @@ class ImportStatementUseCase(
     ): StatementImportResult =
         when (val parsed = parser.parse(stream, knownBankIds)) {
             is StatementParseResult.Rejected -> StatementImportResult.Rejected(parsed.reason)
-            is StatementParseResult.Accepted -> {
-                if (!accountsAreExactOwned(parsed.statement, ownedAccounts)) {
-                    StatementImportResult.Rejected(StatementRejection.UNOWNED_ACCOUNT)
-                } else {
-                    StatementImportResult.Compared(reconciliation.compare(parsed.statement))
-                }
-            }
+            is StatementParseResult.Accepted if !accountsAreExactOwned(parsed.statement, ownedAccounts) ->
+                StatementImportResult.Rejected(StatementRejection.UNOWNED_ACCOUNT)
+            is StatementParseResult.Accepted ->
+                StatementImportResult.Compared(reconciliation.compare(parsed.statement))
         }
 }
 

@@ -11,9 +11,9 @@ import com.baraa.masroof.domain.period.FinancialPeriodPolicy
 import com.baraa.masroof.domain.rules.FinancialImpactCalculator
 import java.time.LocalDate
 import java.time.ZoneId
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Test
 
 /** Fixed production examples from main after #317; no second implementation. */
 class FinancialPolicyCompatibilityTest {

@@ -90,7 +90,11 @@ Manual account/card entries require explicit ownership confirmation; card creati
 configuration are atomic. Entries alone create neither balances nor transactions.
 Pattern approval can select an explicitly referenced owned, configured card with an
 optional account binding; it never invents a funding account. Approval rechecks ownership
-and the configuration generation before saving. Financial schema v18 and the existing
+and the configuration generation before saving. A built-in role rule keeps its family and
+readings; approval may only add an owned account link (or a card link for purchases, refunds
+and card payments). A link fills only a role the message leaves empty, never replaces a value
+the message names, and never funds a purchase, refund or card-named movement from an account.
+Editing a built-in teaches a new pattern and turns the built-in off once the replacement is approved. Financial schema v18 and the existing
 ingestion, validation and posting guards are unchanged.
 
 The bank catalog groups definitions by operation and opens each bank-qualified
@@ -112,7 +116,9 @@ are separate actions and reuse existing ownership/intake/reconciliation services
 
 Financial pattern editing reuses teaching with the same bank-qualified pattern id
 and a new immutable revision. Matching example spans prefill the editor, including
-ignored variable slots. Saving clears financial approval and retains the enabled
+ignored variable slots. Unselected money, date and number candidates become ignored
+slots automatically when the template compiler accepts them; otherwise the preview
+lists them as fixed text. Financial approval switches the pattern on. Saving an edit clears financial approval and retains the enabled
 state; leaving the editor discards the draft. Supported teaching operation types
 use this editor; other built-in families retain their existing enable/revision controls.
 
@@ -143,10 +149,10 @@ v18 is unchanged; deleted patterns cannot be recovered through revision restore.
 Keep integration fixtures on the bundled production definitions. Kotlin rule
 profiles live only in `bank-engine/src/testFixtures/`, shared through Gradle's built-in test-fixtures support. The offline CLI is an explicit test tool. Neither
 is another production definition source. Preserve the frozen AlJazira baselines.
-The current handoff is [Production migration plan](PRODUCTION_MIGRATION_PLAN.md);
-[Pattern facts](PATTERN_FACT_CONTRACT.md) describes the write contract, and
-[AlJazira cutover](ALJAZIRA_SHARED_PATTERNS.md) records compatibility. Historical
-experiment notes live in [history](history/MESSAGE_PATTERN_EXPERIMENT.md).
+[Pattern facts](PATTERN_FACT_CONTRACT.md) describes the current write contract;
+[AlJazira compatibility](ALJAZIRA_SHARED_PATTERNS.md) records the frozen-reference
+checks and remaining signed-upgrade/restore release gates. The production ownership
+table above supersedes the completed migration plans and prototype execution logs.
 
 ## Financial policy ownership
 
@@ -185,6 +191,8 @@ app-side copies and reject fully qualified calls that bypass module import rules
 Live SMS is captured durably before WorkManager receives a raw SMS id. Historical intake parses a batch before one discovery/reconciliation/review pass. Validation, confirmed ownership and manual decisions retain financial authority. Informational/OTP messages never post. Reconciliation failures retain durable retries.
 
 The engine uses rules first. Eligible local family inference never supplies an amount, ownership or approval. Explicit corrections feed local learning. Rule/model refreshes target unresolved, unposted evidence without a manual decision. Previously posted history is preserved.
+
+Family learning is per bank. Every bank with bundled role rules gets its own classifier built only from that bank's human decisions, so a corrected message teaches later messages with the same template in that bank. Only the AlJazira seed carries statistical families and evaluations; other banks start with exact human templates and keep seed-gated statistics off. Banks without role rules (taught patterns only) are `UNSUPPORTED_BANK` for learning, because a taught pattern already fixes its family. Outside the seed bank, a learning change refreshes only the pending messages it would change, so approved patterns are still applied explicitly.
 
 ## Data and recovery
 
@@ -252,3 +260,16 @@ Forecast replay uses the existing forecaster on a strict historical prefix with
 an empty origin day; later actuals are evaluation targets only. Replay results
 never become published forecast history. Existing readiness and live performance
 rollback gates are unchanged.
+
+## Transaction list projection and confirmation state
+
+`TransactionListWorkflow` accepts immutable dashboard row facts and a `TransactionListQuery`.
+Its application calculator owns filtering, bank-qualified ownership lookup and currency-scoped
+totals; it never reads or writes storage. The presentation mapper maps selected row indices back
+to existing UI rows, preserving ordering and duplicate display IDs. `DashboardViewModel` reapplies
+the query after refresh and clears the projection when a new period starts loading. Compose
+renders the prepared projection and sends filter changes to the workflow through the ViewModel.
+
+Settings uses one `StopTrackingTarget` (`Card`, `Account` or `Loan`) rather than three independently
+nullable confirmation targets. Existing card/account/loan displays derive from that one target;
+write actions, draft/discard behavior and financial decisions are unchanged.

@@ -7,6 +7,7 @@ import com.baraa.masroof.application.analytics.*
 import com.baraa.masroof.application.backup.*
 import com.baraa.masroof.data.analytics.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.*
 import org.junit.Test
@@ -161,6 +162,21 @@ class AnalyticsPersistenceTest {
         assertTrue(runCatching { AnalyticsBackup.validate(archive(merchants + merchants.first())) }.isFailure)
         assertTrue(runCatching { AnalyticsBackup.validate(archive(listOf(merchants.first().copy(amount = 0)))) }.isFailure)
     }
+    @Test fun invalidAnalysisRowsAreLeftOutOfExportInsteadOfFailingTheBackup() {
+        val good = AnalysisAlertRow("good", "DUE", "Utility", 900, 1, 2)
+        val bad = AnalysisAlertRow("bad", "UNKNOWN_KIND", "Utility", 900, 1, 2)
+        val coverage = AnalysisCoverageRow("long", 10, 5, "LEGACY", 1)
+        val raw = AnalyticsJson.format.encodeToString(AnalyticsArchive(alerts = listOf(good, bad), coverage = listOf(coverage)))
+        assertTrue(runCatching { AnalyticsBackup.validate(raw) }.isFailure)
+        val exported = AnalyticsBackup.exportable(raw)
+        AnalyticsBackup.validate(exported)
+        val archive = AnalyticsJson.format.decodeFromString<AnalyticsArchive>(exported)
+        assertEquals(listOf(good), archive.alerts)
+        assertTrue(archive.coverage.isEmpty())
+        val valid = AnalyticsJson.format.encodeToString(AnalyticsArchive(alerts = listOf(good)))
+        assertEquals("A valid archive is exported unchanged", valid, AnalyticsBackup.exportable(valid))
+    }
+
     @Test fun exportChecksTheCombinedFinancialAndAnalyticsSizeBeforeOpeningTheDestination() {
         val c = context()
         val directory = java.io.File(c.getDatabasePath("unused").parentFile, "export").apply { mkdirs() }

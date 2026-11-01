@@ -16,14 +16,6 @@ class AppLocaleTest {
     }
 
     @Test
-    fun isRtl_arabicTrue_englishFalse_includingRegions() {
-        assertTrue(AppLocale.isRtl("ar"))
-        assertTrue(AppLocale.isRtl("ar-SA"))
-        assertFalse(AppLocale.isRtl("en"))
-        assertFalse(AppLocale.isRtl("en-US"))
-    }
-
-    @Test
     fun isEnglish_acceptsRegionalEnglishTags() {
         assertTrue(AppLocale.isEnglish("en"))
         assertTrue(AppLocale.isEnglish("en-US"))

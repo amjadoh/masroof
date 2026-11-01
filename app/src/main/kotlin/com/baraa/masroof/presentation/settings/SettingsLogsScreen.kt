@@ -7,7 +7,6 @@ import com.baraa.masroof.ui.theme.MasroofSpacing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -254,7 +253,6 @@ internal fun SettingsLogsContent(state: SettingsUiState, entries: List<AppLogEnt
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LogFilterChips(
     selected: SettingsLogFilter,

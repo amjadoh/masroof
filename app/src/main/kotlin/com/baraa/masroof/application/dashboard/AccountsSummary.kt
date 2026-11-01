@@ -43,11 +43,6 @@ data class AccountsSummary(
 
     fun externalSummary(): AccountFlowSummary? = fleet.externalSummary()
 
-    fun totalCreditCardPayments(): Money {
-        val c = currency ?: return Money.zero(Currency.SAR)
-        return accounts.fold(Money.zero(c)) { acc, account -> acc + account.creditCardPayment }
-    }
-
     companion object {
         fun fromSummaries(
             accounts: List<Pair<Bank, String>>,
@@ -57,7 +52,7 @@ data class AccountsSummary(
             return AccountsSummary(
                 accounts = accounts.zip(summaries) { (bank, masked), summary ->
                     OwnedAccount.from(bank, masked, summary)
-                }.filterNotNull(),
+                },
             )
         }
     }

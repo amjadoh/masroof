@@ -309,6 +309,7 @@ class ReviewListRefreshTest {
             reviewQueueUpdater = updater,
             manualReviewResolutionRepository = RoomManualReviewResolutionRepository(db, financial),
             clock = clock,
+            ioDispatcher = Dispatchers.Unconfined,
         )
         val loader = ReviewDetailLoader(workflow, rawRepo, effective)
         val viewModel = ReviewViewModel(

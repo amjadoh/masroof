@@ -75,7 +75,7 @@ fun MasroofBottomSheet(
                 return Offset(0f, consumed)
             }
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (currentBusy || available.y <= 0f || source != NestedScrollSource.Drag) return Offset.Zero
+                if (currentBusy || available.y <= 0f || source != NestedScrollSource.UserInput) return Offset.Zero
                 dragPixels += available.y
                 return Offset(0f, available.y)
             }
@@ -95,7 +95,7 @@ fun MasroofBottomSheet(
         // The explicit MATCH_PARENT below supplies full-window specs to the true branch.
         val view = LocalView.current
         val window = remember(view) {
-            generateSequence(view as View) { it.parent as? View }
+            generateSequence<View>(view) { it.parent as? View }
                 .filterIsInstance<DialogWindowProvider>().firstOrNull()?.window
         }
         SideEffect {

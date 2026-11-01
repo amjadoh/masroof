@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baraa.masroof.R
@@ -201,7 +201,7 @@ class ApprovedDesignScreenTest {
         val state = original.copy(
             creditFacilities = CreditFacilitiesOverview(emptyList(), listOf(debit), Currency.SAR),
             ownedCards = listOf(OwnedCardUi(bank, "2210", "بطاقة مدى", CardNetwork.MADA)),
-            spendingTrends = original.spendingTrends!!.copy(byCard = mapOf("${bank.id}:2210" to trend)),
+            spendingTrends = original.spendingTrends.copy(byCard = mapOf("${bank.id}:2210" to trend)),
         )
         compose.setContent {
             val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
@@ -231,7 +231,7 @@ class ApprovedDesignScreenTest {
         val trend = DailySpendingTrend(points, SignedMoneyAmount.of(Money.of("40", Currency.SAR)))
         val snapshot = CreditCardBalanceSnapshot(Money.of("18500", Currency.SAR), Money.of("2400", Currency.SAR),
             LocalDate.parse("2026-10-20"), Instant.parse("2026-10-01T07:00:00Z"), Instant.parse("2026-10-10T07:00:00Z"))
-        val primary = CreditCardDashboardRow(bank, "1234", trend.totalSpending, trend.totalSpending, trend.totalSpending, null, snapshot)
+        val primary = CreditCardDashboardRow(bank, "1234", trend.totalSpending, trend.totalSpending, null, snapshot)
         val secondary = primary.copy(last4 = "5678", snapshot = snapshot.copy(availableBalance = Money.of("3500", Currency.SAR)))
         val facility = CreditFacilityOverview(bank, primary, listOf(secondary),
             StatementDueSnapshot(Money.of("2400", Currency.SAR), snapshot.updatedAt, snapshot.dueDate), trend.totalSpending, trend.totalSpending, null, null, Currency.SAR)
@@ -280,13 +280,14 @@ class ApprovedDesignScreenTest {
         capture("approved-ascii-calendar-light")
     }
 
+    // updateConfiguration is deliberate: dialog windows read the host Activity resources, not LocalContext.
+    @Suppress("DEPRECATION")
     @Test
     fun renameAccount_displaysImportedEasternDigitsAsAscii_withoutChangingSavedName() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val hostResources = compose.activity.resources
         val originalConfiguration = android.content.res.Configuration(hostResources.configuration)
         val localizedConfiguration = AppLocaleContext.wrap(compose.activity, "ar").resources.configuration
-        // Dialog windows use the host Activity resources rather than LocalContext overrides.
         instrumentation.runOnMainSync { hostResources.updateConfiguration(localizedConfiguration, hostResources.displayMetrics) }
         try {
             val savedName = mutableStateOf<String?>(null)

@@ -3,10 +3,12 @@ plugins {
     `java-test-fixtures`
 }
 apply(from = "../build-logic/pure-jvm-boundaries.gradle.kts")
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
 dependencies {
     implementation(project(":finance-core"))
-    testImplementation(libs.junit)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.launcher)
     testImplementation(libs.kotlinx.serialization.json)
 }
 
@@ -24,3 +26,6 @@ tasks.test {
             "finance-core/src/main/kotlin/**/*.kt", "ml-assist/src/main/kotlin/**/*.kt", "app/src/main/kotlin/**/*.kt")
     }, rootProject.file("app/build.gradle.kts")).withPathSensitivity(PathSensitivity.RELATIVE)
 }
+
+// The pure modules use Jupiter; Android and Robolectric retain their native runner.
+tasks.test { useJUnitPlatform() }
