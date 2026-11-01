@@ -1,5 +1,5 @@
 {
-  "note": "User-provided structures; personal names and account/card/reference values anonymized. Six teachers and nine held-out messages. Local-transfer has no independent real holdout. Labels grant no financial authority. Added Arabic layouts use entirely fictional values; eight teachers and eleven holdouts in total.",
+  "note": "User-provided structures; personal names and account/card/reference values anonymized. Six teachers and nine held-out messages. Local-transfer has no independent real holdout. Labels grant no financial authority. Added Arabic layouts use entirely fictional values; eleven teachers and thirteen holdouts in total.",
   "rows": [
     {
       "id": "stc-internal-in",
@@ -223,6 +223,78 @@
         "counterparty": "TEST PERSON B",
         "account_reference": "654",
         "occurred_at": "14/10/26 09:15"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-sarie-out-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "حوالة صادرة (سريع)\n150.00 ر.س\nإلى فلان الاختبار\nإلى البنك الأهلي السعودي \nحساب *123\nرسوم 0.58 ر.س\n15/05/26 09:32\nمرجع *AB12",
+      "fields": {
+        "amount": "150.00",
+        "counterparty": "فلان الاختبار",
+        "counterparty_bank": "البنك الأهلي السعودي",
+        "source_account": "*123",
+        "fee": "0.58",
+        "occurred_at": "15/05/26 09:32",
+        "reference": "*AB12"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-local-out-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "حوالة صادرة محلية\nSR136.50\nرسوم 0.58SR\nإلى فلان الاختبار\nإلىSNB\nإلى456\n24/10/26 20:16",
+      "fields": {
+        "amount": "SR136.50",
+        "fee": "0.58SR",
+        "counterparty": "فلان الاختبار",
+        "counterparty_bank": "SNB",
+        "account_reference": "456",
+        "occurred_at": "24/10/26 20:16"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-sarie-in-rs",
+      "operation": "TRANSFER_IN",
+      "body": "حوالة واردة (سريع)\n2500.00 رس\nمن فلان الاختبار\nمن بنك NCBK\nحساب *123\n29-06-2026 12:12\nمرجع *CD34",
+      "fields": {
+        "amount": "2500.00",
+        "counterparty": "فلان الاختبار",
+        "counterparty_bank": "NCBK",
+        "destination_account": "*123",
+        "occurred_at": "29-06-2026 12:12",
+        "reference": "*CD34"
+      },
+      "teach": true
+    },
+    {
+      "id": "stc-sarie-out-ar",
+      "operation": "TRANSFER_OUT",
+      "body": "حوالة صادرة (سريع)\n4100.00 ر.س\nإلى شخص آخر\nإلى مصرف الإنماء \nحساب *123\nرسوم 1.15 ر.س\n17/05/26 20:26\nمرجع *EF56",
+      "fields": {
+        "amount": "4100.00",
+        "counterparty": "شخص آخر",
+        "counterparty_bank": "مصرف الإنماء",
+        "source_account": "*123",
+        "fee": "1.15",
+        "occurred_at": "17/05/26 20:26",
+        "reference": "*EF56"
+      },
+      "teach": false
+    },
+    {
+      "id": "stc-sarie-in-rs",
+      "operation": "TRANSFER_IN",
+      "body": "حوالة واردة (سريع)\n9000.00 رس\nمن فلان الاختبار\nمن بنك NCBK\nحساب *123\n01-01-1970 03:00\nمرجع *GH78",
+      "fields": {
+        "amount": "9000.00",
+        "counterparty": "فلان الاختبار",
+        "counterparty_bank": "NCBK",
+        "destination_account": "*123",
+        "occurred_at": "01-01-1970 03:00",
+        "reference": "*GH78"
       },
       "teach": false
     }

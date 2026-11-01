@@ -163,7 +163,10 @@ class RuleInterpreter(schema: BankRuleSchema, private val familyAssist: FamilyAs
             } }
         }
         if (hasQuotedContext(source)) problem("QUOTED_MESSAGE_CONTEXT")
-        if (family !in INFORMATIONAL && hasUnprovenExecution(source)) problem("EXECUTION_NOT_PROVEN")
+        // A configured refund title (a released card hold) consumes its own cancellation wording.
+        val unproven = unprovenExecutionRanges(source).filterNot { cue -> family == MessageFamily.REFUND && matchingTitleSpans.any { span ->
+            cue.first >= lineStart + leading + span.first && cue.last <= lineStart + leading + span.last } }
+        if (family !in INFORMATIONAL && unproven.isNotEmpty()) problem("EXECUTION_NOT_PROVEN")
         if (hasNoticeContext(source) && family !in setOf(MessageFamily.NON_FINANCIAL, MessageFamily.BALANCE_NOTICE))
             problem("MOVEMENT_NOTICE_CONFLICT", Blocker.CONFLICTING_FACTS)
         // An unrecognized title claims no family for transfer wording to contradict, so an

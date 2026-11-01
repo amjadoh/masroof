@@ -42,6 +42,8 @@ data class OwnedAccountUi(
     val maskedNumber: String,
     val displayName: String? = null,
     val periodSummary: CurrentAccountSummary? = null,
+    /** Present only when the account has a confirmed opening balance. */
+    val balance: com.baraa.masroof.application.dashboard.AccountBalance? = null,
 )
 
 enum class TransactionDirectionUi {

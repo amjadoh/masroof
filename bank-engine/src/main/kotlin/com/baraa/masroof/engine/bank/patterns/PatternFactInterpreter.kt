@@ -156,7 +156,8 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             val number = match?.groups?.get(1)?.value ?: match?.groups?.get(4)?.value
             val currencyText = match?.groups?.get(2)?.value ?: match?.groups?.get(3)?.value
             val observedCurrency = currencyText?.let { if (it == "sr") Currency.SAR else Currency.valueOf(it.uppercase(Locale.ROOT)) }
-            val declaredCurrency = contract.currency.takeIf { field == "amount" }
+            // A stated transfer fee is charged in the transfer's declared currency.
+            val declaredCurrency = contract.currency.takeIf { field == "amount" || field == "fee" }
             if (observedCurrency != null && declaredCurrency != null && observedCurrency != declaredCurrency) {
                 block("PATTERN_CURRENCY_CONFLICT"); return null
             }
@@ -174,7 +175,7 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             definitionFacts += "${field.uppercase(Locale.ROOT)}_BANK"
             return AccountReference(referenceBank, raw)
         }
-        val time = normalized("occurred_at")?.let { raw ->
+        val parsedTime = normalized("occurred_at")?.let { raw ->
             val kind = pattern.parts.filterIsInstance<FieldSlot>().single { it.field == "occurred_at" }.kind
             val parsed = kind.dateFormat?.let { format -> runCatching {
                 LocalDateTime.parse(raw, DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT))
@@ -182,6 +183,9 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
             if (parsed == null) block("PATTERN_TIME_INCOMPLETE")
             parsed
         }
+        // A bank clock placeholder (e.g. 01-01-1970) is not a transaction time; the durable receipt is.
+        val placeholderTime = parsedTime != null && parsedTime.year < MIN_TRANSACTION_YEAR
+        val time = parsedTime.takeUnless { placeholderTime }
         val card = normalized("card")?.let {
             if (!SUFFIX.matches(it) || contract.cardBank == null) { block("PATTERN_CARD_REFERENCE_UNRESOLVED"); null }
             else { definitionFacts += "CARD_BANK"; CardReference(contract.cardBank, it) }
@@ -190,23 +194,30 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         // Neutral / counterparty references retain original evidence, without padding, ownership or a guessed bank.
         if (preview.fields.keys.any { it in NEUTRAL_REFERENCES && it !in boundFields && it !in contract.contextReferences }) block("PATTERN_REFERENCE_ROLE_UNRESOLVED")
         if (contract.contextReferences.any { it !in preview.fields && it !in pattern.optionalTextFields }) block("PATTERN_REFERENCE_CONTEXT_MISSING")
-        val receiptTime = "occurred_at" !in preview.fields
+        val receiptTime = "occurred_at" !in preview.fields || placeholderTime
         if (receiptTime && !input.durableSmsReceipt) block("PATTERN_RECEIPT_NOT_DURABLE")
         if (contract.family == MessageFamily.UNKNOWN) block("PATTERN_FAMILY_UNKNOWN")
         val sourceObserved = account("source_account", contract.sourceAccountBank)
         val destinationObserved = account("destination_account", contract.destinationAccountBank)
         if (sourceBinding != null && sourceObserved != null && sourceBinding != sourceObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
         if (destinationBinding != null && destinationObserved != null && destinationBinding != destinationObserved) block("PATTERN_ACCOUNT_BINDING_CONFLICT")
+        // A definition that names the receiving bank without an account line states only that bank.
+        val namedDestination = contract.destinationAccountBank?.takeIf {
+            destinationBinding == null && destinationObserved == null && pattern.parts.filterIsInstance<FieldSlot>().none { it.field == "destination_account" }
+        }?.let { definitionFacts += "DESTINATION_ACCOUNT_BANK"; AccountReference(it, null) }
+        val fee = money("fee")
+        if (fee != null && contract.family != MessageFamily.TRANSFER_OUT) block("PATTERN_ROLE_UNSUPPORTED")
         if (contract.confirmedLoanType != null) definitionFacts += "LOAN_TYPE"
         val facts = Facts(contract.family, amount = money("amount"), direction = contract.direction,
             loanType = contract.confirmedLoanType,
             sourceAccount = sourceBinding ?: sourceObserved,
-            destinationAccount = destinationBinding ?: destinationObserved, card = card,
+            destinationAccount = destinationBinding ?: destinationObserved ?: namedDestination, card = card,
             merchant = value("merchant"), counterparty = value("counterparty"), biller = value("biller"),
             billerCode = value("biller_code"), transactionReference = value("reference"), occurredAtLocal = time,
             occurredAt = input.receivedAt.takeIf { receiptTime && input.durableSmsReceipt },
             availableBalance = money("available_balance"), outstandingBalance = money("outstanding_balance"),
-            internationalFee = money("international_fee"), labeledForeignAmount = money("foreign_amount"))
+            internationalFee = money("international_fee"), labeledForeignAmount = money("foreign_amount"),
+            transferFee = fee?.takeIf { contract.family == MessageFamily.TRANSFER_OUT })
         if (facts.amount == null) block("PATTERN_AMOUNT_MISSING")
         val blockers = buildSet {
             if (diagnostics.isNotEmpty()) add(Blocker.VALIDATION_ERROR)
@@ -222,10 +233,11 @@ class PatternFactInterpreter(configuration: MessagePatternConfiguration) {
         private val DECIMAL = Regex("(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?")
         private val MONEY = Regex("(?:(${DECIMAL.pattern}) *(sar|sr|usd|eur|gbp)|(sar|sr|usd|eur|gbp) *(${DECIMAL.pattern}))")
         private val SUFFIX = Regex("[0-9]{4}")
+        private const val MIN_TRANSACTION_YEAR = 2000
         private val NEUTRAL_REFERENCES = setOf("account_reference", "funding_reference", "counterparty_bank")
         private val SUPPORTED_FIELDS = setOf("amount", "merchant", "counterparty", "biller", "biller_code", "reference",
             "occurred_at", "source_account", "destination_account", "card", "available_balance", "outstanding_balance",
-            "international_fee", "foreign_amount") + NEUTRAL_REFERENCES
+            "international_fee", "foreign_amount", "fee") + NEUTRAL_REFERENCES
         private fun diagnostic(code: String) = InterpretationDiagnostic(code, code, DiagnosticSeverity.ERROR)
 
         /** Length-prefixed encoding includes history and generation, so restores and enable cycles cannot reuse a stamp. */

@@ -7,6 +7,9 @@ import java.security.MessageDigest
 
 /** Field digests keep SMS values out of baseline files and failure messages. Test sources only. */
 internal object ParseParity {
+    /** Details added after the frozen fixtures; an absent value adds no fact. */
+    private val OPTIONAL_DETAILS = setOf("negativeAvailableBalance", "transferFee")
+
     fun fields(result: ParseResult): Map<String, String> = buildMap {
         put("outcome", result.javaClass.simpleName)
         when (result) {
@@ -40,7 +43,7 @@ internal object ParseParity {
                 val item = field.get(value)
                 // An absent optional sign adds no fact to the frozen positive-only fixtures.
                 // A non-null value is reflected and still fails parity against that baseline.
-                if (value is com.baraa.masroof.parsing.model.ParsedEventDetails && field.name == "negativeAvailableBalance" && item == null) emptyList()
+                if (value is com.baraa.masroof.parsing.model.ParsedEventDetails && field.name in OPTIONAL_DETAILS && item == null) emptyList()
                 else if (item is Confidence) fields("$prefix.${field.name}", item).toList()
                 else {
                     val fact = if (value is Confidence && field.name == "reasons") value.reasons.filterNot {
@@ -56,8 +59,8 @@ internal object ParseParity {
 
     fun digest(value: Any?): String = MessageDigest.getInstance("SHA-256")
         .digest((value?.let {
-            val text = if (it is com.baraa.masroof.parsing.model.ParsedEventDetails && it.negativeAvailableBalance == null)
-                it.toString().replace(", negativeAvailableBalance=null)", ")") else it.toString()
+            val text = if (it is com.baraa.masroof.parsing.model.ParsedEventDetails)
+                it.toString().replace(", transferFee=null)", ")").replace(", negativeAvailableBalance=null)", ")") else it.toString()
             "${it.javaClass.name}:$text"
         } ?: "null").toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }

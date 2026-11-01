@@ -16,7 +16,12 @@ class AutomaticInterpretationWriteGuard(
     private val inTransaction: suspend (suspend () -> FinancialTransactionSaveResult) -> FinancialTransactionSaveResult,
     private val patternsCurrent: suspend (ParsedEventRecord) -> Boolean = { !PatternInterpretationWritePolicy.isPatternDerived(it) },
 ) {
-    suspend fun write(expected: List<ParsedEventRecord>, mutation: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult = inTransaction {
+    /**
+     * [postedLegs] are evidence ids a transfer heal replaces. While still posted automatically, their
+     * stored facts were already authorized, so an older pattern definition does not refuse them.
+     */
+    suspend fun write(expected: List<ParsedEventRecord>, postedLegs: Set<String> = emptySet(),
+        mutation: suspend () -> FinancialTransactionSaveResult): FinancialTransactionSaveResult = inTransaction {
         var reason = "stale_family_inference"
         val stale = expected.firstOrNull { prior ->
             val id=prior.event.rawSmsId
@@ -25,7 +30,7 @@ class AutomaticInterpretationWriteGuard(
             val protected=review?.resolutionKind?.name?.startsWith("USER_") == true && transactions.isRawSmsLinked(id)
             if (protected || current != prior) true
             else if (current.automationConfirmed || review?.resolutionKind == ReviewResolutionKind.USER_FINANCIAL_TYPE) false
-            else if (!patternsCurrent(current)) { reason = "stale_pattern_definition"; true }
+            else if (!patternsCurrent(current) && !(id in postedLegs && transactions.isRawSmsLinked(id))) { reason = "stale_pattern_definition"; true }
             else !inferenceCurrent(current)
         }
         if(stale != null) FinancialTransactionSaveResult.Conflict(stale.event.rawSmsId,reason)

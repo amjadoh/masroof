@@ -28,6 +28,8 @@ data class TransferMatchCandidate(
      * Used only when exactly one leg has [occurredAtLocal].
      */
     val effectiveOccurredAt: Instant? = null,
+    /** Fee the outgoing bank states apart from [amount]; never inferred. */
+    val transferFee: Money? = null,
 ) {
     val amount: Money? get() = event.amount
 }
@@ -42,10 +44,28 @@ data class TransferMatchPair(
  *
  * Requires exact Money equality, documented time window, OWNED local sides,
  * mutually unique relationship, and at least one strong identity bridge.
+ * The one amount exception is an outgoing debit that exceeds the received amount
+ * by at most [MAX_INCLUDED_TRANSFER_FEE] under a reference or account-suffix
+ * bridge: the sending bank included its own fee in the debited amount.
  */
 object TransactionMatcher {
     /** Maximum |t1 − t2| for automatic transfer pairing. */
     val TRANSFER_MATCH_WINDOW: Duration = Duration.ofMinutes(10)
+
+    /** Largest sending-bank fee accepted inside a debited amount (local transfer fees). */
+    val MAX_INCLUDED_TRANSFER_FEE: java.math.BigDecimal = java.math.BigDecimal("5.75")
+
+    /**
+     * Fee the source account paid on top of the received amount: the fee the
+     * outgoing bank stated, otherwise the amount difference of a compatible pair.
+     */
+    fun transferFee(outgoing: TransferMatchCandidate, incoming: TransferMatchCandidate): Money? {
+        outgoing.transferFee?.let { return it.takeIf { fee -> fee.amount.signum() > 0 } }
+        val out = outgoing.amount ?: return null
+        val inn = incoming.amount ?: return null
+        if (out.currency != inn.currency || out.amount <= inn.amount) return null
+        return out - inn
+    }
 
     /**
      * Pairs transfer legs inside the caller-supplied candidate set.
@@ -69,16 +89,9 @@ object TransactionMatcher {
                 it.destinationOwnership == OwnershipStatus.OWNED
         }
 
-        val byAmount = (outgoing + incoming).groupBy { it.amount }
-
-        val pairs = mutableListOf<TransferMatchPair>()
-        for ((_, group) in byAmount) {
-            val outs = group.filter { it.event.messageFamily == MessageFamily.TRANSFER_OUT }
-            val inns = group.filter { it.event.messageFamily == MessageFamily.TRANSFER_IN }
-            if (outs.isEmpty() || inns.isEmpty()) continue
-            pairs += uniqueBestPairs(outs, inns)
-        }
-        return pairs
+        if (outgoing.isEmpty() || incoming.isEmpty()) return emptyList()
+        // Equal-amount edges outrank included-fee edges, so existing partners are kept.
+        return uniqueBestPairs(outgoing, incoming)
     }
 
     private fun uniqueBestPairs(
@@ -123,6 +136,10 @@ object TransactionMatcher {
         EXACT_LOCAL_TIME,
         EXACT_RECEIPT,
         WINDOW,
+        INCLUDED_FEE_REFERENCE,
+        INCLUDED_FEE_EXACT_LOCAL_TIME,
+        INCLUDED_FEE_EXACT_RECEIPT,
+        INCLUDED_FEE_WINDOW,
     }
 
     private data class RankedPair(
@@ -136,16 +153,18 @@ object TransactionMatcher {
         incoming: TransferMatchCandidate,
     ): PairRank? {
         if (!compatiblePair(outgoing, incoming)) return null
+        val offset = if (outgoing.amount == incoming.amount) 0 else PairRank.INCLUDED_FEE_REFERENCE.ordinal
         val outRef = normalizedReference(outgoing.transactionReference)
         val inRef = normalizedReference(incoming.transactionReference)
-        if (outRef.isNotEmpty() && outRef == inRef) return PairRank.REFERENCE
         val outLocal = outgoing.occurredAtLocal
         val inLocal = incoming.occurredAtLocal
-        if (outLocal != null && outLocal == inLocal) return PairRank.EXACT_LOCAL_TIME
-        if (outLocal == null && inLocal == null && outgoing.receivedAt == incoming.receivedAt) {
-            return PairRank.EXACT_RECEIPT
+        val identity = when {
+            outRef.isNotEmpty() && outRef == inRef -> PairRank.REFERENCE
+            outLocal != null && outLocal == inLocal -> PairRank.EXACT_LOCAL_TIME
+            outLocal == null && inLocal == null && outgoing.receivedAt == incoming.receivedAt -> PairRank.EXACT_RECEIPT
+            else -> PairRank.WINDOW
         }
-        return PairRank.WINDOW
+        return PairRank.values()[identity.ordinal + offset]
     }
 
     private fun normalizedReference(value: String?): String =
@@ -171,7 +190,7 @@ object TransactionMatcher {
 
         val outAmount = outgoing.event.amount ?: return false
         val inAmount = incoming.event.amount ?: return false
-        if (outAmount != inAmount) return false
+        if (outAmount != inAmount && !includesSendingFee(outgoing, incoming)) return false
 
         if (outgoing.sourceOwnership != OwnershipStatus.OWNED) return false
         if (incoming.destinationOwnership != OwnershipStatus.OWNED) return false
@@ -209,16 +228,72 @@ object TransactionMatcher {
         return mixedDelta <= TRANSFER_MATCH_WINDOW.seconds
     }
 
-    private fun hasStrongBridge(
+    /**
+     * The outgoing bank debited the received amount plus its own unstated fee.
+     * Only an identity that does not depend on the amount may pair such legs.
+     */
+    private fun includesSendingFee(
+        outgoing: TransferMatchCandidate,
+        incoming: TransferMatchCandidate,
+    ): Boolean {
+        if (outgoing.transferFee != null) return false
+        val out = outgoing.amount ?: return false
+        val inn = incoming.amount ?: return false
+        if (out.currency != inn.currency) return false
+        val fee = out.amount - inn.amount
+        if (fee.signum() <= 0 || fee > MAX_INCLUDED_TRANSFER_FEE) return false
+        return hasReferenceBridge(outgoing, incoming) || hasDestinationSuffixBridge(outgoing, incoming)
+    }
+
+    private fun hasReferenceBridge(
         outgoing: TransferMatchCandidate,
         incoming: TransferMatchCandidate,
     ): Boolean {
         val outRef = outgoing.transactionReference?.trim().orEmpty()
         val inRef = incoming.transactionReference?.trim().orEmpty()
-        if (outRef.isNotEmpty() && outRef == inRef) return true
+        return outRef.isNotEmpty() && outRef == inRef
+    }
+
+    private fun hasStrongBridge(
+        outgoing: TransferMatchCandidate,
+        incoming: TransferMatchCandidate,
+    ): Boolean {
+        if (hasReferenceBridge(outgoing, incoming)) return true
 
         if (hasIntraBankAccountBridge(outgoing, incoming)) return true
 
+        if (hasDestinationSuffixBridge(outgoing, incoming)) return true
+
+        return outgoing.amount == incoming.amount && hasNamedDestinationBankBridge(outgoing, incoming)
+    }
+
+    /**
+     * The sending bank names the receiving bank without an account suffix, the
+     * incoming message comes from that bank, and any source it states is the
+     * sender's own account suffix. Both banks are known and different.
+     */
+    private fun hasNamedDestinationBankBridge(
+        outgoing: TransferMatchCandidate,
+        incoming: TransferMatchCandidate,
+    ): Boolean {
+        val outSource = outgoing.event.sourceAccountRef ?: return false
+        val outDest = outgoing.event.destinationAccountRef ?: return false
+        if (outSource.bank == Bank.UNKNOWN || outDest.bank == Bank.UNKNOWN) return false
+        if (outSource.bank != outgoing.event.bank || outDest.bank == outSource.bank) return false
+        if (!outDest.maskedNumber?.trim().isNullOrEmpty()) return false
+        val sourceSuffix = outSource.maskedNumber?.trim().orEmpty()
+        if (sourceSuffix.isEmpty()) return false
+        val inDest = incoming.event.destinationAccountRef ?: return false
+        if (incoming.event.bank != outDest.bank || inDest.bank != outDest.bank) return false
+        val inSource = incoming.event.sourceAccountRef ?: return true
+        if (inSource.bank != Bank.UNKNOWN && inSource.bank != outSource.bank) return false
+        return inSource.maskedNumber?.trim().orEmpty() == sourceSuffix
+    }
+
+    private fun hasDestinationSuffixBridge(
+        outgoing: TransferMatchCandidate,
+        incoming: TransferMatchCandidate,
+    ): Boolean {
         // Destination suffix bridge; known endpoints must describe different banks.
         val outDest = outgoing.event.destinationAccountRef ?: return false
         val inDest = incoming.event.destinationAccountRef ?: return false

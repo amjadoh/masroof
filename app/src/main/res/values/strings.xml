@@ -306,6 +306,8 @@
     <string name="dashboard_quick_total_income">متوسط المصاريف اليومية</string>
     <string name="dashboard_accounts_summary_screen_title">الحسابات</string>
     <string name="dashboard_accounts_summary_empty">لا توجد حسابات مضافة</string>
+    <string name="dashboard_account_balance_title">الرصيد</string>
+    <string name="dashboard_account_balance_hint">الرصيد = رصيد %1$s (%2$s) + كل الوارد − كل المنصرف بعده</string>
     <string name="dashboard_account_remaining_calculated_hint">وارد − منصرف (تحويلات خارجية، سداد البطاقة الائتمانية، سحب نقدي، فواتير، أقساط تمويل، مدى، رسوم)</string>
     <string name="dashboard_accounts_remaining_total_title">صافي حركة الحسابات</string>
     <string name="dashboard_accounts_fleet_total_hint">مجموع كل الوارد − كل المنصرف لجميع حساباتك</string>

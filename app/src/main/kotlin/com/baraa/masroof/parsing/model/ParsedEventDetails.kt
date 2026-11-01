@@ -40,8 +40,15 @@ data class ParsedEventDetails(
     val salaryIncomeWording: Boolean? = null,
     /** Absolute magnitude when the bank explicitly reports a negative available balance. */
     val negativeAvailableBalance: Money? = null,
+    /**
+     * Fee the sending bank states separately on an outgoing transfer. Stored in the
+     * fee columns that purchases use for [internationalFee]; the two never coexist.
+     */
+    val transferFee: Money? = null,
 ) {
     init {
+        require(internationalFee == null || transferFee == null)
+        require(transferFee == null || transferFee.amount.signum() > 0)
         require(availableBalance == null || negativeAvailableBalance == null)
         require(negativeAvailableBalance == null || negativeAvailableBalance.amount.signum() > 0)
     }
