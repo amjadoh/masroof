@@ -24,14 +24,28 @@ class RoomFinancialTransactionRepository(
     override suspend fun save(
         transaction: FinancialTransaction,
         rawSmsIds: Collection<String>,
+    ): FinancialTransactionSaveResult = save(transaction, rawSmsIds, emptyList())
+
+    override suspend fun save(
+        transaction: FinancialTransaction,
+        rawSmsIds: Collection<String>,
+        companions: List<FinancialTransaction>,
     ): FinancialTransactionSaveResult = accessGate.withAccess {
-        persist(transaction, rawSmsIds, dao::saveAtomic)
+        val companionEntities = companions.map(FinancialTransactionMapper::toEntity)
+        persist(transaction, rawSmsIds) { entity, links -> dao.saveAtomic(entity, links, companionEntities) }
     }
 
     override suspend fun replaceExclusiveStaleLinks(
         transaction: FinancialTransaction,
         rawSmsIds: Collection<String>,
         staleRawSmsIds: Collection<String>,
+    ): FinancialTransactionSaveResult = replaceExclusiveStaleLinks(transaction, rawSmsIds, staleRawSmsIds, emptyList())
+
+    override suspend fun replaceExclusiveStaleLinks(
+        transaction: FinancialTransaction,
+        rawSmsIds: Collection<String>,
+        staleRawSmsIds: Collection<String>,
+        companions: List<FinancialTransaction>,
     ): FinancialTransactionSaveResult = accessGate.withAccess {
         persist(
             transaction = transaction,
@@ -41,6 +55,7 @@ class RoomFinancialTransactionRepository(
                     entity = entity,
                     links = links,
                     staleRawSmsIds = staleRawSmsIds.map { it.trim() }.filter { it.isNotEmpty() },
+                    companions = companions.map(FinancialTransactionMapper::toEntity),
                 )
             },
         )

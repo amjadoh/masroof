@@ -9,6 +9,7 @@ import androidx.room.Update
 import com.baraa.masroof.data.room.ExchangeRatePairWrite
 import com.baraa.masroof.data.room.entity.FinancialTransactionEntity
 import com.baraa.masroof.data.room.entity.FinancialTransactionRawSmsLinkEntity
+import com.baraa.masroof.domain.assembly.TransactionAssembler
 
 @Dao
 interface FinancialTransactionDao {
@@ -181,8 +182,31 @@ interface FinancialTransactionDao {
     @Query("DELETE FROM financial_transaction_raw_sms_link WHERE rawSmsId = :rawSmsId")
     suspend fun deleteLinkByRawSmsId(rawSmsId: String): Int
 
-    @Query("DELETE FROM financial_transaction WHERE id = :id")
-    suspend fun deleteTransactionById(id: String): Int
+    @Query("DELETE FROM financial_transaction WHERE id IN (:id, :companionId)")
+    suspend fun deleteTransactionRows(id: String, companionId: String): Int
+
+    /** A transfer and its fee companion are removed together. */
+    suspend fun deleteTransactionById(id: String): Int =
+        deleteTransactionRows(id, TransactionAssembler.feeCompanionId(id))
+
+    /** Writes [companions] of [parentId] and removes a stored fee companion no longer assembled. */
+    suspend fun syncCompanions(parentId: String, companions: List<FinancialTransactionEntity>): Boolean {
+        var changed = false
+        val feeId = TransactionAssembler.feeCompanionId(parentId)
+        require(companions.all { it.id == feeId }) { "Unsupported companion row" }
+        if (companions.isEmpty() && getById(feeId) != null) {
+            deleteTransactionRows(feeId, feeId)
+            changed = true
+        }
+        for (companion in companions) {
+            if (insertTransactionIfAbsent(companion) != -1L) changed = true
+            else if (getById(companion.id) != companion) {
+                updateTransaction(companion)
+                changed = true
+            }
+        }
+        return changed
+    }
 
     @Transaction
     suspend fun deleteIfExclusiveRawSmsLink(rawSmsId: String): Boolean {
@@ -216,6 +240,7 @@ interface FinancialTransactionDao {
         entity: FinancialTransactionEntity,
         links: List<FinancialTransactionRawSmsLinkEntity>,
         staleRawSmsIds: List<String>,
+        companions: List<FinancialTransactionEntity> = emptyList(),
     ): SaveAtomicOutcome {
         val staleTransactionIds = mutableSetOf<String>()
         for (rawSmsId in staleRawSmsIds.distinct()) {
@@ -245,13 +270,14 @@ interface FinancialTransactionDao {
             deleteTransactionById(link.transactionId)
         }
 
-        return saveAtomic(entity, links)
+        return saveAtomic(entity, links, companions)
     }
 
     @Transaction
     suspend fun saveAtomic(
         entity: FinancialTransactionEntity,
         links: List<FinancialTransactionRawSmsLinkEntity>,
+        companions: List<FinancialTransactionEntity> = emptyList(),
     ): SaveAtomicOutcome {
         for (link in links) {
             val existing = findLinkByRawSmsId(link.rawSmsId)
@@ -274,6 +300,8 @@ interface FinancialTransactionDao {
                 allLinksAlreadyPresent = false
             }
         }
+
+        if (syncCompanions(entity.id, companions)) allLinksAlreadyPresent = false
 
         return if (allLinksAlreadyPresent && inserted == -1L) {
             SaveAtomicOutcome.AlreadyExists

@@ -8,7 +8,7 @@ import com.baraa.masroof.engine.bank.patterns.TextSpan
 enum class PatternOperation(val fields: List<String>) {
     PURCHASE(listOf("amount", "merchant", "card", "occurred_at", "available_balance")),
     TRANSFER_IN(listOf("amount", "counterparty", "account_reference", "funding_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
-    TRANSFER_OUT(listOf("amount", "counterparty", "account_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference")),
+    TRANSFER_OUT(listOf("amount", "counterparty", "account_reference", "source_account", "destination_account", "counterparty_bank", "occurred_at", "reference", "fee")),
     BILL_PAYMENT(listOf("amount", "biller", "source_account", "occurred_at", "reference")),
     CARD_PAYMENT(listOf("amount", "card", "source_account", "occurred_at")),
     REFUND(listOf("amount", "merchant", "card", "occurred_at")),

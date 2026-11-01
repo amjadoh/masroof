@@ -1,5 +1,6 @@
 package com.baraa.masroof.domain.assembly
 
+import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.ids.TransactionIdFactory
 import com.baraa.masroof.domain.matching.TransactionMatcher
@@ -35,9 +36,14 @@ import java.time.Instant
  */
 object TransactionAssembler {
     sealed interface Outcome {
+        /**
+         * [companions] are rows written and removed with [transaction] in one write,
+         * e.g. the transfer fee the source account paid ([feeCompanionId]).
+         */
         data class Assembled(
             val transaction: FinancialTransaction,
             val rawSmsIds: List<String>,
+            val companions: List<FinancialTransaction> = emptyList(),
         ) : Outcome
 
         data object PendingMatch : Outcome
@@ -53,6 +59,33 @@ object TransactionAssembler {
     const val REASON_PARSE_PARTIAL = "parse_partial"
     const val REASON_INVALID_PARSED_EVENT = "invalid_parsed_event"
     const val REASON_UNSUPPORTED_FORMAT = "unsupported_bank_message_format"
+
+    /**
+     * Id of the FEE row that belongs to transfer [transactionId]. It carries no SMS
+     * link of its own: its evidence is the parent transfer's outgoing message.
+     */
+    fun feeCompanionId(transactionId: String): String = "$transactionId$FEE_COMPANION_SUFFIX"
+
+    const val FEE_COMPANION_SUFFIX = ":fee"
+
+    private fun feeCompanion(parent: FinancialTransaction, fee: Money?): List<FinancialTransaction> {
+        if (fee == null || fee.amount.signum() <= 0 || parent.sourceContainerId == null) return emptyList()
+        return listOf(
+            FinancialTransaction(
+                id = feeCompanionId(parent.id),
+                type = FinancialTransactionType.FEE,
+                amount = fee,
+                occurredAt = parent.occurredAt,
+                sourceContainerId = parent.sourceContainerId,
+                destinationContainerId = null,
+                merchant = null,
+                counterparty = parent.counterparty,
+                categoryId = null,
+                linkedParsedEventIds = emptyList(),
+                occurredAtZone = parent.occurredAtZone,
+            ),
+        )
+    }
 
     /**
      * Hard automation boundary on [ParseStatus].
@@ -97,6 +130,7 @@ object TransactionAssembler {
         occurredAtZone: java.time.ZoneId? = null,
         deferIntraBankPairing: Boolean = true,
         knownCardType: CardType? = null,
+        transferFee: Money? = null,
     ): Outcome {
         when (event.messageFamily) {
             MessageFamily.OTP,
@@ -189,8 +223,12 @@ object TransactionAssembler {
             event = event,
             loanType = loanType,
             occurredAtZone = occurredAtZone,
-        )
+        ).withOutgoingFee(event, transferFee)
     }
+
+    private fun Outcome.Assembled.withOutgoingFee(event: ParsedEvent, fee: Money?): Outcome.Assembled =
+        if (event.messageFamily != MessageFamily.TRANSFER_OUT) this
+        else copy(companions = feeCompanion(transaction, fee))
 
     /**
      * Fallback after pair matching failed: post a single owned-side transfer
@@ -236,6 +274,7 @@ object TransactionAssembler {
                 transactionOccurredAt = transactionOccurredAt,
                 occurredAtZone = TransactionTiming.zoneFor(event.bank, fallback = fallbackZone),
                 deferIntraBankPairing = false,
+                transferFee = candidate.transferFee,
             )
         }
 
@@ -272,7 +311,7 @@ object TransactionAssembler {
             occurredAt = transactionOccurredAt,
             event = event,
             occurredAtZone = zone,
-        )
+        ).withOutgoingFee(event, candidate.transferFee)
     }
 
     /**
@@ -294,8 +333,10 @@ object TransactionAssembler {
 
         val out = pair.outgoing.event
         val inn = pair.incoming.event
-        val amount = out.amount ?: return Outcome.NeedsReview(listOf("missing_amount"))
-        if (inn.amount == null || amount != inn.amount) {
+        if (out.amount == null) return Outcome.NeedsReview(listOf("missing_amount"))
+        // The destination received the incoming amount; any fee the sender paid is its own row.
+        val amount = inn.amount
+        if (amount == null || (amount != out.amount && !TransactionMatcher.compatiblePair(pair.outgoing, pair.incoming))) {
             return Outcome.NeedsReview(listOf("matched_pair_amount_mismatch"))
         }
 
@@ -358,7 +399,7 @@ object TransactionAssembler {
             linkedParsedEventIds = linked,
             occurredAtZone = zone.id,
         )
-        return Outcome.Assembled(tx, rawSmsIds)
+        return Outcome.Assembled(tx, rawSmsIds, feeCompanion(tx, TransactionMatcher.transferFee(pair.outgoing, pair.incoming)))
     }
 
     private fun hasUnknownBankSide(event: ParsedEvent): Boolean =

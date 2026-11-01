@@ -12,7 +12,12 @@ private val OTP_TERMS = listOf("otp", "one time password", "one-time password", 
     "رمز تاكيد", "رمز لمرة واحدة", "كلمة المرور", "كلمة مرور", "رمز التفعيل", "رمز سري",
     "الرقم السري لمره واحده", "الرقم السري لمرة واحدة")
 
-internal fun hasUnprovenExecution(source: SourceText) = NON_EXECUTION_TERMS.any { source.phrase(it).containsMatchIn(source.text) }
+internal fun hasUnprovenExecution(source: SourceText) = unprovenExecutionRanges(source).isNotEmpty()
+
+/** Comparison-text ranges of wording that does not prove an executed movement. */
+internal fun unprovenExecutionRanges(source: SourceText): List<IntRange> = NON_EXECUTION_TERMS.flatMap { term ->
+    source.phrase(term).findAll(source.text).map { it.range }.toList()
+}
 
 internal fun hasNoticeContext(source: SourceText) = NOTICE_CONTEXT_TERMS.any { source.phrase(it).containsMatchIn(source.text) }
 
