@@ -37,6 +37,7 @@ fun settingsViewModelFactory(
             },
             onRequestInstallPermission = onRequestInstallPermission,
             historicalMerchantRateCorrectionWorkflow = container.historicalMerchantRateCorrectionWorkflow,
+            accountBalanceSettingsWorkflow = container.accountBalanceSettingsWorkflow,
         )
     }
 }

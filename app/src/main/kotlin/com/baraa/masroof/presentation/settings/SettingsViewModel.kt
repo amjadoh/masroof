@@ -63,6 +63,7 @@ class SettingsViewModel(
     private val historicalMerchantRateCorrectionWorkflow: HistoricalMerchantRateCorrectionWorkflow? = null,
     private val bankSmsImportWorkflow: com.baraa.masroof.application.sms.BankSmsImportWorkflow? = null,
     private val confirmedLoanPaymentsWorkflow: com.baraa.masroof.application.transaction.ConfirmedLoanPaymentsWorkflow? = null,
+    private val accountBalanceSettingsWorkflow: com.baraa.masroof.application.settings.AccountBalanceSettingsWorkflow? = null,
 ) : ViewModel() {
     private var updatableCorrectionIds: List<String> = emptyList()
     private val _uiState = MutableStateFlow(
@@ -254,6 +255,62 @@ class SettingsViewModel(
                 AccountReference(target.bank, target.maskedNumber),
                 name.trim().ifEmpty { null },
             )
+        }
+    }
+
+    fun openAccountBalance(account: ManagedAccountUi) {
+        val workflow = accountBalanceSettingsWorkflow ?: return
+        if (account.ownership != OwnershipStatus.OWNED) return
+        _uiState.update { it.copy(balanceEditor = AccountBalanceEditorUi(account)) }
+        viewModelScope.launch {
+            val reference = AccountReference(account.bank, account.maskedNumber)
+            val loaded = try {
+                withContext(Dispatchers.IO) {
+                    AccountBalanceEditorUi(account, workflow.opening(reference), workflow.latestStatedBalance(reference), loading = false)
+                }
+            } catch (ce: CancellationException) { throw ce } catch (caught: Exception) {
+                appLogService.failure(AppLogCategories.SETTINGS, "Settings openAccountBalance", caught)
+                AccountBalanceEditorUi(account, loading = false, failed = true)
+            }
+            _uiState.update { state -> if (state.balanceEditor?.account == account) state.copy(balanceEditor = loaded) else state }
+        }
+    }
+
+    fun dismissAccountBalance() {
+        if (_uiState.value.balanceEditor?.busy != true) _uiState.update { it.copy(balanceEditor = null) }
+    }
+
+    /** [amount] is the balance the user reads in the bank app now. */
+    fun saveAccountBalance(amount: java.math.BigDecimal) = editAccountBalance("saveAccountBalance") { workflow, reference, _ ->
+        workflow.setNow(reference, amount)
+    }
+
+    fun adoptStatedAccountBalance() = editAccountBalance("adoptStatedAccountBalance") { workflow, reference, editor ->
+        workflow.adopt(reference, requireNotNull(editor.stated))
+    }
+
+    fun clearAccountBalance() = editAccountBalance("clearAccountBalance") { workflow, reference, _ ->
+        workflow.clear(reference)
+    }
+
+    private fun editAccountBalance(
+        name: String,
+        action: (com.baraa.masroof.application.settings.AccountBalanceSettingsWorkflow, AccountReference, AccountBalanceEditorUi) -> Unit,
+    ) {
+        val workflow = accountBalanceSettingsWorkflow ?: return
+        val editor = _uiState.value.balanceEditor ?: return
+        if (editor.loading || editor.busy) return
+        _uiState.update { it.copy(balanceEditor = editor.copy(busy = true, failed = false)) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    action(workflow, AccountReference(editor.account.bank, editor.account.maskedNumber), editor)
+                }
+                _uiState.update { it.copy(balanceEditor = null) }
+            } catch (ce: CancellationException) { throw ce } catch (caught: Exception) {
+                appLogService.failure(AppLogCategories.SETTINGS, "Settings $name", caught)
+                _uiState.update { it.copy(balanceEditor = editor.copy(busy = false, failed = true)) }
+            }
         }
     }
 

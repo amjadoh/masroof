@@ -67,6 +67,16 @@ data class ManagedAccountUi(
             ?: "Account ••${maskedNumber.takeLast(4)}"
 }
 
+/** Settings-only opening balance editor for one owned account. */
+data class AccountBalanceEditorUi(
+    val account: ManagedAccountUi,
+    val opening: com.baraa.masroof.application.dashboard.AccountOpeningBalance? = null,
+    val stated: com.baraa.masroof.application.settings.StatedAccountBalance? = null,
+    val loading: Boolean = true,
+    val busy: Boolean = false,
+    val failed: Boolean = false,
+)
+
 data class SettingsBankTreeUi(
     val bank: Bank,
     val currentAccountNodes: List<SettingsCurrentAccountNodeUi> = emptyList(),
@@ -182,6 +192,7 @@ data class SettingsUiState(
     val renameCardTarget: ManagedCardUi? = null,
     val renameAccountTarget: ManagedAccountUi? = null,
     val accountTypeTarget: ManagedAccountUi? = null,
+    val balanceEditor: AccountBalanceEditorUi? = null,
     val externalSpendingTarget: ManagedAccountUi? = null,
     val externalSpending: com.baraa.masroof.application.dashboard.ExternalAccountSpending? = null,
     val externalSpendingLoading: Boolean = false,

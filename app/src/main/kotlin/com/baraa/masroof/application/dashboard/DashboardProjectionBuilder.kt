@@ -101,15 +101,15 @@ class DashboardProjectionBuilder(
     }
 
     /**
-     * Each confirmed opening plus the account's cash position since that day, with the same
+     * Each confirmed opening plus the account's cash position from its movement start, with the same
      * evidence, rates and self-transfer rules as the period view. Independent of the period shown.
      */
     private suspend fun accountBalances(context: DashboardProjectionContext): List<AccountBalance> {
         val owned = context.ownedAccounts.associateBy { "${it.bank.id}:${it.maskedNumber}" }
         val openings = openingBalances.load().filter { it.key in owned }
-        return openings.groupBy { it.date }.flatMap { (date, group) ->
+        return openings.groupBy { it.movementStart(zoneId) }.flatMap { (start, group) ->
             val transactions = financialTransactionRepository.listOccurredBetween(
-                startInclusive = FinancialPeriodPolicy.toInclusiveStartInstant(date, zoneId),
+                startInclusive = start,
                 endExclusive = BALANCE_WINDOW_END,
             )
             val prepared = prepare(transactions, context.cardRegistry, BALANCE_WINDOW_END)
