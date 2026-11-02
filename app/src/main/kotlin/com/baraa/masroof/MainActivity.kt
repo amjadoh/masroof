@@ -138,6 +138,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             var startupOutcome by rememberStartupMaintenanceOutcome(container::awaitStartupMaintenance) { outcome ->
                 startupFinancialReady = outcome == StartupMaintenanceOutcome.READY
+                if (startupFinancialReady) container.scheduleMissedSmsCatchUp()
             }
             var startupRetrying by remember { mutableStateOf(false) }
             var startupRestoreOpen by remember { mutableStateOf(false) }
@@ -183,6 +184,7 @@ class MainActivity : FragmentActivity() {
                                         startupOutcome = container.retryStartupMaintenance()
                                         startupFinancialReady =
                                             startupOutcome == StartupMaintenanceOutcome.READY
+                                        if (startupFinancialReady) container.scheduleMissedSmsCatchUp()
                                         startupRetrying = false
                                     }
                                 },
