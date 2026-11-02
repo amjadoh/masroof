@@ -310,16 +310,14 @@ private fun DashboardCustomizableSections(
         ) {
             when (entry.id) {
                 DashboardSectionId.HERO -> {
-                    DashboardHeroCard(
+                    DashboardHeroPager(
                         accountsFleet = accountsFleet,
+                        accounts = state.ownedAccounts,
                         onIncome = onOpenIncomeDetails,
                         onOutflow = onOpenExpenseDetails,
+                        onOpenAccounts = onOpenAccountsSummary,
                         modifier = Modifier.coachMarkTarget(com.baraa.masroof.presentation.navigation.HomeTour.SUMMARY),
                     )
-                    if (state.ownedAccounts.isNotEmpty()) {
-                        Spacer(Modifier.height(MasroofSpacing.sectionGap))
-                        DashboardAccountBalancesCard(state.ownedAccounts, onOpenAccountsSummary)
-                    }
                 }
 
                 DashboardSectionId.QUICK -> {

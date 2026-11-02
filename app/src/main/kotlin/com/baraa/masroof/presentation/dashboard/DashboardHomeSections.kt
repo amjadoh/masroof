@@ -2,8 +2,20 @@ package com.baraa.masroof.presentation.dashboard
 
 import com.baraa.masroof.ui.theme.MasroofSpacing
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import com.baraa.masroof.presentation.common.MasroofText as Text
+import com.baraa.masroof.ui.theme.MasroofThemeExtras
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +46,59 @@ fun DashboardHeroCard(
 }
 
 /**
+ * The two home heroes side by side: the period's net account movement first, then the current
+ * balance of the accounts. Swipe between them or tap a dot.
+ */
+@Composable
+fun DashboardHeroPager(
+    accountsFleet: AccountsSummary,
+    accounts: List<OwnedAccountUi>,
+    onIncome: () -> Unit, onOutflow: () -> Unit, onOpenAccounts: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (accounts.isEmpty()) {
+        DashboardHeroCard(accountsFleet, onIncome, onOutflow, modifier)
+        return
+    }
+    val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Column(modifier) {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pager,
+            pageSpacing = MasroofSpacing.cardInnerGap,
+            beyondViewportPageCount = 1,
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth().testTag("dashboard-hero-pager"),
+        ) { page ->
+            when (page) {
+                0 -> DashboardHeroCard(accountsFleet, onIncome, onOutflow)
+                else -> DashboardAccountBalancesCard(accounts, onOpenAccounts)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            listOf(R.string.dashboard_hero_remaining_title, R.string.dashboard_balances_title).forEachIndexed { index, label ->
+                val selected = pager.currentPage == index
+                val description = stringResource(label)
+                Box(
+                    Modifier.size(MasroofSpacing.sectionGap * 2 + MasroofSpacing.cardInnerGap * 2, MasroofSpacing.sectionGap * 2 + MasroofSpacing.cardInnerGap * 2)
+                        .clickable(onClickLabel = description) { scope.launch { pager.animateScrollToPage(index) } }
+                        .semantics { contentDescription = description; this.selected = selected },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val color = when {
+                        !selected -> MaterialTheme.colorScheme.outlineVariant
+                        index == 0 -> MaterialTheme.colorScheme.primary
+                        else -> MasroofThemeExtras.extendedColors.account
+                    }
+                    Box(Modifier.size(if (selected) MasroofSpacing.sectionGap * 2 else MasroofSpacing.cardInnerGap, MasroofSpacing.cardInnerGap)
+                        .background(color, androidx.compose.foundation.shape.CircleShape))
+                }
+            }
+        }
+    }
+}
+
+/**
  * Current money across owned accounts: each set balance plus its movement since. An account
  * without a balance set in settings is left out rather than counted as zero.
  */
@@ -41,19 +106,27 @@ fun DashboardHeroCard(
 fun DashboardAccountBalancesCard(accounts: List<OwnedAccountUi>, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val total = AccountBalancesTotal.of(accounts)
     val value = total.amount?.let { formatLocalizedMoney(it) } ?: stringResource(R.string.dashboard_account_balance_unset)
-    val subtitle = when {
+    val coverage = when {
         total.counted == 0 -> stringResource(R.string.dashboard_balances_none_hint)
         total.counted < total.accounts -> stringResource(R.string.dashboard_balances_partial, total.counted, total.accounts)
-        else -> null
+        else -> stringResource(R.string.dashboard_balances_all, total.accounts)
     }
     com.baraa.masroof.presentation.common.MasroofHeroCard(
         title = stringResource(R.string.dashboard_balances_title),
         value = value,
-        subtitle = subtitle,
         role = com.baraa.masroof.ui.theme.MasroofHeroRole.Account,
         modifier = modifier.clickable(onClick = onOpen),
         guidance = stringResource(R.string.dashboard_balances_hint),
-    )
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
+                Text(com.baraa.masroof.application.locale.AppDigits.display(coverage), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.dashboard_balances_no_reset), style = MaterialTheme.typography.labelSmall)
+            }
+            Text(stringResource(R.string.dashboard_balances_open), style = MaterialTheme.typography.labelLarge)
+        }
+    }
 }
 
 /** Sum of the accounts that have a balance; [amount] is null when none has one. */
