@@ -8,11 +8,16 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 
 /**
- * A balance the user confirmed for one owned account at the start of [asOfDate]
- * (the dashboard zone). SMS never states it; it is the movement base, not a fact to post.
+ * A balance the user confirmed for one owned account. It is the movement base, not a fact to post.
+ *
+ * With [setAt] (an ISO instant) the balance already includes everything up to that instant, so
+ * movement counts strictly after it (transactions are stored to the millisecond). Without it, movement counts from the start of [asOfDate]
+ * in the dashboard zone.
  */
 @Serializable
 data class AccountOpeningBalance(
@@ -21,15 +26,21 @@ data class AccountOpeningBalance(
     val amount: String,
     val currency: String,
     val asOfDate: String,
+    val setAt: String? = null,
 ) {
     init {
         require(bankId.isNotBlank() && bankId != Bank.UNKNOWN.id && maskedNumber.isNotBlank())
         require(BigDecimal(amount).scale() <= Money.SCALE)
         Currency.valueOf(currency)
         LocalDate.parse(asOfDate)
+        setAt?.let(Instant::parse)
     }
 
     val date: LocalDate get() = LocalDate.parse(asOfDate)
+
+    /** First instant whose transactions move this balance. */
+    fun movementStart(zoneId: ZoneId): Instant =
+        setAt?.let { Instant.parse(it).truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1) } ?: date.atStartOfDay(zoneId).toInstant()
 
     val opening: SignedMoneyAmount
         get() = SignedMoneyAmount(BigDecimal(amount).setScale(Money.SCALE, RoundingMode.HALF_EVEN), Currency.valueOf(currency))
@@ -40,6 +51,30 @@ data class AccountOpeningBalance(
 /** Read-only source; dashboard loads never write it. */
 fun interface AccountOpeningBalanceSource {
     fun load(): List<AccountOpeningBalance>
+}
+
+/** Settings writes one opening per account; a new one replaces the old. */
+interface AccountOpeningBalanceStore : AccountOpeningBalanceSource {
+    fun save(balance: AccountOpeningBalance)
+
+    fun remove(bankId: String, maskedNumber: String)
+
+    companion object {
+        fun of(
+            bankId: String,
+            maskedNumber: String,
+            amount: SignedMoneyAmount,
+            setAt: Instant,
+            zoneId: ZoneId,
+        ): AccountOpeningBalance = AccountOpeningBalance(
+            bankId = bankId,
+            maskedNumber = maskedNumber,
+            amount = amount.amount.setScale(Money.SCALE, RoundingMode.HALF_EVEN).toPlainString(),
+            currency = amount.currency.name,
+            asOfDate = setAt.atZone(zoneId).toLocalDate().toString(),
+            setAt = setAt.toString(),
+        )
+    }
 }
 
 object AccountOpeningBalanceCodec {

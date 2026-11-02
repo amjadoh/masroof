@@ -290,6 +290,8 @@ fun SettingsRoute(
             onDismissAccountType = viewModel::dismissAccountTypePicker,
             onSelectAccountType = viewModel::setAccountTypeFromPicker,
             onViewExternalSpending = viewModel::openExternalSpending,
+            balanceActions = AccountBalanceActions(viewModel::openAccountBalance, viewModel::dismissAccountBalance,
+                viewModel::saveAccountBalance, viewModel::adoptStatedAccountBalance, viewModel::clearAccountBalance),
         )
 
         is SettingsDestination.BankCards -> SettingsBankCardsScreen(

@@ -51,6 +51,7 @@ fun SettingsBankAccountsScreen(
     onOpenBank: (() -> Unit)? = null,
     onAddManual: (() -> Unit)? = null,
     onViewExternalSpending: (ManagedAccountUi) -> Unit = {},
+    balanceActions: AccountBalanceActions? = null,
 ) {
     var referenceTab by rememberSaveable { mutableStateOf("followed") }
 
@@ -81,6 +82,7 @@ fun SettingsBankAccountsScreen(
         onDismiss = onDismissAccountType,
         onSelect = onSelectAccountType,
     )
+    balanceActions?.let { SettingsAccountBalanceDialog(state.balanceEditor, it) }
 
     MasroofSecondaryScaffold(
         title = stringResource(R.string.reference_manage_accounts),
@@ -150,6 +152,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onSetBalance = balanceActions?.onOpen,
                             onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
@@ -160,6 +163,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onSetBalance = balanceActions?.onOpen,
                             onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
@@ -170,6 +174,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onSetBalance = balanceActions?.onOpen,
                             onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
@@ -181,6 +186,7 @@ fun SettingsBankAccountsScreen(
                             onRequestStopTracking = onRequestStopTracking,
                             onRenameAccount = onRenameAccount,
                             onPickAccountType = onPickAccountType,
+                            onSetBalance = balanceActions?.onOpen,
                             onRequestDelete = { deleteActions.onRequest(StopTrackingTarget.Account(it)) },
                         )
                     }
@@ -241,6 +247,7 @@ internal fun SettingsRegistryAccountRow(
     onRenameAccount: (ManagedAccountUi) -> Unit,
     onPickAccountType: (ManagedAccountUi) -> Unit,
     onRequestDelete: (ManagedAccountUi) -> Unit,
+    onSetBalance: ((ManagedAccountUi) -> Unit)? = null,
 ) {
     SettingsRegistryItemCard(MasroofIcons.moneyMovement, account.bank, registryLabel(account), showBankLabel = false,
         footer = {
@@ -251,6 +258,7 @@ internal fun SettingsRegistryAccountRow(
             androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_action_rename), { onRenameAccount(account) }, enabled = !updating)
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_account_type_title), { onPickAccountType(account) }, enabled = !updating)
+                onSetBalance?.let { open -> com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.settings_account_balance_action), { open(account) }, enabled = !updating) }
                 com.baraa.masroof.presentation.common.MasroofManagementAction(stringResource(R.string.reference_stop_tracking), { onRequestStopTracking(account) }, enabled = !updating, warning = true)
                 SettingsDeleteAction({ onRequestDelete(account) }, !updating)
             }

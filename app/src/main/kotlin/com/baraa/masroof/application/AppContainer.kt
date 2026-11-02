@@ -527,6 +527,18 @@ class AppContainer(
             appLogService = appLogService,
         )
 
+    private val accountOpeningBalanceStore: com.baraa.masroof.application.dashboard.AccountOpeningBalanceStore =
+        com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository(
+            appContext.getSharedPreferences(SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE))
+
+    val accountBalanceSettingsWorkflow: com.baraa.masroof.application.settings.AccountBalanceSettingsWorkflow =
+        com.baraa.masroof.application.settings.AccountBalanceSettingsWorkflow(
+            store = accountOpeningBalanceStore,
+            parsedEvents = parsedEventRepository,
+            rawSms = rawSmsRepository,
+            cards = cardRegistryRepository,
+        )
+
     val dashboardService: DashboardService =
         DashboardService(
             financialTransactionRepository = financialTransactionRepository,
@@ -540,8 +552,7 @@ class AppContainer(
             commitmentRepository = commitmentRepository,
             // Dashboard loads never call the network; market rates are written by enrichment.
             sarEquivalentResolver = TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ -> null }),
-            openingBalances = com.baraa.masroof.data.preferences.SharedPrefsAccountOpeningBalanceRepository(
-                appContext.getSharedPreferences(SharedPrefsOnboardingPreferencesRepository.PREFS_NAME, Context.MODE_PRIVATE)),
+            openingBalances = accountOpeningBalanceStore,
         )
 
     val transactionRestoreService: TransactionRestoreService =

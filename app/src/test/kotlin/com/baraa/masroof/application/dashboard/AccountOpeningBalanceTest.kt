@@ -53,6 +53,17 @@ class AccountOpeningBalanceTest {
         assertTrue(runCatching { AccountOpeningBalance("BANK_SNB", "4321", "1.001", "SAR", "2026-09-01") }.isFailure)
     }
 
+    @Test fun aBalanceSetAtAnInstantMovesOnlyAfterItAndOlderValuesStillStartAtTheirDay() {
+        val zone = java.time.ZoneId.of("Asia/Riyadh")
+        assertEquals(Instant.parse("2026-08-31T21:00:00Z"), opening.movementStart(zone))
+        val set = AccountOpeningBalance("BANK_SNB", "4321", "5.00", "SAR", "2026-09-15", "2026-09-15T09:00:00Z")
+        assertEquals(Instant.parse("2026-09-15T09:00:00.001Z"), set.movementStart(zone))
+        val legacy = """[{"bankId":"BANK_SNB","maskedNumber":"4321","amount":"100.25","currency":"SAR","asOfDate":"2026-09-01"}]"""
+        assertEquals(listOf(opening), AccountOpeningBalanceCodec.decodeOrEmpty(legacy))
+        assertEquals(listOf(set), AccountOpeningBalanceCodec.decodeOrEmpty(AccountOpeningBalanceCodec.encode(listOf(set))))
+        assertTrue(runCatching { AccountOpeningBalance("BANK_SNB", "4321", "1.00", "SAR", "2026-09-01", "not-an-instant") }.isFailure)
+    }
+
     private fun tx(id: String, type: FinancialTransactionType, amount: String, source: String? = null, destination: String? = null) =
         FinancialTransaction(id, type, Money.of(amount, Currency.SAR), Instant.parse("2026-09-15T09:00:00Z"),
             source, destination, null, null, null, emptyList())
