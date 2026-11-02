@@ -25,9 +25,10 @@ fun AccountPeriodSummaryCard(summary: CurrentAccountSummary, modifier: Modifier 
     val colors = MasroofThemeExtras.extendedColors
     val movement = summary.cashPosition()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-        if (balance != null) MasroofHeroCard(stringResource(R.string.dashboard_account_balance_title), formatLocalizedMoney(balance.balance), subtitle,
-            role = MasroofHeroRole.Account, guidance = stringResource(R.string.dashboard_account_balance_hint,
-                com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate(balance.asOfDate, "d MMMM yyyy"), formatLocalizedMoney(balance.opening)))
+        MasroofHeroCard(stringResource(R.string.dashboard_account_balance_title),
+            balance?.let { formatLocalizedMoney(it.balance) } ?: stringResource(R.string.dashboard_account_balance_unset), subtitle,
+            role = MasroofHeroRole.Account, guidance = stringResource(
+                if (balance != null) R.string.dashboard_account_balance_live_hint else R.string.dashboard_account_balance_unset_hint))
         MasroofHeroCard(title, formatLocalizedMoney(movement.remaining), subtitle,
             role = MasroofHeroRole.Account, guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(MasroofReference.metricGap)) {

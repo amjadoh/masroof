@@ -316,6 +316,10 @@ private fun DashboardCustomizableSections(
                         onOutflow = onOpenExpenseDetails,
                         modifier = Modifier.coachMarkTarget(com.baraa.masroof.presentation.navigation.HomeTour.SUMMARY),
                     )
+                    if (state.ownedAccounts.isNotEmpty()) {
+                        Spacer(Modifier.height(MasroofSpacing.sectionGap))
+                        DashboardAccountBalancesCard(state.ownedAccounts, onOpenAccountsSummary)
+                    }
                 }
 
                 DashboardSectionId.QUICK -> {
