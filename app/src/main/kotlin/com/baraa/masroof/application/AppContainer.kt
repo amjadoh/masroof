@@ -181,7 +181,8 @@ class AppContainer(
             requiredBundledBankIds = setOf(Bank.BANK_ALJAZIRA.id),
             appLogService = appLogService,
             activation = com.baraa.masroof.application.patterns.PatternApprovalWorkflow(messagePatternStore, databaseAccessGate,
-                accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository),
+                accountRegistryRepository, ownershipConfirmationService, cardRegistryRepository,
+                unpostedMessages = { bankId -> unpostedBankMessages(bankId) }),
             pendingPreview = com.baraa.masroof.application.patterns.PendingPatternsWorkflow(
                 messagePatternStore, databaseAccessGate,
                 reviewRepository, rawSmsRepository, parsedEventRepository, userCorrectionRepository,
@@ -803,6 +804,17 @@ class AppContainer(
      * Re-parses every stored RawSms (including rows that never produced a
      * ParsedEvent). Parser upgrades apply to the backlog without duplicating evidence.
      */
+    /** (sender, body) of a bank's recent stored messages that posted nothing, newest first, for reference-link suggestions. */
+    private suspend fun unpostedBankMessages(bankId: String): List<Pair<String, String>> {
+        val senders = messagePatternStore.load().banks.singleOrNull { it.bankId == bankId }?.senders?.toSet().orEmpty()
+        if (senders.isEmpty()) return emptyList()
+        val since = java.time.Instant.now().minus(java.time.Duration.ofDays(180))
+        return rawSmsRepository.getByIds(rawSmsRepository.listIdsByReceivedAt())
+            .filter { it.sender in senders && !it.receivedAt.isBefore(since) && !financialTransactionRepository.isRawSmsLinked(it.id) }
+            .sortedByDescending { it.receivedAt }
+            .map { it.sender to it.body }
+    }
+
     suspend fun reparseAllStoredEvents(): ReparseAllStoredEventsResult =
         storedSmsReprocessor.reprocessAll()
 
