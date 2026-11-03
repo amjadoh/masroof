@@ -133,7 +133,7 @@
     <string name="settings_fx_rate_correction_confirm_body">يُستبدل سعر التاجر المخزّن بالسعر المؤرخ لـ %1$d حركة. الحركات التي لا يوجد لها سعر مؤرخ تبقى كما هي.</string>
     <string name="settings_fx_rate_correction_confirm_action">تحديث</string>
     <string name="settings_statement_reconciliation_title">مطابقة كشف الحساب</string>
-    <string name="settings_statement_reconciliation_subtitle">مقارنة ملف CSV بالسجل دون تعديل الحركات</string>
+    <string name="settings_statement_reconciliation_subtitle">مطابقة كشف الحساب (PDF أو CSV) مع الحركات</string>
     <string name="settings_statement_reconciliation_intro">قارن كشف حساب (PDF من البنك أو CSV) بالحركات المسجّلة من الرسائل. ما يتغير شي إلا إذا ضغطت \"أضف\" على حركة أو اعتمدت رصيد بداية الكشف.</string>
     <string name="settings_statement_reconciliation_limits">الملف يُقرأ في الذاكرة بس، وما فيه اتصال بالبنك ولا بيانات دخول. ملفات PDF المشفّرة أو المصوّرة ما تنقرأ.</string>
     <string name="settings_statement_pick_file">اختيار ملف الكشف (PDF أو CSV)</string>
