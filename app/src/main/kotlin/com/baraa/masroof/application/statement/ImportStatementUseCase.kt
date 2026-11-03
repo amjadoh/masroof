@@ -43,7 +43,12 @@ class ImportStatementUseCase(
     private fun isPdf(input: java.io.BufferedInputStream): Boolean {
         input.mark(PDF_MAGIC.size)
         val head = ByteArray(PDF_MAGIC.size)
-        val read = input.readNBytes(head, 0, head.size)
+        var read = 0
+        while (read < head.size) {
+            val n = input.read(head, read, head.size - read)
+            if (n < 0) break
+            read += n
+        }
         input.reset()
         return read == head.size && head.contentEquals(PDF_MAGIC)
     }
