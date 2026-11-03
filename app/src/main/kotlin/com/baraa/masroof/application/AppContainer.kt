@@ -614,6 +614,16 @@ class AppContainer(
                     referencesFor = { transactions ->
                         statementLedgerReferences(parsedEventRepository, transactions)
                     },
+                    debitCardAccounts = {
+                        cardRegistryRepository.listAll()
+                            .filter { it.ownership == OwnershipStatus.OWNED && it.cardType != com.baraa.masroof.domain.model.CardType.CREDIT }
+                            .mapNotNull { card ->
+                                val account = card.linkedAccount?.let(com.baraa.masroof.domain.ids.FinancialContainerIdFactory::accountId)
+                                    ?: return@mapNotNull null
+                                com.baraa.masroof.domain.ids.FinancialContainerIdFactory.cardId(card.bank, card.last4) to account
+                            }
+                            .toMap()
+                    },
                 ),
             ),
             knownBankIds = {

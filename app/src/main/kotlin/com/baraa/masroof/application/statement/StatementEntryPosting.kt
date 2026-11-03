@@ -45,7 +45,7 @@ class StatementEntryPosting(
             linkedParsedEventIds = emptyList(),
             occurredAtZone = zoneId.id,
         )
-        return when (transactions.save(tx, emptyList())) {
+        return when (transactions.saveWithoutSms(tx)) {
             is FinancialTransactionSaveResult.Conflict -> false
             else -> true
         }
