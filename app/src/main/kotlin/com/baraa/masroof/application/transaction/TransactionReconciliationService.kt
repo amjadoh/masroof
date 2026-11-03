@@ -1,8 +1,10 @@
 package com.baraa.masroof.application.transaction
 
 import com.baraa.masroof.application.review.EffectiveParsedEventProvider
+import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.assembly.TransactionAssembler
 import com.baraa.masroof.domain.assembly.TransactionTiming
+import com.baraa.masroof.domain.matching.BankTransferFeePolicy
 import com.baraa.masroof.domain.matching.TransactionMatcher
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
 import com.baraa.masroof.domain.model.FinancialTransaction
@@ -669,6 +671,12 @@ class TransactionReconciliationService(
         failedRawSmsIds += upgraded.failedRawSmsIds
         settledRawSmsIds += upgraded.settledRawSmsIds
 
+        if (scope == null) {
+            val fees = upgradeIncludedTransferFees(records)
+            failed += fees.failed
+            failedRawSmsIds += fees.failedRawSmsIds
+        }
+
         val healedLoans = upgradeStaleFeeFinancingInstallments(records, scope)
         assembledSingle += healedLoans.assembledSingle
         alreadyLinked += healedLoans.alreadyLinked
@@ -1068,6 +1076,51 @@ class TransactionReconciliationService(
                 if (companions.isNotEmpty() && result.existingTransactionId in STALE_EVIDENCE_REFUSALS) UpgradePersistOutcome.Kept
                 else UpgradePersistOutcome.Failed
         }
+    }
+
+    /**
+     * Posted SNB transfers saved before [BankTransferFeePolicy]: a pair's fee companion
+     * still at the bare 0.25/0.50, or a lone transfer still holding its fee inside the
+     * amount. Each is re-saved under the same id with the fee the bank kept. Rows already
+     * carrying that fee, and every other bank, are left alone.
+     */
+    private suspend fun upgradeIncludedTransferFees(records: List<ParsedEventRecord>): UpgradePassResult {
+        val byEventId = records.associateBy { it.event.id }
+        val evidence = records.associateBy { it.event.rawSmsId }
+        var failed = 0
+        val failedIds = mutableSetOf<String>()
+        val transfers = financialTransactionRepository.listByTypes(
+            listOf(FinancialTransactionType.SELF_TRANSFER, FinancialTransactionType.EXTERNAL_TRANSFER_OUT),
+        )
+        for (tx in transfers) {
+            val legs = tx.linkedParsedEventIds.mapNotNull { byEventId[it] }
+            val outgoing = legs.firstOrNull { it.event.messageFamily == MessageFamily.TRANSFER_OUT }?.event ?: continue
+            if (outgoing.bank != BankTransferFeePolicy.BANK_SNB) continue
+            val companionId = TransactionAssembler.feeCompanionId(tx.id)
+            val companion = financialTransactionRepository.getById(companionId)
+            val upgraded: Pair<FinancialTransaction, Money>? = when {
+                companion != null && BankTransferFeePolicy.isBareFee(companion.amount) ->
+                    tx to BankTransferFeePolicy.chargedFee(outgoing.bank, companion.amount)
+                tx.type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT && legs.size == 1 && tx.amount == outgoing.amount ->
+                    BankTransferFeePolicy.includedFee(outgoing)?.let { included ->
+                        tx.copy(amount = tx.amount - included) to BankTransferFeePolicy.chargedFee(outgoing.bank, included)
+                    }
+                else -> null
+            }
+            val (transfer, fee) = upgraded ?: continue
+            val feeRow = FinancialTransaction(
+                id = companionId, type = FinancialTransactionType.FEE, amount = fee, occurredAt = transfer.occurredAt,
+                sourceContainerId = transfer.sourceContainerId, destinationContainerId = null, merchant = null,
+                counterparty = transfer.counterparty, categoryId = null, linkedParsedEventIds = emptyList(),
+                occurredAtZone = transfer.occurredAtZone,
+            )
+            val rawSmsIds = financialTransactionRepository.listRawSmsIds(tx.id)
+            if (persist(transfer, rawSmsIds, evidence, listOf(feeRow)) == PersistOutcome.Failed) {
+                failed++
+                failedIds += rawSmsIds
+            }
+        }
+        return UpgradePassResult(failed = failed, failedRawSmsIds = failedIds)
     }
 
     private data class UpgradePassResult(

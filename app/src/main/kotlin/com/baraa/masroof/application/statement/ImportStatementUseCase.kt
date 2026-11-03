@@ -33,8 +33,10 @@ class ImportStatementUseCase(
             is StatementParseResult.Rejected -> StatementImportResult.Rejected(parsed.reason)
             is StatementParseResult.Accepted if !accountsAreExactOwned(parsed.statement, ownedAccounts) ->
                 StatementImportResult.Rejected(StatementRejection.UNOWNED_ACCOUNT)
-            is StatementParseResult.Accepted ->
-                StatementImportResult.Compared(reconciliation.compare(parsed.statement), parsed.statement)
+            is StatementParseResult.Accepted -> {
+                val statement = StatementFeeNetting.net(parsed.statement)
+                StatementImportResult.Compared(reconciliation.compare(statement), statement)
+            }
         }
     }
 

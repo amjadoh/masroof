@@ -443,6 +443,12 @@ class ReviewViewModel(
             messageFamily = summary.messageFamily,
             reasons = review.reasons,
         )
+        // A coded operation has no parsed amount; the code SMS states it.
+        val coded = if (UnconfirmedOtpFinder.REASON in review.reasons) {
+            UnconfirmedOtpFinder.operation(summary.body.orEmpty())
+        } else {
+            null
+        }
         return ReviewListItemUi(
             id = review.id,
             kind = review.kind,
@@ -452,13 +458,14 @@ class ReviewViewModel(
                 review.kind.toUiLabelRes()
             },
             title = summary.title ?: "—",
-            titleRes = if (summary.title != null) null
+            titleRes = if (coded != null) coded.type.toUiLabelRes()
+                else if (summary.title != null) null
                 else if (summary.messageFamily in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) com.baraa.masroof.R.string.transaction_unknown_merchant
                 else summary.messageFamily.toUiLabelRes(),
             smsBody = summary.body?.trim().orEmpty().ifEmpty { "—" },
-            amountLabel = summary.amount?.let { MoneyUiFormatter.format(it, languageTag) },
+            amountLabel = (coded?.amount ?: summary.amount)?.let { MoneyUiFormatter.format(it, languageTag) },
             dateLabel = dateLabel,
-            reasonLabel = review.reasons.firstOrNull().orEmpty(),
+            reasonLabel = if (coded != null) UnconfirmedOtpFinder.REASON else review.reasons.firstOrNull().orEmpty(),
             dismissibleAsNonFinancial = dismissible,
             ignored = isIgnoredReview(review),
         )

@@ -3,6 +3,7 @@ package com.baraa.masroof.domain.assembly
 import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.domain.ids.FinancialContainerIdFactory
 import com.baraa.masroof.domain.ids.TransactionIdFactory
+import com.baraa.masroof.domain.matching.BankTransferFeePolicy
 import com.baraa.masroof.domain.matching.TransactionMatcher
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
 import com.baraa.masroof.domain.matching.TransferMatchPair
@@ -221,9 +222,18 @@ object TransactionAssembler {
         ).withOutgoingFee(event, transferFee)
     }
 
-    private fun Outcome.Assembled.withOutgoingFee(event: ParsedEvent, fee: Money?): Outcome.Assembled =
-        if (event.messageFamily != MessageFamily.TRANSFER_OUT) this
-        else copy(companions = feeCompanion(transaction, fee))
+    private fun Outcome.Assembled.withOutgoingFee(event: ParsedEvent, fee: Money?): Outcome.Assembled {
+        if (event.messageFamily != MessageFamily.TRANSFER_OUT) return this
+        if (fee == null && transaction.type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT) {
+            // The bank's fee hides inside the amount; the transfer is the rest, the fee what the bank kept.
+            BankTransferFeePolicy.includedFee(event)?.let { included ->
+                val transfer = transaction.copy(amount = transaction.amount - included)
+                return copy(transaction = transfer,
+                    companions = feeCompanion(transfer, BankTransferFeePolicy.chargedFee(event.bank, included)))
+            }
+        }
+        return copy(companions = feeCompanion(transaction, fee))
+    }
 
     /**
      * Fallback after pair matching failed: post a single owned-side transfer
