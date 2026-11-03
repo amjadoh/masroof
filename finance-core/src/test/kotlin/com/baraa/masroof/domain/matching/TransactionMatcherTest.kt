@@ -249,6 +249,17 @@ class TransactionMatcherTest {
         assertFalse(TransactionMatcher.compatiblePair(outgoing, incoming))
     }
 
+    @Test
+    fun snbFeeInferredFromThePairIncludesItsVat() {
+        val base = outgoing(reference = "ref-1")
+        val outgoing = base.copy(
+            event = base.event.copy(bank = BankTransferFeePolicy.BANK_SNB, amount = Money.of("500.25", Currency.SAR)),
+        )
+        val incoming = incoming(reference = "ref-1", amount = Money.of("500.00", Currency.SAR))
+
+        assertEquals(Money.of("0.29", Currency.SAR), TransactionMatcher.transferFee(outgoing, incoming))
+    }
+
     private fun outgoing(
         id: String = "out",
         rawSmsId: String = "raw-out",

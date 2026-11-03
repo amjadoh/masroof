@@ -162,3 +162,11 @@ sealed interface StatementParseResult {
 fun interface StatementParser {
     fun parse(stream: InputStream, knownBankIds: Set<String>): StatementParseResult
 }
+
+/**
+ * Reads a statement whose account is not named by a canonical directive (e.g. a bank PDF).
+ * The parser picks the account from [candidates] only when the statement itself identifies it.
+ */
+fun interface AccountStatementParser {
+    fun parse(stream: InputStream, candidates: Set<StatementMatchPolicy.QualifiedAccount>): StatementParseResult
+}

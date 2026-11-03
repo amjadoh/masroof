@@ -117,13 +117,16 @@ class OwnTransferFeeReconciliationTest {
         snbLeg("snb-out", MessageFamily.TRANSFER_OUT, "2500.50", AccountReference(SNB, "4321"), AccountReference(Bank.UNKNOWN, "6123"),
             LocalDateTime.parse("2026-06-23T14:38:00"), Instant.parse("2026-06-23T11:38:38Z"))
         reconciliation.reconcileStoredEvents()
-        assertEquals(listOf(FinancialTransactionType.EXTERNAL_TRANSFER_OUT), ftRepo.listAll().map { it.type })
+        // Alone, SNB's included 0.50 fee already splits out with its VAT.
+        assertEquals(mapOf(FinancialTransactionType.EXTERNAL_TRANSFER_OUT to Money.of("2500.00", Currency.SAR),
+            FinancialTransactionType.FEE to Money.of("0.57", Currency.SAR)), ftRepo.listAll().associate { it.type to it.amount })
 
         stcLeg("stc-in", "حوالة واردة (سريع)\n2500.00 رس\nمن فلان الاختبار\nمن بنك NCBK\nحساب *123\n01-01-1970 03:00\nمرجع *GH78",
             Instant.parse("2026-06-23T11:39:00Z"))
         assertEquals(0, reconciliation.reconcileStoredEvents().failed)
 
-        val transfer = assertSelfTransferWithFee(snbAccount, stcAccount, "2500.00", "0.50", setOf("snb-out", "stc-in"))
+        // SNB's inferred 0.50 fee is charged with its VAT (BankTransferFeePolicy).
+        val transfer = assertSelfTransferWithFee(snbAccount, stcAccount, "2500.00", "0.57", setOf("snb-out", "stc-in"))
         assertEquals(2026, transfer.occurredAt.atZone(zoneId).year)
         assertEquals(0, reconciliation.repairLegacyTransfersDetailed().summary.failed)
         assertEquals(2, ftRepo.listAll().size)

@@ -6,6 +6,7 @@ import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.model.MessageFamily
+import com.baraa.masroof.parsing.model.isCreditCardSms
 import com.baraa.masroof.parsing.model.isDebitCardSms
 import com.baraa.masroof.parsing.repository.ParsedEventRecord
 
@@ -29,7 +30,7 @@ data class CurrentAccountTransactionScope(
         val sourceId = tx.sourceContainerId
         if (sourceId != null) {
             if (sourceId in ownedDebitCardContainerIds) {
-                if (!isDebitCardAttributedTransaction(tx, parsedRecordsById)) {
+                if (!isRegistryDebitCardSpend(tx, parsedRecordsById)) {
                     return false
                 }
                 debitCardLinkedAccountIds[sourceId]?.let { linkedAccountId ->
@@ -96,7 +97,7 @@ data class CurrentAccountTransactionScope(
         val sourceId = tx.sourceContainerId ?: return false
         if (!isCreditCardContainer(sourceId)) return false
         if (sourceId in ownedDebitCardContainerIds) {
-            if (!isDebitCardAttributedTransaction(tx, parsedRecordsById)) {
+            if (!isRegistryDebitCardSpend(tx, parsedRecordsById)) {
                 return false
             }
             if (resolveOwnedAccountSourceId(tx, parsedRecordsById) != null) {
@@ -206,6 +207,23 @@ data class CurrentAccountTransactionScope(
                     else -> false
                 }
             }
+
+        /**
+         * A purchase or withdrawal on a card the registry already knows as an owned debit card.
+         * Some debit SMS (e.g. SNB "لك*1234" wallet purchases) carry no channel marker; the
+         * registry decision then attributes them, unless the SMS itself says credit or statement.
+         */
+        fun isRegistryDebitCardSpend(
+            tx: FinancialTransaction,
+            parsedRecordsById: Map<String, ParsedEventRecord>,
+        ): Boolean {
+            val records = tx.linkedParsedEventIds.mapNotNull { parsedRecordsById[it] }
+            if (records.any { it.details.isCreditCardSms() }) return false
+            return records.any { record ->
+                record.event.messageFamily == MessageFamily.PURCHASE ||
+                    record.event.messageFamily == MessageFamily.WITHDRAWAL
+            }
+        }
 
         private val TRUSTED_OWNED_SOURCE_TYPES = setOf(
             FinancialTransactionType.CASH_WITHDRAWAL,

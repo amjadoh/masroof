@@ -54,6 +54,14 @@ data class ReviewDetailUi(
     val provenance: com.baraa.masroof.application.interpretation.InterpretationProvenance? = null,
     val bankId: String? = null,
     val transferBetweenOwnAccounts: Boolean = false,
+    val otpConfirmation: ReviewOtpConfirmationUi? = null,
+)
+
+/** A one-time code whose operation got no bank message: did it go through, and from which account? */
+data class ReviewOtpConfirmationUi(
+    val typeLabelRes: Int,
+    val amountLabel: String,
+    val accountMaskedNumbers: List<String>,
 )
 
 enum class ReviewListMode {
@@ -140,6 +148,8 @@ fun shouldOfferNonFinancialDismiss(
     messageFamily: MessageFamily?,
     reasons: List<String>,
 ): Boolean {
+    // The user must answer whether a coded operation went through; it is not informational.
+    if (com.baraa.masroof.application.review.UnconfirmedOtpFinder.REASON in reasons) return false
     if (reasons.any { it == "non_financial_or_informational_message" }) {
         return true
     }

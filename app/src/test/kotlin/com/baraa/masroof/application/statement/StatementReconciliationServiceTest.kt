@@ -49,6 +49,75 @@ class StatementReconciliationServiceTest {
         StatementMatchPolicy.QualifiedAccount(Bank("D360"), "3001"),
     )
     private val parser = CanonicalCsvStatementParser()
+
+    private fun snbLine(line: Int, direction: StatementDirection, amount: String, day: Int = 15) = BankStatementEntry(
+        line, Bank("BANK_SNB"), "0100", LocalDate.of(2026, 10, day), null, "2026-10-$day", direction,
+        Money.of(amount, Currency.SAR), "fictional", null)
+
+    private fun snbStatement(vararg entries: BankStatementEntry) = ParsedBankStatement(CanonicalStatementFormat.VERSION,
+        com.baraa.masroof.domain.statement.StatementCoverage(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31)),
+        listOf(StatementMatchPolicy.QualifiedAccount(Bank("BANK_SNB"), "0100")), entries.toList(), emptyList())
+
+    @Test fun snbFeeChargeAndReversalLinesBecomeTheFeeTheBankKept() {
+        val netted = StatementFeeNetting.net(snbStatement(
+            snbLine(1, StatementDirection.DEBIT, "100.00"),
+            snbLine(2, StatementDirection.DEBIT, "0.50"), snbLine(3, StatementDirection.DEBIT, "0.08"),
+            snbLine(4, StatementDirection.CREDIT, "0.25"), snbLine(5, StatementDirection.CREDIT, "0.04"),
+            snbLine(6, StatementDirection.DEBIT, "1.00"), snbLine(7, StatementDirection.DEBIT, "0.15"),
+            snbLine(8, StatementDirection.CREDIT, "0.50"), snbLine(9, StatementDirection.CREDIT, "0.08"),
+        ))
+        assertEquals(listOf("100.00", "0.29", "0.57"), netted.entries.map { it.amount.amount.toPlainString() })
+        assertEquals(listOf(1, 2, 6), netted.entries.map { it.lineNumber })
+    }
+
+    @Test fun linesThatOnlyLookLikeAFeeStayAsPrinted() {
+        val statement = snbStatement(
+            snbLine(1, StatementDirection.DEBIT, "0.50"), snbLine(2, StatementDirection.DEBIT, "0.08"),
+            snbLine(3, StatementDirection.CREDIT, "0.25"), snbLine(4, StatementDirection.CREDIT, "0.04", day = 16),
+        )
+        assertEquals(statement, StatementFeeNetting.net(statement))
+    }
+
+    @Test fun aDebitCardPurchaseMatchesItsAccountsStatementLine() = runBlocking {
+        val purchase = FinancialTransaction("tx-card", FinancialTransactionType.EXPENSE, Money.of("48.00", Currency.SAR),
+            Instant.parse("2026-10-15T09:00:00Z"), "card:BANK_SNB:8658", null, "Halqa", null, null, emptyList(),
+            occurredAtZone = "Asia/Riyadh")
+        val statement = snbStatement(snbLine(1, StatementDirection.DEBIT, "48.00"))
+        val linked = StatementReconciliationService(RecordingLedger(listOf(purchase)),
+            debitCardAccounts = { mapOf("card:BANK_SNB:8658" to "account:BANK_SNB:0100") }).compare(statement)
+        assertEquals(1, linked.counts.matched)
+        val unlinked = StatementReconciliationService(RecordingLedger(listOf(purchase))).compare(statement)
+        assertEquals(0, unlinked.counts.matched)
+    }
+
+    @Test fun aPdfGoesToThePdfReaderAndACsvDoesNot() = runBlocking {
+        var pdfReads = 0
+        val pdf = com.baraa.masroof.domain.statement.AccountStatementParser { stream, candidates ->
+            pdfReads += 1
+            assertEquals(owned, candidates)
+            assertEquals("%PDF-1.7", String(stream.readNBytes(8)))
+            StatementParseResult.Rejected(StatementRejection.UNRECOGNIZED)
+        }
+        val useCase = ImportStatementUseCase(parser, StatementReconciliationService(RecordingLedger(emptyList())), pdf)
+        assertEquals(StatementImportResult.Rejected(StatementRejection.UNRECOGNIZED),
+            useCase.import(ByteArrayInputStream("%PDF-1.7 fictional".toByteArray()), known, owned))
+        val csv = statementFixture("nine_matched_one_statement_only.csv").readBytes()
+        assertTrue(useCase.import(ByteArrayInputStream(csv), known, owned) is StatementImportResult.Compared)
+        assertEquals(1, pdfReads)
+    }
+
+    @Test fun equalStatementLinesGetTheirOwnIdsAndRepostingKeepsThem() {
+        fun entry(line: Int) = BankStatementEntry(line, Bank("BANK_SNB"), "0100", LocalDate.of(2026, 9, 20), null,
+            "2026-09-20", StatementDirection.DEBIT, Money.of("100.00", Currency.SAR), "سحب نقدي - صراف آلي", null)
+        val statement = ParsedBankStatement(CanonicalStatementFormat.VERSION,
+            com.baraa.masroof.domain.statement.StatementCoverage(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 20)),
+            emptyList(), listOf(entry(3), entry(7)), emptyList())
+        val first = StatementEntryPosting.transactionId(statement, entry(3))
+        val second = StatementEntryPosting.transactionId(statement, entry(7))
+        assertTrue(first != second)
+        val reimported = statement.copy(entries = listOf(entry(10), entry(14)))
+        assertEquals(first, StatementEntryPosting.transactionId(reimported, entry(10)))
+    }
     private val ledgerReferences = linkedMapOf<String, Set<String>>()
 
     @Test

@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.baraa.masroof.application.review.UnconfirmedOtpFinder
+import com.baraa.masroof.presentation.common.toUiLabelRes
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -186,6 +188,17 @@ class ReviewViewModel(
         if (_uiState.value.selectedDetail?.id != reviewId) return
         runAction {
             reviewWorkflowService.resolveTransferAsExternal(reviewId, direction)
+        }
+    }
+
+    fun confirmOtpOperation(accountMaskedNumber: String) {
+        val detail = _uiState.value.selectedDetail ?: return
+        val bankId = detail.bankId ?: return
+        runAction {
+            reviewWorkflowService.resolveUnconfirmedOtp(
+                detail.id,
+                com.baraa.masroof.domain.model.AccountReference(Bank.fromId(bankId), accountMaskedNumber),
+            )
         }
     }
 
@@ -430,6 +443,12 @@ class ReviewViewModel(
             messageFamily = summary.messageFamily,
             reasons = review.reasons,
         )
+        // A coded operation has no parsed amount; the code SMS states it.
+        val coded = if (UnconfirmedOtpFinder.REASON in review.reasons) {
+            UnconfirmedOtpFinder.operation(summary.body.orEmpty())
+        } else {
+            null
+        }
         return ReviewListItemUi(
             id = review.id,
             kind = review.kind,
@@ -439,13 +458,14 @@ class ReviewViewModel(
                 review.kind.toUiLabelRes()
             },
             title = summary.title ?: "—",
-            titleRes = if (summary.title != null) null
+            titleRes = if (coded != null) coded.type.toUiLabelRes()
+                else if (summary.title != null) null
                 else if (summary.messageFamily in setOf(MessageFamily.PURCHASE, MessageFamily.REFUND)) com.baraa.masroof.R.string.transaction_unknown_merchant
                 else summary.messageFamily.toUiLabelRes(),
             smsBody = summary.body?.trim().orEmpty().ifEmpty { "—" },
-            amountLabel = summary.amount?.let { MoneyUiFormatter.format(it, languageTag) },
+            amountLabel = (coded?.amount ?: summary.amount)?.let { MoneyUiFormatter.format(it, languageTag) },
             dateLabel = dateLabel,
-            reasonLabel = review.reasons.firstOrNull().orEmpty(),
+            reasonLabel = if (coded != null) UnconfirmedOtpFinder.REASON else review.reasons.firstOrNull().orEmpty(),
             dismissibleAsNonFinancial = dismissible,
             ignored = isIgnoredReview(review),
         )
@@ -513,6 +533,21 @@ class ReviewViewModel(
             readOnly = false,
             resolvedAtLabel = resolvedAtLabel,
             bankChoices = bankChoicesFor(review, ignored),
+            otpConfirmation = otpConfirmationFor(review, detail),
+        )
+    }
+
+    private suspend fun otpConfirmationFor(
+        review: com.baraa.masroof.domain.model.ReviewItem,
+        detail: ReviewDetailLoader.ReviewDetail,
+    ): ReviewOtpConfirmationUi? {
+        val operation = UnconfirmedOtpFinder.operation(detail.body.orEmpty()) ?: return null
+        val accounts = reviewWorkflowService.unconfirmedOtpAccounts(review, detail.bankId?.let(Bank::fromId))
+        if (accounts.isEmpty()) return null
+        return ReviewOtpConfirmationUi(
+            typeLabelRes = operation.type.toUiLabelRes(),
+            amountLabel = MoneyUiFormatter.format(operation.amount, languageTag),
+            accountMaskedNumbers = accounts.mapNotNull { it.maskedNumber },
         )
     }
 
