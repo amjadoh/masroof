@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.domain.model.Bank
@@ -29,6 +30,8 @@ fun SettingsBankScreen(
     onImport: () -> Unit = {},
     onStatement: () -> Unit = {},
     onEditBank: () -> Unit = {},
+    referenceLinks: List<com.baraa.masroof.application.patterns.ReferenceLinkSuggestion> = emptyList(),
+    onLinkReference: (com.baraa.masroof.application.patterns.ReferenceLinkSuggestion) -> Unit = {},
 ) {
     val accountsSubtitle = formatRegistryCategorySubtitle(
         state = resolveRegistryCategorySubtitle(
@@ -86,6 +89,20 @@ fun SettingsBankScreen(
                 modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
                 com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.settings_bank_setup_messages))
             }
+            referenceLinks.forEach { link ->
+                com.baraa.masroof.presentation.common.MasroofCard(modifier = androidx.compose.ui.Modifier.testTag("reference-link-${link.reference}")) {
+                    com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.settings_reference_link_title),
+                        style = MaterialTheme.typography.titleMedium)
+                    com.baraa.masroof.presentation.common.MasroofText(
+                        stringResource(R.string.settings_reference_link_body, stringResource(referenceLinkFamilyRes(link.family)),
+                            link.reference, link.messageCount, link.account.last4),
+                        style = MaterialTheme.typography.bodyMedium)
+                    com.baraa.masroof.presentation.common.MasroofButton({ onLinkReference(link) },
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+                        com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.settings_reference_link_confirm, link.account.last4))
+                    }
+                }
+            }
             com.baraa.masroof.presentation.common.MasroofCard {
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_accounts_title), accountsSubtitle, MasroofIcons.moneyMovement, onOpenAccounts)
                 com.baraa.masroof.presentation.common.MasroofReferenceNavigationRow(stringResource(R.string.settings_bank_cards_title), cardsSubtitle, MasroofIcons.cardPayment, onOpenCards)
@@ -102,6 +119,9 @@ fun SettingsBankScreen(
         }
     }
 }
+
+private fun referenceLinkFamilyRes(family: String): Int =
+    if (family == "FINANCING_INSTALLMENT") R.string.settings_reference_link_installment else R.string.settings_reference_link_card_payment
 
 internal sealed interface RegistryCategorySubtitleState {
     data object Empty : RegistryCategorySubtitleState

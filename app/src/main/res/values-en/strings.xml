@@ -707,4 +707,9 @@
     <string name="statement_opening_adopt">Use as the account balance</string>
     <string name="statement_opening_adopted">The account balance now starts here.</string>
     <string name="balance_check_next_step">If a difference remains</string>
+    <string name="settings_reference_link_title">Link an account from bank messages</string>
+    <string name="settings_reference_link_body">The bank\'s %1$s messages name account ***%2$s (%3$d not counted). Is it your account ending in %4$s?</string>
+    <string name="settings_reference_link_confirm">Yes, link it to account %1$s</string>
+    <string name="settings_reference_link_card_payment">credit card payment</string>
+    <string name="settings_reference_link_installment">financing installment</string>
 </resources>
