@@ -21,6 +21,13 @@ interface FinancialTransactionRepository {
     ): FinancialTransactionSaveResult
 
     /**
+     * Saves a movement the user added with no SMS behind it (a bank statement line).
+     * Re-saving the same id changes nothing. Test doubles without that storage reject it.
+     */
+    suspend fun saveWithoutSms(transaction: FinancialTransaction): FinancialTransactionSaveResult =
+        throw UnsupportedOperationException("SMS-less rows need storage")
+
+    /**
      * [save] plus the parent's companion rows (its transfer fee) in the same write.
      * A stored companion that is no longer assembled is removed. Deleting the parent
      * later removes its companions. Test doubles without companion storage reject them.

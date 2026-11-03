@@ -119,6 +119,7 @@ fun ReviewRoute(
             onMarkOwnershipCardExternal = viewModel::markOwnershipCardExternal,
             onRestoreIgnored = viewModel::restoreIgnoredMessage,
             onTeachPattern = if (patterns != null) ({ teaching = true }) else null,
+            onConfirmOtp = viewModel::confirmOtpOperation,
         )
     } else {
         ReviewListScreen(
@@ -321,6 +322,7 @@ internal fun ReviewDetailScreen(
     onMarkOwnershipCardExternal: () -> Unit,
     onRestoreIgnored: (FinancialTransactionType?) -> Unit,
     onTeachPattern: (() -> Unit)? = null,
+    onConfirmOtp: (String) -> Unit = {},
 ) {
     var showTypeSheet by androidx.compose.runtime.remember(detail.id) { androidx.compose.runtime.mutableStateOf(false) }
     var showWhy by androidx.compose.runtime.remember(detail.id) { androidx.compose.runtime.mutableStateOf(false) }
@@ -419,6 +421,31 @@ internal fun ReviewDetailScreen(
                 )
             }
 
+            detail.otpConfirmation?.let { otp ->
+                MasroofSectionHeader(
+                    title = stringResource(R.string.review_otp_unconfirmed_title),
+                    icon = MasroofIcons.moneyMovement,
+                )
+                Text(
+                    stringResource(R.string.review_otp_unconfirmed_body, stringResource(otp.typeLabelRes), otp.amountLabel),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                otp.accountMaskedNumbers.forEach { masked ->
+                    IconTextButton(
+                        onClick = { onConfirmOtp(masked) },
+                        enabled = !resolving,
+                        icon = MasroofIcons.success,
+                        text = stringResource(R.string.review_otp_done_from, masked),
+                        modifier = Modifier.fillMaxWidth().testTag("review-otp-done-$masked"),
+                    )
+                }
+                com.baraa.masroof.presentation.common.MasroofOutlinedButton(
+                    onClick = onDismissNonFinancial, enabled = !resolving,
+                    modifier = Modifier.fillMaxWidth().testTag("review-otp-not-done"),
+                ) { Text(stringResource(R.string.review_otp_not_done)) }
+            }
+
             if (onTeachPattern != null && !detail.sender.isNullOrBlank() && detail.body.isNotBlank()) {
                 com.baraa.masroof.presentation.common.MasroofButton(
                     onClick = onTeachPattern, enabled = !resolving,
@@ -442,13 +469,13 @@ internal fun ReviewDetailScreen(
                 }
             }
 
-            if (detail.showFinancialTypeActions) {
+            if (detail.showFinancialTypeActions && detail.otpConfirmation == null) {
                 com.baraa.masroof.presentation.common.MasroofOutlinedButton(
                     onClick = { showTypeSheet = true }, enabled = !resolving,
                     modifier = Modifier.fillMaxWidth().testTag("review-correct-type"),
                 ) { Text(stringResource(R.string.teaching_correct_type)) }
             }
-            if (detail.showDismissNonFinancialAction) {
+            if (detail.showDismissNonFinancialAction && detail.otpConfirmation == null) {
                 com.baraa.masroof.presentation.common.MasroofTextButton(
                     onClick = onDismissNonFinancial, enabled = !resolving,
                     modifier = Modifier.fillMaxWidth(),

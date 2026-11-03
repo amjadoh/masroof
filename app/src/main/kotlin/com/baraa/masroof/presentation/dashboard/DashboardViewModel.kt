@@ -59,9 +59,40 @@ class DashboardViewModel(
     val chartDataWorkflow: com.baraa.masroof.application.dashboard.ChartDataWorkflow =
         com.baraa.masroof.application.dashboard.ChartDataWorkflow(com.baraa.masroof.application.dashboard.InMemoryChartDataPreferencesRepository()),
     val analytics: com.baraa.masroof.application.analytics.AnalyticsWorkflow? = null,
+    private val balanceCheckWorkflow: com.baraa.masroof.application.settings.AccountBalanceCheckWorkflow? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    private val _balanceCheck = MutableStateFlow<com.baraa.masroof.application.settings.BalanceCheckResult?>(null)
+    /** Result of the open balance check; null while the user types the bank's figure. */
+    val balanceCheck: StateFlow<com.baraa.masroof.application.settings.BalanceCheckResult?> = _balanceCheck.asStateFlow()
+
+    val canCheckBalance: Boolean get() = balanceCheckWorkflow != null
+
+    fun checkBalance(account: OwnedAccountUi, bankBalance: java.math.BigDecimal) {
+        val workflow = balanceCheckWorkflow ?: return
+        launchLogged(appLogService, AppLogCategories.DASHBOARD, "Dashboard checkBalance") {
+            val result = workflow.check(
+                com.baraa.masroof.domain.model.AccountReference(account.bank, account.maskedNumber),
+                account.balance,
+                bankBalance,
+            )
+            _balanceCheck.value = result
+            if (result !is com.baraa.masroof.application.settings.BalanceCheckResult.Differs) refresh()
+        }
+    }
+
+    fun adoptBankBalance(account: OwnedAccountUi, bankBalance: java.math.BigDecimal) {
+        val workflow = balanceCheckWorkflow ?: return
+        workflow.adoptBankBalance(com.baraa.masroof.domain.model.AccountReference(account.bank, account.maskedNumber), bankBalance)
+        _balanceCheck.value = null
+        refresh()
+    }
+
+    fun dismissBalanceCheck() {
+        _balanceCheck.value = null
+    }
 
     private val transactionListWorkflow = com.baraa.masroof.application.dashboard.TransactionListWorkflow()
 

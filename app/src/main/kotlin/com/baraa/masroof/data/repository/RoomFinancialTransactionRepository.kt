@@ -35,6 +35,15 @@ class RoomFinancialTransactionRepository(
         persist(transaction, rawSmsIds) { entity, links -> dao.saveAtomic(entity, links, companionEntities) }
     }
 
+    override suspend fun saveWithoutSms(transaction: FinancialTransaction): FinancialTransactionSaveResult =
+        accessGate.withAccess {
+            when (dao.saveAtomic(FinancialTransactionMapper.toEntity(transaction), emptyList())) {
+                FinancialTransactionDao.SaveAtomicOutcome.Saved -> FinancialTransactionSaveResult.Saved
+                FinancialTransactionDao.SaveAtomicOutcome.AlreadyExists -> FinancialTransactionSaveResult.AlreadyExists
+                is FinancialTransactionDao.SaveAtomicOutcome.Conflict -> error("A row without SMS links cannot conflict")
+            }
+        }
+
     override suspend fun replaceExclusiveStaleLinks(
         transaction: FinancialTransaction,
         rawSmsIds: Collection<String>,

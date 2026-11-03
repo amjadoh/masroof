@@ -14,6 +14,7 @@ object ReviewReasonLabels {
                 R.string.review_reason_bill_payment
             "unknown_message_family" -> R.string.review_reason_unknown_family
             "missing_amount" -> R.string.review_reason_missing_amount
+            com.baraa.masroof.application.review.UnconfirmedOtpFinder.REASON -> R.string.review_reason_otp_unconfirmed
             "needs_review" -> R.string.review_reason_needs_review
             "parse_review_required",
             "parse_partial",

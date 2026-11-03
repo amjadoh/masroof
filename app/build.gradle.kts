@@ -163,6 +163,11 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation(libs.okhttp)
+    // Text of bank statement PDFs for user-initiated reconciliation (Apache-2.0).
+    implementation(libs.pdfbox.android) {
+        // Encrypted PDFs are rejected as unreadable; skip the ~8 MB crypto provider.
+        exclude(group = "org.bouncycastle")
+    }
     implementation(libs.androidx.work.runtime)
 
     testImplementation(testFixtures(project(":bank-engine")))

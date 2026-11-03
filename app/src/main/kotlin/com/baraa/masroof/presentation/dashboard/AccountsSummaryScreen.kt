@@ -28,6 +28,7 @@ fun AccountsSummaryRoute(
     onOpenTransaction: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
+    val balanceCheck by viewModel.balanceCheck.collectAsState()
     var selectedAccountKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     val selectedAccount = selectedAccountKey?.let { key ->
@@ -48,6 +49,12 @@ fun AccountsSummaryRoute(
                 state = state,
                 onBack = { selectedAccountKey = null },
                 onOpenTransaction = onOpenTransaction,
+                balanceCheck = if (viewModel.canCheckBalance) BalanceCheckActions(
+                    result = balanceCheck,
+                    onCheck = { viewModel.checkBalance(selectedAccount, it) },
+                    onAdopt = { viewModel.adoptBankBalance(selectedAccount, it) },
+                    onDismiss = viewModel::dismissBalanceCheck,
+                ) else null,
             )
         }
 

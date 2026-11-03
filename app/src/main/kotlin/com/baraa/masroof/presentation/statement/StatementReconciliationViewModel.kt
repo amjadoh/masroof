@@ -9,7 +9,11 @@ import com.baraa.masroof.application.statement.LedgerLineComparison
 import com.baraa.masroof.application.statement.StatementCurrencyTotal
 import com.baraa.masroof.application.statement.StatementImportResult
 import com.baraa.masroof.application.statement.StatementLineComparison
+import com.baraa.masroof.application.statement.StatementEntryPosting
 import com.baraa.masroof.application.statement.StatementReconciliationWorkflow
+import com.baraa.masroof.application.dashboard.SignedMoneyAmount
+import com.baraa.masroof.domain.model.AccountReference
+import com.baraa.masroof.domain.statement.ParsedBankStatement
 import com.baraa.masroof.domain.statement.StatementComparisonStatus
 import com.baraa.masroof.domain.statement.StatementRejection
 import java.io.InputStream
@@ -43,6 +47,16 @@ data class StatementReconciliationUiState(
     val ledgerOnlyLines: List<StatementLineUi> = emptyList(),
     val ambiguousLines: List<StatementLineUi> = emptyList(),
     val unsupportedLines: List<StatementLineUi> = emptyList(),
+    /** Statement openings the user may start an account's balance from. */
+    val openings: List<StatementOpeningUi> = emptyList(),
+)
+
+data class StatementOpeningUi(
+    val bankId: String,
+    val accountMasked: String,
+    val amountLabel: String,
+    val firstDay: String,
+    val adopted: Boolean = false,
 )
 
 data class StatementTotalUi(
@@ -63,6 +77,9 @@ data class StatementLineUi(
     val title: String,
     val amountLabel: String,
     val detail: String,
+    /** Statement line number of a statement-only movement the user can post; null otherwise. */
+    val postableLine: Int? = null,
+    val posted: Boolean = false,
 )
 
 fun statementReconciliationUiState(result: StatementImportResult): StatementReconciliationUiState =
@@ -93,7 +110,7 @@ fun statementReconciliationUiState(result: StatementImportResult): StatementReco
                     .map { it.toUi() },
                 statementOnlyLines = report.statementLines
                     .filter { it.status == StatementComparisonStatus.STATEMENT_ONLY }
-                    .map { it.toUi() },
+                    .map { it.toUi().copy(postableLine = it.entry.lineNumber.takeIf { result.statement != null }) },
                 ledgerOnlyLines = report.ledgerLines
                     .filter { it.status == StatementComparisonStatus.LEDGER_ONLY }
                     .map { it.toUi() },
@@ -109,13 +126,22 @@ fun statementReconciliationUiState(result: StatementImportResult): StatementReco
                     report.ledgerLines
                         .filter { it.status == StatementComparisonStatus.UNSUPPORTED }
                         .map { it.toUi() },
+                openings = result.statement?.let { statement ->
+                    statement.balances.mapNotNull { balance ->
+                        val opening = balance.opening ?: return@mapNotNull null
+                        StatementOpeningUi(balance.bank.id, balance.accountMasked,
+                            plain(opening.amount, opening.currency.name), statement.coverage.periodStart.toString())
+                    }
+                }.orEmpty(),
             )
         }
     }
 
 class StatementReconciliationViewModel(
     private val workflow: StatementReconciliationWorkflow,
+    private val posting: StatementEntryPosting? = null,
 ) : ViewModel() {
+    private var statement: ParsedBankStatement? = null
     private val _uiState = MutableStateFlow(StatementReconciliationUiState())
     val uiState: StateFlow<StatementReconciliationUiState> = _uiState.asStateFlow()
     private var comparison: kotlinx.coroutines.Job? = null
@@ -125,6 +151,7 @@ class StatementReconciliationViewModel(
         if (selectedBankId == bankId) return
         selectedBankId = bankId
         comparison?.cancel()
+        statement = null
         _uiState.value = StatementReconciliationUiState()
     }
 
@@ -142,20 +169,65 @@ class StatementReconciliationViewModel(
             } catch (ignored: Exception) {
                 StatementImportResult.Rejected(StatementRejection.UNREADABLE)
             }
-            _uiState.value = statementReconciliationUiState(result)
+            // Without posting there is nothing to tap, so the statement itself is not kept.
+            val shown = if (posting == null && result is StatementImportResult.Compared) result.copy(statement = null) else result
+            statement = (shown as? StatementImportResult.Compared)?.statement
+            _uiState.value = statementReconciliationUiState(shown)
         }
     }
 
+    /** Posts one statement-only line on the user's tap. */
+    fun postLine(lineNumber: Int) {
+        val current = statement ?: return
+        val entry = current.entries.find { it.lineNumber == lineNumber } ?: return
+        val posting = posting ?: return
+        viewModelScope.launch {
+            val saved = try {
+                withContext(Dispatchers.IO) { posting.post(current, entry) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (ignored: Exception) {
+                false
+            }
+            if (saved) {
+                _uiState.value = _uiState.value.copy(
+                    statementOnlyLines = _uiState.value.statementOnlyLines.map {
+                        if (it.postableLine == lineNumber) it.copy(posted = true) else it
+                    },
+                )
+            }
+        }
+    }
+
+    fun adoptOpening(bankId: String, accountMasked: String) {
+        val current = statement ?: return
+        val posting = posting ?: return
+        val balance = current.balances.find { it.bank.id == bankId && it.accountMasked == accountMasked } ?: return
+        val opening = balance.opening ?: return
+        posting.adoptOpening(
+            AccountReference(balance.bank, balance.accountMasked),
+            SignedMoneyAmount(opening.amount, opening.currency),
+            current.coverage.periodStart,
+        )
+        _uiState.value = _uiState.value.copy(
+            openings = _uiState.value.openings.map {
+                if (it.bankId == bankId && it.accountMasked == accountMasked) it.copy(adopted = true) else it
+            },
+        )
+    }
+
     fun onUnreadable() {
+        statement = null
         _uiState.value = StatementReconciliationUiState(unreadable = true)
     }
 }
 
 fun statementReconciliationViewModelFactory(
     workflow: StatementReconciliationWorkflow,
+    posting: StatementEntryPosting? = null,
 ): ViewModelProvider.Factory = viewModelFactory {
     initializer {
-        StatementReconciliationViewModel(workflow)
+        StatementReconciliationViewModel(workflow, posting)
     }
 }
 

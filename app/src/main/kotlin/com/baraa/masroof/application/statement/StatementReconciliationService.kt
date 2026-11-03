@@ -26,6 +26,8 @@ import java.time.ZoneOffset
  */
 class StatementReconciliationService(
     private val financialTransactionRepository: FinancialTransactionRepository,
+    /** Owned debit card container id → the account container it spends from (from the registry). */
+    private val debitCardAccounts: suspend () -> Map<String, String> = { emptyMap() },
     private val referencesFor: suspend (List<FinancialTransaction>) -> Map<String, Set<String>> = { emptyMap() },
 ) {
     suspend fun compare(statement: ParsedBankStatement): StatementReconciliationReport {
@@ -47,11 +49,12 @@ class StatementReconciliationService(
             .toInstant()
         val posted = financialTransactionRepository.listOccurredBetween(start, end)
         val referencesByTransaction = referencesFor(posted)
-        val storedZones = storedZonesByBank(posted)
+        val cardAccounts = debitCardAccounts()
+        val storedZones = storedZonesByBank(posted, cardAccounts)
         val statementZones = accounts.map { it.bank }.distinct().associateWith { bank ->
             StatementMatchPolicy.zoneForStatementBank(bank, storedZones[bank].orEmpty())
         }
-        val ledgerSides = projectLedger(posted, statementZones, periodByAccount, referencesByTransaction)
+        val ledgerSides = projectLedger(posted, statementZones, periodByAccount, referencesByTransaction, cardAccounts)
         val statementSides = statement.entries.map { entry ->
             StatementSide(
                 entry = entry,
@@ -71,11 +74,11 @@ class StatementReconciliationService(
             .distinct()
     }
 
-    private fun storedZonesByBank(posted: List<FinancialTransaction>): Map<Bank, Set<String?>> {
+    private fun storedZonesByBank(posted: List<FinancialTransaction>, cardAccounts: Map<String, String>): Map<Bank, Set<String?>> {
         val zones = linkedMapOf<Bank, MutableSet<String?>>()
         posted.forEach { transaction ->
             listOf(transaction.sourceContainerId, transaction.destinationContainerId).forEach container@{ containerId ->
-                val account = StatementMatchPolicy.qualifiedAccount(containerId) ?: return@container
+                val account = StatementMatchPolicy.qualifiedAccount(containerId?.let { cardAccounts[it] ?: it }) ?: return@container
                 zones.getOrPut(account.bank) { linkedSetOf() }.add(transaction.occurredAtZone)
             }
         }
@@ -87,13 +90,15 @@ class StatementReconciliationService(
         statementZones: Map<Bank, java.time.ZoneId?>,
         periodByAccount: Map<String, Pair<LocalDate, LocalDate>>,
         referencesByTransaction: Map<String, Set<String>>,
+        cardAccounts: Map<String, String>,
     ): List<LedgerSide> {
         val sides = mutableListOf<LedgerSide>()
         posted.forEach { transaction ->
             val references = referencesByTransaction[transaction.id].orEmpty()
             sides += side(
                 transaction = transaction,
-                containerId = transaction.sourceContainerId,
+                // A debit card purchase leaves the card's account; the statement prints it there.
+                containerId = transaction.sourceContainerId?.let { cardAccounts[it] ?: it },
                 endpoint = StatementMatchPolicy.AccountEndpoint.SOURCE,
                 statementZones = statementZones,
                 periodByAccount = periodByAccount,
@@ -101,7 +106,7 @@ class StatementReconciliationService(
             )
             sides += side(
                 transaction = transaction,
-                containerId = transaction.destinationContainerId,
+                containerId = transaction.destinationContainerId?.let { cardAccounts[it] ?: it },
                 endpoint = StatementMatchPolicy.AccountEndpoint.DESTINATION,
                 statementZones = statementZones,
                 periodByAccount = periodByAccount,
