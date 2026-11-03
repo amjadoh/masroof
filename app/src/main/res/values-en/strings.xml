@@ -128,7 +128,7 @@
     <string name="settings_fx_rate_correction_confirm_body">Replaces the stored merchant rate with the dated rate for %1$d transaction(s). Rows with no dated rate stay unchanged.</string>
     <string name="settings_fx_rate_correction_confirm_action">Update</string>
     <string name="settings_statement_reconciliation_title">Statement reconciliation</string>
-    <string name="settings_statement_reconciliation_subtitle">Compare a CSV with the ledger without changing transactions</string>
+    <string name="settings_statement_reconciliation_subtitle">Match a bank statement (PDF or CSV) with your movements</string>
     <string name="settings_statement_reconciliation_intro">Compare a statement (bank PDF or CSV) with movements posted from SMS. Nothing changes unless you tap Add on a movement or use the statement opening balance.</string>
     <string name="settings_statement_reconciliation_limits">The file is read in memory only, with no bank connection or credentials. Encrypted or scanned PDFs cannot be read.</string>
     <string name="settings_statement_pick_file">Choose statement file (PDF or CSV)</string>
