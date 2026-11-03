@@ -34,6 +34,7 @@ fun dashboardViewModelFactory(
             appLogService = container.appLogService,
             zoneId = zoneId,
             maintenanceCompletions = container.maintenanceCompletionSignal.completions,
+            balanceCheckWorkflow = container.accountBalanceCheckWorkflow,
         )
     }
 }

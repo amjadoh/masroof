@@ -8,6 +8,7 @@ import com.baraa.masroof.application.transaction.ReconciliationCompletionPolicy
 import com.baraa.masroof.application.transaction.ReconciliationIncompleteException
 import com.baraa.masroof.application.transaction.ReconciliationReport
 import com.baraa.masroof.application.transaction.TransactionReconciliationService
+import com.baraa.masroof.application.settings.BalanceCheckHints
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ import com.baraa.masroof.domain.ids.UserCorrectionIdFactory
 import com.baraa.masroof.domain.matching.TransferMatchCandidate
 import com.baraa.masroof.domain.matching.TransferMatchPair
 import com.baraa.masroof.domain.model.AccountReference
+import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.CardReference
 import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
@@ -41,6 +43,7 @@ import com.baraa.masroof.domain.repository.ReviewRepository
 import com.baraa.masroof.domain.repository.UserCorrectionRepository
 import com.baraa.masroof.parsing.repository.ParsedEventRepository
 import com.baraa.masroof.sms.time.InstantClock
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -68,6 +71,8 @@ class ReviewWorkflowService(
     private val reviewQueueUpdater: ReviewQueueUpdater,
     private val manualReviewResolutionRepository: ManualReviewResolutionRepository,
     private val clock: InstantClock,
+    /** Owned accounts of a bank, offered when a one-time code does not name its account. */
+    private val ownedAccounts: suspend (Bank) -> List<AccountReference> = { emptyList() },
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val appLogService: AppLogService? = null,
     private val processingRecovery: ProcessingRecovery? = null,
@@ -100,7 +105,7 @@ class ReviewWorkflowService(
     /** Completes a maintenance pass that already reconciled; never starts a second sweep. */
     internal suspend fun completeReconciliation(report: ReconciliationReport) {
         try {
-            reviewQueueUpdater.applyReport(report)
+            reviewQueueUpdater.applyReport(withUnconfirmedOtps(report))
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -477,6 +482,117 @@ class ReviewWorkflowService(
         ) ?: return ReviewWorkflowResult.Rejected("review_resolution_failed")
         logReviewAction("Dismissed as non-financial", reviewId)
         return ReviewWorkflowResult.Success(review = marked, transaction = null)
+    }
+
+    /**
+     * Adds a question for each recent one-time code whose operation has no bank
+     * message ([UnconfirmedOtpFinder]). A failure here never blocks reconciliation.
+     */
+    private suspend fun withUnconfirmedOtps(report: ReconciliationReport): ReconciliationReport {
+        val candidates = try {
+            unconfirmedOtps().let(UnconfirmedOtpFinder::reviewCandidates)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val listed = report.reviewCandidates.map { it.rawSmsId }.toSet()
+        val added = candidates.filter { it.rawSmsId !in listed }
+        return if (added.isEmpty()) report else report.copy(reviewCandidates = report.reviewCandidates + added)
+    }
+
+    private suspend fun unconfirmedOtps(): List<UnconfirmedOtpFinder.Unconfirmed> {
+        val now = clock.now()
+        val from = now.minus(UnconfirmedOtpFinder.LOOKBACK)
+        val otpEvents = parsedEventRepository.listReceivedBetween(from, now)
+            .filter { it.event.messageFamily == MessageFamily.OTP }
+        if (otpEvents.isEmpty()) return emptyList()
+        val raws = rawSmsRepository.getByIds(otpEvents.map { it.event.rawSmsId }).associateBy { it.id }
+        val messages = otpEvents.mapNotNull { record ->
+            raws[record.event.rawSmsId]?.let { raw ->
+                UnconfirmedOtpFinder.OtpMessage(raw.id, record.event.bank, raw.body, raw.receivedAt)
+            }
+        }
+        val posted = financialTransactionRepository.listOccurredBetween(
+            from.minus(UnconfirmedOtpFinder.SETTLE_DELAY),
+            now.plus(UnconfirmedOtpFinder.SETTLE_DELAY),
+        )
+        return UnconfirmedOtpFinder.find(messages, posted, now)
+    }
+
+    /**
+     * Unanswered review questions for [bank] since [since]: one-time codes with no bank
+     * message (count and coded total) and the other messages still waiting to be counted.
+     */
+    suspend fun balanceCheckHints(bank: Bank, since: Instant): BalanceCheckHints = withContext(ioDispatcher) {
+        val required = reviewRepository.listRequired()
+        if (required.isEmpty()) return@withContext BalanceCheckHints()
+        val records = parsedEventRepository.listByRawSmsIds(required.map { it.rawSmsId })
+            .associateBy { it.event.rawSmsId }
+        val raws = rawSmsRepository.getByIds(required.map { it.rawSmsId })
+            .filter { !it.receivedAt.isBefore(since) }
+            .associateBy { it.id }
+        val ofBank = required.filter { records[it.rawSmsId]?.event?.bank == bank && it.rawSmsId in raws }
+        val (otps, others) = ofBank.partition { UnconfirmedOtpFinder.REASON in it.reasons }
+        val coded = otps.mapNotNull { review -> raws[review.rawSmsId]?.body?.let(UnconfirmedOtpFinder::operation) }
+        BalanceCheckHints(
+            unconfirmedOtpCount = coded.size,
+            unconfirmedOtpTotal = coded.fold(BigDecimal.ZERO.setScale(Money.SCALE)) { sum, op -> sum + op.amount.amount },
+            pendingReviewCount = others.size,
+        )
+    }
+
+    /** Accounts the user can say a coded operation left; empty when the review is not one. */
+    suspend fun unconfirmedOtpAccounts(review: ReviewItem, bank: Bank?): List<AccountReference> =
+        if (bank == null || review.status != ReviewStatus.REQUIRED || UnconfirmedOtpFinder.REASON !in review.reasons) {
+            emptyList()
+        } else {
+            ownedAccounts(bank)
+        }
+
+    /**
+     * The user says the coded operation went through from [account]. Posts the coded
+     * amount at the code's time, linked to the code SMS, like any typed resolution.
+     */
+    suspend fun resolveUnconfirmedOtp(reviewId: String, account: AccountReference): ReviewWorkflowResult {
+        val review = reviewRepository.getById(reviewId)
+            ?: return ReviewWorkflowResult.Rejected("review_not_found")
+        if (review.status != ReviewStatus.REQUIRED || UnconfirmedOtpFinder.REASON !in review.reasons) {
+            return ReviewWorkflowResult.Rejected("review_not_required")
+        }
+        if (financialTransactionRepository.isRawSmsLinked(review.rawSmsId)) {
+            return ReviewWorkflowResult.Rejected("raw_sms_already_finalized")
+        }
+        val record = effectiveParsedEventProvider.findEffectiveByRawSmsId(review.rawSmsId)
+            ?: return ReviewWorkflowResult.Rejected("parsed_event_missing")
+        val raw = rawSmsRepository.getById(review.rawSmsId)
+            ?: return ReviewWorkflowResult.Rejected("raw_sms_missing")
+        val operation = UnconfirmedOtpFinder.operation(raw.body)
+            ?: return ReviewWorkflowResult.Rejected("missing_amount")
+        if (account.bank != record.event.bank || ownershipResolver.resolveAccount(account) != OwnershipStatus.OWNED) {
+            return ReviewWorkflowResult.Rejected("source_not_owned")
+        }
+        val event = record.event.copy(amount = operation.amount, sourceAccountRef = account)
+        val (occurredAt, occurredAtZone) = resolvedTransactionTime(event, record.details.occurredAtLocal, raw.receivedAt)
+        val tx = FinancialTransaction.fromSingleEvent(
+            event = event,
+            type = operation.type,
+            occurredAt = occurredAt,
+            sourceContainerId = FinancialContainerIdFactory.accountId(account),
+            destinationContainerId = null,
+            occurredAtZone = occurredAtZone,
+        )
+        return mapPersistResult(
+            manualReviewResolutionRepository.persistSingleResolution(
+                transaction = tx,
+                rawSmsIds = listOf(review.rawSmsId),
+                reviewId = review.id,
+                resolutionKind = ReviewResolutionKind.USER_FINANCIAL_TYPE,
+                resolvedAt = clock.now(),
+            ),
+        ).also { result ->
+            if (result is ReviewWorkflowResult.Success) logReviewAction("Confirmed one-time-code operation", reviewId)
+        }
     }
 
     suspend fun resolveAsFinancialType(

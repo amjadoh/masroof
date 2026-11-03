@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val statementReconciliationViewModel: StatementReconciliationViewModel by viewModels {
-        statementReconciliationViewModelFactory(container.statementReconciliationWorkflow)
+        statementReconciliationViewModelFactory(container.statementReconciliationWorkflow, container.statementEntryPosting)
     }
 
     private val notificationCenterViewModel: NotificationCenterViewModel by viewModels {

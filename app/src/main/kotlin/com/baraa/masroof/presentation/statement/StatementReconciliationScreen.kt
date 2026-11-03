@@ -75,9 +75,11 @@ fun StatementReconciliationRoute(
         state = state,
         onBack = onBack,
         onPickFile = {
-            picker.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "*/*"))
+            picker.launch(arrayOf("application/pdf", "text/*", "text/csv", "text/comma-separated-values", "*/*"))
         },
         bankLabel = bankLabel,
+        onPostLine = viewModel::postLine,
+        onAdoptOpening = viewModel::adoptOpening,
     )
 }
 
@@ -87,6 +89,8 @@ fun StatementReconciliationScreen(
     onBack: () -> Unit,
     onPickFile: () -> Unit,
     bankLabel: String? = null,
+    onPostLine: (Int) -> Unit = {},
+    onAdoptOpening: (String, String) -> Unit = { _, _ -> },
 ) {
     MasroofSecondaryScaffold(
         title = stringResource(R.string.settings_statement_reconciliation_title),
@@ -123,14 +127,32 @@ fun StatementReconciliationScreen(
                 )
             }
             if (state.hasReport) {
-                ReportBody(state)
+                ReportBody(state, onPostLine, onAdoptOpening)
             }
         }
     }
 }
 
 @Composable
-private fun ReportBody(state: StatementReconciliationUiState) {
+private fun ReportBody(
+    state: StatementReconciliationUiState,
+    onPostLine: (Int) -> Unit,
+    onAdoptOpening: (String, String) -> Unit,
+) {
+    state.openings.forEach { opening ->
+        MasroofCard(modifier = Modifier.testTag("statement-opening-${opening.bankId}-${opening.accountMasked}")) {
+            Text(stringResource(R.string.statement_opening_balance, opening.accountMasked, opening.amountLabel, opening.firstDay),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            if (opening.adopted) {
+                Text(stringResource(R.string.statement_opening_adopted), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Button({ onAdoptOpening(opening.bankId, opening.accountMasked) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.statement_opening_adopt))
+                }
+            }
+        }
+    }
     MasroofSectionHeader(
         title = stringResource(R.string.settings_statement_counts),
         modifier = Modifier.testTag(STATEMENT_COUNTS_HEADER_TAG),
@@ -214,6 +236,7 @@ private fun ReportBody(state: StatementReconciliationUiState) {
         R.string.settings_statement_statement_only,
         StatementComparisonStatus.STATEMENT_ONLY,
         state.statementOnlyLines,
+        onPostLine,
     )
     LineSection(
         R.string.settings_statement_ledger_only,
@@ -237,6 +260,7 @@ private fun LineSection(
     titleRes: Int,
     status: StatementComparisonStatus,
     lines: List<StatementLineUi>,
+    onPostLine: (Int) -> Unit = {},
 ) {
     if (lines.isEmpty()) return
     MasroofSectionHeader(
@@ -257,6 +281,16 @@ private fun LineSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                line.postableLine?.let { lineNumber ->
+                    if (line.posted) {
+                        Text(stringResource(R.string.statement_line_posted), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Button({ onPostLine(lineNumber) }, modifier = Modifier.fillMaxWidth().testTag("statement-post-$lineNumber")) {
+                            Text(stringResource(R.string.statement_line_post))
+                        }
+                    }
+                }
             }
         }
     }

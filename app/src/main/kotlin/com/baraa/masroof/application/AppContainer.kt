@@ -89,6 +89,7 @@ import com.baraa.masroof.data.room.MasroofDatabase
 import com.baraa.masroof.data.statement.CanonicalCsvStatementParser
 import com.baraa.masroof.domain.model.Bank
 import com.baraa.masroof.domain.model.OwnershipStatus
+import com.baraa.masroof.domain.model.AccountReference
 import com.baraa.masroof.domain.statement.StatementMatchPolicy
 import com.baraa.masroof.domain.ownership.OwnershipConfirmationService
 import com.baraa.masroof.domain.ownership.OwnershipDiscoveryService
@@ -394,6 +395,11 @@ class AppContainer(
             reviewQueueUpdater = reviewQueueUpdater,
             manualReviewResolutionRepository = manualReviewResolutionRepository,
             clock = clock,
+            ownedAccounts = { bank ->
+                accountRegistryRepository.listAll()
+                    .filter { it.bank == bank && it.ownership == OwnershipStatus.OWNED && it.maskedNumber.isNotBlank() }
+                    .map { AccountReference(it.bank, it.maskedNumber.trim()) }
+            },
             appLogService = appLogService,
             processingRecovery = processingRecovery,
             onHistoricalRetry = {
@@ -539,6 +545,18 @@ class AppContainer(
             cards = cardRegistryRepository,
         )
 
+    val accountBalanceCheckWorkflow: com.baraa.masroof.application.settings.AccountBalanceCheckWorkflow =
+        com.baraa.masroof.application.settings.AccountBalanceCheckWorkflow(
+            balances = accountBalanceSettingsWorkflow,
+            hints = { bank, since -> reviewWorkflowService.balanceCheckHints(bank, since) },
+        )
+
+    val statementEntryPosting: com.baraa.masroof.application.statement.StatementEntryPosting =
+        com.baraa.masroof.application.statement.StatementEntryPosting(
+            transactions = financialTransactionRepository,
+            balances = accountBalanceSettingsWorkflow,
+        )
+
     val dashboardService: DashboardService =
         DashboardService(
             financialTransactionRepository = financialTransactionRepository,
@@ -590,6 +608,7 @@ class AppContainer(
         StatementReconciliationWorkflow(
             importStatement = ImportStatementUseCase(
                 parser = CanonicalCsvStatementParser(),
+                pdfParser = com.baraa.masroof.data.statement.PdfStatementParser(appContext),
                 reconciliation = StatementReconciliationService(
                     financialTransactionRepository = financialTransactionRepository,
                     referencesFor = { transactions ->
