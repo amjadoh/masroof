@@ -789,4 +789,9 @@
     <string name="cc_reminder_today">كشف البطاقة %2$s ينقفل اليوم. سدّد %1$s ر.س قبل نهاية اليوم.</string>
     <string name="amounts_show">إظهار المبالغ</string>
     <string name="amounts_hide">إخفاء المبالغ</string>
+    <string name="settings_reference_link_title">ربط حساب من رسائل البنك</string>
+    <string name="settings_reference_link_body">رسائل %1$s من البنك تذكر الحساب ***%2$s (%3$d رسالة ما انحسبت). هل هو حسابك اللي ينتهي بـ %4$s؟</string>
+    <string name="settings_reference_link_confirm">إيوه، اربطه بالحساب %1$s</string>
+    <string name="settings_reference_link_card_payment">سداد البطاقة الائتمانية</string>
+    <string name="settings_reference_link_installment">قسط التمويل</string>
 </resources>

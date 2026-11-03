@@ -777,4 +777,9 @@
     <string name="cc_reminder_today">Card %2$s statement closes today. Pay SAR %1$s before the day ends.</string>
     <string name="amounts_show">Show amounts</string>
     <string name="amounts_hide">Hide amounts</string>
+    <string name="settings_reference_link_title">Link an account from bank messages</string>
+    <string name="settings_reference_link_body">The bank\'s %1$s messages name account ***%2$s (%3$d not counted). Is it your account ending in %4$s?</string>
+    <string name="settings_reference_link_confirm">Yes, link it to account %1$s</string>
+    <string name="settings_reference_link_card_payment">credit card payment</string>
+    <string name="settings_reference_link_installment">financing installment</string>
 </resources>
