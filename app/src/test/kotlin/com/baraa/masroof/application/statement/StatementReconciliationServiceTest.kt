@@ -49,6 +49,35 @@ class StatementReconciliationServiceTest {
         StatementMatchPolicy.QualifiedAccount(Bank("D360"), "3001"),
     )
     private val parser = CanonicalCsvStatementParser()
+
+    @Test fun aPdfGoesToThePdfReaderAndACsvDoesNot() = runBlocking {
+        var pdfReads = 0
+        val pdf = com.baraa.masroof.domain.statement.AccountStatementParser { stream, candidates ->
+            pdfReads += 1
+            assertEquals(owned, candidates)
+            assertEquals("%PDF-1.7", String(stream.readNBytes(8)))
+            StatementParseResult.Rejected(StatementRejection.UNRECOGNIZED)
+        }
+        val useCase = ImportStatementUseCase(parser, StatementReconciliationService(RecordingLedger(emptyList())), pdf)
+        assertEquals(StatementImportResult.Rejected(StatementRejection.UNRECOGNIZED),
+            useCase.import(ByteArrayInputStream("%PDF-1.7 fictional".toByteArray()), known, owned))
+        val csv = statementFixture("nine_matched_one_statement_only.csv").readBytes()
+        assertTrue(useCase.import(ByteArrayInputStream(csv), known, owned) is StatementImportResult.Compared)
+        assertEquals(1, pdfReads)
+    }
+
+    @Test fun equalStatementLinesGetTheirOwnIdsAndRepostingKeepsThem() {
+        fun entry(line: Int) = BankStatementEntry(line, Bank("BANK_SNB"), "0100", LocalDate.of(2026, 9, 20), null,
+            "2026-09-20", StatementDirection.DEBIT, Money.of("100.00", Currency.SAR), "سحب نقدي - صراف آلي", null)
+        val statement = ParsedBankStatement(CanonicalStatementFormat.VERSION,
+            com.baraa.masroof.domain.statement.StatementCoverage(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 20)),
+            emptyList(), listOf(entry(3), entry(7)), emptyList())
+        val first = StatementEntryPosting.transactionId(statement, entry(3))
+        val second = StatementEntryPosting.transactionId(statement, entry(7))
+        assertTrue(first != second)
+        val reimported = statement.copy(entries = listOf(entry(10), entry(14)))
+        assertEquals(first, StatementEntryPosting.transactionId(reimported, entry(10)))
+    }
     private val ledgerReferences = linkedMapOf<String, Set<String>>()
 
     @Test

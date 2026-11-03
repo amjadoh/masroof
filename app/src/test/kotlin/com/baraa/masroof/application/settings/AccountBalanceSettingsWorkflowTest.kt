@@ -108,6 +108,46 @@ class AccountBalanceSettingsWorkflowTest {
 
     private fun signed(amount: String) = SignedMoneyAmount(BigDecimal(amount), Currency.SAR)
 
+    @Test fun aMatchingCheckBecomesTheNextStartingPoint() = runBlocking {
+        val store = MemoryStore()
+        workflow(store).setNow(account, BigDecimal("500"))
+        val result = check(store, appBalance = "380.00", typed = "380")
+        assertEquals(BalanceCheckResult.Matched, result)
+        assertEquals("380.00", store.load().single().amount)
+    }
+
+    @Test fun aDifferenceIsReportedWithHintsAndNothingIsChanged() = runBlocking {
+        val store = MemoryStore()
+        workflow(store).setNow(account, BigDecimal("500"))
+        val hints = BalanceCheckHints(unconfirmedOtpCount = 1, unconfirmedOtpTotal = BigDecimal("84.00"))
+        val result = check(store, appBalance = "4069.96", typed = "3886.01", hints = hints) as BalanceCheckResult.Differs
+        assertEquals(BigDecimal("183.95"), result.difference)
+        assertEquals(hints, result.hints)
+        assertEquals("500.00", store.load().single().amount)
+    }
+
+    @Test fun anAccountWithoutABalanceStartsFromTheCheck() = runBlocking {
+        val store = MemoryStore()
+        val result = AccountBalanceCheckWorkflow(workflow(store), { _, _ -> BalanceCheckHints() }, zone)
+            .check(account, current = null, bankBalance = BigDecimal("0.71"))
+        assertEquals(BalanceCheckResult.Started, result)
+        assertEquals("0.71", store.load().single().amount)
+    }
+
+    private suspend fun check(
+        store: MemoryStore,
+        appBalance: String,
+        typed: String,
+        hints: BalanceCheckHints = BalanceCheckHints(),
+    ): BalanceCheckResult {
+        val opening = workflow(store).opening(account)!!
+        val current = com.baraa.masroof.application.dashboard.AccountBalance(
+            account.bank, account.maskedNumber!!, opening.opening, opening.date,
+            SignedMoneyAmount(BigDecimal(appBalance) - opening.opening.amount, Currency.SAR),
+        )
+        return AccountBalanceCheckWorkflow(workflow(store), { _, _ -> hints }, zone).check(account, current, BigDecimal(typed))
+    }
+
     private fun workflow(
         store: MemoryStore,
         records: List<ParsedEventRecord> = emptyList(),

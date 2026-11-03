@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.baraa.masroof.application.review.UnconfirmedOtpFinder
+import com.baraa.masroof.presentation.common.toUiLabelRes
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -186,6 +188,17 @@ class ReviewViewModel(
         if (_uiState.value.selectedDetail?.id != reviewId) return
         runAction {
             reviewWorkflowService.resolveTransferAsExternal(reviewId, direction)
+        }
+    }
+
+    fun confirmOtpOperation(accountMaskedNumber: String) {
+        val detail = _uiState.value.selectedDetail ?: return
+        val bankId = detail.bankId ?: return
+        runAction {
+            reviewWorkflowService.resolveUnconfirmedOtp(
+                detail.id,
+                com.baraa.masroof.domain.model.AccountReference(Bank.fromId(bankId), accountMaskedNumber),
+            )
         }
     }
 
@@ -513,6 +526,21 @@ class ReviewViewModel(
             readOnly = false,
             resolvedAtLabel = resolvedAtLabel,
             bankChoices = bankChoicesFor(review, ignored),
+            otpConfirmation = otpConfirmationFor(review, detail),
+        )
+    }
+
+    private suspend fun otpConfirmationFor(
+        review: com.baraa.masroof.domain.model.ReviewItem,
+        detail: ReviewDetailLoader.ReviewDetail,
+    ): ReviewOtpConfirmationUi? {
+        val operation = UnconfirmedOtpFinder.operation(detail.body.orEmpty()) ?: return null
+        val accounts = reviewWorkflowService.unconfirmedOtpAccounts(review, detail.bankId?.let(Bank::fromId))
+        if (accounts.isEmpty()) return null
+        return ReviewOtpConfirmationUi(
+            typeLabelRes = operation.type.toUiLabelRes(),
+            amountLabel = MoneyUiFormatter.format(operation.amount, languageTag),
+            accountMaskedNumbers = accounts.mapNotNull { it.maskedNumber },
         )
     }
 

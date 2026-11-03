@@ -123,7 +123,8 @@ class OwnTransferFeeReconciliationTest {
             Instant.parse("2026-06-23T11:39:00Z"))
         assertEquals(0, reconciliation.reconcileStoredEvents().failed)
 
-        val transfer = assertSelfTransferWithFee(snbAccount, stcAccount, "2500.00", "0.50", setOf("snb-out", "stc-in"))
+        // SNB's inferred 0.50 fee is charged with its VAT (BankTransferFeePolicy).
+        val transfer = assertSelfTransferWithFee(snbAccount, stcAccount, "2500.00", "0.57", setOf("snb-out", "stc-in"))
         assertEquals(2026, transfer.occurredAt.atZone(zoneId).year)
         assertEquals(0, reconciliation.repairLegacyTransfersDetailed().summary.failed)
         assertEquals(2, ftRepo.listAll().size)

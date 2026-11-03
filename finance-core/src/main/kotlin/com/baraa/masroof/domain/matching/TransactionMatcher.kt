@@ -57,14 +57,15 @@ object TransactionMatcher {
 
     /**
      * Fee the source account paid on top of the received amount: the fee the
-     * outgoing bank stated, otherwise the amount difference of a compatible pair.
+     * outgoing bank stated, otherwise the amount difference of a compatible pair
+     * plus what [BankTransferFeePolicy] says the bank adds to it.
      */
     fun transferFee(outgoing: TransferMatchCandidate, incoming: TransferMatchCandidate): Money? {
         outgoing.transferFee?.let { return it.takeIf { fee -> fee.amount.signum() > 0 } }
         val out = outgoing.amount ?: return null
         val inn = incoming.amount ?: return null
         if (out.currency != inn.currency || out.amount <= inn.amount) return null
-        return out - inn
+        return BankTransferFeePolicy.chargedFee(outgoing.event.bank, out - inn)
     }
 
     /**
