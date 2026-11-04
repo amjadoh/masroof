@@ -366,7 +366,7 @@ class TransactionReconciliationService(
                     if (linkedBefore.type == FinancialTransactionType.SELF_TRANSFER &&
                         linkedBefore.linkedParsedEventIds.size == 1
                     ) {
-                        transferCandidateFor(record)?.let { postedSingleLegCounterparts += it }
+                        transferCandidateFor(record, linkedBefore.occurredAtZone)?.let { postedSingleLegCounterparts += it }
                     }
                     continue
                 }
@@ -1200,10 +1200,12 @@ class TransactionReconciliationService(
     ): LegacyReleaseResult {
         val postedSingleLeg = mutableListOf<ParsedEventRecord>()
         val skipped = linkedSetOf<String>()
+        val postedZones = mutableMapOf<String, String?>()
         for (record in records) {
             val event = record.event
             if (!event.messageFamily.isTransferFamily()) continue
             val linked = financialTransactionRepository.findByRawSmsId(event.rawSmsId) ?: continue
+            postedZones[event.rawSmsId] = linked.occurredAtZone
             if (linked.type != FinancialTransactionType.SELF_TRANSFER) continue
             if (linked.linkedParsedEventIds.size != 1) continue
             if (shouldProtectFromAutomaticUnlink(event.rawSmsId)) {
@@ -1216,7 +1218,7 @@ class TransactionReconciliationService(
             return LegacyReleaseResult(skippedRawSmsIds = skipped)
         }
 
-        val candidates = records.mapNotNull { transferCandidateFor(it) }
+        val candidates = records.mapNotNull { transferCandidateFor(it, postedZones[it.event.rawSmsId]) }
         if (candidates.isEmpty()) return LegacyReleaseResult(skippedRawSmsIds = skipped)
         val uniquelyPairedEventIds = TransactionMatcher.findMutuallyUniquePairs(candidates)
             .flatMap { pair -> listOf(pair.outgoing.event.id, pair.incoming.event.id) }
@@ -1294,7 +1296,10 @@ class TransactionReconciliationService(
         return transferCandidateFor(record)
     }
 
-    private suspend fun transferCandidateFor(record: ParsedEventRecord): TransferMatchCandidate? {
+    private suspend fun transferCandidateFor(
+        record: ParsedEventRecord,
+        persistedZoneId: String? = null,
+    ): TransferMatchCandidate? {
         val event = record.event
         if (!event.messageFamily.isTransferFamily()) return null
         var userConfirmed = record.automationConfirmed
@@ -1327,6 +1332,7 @@ class TransactionReconciliationService(
                 occurredAtLocal = record.details.occurredAtLocal,
                 receivedAt = receivedAt,
                 zoneId = zoneId,
+                persistedZoneId = persistedZoneId,
             ),
             transferFee = record.details.transferFee,
         )
