@@ -850,6 +850,7 @@ class AppContainer(
                 reviewWorkflowService.completeReconciliation(report)
                 enrichExchangeRatesBestEffort()
             },
+            processingRetryRepository = processingRetryRepository,
             appLogService = appLogService,
         )
     }
