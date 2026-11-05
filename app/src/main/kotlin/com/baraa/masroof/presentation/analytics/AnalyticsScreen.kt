@@ -272,7 +272,7 @@ val LocalLabAnalyticsCardsEnabled = staticCompositionLocalOf { true }
                                 }), style = MaterialTheme.typography.bodySmall)
                                 Amount(stringResource(R.string.lab_analysis_estimated), c.amount)
                                 if (c.overdue) Text(stringResource(R.string.lab_analysis_overdue_candidate), style = MaterialTheme.typography.bodySmall)
-                                Text("${stringResource(if (c.cadence == "WEEKLY") R.string.lab_analysis_weekly else R.string.lab_analysis_monthly)} · ${day(c.nextDay)}")
+                                Text("${stringResource(when (c.cadence) { "WEEKLY" -> R.string.lab_analysis_weekly; "YEARLY" -> R.string.settings_commitment_recurrence_yearly; else -> R.string.lab_analysis_monthly })} · ${day(c.nextDay)}")
                                 EvidenceGroup(c.sourceIds, stringResource(R.string.lab_analysis_previous_payments),
                                     workflow, state.snapshot?.sourceHash.orEmpty(), onOpenTransaction)
                                 MasroofButton(onClick = { editing = c.key }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
