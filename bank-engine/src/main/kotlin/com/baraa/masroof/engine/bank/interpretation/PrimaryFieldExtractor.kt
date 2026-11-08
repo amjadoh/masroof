@@ -39,6 +39,9 @@ internal class PrimaryFieldExtractor(
     }
 
     fun money(field: ExtractionField, allowStandalone: Boolean = false, titlePrefixes: List<String> = emptyList()): Money? {
+        // A short amount role such as `بـ` also opens place lines (`بـ TEST ATM MAKKAH`). A digit-free line
+        // with that role is only malformed when no other line gives the principal.
+        val wordOnlyAmountMentions = mutableListOf<IntRange>()
         val hits = labels(field).flatMap { label ->
             val pattern = Regex("(?m)^ *" + role(label) + "[ \\t]*:?[ \\t]*" + MoneyGrammar.VALUE)
             val reverse = Regex("(?m)^ *" + MoneyGrammar.VALUE + "[ \\t]*:[ \\t]*" + source.phrase(label).pattern + " *$")
@@ -65,8 +68,11 @@ internal class PrimaryFieldExtractor(
                 val longerRole = ExtractionField.entries.flatMap(labels).any { other -> SourceText(other).text.length > SourceText(label).text.length &&
                     Regex("(?m)^ *" + source.phrase(other).pattern).find(source.text, mention.range.first)?.range?.first == mention.range.first }
                 if (!longerRole && (field != ExtractionField.AMOUNT || !overlaps(mention.range)) && matches.none { it.range.first == mention.range.first } && separate.none { it.range.first == mention.range.first } &&
-                    !(field == ExtractionField.AVAILABLE_BALANCE && negativeBalances.any { it.range.first == mention.range.first }))
-                    problem("MALFORMED_${field.name}", Blocker.VALIDATION_ERROR)
+                    !(field == ExtractionField.AVAILABLE_BALANCE && negativeBalances.any { it.range.first == mention.range.first })) {
+                    val rest = source.text.substring(mention.range.last + 1).substringBefore('\n')
+                    if (field == ExtractionField.AMOUNT && rest.isNotBlank() && rest.none(Char::isDigit)) wordOnlyAmountMentions += mention.range
+                    else problem("MALFORMED_${field.name}", Blocker.VALIDATION_ERROR)
+                }
             }
             separate + matches.mapNotNull { match ->
                 if (field == ExtractionField.AMOUNT && overlaps(match.range)) return@mapNotNull null
@@ -86,6 +92,7 @@ internal class PrimaryFieldExtractor(
                 .findAll(source.text).filterNot { match -> overlaps(match.range) || hits.any { it.range.last >= match.range.first && match.range.last >= it.range.first } }
                 .mapNotNull { match -> MoneyGrammar.read(match)?.let { Hit(it, match.range) } }.toList()
         val allHits = hits + inline
+        if (allHits.isEmpty() && wordOnlyAmountMentions.isNotEmpty()) problem("MALFORMED_${field.name}", Blocker.VALIDATION_ERROR)
         allHits.forEach { evidence += source.evidence("extract.money", field.name, it.range) }
         if (field == ExtractionField.AMOUNT && currency != null && allHits.any { it.value.currency != MoneyGrammar.withCurrency("1", currency)?.currency })
             problem("CONFLICTING_PRINCIPAL_CURRENCY", Blocker.CONFLICTING_FACTS)

@@ -49,7 +49,8 @@ fun CreditCardDetailSummaryCard(
         MasroofCard {
             com.baraa.masroof.presentation.common.MasroofText(stringResource(R.string.reference_card_data), style = MaterialTheme.typography.titleMedium)
             val shared = facility != null && facility.primaryLast4 != row.last4
-            MasroofDetailRow(stringResource(if (shared) R.string.reference_shared_due_amount else R.string.approved_due_amount), due?.let { formatLocalizedMoney(it) } ?: unavailable,
+            MasroofDetailRow(stringResource(if (shared) R.string.reference_shared_due_amount else R.string.approved_due_amount),
+                facility?.companionDue?.amount?.let { formatLocalizedMoney(it) } ?: due?.let { formatLocalizedMoney(it) } ?: unavailable,
                 guidance = if (facility != null && facility.primaryLast4 != row.last4) stringResource(R.string.approved_shared_due) else null,
                 valueColor = com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.liability)
             MasroofDetailRow(stringResource(R.string.approved_due_date), dueDate?.let(date::format) ?: unavailable)

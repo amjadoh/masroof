@@ -81,6 +81,7 @@ class DashboardService(
         rawSmsRepository = rawSmsRepository,
     ),
     private val openingBalances: AccountOpeningBalanceSource = AccountOpeningBalanceSource { emptyList() },
+    private val cardDueSource: CardDueSource = CardDueSource.NONE,
     private val computeDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
 ) : DashboardOverviewLoader {
     private val projectionBuilder by lazy {
@@ -98,6 +99,7 @@ class DashboardService(
             clock = clock,
             primaryCurrency = primaryCurrency,
             openingBalances = openingBalances,
+            cardDueSource = cardDueSource,
         )
     }
 

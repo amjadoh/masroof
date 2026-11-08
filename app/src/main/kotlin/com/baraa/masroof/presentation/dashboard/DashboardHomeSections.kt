@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.baraa.masroof.R
 import com.baraa.masroof.application.dashboard.AccountsSummary
@@ -106,10 +107,9 @@ fun DashboardHeroPager(
 fun DashboardAccountBalancesCard(accounts: List<OwnedAccountUi>, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val total = AccountBalancesTotal.of(accounts)
     val value = total.amount?.let { formatLocalizedMoney(it) } ?: stringResource(R.string.dashboard_account_balance_unset)
-    val coverage = when {
-        total.counted == 0 -> stringResource(R.string.dashboard_balances_none_hint)
-        total.counted < total.accounts -> stringResource(R.string.dashboard_balances_partial, total.counted, total.accounts)
-        else -> stringResource(R.string.dashboard_balances_all, total.accounts)
+    val coverage = when (total.counted) {
+        0 -> stringResource(R.string.dashboard_balances_none_hint)
+        else -> pluralStringResource(R.plurals.dashboard_balances_count, total.counted, total.counted)
     }
     com.baraa.masroof.presentation.common.MasroofHeroCard(
         title = stringResource(R.string.dashboard_balances_title),
@@ -122,22 +122,29 @@ fun DashboardAccountBalancesCard(accounts: List<OwnedAccountUi>, onOpen: () -> U
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.smallGap)) {
                 Text(com.baraa.masroof.application.locale.AppDigits.display(coverage), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.dashboard_balances_no_reset), style = MaterialTheme.typography.labelSmall)
             }
             Text(stringResource(R.string.dashboard_balances_open), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
-/** Sum of the accounts that have a balance; [amount] is null when none has one. */
+/**
+ * Cash on hand: the sum of the accounts with money in them. An overdrawn account is not
+ * subtracted here (it is listed in the commitments to pay instead). [amount] is null when no
+ * account has a balance.
+ */
 data class AccountBalancesTotal(val amount: com.baraa.masroof.application.dashboard.SignedMoneyAmount?, val counted: Int, val accounts: Int) {
     companion object {
         fun of(accounts: List<OwnedAccountUi>): AccountBalancesTotal {
             val balances = accounts.mapNotNull { it.balance?.balance }
             val currency = balances.firstOrNull()?.currency
             val same = balances.filter { it.currency == currency }
-            val amount = same.reduceOrNull { sum, next ->
-                com.baraa.masroof.application.dashboard.SignedMoneyAmount(sum.amount.add(next.amount), sum.currency)
+            val amount = currency?.let { code ->
+                com.baraa.masroof.application.dashboard.SignedMoneyAmount(
+                    same.filter { it.amount.signum() > 0 }.fold(java.math.BigDecimal.ZERO) { sum, next -> sum.add(next.amount) }
+                        .setScale(com.baraa.masroof.core.money.Money.SCALE),
+                    code,
+                )
             }
             return AccountBalancesTotal(amount, same.size, accounts.size)
         }

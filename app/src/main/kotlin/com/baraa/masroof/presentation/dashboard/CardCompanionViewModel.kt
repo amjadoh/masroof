@@ -60,6 +60,25 @@ class CardCompanionViewModel(
         return true
     }
 
+    /**
+     * First-time setup of the limit and statement day. A blank limit keeps the saved one
+     * (only the day is confirmed); returns false when a limit is needed or not a positive amount.
+     */
+    fun setup(limitText: String, day: Int): Boolean {
+        val row = lastRow ?: return false
+        if (day !in 1..31) return false
+        val hasLimit = _uiState.value.snapshot?.profile?.limitHalalas != null
+        if (limitText.isBlank()) {
+            if (!hasLimit) return false
+            mutate { workflow.setCloseDay(row.bank, row.last4, day) }
+            return true
+        }
+        val value = parseAmount(limitText) ?: return false
+        if (value.signum() <= 0) return false
+        mutate { workflow.setup(row.bank, row.last4, value, day) }
+        return true
+    }
+
     fun setCloseDay(day: Int) {
         val row = lastRow ?: return
         mutate { workflow.setCloseDay(row.bank, row.last4, day) }

@@ -114,6 +114,7 @@ fun AccountsSummaryScreen(
                         resolveOwnedAccountUi(state.ownedAccounts, bank, maskedNumber)?.let { account ->
                             AccountsSummaryAccountCard(
                                 account = account,
+                                onlyAccountInBank = state.ownedAccounts.count { it.bank == account.bank } == 1,
                                 onClick = { onOpenAccount(account) },
                             )
                         }
@@ -125,6 +126,7 @@ fun AccountsSummaryScreen(
                 state.ownedAccounts.forEach { account ->
                     AccountsSummaryAccountCard(
                         account = account,
+                        onlyAccountInBank = state.ownedAccounts.count { it.bank == account.bank } == 1,
                         onClick = { onOpenAccount(account) },
                     )
                 }
@@ -140,14 +142,17 @@ private fun resolveOwnedAccountUi(
 ): OwnedAccountUi? = ownedAccounts.find { it.bank == bank && it.maskedNumber == maskedNumber }
 
 @Composable
-private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onClick: () -> Unit) {
+private fun AccountsSummaryAccountCard(account: OwnedAccountUi, onlyAccountInBank: Boolean, onClick: () -> Unit) {
     val movement = account.periodSummary?.cashPosition()
     val unavailable = stringResource(R.string.dashboard_value_unavailable)
     val balance = account.balance
     val guidance = stringResource(R.string.dashboard_account_remaining_calculated_hint)
-    EntitySummaryCard(account.displayLabel(), "",
+    EntitySummaryCard(account.summaryTitle(onlyAccountInBank), "",
         MasroofIcons.moneyMovement, MasroofThemeExtras.extendedColors.account, onClick = onClick,
-        guidance = guidance, actionLabel = stringResource(R.string.reference_account_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank)) {
+        guidance = guidance, actionLabel = stringResource(R.string.reference_account_details),
+        bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(account.bank) + " • " +
+            com.baraa.masroof.application.locale.AppDigits.display(DashboardRegistryLabels.accountLast4(account.maskedNumber)),
+        bankColor = com.baraa.masroof.ui.theme.MasroofBankColors.of(account.bank.id)) {
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_account_balance_title),
             balance?.let { formatLocalizedMoney(it.balance) } ?: stringResource(R.string.dashboard_account_balance_unset), dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_remaining_title), movement?.remaining?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)

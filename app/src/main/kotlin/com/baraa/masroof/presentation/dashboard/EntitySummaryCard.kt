@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.dashboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
@@ -20,9 +21,16 @@ internal fun EntitySummaryCard(title: String, subtitle: String, icon: ImageVecto
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, leading: (@Composable () -> Unit)? = null,
     guidance: String? = null,
     bankLabel: String? = null,
+    /** The bank's own color: a stripe across the top and the icon tint, to tell banks apart. */
+    bankColor: Color? = null,
     actionLabel: String = androidx.compose.ui.res.stringResource(com.baraa.masroof.R.string.reference_details),
     content: @Composable ColumnScope.() -> Unit) {
     MasroofCard(modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
+        if (bankColor != null) {
+            Box(Modifier.fillMaxWidth().height(com.baraa.masroof.ui.theme.MasroofBankColors.stripe)
+                .background(bankColor, com.baraa.masroof.ui.theme.MasroofShapes.small))
+            Spacer(Modifier.height(MasroofSpacing.cardInnerGap))
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.cardInnerGap)) {
             androidx.compose.material3.Surface(shape = com.baraa.masroof.ui.theme.MasroofShapes.small,
@@ -32,14 +40,15 @@ internal fun EntitySummaryCard(title: String, subtitle: String, icon: ImageVecto
                     else -> com.baraa.masroof.ui.theme.MasroofThemeExtras.extendedColors.accountSoft
                 }) {
                 Box(Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.iconBox), contentAlignment = Alignment.Center) {
-                    Icon(icon, null, tint = accent, modifier = Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon))
+                    Icon(icon, null, tint = bankColor ?: accent, modifier = Modifier.size(com.baraa.masroof.ui.theme.MasroofReference.icon))
                 }
             }
+            // The name comes first; the bank (and number) sits under it.
             Column(Modifier.weight(1f)) {
                 com.baraa.masroof.presentation.common.MasroofGuidanceLabel(title, guidance,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = com.baraa.masroof.ui.theme.MasroofFontWeights.semiBold), contentColor = MaterialTheme.colorScheme.onSurface)
+                bankLabel?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            bankLabel?.let { Text(it, Modifier.widthIn(max = com.baraa.masroof.ui.theme.MasroofReference.statusBadgeMaxWidth), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         Spacer(Modifier.height(com.baraa.masroof.ui.theme.MasroofReference.chartHeadGap))
         if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

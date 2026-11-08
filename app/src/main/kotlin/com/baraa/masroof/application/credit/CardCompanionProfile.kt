@@ -17,6 +17,8 @@ data class CardCompanionProfile(
     val bills: List<StoredBill> = emptyList(),
     /** Plan ids the user removed; rediscovery from the same SMS will not bring them back. */
     val dismissedPlanIds: Set<String> = emptySet(),
+    /** True once the user picked this card's statement day; until then the setup card asks for it. */
+    val closeDayConfirmed: Boolean = false,
 ) {
     init {
         require(closeDay in 1..31)

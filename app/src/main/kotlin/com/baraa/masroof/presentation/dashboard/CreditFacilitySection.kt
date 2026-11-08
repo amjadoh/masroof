@@ -50,7 +50,8 @@ fun DebitCardSummaryTile(debit: DebitCardOverview, network: CardNetwork?, modifi
 ) {
     EntitySummaryCard(debit.displayLabel(ownedCards), debitCardTypeLabel(network), MasroofIcons.cardPayment,
         MasroofThemeExtras.extendedColors.account, modifier, onClick, actionLabel = stringResource(R.string.reference_card_details),
-        bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank)) {
+        bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(debit.bank),
+        bankColor = com.baraa.masroof.ui.theme.MasroofBankColors.of(debit.bank.id)) {
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_debit_card_linked_account),
             debit.linkedAccountLabel ?: debit.linkedAccountMaskedNumber?.let { formatCardLast4(it) } ?: stringResource(R.string.dashboard_value_unavailable), dense = true)
         com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.dashboard_expenses_before_refunds),
@@ -75,17 +76,19 @@ fun CreditFacilityCard(facility: CreditFacilityOverview, cardNetworksByLast4: Ma
             EntitySummaryCard(row.displayLabel(ownedCards), stringResource(if (row.last4 == facility.primaryLast4)
                 R.string.dashboard_credit_facility_primary else R.string.dashboard_credit_facility_additional),
                 MasroofIcons.cardPayment, MasroofThemeExtras.extendedColors.card, onClick = onOpenCard?.let { open -> { open(row) } },
-                actionLabel = stringResource(R.string.reference_card_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(row.bank)) {
+                actionLabel = stringResource(R.string.reference_card_details), bankLabel = com.baraa.masroof.presentation.settings.settingsBankLabel(row.bank),
+                bankColor = com.baraa.masroof.ui.theme.MasroofBankColors.of(row.bank.id)) {
                 val unavailable = stringResource(R.string.dashboard_value_unavailable)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_salary_spending), formatLocalizedMoney(row.salaryPeriodSpendingNet), dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.reference_statement_spending), formatLocalizedMoney(row.statementSpendingNet), dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_available_balance),
                     row.snapshot?.negativeAvailableBalance?.let { "−${formatLocalizedMoney(it)}" }
                         ?: row.snapshot?.availableBalance?.let { formatLocalizedMoney(it) } ?: unavailable, dense = true)
-                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount), facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable,
+                com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount),
+                    facility.companionDue?.amount?.let { formatLocalizedMoney(it) } ?: facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable,
                     guidance = if (row.last4 != facility.primaryLast4) stringResource(R.string.approved_shared_due) else null, valueColor = MasroofThemeExtras.extendedColors.liability, dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_date), facility.facilityDue?.dueDate?.let(date::format) ?: unavailable, dense = true)
-                if (row.last4 == facility.primaryLast4) {
+                if (row.last4 == facility.primaryLast4 && facility.companionDue == null) {
                     com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.credit_current_owed),
                         facility.currentOwed?.let { formatLocalizedMoney(it) } ?: unavailable,
                         guidance = stringResource(R.string.credit_current_owed_guidance),
