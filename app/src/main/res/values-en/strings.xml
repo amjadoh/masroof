@@ -690,4 +690,6 @@
     <string name="cc_limit_invalid">Enter a valid amount</string>
     <string name="cc_settings">Card settings</string>
     <string name="cc_close_day">Statement closing day</string>
+    <string name="amounts_show">Show amounts</string>
+    <string name="amounts_hide">Hide amounts</string>
 </resources>
