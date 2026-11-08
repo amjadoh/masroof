@@ -103,6 +103,8 @@ data class CompanionPosition(
     val purchaseGoal: LocalDate,
     val plans: List<CompanionPlanProgress>,
     val latestBill: CompanionBill?,
+    /** Signed: installment due plus purchases, or a negative credit when nothing is owed. Null until the limit is known. */
+    val amountDue: Long? = null,
 ) {
     val used: Long? get() = if (limit != null && available != null) limit - available else null
 
@@ -157,14 +159,8 @@ object CardCompanionCalculator {
             installmentBy = bills.filter { (remaining[it.id] ?: 0) > 0 }.minOfOrNull { it.due }
             unbilled = latest.unbilledPrincipal
         } else {
-            val lastClose = previousClose(today, input.closeDay)
-            val cycleInstallment = progress
-                .filter { it.billed in 1..it.plan.months && it.plan.billingDate(it.billed - 1) == lastClose }
-                .sumOf { it.plan.installment(it.billed - 1) }
-            val paidSinceClose = input.movements
-                .filter { it.kind == CompanionMovementKind.PAYMENT && it.at.atZone(input.zone).toLocalDate() > lastClose }
-                .sumOf { it.amount }
-            installmentDue = (cycleInstallment - paidSinceClose).coerceAtLeast(0)
+            // Every billed installment stays due until a later card payment covers it, oldest first.
+            installmentDue = unpaidBilledInstallments(progress, input, today)
             installmentBy = input.smsDueDate?.takeIf { installmentDue > 0 }
             unbilled = progress.sumOf { it.remainingPrincipal }
         }
@@ -173,6 +169,8 @@ object CardCompanionCalculator {
         val purchasesDue = purchasesNet.coerceAtLeast(0)
         val credit = (-purchasesNet).coerceAtLeast(0)
         val toPay = purchasesDue + installmentDue
+        // A credit balance shows as a negative amount due, but it never settles an installment.
+        val amountDue = if (installmentDue > 0) toPay else purchasesNet
         val payBy = when {
             installmentBy == null -> goal
             purchasesDue > 0 -> minOf(goal, installmentBy)
@@ -192,7 +190,37 @@ object CardCompanionCalculator {
             purchaseGoal = goal,
             plans = progress,
             latestBill = latest,
+            amountDue = amountDue,
         )
+    }
+
+    /**
+     * Installments billed at past closings that no later card payment covered, oldest first.
+     * Only closings with payment evidence count: from the closing before the first recorded card
+     * payment onward (earlier months were paid before the ledger starts). The latest closing's
+     * installment always counts, so a missed month carries into the next one.
+     */
+    private fun unpaidBilledInstallments(progress: List<CompanionPlanProgress>, input: CompanionInput, today: LocalDate): Long {
+        val payments = input.movements.filter { it.kind == CompanionMovementKind.PAYMENT && it.at <= input.now }.sortedBy { it.at }
+        val lastClose = previousClose(today, input.closeDay)
+        val evidenceFrom = payments.firstOrNull()?.let { previousClose(it.at.atZone(input.zone).toLocalDate(), input.closeDay) } ?: lastClose
+        val billed = progress.flatMap { p ->
+            (0 until p.billed).map { index -> p.plan.billingDate(index) to p.plan.installment(index) }
+        }.filter { (closedOn, _) -> closedOn < today && closedOn >= minOf(evidenceFrom, lastClose) }.sortedBy { it.first }
+        if (billed.isEmpty()) return 0
+        val remaining = billed.map { it.second }.toLongArray()
+        payments.forEach { payment ->
+            val paidOn = payment.at.atZone(input.zone).toLocalDate()
+            var cash = payment.amount
+            billed.forEachIndexed { index, (closedOn, _) ->
+                if (cash > 0 && closedOn < paidOn) {
+                    val paid = minOf(cash, remaining[index])
+                    remaining[index] -= paid
+                    cash -= paid
+                }
+            }
+        }
+        return remaining.sum()
     }
 
     /** Latest exact balance (SMS or verified statement), moved by later posted card movements. */

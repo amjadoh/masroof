@@ -31,6 +31,16 @@ fun OwnedAccountUi.displayLabel(): String {
     )
 }
 
+/**
+ * Accounts screen title: the user's name for the account; otherwise "الحساب الرئيسي" when it is
+ * the bank's only account, else the account number label until the user names it.
+ */
+@Composable
+fun OwnedAccountUi.summaryTitle(onlyAccountInBank: Boolean): String {
+    DashboardRegistryLabels.customName(displayName)?.let { return it }
+    return if (onlyAccountInBank) stringResource(R.string.dashboard_account_main) else displayLabel()
+}
+
 @Composable
 fun OwnedCardUi.displayLabel(): String {
     val custom = DashboardRegistryLabels.customName(displayName)

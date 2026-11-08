@@ -89,8 +89,51 @@ class CardCompanionWorkflow(
 
     fun setCloseDay(bank: Bank, last4: String, day: Int) {
         require(day in 1..31)
-        update(bank, last4) { it.copy(closeDay = day) }
+        update(bank, last4) { it.copy(closeDay = day, closeDayConfirmed = true) }
     }
+
+    /** First-time setup: the card's limit and its statement day together. */
+    fun setup(bank: Bank, last4: String, limit: BigDecimal, day: Int) {
+        require(day in 1..31)
+        val value = limit.setScale(2, java.math.RoundingMode.UNNECESSARY).movePointRight(2).longValueExact()
+        require(value > 0)
+        update(bank, last4) { it.copy(limitHalalas = value, closeDay = day, closeDayConfirmed = true) }
+    }
+
+    /** One card's signed amount due and the date to pay it by. */
+    data class Due(val amountHalalas: Long, val payBy: LocalDate)
+
+    /**
+     * Read-only amount due for each card that has a limit, for the dashboard and reminders.
+     * Uses the stored plans (no SMS scan) and one ledger read shared by every card.
+     */
+    suspend fun dues(cards: List<Pair<Bank, String>>, facts: Map<String, SmsFacts>): Map<String, Due> {
+        val configured = cards.map { (bank, last4) -> Triple(bank, last4, profiles.get(cardKey(bank, last4))) }
+            .filter { it.third.limitHalalas != null }
+        if (configured.isEmpty()) return emptyMap()
+        val now = clock()
+        val ledger = transactions.listOccurredBetween(now.minus(LOOKBACK), now.plusSeconds(1))
+        return configured.mapNotNull { (bank, last4, profile) ->
+            val key = cardKey(bank, last4)
+            val fact = facts[key] ?: SmsFacts()
+            val position = CardCompanionCalculator.compute(input(profile, fact, movementsOf(ledger, bank, last4), now))
+            position.amountDue?.let { key to Due(it, position.payBy) }
+        }.toMap()
+    }
+
+    private fun input(profile: CardCompanionProfile, facts: SmsFacts, movements: List<CompanionMovement>, now: Instant) =
+        CompanionInput(
+            limit = profile.limitHalalas,
+            smsAvailable = facts.negativeAvailable?.let { -halalas(it) } ?: facts.available?.let(::halalas),
+            smsAvailableAt = facts.availableAt,
+            smsDueDate = facts.statementDueDate,
+            plans = profile.plans.map { it.toPlan() },
+            bills = profile.bills.map { it.toBill() },
+            movements = movements,
+            now = now,
+            zone = zone(),
+            closeDay = profile.closeDay,
+        )
 
     fun renamePlan(bank: Bank, last4: String, planId: String, name: String) {
         val clean = name.trim().take(MAX_PLAN_NAME)
@@ -146,9 +189,12 @@ class CardCompanionWorkflow(
         return if (found.isEmpty()) profile else profile.copy(plans = (profile.plans + found).sortedBy { it.createdAtEpochMillis })
     }
 
-    private suspend fun movements(bank: Bank, last4: String, now: Instant): List<CompanionMovement> {
+    private suspend fun movements(bank: Bank, last4: String, now: Instant): List<CompanionMovement> =
+        movementsOf(transactions.listOccurredBetween(now.minus(LOOKBACK), now.plusSeconds(1)), bank, last4)
+
+    private fun movementsOf(ledger: List<com.baraa.masroof.domain.model.FinancialTransaction>, bank: Bank, last4: String): List<CompanionMovement> {
         val cardId = FinancialContainerIdFactory.cardId(bank, last4)
-        return transactions.listOccurredBetween(now.minus(LOOKBACK), now.plusSeconds(1)).mapNotNull { tx ->
+        return ledger.mapNotNull { tx ->
             if (tx.amount.currency != Currency.SAR) return@mapNotNull null
             val kind = when (tx.type) {
                 FinancialTransactionType.EXPENSE, FinancialTransactionType.BILL_PAYMENT ->

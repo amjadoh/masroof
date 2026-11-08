@@ -311,11 +311,12 @@
     <string name="dashboard_account_balance_unset">Not set</string>
     <string name="dashboard_account_balance_unset_hint">Set the account balance in Settings → bank → Accounts</string>
     <string name="dashboard_balances_title">My accounts balance</string>
-    <string name="dashboard_balances_hint">Sum of the current balance of accounts with a balance set in settings. The period shown does not change it, and an account without a balance is left out.</string>
-    <string name="dashboard_balances_partial">Includes %1$d of %2$d accounts</string>
+    <plurals name="dashboard_balances_count">
+        <item quantity="one">1 account</item>
+        <item quantity="other">%1$d accounts</item>
+    </plurals>
+    <string name="dashboard_balances_hint">The money in your accounts now. An overdrawn account is not subtracted here; it is listed in your commitments to pay. An account without a balance in settings is not counted.</string>
     <string name="dashboard_balances_none_hint">Set your account balances in Settings → bank → Accounts</string>
-    <string name="dashboard_balances_all">Includes all your accounts (%1$d)</string>
-    <string name="dashboard_balances_no_reset">Does not reset each month</string>
     <string name="dashboard_balances_open">Accounts ›</string>
     <string name="dashboard_account_remaining_calculated_hint">In − out (external transfers, card payments, cash, bills, loan repayments, POS, fees)</string>
     <string name="dashboard_accounts_remaining_total_title">Net account movement</string>
@@ -765,6 +766,15 @@
     <string name="cc_limit_invalid">Enter a valid amount</string>
     <string name="cc_settings">Card settings</string>
     <string name="cc_close_day">Statement closing day</string>
+    <string name="cc_setup_title">Card limit and statement day</string>
+    <string name="cc_setup_hint">Enter them once for this card: the limit to work out what you owe, and the statement closing day so you are reminded to pay the day before.</string>
+    <string name="cc_nothing_to_pay_credit">Nothing to pay • %1$s in your favour</string>
+    <string name="dashboard_account_main">Main account</string>
+    <string name="commitment_overdraft_label">Account ••%1$s overdrawn</string>
+    <string name="cc_reminder_channel">Card payment reminders</string>
+    <string name="cc_reminder_title">Credit card payment</string>
+    <string name="cc_reminder_tomorrow">Card %2$s statement closes tomorrow. Pay SAR %1$s today.</string>
+    <string name="cc_reminder_today">Card %2$s statement closes today. Pay SAR %1$s before the day ends.</string>
     <string name="amounts_show">Show amounts</string>
     <string name="amounts_hide">Hide amounts</string>
 </resources>
