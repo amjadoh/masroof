@@ -36,6 +36,7 @@ class MasroofApplication : Application(), Configuration.Provider {
             com.baraa.masroof.application.maintenance.RetiredWorkCleanup.schedule(this, container.applicationScope, container.appLogService)
             container.runStartupMaintenance()
             UpdateCheckScheduler.schedule(this)
+            com.baraa.masroof.application.credit.CardDueReminderWorker.schedule(this)
         }
     }
 

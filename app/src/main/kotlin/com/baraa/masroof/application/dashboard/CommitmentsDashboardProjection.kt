@@ -27,6 +27,7 @@ class CommitmentsDashboardProjection(
     suspend fun build(
         context: DashboardProjectionContext,
         creditFacilities: CreditFacilitiesOverview,
+        accountBalances: List<AccountBalance> = emptyList(),
     ): CommitmentsDashboardSection = with(context) {
         val commitments = commitmentRepository.listAll()
         val commitmentSourceTransactions = commitments.mapNotNull { commitment ->
@@ -73,6 +74,7 @@ class CommitmentsDashboardProjection(
                 sarEquivalents = sarEquivalents + additionalSarEquivalents,
                 zoneId = zoneId,
                 paymentIdentities = commitmentTransactions.associate { tx -> tx.id to CommitmentPaymentIdentity.from(tx, recordsById) },
+                accountBalances = accountBalances,
             ),
         )
     }

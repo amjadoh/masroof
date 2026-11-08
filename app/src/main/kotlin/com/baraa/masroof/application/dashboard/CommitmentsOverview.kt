@@ -25,6 +25,8 @@ enum class CommitmentDashboardSource {
     USER,
     CREDIT_CARD,
     LOAN,
+    /** A bank account with a negative balance: the shortfall to pay back. */
+    ACCOUNT_OVERDRAFT,
 }
 
 data class CommitmentDashboardRow(
@@ -39,6 +41,8 @@ data class CommitmentDashboardRow(
     val loanKey: String? = null,
     val paymentTransactionId: String? = null,
     val paymentMatchIssue: CommitmentMatchIssue? = null,
+    /** `bankId:maskedNumber` for [CommitmentDashboardSource.ACCOUNT_OVERDRAFT]. */
+    val accountKey: String? = null,
 )
 
 data class CommitmentsOverview(
@@ -75,6 +79,7 @@ object CommitmentsOverviewBuilder {
         sarEquivalents: Map<String, Money>,
         zoneId: ZoneId,
         paymentIdentities: Map<String, CommitmentPaymentIdentity> = emptyMap(),
+        accountBalances: List<AccountBalance> = emptyList(),
     ): CommitmentsOverview {
         val sources = transactions.associateBy { it.id }
         val visibleCommitments = commitments.filter { isCommitmentVisibleInPeriod(it, salaryPeriod, zoneId) }
@@ -105,6 +110,7 @@ object CommitmentsOverviewBuilder {
                 ),
             )
             addAll(buildLoanRows(loansOverview))
+            addAll(buildOverdraftRows(accountBalances, primaryCurrency))
         }.sortedBy { it.displayName.lowercase() }
 
         if (rows.isEmpty()) {
@@ -130,6 +136,20 @@ object CommitmentsOverviewBuilder {
             currency = primaryCurrency,
         )
     }
+
+    /** Each overdrawn account is a commitment for its shortfall until its balance is back to zero. */
+    internal fun buildOverdraftRows(balances: List<AccountBalance>, primaryCurrency: Currency): List<CommitmentDashboardRow> =
+        balances.filter { it.balance.amount.signum() < 0 && it.balance.currency == primaryCurrency }.map { balance ->
+            CommitmentDashboardRow(
+                key = "overdraft:${balance.bank.id}:${balance.maskedNumber}",
+                source = CommitmentDashboardSource.ACCOUNT_OVERDRAFT,
+                displayName = balance.maskedNumber.takeLast(4),
+                amount = Money(balance.balance.amount.negate().setScale(Money.SCALE, RoundingMode.HALF_EVEN), primaryCurrency),
+                expectedDate = null,
+                status = CommitmentPaymentStatus.UNPAID,
+                accountKey = "${balance.bank.id}:${balance.maskedNumber}",
+            )
+        }
 
     private fun buildUserRows(
         commitment: Commitment,
