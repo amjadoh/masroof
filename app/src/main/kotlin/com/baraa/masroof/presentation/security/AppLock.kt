@@ -11,7 +11,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,7 +127,7 @@ fun AppLockScreen(controller: AppLockController) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = controller::unlock) { Text(stringResource(R.string.app_lock_unlock)) }
+        Button(onClick = controller::unlock) { MasroofText(stringResource(R.string.app_lock_unlock)) }
     }
 }
 
