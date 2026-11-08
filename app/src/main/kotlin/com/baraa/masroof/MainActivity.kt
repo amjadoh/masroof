@@ -128,6 +128,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.baraa.masroof.ui.components.MasroofAmountPrivacy.hidden = container.appLockPreferencesRepository.isAmountsHidden()
         // A recreated activity (rotation, language) gets the same launch intent again; the alert was already opened.
         if (savedInstanceState == null) intent?.getStringExtra("lab_analysis_alert")?.let { AnalyticsNavigation.open(it) }
         if (intent.getBooleanExtra(com.baraa.masroof.application.backup.DatabaseBackupService.EXTRA_RESTORE_FAILED, false)) {
@@ -258,6 +259,13 @@ class MainActivity : FragmentActivity() {
                     androidx.compose.runtime.CompositionLocalProvider(
                         com.baraa.masroof.presentation.security.LocalAppLockController provides appLock,
                         com.baraa.masroof.presentation.dashboard.LocalCardCompanionViewModel provides cardCompanionViewModel,
+                        com.baraa.masroof.presentation.common.LocalAmountPrivacyToggle provides { hidden ->
+                            com.baraa.masroof.ui.components.MasroofAmountPrivacy.hidden = hidden
+                            container.appLockPreferencesRepository.setAmountsHidden(hidden)
+                            // Some rows carry amount labels prepared by ViewModels; rebuild them in the new mode.
+                            dashboardViewModel.refresh()
+                            reviewViewModel.refresh()
+                        },
                     ) {
                     MasroofRoot(
                         onboardingViewModel = onboardingViewModel,
