@@ -29,7 +29,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +48,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import com.baraa.masroof.R
 import com.baraa.masroof.application.credit.CardCompanionWorkflow
@@ -62,9 +60,11 @@ import com.baraa.masroof.core.money.Money
 import com.baraa.masroof.presentation.common.MasroofBadge
 import com.baraa.masroof.presentation.common.MasroofCard
 import com.baraa.masroof.presentation.common.MasroofCardAccent
+import com.baraa.masroof.presentation.common.MasroofGuidanceLabel
 import com.baraa.masroof.presentation.common.MasroofText
 import com.baraa.masroof.presentation.locale.formatLocalizedMoney
 import com.baraa.masroof.ui.theme.MasroofCardFace
+import com.baraa.masroof.ui.theme.MasroofFontWeights
 import com.baraa.masroof.ui.theme.MasroofReference
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import com.baraa.masroof.ui.theme.MasroofThemeExtras
@@ -158,7 +158,7 @@ private fun CompanionCardFace(row: CreditCardDashboardRow, position: CompanionPo
                     if (CardCompanionViewModel.isSab(row.bank)) "SAB Visa" else stringResource(R.string.cc_credit_card),
                     color = MasroofCardFace.onInk,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = MasroofFontWeights.bold,
                 )
                 Box(
                     Modifier
@@ -174,7 +174,7 @@ private fun CompanionCardFace(row: CreditCardDashboardRow, position: CompanionPo
                         value ?: "—",
                         color = MasroofCardFace.onInk,
                         style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = MasroofFontWeights.bold,
                     )
                     val limit = position.limit?.let { money(it) }
                     val caption = when {
@@ -251,7 +251,7 @@ private fun PayHeadline(position: CompanionPosition, today: LocalDate) {
             toPay == 0L -> stringResource(R.string.cc_nothing_to_pay)
             else -> stringResource(R.string.cc_pay_before, money(toPay), shortDate(position.payBy))
         }
-        MasroofText(headline, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        MasroofText(headline, style = MaterialTheme.typography.headlineSmall, fontWeight = MasroofFontWeights.semiBold)
         if (toPay != null && toPay > 0) {
             MasroofText(
                 daysLeft(today, position.payBy) + " • " + stringResource(R.string.cc_tap_for_details),
@@ -326,7 +326,7 @@ private fun CompositionBar(installment: Long, purchases: Long) {
 private fun Explain(label: String, value: String, color: Color = MaterialTheme.colorScheme.onSurface) {
     Row(Modifier.fillMaxWidth().padding(vertical = MasroofReference.metadataGap), horizontalArrangement = Arrangement.SpaceBetween) {
         MasroofText(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        MasroofText(value, style = MaterialTheme.typography.bodyMedium, color = color, fontWeight = FontWeight.Medium)
+        MasroofText(value, style = MaterialTheme.typography.bodyMedium, color = color, fontWeight = MasroofFontWeights.medium)
     }
 }
 
@@ -343,7 +343,7 @@ private fun RowScope.StatChip(label: String, dot: Color, value: Long?, pill: Str
             Box(Modifier.size(MasroofCardFace.legendDot).clip(CircleShape).background(dot))
             MasroofText(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
-        MasroofText(value?.let { money(it) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+        MasroofText(value?.let { money(it) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = MasroofFontWeights.bold, maxLines = 1)
         MasroofBadge(pill, if (warn) MasroofCardAccent.Liability else MasroofCardAccent.Credit)
     }
 }
@@ -356,7 +356,7 @@ private fun PlanMonths(progress: CompanionPlanProgress, onDismiss: () -> Unit) {
     var selected by remember(plan.id) { mutableIntStateOf(-1) }
     MasroofCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            MasroofText(plan.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
+            MasroofText(plan.name, style = MaterialTheme.typography.titleSmall, fontWeight = MasroofFontWeights.bold, maxLines = 1, modifier = Modifier.weight(1f))
             MasroofText(
                 stringResource(R.string.cc_last_installment, monthLabel(plan.billingDate(plan.months - 1))),
                 style = MaterialTheme.typography.labelMedium,
@@ -389,7 +389,7 @@ private fun PlanMonths(progress: CompanionPlanProgress, onDismiss: () -> Unit) {
         }
         if (!progress.verified) {
             TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                Text(stringResource(R.string.cc_not_my_plan), style = MaterialTheme.typography.labelMedium)
+                MasroofText(stringResource(R.string.cc_not_my_plan), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -425,7 +425,7 @@ private fun RowScope.MonthCell(progress: CompanionPlanProgress, index: Int, sele
             monthLabel(progress.plan.billingDate(index)),
             style = MaterialTheme.typography.labelSmall,
             color = fg,
-            fontWeight = if (state == 1) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = if (state == 1) MasroofFontWeights.bold else MasroofFontWeights.normal,
             maxLines = 1,
         )
         if (state == 0) {
@@ -438,7 +438,7 @@ private fun RowScope.MonthCell(progress: CompanionPlanProgress, index: Int, sele
 @Composable
 private fun RowScope.PlanStat(value: String, label: String) {
     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(MasroofReference.metadataGap)) {
-        MasroofText(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        MasroofText(value, style = MaterialTheme.typography.titleMedium, fontWeight = MasroofFontWeights.bold, maxLines = 1)
         MasroofText(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }
@@ -478,12 +478,12 @@ private fun LimitSetupCard(onSave: (String) -> Boolean) {
     var text by rememberSaveable { mutableStateOf("") }
     var invalid by remember { mutableStateOf(false) }
     MasroofCard {
-        MasroofText(stringResource(R.string.cc_limit_title), style = MaterialTheme.typography.titleMedium)
-        MasroofText(
-            stringResource(R.string.cc_limit_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = MasroofSpacing.sectionHeaderGap),
+        MasroofGuidanceLabel(
+            label = stringResource(R.string.cc_limit_title),
+            message = stringResource(R.string.cc_limit_hint),
+            modifier = Modifier.padding(bottom = MasroofSpacing.sectionHeaderGap),
+            style = MaterialTheme.typography.titleMedium,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionHeaderGap)) {
             OutlinedTextField(
@@ -493,9 +493,9 @@ private fun LimitSetupCard(onSave: (String) -> Boolean) {
                 singleLine = true,
                 isError = invalid,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                supportingText = { if (invalid) Text(stringResource(R.string.cc_limit_invalid)) },
+                supportingText = { if (invalid) MasroofText(stringResource(R.string.cc_limit_invalid)) },
             )
-            Button(onClick = { invalid = !onSave(text) }) { Text(stringResource(R.string.cc_limit_save)) }
+            Button(onClick = { invalid = !onSave(text) }) { MasroofText(stringResource(R.string.cc_limit_save)) }
         }
     }
 }
@@ -503,16 +503,16 @@ private fun LimitSetupCard(onSave: (String) -> Boolean) {
 @Composable
 private fun CompanionSettings(closeDay: Int, hasLimit: Boolean, onCloseDay: (Int) -> Unit, onLimit: (String) -> Boolean) {
     var open by rememberSaveable { mutableStateOf(false) }
-    TextButton(onClick = { open = !open }) { Text(stringResource(R.string.cc_settings)) }
+    TextButton(onClick = { open = !open }) { MasroofText(stringResource(R.string.cc_settings)) }
     AnimatedVisibility(open) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
             MasroofCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     MasroofText(stringResource(R.string.cc_close_day), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onCloseDay(if (closeDay <= 1) 31 else closeDay - 1) }) { Text("−") }
-                    MasroofText("$closeDay", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                    TextButton(onClick = { onCloseDay(if (closeDay <= 1) 31 else closeDay - 1) }) { MasroofText("−") }
+                    MasroofText("$closeDay", style = MaterialTheme.typography.titleMedium, fontWeight = MasroofFontWeights.bold,
                         modifier = Modifier.width(MasroofReference.iconBox))
-                    TextButton(onClick = { onCloseDay(if (closeDay >= 31) 1 else closeDay + 1) }) { Text("+") }
+                    TextButton(onClick = { onCloseDay(if (closeDay >= 31) 1 else closeDay + 1) }) { MasroofText("+") }
                 }
             }
             if (hasLimit) LimitSetupCard(onSave = onLimit)
