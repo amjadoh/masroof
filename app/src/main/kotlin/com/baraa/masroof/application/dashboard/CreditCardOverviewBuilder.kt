@@ -147,6 +147,14 @@ object CreditCardOverviewBuilder {
                     latestAvailable = latestAvailableByCard[cardId],
                     latestStatement = latestStatementByCard[cardId],
                 ),
+                paymentsSinceStatement = paymentsInto(
+                    transactions = cardTransactions,
+                    cardId = cardId,
+                    startInclusive = cardStatementStart,
+                    endExclusive = periodEndExclusive,
+                    primaryCurrency = primaryCurrency,
+                    sarEquivalents = sarEquivalents,
+                ),
             )
         }.sortedBy { it.last4 }
 
@@ -223,6 +231,26 @@ object CreditCardOverviewBuilder {
         return SignedMoneyAmount.difference(gross, refund)
     }
 
+    /** Posted card payments (سداد) whose destination is this card. Foreign rows need a SAR equivalent. */
+    private fun paymentsInto(
+        transactions: List<FinancialTransaction>,
+        cardId: String,
+        startInclusive: Instant,
+        endExclusive: Instant,
+        primaryCurrency: Currency,
+        sarEquivalents: Map<String, Money>,
+    ): Money {
+        var total = Money.zero(primaryCurrency)
+        for (tx in transactions) {
+            if (tx.type != FinancialTransactionType.CREDIT_CARD_PAYMENT) continue
+            if (tx.destinationContainerId != cardId) continue
+            if (tx.occurredAt.isBefore(startInclusive) || !tx.occurredAt.isBefore(endExclusive)) continue
+            val amount = if (tx.amount.currency == primaryCurrency) tx.amount else sarEquivalents[tx.id] ?: continue
+            total += amount
+        }
+        return total
+    }
+
     private fun buildCardSnapshot(
         latestAvailable: SnapshotCandidate?,
         latestStatement: SnapshotCandidate?,
@@ -243,6 +271,7 @@ object CreditCardOverviewBuilder {
             dueDate = latestStatement?.dueDate,
             statementIssuedAt = latestStatement?.updatedAt,
             updatedAt = updatedAt,
+            availableUpdatedAt = latestAvailable?.updatedAt,
         )
     }
 

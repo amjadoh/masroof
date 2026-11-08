@@ -33,6 +33,7 @@ fun SettingsAppScreen(languageTag: String, themeMode: ThemeMode, onBack: () -> U
         stringResource(R.string.settings_back)) { modifier ->
         Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
+            com.baraa.masroof.presentation.security.AppLockSettingsCard()
             MasroofCard {
                 MasroofText(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.titleMedium)
                 androidx.compose.foundation.layout.FlowRow(Modifier.padding(vertical = MasroofSpacing.sectionGap), horizontalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap), verticalArrangement = Arrangement.spacedBy(MasroofReference.shortcutGap)) {
