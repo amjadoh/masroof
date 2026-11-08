@@ -17,7 +17,8 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
         com.baraa.masroof.ui.components.LineChartLabels(
             stringResource(R.string.reference_axis_day), stringResource(R.string.chart_previous_point),
             stringResource(R.string.chart_next_point), stringResource(R.string.dashboard_chart_average_value,
-                com.baraa.masroof.application.locale.AppDigits.display("${referenceValue.toPlainString()} $currencyLabel"))),
+                com.baraa.masroof.application.locale.AppDigits.display(
+                    "${if (com.baraa.masroof.ui.components.MasroofAmountPrivacy.hidden) com.baraa.masroof.ui.components.MasroofAmountPrivacy.MASK else referenceValue.toPlainString()} $currencyLabel"))),
         modifier, selectedPointIndex, onPointSelected, pointLabel, role, axisLabel, currencyLabel, showAverage,
         com.baraa.masroof.application.locale.AppDigits::display, expectedFromIndex)
 }

@@ -234,7 +234,8 @@ fun MasroofInteractiveLineChart(values: List<BigDecimal>, referenceValue: BigDec
             val value = range.minimum + range.span.multiply(fraction)
             val y = MasroofLineChartLayout.yFor(value, range, top, plotHeight)
             drawLine(grid, Offset(left, y), Offset(left + width, y), strokeWidth = gridStroke)
-            val number = java.text.DecimalFormat("#,##0.##", java.text.DecimalFormatSymbols(java.util.Locale.US)).format(value)
+            val number = if (MasroofAmountPrivacy.hidden) MasroofAmountPrivacy.MASK
+                else java.text.DecimalFormat("#,##0.##", java.text.DecimalFormatSymbols(java.util.Locale.US)).format(value)
             label(number, left - tickOffset, y + tickBaseline, true)
         }
         if (showAverage) {

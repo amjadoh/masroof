@@ -260,6 +260,22 @@ class AppContainer(
             ),
         )
 
+    val appLockPreferencesRepository: com.baraa.masroof.application.security.AppLockPreferencesRepository =
+        com.baraa.masroof.data.preferences.SharedPrefsAppLockPreferencesRepository(
+            appContext.getSharedPreferences(
+                com.baraa.masroof.data.preferences.SharedPrefsAppLockPreferencesRepository.PREFS_NAME,
+                Context.MODE_PRIVATE,
+            ),
+        )
+
+    val cardCompanionProfileRepository: com.baraa.masroof.application.credit.CardCompanionProfileRepository =
+        com.baraa.masroof.data.preferences.SharedPrefsCardCompanionProfileRepository(
+            appContext.getSharedPreferences(
+                com.baraa.masroof.data.preferences.SharedPrefsCardCompanionProfileRepository.PREFS_NAME,
+                Context.MODE_PRIVATE,
+            ),
+        )
+
     val themePreferencesRepository: ThemePreferencesRepository =
         SharedPrefsThemePreferencesRepository(
             appContext.getSharedPreferences(
@@ -603,6 +619,14 @@ class AppContainer(
                     assistedInterpret = { input, snapshot, bankId ->
                         requireNotNull(interpretationService).interpret(input, snapshot, bankId) })::snapshot,
         )
+
+    val cardCompanionWorkflow: com.baraa.masroof.application.credit.CardCompanionWorkflow by lazy {
+        com.baraa.masroof.application.credit.CardCompanionWorkflow(
+            profiles = cardCompanionProfileRepository,
+            rawSmsRepository = rawSmsRepository,
+            transactions = financialTransactionRepository,
+        )
+    }
 
     val statementReconciliationWorkflow: StatementReconciliationWorkflow =
         StatementReconciliationWorkflow(
