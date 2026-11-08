@@ -22,6 +22,8 @@ data class CreditFacilityOverview(
     val currency: Currency,
     /** See [estimateCurrentOwed]; null when no statement due is known. */
     val currentOwed: SignedMoneyAmount? = null,
+    /** Set when the primary card has a companion limit; [facilityDue] then holds its positive part. */
+    val companionDue: CompanionDue? = null,
 ) {
     val allCards: List<CreditCardDashboardRow>
         get() = listOf(primary) + supplementaries

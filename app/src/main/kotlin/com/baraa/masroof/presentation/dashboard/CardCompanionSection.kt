@@ -98,9 +98,14 @@ fun CardCompanionSection(row: CreditCardDashboardRow, modifier: Modifier = Modif
     val today = LocalDate.now(ZoneId.systemDefault())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
         CompanionCardFace(row, position)
-        if (position.limit == null) {
-            LimitSetupCard(onSave = viewModel::setLimit)
-        } else {
+        if (position.limit == null || !snapshot.profile.closeDayConfirmed) {
+            CardSetupCard(
+                hasLimit = position.limit != null,
+                initialDay = snapshot.profile.closeDay,
+                onSave = viewModel::setup,
+            )
+        }
+        if (position.limit != null) {
             PayHeadline(position, today)
         }
         val active = position.plans.filterNot { it.finished }
@@ -248,6 +253,7 @@ private fun PayHeadline(position: CompanionPosition, today: LocalDate) {
     ) {
         val headline = when {
             toPay == null -> stringResource(R.string.cc_waiting_balance)
+            (position.amountDue ?: 0L) < 0L -> stringResource(R.string.cc_nothing_to_pay_credit, money(-(position.amountDue ?: 0L)))
             toPay == 0L -> stringResource(R.string.cc_nothing_to_pay)
             else -> stringResource(R.string.cc_pay_before, money(toPay), shortDate(position.payBy))
         }
@@ -500,21 +506,69 @@ private fun LimitSetupCard(onSave: (String) -> Boolean) {
     }
 }
 
+/** Asks for the card's limit and statement day together, the first time the card is opened. */
+@Composable
+private fun CardSetupCard(hasLimit: Boolean, initialDay: Int, onSave: (String, Int) -> Boolean) {
+    var text by rememberSaveable { mutableStateOf("") }
+    var day by rememberSaveable { mutableStateOf(initialDay) }
+    var invalid by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // The statement-day reminder needs the notification permission on Android 13+.
+    val notifications = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
+    MasroofCard(modifier = Modifier.testTag("companion-setup")) {
+        MasroofGuidanceLabel(
+            label = stringResource(R.string.cc_setup_title),
+            message = stringResource(R.string.cc_setup_hint),
+            modifier = Modifier.padding(bottom = MasroofSpacing.sectionHeaderGap),
+            style = MaterialTheme.typography.titleMedium,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        )
+        if (!hasLimit) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it; invalid = false },
+                modifier = Modifier.fillMaxWidth().testTag("companion-limit-input"),
+                singleLine = true,
+                isError = invalid,
+                label = { MasroofText(stringResource(R.string.cc_limit_title)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                supportingText = { if (invalid) MasroofText(stringResource(R.string.cc_limit_invalid)) },
+            )
+        }
+        CloseDayStepper(day = day, onDay = { day = it })
+        Button(
+            onClick = {
+                invalid = !onSave(text, day)
+                if (!invalid && android.os.Build.VERSION.SDK_INT >= 33 &&
+                    androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) notifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            },
+            modifier = Modifier.fillMaxWidth().testTag("companion-setup-save"),
+        ) { MasroofText(stringResource(R.string.cc_limit_save)) }
+    }
+}
+
+@Composable
+private fun CloseDayStepper(day: Int, onDay: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        MasroofText(stringResource(R.string.cc_close_day), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        TextButton(onClick = { onDay(if (day <= 1) 31 else day - 1) }) { MasroofText("−") }
+        MasroofText("$day", style = MaterialTheme.typography.titleMedium, fontWeight = MasroofFontWeights.bold,
+            modifier = Modifier.width(MasroofReference.iconBox).testTag("companion-close-day"))
+        TextButton(onClick = { onDay(if (day >= 31) 1 else day + 1) }) { MasroofText("+") }
+    }
+}
+
 @Composable
 private fun CompanionSettings(closeDay: Int, hasLimit: Boolean, onCloseDay: (Int) -> Unit, onLimit: (String) -> Boolean) {
     var open by rememberSaveable { mutableStateOf(false) }
     TextButton(onClick = { open = !open }) { MasroofText(stringResource(R.string.cc_settings)) }
     AnimatedVisibility(open) {
         Column(verticalArrangement = Arrangement.spacedBy(MasroofSpacing.sectionGap)) {
-            MasroofCard {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    MasroofText(stringResource(R.string.cc_close_day), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onCloseDay(if (closeDay <= 1) 31 else closeDay - 1) }) { MasroofText("−") }
-                    MasroofText("$closeDay", style = MaterialTheme.typography.titleMedium, fontWeight = MasroofFontWeights.bold,
-                        modifier = Modifier.width(MasroofReference.iconBox))
-                    TextButton(onClick = { onCloseDay(if (closeDay >= 31) 1 else closeDay + 1) }) { MasroofText("+") }
-                }
-            }
+            MasroofCard { CloseDayStepper(day = closeDay, onDay = onCloseDay) }
             if (hasLimit) LimitSetupCard(onSave = onLimit)
         }
     }

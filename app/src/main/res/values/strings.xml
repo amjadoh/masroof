@@ -317,11 +317,16 @@
     <string name="dashboard_account_balance_unset">غير محدد</string>
     <string name="dashboard_account_balance_unset_hint">عيّن رصيد الحساب من الإعدادات ← البنك ← الحسابات</string>
     <string name="dashboard_balances_title">رصيد حساباتي</string>
-    <string name="dashboard_balances_hint">مجموع الرصيد الحالي للحسابات اللي لها رصيد في الإعدادات. ما يتأثر بالشهر المعروض، والحساب بدون رصيد ما ينحسب.</string>
-    <string name="dashboard_balances_partial">يشمل %1$d من %2$d حسابات</string>
+    <plurals name="dashboard_balances_count">
+        <item quantity="zero">%1$d حسابات</item>
+        <item quantity="one">حساب واحد</item>
+        <item quantity="two">حسابين</item>
+        <item quantity="few">%1$d حسابات</item>
+        <item quantity="many">%1$d حساب</item>
+        <item quantity="other">%1$d حساب</item>
+    </plurals>
+    <string name="dashboard_balances_hint">مجموع الفلوس اللي في حساباتك الحين. الحساب اللي بالسالب ما ينخصم هنا، يطلع في الالتزامات عشان تسدده. والحساب بدون رصيد في الإعدادات ما ينحسب.</string>
     <string name="dashboard_balances_none_hint">عيّن رصيد حساباتك من الإعدادات ← البنك ← الحسابات</string>
-    <string name="dashboard_balances_all">يشمل كل حساباتك (%1$d)</string>
-    <string name="dashboard_balances_no_reset">ما يتصفر كل شهر</string>
     <string name="dashboard_balances_open">الحسابات ‹</string>
     <string name="dashboard_account_remaining_calculated_hint">وارد − منصرف (تحويلات خارجية، سداد البطاقة الائتمانية، سحب نقدي، فواتير، أقساط تمويل، مدى، رسوم)</string>
     <string name="dashboard_accounts_remaining_total_title">صافي حركة الحسابات</string>
@@ -773,6 +778,15 @@
     <string name="cc_limit_invalid">أدخل مبلغًا صحيحًا</string>
     <string name="cc_settings">إعدادات البطاقة</string>
     <string name="cc_close_day">يوم إقفال الكشف</string>
+    <string name="cc_setup_title">حد البطاقة وتاريخ الكشف</string>
+    <string name="cc_setup_hint">أدخلها مرة وحدة لهالبطاقة: الحد عشان يحسب كم عليك، ويوم إقفال الكشف عشان يذكّرك تسدد قبله بيوم.</string>
+    <string name="cc_nothing_to_pay_credit">ما عليك شي • لك %1$s زيادة</string>
+    <string name="dashboard_account_main">الحساب الرئيسي</string>
+    <string name="commitment_overdraft_label">حساب ••%1$s بالسالب</string>
+    <string name="cc_reminder_channel">تذكير سداد البطاقات</string>
+    <string name="cc_reminder_title">سداد البطاقة الائتمانية</string>
+    <string name="cc_reminder_tomorrow">كشف البطاقة %2$s ينقفل بكرة. سدّد %1$s ر.س اليوم.</string>
+    <string name="cc_reminder_today">كشف البطاقة %2$s ينقفل اليوم. سدّد %1$s ر.س قبل نهاية اليوم.</string>
     <string name="amounts_show">إظهار المبالغ</string>
     <string name="amounts_hide">إخفاء المبالغ</string>
 </resources>

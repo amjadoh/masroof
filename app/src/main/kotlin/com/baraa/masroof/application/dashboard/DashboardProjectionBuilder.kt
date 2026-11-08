@@ -38,6 +38,7 @@ class DashboardProjectionBuilder(
     private val clock: Clock = Clock.systemDefaultZone(),
     private val primaryCurrency: Currency = Currency.SAR,
     private val openingBalances: AccountOpeningBalanceSource = AccountOpeningBalanceSource { emptyList() },
+    private val cardDueSource: CardDueSource = CardDueSource.NONE,
 ) {
     private val cardsProjection = CardsDashboardProjection(
         financialTransactionRepository = financialTransactionRepository,
@@ -59,8 +60,14 @@ class DashboardProjectionBuilder(
         val context = loadContext(period, transactions)
         val analysis = AnalysisDashboardProjection.build(context)
         val accounts = AccountsDashboardProjection.build(context)
-        val cards = cardsProjection.build(context)
-        val commitments = commitmentsProjection.build(context, cards.creditFacilities)
+        val builtCards = cardsProjection.build(context)
+        val cards = builtCards.copy(creditFacilities = builtCards.creditFacilities.withCompanionDues(
+            dues = runCatching { cardDueSource.dues(builtCards.creditFacilities.facilities.map { it.primary }) }
+                .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else emptyMap() },
+            now = clock.instant(),
+        ))
+        val balances = accountBalances(context)
+        val commitments = commitmentsProjection.build(context, cards.creditFacilities, balances)
         val bankHierarchy = BankHierarchyBuilder.build(
             ownedAccounts = context.ownedAccounts,
             accountsFleet = accounts.accountsFleet,
@@ -96,7 +103,7 @@ class DashboardProjectionBuilder(
                 loanInvolvement = commitments.transactionLoanInvolvement,
             ),
             ownedAccountContainerIds = context.ownedAccountContainerIds,
-            accountBalances = accountBalances(context),
+            accountBalances = balances,
         )
     }
 

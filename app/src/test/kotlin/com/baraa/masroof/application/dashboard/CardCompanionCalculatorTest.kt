@@ -124,6 +124,46 @@ class CardCompanionCalculatorTest {
         assertEquals(500_000L, position.available)
     }
 
+    @Test
+    fun missedInstallment_staysDueIntoTheNextMonth() {
+        // Paid 30/9's installment on 5/10, nothing after the 30/10 closing: only 30/10's 250 is due.
+        val paidSeptember = CardCompanionCalculator.compute(input(now = at("2026-11-08"), plans = listOf(plan),
+            available = 1_095_000, availableAt = at("2026-11-07"),
+            movements = listOf(CompanionMovement(at("2026-10-05"), CompanionMovementKind.PAYMENT, 25_000))))
+        assertEquals(25_000L, paidSeptember.installmentDue)
+
+        // Paid 30/8's installment on 5/9 and then nothing: 30/9 and 30/10 are both still due.
+        val missedSeptember = CardCompanionCalculator.compute(input(now = at("2026-11-08"), plans = listOf(plan),
+            available = 1_095_000, availableAt = at("2026-11-07"),
+            movements = listOf(CompanionMovement(at("2026-09-05"), CompanionMovementKind.PAYMENT, 25_000))))
+        assertEquals(50_000L, missedSeptember.installmentDue)
+        assertEquals(missedSeptember.installmentDue!! + missedSeptember.purchasesDue!!, missedSeptember.amountDue)
+    }
+
+    @Test
+    fun payingTheInstallment_leavesOnlyPurchasesDue_andFreesTheSameAmount() {
+        // Limit 15,000; unbilled 1,500; 250 billed on 30/10. Available rises by 250 after paying it.
+        val before = CardCompanionCalculator.compute(input(now = at("2026-11-08"), plans = listOf(plan),
+            available = 1_095_000, availableAt = at("2026-11-07")))
+        val after = CardCompanionCalculator.compute(input(now = at("2026-11-08"), plans = listOf(plan),
+            available = 1_095_000, availableAt = at("2026-11-07"),
+            movements = listOf(CompanionMovement(at("2026-11-07", "18:00:00"), CompanionMovementKind.PAYMENT, 25_000))))
+        assertEquals(1_120_000L, after.available)
+        assertEquals(0L, after.installmentDue)
+        assertEquals(before.purchasesDue, after.purchasesDue)
+        assertEquals(before.purchasesDue, after.amountDue)
+    }
+
+    @Test
+    fun creditBalance_isANegativeAmountDue() {
+        // Limit 500, nothing owed, available 966.86: 466.86 in your favour.
+        val position = CardCompanionCalculator.compute(input(now = at("2026-11-08"), limit = 50_000,
+            available = 96_686, availableAt = at("2026-11-07")))
+        assertEquals(-46_686L, position.amountDue)
+        assertEquals(0L, position.toPay)
+        assertEquals(46_686L, position.credit)
+    }
+
     private fun input(
         now: Instant,
         limit: Long? = 1_500_000,

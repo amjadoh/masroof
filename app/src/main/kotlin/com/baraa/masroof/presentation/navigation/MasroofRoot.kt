@@ -362,6 +362,8 @@ private fun MasroofContent(
                             openCards(card = row.creditFacilityKey, exitsSummary = true)
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.LOAN ->
                             openLoans(loan = row.loanKey, exitsSummary = true)
+                        com.baraa.masroof.application.dashboard.CommitmentDashboardSource.ACCOUNT_OVERDRAFT ->
+                            push(HomeDestination.AccountsSummary)
                         com.baraa.masroof.application.dashboard.CommitmentDashboardSource.USER -> row.userCommitmentId?.let { id ->
                             openSettings(launch = SettingsLaunchRequest(SettingsDestination.CommitmentDetail(id)))
                         }

@@ -51,6 +51,7 @@ import com.baraa.masroof.application.update.UpdateCheckCoordinator
 import com.baraa.masroof.application.update.UpdateCheckPreferencesRepository
 import com.baraa.masroof.application.update.UpdateChecker
 import com.baraa.masroof.BuildConfig
+import com.baraa.masroof.application.credit.asCardDueSource
 import com.baraa.masroof.application.locale.AppLocaleBootstrap
 import com.baraa.masroof.application.locale.AppLocaleContextFactory
 import com.baraa.masroof.application.maintenance.MaintenanceCompletionSignal
@@ -587,6 +588,10 @@ class AppContainer(
             // Dashboard loads never call the network; market rates are written by enrichment.
             sarEquivalentResolver = TransactionSarEquivalentResolver(ForeignSarMarketRateProvider { _, _ -> null }),
             openingBalances = accountOpeningBalanceStore,
+            // Lazy: the companion workflow is declared below and only read when a dashboard loads.
+            cardDueSource = com.baraa.masroof.application.dashboard.CardDueSource { rows ->
+                cardCompanionWorkflow.asCardDueSource().dues(rows)
+            },
         )
 
     val transactionRestoreService: TransactionRestoreService =
