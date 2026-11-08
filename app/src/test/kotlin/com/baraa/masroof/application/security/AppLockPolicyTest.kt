@@ -43,10 +43,10 @@ class AppLockPolicyTest {
         var nextResult = false
         val controller = AppLockController(prefs, canAuthenticate = { true }, authenticate = { it(nextResult) })
 
-        controller.setEnabled(true)
+        controller.requestEnabled(true)
         assertFalse(prefs.isBiometricLockEnabled())
         nextResult = true
-        controller.setEnabled(true)
+        controller.requestEnabled(true)
         assertTrue(prefs.isBiometricLockEnabled())
         assertTrue(controller.enabled)
     }
@@ -56,7 +56,7 @@ class AppLockPolicyTest {
         val prefs = FakePrefs(enabled = false)
         val controller = AppLockController(prefs, canAuthenticate = { false }, authenticate = { it(true) })
 
-        controller.setEnabled(true)
+        controller.requestEnabled(true)
 
         assertFalse(prefs.isBiometricLockEnabled())
     }
