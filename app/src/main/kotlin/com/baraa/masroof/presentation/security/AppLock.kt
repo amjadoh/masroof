@@ -67,7 +67,7 @@ class AppLockController(
         authenticate { success -> if (success) locked = false }
     }
 
-    fun setEnabled(on: Boolean) {
+    fun requestEnabled(on: Boolean) {
         if (on == enabled) return
         if (on && !available) return
         authenticate { success ->
@@ -153,7 +153,7 @@ fun AppLockSettingsCard() {
             }
             Switch(
                 checked = controller.enabled,
-                onCheckedChange = controller::setEnabled,
+                onCheckedChange = controller::requestEnabled,
                 enabled = available || controller.enabled,
             )
         }
