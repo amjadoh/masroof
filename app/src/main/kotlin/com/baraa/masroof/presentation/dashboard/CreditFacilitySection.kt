@@ -84,6 +84,12 @@ fun CreditFacilityCard(facility: CreditFacilityOverview, cardNetworksByLast4: Ma
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_amount), facility.facilityDue?.amount?.let { formatLocalizedMoney(it) } ?: unavailable,
                     guidance = if (row.last4 != facility.primaryLast4) stringResource(R.string.approved_shared_due) else null, valueColor = MasroofThemeExtras.extendedColors.liability, dense = true)
                 com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.approved_due_date), facility.facilityDue?.dueDate?.let(date::format) ?: unavailable, dense = true)
+                if (row.last4 == facility.primaryLast4) {
+                    com.baraa.masroof.presentation.common.MasroofDetailRow(stringResource(R.string.credit_current_owed),
+                        facility.currentOwed?.let { formatLocalizedMoney(it) } ?: unavailable,
+                        guidance = stringResource(R.string.credit_current_owed_guidance),
+                        valueColor = MasroofThemeExtras.extendedColors.liability, dense = true)
+                }
                 trends[CardOwnershipKey.of(row)]?.let { CardReferenceAverage(it, inCard = true) }
             }
         }
