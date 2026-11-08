@@ -34,6 +34,7 @@ fun CardDetailScreen(
         onBack = onBack,
         showPeriod = false,
     ) {
+        CardCompanionSection(row = row, modifier = Modifier.fillMaxWidth())
         CreditCardDetailSummaryCard(
             row = row,
             facility = facility,

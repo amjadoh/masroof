@@ -11,7 +11,9 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -57,8 +59,15 @@ import kotlinx.coroutines.launch
 /**
  * Launcher: P10 onboarding until complete, then P11 monthly dashboard.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val container by lazy { (application as MasroofApplication).container }
+    private val appLock by lazy {
+        com.baraa.masroof.presentation.security.AppLockController(
+            preferences = container.appLockPreferencesRepository,
+            canAuthenticate = ::canUseAppLock,
+            authenticate = ::authenticateUser,
+        )
+    }
     private var startupFinancialReady: Boolean = false
 
     override fun onNewIntent(intent: Intent) {
@@ -104,6 +113,10 @@ class MainActivity : ComponentActivity() {
 
     private val statementReconciliationViewModel: StatementReconciliationViewModel by viewModels {
         statementReconciliationViewModelFactory(container.statementReconciliationWorkflow, container.statementEntryPosting)
+    }
+
+    private val cardCompanionViewModel: com.baraa.masroof.presentation.dashboard.CardCompanionViewModel by viewModels {
+        com.baraa.masroof.presentation.dashboard.cardCompanionViewModelFactory(container.cardCompanionWorkflow)
     }
 
     private val notificationCenterViewModel: NotificationCenterViewModel by viewModels {
@@ -242,6 +255,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.baraa.masroof.presentation.security.LocalAppLockController provides appLock,
+                        com.baraa.masroof.presentation.dashboard.LocalCardCompanionViewModel provides cardCompanionViewModel,
+                    ) {
                     MasroofRoot(
                         onboardingViewModel = onboardingViewModel,
                         dashboardViewModel = dashboardViewModel,
@@ -276,11 +293,25 @@ class MainActivity : ComponentActivity() {
                             onboardingImportLauncher.launch(arrayOf("*/*"))
                         },
                     )
+                    }
+                    if (appLock.locked) {
+                        com.baraa.masroof.presentation.security.AppLockOverlay(appLock)
+                    }
                 }
             }
         }
     }
 
+
+    override fun onStart() {
+        super.onStart()
+        appLock.onForeground(System.currentTimeMillis())
+    }
+
+    override fun onStop() {
+        appLock.onBackground(System.currentTimeMillis())
+        super.onStop()
+    }
 
     override fun onResume() {
         super.onResume()
@@ -296,7 +327,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun canUseAppLock(): Boolean =
+        BiometricManager.from(this).canAuthenticate(APP_LOCK_AUTHENTICATORS) == BiometricManager.BIOMETRIC_SUCCESS
+
+    private fun authenticateUser(onResult: (Boolean) -> Unit) {
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    onResult(true)
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    onResult(false)
+                }
+            },
+        )
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.app_lock_prompt_title))
+            .setAllowedAuthenticators(APP_LOCK_AUTHENTICATORS)
+            .build()
+        prompt.authenticate(info)
+    }
+
     private fun hasSmsPermissions(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+
+    private companion object {
+        const val APP_LOCK_AUTHENTICATORS: Int =
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    }
 }

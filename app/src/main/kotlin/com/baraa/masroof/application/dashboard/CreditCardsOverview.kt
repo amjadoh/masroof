@@ -13,6 +13,8 @@ data class CreditCardBalanceSnapshot(
     val statementIssuedAt: Instant?,
     val updatedAt: Instant,
     val negativeAvailableBalance: Money? = null,
+    /** When the available balance above was reported (purchase/refund SMS), not the statement time. */
+    val availableUpdatedAt: Instant? = null,
 )
 
 data class CreditCardDashboardRow(
@@ -22,10 +24,40 @@ data class CreditCardDashboardRow(
     val salaryPeriodSpendingNet: SignedMoneyAmount,
     val statementPeriodLabel: String?,
     val snapshot: CreditCardBalanceSnapshot?,
+    /** Posted [com.baraa.masroof.domain.model.FinancialTransactionType.CREDIT_CARD_PAYMENT] into this card since its statement window start. */
+    val paymentsSinceStatement: Money = Money.zero(statementSpendingNet.currency),
 )
 
 /**
+<<<<<<< HEAD
  * All credit cards with statement-cycle and salary-period spending.
+=======
+ * Estimated amount owed now on one credit facility:
+ * latest statement due + net card spending after that statement − card payments after it.
+ *
+ * Null when no statement due is known (the opening balance would be a guess) or currencies differ.
+ * A negative value means the card is in credit.
+ */
+fun estimateCurrentOwed(
+    due: StatementDueSnapshot?,
+    cards: List<CreditCardDashboardRow>,
+): SignedMoneyAmount? {
+    if (due == null) return null
+    val currency = due.amount.currency
+    if (cards.any { it.statementSpendingNet.currency != currency || it.paymentsSinceStatement.currency != currency }) {
+        return null
+    }
+    val spending = cards.fold(java.math.BigDecimal.ZERO) { total, row -> total + row.statementSpendingNet.amount }
+    val payments = cards.fold(java.math.BigDecimal.ZERO) { total, row -> total + row.paymentsSinceStatement.amount }
+    return SignedMoneyAmount(
+        (due.amount.amount + spending - payments).setScale(Money.SCALE, java.math.RoundingMode.HALF_EVEN),
+        currency,
+    )
+}
+
+/**
+ * All credit cards with dual spending windows (calendar month + statement cycle).
+>>>>>>> 9542f2cf (Add SAB Visa card companion, biometric app lock and owed-now estimate)
  */
 data class CreditCardsOverview(
     val cards: List<CreditCardDashboardRow>,
