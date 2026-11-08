@@ -17,6 +17,8 @@ data class CreditFacilityOverview(
     val aggregateStatementPeriodLabel: String?,
     val salaryPeriodLabel: String?,
     val currency: Currency,
+    /** See [estimateCurrentOwed]; null when no statement due is known. */
+    val currentOwed: SignedMoneyAmount? = null,
 ) {
     val allCards: List<CreditCardDashboardRow>
         get() = listOf(primary) + supplementaries
@@ -164,11 +166,13 @@ object CreditFacilityOverviewBuilder {
         supplementaries: List<CreditCardDashboardRow>,
     ): CreditFacilityOverview {
         val all = listOf(primary) + supplementaries
+        val due = resolveLatestStatementDue(all)
         return CreditFacilityOverview(
             bank = primary.bank,
             primary = primary,
             supplementaries = supplementaries,
-            facilityDue = resolveLatestStatementDue(all),
+            facilityDue = due,
+            currentOwed = estimateCurrentOwed(due, all),
             facilitySalaryPeriodSpending = sumCreditCardSpending(all) { it.salaryPeriodSpendingNet },
             facilityStatementSpending = sumCreditCardSpending(all) { it.statementSpendingNet },
             aggregateStatementPeriodLabel = primary.statementPeriodLabel
