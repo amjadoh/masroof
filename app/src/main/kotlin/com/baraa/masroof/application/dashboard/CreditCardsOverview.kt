@@ -29,9 +29,6 @@ data class CreditCardDashboardRow(
 )
 
 /**
-<<<<<<< HEAD
- * All credit cards with statement-cycle and salary-period spending.
-=======
  * Estimated amount owed now on one credit facility:
  * latest statement due + net card spending after that statement − card payments after it.
  *
@@ -56,8 +53,7 @@ fun estimateCurrentOwed(
 }
 
 /**
- * All credit cards with dual spending windows (calendar month + statement cycle).
->>>>>>> 9542f2cf (Add SAB Visa card companion, biometric app lock and owed-now estimate)
+ * All credit cards with statement-cycle and salary-period spending.
  */
 data class CreditCardsOverview(
     val cards: List<CreditCardDashboardRow>,

@@ -42,7 +42,6 @@ class CreditCurrentOwedTest {
     private fun row(last4: String, spending: String, payments: String) = CreditCardDashboardRow(
         bank = Bank.fromId("BANK_SAB"),
         last4 = last4,
-        calendarMonthSpendingNet = SignedMoneyAmount(BigDecimal(spending), Currency.SAR),
         statementSpendingNet = SignedMoneyAmount(BigDecimal(spending), Currency.SAR),
         salaryPeriodSpendingNet = SignedMoneyAmount(BigDecimal(spending), Currency.SAR),
         statementPeriodLabel = null,
