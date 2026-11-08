@@ -1,5 +1,6 @@
 package com.baraa.masroof.presentation.navigation
 
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Column
@@ -80,6 +81,10 @@ fun MasroofRoot(
     Column(Modifier.fillMaxSize()) {
         run {
             MasroofAppBar(title = stringResource(R.string.app_name)) {
+                if (onboarding.step == OnboardingStep.HOME) {
+                    com.baraa.masroof.presentation.common.AmountPrivacyIconButton()
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(com.baraa.masroof.ui.theme.MasroofSpacing.sectionHeaderGap))
+                }
                 if (onboarding.step == OnboardingStep.HOME) ReviewNotificationIconButton(reviewCount = notifications.unreadCount + com.baraa.masroof.presentation.analytics.unreadAnalysisAlerts(dashboardViewModel.analytics),
                     onClick = { navigate(HomeDestination.NotificationCenter) })
             }
