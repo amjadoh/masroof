@@ -129,8 +129,8 @@ private fun CompanionCardFace(row: CreditCardDashboardRow, position: CompanionPo
     var showUsed by rememberSaveable(row.bank.id, row.last4) { mutableStateOf(false) }
     val shade by animateFloatAsState(position.usedShare, label = "used-share")
     val firstPlan = position.plans.firstOrNull { !it.finished }
-    val availableLabel = position.available?.let(::money) ?: "—"
-    val description = stringResource(R.string.cc_card_description, availableLabel, position.limit?.let(::money) ?: "—")
+    val availableLabel = position.available?.let { money(it) } ?: "—"
+    val description = stringResource(R.string.cc_card_description, availableLabel, position.limit?.let { money(it) } ?: "—")
     Box(
         Modifier
             .fillMaxWidth()
@@ -169,14 +169,14 @@ private fun CompanionCardFace(row: CreditCardDashboardRow, position: CompanionPo
             }
             Crossfade(targetState = showUsed, label = "card-face") { used ->
                 Column {
-                    val value = if (used) position.used?.let(::money) else position.available?.let(::money)
+                    val value = if (used) position.used?.let { money(it) } else position.available?.let { money(it) }
                     MasroofText(
                         value ?: "—",
                         color = MasroofCardFace.onInk,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    val limit = position.limit?.let(::money)
+                    val limit = position.limit?.let { money(it) }
                     val caption = when {
                         position.available == null -> stringResource(R.string.cc_waiting_balance)
                         limit == null -> stringResource(R.string.cc_available_no_limit)
@@ -343,7 +343,7 @@ private fun RowScope.StatChip(label: String, dot: Color, value: Long?, pill: Str
             Box(Modifier.size(MasroofCardFace.legendDot).clip(CircleShape).background(dot))
             MasroofText(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
-        MasroofText(value?.let(::money) ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+        MasroofText(value?.let { money(it) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
         MasroofBadge(pill, if (warn) MasroofCardAccent.Liability else MasroofCardAccent.Credit)
     }
 }
@@ -525,6 +525,7 @@ private fun CompanionSettings(closeDay: Int, hasLimit: Boolean, onCloseDay: (Int
 private const val MAX_DOTS = 24
 private const val MONTHS_PER_ROW = 6
 
+@Composable
 private fun money(halalas: Long): String {
     val text = formatLocalizedMoney(Money(BigDecimal.valueOf(kotlin.math.abs(halalas), 2), Currency.SAR))
     return if (halalas < 0) "−$text" else text
