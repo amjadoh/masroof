@@ -773,4 +773,6 @@
     <string name="cc_limit_invalid">أدخل مبلغًا صحيحًا</string>
     <string name="cc_settings">إعدادات البطاقة</string>
     <string name="cc_close_day">يوم إقفال الكشف</string>
+    <string name="amounts_show">إظهار المبالغ</string>
+    <string name="amounts_hide">إخفاء المبالغ</string>
 </resources>

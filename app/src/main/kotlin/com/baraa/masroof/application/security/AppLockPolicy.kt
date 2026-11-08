@@ -5,6 +5,11 @@ interface AppLockPreferencesRepository {
     fun isBiometricLockEnabled(): Boolean
 
     fun setBiometricLockEnabled(enabled: Boolean)
+
+    /** The eye button's "hide amounts" choice, remembered across launches. */
+    fun isAmountsHidden(): Boolean = false
+
+    fun setAmountsHidden(hidden: Boolean) = Unit
 }
 
 /**

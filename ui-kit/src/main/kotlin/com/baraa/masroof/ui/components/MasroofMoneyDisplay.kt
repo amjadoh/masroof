@@ -8,6 +8,7 @@ import java.util.Locale
 /** Existing production display formatting only; never converts currencies or computes totals. */
 object MasroofMoneyDisplay {
     fun format(amount: BigDecimal, currencyCode: String, languageTag: String, scale: Int = 2): String {
+        if (MasroofAmountPrivacy.hidden) return "${MasroofAmountPrivacy.MASK} ${currencyLabel(currencyCode, languageTag)}"
         val locale = if (isEnglish(languageTag)) Locale.ENGLISH else Locale.Builder().setLanguage("ar")
             .setUnicodeLocaleKeyword("nu", "latn").build()
         val symbols = DecimalFormatSymbols(locale).apply {
