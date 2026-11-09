@@ -1126,6 +1126,75 @@ class CommitmentsOverviewBuilderTest {
         assertEquals(Money.zero(Currency.SAR), overview.remaining)
     }
 
+    private fun buildWith(commitments: List<Commitment>, transactions: List<FinancialTransaction>,
+        history: List<FinancialTransaction> = emptyList()) = CommitmentsOverviewBuilder.build(
+        salaryPeriod = period,
+        commitments = commitments,
+        creditFacilities = CreditFacilitiesOverview(facilities = emptyList(), debitCards = emptyList(), currency = Currency.SAR),
+        loansOverview = LoansOverview(emptyList(), null, Currency.SAR),
+        transactions = transactions,
+        primaryCurrency = Currency.SAR,
+        sarEquivalents = emptyMap(),
+        zoneId = zone,
+        paymentHistory = history,
+    )
+
+    @Test
+    fun subscription_expectsWhatItLastCost_andShowsThePriceChange() {
+        val first = transaction("tx-claude-1", "Anthropic", "400", Instant.parse("2026-06-05T09:00:00Z"))
+        val second = transaction("tx-claude-2", "Anthropic", "100", Instant.parse("2026-07-05T09:00:00Z"))
+        val claude = commitment("Anthropic", Money.of("400.00", Currency.SAR), first.id, CommitmentRecurrence.MONTHLY,
+            transactionDate = LocalDate.parse("2026-06-05"), updatedAt = Instant.parse("2026-06-05T10:00:00Z"))
+
+        val row = buildWith(listOf(claude), listOf(first), history = listOf(second)).rows.single()
+
+        assertEquals(CommitmentPaymentStatus.UNPAID, row.status)
+        assertEquals(Money.of("100.00", Currency.SAR), row.amount)
+        assertEquals(Money.of("400.00", Currency.SAR), row.previousAmount)
+    }
+
+    @Test
+    fun subscription_smallExchangeRateMoves_areNotAPriceChange() {
+        val first = transaction("tx-gpt-1", "OpenAI", "77.40", Instant.parse("2026-06-10T09:00:00Z"))
+        val second = transaction("tx-gpt-2", "OpenAI", "78.10", Instant.parse("2026-07-10T09:00:00Z"))
+        val gpt = commitment("OpenAI", Money.of("77.40", Currency.SAR), first.id, CommitmentRecurrence.MONTHLY,
+            transactionDate = LocalDate.parse("2026-06-10"), updatedAt = Instant.parse("2026-06-10T10:00:00Z"))
+
+        val row = buildWith(listOf(gpt), listOf(first), history = listOf(second)).rows.single()
+
+        assertEquals(Money.of("78.10", Currency.SAR), row.amount)
+        assertEquals(null, row.previousAmount)
+    }
+
+    @Test
+    fun subscription_anAmountSavedAfterTheLastCharge_wins() {
+        val first = transaction("tx-claude-1", "Anthropic", "400", Instant.parse("2026-07-05T09:00:00Z"))
+        val claude = commitment("Anthropic", Money.of("100.00", Currency.SAR), first.id, CommitmentRecurrence.MONTHLY,
+            transactionDate = LocalDate.parse("2026-07-05"), updatedAt = Instant.parse("2026-07-20T10:00:00Z"))
+
+        val row = buildWith(listOf(claude), listOf(first)).rows.single()
+
+        assertEquals(Money.of("100.00", Currency.SAR), row.amount)
+    }
+
+    @Test
+    fun rows_listWhatIsLeftToPayNearestFirst_thenUndated_thenPaid() {
+        val rows = listOf(
+            CommitmentDashboardRow("a", CommitmentDashboardSource.USER, "A paid", Money.of("1.00", Currency.SAR),
+                LocalDate.parse("2026-08-01"), CommitmentPaymentStatus.PAID),
+            CommitmentDashboardRow("b", CommitmentDashboardSource.LOAN, "B undated", Money.of("1.00", Currency.SAR),
+                null, CommitmentPaymentStatus.UNPAID),
+            CommitmentDashboardRow("c", CommitmentDashboardSource.USER, "C later", Money.of("1.00", Currency.SAR),
+                LocalDate.parse("2026-08-21"), CommitmentPaymentStatus.UNPAID),
+            CommitmentDashboardRow("d", CommitmentDashboardSource.USER, "D soon", Money.of("1.00", Currency.SAR),
+                LocalDate.parse("2026-08-06"), CommitmentPaymentStatus.UNPAID),
+        ).sortedWith(DISPLAY_ORDER)
+
+        assertEquals(listOf("d", "c", "b", "a"), rows.map { it.key })
+        assertEquals(5L, rows.first().daysUntil(LocalDate.parse("2026-08-01")))
+        assertEquals(-1L, rows.first().daysUntil(LocalDate.parse("2026-08-07")))
+    }
+
     private fun commitment(
         name: String,
         amount: Money,
