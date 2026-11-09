@@ -48,9 +48,7 @@ class PatternFinancialActivationJourneyTest {
         try {
             val w = c.messagePatternsWorkflow
             w.confirmPatternAccount("BANK_STC", "4321")
-            val qattah = "دفع قطة\nمبلغ:37.50 ر.س\nإلى:TEST PERSON\nفي:13/10/26 12:30"
-            c.processRawSmsUseCase.ingest(RawSms("qattah", "STC Bank", qattah, Instant.parse("2026-10-15T10:00:00Z"), "qattah",
-                SmsBodyHasher.sha256Hex(qattah)))
+            c.processRawSmsUseCase.ingest(sms("pending", "10"))
             compose.setContent {
                 val localized = AppLocaleContext.wrap(LocalContext.current, "ar")
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides localized.resources.configuration,
@@ -58,13 +56,13 @@ class PatternFinancialActivationJourneyTest {
                     MasroofTheme { Surface { MessagePatternsScreen(w, "BANK_STC", onBack = {}) } }
                 }
             }
-            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-qattah-ar").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("pattern-open-BANK_STC-stc-qattah-ar").performScrollTo().performClick()
+            compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-internal-in").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("pattern-open-BANK_STC-stc-internal-in").performScrollTo().performClick()
             // This fork asks for the account reference before Approve is available.
             openApproval()
-            val outgoing = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_operations)[
-                com.baraa.masroof.application.patterns.PatternOperation.TRANSFER_OUT.ordinal]
-            for (selected in listOf(outgoing, ar(R.string.pattern_financial_currency_from_message))) {
+            val incoming = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_operations)[
+                com.baraa.masroof.application.patterns.PatternOperation.TRANSFER_IN.ordinal]
+            for (selected in listOf(incoming, ar(R.string.pattern_financial_currency_from_message))) {
                 compose.onNode(hasText(selected) and hasClickAction()).performScrollTo().performClick()
                 compose.waitForIdle()
                 compose.onNodeWithTag("pattern-financial-save").assertIsEnabled()
