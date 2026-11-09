@@ -4,6 +4,7 @@ import com.baraa.masroof.domain.model.FinancialTransaction
 import com.baraa.masroof.domain.model.FinancialTransactionType
 import com.baraa.masroof.domain.repository.CommitmentRepository
 import com.baraa.masroof.domain.repository.FinancialTransactionRepository
+import com.baraa.masroof.domain.period.FinancialPeriodPolicy
 
 data class CommitmentsDashboardSection(
     val loansOverview: LoansOverview,
@@ -49,7 +50,8 @@ class CommitmentsDashboardProjection(
             displayLocale = displayLocale,
         )
         val creditCardPaymentTransactions = creditFacilityPaymentTransactionsOutsidePeriod(context, creditFacilities)
-        val additional = (commitmentSourceTransactions + creditCardPaymentTransactions).distinctBy { it.id }
+        val paymentHistory = recurringPaymentHistory(context, commitments.any { it.recurrence != null })
+        val additional = (commitmentSourceTransactions + creditCardPaymentTransactions + paymentHistory).distinctBy { it.id }
         val expanded = evidenceSource.extend(context.evidence, additional)
         val additionalSarEquivalents = sarEquivalentResolver.resolve(additional, expanded.parsedRecords, expanded.rawSmsById, primaryCurrency).sarAmounts()
         val commitmentTransactions = buildList {
@@ -73,10 +75,26 @@ class CommitmentsDashboardProjection(
                 primaryCurrency = primaryCurrency,
                 sarEquivalents = sarEquivalents + additionalSarEquivalents,
                 zoneId = zoneId,
-                paymentIdentities = commitmentTransactions.associate { tx -> tx.id to CommitmentPaymentIdentity.from(tx, recordsById) },
+                paymentIdentities = (commitmentTransactions + paymentHistory)
+                    .associate { tx -> tx.id to CommitmentPaymentIdentity.from(tx, recordsById) },
                 accountBalances = accountBalances,
+                paymentHistory = paymentHistory,
             ),
         )
+    }
+
+    /** Charges in the [HISTORY_DAYS] before the period: a subscription expects what it last cost. */
+    private suspend fun recurringPaymentHistory(context: DashboardProjectionContext, needed: Boolean): List<FinancialTransaction> {
+        if (!needed) return emptyList()
+        val start = FinancialPeriodPolicy.toInclusiveStartInstant(context.period.startDate, context.zoneId)
+        return financialTransactionRepository.listByTypesOccurredBetween(
+            listOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE, FinancialTransactionType.BILL_PAYMENT),
+            start.minus(java.time.Duration.ofDays(HISTORY_DAYS)), start,
+        ).filter { it.id !in context.transactionIds }
+    }
+
+    private companion object {
+        const val HISTORY_DAYS = 70L
     }
 
     private suspend fun creditFacilityPaymentTransactionsOutsidePeriod(

@@ -794,4 +794,23 @@
     <string name="settings_reference_link_confirm">إيوه، اربطه بالحساب %1$s</string>
     <string name="settings_reference_link_card_payment">سداد البطاقة الائتمانية</string>
     <string name="settings_reference_link_installment">قسط التمويل</string>
+    <string name="commitment_due_today">اليوم</string>
+    <string name="commitment_due_tomorrow">غدًا</string>
+    <plurals name="commitment_due_in">
+        <item quantity="zero">اليوم</item>
+        <item quantity="one">بعد يوم</item>
+        <item quantity="two">بعد يومين</item>
+        <item quantity="few">بعد %1$d أيام</item>
+        <item quantity="many">بعد %1$d يومًا</item>
+        <item quantity="other">بعد %1$d يوم</item>
+    </plurals>
+    <plurals name="commitment_due_late">
+        <item quantity="zero">اليوم</item>
+        <item quantity="one">متأخر يوم</item>
+        <item quantity="two">متأخر يومين</item>
+        <item quantity="few">متأخر %1$d أيام</item>
+        <item quantity="many">متأخر %1$d يومًا</item>
+        <item quantity="other">متأخر %1$d يوم</item>
+    </plurals>
+    <string name="commitment_price_changed">كان %1$s</string>
 </resources>
