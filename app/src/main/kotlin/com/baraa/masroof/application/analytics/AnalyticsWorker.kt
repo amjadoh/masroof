@@ -119,15 +119,16 @@ object AnalyticsBackup {
                 return@forEach
             }
             val m = json.decodeFromString(StoredHuber.serializer(), row.payload)
-            require(m.weights.size == 12 && m.means.size == 12 && m.scales.size == 12)
+            // 12 = purchase-days-v1 archives, 15 = v2 (salary start, Ramadan, Eid).
+            require(m.weights.size in setOf(12, 15) && m.means.size == m.weights.size && m.scales.size == m.weights.size)
             require((m.weights + m.means + m.scales).all { it.isFinite() } && m.scales.all { it > 0 })
             require(m.baselineMae.isFinite() && m.modelMae.isFinite())
             require((m.signedErrors + m.wholeDayErrors).all { (h, values) -> h in 1..31 && values.all { it.isFinite() } })
         }
         archive.candidates.forEach { row ->
             val c = json.decodeFromString(AnalysisCandidate.serializer(), row.payload)
-            require(c.key == row.id && c.sourceIds.size >= 3 && c.sourceIds.distinct().size == c.sourceIds.size)
-            require(c.amount > 0 && c.lower >= 0 && c.upper >= c.lower && c.cadence in setOf("WEEKLY", "MONTHLY"))
+            require(c.key == row.id && c.sourceIds.size >= 2 && c.sourceIds.distinct().size == c.sourceIds.size)
+            require(c.amount > 0 && c.lower >= 0 && c.upper >= c.lower && c.cadence in setOf("WEEKLY", "MONTHLY", "YEARLY"))
             require(row.status in setOf("SUGGESTED", "ACCEPTED", "REJECTED"))
             if (c.seriesKey != null) {
                 require(c.seriesKey.matches(Regex("[0-9a-f]{64}")))
@@ -139,7 +140,7 @@ object AnalyticsBackup {
             require(when (row.kind) {
                 "NOT_RECURRING" -> payload.label == "NONE"
                 "DISMISSED" -> payload.label == null
-                else -> payload.label == null || payload.label in setOf("WEEKLY", "MONTHLY")
+                else -> payload.label == null || payload.label in setOf("WEEKLY", "MONTHLY", "YEARLY")
             })
         }
         archive.alerts.forEach { require(it.kind in setOf("ACTUAL", "BUDGET", "DUE", "PAYMENT") && it.amount >= 0 && it.firstSeen >= 0 && it.observedAt >= it.firstSeen && it.readAt >= 0) }
