@@ -34,6 +34,8 @@ object MasroofSpacing {
     val compactCardContentPadding = 14.dp
     val compactCardLabelTop = 6.dp
     val inlineGap = 4.dp
+    // Side padding for text buttons, so two dialog buttons (Cancel, Save) never run into each other.
+    val textButtonHorizontal = 12.dp
     val chartHeight = MasroofReference.chartHeight
     val donutChartSize = 96.dp
 }
