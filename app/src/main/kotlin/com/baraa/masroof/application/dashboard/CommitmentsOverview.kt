@@ -43,7 +43,19 @@ data class CommitmentDashboardRow(
     val paymentMatchIssue: CommitmentMatchIssue? = null,
     /** `bankId:maskedNumber` for [CommitmentDashboardSource.ACCOUNT_OVERDRAFT]. */
     val accountKey: String? = null,
-)
+    /** A subscription whose last charge moved by at least [PRICE_CHANGE_SHARE] from the one before: that earlier amount. */
+    val previousAmount: Money? = null,
+) {
+    /** Calendar days from [today] to the expected date: 0 today, 1 tomorrow, negative when late; null without a date. */
+    fun daysUntil(today: LocalDate): Long? = expectedDate?.let { java.time.temporal.ChronoUnit.DAYS.between(today, it) }
+}
+
+/** What is still to pay comes first, nearest date first; undated rows and paid rows follow. Ties keep name order. */
+internal val DISPLAY_ORDER = compareBy<CommitmentDashboardRow> { it.status == CommitmentPaymentStatus.PAID }
+    .thenBy { it.expectedDate == null }.thenBy { it.expectedDate }.thenBy { it.displayName.lowercase() }
+
+/** A recurring charge that moves by less than this share (exchange rate noise) is not a price change. */
+internal val PRICE_CHANGE_SHARE = BigDecimal("0.10")
 
 data class CommitmentsOverview(
     val rows: List<CommitmentDashboardRow>,
@@ -80,6 +92,8 @@ object CommitmentsOverviewBuilder {
         zoneId: ZoneId,
         paymentIdentities: Map<String, CommitmentPaymentIdentity> = emptyMap(),
         accountBalances: List<AccountBalance> = emptyList(),
+        /** Charges before the period, so a subscription expects what it last cost (bank fees included). */
+        paymentHistory: List<FinancialTransaction> = emptyList(),
     ): CommitmentsOverview {
         val sources = transactions.associateBy { it.id }
         val visibleCommitments = commitments.filter { isCommitmentVisibleInPeriod(it, salaryPeriod, zoneId) }
@@ -96,8 +110,11 @@ object CommitmentsOverviewBuilder {
             visibleCommitments.forEach { commitment ->
                 val allowed = owners.filterValues { it.size == 1 && it.single().id == commitment.id }.keys
                 val ambiguous = owners.values.any { it.size > 1 && it.any { c -> c.id == commitment.id } }
+                val charges = if (commitment.recurrence == null) emptyList() else
+                    recentCharges(commitment, paymentHistory + transactions, end, primaryCurrency, sarEquivalents,
+                        sources[commitment.sourceTransactionId], paymentIdentities)
                 addAll(buildUserRows(commitment, salaryPeriod, transactions, primaryCurrency, sarEquivalents, zoneId,
-                    allowed, ambiguous, commitment.sourceTransactionId in sources))
+                    allowed, ambiguous, commitment.sourceTransactionId in sources, charges))
             }
             addAll(
                 buildCreditCardRows(
@@ -111,7 +128,7 @@ object CommitmentsOverviewBuilder {
             )
             addAll(buildLoanRows(loansOverview))
             addAll(buildOverdraftRows(accountBalances, primaryCurrency))
-        }.sortedBy { it.displayName.lowercase() }
+        }.sortedWith(DISPLAY_ORDER)
 
         if (rows.isEmpty()) {
             return CommitmentsOverview.empty(primaryCurrency)
@@ -161,10 +178,17 @@ object CommitmentsOverviewBuilder {
         allowedPaymentIds: Set<String>,
         ambiguous: Boolean,
         hasSource: Boolean,
+        charges: List<Pair<Instant, Money>> = emptyList(),
     ): List<CommitmentDashboardRow> {
         val occurrences = occurrencesInPeriod(commitment, salaryPeriod)
         if (occurrences.isEmpty()) return emptyList()
-        val expectedAmount = resolveMoney(
+        // A subscription expects what it last cost, fees included, so a changed plan or rate needs no edit.
+        // An amount the user saved after the last charge wins until the next charge arrives.
+        val lastCharge = charges.lastOrNull()?.takeIf { (at, _) -> at > commitment.updatedAt }?.second
+        val previousAmount = charges.takeLast(2).takeIf { it.size == 2 }?.let { (before, last) ->
+            before.second.takeIf { priceChanged(it, last.second) }
+        }
+        val expectedAmount = lastCharge ?: resolveMoney(
             amount = commitment.amount,
             primaryCurrency = primaryCurrency,
             sarEquivalents = sarEquivalents,
@@ -221,6 +245,7 @@ object CommitmentsOverviewBuilder {
                 },
                 userCommitmentId = commitment.id,
                 paymentTransactionId = matchedPayment?.transactionId,
+                previousAmount = previousAmount,
                 paymentMatchIssue = when {
                     isPaid -> null
                     ambiguous -> CommitmentMatchIssue.AMBIGUOUS_PAYMENT
@@ -229,6 +254,30 @@ object CommitmentsOverviewBuilder {
                 },
             )
         }
+    }
+
+    /** Charges of [commitment] that happened before [before], oldest first, in the primary currency. */
+    private fun recentCharges(
+        commitment: Commitment,
+        transactions: List<FinancialTransaction>,
+        before: Instant,
+        primaryCurrency: Currency,
+        sarEquivalents: Map<String, Money>,
+        source: FinancialTransaction?,
+        identities: Map<String, CommitmentPaymentIdentity>,
+    ): List<Pair<Instant, Money>> = transactions.asSequence()
+        .filter { it.occurredAt < before }
+        .distinctBy { it.id }
+        .filter { matchesCommitmentPayment(it, commitment, primaryCurrency, sarEquivalents, source, identities) }
+        .sortedBy { it.occurredAt }
+        .mapNotNull { tx -> TransactionAmountResolver.effectiveAmount(tx, primaryCurrency, sarEquivalents)?.let { tx.occurredAt to it } }
+        .filter { it.second.currency == primaryCurrency }
+        .toList()
+
+    internal fun priceChanged(before: Money, after: Money): Boolean {
+        if (before.currency != after.currency || before.amount.signum() <= 0) return false
+        val change = after.amount.subtract(before.amount).abs()
+        return change >= before.amount.multiply(PRICE_CHANGE_SHARE)
     }
 
     private fun buildCreditCardRows(

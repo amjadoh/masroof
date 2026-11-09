@@ -37,7 +37,9 @@ class CommitmentPaymentAttributionTest {
         assertEquals(Money.of("100", Currency.SAR), overview(old, c, rows).paid)
         val next = overview(future, c, rows)
         assertEquals(CommitmentPaymentStatus.UNPAID, next.rows.single().status)
-        assertEquals(Money.of("100", Currency.SAR), next.remaining)
+        // A recurring commitment expects what it last cost; the saved amount itself is untouched.
+        assertEquals(Money.of("130", Currency.SAR), next.remaining)
+        assertEquals(Money.of("100", Currency.SAR), next.rows.single().previousAmount)
         assertEquals(Money.of("100", Currency.SAR), c.amount)
     }
 

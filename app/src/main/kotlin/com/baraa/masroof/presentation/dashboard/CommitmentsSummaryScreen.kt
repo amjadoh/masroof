@@ -64,8 +64,16 @@ fun CommitmentsSummaryScreen(state: DashboardUiState, onBack: () -> Unit,
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MasroofSpacing.inlineGap)) {
                         MasroofText(commitmentRowLabel(row), style = MasroofReference.pair)
-                        row.expectedDate?.let { MasroofText(date.format(it), style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        row.expectedDate?.let { due ->
+                            val days = row.daysUntil(java.time.LocalDate.now()).takeIf { !paid }
+                            MasroofText(date.format(due) + (days?.let { " · " + dueCountdown(it) } ?: ""),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (days != null && days < 0) colors.liability else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        row.previousAmount?.let { before ->
+                            MasroofText(stringResource(R.string.commitment_price_changed, formatLocalizedMoney(before)),
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         MasroofBadge(stringResource(if (paid) R.string.dashboard_commitments_status_paid else R.string.dashboard_commitments_status_unpaid),
                             if (paid) MasroofCardAccent.Inflow else MasroofCardAccent.Liability)
                         row.paymentMatchIssue?.let { issue ->

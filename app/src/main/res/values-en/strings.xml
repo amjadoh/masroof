@@ -782,4 +782,15 @@
     <string name="settings_reference_link_confirm">Yes, link it to account %1$s</string>
     <string name="settings_reference_link_card_payment">credit card payment</string>
     <string name="settings_reference_link_installment">financing installment</string>
+    <string name="commitment_due_today">Today</string>
+    <string name="commitment_due_tomorrow">Tomorrow</string>
+    <plurals name="commitment_due_in">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
+    <plurals name="commitment_due_late">
+        <item quantity="one">%1$d day late</item>
+        <item quantity="other">%1$d days late</item>
+    </plurals>
+    <string name="commitment_price_changed">Was %1$s</string>
 </resources>

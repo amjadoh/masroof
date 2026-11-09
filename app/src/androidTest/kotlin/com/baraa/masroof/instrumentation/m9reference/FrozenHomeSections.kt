@@ -303,9 +303,11 @@ fun CommitmentsSection(overview: CommitmentsOverview, modifier: Modifier = Modif
                     Text(stringResource(R.string.reference_waiting_payment, formatLocalizedMoney(overview.remaining)),
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = MasroofFontWeights.semiBold))
                     pending.take(2).forEach { row ->
-                        Text(row.displayName + (row.expectedDate?.let {
-                            " · " + java.time.format.DateTimeFormatter.ofPattern("d MMM", LocalConfiguration.current.locales[0]).format(it)
-                        } ?: ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        // The band counts days to the due date; the name is bidi-isolated.
+                        Text(com.baraa.masroof.application.locale.AppDigits.display("\u2068" + row.displayName + "\u2069" +
+                            (row.daysUntil(java.time.LocalDate.now())?.let {
+                                " · " + com.baraa.masroof.presentation.dashboard.dueCountdown(it)
+                            } ?: "")), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                     }
                     if (onOpenCredit != null && pending.any { it.source == CommitmentDashboardSource.CREDIT_CARD }) {
                         com.baraa.masroof.presentation.common.MasroofTextButton(onClick = onOpenCredit) {
