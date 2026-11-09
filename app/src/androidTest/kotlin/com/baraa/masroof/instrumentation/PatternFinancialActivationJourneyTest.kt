@@ -60,8 +60,8 @@ class PatternFinancialActivationJourneyTest {
             }
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("pattern-open-BANK_STC-stc-qattah-ar").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pattern-open-BANK_STC-stc-qattah-ar").performScrollTo().performClick()
-            compose.onAllNodesWithText(ar(R.string.pattern_financial_approve))[0].performScrollTo().performClick()
-            compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("pattern-financial-save").assertIsEnabled() }.isSuccess }
+            // This fork asks for the account reference before Approve is available.
+            openApproval()
             val outgoing = AppLocaleContext.wrap(compose.activity, "ar").resources.getStringArray(R.array.pattern_operations)[
                 com.baraa.masroof.application.patterns.PatternOperation.TRANSFER_OUT.ordinal]
             for (selected in listOf(outgoing, ar(R.string.pattern_financial_currency_from_message))) {

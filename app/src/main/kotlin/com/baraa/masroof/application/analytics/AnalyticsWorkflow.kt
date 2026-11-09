@@ -250,9 +250,6 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
         if (AnalyticsImportGate.active()) return@withLock // import completion calls request()
         val version = generation.get()
         val input = source()
-        // The read holds no transaction and invalidations arrive asynchronously: pull them now, so a
-        // write committed during the read bumps generation before anything is stored or published.
-        container.databaseAccessGate.withAccess { container.database.invalidationTracker.refresh(*observedTables) }
         val dao = store.analytics(); val prefs = dao.preferences() ?: AnalysisPreferencesRow(enabledAt = clock.millis())
         val comparisons = settleComparisons(input)
         val performance = ForecastPerformancePolicy.evaluate(comparisons)
