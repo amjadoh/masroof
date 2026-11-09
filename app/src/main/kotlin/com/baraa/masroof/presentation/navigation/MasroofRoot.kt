@@ -75,6 +75,8 @@ fun MasroofRoot(
     val notifications by notificationCenterViewModel.uiState.collectAsState()
     var homeStack by rememberSaveable(stateSaver = HomeBackStackSaver) { mutableStateOf(homeRootStack()) }
     val top = homeStack.top().destination
+    // After process death the saved stack may reopen on a Home sub-screen; Home itself would have loaded the dashboard.
+    LaunchedEffect(onboarding.step) { if (onboarding.step == OnboardingStep.HOME && top != HomeDestination.Dashboard) dashboardViewModel.ensureLoaded() }
     // Every stack change goes through here, so the rules for the shared ViewModels apply to each push, pop and tab.
     fun navigate(next: HomeBackStack) {
         val leaving = homeStack.top()
@@ -209,11 +211,18 @@ private fun MasroofContent(
         dashboardViewModel.openTransactionDetail(id)
     }
 
+    // While a write for the open transaction runs, the detail stays open; a pending alert waits until it closes.
+    fun closeTransactionDetailUnlessBusy() {
+        if (!dashboardState.reclassifying && !dashboardState.ignoring && !dashboardState.markingCommitment) {
+            dashboardViewModel.closeTransactionDetail()
+        }
+    }
+
     val labTarget by AnalyticsNavigation.target.collectAsState()
     LaunchedEffect(labTarget) {
         if (labTarget == null) return@LaunchedEffect
         // A full-screen detail hides the dashboard, which is what opens the alert.
-        if (top.destination == HomeDestination.Dashboard) dashboardViewModel.closeTransactionDetail() else push(HomeDestination.Dashboard)
+        if (top.destination == HomeDestination.Dashboard) closeTransactionDetailUnlessBusy() else push(HomeDestination.Dashboard)
     }
     val labCenterReturns by AnalyticsNavigation.centerReturns.collectAsState()
     var consumedLabCenterReturn by rememberSaveable { mutableStateOf(labCenterReturns) }
@@ -255,9 +264,10 @@ private fun MasroofContent(
         // A closed detail has no owner; a detail opened without one (deep link, direct ViewModel call) belongs to the visible screen.
         LaunchedEffect(dashboardState.selectedTransactionId) { if (dashboardState.selectedTransactionId == null) transactionDetailOwner = null }
         val detailOnTop = dashboardState.selectedTransactionId != null && (transactionDetailOwner ?: top.id) == top.id
+        val closeTransactionDetail = { closeTransactionDetailUnlessBusy() }
         BackHandler {
             when {
-                detailOnTop -> dashboardViewModel.closeTransactionDetail()
+                detailOnTop -> closeTransactionDetail()
                 top.destination == HomeDestination.Review && reviewState.selectedDetail != null -> reviewViewModel.closeDetail()
                 // pop() does nothing at the root, so system back never exits the app.
                 else -> pop()
@@ -269,7 +279,7 @@ private fun MasroofContent(
         if (detailOnTop && top.destination != HomeDestination.AllTransactions && !labOverlayDetail) {
             if (showTransactionDetail(
                     dashboardState = dashboardState,
-                    onBack = dashboardViewModel::closeTransactionDetail,
+                    onBack = closeTransactionDetail,
                     onReclassify = dashboardViewModel::reclassifySelectedTransaction,
                     onIgnore = dashboardViewModel::ignoreSelectedTransaction,
                     onMarkAsCommitment = dashboardViewModel::markSelectedTransactionAsCommitment,
@@ -313,9 +323,8 @@ private fun MasroofContent(
                 onOpenAppSettings = onOpenAppSettings,
             )
                 if (labOverlayDetail) Box(Modifier.fillMaxSize().testTag("lab-analytics-transaction-detail")) {
-                    val closeLabDetail = { if (!dashboardState.reclassifying && !dashboardState.ignoring && !dashboardState.markingCommitment) dashboardViewModel.closeTransactionDetail() }
-                    BackHandler(onBack = closeLabDetail)
-                    showTransactionDetail(dashboardState, closeLabDetail,
+                    BackHandler(onBack = closeTransactionDetail)
+                    showTransactionDetail(dashboardState, closeTransactionDetail,
                         dashboardViewModel::reclassifySelectedTransaction, dashboardViewModel::ignoreSelectedTransaction,
                         dashboardViewModel::markSelectedTransactionAsCommitment, overlayOnList = true)
                 }
@@ -405,7 +414,7 @@ private fun MasroofContent(
                     )
                     if (detailOnTop) showTransactionDetail(
                         dashboardState = dashboardState,
-                        onBack = dashboardViewModel::closeTransactionDetail,
+                        onBack = closeTransactionDetail,
                         onReclassify = dashboardViewModel::reclassifySelectedTransaction,
                         onIgnore = dashboardViewModel::ignoreSelectedTransaction,
                         onMarkAsCommitment = dashboardViewModel::markSelectedTransactionAsCommitment,

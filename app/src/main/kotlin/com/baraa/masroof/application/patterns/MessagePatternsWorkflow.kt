@@ -33,6 +33,9 @@ class MessagePatternsWorkflow(
     suspend fun patternAccounts(bankId: String) = requireNotNull(activation).accounts(bankId)
     suspend fun confirmPatternAccount(bankId: String, last4: String) = requireNotNull(activation).confirmAccount(bankId, last4)
     suspend fun bankAccountSetup(bankId: String) = requireNotNull(activation).bankAccountSetup(bankId)
+    suspend fun referenceLinkSuggestions(bankId: String) = activation?.referenceLinkSuggestions(bankId).orEmpty()
+    suspend fun linkReference(bankId: String, suggestion: ReferenceLinkSuggestion) =
+        requireNotNull(activation).linkReference(bankId, suggestion)
     suspend fun configureBankAccount(generation: Long, bankId: String, accountId: String, currency: String, personalLoan: Boolean): PatternCatalog {
         requireNotNull(activation).configureBankAccount(generation, bankId, accountId,
             com.baraa.masroof.finance.value.Currency.valueOf(currency), personalLoan)

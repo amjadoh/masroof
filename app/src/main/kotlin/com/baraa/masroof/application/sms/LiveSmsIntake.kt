@@ -5,12 +5,15 @@ import com.baraa.masroof.application.ingestion.CaptureBankSmsUseCase
 import com.baraa.masroof.application.logging.AppLogCategories
 import com.baraa.masroof.application.logging.AppLogFormatting
 import com.baraa.masroof.application.logging.AppLogService
+import com.baraa.masroof.data.room.DatabaseRestartRequiredException
 import com.baraa.masroof.domain.model.ProcessingRetryMode
 import com.baraa.masroof.domain.model.RawSms
 import com.baraa.masroof.domain.repository.ProcessingRetryRepository
 import com.baraa.masroof.domain.repository.RawSmsRepository
 import com.baraa.masroof.domain.repository.ReviewRepository
+import com.baraa.masroof.sms.time.InstantClock
 import kotlinx.coroutines.CancellationException
+import java.time.Duration
 
 /**
  * Application boundary for live SMS received from [com.baraa.masroof.sms.receiver.IncomingSmsReceiver].
@@ -28,19 +31,73 @@ class LiveSmsIntake(
     private val appLogService: AppLogService,
     private val batchRecoveryScheduler: HistoricalBatchRecoveryScheduler? = null,
     private val debugProcessHalt: DebugProcessHaltProbe = DebugProcessHaltProbe.NONE,
+    private val captureRecoveryScheduler: LiveCaptureRecoveryScheduler? = null,
+    private val clock: InstantClock = InstantClock.System,
+    private val missedSmsScheduler: LiveCaptureRecoveryScheduler? = null,
 ) {
+    /** Never throws except for cancellation (a retired database is a failed capture, not a cancellation): the receiver's scope has no handler, and a throw ends the process. */
     suspend fun ingest(rawSms: RawSms): BankSmsCaptureResult {
-        appLogService.info(
-            AppLogCategories.SMS,
-            "Live SMS received from ${AppLogFormatting.maskSender(rawSms.sender)}",
-        )
-        val result = captureBankSms.capture(rawSms)
+        val result = try {
+            appLogService.info(
+                AppLogCategories.SMS,
+                "Live SMS received from ${AppLogFormatting.maskSender(rawSms.sender)}",
+            )
+            captureBankSms.capture(rawSms)
+        } catch (e: DatabaseRestartRequiredException) {
+            // A restore retired the database: nothing was stored, and WorkManager keeps its own database.
+            BankSmsCaptureResult.Failed(message = e::class.java.simpleName, cause = e)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            BankSmsCaptureResult.Failed(message = e::class.java.simpleName, cause = e)
+        }
         if (result is BankSmsCaptureResult.Captured) {
             // Park before scheduling so a killed process still has only the RawSms row.
             debugProcessHalt.afterDurableWrite(DebugProcessHalt.CAPTURE)
             schedule(result.rawSmsId)
+        } else if (result is BankSmsCaptureResult.Failed) {
+            scheduleCaptureRecovery(rawSms)
         }
         return result
+    }
+
+    /**
+     * Nothing was stored, so the inbox copy is the only evidence left. The window starts before both
+     * the service-center time and the device arrival time, which the provider query filters on.
+     */
+    private fun scheduleCaptureRecovery(rawSms: RawSms) {
+        val scheduler = captureRecoveryScheduler ?: return
+        val receivedAfter = minOf(rawSms.receivedAt, clock.now()).minus(CAPTURE_RECOVERY_LOOKBACK)
+        try {
+            scheduler.schedule(receivedAfter)
+            appLogService.warn(AppLogCategories.SMS, "Live capture failed; scheduled an inbox re-read")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            appLogService.error(
+                AppLogCategories.SMS,
+                "Scheduling the inbox re-read failed (${e::class.java.simpleName}); the next import recovers it",
+            )
+        }
+    }
+
+    /**
+     * Android delivers no SMS to an app it keeps stopped (force stop, or swipe-away on some phones), so when the
+     * user opens the app the inbox is re-read after the newest stored SMS. The scan skips what was already stored.
+     * shortcut: with nothing stored yet there is no anchor and no catch-up; store an onboarding-completed time if that matters.
+     */
+    suspend fun scheduleMissedSmsCatchUp() {
+        val scheduler = missedSmsScheduler ?: return
+        try {
+            val now = clock.now()
+            // A carrier clock can run ahead of the device; a receipt after now would hide everything missed before it.
+            val anchor = rawSmsRepository.newestReceivedAt(notAfter = now) ?: return
+            scheduler.schedule(anchor.minus(MISSED_SMS_LOOKBACK))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            appLogService.warn(AppLogCategories.SMS, "Scheduling the missed-SMS inbox re-read failed (${e::class.java.simpleName})")
+        }
     }
 
     /**
@@ -117,4 +174,11 @@ class LiveSmsIntake(
             )
             false
         }
+
+    private companion object {
+        val CAPTURE_RECOVERY_LOOKBACK: Duration = Duration.ofMinutes(10)
+
+        /** Covers carrier clocks hours off the device; stored rows come back as duplicates. shortcut: a clock days ahead can still hide SMS; widen toward the 7-day accepted skew if that shows up. */
+        val MISSED_SMS_LOOKBACK: Duration = Duration.ofDays(1)
+    }
 }

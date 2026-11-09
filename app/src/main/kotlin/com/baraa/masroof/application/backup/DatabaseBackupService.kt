@@ -111,7 +111,11 @@ class DatabaseBackupService(
                     stage = "write"
                     writeEncryptedPackage(staging, destination, secret)
                 } finally {
-                    SensitiveFileCleanup.delete(staging)
+                    // A cleanup error must not fail a written backup (onFailure would delete it) or hide the real error.
+                    // The next staging sweep retries it.
+                    runCatching { SensitiveFileCleanup.delete(staging) }.onFailure {
+                        appLogService?.warn(AppLogCategories.BACKUP, "Export staging cleanup failed (${it.javaClass.simpleName})")
+                    }
                 }
             }.onSuccess {
                 appLogService?.info(AppLogCategories.BACKUP, "Database export succeeded")
@@ -341,7 +345,8 @@ class DatabaseBackupService(
                     preservedRollback,
                 )
                 afterRestoreStage(DatabaseRestoreRecovery.Stage.COMMITTED)
-                SensitiveFileCleanup.delete(packageDir)
+                // The import is committed; a staging cleanup error must not report it as failed. The finally block retries it.
+                runCatching { SensitiveFileCleanup.delete(packageDir) }
                 if (!DatabaseRestoreRecovery.cleanupCommitted(appContext, liveDb)) {
                     error("Imported database failed verification; original database restored")
                 }
@@ -369,7 +374,12 @@ class DatabaseBackupService(
             BackupImportOutcome.Failed
         } finally {
             secret.fill('\u0000')
-            staging?.let(SensitiveFileCleanup::delete)
+            // A cleanup error here must neither hide the outcome nor skip the restart below.
+            staging?.let { directory ->
+                runCatching { SensitiveFileCleanup.delete(directory) }.onFailure {
+                    appLogService?.warn(AppLogCategories.BACKUP, "Import staging cleanup failed (${it.javaClass.simpleName})")
+                }
+            }
             // A failed install may have closed Room too. Clean sensitive bytes before a fresh process.
             if (closed && handledFailure && !restartAttempted) restart(BackupImportOutcome.Failed)
         }

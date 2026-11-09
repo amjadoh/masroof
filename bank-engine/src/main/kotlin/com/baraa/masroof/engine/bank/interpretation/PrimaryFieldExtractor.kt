@@ -157,7 +157,7 @@ internal class PrimaryFieldExtractor(
         // Explicit Mada roles may be part of the purchase title or name a wallet token.
         // Retain the observed reference; this never aliases it to a physical card.
         val mada = madaCardMatches()
-        val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})(?![\\p{L}\\p{N}_])")
+        val pattern = Regex("(?m)^ *(?:بطاقة|card) *: *(?:credit|debit|ائتمانية|مدى)(?: +| *\\n+ *)(?:رقم|number) *: *([*x]*[0-9]{4})[*x]*(?![\\p{L}\\p{N}_*])")
         val hits = pattern.findAll(source.text).toList()
         val values = (listOfNotNull(labeledCard) + hits.map { it.groupValues[1].takeLast(4) } + mada.map { it.groupValues[1] }).distinct()
         if (values.size > 1) problem("CONFLICTING_CARD", Blocker.CONFLICTING_FACTS)

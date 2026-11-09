@@ -54,6 +54,9 @@ interface RawSmsRepository {
      */
     suspend fun listIdsAwaitingProcessing(): List<String> = emptyList()
 
+    /** Receipt time of the newest stored SMS not after [notAfter], or null when there is none. */
+    suspend fun newestReceivedAt(notAfter: java.time.Instant): java.time.Instant? = null
+
     /**
      * Live↔historical near-duplicate: same sender + bodyHash within
      * [fromInclusive]…[toInclusive], opposite deviceMessageId nullness.
@@ -72,7 +75,8 @@ interface RawSmsRepository {
 
     /**
      * Same match as [findCrossSourceNearDuplicate], up to two rows so capture can
-     * tell a unique twin from an ambiguous pair. Ordered by receipt time.
+     * tell a unique twin from an ambiguous pair. Ordered by receipt time, then id.
+     * A live-row lookup skips rows that already carry a provider alias.
      */
     suspend fun listCrossSourceNearDuplicates(
         sender: String,

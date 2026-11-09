@@ -32,6 +32,30 @@ class TransactionMatcherTest {
         )
     }
 
+    /** The window is the same whichever leg arrives first, to the millisecond. */
+    @Test
+    fun receiptTimeWindowIsSymmetricAndExact() {
+        val out = outgoing(reference = "ref-1", localTime = null)
+        fun inAt(offsetMillis: Long) = incoming(reference = "ref-1", localTime = null)
+            .copy(receivedAt = out.receivedAt.plusMillis(offsetMillis))
+
+        for (offset in listOf(600_000L, -600_000L)) {
+            assertEquals(1, TransactionMatcher.findMutuallyUniquePairs(listOf(out, inAt(offset))).size, "offset $offset")
+        }
+        for (offset in listOf(600_500L, -600_500L)) {
+            assertEquals(0, TransactionMatcher.findMutuallyUniquePairs(listOf(out, inAt(offset))).size, "offset $offset")
+        }
+    }
+
+    /** Only the reference bridges this cross-bank pair, and its case differs between the two banks. */
+    @Test
+    fun referenceBridgeIgnoresCase() {
+        val outgoing = outgoing(reference = "FT26ABC", destination = AccountReference(Bank.UNKNOWN, "9999"))
+        val incoming = incoming(reference = "ft26abc")
+
+        assertTrue(TransactionMatcher.compatiblePair(outgoing, incoming))
+    }
+
     @Test
     fun doesNotMatchAmbiguousCandidates() {
         val outgoing = outgoing(reference = "ref-1")

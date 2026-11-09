@@ -40,7 +40,7 @@ import com.baraa.masroof.presentation.locale.formatLocalizedTransactionDate
 import com.baraa.masroof.ui.theme.MasroofSpacing
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +63,7 @@ fun SettingsCommitmentEditorScreen(
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     var showTransactionDatePicker by rememberSaveable { mutableStateOf(false) }
     var showDueDatePicker by rememberSaveable { mutableStateOf(false) }
-    val parsedAmount = amountText.trim().toBigDecimalOrNull()
+    val parsedAmount = parseCommitmentAmount(amountText)
     val canSave = !saving && name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0
 
     if (showDeleteConfirm) {
@@ -288,7 +288,7 @@ private fun CommitmentDatePickerDialog(
     onConfirm: (LocalDate) -> Unit,
 ) {
     val pickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+        initialSelectedDateMillis = commitmentDateToPickerMillis(initialDate),
     )
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -296,7 +296,7 @@ private fun CommitmentDatePickerDialog(
             TextButton(onClick = {
                 val millis = pickerState.selectedDateMillis
                 if (millis != null) {
-                    onConfirm(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate())
+                    onConfirm(commitmentPickerMillisToDate(millis))
                 }
                 onDismiss()
             }) {
@@ -311,4 +311,23 @@ private fun CommitmentDatePickerDialog(
     ) {
         DatePicker(state = pickerState)
     }
+}
+
+private val THOUSANDS_GROUPED = Regex("[0-9]{1,3}([,٬][0-9]{3})+(\\.[0-9]+)?")
+
+// Material3 DatePicker millis are UTC midnight of the chosen day.
+internal fun commitmentDateToPickerMillis(date: LocalDate): Long =
+    date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+internal fun commitmentPickerMillisToDate(millis: Long): LocalDate =
+    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+
+/**
+ * Accepts Arabic digits and decimal mark, and thousands separators only in a valid grouping:
+ * a comma typed as a decimal mark (`12,50`) stays unparsed instead of becoming 1250.
+ */
+internal fun parseCommitmentAmount(text: String): java.math.BigDecimal? {
+    val normalized = com.baraa.masroof.application.analytics.normalizeAnalysisNumber(text)
+    val plain = if (THOUSANDS_GROUPED.matches(normalized)) normalized.replace(",", "").replace("٬", "") else normalized
+    return plain.toBigDecimalOrNull()
 }

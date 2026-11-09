@@ -133,7 +133,7 @@
     <string name="settings_fx_rate_correction_confirm_body">يُستبدل سعر التاجر المخزّن بالسعر المؤرخ لـ %1$d حركة. الحركات التي لا يوجد لها سعر مؤرخ تبقى كما هي.</string>
     <string name="settings_fx_rate_correction_confirm_action">تحديث</string>
     <string name="settings_statement_reconciliation_title">مطابقة كشف الحساب</string>
-    <string name="settings_statement_reconciliation_subtitle">مقارنة ملف CSV بالسجل دون تعديل الحركات</string>
+    <string name="settings_statement_reconciliation_subtitle">مطابقة كشف الحساب (PDF أو CSV) مع الحركات</string>
     <string name="settings_statement_reconciliation_intro">قارن كشف حساب (PDF من البنك أو CSV) بالحركات المسجّلة من الرسائل. ما يتغير شي إلا إذا ضغطت \"أضف\" على حركة أو اعتمدت رصيد بداية الكشف.</string>
     <string name="settings_statement_reconciliation_limits">الملف يُقرأ في الذاكرة بس، وما فيه اتصال بالبنك ولا بيانات دخول. ملفات PDF المشفّرة أو المصوّرة ما تنقرأ.</string>
     <string name="settings_statement_pick_file">اختيار ملف الكشف (PDF أو CSV)</string>
@@ -789,4 +789,9 @@
     <string name="cc_reminder_today">كشف البطاقة %2$s ينقفل اليوم. سدّد %1$s ر.س قبل نهاية اليوم.</string>
     <string name="amounts_show">إظهار المبالغ</string>
     <string name="amounts_hide">إخفاء المبالغ</string>
+    <string name="settings_reference_link_title">ربط حساب من رسائل البنك</string>
+    <string name="settings_reference_link_body">رسائل %1$s من البنك تذكر الحساب ***%2$s (%3$d رسالة ما انحسبت). هل هو حسابك اللي ينتهي بـ %4$s؟</string>
+    <string name="settings_reference_link_confirm">إيوه، اربطه بالحساب %1$s</string>
+    <string name="settings_reference_link_card_payment">سداد البطاقة الائتمانية</string>
+    <string name="settings_reference_link_installment">قسط التمويل</string>
 </resources>

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -235,6 +236,21 @@ fun SettingsRoute(
         is SettingsDestination.BankHub -> {
             val bank = Bank(current.bankId)
             val summary = state.bankSummary(current.bankId)
+            val patternsWorkflow = viewModel.messagePatternsWorkflow
+            var referenceLinks by remember(current.bankId) {
+                mutableStateOf(emptyList<com.baraa.masroof.application.patterns.ReferenceLinkSuggestion>())
+            }
+            var referenceLinkPass by remember(current.bankId) { mutableStateOf(0) }
+            val linkScope = androidx.compose.runtime.rememberCoroutineScope()
+            LaunchedEffect(current.bankId, referenceLinkPass) {
+                referenceLinks = try {
+                    patternsWorkflow?.referenceLinkSuggestions(current.bankId).orEmpty()
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            }
             when {
                 summary != null -> SettingsBankScreen(
                     bank = bank,
@@ -248,6 +264,20 @@ fun SettingsRoute(
                     onImport = { viewModel.clearScopedSmsImportResult(); navigateTo(SettingsDestination.SmsImport(current.bankId)) },
                     onStatement = { navigateTo(SettingsDestination.BankStatement(current.bankId)) },
                     onEditBank = { navigateTo(SettingsDestination.BankEditor(current.bankId)) },
+                    referenceLinks = referenceLinks,
+                    onLinkReference = { link ->
+                        linkScope.launch {
+                            try {
+                                patternsWorkflow?.linkReference(current.bankId, link)
+                                // Messages already stored read again with the new link.
+                                viewModel.reparseStoredMessages()
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                            }
+                            referenceLinkPass++
+                        }
+                    },
                 )
 
                 state.loading -> SettingsBankHubLoadingScreen(
