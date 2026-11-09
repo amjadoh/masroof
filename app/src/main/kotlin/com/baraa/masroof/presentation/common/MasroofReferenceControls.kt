@@ -62,7 +62,7 @@ fun MasroofChoice(label: String, selected: Boolean, onClick: () -> Unit,
 @Composable
 fun MasroofTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
-    contentPadding: PaddingValues = PaddingValues(horizontal = MasroofSpacing.none, vertical = MasroofSpacing.inlineGap),
+    contentPadding: PaddingValues = PaddingValues(horizontal = MasroofSpacing.textButtonHorizontal, vertical = MasroofSpacing.inlineGap),
     content: @Composable RowScope.() -> Unit) {
     com.baraa.masroof.ui.components.MasroofTextButton(onClick, modifier, enabled, colors, contentPadding, content)
 }

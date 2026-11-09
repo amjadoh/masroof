@@ -63,6 +63,7 @@ class ProcessRawSmsUseCase(
     suspend fun reparseStored(rawSms: RawSms): SmsIngestionResult = processStored.reparseStored(rawSms)
 
     /** Bulk-maintenance parse-only path; derived processing is intentionally deferred. */
-    suspend fun reparseAndStore(rawSms: RawSms, refreshSuccessfulUnposted: Boolean = false): SmsIngestionResult =
-        processStored.reparseAndStore(rawSms, refreshSuccessfulUnposted = refreshSuccessfulUnposted)
+    suspend fun reparseAndStore(rawSms: RawSms, historicalBatch: Boolean = false,
+        refreshSuccessfulUnposted: Boolean = false): SmsIngestionResult =
+        processStored.reparseAndStore(rawSms, historicalBatch, refreshSuccessfulUnposted)
 }

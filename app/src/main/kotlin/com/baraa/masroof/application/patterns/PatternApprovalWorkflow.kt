@@ -30,10 +30,96 @@ class PatternFinancialPreview internal constructor(internal val generation: Long
     /** Where this example actually posts, which may differ from the link when the message names its own. */
     val accountLast4: String? = null, val cardLast4: String? = null)
 
+/**
+ * A built-in rule that reads a short source reference (SAB's "من: ***150") which exactly one owned
+ * account of the bank ends with. The user confirms the link once; nothing is linked automatically.
+ */
+data class ReferenceLinkSuggestion(val patternId: String, val family: String, val reference: String,
+    val account: PatternAccountOption, val messageCount: Int)
+
 /** Explicit approval writes configuration only. Account identity and ownership stay in the existing registry. */
 class PatternApprovalWorkflow(private val store: MessagePatternStore, private val gate: DatabaseAccessGate,
     private val accounts: AccountRegistryRepository, private val ownership: OwnershipConfirmationService,
-    private val cards: CardRegistryRepository? = null) {
+    private val cards: CardRegistryRepository? = null,
+    /** (sender, body) of this bank's stored messages that did not post, newest first. */
+    private val unpostedMessages: suspend (bankId: String) -> List<Pair<String, String>> = { emptyList() }) {
+
+    suspend fun referenceLinkSuggestions(bankId: String): List<ReferenceLinkSuggestion> = withContext(Dispatchers.IO) {
+        val messages = unpostedMessages(bankId)
+        gate.withAccess { suggestions(store.load(), bankId, messages) }
+    }
+
+    /** Saves the confirmed link, and only when the bank's own messages then post from that account. */
+    suspend fun linkReference(bankId: String, suggestion: ReferenceLinkSuggestion) = withContext(Dispatchers.IO) {
+        val messages = unpostedMessages(bankId)
+        gate.withExclusiveAccess {
+            val current = store.load()
+            check(suggestions(current, bankId, messages).any { it.patternId == suggestion.patternId &&
+                it.reference == suggestion.reference && it.account.id == suggestion.account.id }) { "Suggestion no longer applies" }
+            val bank = current.banks.single { it.bankId == bankId }
+            val pattern = bank.currentPatterns.single { it.id == suggestion.patternId }
+            store.saveBank(current.generation, bank.copy(patterns = listOf(linked(pattern, bankId, suggestion.account.last4, suggestion.reference))))
+        }
+    }
+
+    /**
+     * Each owned account is tried as the link for each unposted message, with the shortest ending (3, then 4 digits) the
+     * bank's own rule accepts. A message counts only when exactly one owned account makes it post from that account.
+     */
+    private suspend fun suggestions(config: MessagePatternConfiguration, bankId: String,
+        messages: List<Pair<String, String>>): List<ReferenceLinkSuggestion> {
+        val bank = config.banks.singleOrNull { it.bankId == bankId } ?: return emptyList()
+        val owned = ownedAccounts(bankId)
+        if (owned.isEmpty()) return emptyList()
+        val unlinked = bank.currentPatterns.filter { pattern ->
+            val contract = pattern.factContract
+            pattern.enabled && pattern.roleProfile != null && contract != null && contract.family in REFERENCE_LINKED_FAMILIES &&
+                contract.accountBindings.none { it.role != PatternAccountRole.CARD }
+        }
+        // One reader per candidate link (pattern, account, ending), shortest ending first.
+        val candidates = unlinked.flatMap { pattern -> owned.flatMap { account ->
+            listOf(account.maskedNumber.takeLast(3), account.maskedNumber).distinct().map { reference ->
+                Triple(pattern, account, reference) to PatternFactInterpreter(config.copy(banks = config.banks.map {
+                    if (it === bank) it.copy(patterns = it.patterns + linked(pattern, bankId, account.maskedNumber, reference)) else it
+                }))
+            }
+        } }
+        val seen = linkedMapOf<Triple<String, String, String>, Int>()
+        for ((sender, body) in messages) for (pattern in unlinked) {
+            val fits = candidates.filter { (key, _) -> key.first == pattern }
+                .filter { (key, reader) -> postsFrom(reader, pattern, bankId, key.second.maskedNumber, sender, body) }
+                .map { (key, _) -> Triple(pattern.id, key.third, key.second.id) }
+                .distinctBy { it.third }
+            fits.singleOrNull()?.let { seen[it] = (seen[it] ?: 0) + 1 }
+        }
+        return seen.map { (key, count) ->
+            val (patternId, reference, accountId) = key
+            val account = owned.single { it.id == accountId }
+            ReferenceLinkSuggestion(patternId, unlinked.single { it.id == patternId }.factContract!!.family.name, reference,
+                PatternAccountOption(account.id, account.displayName, account.maskedNumber), count)
+        }
+    }
+
+    private fun linked(pattern: SavedMessagePattern, bankId: String, last4: String, reference: String): SavedMessagePattern {
+        val prior = requireNotNull(pattern.factContract)
+        val link = PatternAccountBinding(PatternAccountRole.SOURCE, BankId(bankId), last4, REFERENCE_FIELD, reference)
+        return pattern.copy(revision = Math.addExact(pattern.revision, 1), factContract = prior.copy(version = 2,
+            currency = prior.currency ?: Currency.SAR, accountBindings = prior.accountBindings + link))
+    }
+
+    private fun postsFrom(reader: PatternFactInterpreter, pattern: SavedMessagePattern, bankId: String, last4: String,
+        sender: String, body: String): Boolean {
+        val reading = runCatching {
+            reader.interpretRouted(MessageInput("reference-link", sender, body, Instant.now(), true), BankId(bankId))
+        }.getOrNull() ?: return false
+        return reading.status == com.baraa.masroof.engine.bank.ParseStatus.SUCCESS &&
+            reading.patternProvenance?.patternId == pattern.id && reading.facts.sourceAccount?.maskedNumber == last4
+    }
+
+    private companion object {
+        const val REFERENCE_FIELD = "source_account"
+        val REFERENCE_LINKED_FAMILIES = setOf(MessageFamily.CARD_PAYMENT, MessageFamily.FINANCING_INSTALLMENT)
+    }
 
     suspend fun bankAccountSetup(bankId: String): BankMessageAccountSetup = withContext(Dispatchers.IO) {
         gate.withAccess {

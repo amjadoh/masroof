@@ -590,6 +590,40 @@ class ReviewWorkflowServiceTest {
     }
 
     @Test
+    fun transferResolutions_rejectAZeroAmount() = runBlocking {
+        confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
+        confirmation.confirmAccountOwned(AccountReference(Bank("D360"), "6810"))
+        persistEvent(
+            smsId = "sms-out",
+            event = event(
+                id = "pe-out", rawSmsId = "sms-out", family = MessageFamily.TRANSFER_OUT, amount = money("0.00"),
+                source = AccountReference(Bank.BANK_ALJAZIRA, "3001"), destination = AccountReference(Bank.UNKNOWN, "9999"),
+                network = BankNetworkType.INTER_BANK,
+            ),
+        )
+        persistEvent(
+            smsId = "sms-in",
+            event = event(
+                id = "pe-in", rawSmsId = "sms-in", bank = Bank("D360"), family = MessageFamily.TRANSFER_IN,
+                amount = money("0.00"), destination = AccountReference(Bank("D360"), "6810"),
+                network = BankNetworkType.INTER_BANK,
+            ),
+        )
+        listOf("sms-out", "sms-in").forEach {
+            reviewRepo.upsertRequired(rawSmsId = it, kind = ReviewKind.PENDING_MATCH,
+                reasons = listOf("transfer_pending_match"), now = clock.now())
+        }
+
+        assertEquals(ReviewWorkflowResult.Rejected("missing_amount"), workflow.resolveTransferAsExternal(
+            ReviewIdFactory.fromRawSmsId("sms-out"), ExternalTransferDirection.OUTGOING))
+        assertEquals(ReviewWorkflowResult.Rejected("missing_amount"), workflow.resolveSelfTransferPair(
+            outgoingReviewId = ReviewIdFactory.fromRawSmsId("sms-out"),
+            incomingReviewId = ReviewIdFactory.fromRawSmsId("sms-in"),
+        ))
+        assertTrue(ftRepo.listAll().isEmpty())
+    }
+
+    @Test
     fun resolveSelfTransferPair_rejectsWhenAlreadyLinked() = runBlocking {
         confirmation.confirmAccountOwned(AccountReference(Bank.BANK_ALJAZIRA, "3001"))
         confirmation.confirmAccountOwned(AccountReference(Bank("D360"), "6810"))
@@ -705,6 +739,29 @@ class ReviewWorkflowServiceTest {
             type = FinancialTransactionType.SELF_TRANSFER,
         )
         assertTrue(result is ReviewWorkflowResult.Rejected)
+    }
+
+    @Test
+    fun resolveAsFinancialType_rejectsAZeroAmountForAnyType() = runBlocking {
+        persistEvent(
+            smsId = "sms-zero",
+            event = event(
+                id = "pe-zero",
+                rawSmsId = "sms-zero",
+                family = MessageFamily.UNKNOWN,
+                amount = money("0.00"),
+                source = AccountReference(Bank.BANK_ALJAZIRA, "3001"),
+            ),
+        )
+        workflow.refreshReviewQueue()
+
+        val result = workflow.resolveAsFinancialType(
+            reviewId = ReviewIdFactory.fromRawSmsId("sms-zero"),
+            type = FinancialTransactionType.EXPENSE,
+        )
+
+        assertEquals(ReviewWorkflowResult.Rejected("missing_amount"), result)
+        assertTrue(ftRepo.listAll().isEmpty())
     }
 
     @Test
@@ -1148,6 +1205,53 @@ class ReviewWorkflowServiceTest {
             listOf("sms-conflict"),
             retries.listRetryableRawSmsIds(ProcessingRetryMode.HISTORICAL_BATCH),
         )
+    }
+
+    /** A clean reconcile whose review update fails still leaves the affected rows retryable. */
+    @Test
+    fun reviewUpdateFailureAfterACleanPass_recordsAHistoricalRetry() = runBlocking {
+        persistEvent(
+            smsId = "sms-needs",
+            event = event(id = "pe-needs", rawSmsId = "sms-needs", family = MessageFamily.UNKNOWN, amount = money("12.00")),
+        )
+        val retries = RoomProcessingRetryRepository(db.processingRetryDao())
+        val failingReviews = object : com.baraa.masroof.domain.repository.ReviewRepository by reviewRepo {
+            override suspend fun upsertRequired(rawSmsId: String, kind: com.baraa.masroof.domain.model.ReviewKind,
+                reasons: List<String>, now: Instant) = throw java.io.IOException("review store unavailable")
+        }
+        val effective = EffectiveParsedEventProvider(parsedRepo, correctionRepo)
+        val service = ReviewWorkflowService(
+            reviewRepository = reviewRepo,
+            userCorrectionRepository = correctionRepo,
+            financialTransactionRepository = ftRepo,
+            rawSmsRepository = rawRepo,
+            ownershipResolver = OwnershipResolver(RoomAccountRegistryRepository.from(db), RoomCardRegistryRepository.from(db), loans),
+            ownershipConfirmationService = confirmation,
+            effectiveParsedEventProvider = effective,
+            parsedEventRepository = parsedRepo,
+            reconciliationService = TransactionReconciliationService(
+                parsedEventRepository = parsedRepo,
+                rawSmsRepository = rawRepo,
+                financialTransactionRepository = ftRepo,
+                ownershipResolver = OwnershipResolver(RoomAccountRegistryRepository.from(db), RoomCardRegistryRepository.from(db), loans),
+                effectiveParsedEventProvider = effective,
+                reviewRepository = reviewRepo,
+            ),
+            reviewQueueUpdater = ReviewQueueUpdater(failingReviews, ftRepo, clock),
+            manualReviewResolutionRepository = RoomManualReviewResolutionRepository(db, ftRepo),
+            clock = clock,
+            processingRecovery = ProcessingRecovery(
+                processingRetryRepository = retries,
+                reviewRepository = reviewRepo,
+                ingestionReviewService = IngestionReviewService(reviewRepo, clock),
+                clock = clock,
+            ),
+        )
+
+        val thrown = runCatching { service.refreshReviewQueue() }.exceptionOrNull()
+
+        assertTrue(thrown is com.baraa.masroof.application.transaction.ReconciliationIncompleteException)
+        assertTrue("sms-needs" in retries.listRetryableRawSmsIds(ProcessingRetryMode.HISTORICAL_BATCH))
     }
 
     private suspend fun persistEvent(

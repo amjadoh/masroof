@@ -57,8 +57,9 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
     private val localePrefs = context.getSharedPreferences(com.baraa.masroof.data.preferences.SharedPrefsAppLocaleRepository.PREFS_NAME, Context.MODE_PRIVATE)
     private val preferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> request() }
     private val generation = java.util.concurrent.atomic.AtomicLong()
-    private val observer = object : InvalidationTracker.Observer("financial_transaction", "financial_transaction_raw_sms_link",
-        "parsed_event", "commitment", "account_registry", "card_registry", "loan_registry", "credit_facility", "processing_retry", "review_item", "user_correction") {
+    private val observedTables = arrayOf("financial_transaction", "financial_transaction_raw_sms_link",
+        "parsed_event", "commitment", "account_registry", "card_registry", "loan_registry", "credit_facility", "processing_retry", "review_item", "user_correction")
+    private val observer = object : InvalidationTracker.Observer(observedTables) {
         override fun onInvalidated(tables: Set<String>) { request() }
     }
     @Synchronized fun start() {

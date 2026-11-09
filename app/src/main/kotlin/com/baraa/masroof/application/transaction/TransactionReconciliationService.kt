@@ -366,7 +366,7 @@ class TransactionReconciliationService(
                     if (linkedBefore.type == FinancialTransactionType.SELF_TRANSFER &&
                         linkedBefore.linkedParsedEventIds.size == 1
                     ) {
-                        transferCandidateFor(record)?.let { postedSingleLegCounterparts += it }
+                        transferCandidateFor(record, linkedBefore.occurredAtZone)?.let { postedSingleLegCounterparts += it }
                     }
                     continue
                 }
@@ -411,7 +411,7 @@ class TransactionReconciliationService(
                     listOf(ownershipReview))
                 continue
             }
-            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType)
+            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType, userConfirmed)
             val loanType = record.details.loanType
             val loanOwn = loanType?.let {
                 ownershipResolver.resolveLoan(LoanReference(event.bank, it))
@@ -555,6 +555,7 @@ class TransactionReconciliationService(
         val pairs = TransactionMatcher.findMutuallyUniquePairs(stillOpen)
         val matchedEventIds = mutableSetOf<String>()
         val matchedRawSmsIds = mutableSetOf<String>()
+        val failedPairs = mutableListOf<Pair<String, String>>()
         for (pair in pairs) {
             if (pair.outgoing.event.id in matchedEventIds ||
                 pair.incoming.event.id in matchedEventIds
@@ -606,6 +607,12 @@ class TransactionReconciliationService(
                             failed++
                             failedRawSmsIds += pair.outgoing.event.rawSmsId
                             failedRawSmsIds += pair.incoming.event.rawSmsId
+                            failedPairs += pair.outgoing.event.rawSmsId to pair.incoming.event.rawSmsId
+                            // Pairing wins: neither leg may be posted alone as spending or income in this pass.
+                            matchedEventIds += pair.outgoing.event.id
+                            matchedEventIds += pair.incoming.event.id
+                            matchedRawSmsIds += pair.outgoing.event.rawSmsId
+                            matchedRawSmsIds += pair.incoming.event.rawSmsId
                         }
                     }
                 }
@@ -670,6 +677,19 @@ class TransactionReconciliationService(
         failed += upgraded.failed
         failedRawSmsIds += upgraded.failedRawSmsIds
         settledRawSmsIds += upgraded.settledRawSmsIds
+
+        // A pair save loses a race when another pass posted one leg first. If the stale-leg
+        // upgrade above then joined both legs into one transaction, the pair is complete.
+        for ((outgoing, incoming) in failedPairs) {
+            val joined = financialTransactionRepository.findByRawSmsId(outgoing)?.id
+            if (joined == null || joined != financialTransactionRepository.findByRawSmsId(incoming)?.id) continue
+            if (outgoing in upgraded.failedRawSmsIds || incoming in upgraded.failedRawSmsIds) continue
+            failed--
+            failedRawSmsIds -= outgoing
+            failedRawSmsIds -= incoming
+            settledRawSmsIds += outgoing
+            settledRawSmsIds += incoming
+        }
 
         if (scope == null) {
             val fees = upgradeIncludedTransferFees(records)
@@ -958,6 +978,10 @@ class TransactionReconciliationService(
         var failed = 0
         val failedRawSmsIds = linkedSetOf<String>()
         val settledRawSmsIds = linkedSetOf<String>()
+        fun keepFee(rawSmsId: String) {
+            alreadyLinked++
+            settledRawSmsIds += rawSmsId
+        }
 
         for (existing in staleFees) {
             val record = existing.linkedParsedEventIds
@@ -978,7 +1002,7 @@ class TransactionReconciliationService(
                 ?: OwnershipStatus.UNKNOWN
             val cardOwn = event.cardRef?.let { ownershipResolver.resolveCard(it) }
                 ?: OwnershipStatus.UNKNOWN
-            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType)
+            maybeAutoConfirmLoanOwnership(event, sourceOwn, record.details.loanType, record.automationConfirmed)
             val loanType = record.details.loanType
             val loanOwn = loanType?.let {
                 ownershipResolver.resolveLoan(LoanReference(event.bank, it))
@@ -1007,8 +1031,7 @@ class TransactionReconciliationService(
             ) {
                 is TransactionAssembler.Outcome.Assembled -> {
                     if (outcome.transaction.type != FinancialTransactionType.LOAN_REPAYMENT) {
-                        failed++
-                        failedRawSmsIds += event.rawSmsId
+                        keepFee(event.rawSmsId)
                         continue
                     }
                     val healed = outcome.transaction.copy(id = existing.id)
@@ -1025,10 +1048,9 @@ class TransactionReconciliationService(
                     }
                 }
 
-                else -> {
-                    failed++
-                    failedRawSmsIds += event.rawSmsId
-                }
+                // Missing loan type, a source that is not owned, or an external loan: no repayment can be
+                // built. The FEE row already counts as a repayment, so it is kept rather than failed forever.
+                else -> keepFee(event.rawSmsId)
             }
         }
 
@@ -1178,10 +1200,12 @@ class TransactionReconciliationService(
     ): LegacyReleaseResult {
         val postedSingleLeg = mutableListOf<ParsedEventRecord>()
         val skipped = linkedSetOf<String>()
+        val postedZones = mutableMapOf<String, String?>()
         for (record in records) {
             val event = record.event
             if (!event.messageFamily.isTransferFamily()) continue
             val linked = financialTransactionRepository.findByRawSmsId(event.rawSmsId) ?: continue
+            postedZones[event.rawSmsId] = linked.occurredAtZone
             if (linked.type != FinancialTransactionType.SELF_TRANSFER) continue
             if (linked.linkedParsedEventIds.size != 1) continue
             if (shouldProtectFromAutomaticUnlink(event.rawSmsId)) {
@@ -1194,7 +1218,7 @@ class TransactionReconciliationService(
             return LegacyReleaseResult(skippedRawSmsIds = skipped)
         }
 
-        val candidates = records.mapNotNull { transferCandidateFor(it) }
+        val candidates = records.mapNotNull { transferCandidateFor(it, postedZones[it.event.rawSmsId]) }
         if (candidates.isEmpty()) return LegacyReleaseResult(skippedRawSmsIds = skipped)
         val uniquelyPairedEventIds = TransactionMatcher.findMutuallyUniquePairs(candidates)
             .flatMap { pair -> listOf(pair.outgoing.event.id, pair.incoming.event.id) }
@@ -1272,7 +1296,10 @@ class TransactionReconciliationService(
         return transferCandidateFor(record)
     }
 
-    private suspend fun transferCandidateFor(record: ParsedEventRecord): TransferMatchCandidate? {
+    private suspend fun transferCandidateFor(
+        record: ParsedEventRecord,
+        persistedZoneId: String? = null,
+    ): TransferMatchCandidate? {
         val event = record.event
         if (!event.messageFamily.isTransferFamily()) return null
         var userConfirmed = record.automationConfirmed
@@ -1305,6 +1332,7 @@ class TransactionReconciliationService(
                 occurredAtLocal = record.details.occurredAtLocal,
                 receivedAt = receivedAt,
                 zoneId = zoneId,
+                persistedZoneId = persistedZoneId,
             ),
             transferFee = record.details.transferFee,
         )
@@ -1347,8 +1375,11 @@ class TransactionReconciliationService(
         event: ParsedEvent,
         sourceOwnership: OwnershipStatus,
         loanType: LoanType?,
+        userConfirmed: Boolean,
     ) {
         if (event.messageFamily != MessageFamily.FINANCING_INSTALLMENT) return
+        // Confirming ownership is a write, so unvalidated evidence must not make it.
+        if (!TransactionAssembler.isAutomationEligible(event, userConfirmed)) return
         if (sourceOwnership != OwnershipStatus.OWNED) return
         val resolvedLoanType = loanType ?: return
         val reference = LoanReference(event.bank, resolvedLoanType)
