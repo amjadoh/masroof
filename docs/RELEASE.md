@@ -92,7 +92,7 @@ From the repo root, with [GitHub CLI](https://cli.github.com/) logged in as the 
 ./scripts/upload-release-secrets.sh
 ```
 
-This creates `release.keystore`, `keystore.properties`, and uploads four secrets to GitHub Actions:
+This creates `release.keystore`, `keystore.properties`, and uploads four secrets to the protected `release` environment (deployment branch: `main` only). They are deliberately **not** repository-level secrets, so workflows on other branches (including agent branches) cannot read the signing key:
 - `RELEASE_KEYSTORE_BASE64`
 - `RELEASE_KEYSTORE_PASSWORD`
 - `RELEASE_KEY_ALIAS`
