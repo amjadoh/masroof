@@ -22,9 +22,9 @@ BASE64="$(base64 -w0 release.keystore 2>/dev/null || base64 release.keystore | t
 
 echo "Uploading secrets to GitHub (repo: $(gh repo view --json nameWithOwner -q .nameWithOwner))..."
 
-gh secret set RELEASE_KEYSTORE_BASE64 --body "$BASE64"
-gh secret set RELEASE_KEYSTORE_PASSWORD --body "$RELEASE_KEYSTORE_PASSWORD"
-gh secret set RELEASE_KEY_ALIAS --body "$RELEASE_KEY_ALIAS"
-gh secret set RELEASE_KEY_PASSWORD --body "$RELEASE_KEY_PASSWORD"
+gh secret set RELEASE_KEYSTORE_BASE64 --env release --body "$BASE64"
+gh secret set RELEASE_KEYSTORE_PASSWORD --env release --body "$RELEASE_KEYSTORE_PASSWORD"
+gh secret set RELEASE_KEY_ALIAS --env release --body "$RELEASE_KEY_ALIAS"
+gh secret set RELEASE_KEY_PASSWORD --env release --body "$RELEASE_KEY_PASSWORD"
 
 echo "Done. GitHub Actions release workflow can now sign release APKs."

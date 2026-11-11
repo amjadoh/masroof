@@ -77,6 +77,8 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # أسرار التوقيع موجودة بس في بيئة release، وهي مقفولة على main
+    environment: release
     timeout-minutes: 25
 
     steps:
