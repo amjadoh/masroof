@@ -34,4 +34,28 @@ class CurrencyTest {
             Currency.FOREIGN_FOR_SAR_CONVERSION,
         )
     }
+
+    @Test
+    fun foreignForSarConversion_excludesSar() {
+        assertFalse(Currency.SAR in Currency.FOREIGN_FOR_SAR_CONVERSION)
+    }
+
+    @Test
+    fun supportedCurrencies_areSarUsdEurGbpInDeclarationOrder() {
+        assertEquals(
+            listOf(Currency.SAR, Currency.USD, Currency.EUR, Currency.GBP),
+            Currency.values().toList(),
+        )
+    }
+
+    @Test
+    fun convertsToSar_matchesForeignSetMembershipForEveryCurrency() {
+        for (currency in Currency.values()) {
+            assertEquals(
+                currency in Currency.FOREIGN_FOR_SAR_CONVERSION,
+                currency.convertsToSar(),
+                "convertsToSar mismatch for $currency",
+            )
+        }
+    }
 }
