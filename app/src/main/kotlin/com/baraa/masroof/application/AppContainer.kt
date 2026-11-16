@@ -732,6 +732,11 @@ class AppContainer(
             appLogService = appLogService,
         )
 
+    /** An inbox re-read from a point in time, now: the app-open catch-up and an analysis coverage gap share it. */
+    val missedSmsScheduler = com.baraa.masroof.application.sms.LiveCaptureRecoveryScheduler { receivedAfter ->
+        LiveCaptureRecoveryWorker.enqueue(WorkManager.getInstance(appContext), receivedAfter, delaySeconds = 0)
+    }
+
     val liveSmsIntake: LiveSmsIntake =
         LiveSmsIntake(
             captureBankSms = captureBankSmsUseCase,
@@ -744,9 +749,7 @@ class AppContainer(
                 HistoricalDerivedRecoveryWorker.enqueue(WorkManager.getInstance(appContext))
             },
             debugProcessHalt = debugProcessHaltProbe,
-            missedSmsScheduler = { receivedAfter ->
-                LiveCaptureRecoveryWorker.enqueue(WorkManager.getInstance(appContext), receivedAfter, delaySeconds = 0)
-            },
+            missedSmsScheduler = missedSmsScheduler,
             captureRecoveryScheduler = { receivedAfter ->
                 LiveCaptureRecoveryWorker.enqueue(WorkManager.getInstance(appContext), receivedAfter)
             },
