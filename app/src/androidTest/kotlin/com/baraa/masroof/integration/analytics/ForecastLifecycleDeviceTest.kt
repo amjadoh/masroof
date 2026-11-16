@@ -58,16 +58,17 @@ class ForecastLifecycleDeviceTest {
                 day=day.plusDays(1)
             }
         }
-        // An open gap makes the analysis schedule an inbox re-read from the gap's first day; let the attempt end, so
-        // its import gate cannot skip the next refresh.
+        // An open gap makes the analysis schedule an inbox re-read from the gap's first day. This test is about the
+        // forecast, not the real inbox: cancel that re-read and wait until it no longer runs, so its import gate
+        // cannot skip the next refresh.
         suspend fun awaitGapRescan(gap: LocalDate) {
             val name=com.baraa.masroof.application.sms.LiveCaptureRecoveryWorker.uniqueWorkName(gap.atStartOfDay(zone).toInstant())
+            val manager=androidx.work.WorkManager.getInstance(context)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { manager.cancelUniqueWork(name).result.get() }
             kotlinx.coroutines.withTimeout(30_000) {
                 while(true) {
-                    val infos=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        androidx.work.WorkManager.getInstance(context).getWorkInfosForUniqueWork(name).get() }
-                    // Without a real inbox the attempt may end in a retry; either way it is no longer running.
-                    if(infos.isNotEmpty() && infos.all { it.state.isFinished || (it.state == androidx.work.WorkInfo.State.ENQUEUED && it.runAttemptCount > 0) }) break
+                    val infos=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { manager.getWorkInfosForUniqueWork(name).get() }
+                    if(infos.none { it.state == androidx.work.WorkInfo.State.RUNNING }) break
                     kotlinx.coroutines.delay(20)
                 }
             }
