@@ -163,8 +163,9 @@ class MessagePatternsWorkflowTest {
     }
 
     @Test fun aValueAtTheStartOfTheMessageIsRefusedAndTheScreenRuleSaysSoFirst() = runBlocking {
-        withPatternDatabase { db ->
-            val w = MessagePatternsWorkflow(MessagePatternStore(db), DatabaseAccessGate(), appLogService = NoOpAppLog)
+        val directory = Files.createTempDirectory("masroof-opening-value-").toFile()
+        try {
+            val w = MessagePatternsWorkflow(MessagePatternStore(directory.resolve("patterns.json")), DatabaseAccessGate())
             w.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank")))
             val body = "stc prepaid services payment\nAmount: 23.00 SAR\nAt: 10/11/26 22:43"
             fun bind(field: String, text: String) = PatternBinding(field, body.indexOf(text), body.indexOf(text) + text.length)
@@ -175,7 +176,7 @@ class MessagePatternsWorkflowTest {
             }
             assertTrue(rest.none { opensMessage(body, it.start) })
             assertEquals(setOf("amount", "occurred_at"), w.teach(1, "STC", "STC Bank", PatternOperation.BILL_PAYMENT, body, rest).fields.keys)
-        }
+        } finally { directory.deleteRecursively() }
     }
 
     @Test fun unselectedNumbersAndDatesAreIgnoredAutomaticallySoOtherMessagesStillMatch() = runBlocking {

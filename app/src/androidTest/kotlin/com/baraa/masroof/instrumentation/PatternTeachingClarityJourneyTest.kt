@@ -80,7 +80,7 @@ class PatternTeachingClarityJourneyTest {
             compose.onAllNodes(SemanticsMatcher("opening candidate") {
                 it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("pattern-candidate-0-") == true
             }).onFirst().performScrollTo().performClick()
-            compose.onNodeWithText(compose.ar(R.string.teaching_opening_value)).assertIsDisplayed()
+            compose.onNodeWithText(ar(R.string.teaching_opening_value)).assertIsDisplayed()
             compose.onNodeWithTag("pattern-bind").assertIsNotEnabled()
             repeat(5) { click(R.string.teaching_skip_field) }
             compose.onNodeWithTag("pattern-question").assertIsDisplayed().assertTextContains("بنك الطرف الآخر", substring = true)
