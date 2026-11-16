@@ -85,6 +85,6 @@ internal object FinancialAnalysisReader {
                 evidence.parsedRecords.associateBy { it.event.id }.let { records -> rows.mapNotNull { tx ->
                     tx.linkedParsedEventIds.firstNotNullOfOrNull { records[it]?.details?.biller?.trim()?.takeIf(String::isNotEmpty) }?.let { tx.id to it }
                 }.toMap() },
-                commitments.filter { rowsById[it.sourceTransactionId]?.type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT }.map { it.id }.toSet())
+                rows.associateBy { it.id }.let { byId -> commitments.filter { byId[it.sourceTransactionId]?.type == FinancialTransactionType.EXTERNAL_TRANSFER_OUT }.map { it.id }.toSet() })
         } }
 }
