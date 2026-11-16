@@ -85,19 +85,38 @@ class CommitmentFromTransactionServiceTest {
         )
     }
 
+    @Test
+    fun createFromTransaction_aRegularTransferAndABillKnownOnlyByItsBillerBecomeCommitments() = runBlocking {
+        val rent = transaction("tx-rent", FinancialTransactionType.EXTERNAL_TRANSFER_OUT, "2500.00", merchant = null, counterparty = "Landlord")
+        val bill = transaction("tx-bill", FinancialTransactionType.BILL_PAYMENT, "175.00", merchant = null)
+        val repository = ThrowOnDuplicateCommitmentRepository()
+        val service = CommitmentFromTransactionService(repository, FakeFinancialTransactionRepository(listOf(rent, bill)), zone, clock)
+
+        assertEquals(CommitmentCreationResult.Success, service.createFromTransaction(rent.id))
+        // Without a name the bill stays rejected; the suggestion passes the biller it was grouped by.
+        assertEquals(CommitmentCreationResult.Rejected("invalid_transaction"), service.createFromTransaction(bill.id))
+        assertEquals(CommitmentCreationResult.Success, service.createFromTransaction(bill.id, fallbackName = " Water Co "))
+        assertEquals(listOf("Landlord", "Water Co"), repository.created.map { it.name })
+        // An incoming transfer is never a commitment.
+        assertEquals(false, CommitmentFromTransactionService.canMarkAsCommitment(FinancialTransactionType.EXTERNAL_TRANSFER_IN))
+    }
+
     private fun transaction(
         id: String,
         type: FinancialTransactionType = FinancialTransactionType.EXPENSE,
+        amount: String = "71.00",
+        merchant: String? = "Netflix",
+        counterparty: String? = null,
     ): FinancialTransaction =
         FinancialTransaction(
             id = id,
             type = type,
-            amount = Money.of("71.00", Currency.SAR),
+            amount = Money.of(amount, Currency.SAR),
             occurredAt = Instant.parse("2026-08-01T12:00:00Z"),
             sourceContainerId = null,
             destinationContainerId = null,
-            merchant = "Netflix",
-            counterparty = null,
+            merchant = merchant,
+            counterparty = counterparty,
             categoryId = null,
             linkedParsedEventIds = emptyList(),
         )

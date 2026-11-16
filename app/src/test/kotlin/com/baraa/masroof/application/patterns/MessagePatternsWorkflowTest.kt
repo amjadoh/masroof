@@ -162,6 +162,23 @@ class MessagePatternsWorkflowTest {
         } finally { directory.deleteRecursively() }
     }
 
+    @Test fun aValueAtTheStartOfTheMessageIsRefusedAndTheScreenRuleSaysSoFirst() = runBlocking {
+        val directory = Files.createTempDirectory("masroof-opening-value-").toFile()
+        try {
+            val w = MessagePatternsWorkflow(MessagePatternStore(directory.resolve("patterns.json")), DatabaseAccessGate())
+            w.saveBank(0, BankMessagePatterns("STC", listOf("STC Bank")))
+            val body = "stc prepaid services payment\nAmount: 23.00 SAR\nAt: 10/11/26 22:43"
+            fun bind(field: String, text: String) = PatternBinding(field, body.indexOf(text), body.indexOf(text) + text.length)
+            val rest = listOf(bind("amount", "23.00 SAR"), bind("occurred_at", "10/11/26 22:43"))
+            assertTrue(opensMessage(body, 0))
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { w.teach(1, "STC", "STC Bank", PatternOperation.BILL_PAYMENT, body, rest + bind("biller", "stc prepaid services")) }
+            }
+            assertTrue(rest.none { opensMessage(body, it.start) })
+            assertEquals(setOf("amount", "occurred_at"), w.teach(1, "STC", "STC Bank", PatternOperation.BILL_PAYMENT, body, rest).fields.keys)
+        } finally { directory.deleteRecursively() }
+    }
+
     @Test fun unselectedNumbersAndDatesAreIgnoredAutomaticallySoOtherMessagesStillMatch() = runBlocking {
         val directory = Files.createTempDirectory("masroof-auto-ignore-").toFile()
         try {
