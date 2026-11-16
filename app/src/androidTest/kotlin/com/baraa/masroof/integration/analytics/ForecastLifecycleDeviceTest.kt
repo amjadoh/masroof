@@ -146,6 +146,12 @@ class ForecastLifecycleDeviceTest {
             assertEquals(original.personalTotal,corrected.personalTotal)
             assertEquals(original.baselineTotal,corrected.baselineTotal)
             c.database.openHelper.readableDatabase.query("PRAGMA user_version").use { it.moveToFirst();assertEquals(18,it.getInt(0)) }
+            // A regular transfer (rent) is a recurring payment like a card subscription.
+            c.database.withTransaction { for(month in 3L downTo 1L) c.database.financialTransactionDao().insertTransactionIfAbsent(
+                FinancialTransactionEntity("rent:$month","EXTERNAL_TRANSFER_OUT","2500.00","SAR",
+                    clock.day.minusMonths(month).atTime(9,0).atZone(zone).toInstant().toEpochMilli(),"account:BANK_ALJAZIRA:9999",null,null,"Landlord",null)) }
+            workflow.refresh()
+            assertEquals(listOf("Landlord" to "MONTHLY"),workflow.state.value.snapshot!!.candidates.map { it.name to it.cadence })
         } finally { workflow.close();sidecar.close();TestRuntime.reset(host) }
     }
 }
