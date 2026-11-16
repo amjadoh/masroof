@@ -9,6 +9,7 @@ import androidx.room.withTransaction
 import com.baraa.masroof.analytics.*
 import com.baraa.masroof.application.AppContainer
 import com.baraa.masroof.application.commitment.CommitmentCreationResult
+import com.baraa.masroof.application.dashboard.CommitmentPaymentIdentity
 import com.baraa.masroof.application.dashboard.CommitmentPaymentStatus
 import com.baraa.masroof.application.dashboard.AnalysisSpendingInsights
 import com.baraa.masroof.application.dashboard.AnalysisSpendingFact
@@ -40,6 +41,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.Default)
     private var refreshJob: Job? = null
+    @Volatile private var rescanRequestedFrom: Long? = null
     private var clockJob: Job? = null
     private var importJob: Job? = null
     @Volatile private var closed = false
@@ -137,7 +139,9 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
     private data class Source(val clean: CleanData, val start: Long, val end: Long, val today: Long,
         val completed: Int, val dues: List<AnalysisDue>, val committed: Set<String>, val reviews: Int,
         val blocked: Boolean, val fingerprint: String, val reasons: List<String>, val insights: AnalysisSpendingInsights,
-        val committedCadences: Map<String, String>)
+        val committedCadences: Map<String, String>,
+        /** Registered commitments paid by transfer and still due in this period: amount by due day. */
+        val plannedTransfers: Map<Long, Long>)
 
     private suspend fun source(): Source {
             val zone = clock.zone; val today = LocalDate.now(clock); val todayDay = today.toEpochDay()
@@ -148,6 +152,9 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             val current = read.service.loadOverview(period)
             val included = historical.spendingTrends?.purchaseScopeTransactionIds.orEmpty()
             val raw = read.rows.associateBy { it.id }
+            val categories = historical.spendingTrends?.purchases?.categoryTrends.orEmpty()
+            val cashIds = categories[ChartDataCategory.CASH_WITHDRAWALS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
+            val transferIds = categories[ChartDataCategory.EXTERNAL_TRANSFERS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
             val facts = historical.transactions.map { tx ->
                 val original = raw[tx.id] ?: tx
                 val amount = runCatching {
@@ -160,10 +167,12 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
                 }.getOrNull()
                 val effective = historical.transactionFacts[tx.id]?.effectiveType ?: tx.type
                 FinancialFact(tx.id, tx.occurredAt.atZone(zone).toLocalDate().toEpochDay(), amount,
-                    tx.type == FinancialTransactionType.REFUND, tx.id in included, tx.merchant ?: tx.counterparty,
-                    effective in setOf(FinancialTransactionType.EXPENSE, FinancialTransactionType.FEE, FinancialTransactionType.BILL_PAYMENT),
+                    tx.type == FinancialTransactionType.REFUND, tx.id in included, tx.merchant ?: tx.counterparty ?: read.billers[tx.id],
+                    CommitmentPaymentIdentity.supports(effective),
                     tx.sourceContainerId ?: tx.destinationContainerId,
-                    (tx.sourceContainerId ?: tx.destinationContainerId)?.let { "$it|${original.amount.currency}|${effective.name}" })
+                    (tx.sourceContainerId ?: tx.destinationContainerId)?.let { "$it|${original.amount.currency}|${effective.name}" },
+                    // The same transfers the spending tab shows as their own component.
+                    regular = tx.id !in transferIds)
             }
             val onboarding = container.onboardingPreferencesRepository
             val importedFrom = if (onboarding.isHistoricalImportCompleted()) onboarding.getHistoricalImportStartEpochMillis()
@@ -203,6 +212,13 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             val recovered = AnalysisCoveragePolicy.recover(coverageRows,unresolved,at)
             store.analytics().coverage(recovered)
             val gaps = AnalysisCoveragePolicy.gapDays(recovered)
+            // Messages that arrived without the permission are only in the inbox: re-read it from the gap's first
+            // day. The scan's receipt then closes the gap; once per gap start, a failed scan retries itself.
+            val rescanFrom = if (noPermission) null else AnalysisCoveragePolicy.rescanFrom(recovered, todayDay)
+            if (rescanFrom != null && rescanFrom != rescanRequestedFrom) runCatching {
+                container.missedSmsScheduler.schedule(LocalDate.ofEpochDay(rescanFrom).atStartOfDay(zone).toInstant())
+                rescanRequestedFrom = rescanFrom
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
             val gapText = gaps.sorted().joinToString(",")
             if(gapText != prefs.gapDays) {
                 prefs = prefs.copy(gapDays = gapText)
@@ -210,9 +226,6 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             }
             val clean = FinancialCleaner.clean(facts, start.toEpochDay(), todayDay, covered, gaps, ::periodOffset)
             val completed = completedAnalysisPeriods(clean, todayDay)
-            val categories = historical.spendingTrends?.purchases?.categoryTrends.orEmpty()
-            val cashIds = categories[ChartDataCategory.CASH_WITHDRAWALS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
-            val transferIds = categories[ChartDataCategory.EXTERNAL_TRANSFERS]?.transactionIdsByDate?.values?.flatten()?.toSet().orEmpty()
             val invalidIds = clean.quality.excluded.filterKeys { it != "DUPLICATE_ID" }.values.flatten().toSet()
             val insightFacts = facts.distinctBy { it.id }.filter { it.included && it.id !in invalidIds && it.amount != null }.map {
                 AnalysisSpendingFact(it.id, it.day, if (it.refund) Math.negateExact(it.amount!!) else it.amount!!,
@@ -235,12 +248,17 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
                 if (it.amount.currency != Currency.SAR) null else AnalysisDue(it.key, it.displayName,
                     it.amount.amount.movePointRight(2).longValueExact(), it.expectedDate?.toEpochDay(), true)
             }
+            val plannedTransfers = current.commitmentsOverview.rows.filter {
+                it.status == CommitmentPaymentStatus.UNPAID && it.userCommitmentId in read.transferCommitments &&
+                    it.amount.currency == Currency.SAR && it.expectedDate?.toEpochDay() in todayDay until period.endDateExclusive.toEpochDay()
+            }.groupBy({ it.expectedDate!!.toEpochDay() }, { it.amount.amount.movePointRight(2).longValueExact() })
+                .mapValues { (_, amounts) -> amounts.fold(0L, Math::addExact) }
             val committed = read.committed
             val decisions = store.analytics().candidates().filter { it.status != "SUGGESTED" }.sortedBy { it.id }.map { it.id to it.status }
             val feedback = store.analytics().feedback().joinToString { "${it.seriesKey}:${it.kind}:${it.decidedAt}:${hash(it.payload)}" }
             val canonical = "continuous-learning-v1|${RecurringLearningWorkflow.version}|${ForecastPerformancePolicy.VERSION}|${AnalyticsVersion.EVALUATION}|${AnalyticsVersion.MODEL}|${AnalyticsVersion.FEATURES}|${clean.fingerprint}|$dues|${committed.sorted()}|$blocked|${current.summary.reviewRequiredCount}|${period.startDate}|$prefs|$decisions|$feedback|${read.committedCadences}|${clock.millis() / SIX_HOURS_MS}"
             return Source(clean, period.startDate.toEpochDay(), period.endDateExclusive.toEpochDay(), todayDay, completed,
-                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights, read.committedCadences)
+                dues, committed, current.summary.reviewRequiredCount, blocked, hash(canonical), reasons, insights, read.committedCadences, plannedTransfers)
     }
 
     suspend fun refresh() = withContext(Dispatchers.Default) { refreshOnWorker() }
@@ -291,10 +309,15 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             input.clean.days.firstOrNull { it.covered }?.day, input.clean.days.lastOrNull { it.covered }?.day, input.reasons,
             AnalysisPresentationBuilder.coverage(input.clean, input.today), AnalysisPresentationBuilder.consecutiveCompleteDays(input.clean, input.today))
         val todayFacts = input.clean.days.first { it.day == input.today }
-        val futureDays = result.points.map { point -> AnalysisDay(point.day, null,
-            if (point.day == input.today) Math.addExact(todayFacts.net, (point.gross - todayFacts.gross).coerceAtLeast(0)) else point.gross) }
+        // A confirmed transfer commitment (rent) still due in this period is known, not estimated.
+        val planned = input.plannedTransfers.values.fold(0L, Math::addExact)
+        val remaining = result.remaining?.let { Math.addExact(it, planned) }
+        val total = result.total?.let { Math.addExact(it, planned) }
+        // Each planned transfer is drawn on its due day, so the estimated bars add up to the remaining figure.
+        val futureDays = result.points.map { point -> AnalysisDay(point.day, null, Math.addExact(input.plannedTransfers[point.day] ?: 0,
+            if (point.day == input.today) Math.addExact(todayFacts.net, (point.gross - todayFacts.gross).coerceAtLeast(0)) else point.gross)) }
         val snapshot = AnalysisSnapshot(input.start, input.end, at, input.fingerprint, result.status, result.method,
-            result.actual, result.remaining, result.total, result.lower, result.upper,
+            result.actual, remaining, total, result.lower, result.upper,
             input.clean.days.filter { it.day >= input.start }.map { AnalysisDay(it.day, it.net, null) } + futureDays,
             quality, suggested, input.dues + estimates, input.completed,
             trainingFrom = if (result.method == AnalyticsVersion.MODEL) result.model?.trainedFrom else result.baseline?.from,
@@ -302,7 +325,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
             insights = input.insights, evaluations = result.evaluations.map { AnalysisEvaluation(it.horizon, it.count, it.mae, it.bias) },
             modelReason = result.reason, evaluationVersion = AnalyticsVersion.EVALUATION,
             wholeDaysFrom = (input.today + 1).takeIf { it < input.end }, wholeDaysLower = result.wholeDaysLower,
-            wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(result.actual, it) },
+            wholeDaysUpper = result.wholeDaysUpper, budgetLower = result.wholeDaysLower?.let { Math.addExact(Math.addExact(result.actual, it), planned) },
             recurringLearning = recurringStatus)
         // A committed source invalidation while fitting invalidates the entire result.
         // Room tables, preferences, import completion and the clock bump generation; SMS permission does not.
@@ -409,7 +432,7 @@ class AnalyticsWorkflow(private val container: AppContainer, private val context
                 val source = container.financialTransactionRepository.getById(c.sourceIds.last()) ?: error("Source changed")
                 val existing = container.commitmentRepository.getBySourceTransactionId(source.id)
                 if (existing == null) {
-                    check(container.dashboardCommitmentsWorkflow.createFromTransaction(source.id) is CommitmentCreationResult.Success)
+                    check(container.dashboardCommitmentsWorkflow.createFromTransaction(source.id, draft.name) is CommitmentCreationResult.Success)
                     val created = requireNotNull(container.commitmentRepository.getBySourceTransactionId(source.id))
                     container.settingsCommitmentsWorkflow.update(created.id, draft)
                 }

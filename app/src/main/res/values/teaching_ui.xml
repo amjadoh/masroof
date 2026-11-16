@@ -12,6 +12,7 @@
     <string name="teaching_required">مطلوب</string>
     <string name="teaching_optional">اختياري</string>
     <string name="teaching_select_value">اختر قيمة</string>
+    <string name="teaching_opening_value">أول كلمات الرسالة تحدد نوعها ولا تصلح قيمة. اختر «غير موجود» لهذا الحقل.</string>
     <string name="teaching_values">قيم الرسالة</string>
     <string name="teaching_ignore_value">تجاهل قيمة</string>
     <string name="teaching_sample_title">هل تطابق رسالة أخرى؟</string>
@@ -30,6 +31,12 @@
     <string name="teaching_review_action">علّم مصروف هذه الرسالة</string>
     <string name="teaching_correct_type">تصحيح نوع الحركة</string>
     <string name="teaching_correct_type_help">اختر نوع الحركة لهذه الرسالة فقط، ثم احفظ. يستخدم مصروف التفاصيل المتاحة؛ لا ينشئ هذا الإجراء نمط رسائل جديدًا ولا يكمل المبلغ أو الحساب الناقص بالتخمين.</string>
+    <string name="review_report_action">مشاركة الرسالة لدعم صيغتها</string>
+    <string name="review_report_title">رسالة لم يفهمها مصروف</string>
+    <string name="review_report_preview">النص الذي سيشارك</string>
+    <string name="review_report_help">كل الأرقام في الرسالة مخفية بعلامة #، فلا يظهر مبلغ ولا رقم حساب أو بطاقة. مصروف لا يرسل شيئا بنفسه؛ أنت تختار أين تشارك النص.</string>
+    <string name="review_report_unknown_bank">غير معروف</string>
+    <string name="review_report_text">رسالة لم يفهمها مصروف\nالمرسل: %1$s\nالبنك: %2$s\nنسخة التطبيق: %3$s\n\n%4$s</string>
     <string name="teaching_review_why">لماذا تحتاج مراجعة؟</string>
     <string name="teaching_not_financial">ليست حركة مالية</string>
     <string name="teaching_apply_current">تطبيق على هذه الرسالة</string>
