@@ -146,12 +146,26 @@ class ForecastLifecycleDeviceTest {
             assertEquals(original.personalTotal,corrected.personalTotal)
             assertEquals(original.baselineTotal,corrected.baselineTotal)
             c.database.openHelper.readableDatabase.query("PRAGMA user_version").use { it.moveToFirst();assertEquals(18,it.getInt(0)) }
+            val beforeRent=workflow.state.value.snapshot!!
             // A regular transfer (rent) is a recurring payment like a card subscription.
             c.database.withTransaction { for(month in 3L downTo 1L) c.database.financialTransactionDao().insertTransactionIfAbsent(
                 FinancialTransactionEntity("rent:$month","EXTERNAL_TRANSFER_OUT","2500.00","SAR",
                     clock.day.minusMonths(month).atTime(9,0).atZone(zone).toInstant().toEpochMilli(),"account:BANK_ALJAZIRA:9999",null,null,"Landlord",null)) }
             workflow.refresh()
             assertEquals(listOf("Landlord" to "MONTHLY"),workflow.state.value.snapshot!!.candidates.map { it.name to it.cadence })
+            // Transfers are actual spending only: the estimate neither learns from them nor predicts them...
+            assertNotNull(beforeRent.remaining)
+            assertEquals(beforeRent.remaining,workflow.state.value.snapshot!!.remaining)
+            // ...until one is a registered commitment still due in this period, which is known and added whole.
+            assertEquals(com.baraa.masroof.application.commitment.CommitmentCreationResult.Success,
+                c.dashboardCommitmentsWorkflow.createFromTransaction("rent:1"))
+            workflow.refresh()
+            val withRent=workflow.state.value.snapshot!!
+            // Exactly the unpaid dues the commitments list shows for this period (a 31-day period can hold two).
+            val rentDue=withRent.dues.filter { it.name=="Landlord" && it.confirmed }.sumOf { it.amount }
+            assertTrue(rentDue>=250000)
+            assertEquals(beforeRent.remaining!!+rentDue,withRent.remaining)
+            assertEquals(beforeRent.total!!+rentDue,withRent.total)
         } finally { workflow.close();sidecar.close();TestRuntime.reset(host) }
     }
 }
